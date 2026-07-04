@@ -22,7 +22,7 @@ This is not an IDE first. Coding is a killer workflow, but the app should feel u
 - Initial Deno app shell created.
 - CEF desktop task added.
 - Datastar SSE patch helper added.
-- Keyboard-first shell started with command palette shortcut.
+- Keyboard-first shell started with command palette, new chat, and model picker shortcuts.
 - Pi SDK npm import smoke test passes in Deno.
 - `AgentHost` now creates a real pi `AgentSessionRuntime`.
 - Prompt route is wired to `session.prompt()` with preflight acceptance.
@@ -82,7 +82,7 @@ Deno desktop process
 - `ui/fragments.tsx`: server-rendered UI fragments with Kita JSX.
 - `ui/styles.css`: Tailwind + Basecoat Nova imports.
 - `static/app.css`: generated CSS output.
-- `static/app.js`: small browser helpers, currently FPS counter.
+- `static/app.js`: small browser helpers for composer focus/autosize, transcript autoscroll, and palette focus.
 
 ## Current UI direction
 

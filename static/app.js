@@ -1,69 +1,106 @@
-const fpsCounter = {
-	frames: 0,
-	lastSample: performance.now(),
-	lastFrame: performance.now(),
-	frameMs: 0,
-	minFps: Number.POSITIVE_INFINITY,
-	maxFps: 0,
-	longFrames: 0,
+const transcriptState = {
+	wasPinnedToBottom: true,
 };
 
-initPerformancePanel();
-requestAnimationFrame(tick);
+bindReservedShortcutPrevention();
 
-function tick(now) {
-	fpsCounter.frames += 1;
-	fpsCounter.frameMs = now - fpsCounter.lastFrame;
-	fpsCounter.lastFrame = now;
+window.addEventListener("DOMContentLoaded", () => {
+	focusComposer();
+	bindComposerAutosize();
+	bindTranscriptAutoscroll();
+	bindCommandPaletteFocus();
+});
 
-	if (fpsCounter.frameMs > 50) {
-		fpsCounter.longFrames += 1;
-	}
+function bindReservedShortcutPrevention() {
+	window.addEventListener(
+		"keydown",
+		(event) => {
+			if (!(event.ctrlKey || event.metaKey)) {
+				return;
+			}
 
-	const elapsed = now - fpsCounter.lastSample;
-	if (elapsed >= 500) {
-		const fps = Math.round((fpsCounter.frames * 1000) / elapsed);
-		fpsCounter.minFps = Math.min(fpsCounter.minFps, fps);
-		fpsCounter.maxFps = Math.max(fpsCounter.maxFps, fps);
-		updatePerformancePanel(fps);
-		fpsCounter.frames = 0;
-		fpsCounter.lastSample = now;
-	}
-
-	requestAnimationFrame(tick);
+			const appShortcutKeys = new Set(["k", "l", "m", "n"]);
+			if (appShortcutKeys.has(event.key.toLowerCase())) {
+				event.preventDefault();
+			}
+		},
+		{ capture: true },
+	);
 }
 
-function initPerformancePanel() {
-	setText("perf-dpr", window.devicePixelRatio.toFixed(2));
-	setText("perf-screen", `${screen.width}×${screen.height} @ ${screen.colorDepth}bit`);
-	setText("perf-visibility", document.visibilityState);
-	setText("perf-ua", navigator.userAgent);
-	document.addEventListener("visibilitychange", () => {
-		setText("perf-visibility", document.visibilityState);
+function focusComposer() {
+	const input = document.getElementById("composer-input");
+	if (input instanceof HTMLTextAreaElement) {
+		input.focus();
+	}
+}
+
+function bindComposerAutosize() {
+	const resize = () => {
+		const input = document.getElementById("composer-input");
+		if (!(input instanceof HTMLTextAreaElement)) {
+			return;
+		}
+		input.style.height = "auto";
+		input.style.height = `${input.scrollHeight}px`;
+	};
+
+	document.addEventListener("input", (event) => {
+		if (
+			event.target instanceof HTMLTextAreaElement &&
+			event.target.id === "composer-input"
+		) {
+			resize();
+		}
 	});
+
+	resize();
 }
 
-function updatePerformancePanel(fps) {
-	const frameMs = fpsCounter.frameMs.toFixed(1);
-	const fpsText = `${fps} fps · ${frameMs} ms`;
-	const capHint = fps <= 65 ? " · likely 60Hz cap" : "";
-	const range = `${fpsCounter.minFps}–${fpsCounter.maxFps} fps`;
+function bindTranscriptAutoscroll() {
+	document.addEventListener(
+		"scroll",
+		() => {
+			const transcript = document.getElementById("transcript");
+			if (!transcript) {
+				return;
+			}
+			const distanceFromBottom =
+				transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight;
+			transcriptState.wasPinnedToBottom = distanceFromBottom < 120;
+		},
+		true,
+	);
 
-	setText("fps-counter", fpsText + capHint);
-	setText("perf-fps", `${fps}`);
-	setText("perf-frame", `${frameMs} ms`);
-	setText("perf-range", range);
-	setText("perf-long-frames", String(fpsCounter.longFrames));
+	const observer = new MutationObserver(() => {
+		requestAnimationFrame(() => {
+			const transcript = document.getElementById("transcript");
+			if (!transcript || !transcriptState.wasPinnedToBottom) {
+				return;
+			}
+			transcript.scrollTop = transcript.scrollHeight;
+		});
+	});
 
-	const el = document.getElementById("fps-counter");
-	if (el) {
-		el.dataset.fps = String(fps);
-	}
+	observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function setText(id, text) {
-	const el = document.getElementById(id);
-	if (el) {
-		el.textContent = text;
-	}
+function bindCommandPaletteFocus() {
+	let wasOpen = false;
+	const observer = new MutationObserver(() => {
+		const palette = document.querySelector("[data-show='$commandOpen']");
+		const isOpen = palette instanceof HTMLElement && palette.style.display !== "none";
+		if (isOpen && !wasOpen) {
+			requestAnimationFrame(() =>
+				document.getElementById("command-input")?.focus(),
+			);
+		}
+		wasOpen = isOpen;
+	});
+
+	observer.observe(document.body, {
+		attributes: true,
+		attributeFilter: ["style"],
+		subtree: true,
+	});
 }

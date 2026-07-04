@@ -32,6 +32,18 @@ export function renderPage(state: AppState): string {
 						evt.preventDefault();
 						$commandOpen = !$commandOpen;
 					}
+					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'n') {
+						evt.preventDefault();
+						@post('/sessions/new');
+					}
+					if (
+						(evt.ctrlKey || evt.metaKey) &&
+						(evt.key.toLowerCase() === 'l' || evt.key.toLowerCase() === 'm')
+					) {
+						evt.preventDefault();
+						$commandOpen = false;
+						document.getElementById('model-select')?.focus();
+					}
 					if (evt.key === 'Escape') $commandOpen = false"
 				>
 					<div
@@ -47,7 +59,8 @@ export function renderPage(state: AppState): string {
 							class="card fixed bottom-8 left-1/2 z-10 w-[min(58rem,calc(100vw-2rem))] -translate-x-1/2 p-4"
 						>
 							<textarea
-								class="min-h-24 w-full resize-none border-0 bg-transparent p-1 outline-none"
+								id="composer-input"
+								class="max-h-72 min-h-24 w-full resize-none border-0 bg-transparent p-1 outline-none"
 								placeholder="Ask pi anything..."
 								aria-label="Message"
 								data-bind:composer
@@ -147,6 +160,7 @@ export function renderPage(state: AppState): string {
 								</button>
 							</header>
 							<input
+								id="command-input"
 								class="input w-full"
 								autofocus
 								placeholder="Type a command..."
@@ -159,7 +173,7 @@ export function renderPage(state: AppState): string {
 										type="button"
 										data-on:click="@post('/sessions/new')"
 									>
-										New chat <kbd class="kbd">Ctrl O</kbd>
+										New chat <kbd class="kbd">Ctrl N</kbd>
 									</button>
 								</li>
 								<li>
@@ -171,7 +185,7 @@ export function renderPage(state: AppState): string {
 											document.getElementById('model-select')?.focus();
 										"
 									>
-										Switch model <kbd class="kbd">Ctrl M</kbd>
+										Switch model <kbd class="kbd">Ctrl L/M</kbd>
 									</button>
 								</li>
 								<li>
