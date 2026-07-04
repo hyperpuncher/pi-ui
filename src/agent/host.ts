@@ -21,6 +21,7 @@ const defaultModelId = "deepseek-v4-flash";
 export class AgentHost {
 	private unsubscribe: (() => void) | undefined;
 	private readonly toolMessageIds = new Map<string, string>();
+	private readonly toolCallArgs = new Map<string, unknown>();
 
 	private constructor(
 		private readonly runtime: AgentSessionRuntime,
@@ -168,6 +169,7 @@ export class AgentHost {
 		this.unsubscribe?.();
 		const session = this.runtime.session;
 		this.toolMessageIds.clear();
+		this.toolCallArgs.clear();
 		await session.bindExtensions({ mode: "rpc" });
 		this.unsubscribe = session.subscribe((event) => this.handleEvent(event, session));
 		this.syncModels();
@@ -228,20 +230,43 @@ export class AgentHost {
 				this.syncUsage();
 				break;
 			case "tool_execution_start": {
-				const id = this.state.appendMessage("tool", summarizeValue(event.args), {
-					title: `Running ${event.toolName}`,
-					meta: event.toolCallId,
-					state: "running",
-				});
+				this.toolCallArgs.set(event.toolCallId, event.args);
+				const id = this.state.appendMessage(
+					"tool",
+					formatToolInput(event.toolName, event.args),
+					{
+						title: toolTitle("running", event.toolName, event.args),
+						meta: toolMeta(event.toolName, event.args),
+						state: "running",
+					},
+				);
 				this.toolMessageIds.set(event.toolCallId, id);
+				break;
+			}
+			case "tool_execution_update": {
+				const id = this.toolMessageIds.get(event.toolCallId);
+				if (id) {
+					this.state.updateMessage(id, {
+						text: extractToolText(event.partialResult),
+						meta: toolMeta(event.toolName, event.args),
+					});
+				}
 				break;
 			}
 			case "tool_execution_end": {
 				const id = this.toolMessageIds.get(event.toolCallId);
+				const args = this.toolCallArgs.get(event.toolCallId) ?? {};
+				const resultView = formatToolResult(event.toolName, event.result);
 				const patch = {
-					text: summarizeValue(event.result),
-					title: `${event.isError ? "Failed" : "Finished"} ${event.toolName}`,
+					text: resultView.text,
+					title: toolTitle(
+						event.isError ? "error" : "success",
+						event.toolName,
+						args,
+					),
+					meta: toolMeta(event.toolName, args),
 					state: event.isError ? "error" : "success",
+					format: resultView.format,
 				} as const;
 				if (id) {
 					this.state.updateMessage(id, patch);
@@ -249,6 +274,7 @@ export class AgentHost {
 				} else {
 					this.state.appendMessage("tool", patch.text, patch);
 				}
+				this.toolCallArgs.delete(event.toolCallId);
 				break;
 			}
 			case "agent_end":
@@ -282,10 +308,18 @@ export class AgentHost {
 	}
 
 	private loadCurrentSessionMessages(): void {
-		const messages = this.runtime.session.sessionManager
-			.getBranch()
+		const branch = this.runtime.session.sessionManager.getBranch();
+		const visibleBranch = branch.slice(-160);
+		const messages = visibleBranch
 			.map((entry: SessionEntry) => this.entryToMessage(entry))
 			.filter((message): message is AppMessageInput => Boolean(message));
+		if (branch.length > visibleBranch.length) {
+			messages.unshift({
+				role: "system",
+				text: `Showing latest ${visibleBranch.length} session entries. ${branch.length - visibleBranch.length} older entries hidden for performance.`,
+				timestamp: new Date(),
+			});
+		}
 		this.state.replaceMessages(messages);
 		this.syncUsage();
 		this.state.setStatus(this.readyStatus(this.runtime.session));
@@ -318,6 +352,9 @@ export class AgentHost {
 	private handleMessageStart(
 		message: Extract<AgentSessionEvent, { type: "message_start" }>["message"],
 	): void {
+		if (message.role === "toolResult") {
+			return;
+		}
 		const appMessage = this.agentMessageToAppMessage(message, new Date());
 		if (!appMessage) {
 			return;
@@ -326,6 +363,7 @@ export class AgentHost {
 			title: appMessage.title,
 			meta: appMessage.meta,
 			state: appMessage.state,
+			format: appMessage.format,
 		});
 	}
 
@@ -432,9 +470,111 @@ function truncate(value: string, maxLength: number): string {
 	return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }
 
+function toolTitle(
+	status: "running" | "success" | "error",
+	toolName: string,
+	args: unknown,
+): string {
+	const icon =
+		status === "running" ? "Running" : status === "error" ? "Failed" : "Done";
+	const target = toolTarget(toolName, args);
+	return target ? `${icon} ${toolName} • ${target}` : `${icon} ${toolName}`;
+}
+
+function toolMeta(toolName: string, args: unknown): string | undefined {
+	const record = asRecord(args);
+	if (!record) return undefined;
+	if (toolName === "bash" && typeof record.timeout === "number") {
+		return `${record.timeout}s timeout`;
+	}
+	if (toolName === "edit" && Array.isArray(record.edits)) {
+		return `${record.edits.length} edit${record.edits.length === 1 ? "" : "s"}`;
+	}
+	if (typeof record.limit === "number") {
+		return `limit ${record.limit}`;
+	}
+	return undefined;
+}
+
+function toolTarget(toolName: string, args: unknown): string {
+	const record = asRecord(args);
+	if (!record) return "";
+	if (toolName === "bash") return stringValue(record.command);
+	if (toolName === "grep") {
+		const pattern = stringValue(record.pattern);
+		const path = stringValue(record.path);
+		return path ? `${pattern} in ${path}` : pattern;
+	}
+	if (toolName === "find") {
+		const pattern = stringValue(record.pattern);
+		const path = stringValue(record.path);
+		return path ? `${pattern} in ${path}` : pattern;
+	}
+	return stringValue(record.path) || stringValue(record.file_path);
+}
+
+function formatToolInput(toolName: string, args: unknown): string {
+	const record = asRecord(args);
+	if (!record) return summarizeValue(args);
+	if (toolName === "bash") return `$ ${stringValue(record.command)}`;
+	if (toolName === "read") return `Reading ${stringValue(record.path)}`;
+	if (toolName === "ls") return `Listing ${stringValue(record.path) || "."}`;
+	if (toolName === "grep") return `Searching ${stringValue(record.pattern)}`;
+	if (toolName === "find") return `Finding ${stringValue(record.pattern)}`;
+	if (toolName === "write") {
+		return `Writing ${stringValue(record.path)} (${stringValue(record.content).length} chars)`;
+	}
+	if (toolName === "edit") {
+		const count = Array.isArray(record.edits) ? record.edits.length : 0;
+		return `Editing ${stringValue(record.path)} (${count} replacement${count === 1 ? "" : "s"})`;
+	}
+	return summarizeValue(args);
+}
+
+function formatToolResult(
+	toolName: string,
+	result: unknown,
+): { text: string; format?: "pre" | "diff" } {
+	const record = asRecord(result);
+	const details = asRecord(record?.details);
+	if (toolName === "edit" && typeof details?.patch === "string") {
+		return { text: details.patch, format: "diff" };
+	}
+	if (toolName === "edit" && typeof details?.diff === "string") {
+		return { text: details.diff, format: "diff" };
+	}
+	return { text: extractToolText(result), format: "pre" };
+}
+
+function extractToolText(result: unknown): string {
+	const record = asRecord(result);
+	if (record?.content !== undefined) {
+		const text = contentToText(record.content);
+		if (text.trim()) return text;
+	}
+	if (record?.text !== undefined) {
+		return stripAnsi(String(record.text));
+	}
+	if (result instanceof Error) {
+		return result.message;
+	}
+	if (typeof result === "string") {
+		return stripAnsi(result);
+	}
+	return summarizeValue(result);
+}
+
+function stringValue(value: unknown): string {
+	return typeof value === "string" ? value : "";
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+	return isRecord(value) ? value : undefined;
+}
+
 function contentToText(content: unknown): string {
 	if (typeof content === "string") {
-		return content;
+		return stripAnsi(content);
 	}
 	if (!Array.isArray(content)) {
 		return summarizeValue(content);
@@ -442,25 +582,30 @@ function contentToText(content: unknown): string {
 	return content
 		.map((part) => {
 			if (isRecord(part) && part.type === "text" && typeof part.text === "string") {
-				return part.text;
+				return stripAnsi(part.text);
 			}
 			if (isRecord(part) && part.type === "image") {
 				return `[image: ${String(part.mimeType ?? "unknown")}]`;
 			}
-			if (
-				isRecord(part) &&
-				part.type === "thinking" &&
-				typeof part.thinking === "string"
-			) {
-				return `[thinking]\n${part.thinking}`;
+			if (isRecord(part) && part.type === "thinking") {
+				return "";
 			}
 			if (isRecord(part) && part.type === "toolCall") {
-				return `[tool call: ${String(part.name ?? "unknown")}]`;
+				return "";
 			}
 			return summarizeValue(part);
 		})
 		.filter(Boolean)
 		.join("\n");
+}
+
+const ansiPattern = new RegExp(
+	String.raw`[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[a-zA-Z\d]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))`,
+	"g",
+);
+
+function stripAnsi(value: string): string {
+	return value.replace(ansiPattern, "");
 }
 
 function summarizeValue(value: unknown): string {

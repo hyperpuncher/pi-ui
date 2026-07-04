@@ -10,6 +10,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindComposerAutosize();
 	bindTranscriptAutoscroll();
 	bindCommandPaletteFocus();
+	bindSessionKeyboard();
 });
 
 function bindDesktopCommands() {
@@ -53,13 +54,14 @@ function bindReservedShortcutPrevention() {
 }
 
 function runFirstVisible(selector) {
-	const rows = document.querySelectorAll(selector);
-	for (const row of rows) {
-		if (row instanceof HTMLElement && row.style.display !== "none") {
-			row.querySelector("button")?.click();
-			return;
-		}
-	}
+	const row = visibleRows(selector)[0];
+	row?.querySelector("button")?.click();
+}
+
+function visibleRows(selector) {
+	return [...document.querySelectorAll(selector)].filter(
+		(row) => row instanceof HTMLElement && getComputedStyle(row).display !== "none",
+	);
 }
 
 function focusComposer() {
@@ -117,6 +119,50 @@ function bindTranscriptAutoscroll() {
 	});
 
 	observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function bindSessionKeyboard() {
+	document.addEventListener("keydown", (event) => {
+		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+			return;
+		}
+
+		const picker = document.querySelector("[data-show='$sessionOpen']");
+		if (
+			!(picker instanceof HTMLElement) ||
+			getComputedStyle(picker).display === "none"
+		) {
+			return;
+		}
+
+		const active = document.activeElement;
+		if (
+			active?.id !== "session-input" &&
+			!(active instanceof HTMLButtonElement && active.closest("[data-session-row]"))
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		focusSessionRow(event.key === "ArrowDown" ? 1 : -1);
+	});
+}
+
+function focusSessionRow(direction) {
+	const rows = visibleRows("[data-session-row]");
+	if (rows.length === 0) {
+		return;
+	}
+
+	const activeRow = document.activeElement?.closest?.("[data-session-row]");
+	const activeIndex = rows.findIndex((row) => row === activeRow);
+	const nextIndex =
+		activeIndex === -1
+			? direction > 0
+				? 0
+				: rows.length - 1
+			: (activeIndex + direction + rows.length) % rows.length;
+	rows[nextIndex]?.querySelector("button")?.focus();
 }
 
 function bindCommandPaletteFocus() {

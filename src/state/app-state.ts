@@ -6,7 +6,11 @@ import {
 	renderSessionPicker,
 	renderTranscript,
 } from "../ui/fragments.tsx";
-import { renderMarkdownFinal, renderMarkdownStreaming } from "../ui/markdown.ts";
+import {
+	renderCodeFinal,
+	renderMarkdownFinal,
+	renderMarkdownStreaming,
+} from "../ui/markdown.ts";
 
 export type AppMessage = {
 	id: string;
@@ -16,10 +20,11 @@ export type AppMessage = {
 	title?: string;
 	meta?: string;
 	state?: "running" | "success" | "error";
+	format?: "pre" | "diff";
 	renderedHtml?: string;
 };
 
-export type AppMessageOptions = Pick<AppMessage, "title" | "meta" | "state">;
+export type AppMessageOptions = Pick<AppMessage, "title" | "meta" | "state" | "format">;
 
 export type AppModel = {
 	id: string;
@@ -43,6 +48,8 @@ type StreamClient = {
 	id: string;
 	stream: DatastarStream;
 };
+
+const finalizeRecentMessageCount = 24;
 
 export class AppState {
 	private clients = new Map<string, StreamClient>();
@@ -102,6 +109,9 @@ export class AppState {
 			this.activeAssistantId = id;
 		}
 		this.broadcast();
+		if (role === "tool" && options.format === "diff" && text.trim()) {
+			void this.renderCode(id, "diff");
+		}
 		return id;
 	}
 
@@ -111,7 +121,13 @@ export class AppState {
 			return;
 		}
 		Object.assign(message, patch);
+		if (patch.text !== undefined || patch.format !== undefined) {
+			message.renderedHtml = undefined;
+		}
 		this.broadcast();
+		if (message.role === "tool" && message.format === "diff" && message.text.trim()) {
+			void this.renderCode(id, "diff");
+		}
 	}
 
 	appendAssistantDelta(delta: string): void {
@@ -146,23 +162,40 @@ export class AppState {
 
 	replaceMessages(messages: AppMessageInput[]): void {
 		this.activeAssistantId = undefined;
-		this.messages = messages.map((message) => {
+		const finalizeFrom = Math.max(0, messages.length - finalizeRecentMessageCount);
+		this.messages = messages.map((message, index) => {
 			this.messageSeq += 1;
 			const id = `m-${this.messageSeq}`;
+			const shouldRenderStreaming =
+				message.role === "assistant" &&
+				message.text.trim() &&
+				index >= finalizeFrom;
 			return {
 				...message,
 				id,
 				renderedHtml:
 					message.renderedHtml ??
-					(message.role === "assistant" && message.text.trim()
+					(shouldRenderStreaming
 						? renderMarkdownStreaming(message.text)
 						: undefined),
 			};
 		});
 		this.broadcast();
-		for (const message of this.messages) {
-			if (message.role === "assistant" && message.text.trim()) {
+		for (const [index, message] of this.messages.entries()) {
+			if (
+				index >= finalizeFrom &&
+				message.role === "assistant" &&
+				message.text.trim()
+			) {
 				void this.renderAssistantMarkdown(message.id);
+			}
+			if (
+				index >= finalizeFrom &&
+				message.role === "tool" &&
+				message.format === "diff" &&
+				message.text.trim()
+			) {
+				void this.renderCode(message.id, "diff");
 			}
 		}
 	}
@@ -190,6 +223,23 @@ export class AppState {
 
 	setUsageText(usageText: string): void {
 		this.usageText = usageText;
+		this.broadcast();
+	}
+
+	private async renderCode(id: string, language: string): Promise<void> {
+		const message = this.messages.find((item) => item.id === id);
+		if (!message || !message.text.trim()) {
+			return;
+		}
+
+		const text = message.text;
+		const renderedHtml = await renderCodeFinal(text, language);
+		const current = this.messages.find((item) => item.id === id);
+		if (!current || current.text !== text) {
+			return;
+		}
+
+		current.renderedHtml = renderedHtml;
 		this.broadcast();
 	}
 

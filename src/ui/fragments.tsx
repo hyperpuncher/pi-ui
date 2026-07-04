@@ -114,6 +114,25 @@ function renderSessionRow(session: AppSessionSummary): string {
 	);
 }
 
+function renderPreOutput(text: string): JSX.Element {
+	return (
+		<pre class="bg-muted/40 m-0 max-h-80 overflow-auto rounded-md p-3 text-sm leading-relaxed whitespace-pre-wrap">
+			<code safe>{text}</code>
+		</pre>
+	);
+}
+
+function renderDiffOutput(message: AppMessage): JSX.Element {
+	if (message.renderedHtml) {
+		return (
+			<div class="max-h-96 overflow-auto rounded-md [&_.shiki]:m-0 [&_.shiki]:p-3 [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+				{message.renderedHtml}
+			</div>
+		);
+	}
+	return renderPreOutput(message.text);
+}
+
 function renderMessage(message: AppMessage): string {
 	if (message.role === "user") {
 		return sync(
@@ -135,7 +154,7 @@ function renderMessage(message: AppMessage): string {
 			"[&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4",
 			"[&_code]:rounded [&_code]:bg-muted [&_code]:px-1",
 			"[&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold",
-			"[&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6",
+			"[&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6",
 			"[&_.table-container]:my-4",
 		].join(" ");
 		return sync(
@@ -166,21 +185,32 @@ function renderMessage(message: AppMessage): string {
 
 	const title = message.title ?? "Tool";
 	const stateClass = message.state === "error" ? "border-destructive/40" : "";
+	const dotClass =
+		message.state === "running"
+			? "bg-muted-foreground animate-pulse"
+			: message.state === "error"
+				? "bg-destructive"
+				: "bg-emerald-500";
 	return sync(
 		<article
-			class={["card w-full max-w-3xl self-start p-4", stateClass]}
+			class={["card w-full max-w-3xl self-start p-3", stateClass]}
 			data-message-id={message.id}
 		>
-			<header class="text-muted-foreground mb-2 flex items-center justify-between gap-4 text-sm">
-				<span>{title}</span>
-				<span class="flex min-w-0 items-center gap-3">
-					{message.meta && <span>{message.meta}</span>}
+			<header class="text-muted-foreground mb-2 flex items-center justify-between gap-4 text-xs">
+				<span class="flex min-w-0 items-center gap-2">
+					<span class={["h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
+					<span class="truncate" safe>
+						{title}
+					</span>
+				</span>
+				<span class="flex shrink-0 items-center gap-3">
+					{message.meta && <span safe>{message.meta}</span>}
 					<time>{message.timestamp.toLocaleTimeString()}</time>
 				</span>
 			</header>
-			<pre class="m-0 max-h-96 overflow-auto whitespace-pre-wrap">
-				<code safe>{message.text}</code>
-			</pre>
+			{message.format === "diff"
+				? renderDiffOutput(message)
+				: renderPreOutput(message.text)}
 		</article>,
 	);
 }

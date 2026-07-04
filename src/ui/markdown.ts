@@ -132,6 +132,10 @@ function compileMarkdown(markdown: string): string {
 	return result.html;
 }
 
+export async function renderCodeFinal(code: string, language: string): Promise<string> {
+	return await highlightCode(code, normalizeLanguage(language));
+}
+
 async function highlightCodeBlocks(html: string): Promise<string> {
 	const blocks = [
 		...html.matchAll(
