@@ -14,7 +14,7 @@ export function renderComposerStatus(state: AppState): string {
 	return sync(
 		<span
 			id="composer-status"
-			class="text-muted-foreground min-w-0 truncate text-xs"
+			class="text-muted-foreground min-w-0 truncate font-mono text-xs tabular-nums"
 			title={state.status}
 		>
 			{state.usageText}
@@ -26,6 +26,7 @@ export function renderModelPicker(state: AppState): string {
 	const current = state.models.find(
 		(model) => `${model.provider}/${model.id}` === state.currentModel,
 	);
+	const currentLabel = current ? modelTriggerLabel(current) : "Loading models…";
 	return sync(
 		<div id="model-picker" class="min-w-0">
 			<label class="sr-only" for="model-select-trigger">
@@ -42,17 +43,14 @@ export function renderModelPicker(state: AppState): string {
 			>
 				<button
 					type="button"
-					class="h-9 max-w-44 text-sm font-medium"
+					class="h-9 w-fit max-w-[14rem] text-sm font-medium"
 					id="model-select-trigger"
 					aria-haspopup="listbox"
 					aria-expanded="false"
 					aria-controls="model-select-listbox"
 					disabled={state.models.length === 0}
 				>
-					<span class="truncate">
-						{current ? current.name : "Loading models…"}
-					</span>
-					<span class="text-muted-foreground shrink-0 opacity-50">⌄</span>
+					<span class="truncate">{currentLabel}</span>
 				</button>
 				<div
 					id="model-select-popover"
@@ -63,7 +61,7 @@ export function renderModelPicker(state: AppState): string {
 					<div
 						role="listbox"
 						id="model-select-listbox"
-						class="max-h-70 overflow-y-auto"
+						class="max-h-70 min-w-[20rem] overflow-y-auto"
 						aria-orientation="vertical"
 						aria-labelledby="model-select-trigger"
 					>
@@ -74,12 +72,18 @@ export function renderModelPicker(state: AppState): string {
 								<div
 									role="option"
 									data-value={value}
+									data-label={modelTriggerLabel(model)}
 									aria-selected={
 										value === state.currentModel ? "true" : "false"
 									}
 								>
-									{model.name}
-									{configured}
+									<span class="block truncate font-medium">
+										{model.id}
+									</span>
+									<span class="text-muted-foreground block truncate text-xs">
+										{model.provider}
+										{configured}
+									</span>
 								</div>
 							);
 						})}
@@ -89,6 +93,10 @@ export function renderModelPicker(state: AppState): string {
 			</div>
 		</div>,
 	);
+}
+
+function modelTriggerLabel(model: AppState["models"][number]): string {
+	return model.id;
 }
 
 export function renderTranscript(messages: AppMessage[]): string {

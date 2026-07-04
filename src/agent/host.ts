@@ -208,18 +208,11 @@ export class AgentHost {
 					(model.provider === defaultProvider && model.id === defaultModelId),
 			)
 			.sort((a, b) => {
-				const aDefault =
-					a.provider === defaultProvider && a.id === defaultModelId ? 0 : 1;
-				const bDefault =
-					b.provider === defaultProvider && b.id === defaultModelId ? 0 : 1;
-				const aConfigured = a.configured ? 0 : 1;
-				const bConfigured = b.configured ? 0 : 1;
-				return (
-					aDefault - bDefault ||
-					aConfigured - bConfigured ||
-					a.provider.localeCompare(b.provider) ||
-					a.name.localeCompare(b.name)
-				);
+				const aIsCurrent = `${a.provider}/${a.id}` === currentModel;
+				const bIsCurrent = `${b.provider}/${b.id}` === currentModel;
+				if (aIsCurrent && !bIsCurrent) return -1;
+				if (!aIsCurrent && bIsCurrent) return 1;
+				return a.provider.localeCompare(b.provider);
 			});
 		this.state.setModels(models, currentModel);
 	}
