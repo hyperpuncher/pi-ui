@@ -14,7 +14,7 @@ export function renderComposerStatus(state: AppState): string {
 	return sync(
 		<span
 			id="composer-status"
-			class="text-muted-foreground min-w-0 truncate font-mono text-xs tabular-nums"
+			class="text-muted-foreground min-w-0 truncate font-mono text-xs"
 			title={state.status}
 		>
 			{state.usageText}
