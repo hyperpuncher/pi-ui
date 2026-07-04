@@ -24,6 +24,16 @@ function bindDesktopCommands() {
 			window.dispatchEvent(new CustomEvent(eventName));
 		}
 	};
+
+	globalThis.__piUiRunFirstCommand = () => {
+		const rows = document.querySelectorAll("[data-command-row]");
+		for (const row of rows) {
+			if (row instanceof HTMLElement && row.style.display !== "none") {
+				row.querySelector("button")?.click();
+				return;
+			}
+		}
+	};
 }
 
 function bindReservedShortcutPrevention() {

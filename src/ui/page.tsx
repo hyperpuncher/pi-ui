@@ -1,4 +1,9 @@
-import { command } from "../commands/registry.ts";
+import {
+	appCommands,
+	command,
+	type AppCommand,
+	type AppCommandId,
+} from "../commands/registry.ts";
 import type { AppState } from "../state/app-state.ts";
 import { renderModelPicker, renderTopbar, renderTranscript } from "./fragments.tsx";
 
@@ -8,10 +13,10 @@ function sync(html: JSX.Element): string {
 
 export function renderPage(state: AppState): string {
 	const newChat = command("new-chat");
-	const switchModel = command("switch-model");
 	const initialSignals = JSON.stringify({
 		composer: "",
 		commandOpen: false,
+		commandQuery: "",
 		connected: false,
 		model: state.currentModel ?? "",
 	});
@@ -34,6 +39,7 @@ export function renderPage(state: AppState): string {
 					data-on:keydown__window="if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
 						evt.preventDefault();
 						$commandOpen = !$commandOpen;
+						$commandQuery = '';
 					}
 					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'o') {
 						evt.preventDefault();
@@ -45,13 +51,21 @@ export function renderPage(state: AppState): string {
 					) {
 						evt.preventDefault();
 						$commandOpen = false;
+						$commandQuery = '';
 						document.getElementById('model-select')?.focus();
 					}
-					if (evt.key === 'Escape') $commandOpen = false"
+					if (evt.key === 'Escape') {
+						$commandOpen = false;
+						$commandQuery = '';
+					}"
 					data-on:pi-new-chat__window="@post('/sessions/new')"
-					data-on:pi-command-palette__window="$commandOpen = true"
+					data-on:pi-command-palette__window="
+						$commandOpen = true;
+						$commandQuery = '';
+					"
 					data-on:pi-switch-model__window="
 						$commandOpen = false;
+						$commandQuery = '';
 						document.getElementById('model-select')?.focus();
 					"
 				>
@@ -107,7 +121,10 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
-										data-on:click="$commandOpen = true"
+										data-on:click="
+											$commandOpen = true;
+											$commandQuery = '';
+										"
 										title="Commands"
 									>
 										/
@@ -162,7 +179,10 @@ export function renderPage(state: AppState): string {
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
-									data-on:click="$commandOpen = false"
+									data-on:click="
+										$commandOpen = false;
+										$commandQuery = '';
+									"
 									aria-label="Close"
 								>
 									×
@@ -174,54 +194,60 @@ export function renderPage(state: AppState): string {
 								autofocus
 								placeholder="Type a command..."
 								aria-label="Command search"
+								data-bind:command-query
+								data-on:keydown="if (evt.key === 'Enter') {
+									evt.preventDefault();
+									globalThis.__piUiRunFirstCommand?.();
+								}"
 							/>
 							<ul class="mt-3 list-none p-0">
-								<li>
-									<button
-										class="hover:bg-muted flex w-full items-center justify-between rounded-md border-0 bg-transparent px-3 py-2 text-left"
-										type="button"
-										data-on:click="@post('/sessions/new')"
-									>
-										{newChat.title}{" "}
-										<kbd class="kbd">{newChat.shortcut.display}</kbd>
-									</button>
-								</li>
-								<li>
-									<button
-										class="hover:bg-muted flex w-full items-center justify-between rounded-md border-0 bg-transparent px-3 py-2 text-left"
-										type="button"
-										data-on:click="
-											$commandOpen = false;
-											document.getElementById('model-select')?.focus();
-										"
-									>
-										{switchModel.title}{" "}
-										<kbd class="kbd">
-											{switchModel.shortcut.display}
-										</kbd>
-									</button>
-								</li>
-								<li>
-									<button
-										class="hover:bg-muted flex w-full items-center justify-between rounded-md border-0 bg-transparent px-3 py-2 text-left"
-										type="button"
-									>
-										Settings
-									</button>
-								</li>
-								<li>
-									<button
-										class="hover:bg-muted flex w-full items-center justify-between rounded-md border-0 bg-transparent px-3 py-2 text-left"
-										type="button"
-									>
-										Toggle vim mode
-									</button>
-								</li>
+								{appCommands.map(renderCommandRow)}
 							</ul>
+							<p class="text-muted-foreground mt-3 text-xs">
+								Tip: {newChat.shortcut.display} starts a fresh chat. Press
+								Enter to run the first visible command.
+							</p>
 						</div>
 					</div>
 				</body>
 			</html>,
 		)
 	);
+}
+
+function renderCommandRow(item: AppCommand): string {
+	const haystack = `${item.title} ${item.description} ${item.id}`.toLowerCase();
+	return sync(
+		<li
+			data-command-row
+			data-show={`
+				$commandQuery === '' ||
+				${JSON.stringify(haystack)}.includes($commandQuery.toLowerCase())
+			`}
+		>
+			<button
+				class="hover:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left"
+				type="button"
+				data-on:click={commandAction(item.id)}
+			>
+				<span class="min-w-0">
+					<span class="block truncate">{item.title}</span>
+					<span class="text-muted-foreground block truncate text-xs">
+						{item.description}
+					</span>
+				</span>
+				<kbd class="kbd shrink-0">{item.shortcut.display}</kbd>
+			</button>
+		</li>,
+	);
+}
+
+function commandAction(id: AppCommandId): string {
+	if (id === "new-chat") {
+		return "$commandOpen = false; $commandQuery = ''; @post('/sessions/new')";
+	}
+	if (id === "command-palette") {
+		return "$commandOpen = true; $commandQuery = ''; document.getElementById('command-input')?.focus()";
+	}
+	return "$commandOpen = false; $commandQuery = ''; document.getElementById('model-select')?.focus()";
 }
