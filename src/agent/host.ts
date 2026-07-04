@@ -3,6 +3,7 @@ import {
 	createAgentSessionRuntime,
 	createAgentSessionServices,
 	getAgentDir,
+	parseSkillBlock,
 	SessionManager,
 	type AgentSession,
 	type AgentSessionEvent,
@@ -182,6 +183,7 @@ export class AgentHost {
 		await session.bindExtensions({ mode: "rpc" });
 		this.unsubscribe = session.subscribe((event) => this.handleEvent(event, session));
 		this.syncModels();
+		this.syncSlashCommands();
 		this.syncUsage();
 		this.state.setStatus(this.readyStatus(session));
 	}
@@ -330,6 +332,23 @@ export class AgentHost {
 		this.state.setUsageText(formatStats(this.runtime.session.getSessionStats()));
 	}
 
+	private syncSlashCommands(): void {
+		const prompts = this.runtime.session.promptTemplates.map((template) => ({
+			name: template.name,
+			description: template.description,
+			argumentHint: template.argumentHint,
+			source: "prompt" as const,
+		}));
+		const skills = this.runtime.session.resourceLoader
+			.getSkills()
+			.skills.map((skill) => ({
+				name: `skill:${skill.name}`,
+				description: skill.description,
+				source: "skill" as const,
+			}));
+		this.state.setSlashCommands([...prompts, ...skills]);
+	}
+
 	private loadCurrentSessionMessages(): void {
 		const branch = this.runtime.session.sessionManager.getBranch();
 		const visibleFrom = Math.max(0, branch.length - 160);
@@ -412,17 +431,16 @@ export class AgentHost {
 		if (message.role === "toolResult") {
 			return;
 		}
-		const appMessage = this.agentMessageToAppMessage(message, new Date());
-		if (!appMessage) {
-			return;
+		const appMessages = this.agentMessageToAppMessages(message, new Date());
+		for (const appMessage of appMessages) {
+			this.state.appendMessage(appMessage.role, appMessage.text, {
+				title: appMessage.title,
+				titleParts: appMessage.titleParts,
+				meta: appMessage.meta,
+				state: appMessage.state,
+				format: appMessage.format,
+			});
 		}
-		this.state.appendMessage(appMessage.role, appMessage.text, {
-			title: appMessage.title,
-			titleParts: appMessage.titleParts,
-			meta: appMessage.meta,
-			state: appMessage.state,
-			format: appMessage.format,
-		});
 	}
 
 	private agentMessageToAppMessage(
@@ -438,9 +456,7 @@ export class AgentHost {
 	): AppMessageInput[] {
 		switch (message.role) {
 			case "user":
-				return [
-					{ role: "user", text: contentToText(message.content), timestamp },
-				];
+				return userContentToMessages(contentToText(message.content), timestamp);
 			case "assistant":
 				return assistantContentToMessages(message.content, timestamp);
 			case "toolResult":
@@ -485,6 +501,27 @@ export class AgentHost {
 				];
 		}
 	}
+}
+
+function userContentToMessages(text: string, timestamp: Date): AppMessageInput[] {
+	const skillBlock = parseSkillBlock(text);
+	if (!skillBlock) {
+		return [{ role: "user", text, timestamp }];
+	}
+
+	const messages: AppMessageInput[] = [
+		{
+			role: "skill",
+			text: skillBlock.content,
+			timestamp,
+			title: "[skill]",
+			meta: skillBlock.name,
+		},
+	];
+	if (skillBlock.userMessage) {
+		messages.push({ role: "user", text: skillBlock.userMessage, timestamp });
+	}
+	return messages;
 }
 
 function toolResultToAppMessage(

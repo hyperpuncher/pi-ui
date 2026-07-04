@@ -9,6 +9,7 @@ bindSystemThemeSync();
 window.addEventListener("DOMContentLoaded", () => {
 	focusComposer();
 	bindComposerAutosize();
+	bindSlashPicker();
 	bindTranscriptAutoscroll();
 	bindCommandPaletteFocus();
 	bindSessionKeyboard();
@@ -35,6 +36,18 @@ function bindDesktopCommands() {
 	globalThis.__piUiRunFirstSession = () => {
 		runFirstVisible("[data-session-row]");
 	};
+
+	globalThis.__piUiFocusSlashRow = (direction) => {
+		focusSlashRow(direction);
+	};
+
+	globalThis.__piUiFocusComposerEnd = () => {
+		focusComposerEnd();
+	};
+
+	globalThis.__piUiSlashOpen = () => isSlashPickerOpen();
+
+	globalThis.__piUiUpdateSlashPicker = (value) => updateSlashPicker(value ?? "");
 }
 
 function bindSystemThemeSync() {
@@ -93,6 +106,45 @@ function focusComposer() {
 	}
 }
 
+function focusComposerEnd() {
+	const input = document.getElementById("composer-input");
+	if (input instanceof HTMLTextAreaElement) {
+		input.focus();
+		input.selectionStart = input.value.length;
+		input.selectionEnd = input.value.length;
+	}
+}
+
+function bindSlashPicker() {
+	document.addEventListener("input", (event) => {
+		if (
+			event.target instanceof HTMLTextAreaElement &&
+			event.target.id === "composer-input"
+		) {
+			updateSlashPicker(event.target.value);
+		}
+	});
+	updateSlashPicker("");
+}
+
+function updateSlashPicker(value) {
+	const popover = document.getElementById("composer-slash-popover");
+	if (!(popover instanceof HTMLElement)) return;
+	const open = value.startsWith("/") && !value.includes(" ");
+	const query = open ? value.slice(1).toLowerCase() : "";
+	popover.style.display = open ? "" : "none";
+	for (const row of document.querySelectorAll("[data-slash-row]")) {
+		if (!(row instanceof HTMLElement)) continue;
+		row.style.display =
+			!query || (row.dataset.slashHaystack ?? "").includes(query) ? "" : "none";
+	}
+}
+
+function isSlashPickerOpen() {
+	const popover = document.getElementById("composer-slash-popover");
+	return popover instanceof HTMLElement && popover.style.display !== "none";
+}
+
 function bindComposerAutosize() {
 	const resize = () => {
 		const input = document.getElementById("composer-input");
@@ -145,6 +197,43 @@ function bindTranscriptAutoscroll() {
 
 function bindSessionKeyboard() {
 	document.addEventListener("keydown", (event) => {
+		if (
+			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
+			(document.activeElement?.id === "command-input" ||
+				document.activeElement?.closest?.("[data-command-row]"))
+		) {
+			event.preventDefault();
+			focusCommandRow(event.key === "ArrowDown" ? 1 : -1);
+			return;
+		}
+
+		if (
+			event.key === "Enter" &&
+			document.activeElement?.closest?.("[data-command-row]")
+		) {
+			event.preventDefault();
+			document.activeElement.click();
+			return;
+		}
+
+		if (
+			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
+			document.activeElement?.closest?.("[data-slash-row]")
+		) {
+			event.preventDefault();
+			focusSlashRow(event.key === "ArrowDown" ? 1 : -1);
+			return;
+		}
+
+		if (
+			event.key === "Enter" &&
+			document.activeElement?.closest?.("[data-slash-row]")
+		) {
+			event.preventDefault();
+			document.activeElement.click();
+			return;
+		}
+
 		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
 			return;
 		}
@@ -168,6 +257,40 @@ function bindSessionKeyboard() {
 		event.preventDefault();
 		focusSessionRow(event.key === "ArrowDown" ? 1 : -1);
 	});
+}
+
+function focusCommandRow(direction) {
+	const rows = visibleRows("[data-command-row]");
+	if (rows.length === 0) {
+		return;
+	}
+
+	const activeRow = document.activeElement?.closest?.("[data-command-row]");
+	const activeIndex = rows.findIndex((row) => row === activeRow);
+	const nextIndex =
+		activeIndex === -1
+			? direction > 0
+				? 0
+				: rows.length - 1
+			: (activeIndex + direction + rows.length) % rows.length;
+	rows[nextIndex]?.querySelector("button")?.focus();
+}
+
+function focusSlashRow(direction) {
+	const rows = visibleRows("[data-slash-row]");
+	if (rows.length === 0) {
+		return;
+	}
+
+	const activeRow = document.activeElement?.closest?.("[data-slash-row]");
+	const activeIndex = rows.findIndex((row) => row === activeRow);
+	const nextIndex =
+		activeIndex === -1
+			? direction > 0
+				? 0
+				: rows.length - 1
+			: (activeIndex + direction + rows.length) % rows.length;
+	rows[nextIndex]?.querySelector("button")?.focus();
 }
 
 function focusSessionRow(direction) {

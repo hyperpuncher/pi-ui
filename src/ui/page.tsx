@@ -9,6 +9,7 @@ import {
 	renderComposerStatus,
 	renderModelPicker,
 	renderSessionPicker,
+	renderSlashPicker,
 	renderTranscript,
 } from "./fragments.tsx";
 
@@ -47,6 +48,7 @@ export function renderPage(state: AppState): string {
 					<title>pi-ui</title>
 					<script>{systemThemeScript}</script>
 					<link rel="stylesheet" href="/app.css" />
+					<script src="/basecoat.js" defer></script>
 					<script type="module" src="/app.js"></script>
 					<script type="module" src="/datastar.js"></script>
 				</head>
@@ -75,13 +77,14 @@ export function renderPage(state: AppState): string {
 						evt.preventDefault();
 						$commandOpen = false;
 						$commandQuery = '';
-						document.getElementById('model-select')?.focus();
+						document.getElementById('model-select-trigger')?.focus();
 					}
 					if (evt.key === 'Escape') {
 						$commandOpen = false;
 						$commandQuery = '';
 						$sessionOpen = false;
 						$sessionQuery = '';
+						if ($composer === '/') $composer = '';
 					}"
 					data-on:pi-new-chat__window="@post('/sessions/new')"
 					data-on:pi-command-palette__window="
@@ -96,7 +99,7 @@ export function renderPage(state: AppState): string {
 					data-on:pi-switch-model__window="
 						$commandOpen = false;
 						$commandQuery = '';
-						document.getElementById('model-select')?.focus();
+						document.getElementById('model-select-trigger')?.focus();
 					"
 				>
 					<div
@@ -108,8 +111,15 @@ export function renderPage(state: AppState): string {
 
 						<div
 							id="composer"
-							class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 p-3 shadow-sm"
+							class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! p-3 shadow-sm"
 						>
+							<div
+								id="composer-slash-popover"
+								class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
+								style="display: none;"
+							>
+								{renderSlashPicker(state)}
+							</div>
 							<textarea
 								id="composer-input"
 								class="max-h-44 min-h-12 w-full resize-none border-0 bg-transparent p-1 outline-none"
@@ -117,7 +127,11 @@ export function renderPage(state: AppState): string {
 								aria-label="Message"
 								data-bind:composer
 								data-indicator:_prompting
-								data-on:keydown="if (evt.key === 'Enter' && !evt.shiftKey) {
+								data-on:keydown="if (evt.key === 'ArrowDown' && globalThis.__piUiSlashOpen?.()) {
+									evt.preventDefault();
+									globalThis.__piUiFocusSlashRow?.(1);
+								}
+								if (evt.key === 'Enter' && !evt.shiftKey) {
 									evt.preventDefault();
 									@post('/prompt', { filterSignals: { include: /^composer$/ } });
 								}"
@@ -332,5 +346,5 @@ function commandAction(id: AppCommandId): string {
 	if (id === "command-palette") {
 		return "$commandOpen = true; $commandQuery = ''; document.getElementById('command-input')?.focus()";
 	}
-	return "$commandOpen = false; $commandQuery = ''; document.getElementById('model-select')?.focus()";
+	return "$commandOpen = false; $commandQuery = ''; document.getElementById('model-select-trigger')?.focus()";
 }

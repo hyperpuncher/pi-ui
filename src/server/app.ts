@@ -4,6 +4,8 @@ import { AppState } from "../state/app-state.ts";
 import { renderPage } from "../ui/page.tsx";
 import { readSignalString, signalsResponse } from "./datastar.ts";
 
+const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
+
 const staticFiles = new Map([
 	["/app.css", { path: "static/app.css", contentType: "text/css; charset=utf-8" }],
 	["/app.js", { path: "static/app.js", contentType: "text/javascript; charset=utf-8" }],
@@ -11,6 +13,13 @@ const staticFiles = new Map([
 		"/datastar.js",
 		{
 			path: "static/vendor/datastar.js",
+			contentType: "text/javascript; charset=utf-8",
+		},
+	],
+	[
+		"/basecoat.js",
+		{
+			path: basecoatJsPath,
 			contentType: "text/javascript; charset=utf-8",
 		},
 	],

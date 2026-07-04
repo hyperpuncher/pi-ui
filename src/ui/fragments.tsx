@@ -2,6 +2,7 @@ import type {
 	AppMessage,
 	AppMessageTitlePart,
 	AppSessionSummary,
+	AppSlashCommand,
 	AppState,
 } from "../state/app-state.ts";
 
@@ -22,33 +23,70 @@ export function renderComposerStatus(state: AppState): string {
 }
 
 export function renderModelPicker(state: AppState): string {
+	const current = state.models.find(
+		(model) => `${model.provider}/${model.id}` === state.currentModel,
+	);
 	return sync(
 		<div id="model-picker" class="min-w-0">
-			<label class="sr-only" for="model-select">
+			<label class="sr-only" for="model-select-trigger">
 				Model
 			</label>
-			<select
+			<div
 				id="model-select"
-				class="input h-9 max-w-44 truncate text-sm font-medium"
-				data-bind:model
-				data-on:change="@post('/model', { filterSignals: { include: /^model$/ } })"
-				disabled={state.models.length === 0}
+				class="select"
+				data-placeholder="Loading models…"
+				data-on:change="
+					$model = evt.detail.value;
+					@post('/model', { filterSignals: { include: /^model$/ } });
+				"
 			>
-				{state.models.length === 0 ? (
-					<option value="">Loading models…</option>
-				) : (
-					state.models.map((model) => {
-						const value = `${model.provider}/${model.id}`;
-						const configured = model.configured ? "" : " · no auth";
-						return (
-							<option value={value} selected={value === state.currentModel}>
-								{model.name}
-								{configured}
-							</option>
-						);
-					})
-				)}
-			</select>
+				<button
+					type="button"
+					class="h-9 max-w-44 text-sm font-medium"
+					id="model-select-trigger"
+					aria-haspopup="listbox"
+					aria-expanded="false"
+					aria-controls="model-select-listbox"
+					disabled={state.models.length === 0}
+				>
+					<span class="truncate">
+						{current ? current.name : "Loading models…"}
+					</span>
+					<span class="text-muted-foreground shrink-0 opacity-50">⌄</span>
+				</button>
+				<div
+					id="model-select-popover"
+					data-popover
+					data-side="top"
+					aria-hidden="true"
+				>
+					<div
+						role="listbox"
+						id="model-select-listbox"
+						class="max-h-70 overflow-y-auto"
+						aria-orientation="vertical"
+						aria-labelledby="model-select-trigger"
+					>
+						{state.models.map((model) => {
+							const value = `${model.provider}/${model.id}`;
+							const configured = model.configured ? "" : " • no auth";
+							return (
+								<div
+									role="option"
+									data-value={value}
+									aria-selected={
+										value === state.currentModel ? "true" : "false"
+									}
+								>
+									{model.name}
+									{configured}
+								</div>
+							);
+						})}
+					</div>
+				</div>
+				<input type="hidden" name="model" value={state.currentModel ?? ""} />
+			</div>
 		</div>,
 	);
 }
@@ -64,6 +102,61 @@ export function renderTranscript(messages: AppMessage[]): string {
 				{messages.map(renderMessage)}
 			</div>
 		</main>,
+	);
+}
+
+export function renderSlashPicker(state: AppState): string {
+	return sync(
+		<div id="slash-picker">
+			<ul class="max-h-72 list-none overflow-y-auto p-1">
+				{state.slashCommands.length === 0 ? (
+					<li class="text-muted-foreground px-3 py-4 text-center text-sm">
+						No prompts or skills found.
+					</li>
+				) : (
+					state.slashCommands.map(renderSlashRow)
+				)}
+			</ul>
+		</div>,
+	);
+}
+
+function renderSlashRow(item: AppSlashCommand): string {
+	const label = `/${item.name}`;
+	const haystack = `${item.name} ${item.description} ${item.source}`.toLowerCase();
+	const commandText = `${label} `;
+	return sync(
+		<li data-slash-row data-slash-haystack={haystack}>
+			<button
+				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
+				type="button"
+				data-slash-command={commandText}
+				data-on:click={`
+					$composer = ${JSON.stringify(commandText)};
+					globalThis.__piUiUpdateSlashPicker?.(${JSON.stringify(commandText)});
+					setTimeout(() => globalThis.__piUiFocusComposerEnd?.(), 0);
+				`}
+			>
+				<span class="min-w-0">
+					<span class="block truncate">
+						<span class="text-primary" safe>
+							{label}
+						</span>
+						{item.argumentHint && (
+							<span class="text-muted-foreground ml-2" safe>
+								{item.argumentHint}
+							</span>
+						)}
+					</span>
+					<span class="text-muted-foreground block truncate text-xs" safe>
+						{item.description || item.source}
+					</span>
+				</span>
+				<span class="badge" data-variant="secondary" safe>
+					{item.source}
+				</span>
+			</button>
+		</li>,
 	);
 }
 
@@ -222,7 +315,8 @@ function renderMessage(message: AppMessage): string {
 		);
 	}
 
-	if (message.role === "compaction") {
+	if (message.role === "compaction" || message.role === "skill") {
+		const label = message.role === "skill" ? "[skill]" : "[compaction]";
 		return sync(
 			<article
 				class="bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-sm p-3 text-sm"
@@ -231,10 +325,10 @@ function renderMessage(message: AppMessage): string {
 				<details>
 					<summary class="cursor-pointer list-none">
 						<span class="font-semibold" safe>
-							{message.title ?? "[compaction]"}
+							{message.title ?? label}
 						</span>
 						{message.meta && (
-							<span class="ml-3" safe>
+							<span class="ml-2" safe>
 								{message.meta}
 							</span>
 						)}

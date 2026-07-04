@@ -4,6 +4,7 @@ import {
 	renderComposerStatus,
 	renderModelPicker,
 	renderSessionPicker,
+	renderSlashPicker,
 	renderTranscript,
 } from "../ui/fragments.tsx";
 import {
@@ -14,7 +15,7 @@ import {
 
 export type AppMessage = {
 	id: string;
-	role: "user" | "assistant" | "system" | "tool" | "thought" | "compaction";
+	role: "user" | "assistant" | "system" | "tool" | "thought" | "compaction" | "skill";
 	text: string;
 	timestamp: Date;
 	title?: string;
@@ -42,6 +43,13 @@ export type AppModel = {
 	configured: boolean;
 };
 
+export type AppSlashCommand = {
+	name: string;
+	description: string;
+	source: "prompt" | "skill" | "extension";
+	argumentHint?: string;
+};
+
 export type AppSessionSummary = {
 	path: string;
 	title: string;
@@ -59,6 +67,16 @@ type StreamClient = {
 };
 
 const finalizeRecentMessageCount = 24;
+const markdownMessageRoles = new Set<AppMessage["role"]>([
+	"assistant",
+	"thought",
+	"compaction",
+	"skill",
+]);
+
+function rendersMarkdown(role: AppMessage["role"]): boolean {
+	return markdownMessageRoles.has(role);
+}
 
 export class AppState {
 	private clients = new Map<string, StreamClient>();
@@ -69,6 +87,7 @@ export class AppState {
 	status = "Starting";
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
+	slashCommands: AppSlashCommand[] = [];
 	currentModel: string | undefined;
 	usageText = "$0.000 • 0 tokens";
 
@@ -111,8 +130,7 @@ export class AppState {
 			timestamp: new Date(),
 			...options,
 			renderedHtml:
-				(role === "assistant" || role === "thought" || role === "compaction") &&
-				text.trim()
+				rendersMarkdown(role) && text.trim()
 					? renderMarkdownStreaming(text)
 					: undefined,
 		});
@@ -204,9 +222,7 @@ export class AppState {
 			this.messageSeq += 1;
 			const id = `m-${this.messageSeq}`;
 			const shouldRenderStreaming =
-				(message.role === "assistant" ||
-					message.role === "thought" ||
-					message.role === "compaction") &&
+				rendersMarkdown(message.role) &&
 				message.text.trim() &&
 				index >= finalizeFrom;
 			return {
@@ -223,9 +239,7 @@ export class AppState {
 		for (const [index, message] of this.messages.entries()) {
 			if (
 				index >= finalizeFrom &&
-				(message.role === "assistant" ||
-					message.role === "thought" ||
-					message.role === "compaction") &&
+				rendersMarkdown(message.role) &&
 				message.text.trim()
 			) {
 				void this.renderAssistantMarkdown(message.id);
@@ -254,6 +268,11 @@ export class AppState {
 
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
+		this.broadcast();
+	}
+
+	setSlashCommands(commands: AppSlashCommand[]): void {
+		this.slashCommands = commands;
 		this.broadcast();
 	}
 
@@ -286,13 +305,7 @@ export class AppState {
 
 	private async renderAssistantMarkdown(id: string): Promise<void> {
 		const message = this.messages.find((item) => item.id === id);
-		if (
-			!message ||
-			(message.role !== "assistant" &&
-				message.role !== "thought" &&
-				message.role !== "compaction") ||
-			!message.text.trim()
-		) {
+		if (!message || !rendersMarkdown(message.role) || !message.text.trim()) {
 			return;
 		}
 
@@ -312,7 +325,8 @@ export class AppState {
 			renderTranscript(this.messages) +
 			renderComposerStatus(this) +
 			renderModelPicker(this) +
-			renderSessionPicker(this)
+			renderSessionPicker(this) +
+			renderSlashPicker(this)
 		);
 	}
 
