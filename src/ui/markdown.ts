@@ -24,6 +24,49 @@ const stripRawHtml = defineMdastPlugin({
 	},
 });
 
+const basecoatTables = defineHastPlugin({
+	name: "pi-ui-basecoat-tables",
+	element: {
+		filter: ["table", "th", "td"],
+		visit(node, ctx) {
+			if (node.tagName === "table") {
+				ctx.setProperty(
+					node,
+					"className",
+					classes(node.properties.className, ["table", "text-sm"]),
+				);
+				ctx.wrapNode(node, {
+					type: "element",
+					tagName: "div",
+					properties: { className: ["table-container"] },
+					children: [],
+				});
+			}
+
+			if (node.tagName === "th") {
+				ctx.setProperty(
+					node,
+					"className",
+					classes(node.properties.className, [
+						"px-3",
+						"py-2",
+						"text-left",
+						"font-semibold",
+					]),
+				);
+			}
+
+			if (node.tagName === "td") {
+				ctx.setProperty(
+					node,
+					"className",
+					classes(node.properties.className, ["px-3", "py-2"]),
+				);
+			}
+		},
+	},
+});
+
 const safeLinksAndImages = defineHastPlugin({
 	name: "pi-ui-safe-links-and-images",
 	element: {
@@ -60,7 +103,7 @@ const compileOptions = {
 		math: false,
 		smartPunctuation: true,
 	},
-	hastPlugins: [safeLinksAndImages],
+	hastPlugins: [safeLinksAndImages, basecoatTables],
 	mdastPlugins: [stripRawHtml],
 } satisfies CompileOptions;
 
@@ -192,6 +235,15 @@ function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {
 
 function stringProperty(value: unknown): string | undefined {
 	return typeof value === "string" ? value : undefined;
+}
+
+function classes(value: unknown, additions: string[]): string[] {
+	const current = Array.isArray(value)
+		? value.filter((item): item is string => typeof item === "string")
+		: typeof value === "string"
+			? value.split(/\s+/).filter(Boolean)
+			: [];
+	return [...new Set([...current, ...additions])];
 }
 
 function decodeHtml(value: string): string {

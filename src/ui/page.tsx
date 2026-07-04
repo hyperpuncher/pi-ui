@@ -6,9 +6,9 @@ import {
 } from "../commands/registry.ts";
 import type { AppState } from "../state/app-state.ts";
 import {
+	renderComposerStatus,
 	renderModelPicker,
 	renderSessionPicker,
-	renderTopbar,
 	renderTranscript,
 } from "./fragments.tsx";
 
@@ -22,7 +22,6 @@ export function renderPage(state: AppState): string {
 		composer: "",
 		commandOpen: false,
 		commandQuery: "",
-		connected: false,
 		model: state.currentModel ?? "",
 		sessionOpen: false,
 		sessionPath: "",
@@ -32,7 +31,7 @@ export function renderPage(state: AppState): string {
 	return (
 		"<!doctype html>" +
 		sync(
-			<html lang="en" class="h-full">
+			<html lang="en" class="h-full overflow-hidden">
 				<head>
 					<meta charset="utf-8" />
 					<meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -42,7 +41,7 @@ export function renderPage(state: AppState): string {
 					<script type="module" src="/datastar.js"></script>
 				</head>
 				<body
-					class="h-full"
+					class="h-full overflow-hidden"
 					data-signals={initialSignals}
 					data-on:keydown__window="if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
 						evt.preventDefault();
@@ -92,19 +91,18 @@ export function renderPage(state: AppState): string {
 				>
 					<div
 						id="app"
-						class="grid h-dvh w-dvw grid-rows-[auto_minmax(0,1fr)] overflow-hidden"
+						class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"
 						data-init="@get('/stream')"
 					>
-						{renderTopbar(state)}
 						{renderTranscript(state.messages)}
 
 						<div
 							id="composer"
-							class="card fixed bottom-8 left-1/2 z-10 w-[min(58rem,calc(100vw-2rem))] -translate-x-1/2 p-4"
+							class="card fixed bottom-6 left-1/2 z-10 w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 p-3 shadow-sm"
 						>
 							<textarea
 								id="composer-input"
-								class="max-h-72 min-h-24 w-full resize-none border-0 bg-transparent p-1 outline-none"
+								class="max-h-44 min-h-12 w-full resize-none border-0 bg-transparent p-1 outline-none"
 								placeholder="Ask pi anything..."
 								aria-label="Message"
 								data-bind:composer
@@ -114,7 +112,7 @@ export function renderPage(state: AppState): string {
 									@post('/prompt', { filterSignals: { include: /^composer$/ } });
 								}"
 							></textarea>
-							<div class="mt-3 flex items-center justify-between gap-4">
+							<div class="mt-2 flex items-center justify-between gap-3">
 								<div
 									class="flex items-center gap-2"
 									aria-label="Message tools"
@@ -124,9 +122,23 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
-										title="Attach file"
+										data-on:click="
+											$commandOpen = true;
+											$commandQuery = '';
+										"
+										title="Commands"
 									>
 										⌘
+									</button>
+									<button
+										class="btn"
+										data-variant="ghost"
+										data-size="icon-sm"
+										type="button"
+										data-on:click="@post('/sessions/new')"
+										title="New chat"
+									>
+										+
 									</button>
 									<button
 										class="btn"
@@ -142,30 +154,25 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
-										data-on:click="
-											$commandOpen = true;
-											$commandQuery = '';
-										"
-										title="Commands"
+										data-on:click="@post('/sessions/list')"
+										title="Resume session"
 									>
-										/
+										↩
 									</button>
 								</div>
-								<div class="flex min-w-0 items-center justify-end gap-2">
-									<span
-										class="text-muted-foreground text-sm"
-										data-text="$_prompting ? 'sending…' : $connected ? 'connected' : 'connecting…'"
-									>
-										connecting…
-									</span>
+								<div class="flex min-w-0 items-center justify-end gap-1.5">
+									{renderComposerStatus(state)}
 									{renderModelPicker(state)}
 									<button
 										class="btn"
-										data-variant="outline"
+										data-variant="ghost"
+										data-size="icon-sm"
 										type="button"
 										data-on:click="@post('/abort')"
+										title="Abort"
+										aria-label="Abort"
 									>
-										Abort
+										■
 									</button>
 									<button
 										class="btn"

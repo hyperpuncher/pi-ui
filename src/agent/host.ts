@@ -10,6 +10,7 @@ import {
 	type CreateAgentSessionRuntimeFactory,
 	type SessionEntry,
 	type SessionInfo,
+	type SessionStats,
 } from "npm:@earendil-works/pi-coding-agent@0.80.3";
 
 import type { AppMessageInput, AppSessionSummary, AppState } from "../state/app-state.ts";
@@ -121,6 +122,7 @@ export class AgentHost {
 			sessionManager.getSessionDir(),
 		);
 		this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
+		this.syncUsage();
 		this.state.setStatus(this.readyStatus(this.runtime.session));
 	}
 
@@ -152,6 +154,7 @@ export class AgentHost {
 		}
 		await this.runtime.session.setModel(model);
 		this.syncModels();
+		this.syncUsage();
 		this.state.setStatus(this.readyStatus(this.runtime.session));
 		return true;
 	}
@@ -167,13 +170,9 @@ export class AgentHost {
 		this.toolMessageIds.clear();
 		await session.bindExtensions({ mode: "rpc" });
 		this.unsubscribe = session.subscribe((event) => this.handleEvent(event, session));
-		const defaultMissing =
-			session.model?.provider === defaultProvider &&
-			session.model?.id === defaultModelId
-				? ""
-				: " · default model unavailable";
 		this.syncModels();
-		this.state.setStatus(this.readyStatus(session, defaultMissing));
+		this.syncUsage();
+		this.state.setStatus(this.readyStatus(session));
 	}
 
 	private syncModels(): void {
@@ -226,6 +225,7 @@ export class AgentHost {
 				if (event.message.role === "assistant") {
 					this.state.finishAssistant();
 				}
+				this.syncUsage();
 				break;
 			case "tool_execution_start": {
 				const id = this.state.appendMessage("tool", summarizeValue(event.args), {
@@ -252,6 +252,7 @@ export class AgentHost {
 				break;
 			}
 			case "agent_end":
+				this.syncUsage();
 				this.state.setStatus(this.readyStatus(session));
 				break;
 			case "queue_update":
@@ -271,9 +272,13 @@ export class AgentHost {
 		}
 	}
 
-	private readyStatus(session: AgentSession, suffix = ""): string {
+	private readyStatus(session: AgentSession): string {
 		const modelName = session.model?.name ?? session.model?.id ?? "no model selected";
-		return `Ready · ${modelName} · thinking off${suffix}`;
+		return `Ready • ${modelName} • thinking off`;
+	}
+
+	private syncUsage(): void {
+		this.state.setUsageText(formatStats(this.runtime.session.getSessionStats()));
 	}
 
 	private loadCurrentSessionMessages(): void {
@@ -282,6 +287,7 @@ export class AgentHost {
 			.map((entry: SessionEntry) => this.entryToMessage(entry))
 			.filter((message): message is AppMessageInput => Boolean(message));
 		this.state.replaceMessages(messages);
+		this.syncUsage();
 		this.state.setStatus(this.readyStatus(this.runtime.session));
 	}
 
@@ -303,19 +309,8 @@ export class AgentHost {
 		if (entry.type === "branch_summary") {
 			return { role: "system", text: entry.summary, timestamp };
 		}
-		if (entry.type === "model_change") {
-			return {
-				role: "system",
-				text: `Model changed to ${entry.provider}/${entry.modelId}`,
-				timestamp,
-			};
-		}
-		if (entry.type === "thinking_level_change") {
-			return {
-				role: "system",
-				text: `Thinking changed to ${entry.thinkingLevel}`,
-				timestamp,
-			};
+		if (entry.type === "model_change" || entry.type === "thinking_level_change") {
+			return undefined;
 		}
 		return undefined;
 	}
@@ -352,7 +347,7 @@ export class AgentHost {
 					role: "tool",
 					text: contentToText(message.content),
 					timestamp,
-					title: `Tool result · ${message.toolName}`,
+					title: `Tool result • ${message.toolName}`,
 					meta: message.isError ? "error" : "ok",
 					state: message.isError ? "error" : "success",
 				};
@@ -391,7 +386,7 @@ function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 	return {
 		path: info.path,
 		title: truncate(title, 96),
-		subtitle: `${messageLabel} · ${truncate(info.cwd, 64)}`,
+		subtitle: `${messageLabel} • ${truncate(info.cwd, 64)}`,
 		modified: formatDate(info.modified),
 	};
 }
@@ -403,6 +398,34 @@ function formatDate(date: Date): string {
 		hour: "2-digit",
 		minute: "2-digit",
 	});
+}
+
+function formatStats(stats: SessionStats): string {
+	const cost = formatCost(stats.cost);
+	if (stats.contextUsage) {
+		return `${cost} • ${formatPercent(stats.contextUsage.percent)}/${formatTokens(
+			stats.contextUsage.contextWindow,
+		)}`;
+	}
+	return `${cost} • ${formatTokens(stats.tokens.total)} tokens`;
+}
+
+function formatTokens(count: number): string {
+	if (count < 1_000) return count.toString();
+	if (count < 10_000) return `${(count / 1_000).toFixed(1)}k`;
+	if (count < 1_000_000) return `${Math.round(count / 1_000)}k`;
+	if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+	return `${Math.round(count / 1_000_000)}M`;
+}
+
+function formatCost(cost: number): string {
+	if (cost < 1) return `$${cost.toFixed(3)}`;
+	if (cost < 100) return `$${cost.toFixed(1)}`;
+	return `$${Math.round(cost)}`;
+}
+
+function formatPercent(value: number | null): string {
+	return typeof value === "number" ? `${value.toFixed(1)}%` : "?";
 }
 
 function truncate(value: string, maxLength: number): string {

@@ -4,36 +4,15 @@ function sync(html: JSX.Element): string {
 	return html as string;
 }
 
-export function renderTopbar(state: AppState): string {
+export function renderComposerStatus(state: AppState): string {
 	return sync(
-		<header
-			id="topbar"
-			class="relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-4"
+		<span
+			id="composer-status"
+			class="text-muted-foreground min-w-0 truncate text-xs"
+			title={state.status}
 		>
-			<button
-				class="btn justify-self-start"
-				data-variant="ghost"
-				data-size="icon-sm"
-				type="button"
-				data-on:click="$commandOpen = true"
-				aria-label="Open commands"
-			>
-				⌘
-			</button>
-			<div class="text-muted-foreground truncate text-center text-sm">
-				{state.status}
-			</div>
-			<button
-				class="btn justify-self-end"
-				data-variant="ghost"
-				data-size="icon-sm"
-				type="button"
-				data-on:click="@post('/sessions/new')"
-				aria-label="New chat"
-			>
-				＋
-			</button>
-		</header>,
+			{state.usageText}
+		</span>,
 	);
 }
 
@@ -45,7 +24,7 @@ export function renderModelPicker(state: AppState): string {
 			</label>
 			<select
 				id="model-select"
-				class="input max-w-56 truncate font-medium"
+				class="input h-9 max-w-44 truncate text-sm font-medium"
 				data-bind:model
 				data-on:change="@post('/model', { filterSignals: { include: /^model$/ } })"
 				disabled={state.models.length === 0}
@@ -73,10 +52,12 @@ export function renderTranscript(messages: AppMessage[]): string {
 	return sync(
 		<main
 			id="transcript"
-			class="flex flex-col gap-8 overflow-y-auto px-[max(1rem,calc((100vw-64rem)/2))] pt-16 pb-64"
+			class="min-h-0 overflow-y-auto px-[max(1rem,calc((100vw-46rem)/2))] pt-24 pb-48"
 			aria-live="polite"
 		>
-			{messages.map(renderMessage)}
+			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
+				{messages.map(renderMessage)}
+			</div>
 		</main>,
 	);
 }
@@ -137,7 +118,7 @@ function renderMessage(message: AppMessage): string {
 	if (message.role === "user") {
 		return sync(
 			<article
-				class="bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-lg px-3.5 py-2.5"
+				class="bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-xl px-3.5 py-2.5"
 				data-message-id={message.id}
 			>
 				<p class="m-0 whitespace-pre-wrap" safe>
@@ -148,8 +129,15 @@ function renderMessage(message: AppMessage): string {
 	}
 
 	if (message.role === "assistant") {
-		const markdownClass =
-			"max-w-3xl self-start leading-relaxed [&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4 [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6";
+		const markdownClass = [
+			"max-w-full self-start leading-relaxed",
+			"[&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4",
+			"[&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4",
+			"[&_code]:rounded [&_code]:bg-muted [&_code]:px-1",
+			"[&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold",
+			"[&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6",
+			"[&_.table-container]:my-4",
+		].join(" ");
 		return sync(
 			<article class={markdownClass} data-message-id={message.id}>
 				{message.renderedHtml ? (

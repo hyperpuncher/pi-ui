@@ -1,9 +1,9 @@
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream } from "../server/datastar.ts";
 import {
+	renderComposerStatus,
 	renderModelPicker,
 	renderSessionPicker,
-	renderTopbar,
 	renderTranscript,
 } from "../ui/fragments.tsx";
 import { renderMarkdownFinal, renderMarkdownStreaming } from "../ui/markdown.ts";
@@ -53,6 +53,7 @@ export class AppState {
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
 	currentModel: string | undefined;
+	usageText = "$0.000 • 0 tokens";
 
 	createStream(signal: AbortSignal): Response {
 		const id = crypto.randomUUID();
@@ -60,9 +61,7 @@ export class AppState {
 			(stream) => {
 				this.clients.set(id, { id, stream });
 				this.patchClient(stream);
-				stream.patchSignals(
-					JSON.stringify({ connected: true, model: this.currentModel ?? "" }),
-				);
+				stream.patchSignals(JSON.stringify({ model: this.currentModel ?? "" }));
 				signal.addEventListener(
 					"abort",
 					() => {
@@ -189,6 +188,11 @@ export class AppState {
 		this.broadcast();
 	}
 
+	setUsageText(usageText: string): void {
+		this.usageText = usageText;
+		this.broadcast();
+	}
+
 	private async renderAssistantMarkdown(id: string): Promise<void> {
 		const message = this.messages.find((item) => item.id === id);
 		if (!message || message.role !== "assistant" || !message.text.trim()) {
@@ -208,8 +212,8 @@ export class AppState {
 
 	private renderElements(): string {
 		return (
-			renderTopbar(this) +
 			renderTranscript(this.messages) +
+			renderComposerStatus(this) +
 			renderModelPicker(this) +
 			renderSessionPicker(this)
 		);
