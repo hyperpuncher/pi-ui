@@ -16,6 +16,7 @@ Read relevant docs in full before implementing against them:
 - Basecoat docs LLM index: https://basecoatui.com/llms.txt
 - Datastar docs already mirrored under `~/docs/datastar-docs/`
 - Datastar TypeScript SDK docs/source under `~/docs/datastar-typescript/`
+- Sätteri docs/source under `~/docs/satteri/`
 - pi coding-agent docs under `~/docs/pi/packages/coding-agent/`
 
 ## Project conventions
@@ -23,6 +24,7 @@ Read relevant docs in full before implementing against them:
 - Runtime/windowing: Deno Desktop with CEF by default.
 - Interactivity: Datastar, using `@starfederation/datastar-sdk` server-side.
 - HTML rendering: Kita JSX (`@kitajs/html`), not React.
+- Markdown rendering: Sätteri with WASI/browser condition plus Shiki for finalized code highlighting.
 - Styling: Tailwind utilities + Basecoat Nova. Avoid custom CSS unless unavoidable.
 - Prefer backend-owned UI state; use frontend signals only for local UI state and writes.
 - Datastar attributes in TSX: use normal JSX attributes unless the attribute name contains a `.` and must be passed another way.

@@ -1,6 +1,7 @@
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream } from "../server/datastar.ts";
 import { renderModelPicker, renderTopbar, renderTranscript } from "../ui/fragments.tsx";
+import { renderMarkdownFinal, renderMarkdownStreaming } from "../ui/markdown.ts";
 
 export type AppMessage = {
 	id: string;
@@ -10,6 +11,7 @@ export type AppMessage = {
 	title?: string;
 	meta?: string;
 	state?: "running" | "success" | "error";
+	renderedHtml?: string;
 };
 
 export type AppMessageOptions = Pick<AppMessage, "title" | "meta" | "state">;
@@ -69,7 +71,17 @@ export class AppState {
 	): string {
 		this.messageSeq += 1;
 		const id = `m-${this.messageSeq}`;
-		this.messages.push({ id, role, text, timestamp: new Date(), ...options });
+		this.messages.push({
+			id,
+			role,
+			text,
+			timestamp: new Date(),
+			...options,
+			renderedHtml:
+				role === "assistant" && text.trim()
+					? renderMarkdownStreaming(text)
+					: undefined,
+		});
 		if (role === "assistant") {
 			this.activeAssistantId = id;
 		}
@@ -97,12 +109,17 @@ export class AppState {
 			return;
 		}
 		message.text += delta;
+		message.renderedHtml = renderMarkdownStreaming(message.text);
 		this.broadcast();
 	}
 
 	finishAssistant(): void {
+		const id = this.activeAssistantId;
 		this.activeAssistantId = undefined;
 		this.broadcast();
+		if (id) {
+			void this.renderAssistantMarkdown(id);
+		}
 	}
 
 	resetChat(): void {
@@ -124,6 +141,23 @@ export class AppState {
 
 	setCurrentModel(currentModel: string | undefined): void {
 		this.currentModel = currentModel;
+		this.broadcast();
+	}
+
+	private async renderAssistantMarkdown(id: string): Promise<void> {
+		const message = this.messages.find((item) => item.id === id);
+		if (!message || message.role !== "assistant" || !message.text.trim()) {
+			return;
+		}
+
+		const text = message.text;
+		const renderedHtml = await renderMarkdownFinal(text);
+		const current = this.messages.find((item) => item.id === id);
+		if (!current || current.text !== text) {
+			return;
+		}
+
+		current.renderedHtml = renderedHtml;
 		this.broadcast();
 	}
 

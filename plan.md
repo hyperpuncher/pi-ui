@@ -39,6 +39,7 @@ This is not an IDE first. Coding is a killer workflow, but the app should feel u
 - Datastar TypeScript SDK is used for SSE streams, signal reads, and patch responses.
 - Datastar browser bundle is self-hosted from `static/vendor/datastar.js` for desktop/offline use.
 - Custom CSS reduced to Tailwind/Basecoat imports; layout lives in TSX classes.
+- Assistant markdown rendering uses Sätteri during streaming and Shiki highlighting on finalized messages.
 
 ## Stack
 
@@ -46,13 +47,14 @@ This is not an IDE first. Coding is a killer workflow, but the app should feel u
 - Web engine: CEF backend by default
 - Interactivity: Datastar + `@starfederation/datastar-sdk`
 - Styling/components: Tailwind CSS + Basecoat Nova + Kita JSX components
+- Markdown/code rendering: Sätteri + Shiki
 - Agent runtime: `@earendil-works/pi-coding-agent` SDK
 - Deno tasks:
-    - `check`: `deno check src/main.ts`
+    - `check`: `deno check --conditions browser src/main.ts`
     - `css:build`: `deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify`
-    - `dev`: `deno task css:build && deno run -A --watch src/main.ts`
-    - `desktop`: `deno task css:build && deno desktop -A --backend cef --hmr src/main.ts`
-    - `desktop:build:linux`: `deno task css:build && deno desktop -A --backend cef --output dist/pi-ui.AppImage src/main.ts`
+    - `dev`: `deno task css:build && deno run -A --conditions browser --watch src/main.ts`
+    - `desktop`: `deno task css:build && deno desktop -A --conditions browser --backend cef --hmr src/main.ts`
+    - `desktop:build:linux`: `deno task css:build && deno desktop -A --conditions browser --backend cef --output dist/pi-ui.AppImage src/main.ts`
     - `fmt`: `~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt`
     - `lint`: `deno run -A npm:oxlint`
 
@@ -81,6 +83,7 @@ Deno desktop process
 - `state/app-state.ts`: UI state and SSE patch broadcast.
 - `ui/page.tsx`: initial shell render with Kita JSX.
 - `ui/fragments.tsx`: server-rendered UI fragments with Kita JSX.
+- `ui/markdown.ts`: Sätteri/Shiki markdown rendering and safety plugins.
 - `ui/styles.css`: Tailwind + Basecoat Nova imports.
 - `static/app.css`: generated CSS output.
 - `static/app.js`: small browser helpers for composer focus/autosize, transcript autoscroll, and palette focus.

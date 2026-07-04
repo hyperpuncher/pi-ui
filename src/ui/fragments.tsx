@@ -88,18 +88,25 @@ function renderMessage(message: AppMessage): string {
 				class="bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-lg px-3.5 py-2.5"
 				data-message-id={message.id}
 			>
-				<p class="m-0 whitespace-pre-wrap">{message.text}</p>
+				<p class="m-0 whitespace-pre-wrap" safe>
+					{message.text}
+				</p>
 			</article>,
 		);
 	}
 
 	if (message.role === "assistant") {
+		const markdownClass =
+			"max-w-3xl self-start leading-relaxed [&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4 [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6";
 		return sync(
-			<article
-				class="max-w-3xl self-start leading-relaxed"
-				data-message-id={message.id}
-			>
-				<p class="m-0 whitespace-pre-wrap">{message.text}</p>
+			<article class={markdownClass} data-message-id={message.id}>
+				{message.renderedHtml ? (
+					<div>{message.renderedHtml}</div>
+				) : (
+					<p class="m-0 whitespace-pre-wrap" safe>
+						{message.text}
+					</p>
+				)}
 			</article>,
 		);
 	}
@@ -110,7 +117,9 @@ function renderMessage(message: AppMessage): string {
 				class="text-muted-foreground max-w-3xl self-start"
 				data-message-id={message.id}
 			>
-				<p class="m-0 whitespace-pre-wrap">{message.text}</p>
+				<p class="m-0 whitespace-pre-wrap" safe>
+					{message.text}
+				</p>
 			</article>,
 		);
 	}
@@ -130,7 +139,7 @@ function renderMessage(message: AppMessage): string {
 				</span>
 			</header>
 			<pre class="m-0 max-h-96 overflow-auto whitespace-pre-wrap">
-				<code>{message.text}</code>
+				<code safe>{message.text}</code>
 			</pre>
 		</article>,
 	);

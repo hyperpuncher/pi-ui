@@ -1,10 +1,10 @@
 {
 	"tasks": {
-		"check": "deno check src/main.ts",
+		"check": "deno check --conditions browser src/main.ts",
 		"css:build": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
-		"dev": "deno task css:build && deno run -A --watch src/main.ts",
-		"desktop": "deno task css:build && deno desktop -A --backend cef --hmr src/main.ts",
-		"desktop:build:linux": "deno task css:build && deno desktop -A --backend cef --output dist/pi-ui.AppImage src/main.ts",
+		"dev": "deno task css:build && deno run -A --conditions browser --watch src/main.ts",
+		"desktop": "deno task css:build && deno desktop -A --conditions browser --backend cef --hmr src/main.ts",
+		"desktop:build:linux": "deno task css:build && deno desktop -A --conditions browser --backend cef --output dist/pi-ui.AppImage src/main.ts",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
 		"lint": "deno run -A npm:oxlint"
 	},
@@ -15,11 +15,14 @@
 	},
 	"nodeModulesDir": "auto",
 	"imports": {
+		"@bruits/satteri-wasm32-wasi": "npm:@bruits/satteri-wasm32-wasi@0.9.4",
 		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
 		"@starfederation/datastar-sdk": "npm:@starfederation/datastar-sdk@1.0.0",
 		"@kitajs/ts-html-plugin": "npm:@kitajs/ts-html-plugin@5.0.0-next.1",
 		"@tailwindcss/cli": "npm:@tailwindcss/cli@^4.3.2",
 		"basecoat-css": "npm:basecoat-css@^1.0.1",
+		"satteri": "npm:satteri@^0.9.4",
+		"shiki": "npm:shiki@^4.3.0",
 		"tailwindcss": "npm:tailwindcss@^4.3.2"
 	}
 }
