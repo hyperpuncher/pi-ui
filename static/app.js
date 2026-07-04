@@ -3,7 +3,7 @@ const transcriptState = {
 };
 
 bindReservedShortcutPrevention();
-bindDesktopCommands();
+bindAppCommands();
 bindSystemThemeSync();
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -13,77 +13,200 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindFilePicker();
 	bindModelSearch();
 	bindTranscriptAutoscroll();
-	bindCommandPaletteFocus();
-	bindSessionKeyboard();
+	bindPickerKeyboard();
+	bindDialogKeyboard();
 });
 
-function bindDesktopCommands() {
-	globalThis.__piUiCommand = (command) => {
-		const eventName = {
-			"new-chat": "pi-new-chat",
-			"resume-session": "pi-resume-session",
-			"command-palette": "pi-command-palette",
-			"switch-model": "pi-switch-model",
-			"change-workspace": "pi-change-workspace",
-		}[command];
+function bindAppCommands() {
+	window.addEventListener("pi-new-chat", () => clickFirst("[data-new-chat-trigger]"));
+	window.addEventListener("pi-command-palette", () =>
+		openDialog("command-dialog", "command-input"),
+	);
+	window.addEventListener("pi-resume-session", () => openSessionDialog());
+	window.addEventListener("pi-switch-model", () => openModelSelector());
+	window.addEventListener("pi-change-workspace", () => openWorkspaceDialog());
 
-		if (eventName) {
-			window.dispatchEvent(new CustomEvent(eventName));
+	document.addEventListener("keydown", (event) => {
+		if (!(event.ctrlKey || event.metaKey)) {
+			if (event.key === "Escape") {
+				closeSlashPicker();
+				closeFilePicker({ suppressUntilInput: true });
+				if (composerValue() === "/") setComposerValue("");
+			}
+			return;
 		}
-	};
 
-	globalThis.__piUiRunFirstCommand = () => {
-		runFirstVisible("[data-command-row]");
-	};
+		const key = event.key.toLowerCase();
+		if (key === "k") {
+			event.preventDefault();
+			openDialog("command-dialog", "command-input");
+		} else if (key === "o") {
+			event.preventDefault();
+			clickFirst("[data-new-chat-trigger]");
+		} else if (key === "r") {
+			event.preventDefault();
+			openSessionDialog();
+		} else if (key === "l") {
+			event.preventDefault();
+			openModelSelector();
+		}
+	});
 
-	globalThis.__piUiRunFirstSession = () => {
-		runFirstVisible("[data-session-row]");
-	};
-
-	globalThis.__piUiFocusSlashRow = (direction) => {
-		focusSlashRow(direction);
-	};
-
-	globalThis.__piUiFocusComposerEnd = () => {
-		focusComposerEnd();
-	};
-
-	globalThis.__piUiSlashOpen = () => isSlashPickerOpen();
-
-	globalThis.__piUiUpdateSlashPicker = (value) => updateSlashPicker(value ?? "");
-
-	globalThis.__piUiCloseSlashPicker = () => closeSlashPicker();
-
-	globalThis.__piUiOpenModelSelector = () => openModelSelector();
-
-	globalThis.__piUiPromptWorkspace = () => promptWorkspace();
-
-	globalThis.__piUiFileOpen = () => isFilePickerOpen();
-
-	globalThis.__piUiFocusFileRow = (direction) => focusFileRow(direction);
-
-	globalThis.__piUiRunFirstFile = () => runBestFileRow();
-
-	globalThis.__piUiInsertFilePrefix = () => insertFilePrefix();
+	document.addEventListener("click", (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		const slash = target.closest("[data-slash-command]");
+		if (target.closest("[data-dialog-trigger='command-dialog']")) {
+			event.preventDefault();
+			openDialog("command-dialog", "command-input");
+		} else if (target.closest("[data-session-trigger]")) {
+			event.preventDefault();
+			openSessionDialog();
+		} else if (target.closest("[data-file-trigger]")) {
+			event.preventDefault();
+			insertFilePrefix();
+		} else if (target.closest("[data-send-trigger]")) {
+			closeSlashPicker();
+			closeFilePicker({ suppressUntilInput: true });
+		} else if (target.closest("[data-workspace-submit]")) {
+			rememberSubmittedWorkspace();
+		} else if (target.closest("[data-workspace-trigger]")) {
+			event.preventDefault();
+			openWorkspaceDialog();
+		} else if (slash instanceof HTMLElement) {
+			event.preventDefault();
+			setComposerValue(slash.dataset.slashCommand ?? "");
+			closeSlashPicker();
+			focusComposerEnd();
+		}
+	});
 }
 
-function promptWorkspace() {
+function openDialog(id, focusId) {
+	const dialog = document.getElementById(id);
+	if (dialog instanceof HTMLDialogElement && !dialog.open) {
+		dialog.showModal();
+	}
+	if (focusId) {
+		setTimeout(() => document.getElementById(focusId)?.focus(), 0);
+	}
+}
+
+function closeDialog(id) {
+	const dialog = document.getElementById(id);
+	if (dialog instanceof HTMLDialogElement && dialog.open) {
+		dialog.close();
+	}
+}
+
+function openSessionDialog() {
+	closeDialog("command-dialog");
+	clickFirst("#session-list-action");
+	setTimeout(() => openDialog("session-dialog", "session-input"), 0);
+}
+
+function clickFirst(selector) {
+	document.querySelector(selector)?.click();
+}
+
+function composerValue() {
+	const input = document.getElementById("composer-input");
+	return input instanceof HTMLTextAreaElement ? input.value : "";
+}
+
+function setComposerValue(value) {
+	const input = document.getElementById("composer-input");
+	if (!(input instanceof HTMLTextAreaElement)) return;
+	input.value = value;
+	input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function openWorkspaceDialog() {
 	const current = document.body?.dataset.workspacePath ?? "";
-	const next = window.prompt("Workspace folder", current);
-	if (!next?.trim()) {
+	if (current) {
+		rememberWorkspace(current);
+	}
+	openDialog("workspace-dialog", "workspace-input");
+	renderRecentWorkspaces();
+	setTimeout(() => {
+		const input = document.getElementById("workspace-input");
+		if (input instanceof HTMLInputElement) {
+			input.value = current;
+			input.focus();
+			input.select();
+		}
+	}, 0);
+}
+
+function rememberSubmittedWorkspace() {
+	const input = document.getElementById("workspace-input");
+	const workspacePath = input instanceof HTMLInputElement ? input.value.trim() : "";
+	if (!workspacePath) return;
+	document.body.dataset.workspacePath = workspacePath;
+	rememberWorkspace(workspacePath);
+	closeDialog("workspace-dialog");
+	renderRecentWorkspaces();
+}
+
+function recentWorkspaces() {
+	try {
+		const parsed = JSON.parse(localStorage.getItem("recentWorkspaces") ?? "[]");
+		return Array.isArray(parsed)
+			? parsed.filter((item) => typeof item === "string")
+			: [];
+	} catch {
+		return [];
+	}
+}
+
+function rememberWorkspace(workspacePath) {
+	const recent = [
+		workspacePath,
+		...recentWorkspaces().filter((item) => item !== workspacePath),
+	].slice(0, 8);
+	localStorage.setItem("recentWorkspaces", JSON.stringify(recent));
+}
+
+function renderRecentWorkspaces() {
+	const list = document.getElementById("workspace-recent-list");
+	if (!(list instanceof HTMLElement)) return;
+	const current = document.body?.dataset.workspacePath ?? "";
+	const recent = [current, ...recentWorkspaces()]
+		.filter(Boolean)
+		.filter((item, index, array) => array.indexOf(item) === index);
+	list.replaceChildren();
+	if (recent.length === 0) {
+		const row = document.createElement("li");
+		row.className = "text-muted-foreground px-3 py-4 text-center text-sm";
+		row.textContent = "No recent workspaces.";
+		list.append(row);
 		return;
 	}
-	document.body.dataset.workspacePath = next.trim();
-	globalThis.Datastar?.signals?.set?.("workspacePath", next.trim());
-	fetch("/workspace/open", {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ workspacePath: next.trim() }),
-	}).catch(() => undefined);
+	for (const workspacePath of recent) {
+		const row = document.createElement("li");
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className =
+			"hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none";
+		button.addEventListener("click", () => {
+			const input = document.getElementById("workspace-input");
+			if (input instanceof HTMLInputElement) {
+				input.value = workspacePath;
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+			}
+			clickFirst("[data-workspace-submit]");
+		});
+		const label = document.createElement("span");
+		label.className = "min-w-0 truncate font-mono text-sm";
+		label.textContent = workspacePath;
+		button.append(label);
+		row.append(button);
+		list.append(row);
+	}
 }
 
 function bindSystemThemeSync() {
-	const media = globalThis.matchMedia?.("(prefers-color-scheme: dark)");
+	const media = window.matchMedia?.("(prefers-color-scheme: dark)");
 	if (!media) {
 		return;
 	}
@@ -96,9 +219,26 @@ function bindSystemThemeSync() {
 
 	apply();
 	media.addEventListener("change", apply);
-	globalThis.addEventListener("storage", (event) => {
+	window.addEventListener("storage", (event) => {
 		if (event.key === "themeMode") {
 			apply();
+		}
+	});
+}
+
+function bindDialogKeyboard() {
+	document.addEventListener("keydown", (event) => {
+		if (event.key === "Enter" && document.activeElement?.id === "workspace-input") {
+			event.preventDefault();
+			clickFirst("[data-workspace-submit]");
+		}
+		if (event.key === "Enter" && document.activeElement?.id === "command-input") {
+			event.preventDefault();
+			runFirstVisible("[data-command-row]");
+		}
+		if (event.key === "Enter" && document.activeElement?.id === "session-input") {
+			event.preventDefault();
+			runFirstVisible("[data-session-row]");
 		}
 	});
 }
@@ -557,92 +697,88 @@ function bindTranscriptAutoscroll() {
 	observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function bindSessionKeyboard() {
+function bindPickerKeyboard() {
 	document.addEventListener("keydown", (event) => {
+		const active = document.activeElement;
+		if (active?.id === "composer-input") {
+			if (event.key === "ArrowDown" && isSlashPickerOpen()) {
+				event.preventDefault();
+				focusSlashRow(1);
+				return;
+			}
+			if (
+				(event.key === "ArrowDown" || event.key === "ArrowUp") &&
+				isFilePickerOpen()
+			) {
+				event.preventDefault();
+				focusFileRow(event.key === "ArrowDown" ? 1 : -1);
+				return;
+			}
+			if (event.key === "Enter" && !event.shiftKey) {
+				event.preventDefault();
+				if (isFilePickerOpen()) {
+					runBestFileRow();
+				} else {
+					clickFirst("[data-send-trigger]");
+				}
+				return;
+			}
+		}
+
 		if (
 			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
-			(document.activeElement?.id === "command-input" ||
-				document.activeElement?.closest?.("[data-command-row]"))
+			(active?.id === "command-input" || active?.closest?.("[data-command-row]"))
 		) {
 			event.preventDefault();
 			focusCommandRow(event.key === "ArrowDown" ? 1 : -1);
 			return;
 		}
-
-		if (
-			event.key === "Enter" &&
-			document.activeElement?.closest?.("[data-command-row]")
-		) {
+		if (event.key === "Enter" && active?.closest?.("[data-command-row]")) {
 			event.preventDefault();
-			document.activeElement.click();
+			active.click();
 			return;
 		}
 
 		if (
 			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
-			document.activeElement?.closest?.("[data-slash-row]")
+			active?.closest?.("[data-slash-row]")
 		) {
 			event.preventDefault();
 			focusSlashRow(event.key === "ArrowDown" ? 1 : -1);
 			return;
 		}
-
-		if (
-			event.key === "Enter" &&
-			document.activeElement?.closest?.("[data-slash-row]")
-		) {
+		if (event.key === "Enter" && active?.closest?.("[data-slash-row]")) {
 			event.preventDefault();
-			document.activeElement.click();
+			active.click();
 			return;
 		}
 
 		if (
 			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
-			document.activeElement?.closest?.("[data-file-row]")
+			active?.closest?.("[data-file-row]")
 		) {
 			event.preventDefault();
 			focusFileRow(event.key === "ArrowDown" ? 1 : -1);
 			return;
 		}
+		if (event.key === "Enter" && active?.closest?.("[data-file-row]")) {
+			event.preventDefault();
+			active.click();
+			return;
+		}
 
 		if (
-			event.key === "Enter" &&
-			document.activeElement?.closest?.("[data-file-row]")
+			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
+			(active?.id === "session-input" || active?.closest?.("[data-session-row]"))
 		) {
 			event.preventDefault();
-			document.activeElement.click();
+			focusSessionRow(event.key === "ArrowDown" ? 1 : -1);
 			return;
 		}
-
-		if (event.key === "Escape" && isSlashPickerOpen()) {
+		if (event.key === "Enter" && active?.closest?.("[data-session-row]")) {
 			event.preventDefault();
-			closeSlashPicker();
-			focusComposerEnd();
-			return;
+			active.click();
 		}
-
-		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
-			return;
-		}
-
-		const picker = document.querySelector("[data-show='$sessionOpen']");
-		if (
-			!(picker instanceof HTMLElement) ||
-			getComputedStyle(picker).display === "none"
-		) {
-			return;
-		}
-
-		const active = document.activeElement;
-		if (
-			active?.id !== "session-input" &&
-			!(active instanceof HTMLButtonElement && active.closest("[data-session-row]"))
-		) {
-			return;
-		}
-
-		event.preventDefault();
-		focusSessionRow(event.key === "ArrowDown" ? 1 : -1);
 	});
 }
 
@@ -695,34 +831,4 @@ function focusSessionRow(direction) {
 				: rows.length - 1
 			: (activeIndex + direction + rows.length) % rows.length;
 	rows[nextIndex]?.querySelector("button")?.focus();
-}
-
-function bindCommandPaletteFocus() {
-	let wasOpen = false;
-	const observer = new MutationObserver(() => {
-		const palette = document.querySelector("[data-show='$commandOpen']");
-		const sessionPicker = document.querySelector("[data-show='$sessionOpen']");
-		const isCommandOpen =
-			palette instanceof HTMLElement && palette.style.display !== "none";
-		const isSessionOpen =
-			sessionPicker instanceof HTMLElement &&
-			sessionPicker.style.display !== "none";
-		const isOpen = isCommandOpen || isSessionOpen;
-		if (isOpen && !wasOpen) {
-			requestAnimationFrame(() => {
-				if (isCommandOpen) {
-					document.getElementById("command-input")?.focus();
-				} else {
-					document.getElementById("session-input")?.focus();
-				}
-			});
-		}
-		wasOpen = isOpen;
-	});
-
-	observer.observe(document.body, {
-		attributes: true,
-		attributeFilter: ["style"],
-		subtree: true,
-	});
 }

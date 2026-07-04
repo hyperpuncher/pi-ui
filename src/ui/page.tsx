@@ -31,11 +31,9 @@ export function renderPage(state: AppState): string {
 	const newChat = command("new-chat");
 	const initialSignals = JSON.stringify({
 		composer: "",
-		commandOpen: false,
 		commandQuery: "",
 		model: state.currentModel ?? "",
 		workspacePath: state.workspacePath,
-		sessionOpen: false,
 		sessionPath: "",
 		sessionQuery: "",
 	});
@@ -58,54 +56,6 @@ export function renderPage(state: AppState): string {
 					class="h-full overflow-hidden"
 					data-workspace-path={state.workspacePath}
 					data-signals={initialSignals}
-					data-on:keydown__window="if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
-						evt.preventDefault();
-						$commandOpen = !$commandOpen;
-						$commandQuery = '';
-					}
-					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'o') {
-						evt.preventDefault();
-						@post('/sessions/new');
-					}
-					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'r') {
-						evt.preventDefault();
-						$commandOpen = false;
-						$commandQuery = '';
-						@post('/sessions/list');
-					}
-					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
-						evt.preventDefault();
-						$commandOpen = false;
-						$commandQuery = '';
-						globalThis.__piUiOpenModelSelector?.();
-					}
-					if (evt.key === 'Escape') {
-						$commandOpen = false;
-						$commandQuery = '';
-						$sessionOpen = false;
-						$sessionQuery = '';
-						if ($composer === '/') $composer = '';
-					}"
-					data-on:pi-new-chat__window="@post('/sessions/new')"
-					data-on:pi-command-palette__window="
-						$commandOpen = true;
-						$commandQuery = '';
-					"
-					data-on:pi-resume-session__window="
-						$commandOpen = false;
-						$commandQuery = '';
-						@post('/sessions/list');
-					"
-					data-on:pi-switch-model__window="
-						$commandOpen = false;
-						$commandQuery = '';
-						globalThis.__piUiOpenModelSelector?.();
-					"
-					data-on:pi-change-workspace__window="
-						$commandOpen = false;
-						$commandQuery = '';
-						globalThis.__piUiPromptWorkspace?.();
-					"
 				>
 					<div
 						id="app"
@@ -142,23 +92,6 @@ export function renderPage(state: AppState): string {
 								aria-label="Message"
 								data-bind:composer
 								data-indicator:_prompting
-								data-on:keydown="if (evt.key === 'ArrowDown' && globalThis.__piUiSlashOpen?.()) {
-									evt.preventDefault();
-									globalThis.__piUiFocusSlashRow?.(1);
-								}
-								if ((evt.key === 'ArrowDown' || evt.key === 'ArrowUp') && globalThis.__piUiFileOpen?.()) {
-									evt.preventDefault();
-									evt.stopPropagation();
-									globalThis.__piUiFocusFileRow?.(evt.key === 'ArrowDown' ? 1 : -1);
-								}
-								if (evt.key === 'Enter' && !evt.shiftKey && globalThis.__piUiFileOpen?.()) {
-									evt.preventDefault();
-									globalThis.__piUiRunFirstFile?.();
-								} else if (evt.key === 'Enter' && !evt.shiftKey) {
-									evt.preventDefault();
-									globalThis.__piUiCloseSlashPicker?.();
-									@post('/prompt', { filterSignals: { include: /^composer$/ } });
-								}"
 							></textarea>
 							<div class="mt-2 flex items-center justify-between gap-3">
 								<div
@@ -170,10 +103,7 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
-										data-on:click="
-											$commandOpen = true;
-											$commandQuery = '';
-										"
+										data-dialog-trigger="command-dialog"
 										title="Commands"
 									>
 										⌘
@@ -183,6 +113,7 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
+										data-new-chat-trigger
 										data-on:click="@post('/sessions/new')"
 										title="New chat"
 									>
@@ -193,7 +124,7 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
-										data-on:click="globalThis.__piUiInsertFilePrefix?.()"
+										data-file-trigger
 										title="Files"
 									>
 										@
@@ -203,7 +134,7 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
-										data-on:click="@post('/sessions/list')"
+										data-session-trigger
 										title="Resume session"
 									>
 										↩
@@ -229,10 +160,8 @@ export function renderPage(state: AppState): string {
 										data-size="icon"
 										type="button"
 										data-indicator:_prompting
-										data-on:click="
-											globalThis.__piUiCloseSlashPicker?.();
-											@post('/prompt', { filterSignals: { include: /^composer$/ } });
-										"
+										data-send-trigger
+										data-on:click="@post('/prompt', { filterSignals: { include: /^composer$/ } })"
 										aria-label="Send"
 									>
 										↑
@@ -242,32 +171,22 @@ export function renderPage(state: AppState): string {
 						</div>
 					</div>
 
-					<div
-						class="bg-background/70 fixed inset-0 z-20 grid items-start justify-items-center pt-[10vh] backdrop-blur-sm"
-						data-show="$commandOpen"
-						style="display: none;"
+					<button
+						id="session-list-action"
+						type="button"
+						class="hidden"
+						data-on:click="@post('/sessions/list')"
+					/>
+
+					<dialog
+						id="command-dialog"
+						class="dialog"
+						aria-labelledby="command-dialog-title"
+						onclick="if (event.target === this) this.close()"
 					>
-						<div
-							class="card w-[min(42rem,calc(100vw-2rem))] p-4"
-							role="dialog"
-							aria-modal="true"
-							aria-label="Command palette"
-						>
-							<header class="mb-3 flex items-center justify-between">
-								<strong>Command palette</strong>
-								<button
-									class="btn"
-									data-variant="ghost"
-									data-size="icon-sm"
-									type="button"
-									data-on:click="
-										$commandOpen = false;
-										$commandQuery = '';
-									"
-									aria-label="Close"
-								>
-									×
-								</button>
+						<div class="w-[min(42rem,calc(100vw-2rem))] max-w-none">
+							<header>
+								<h2 id="command-dialog-title">Command palette</h2>
 							</header>
 							<input
 								id="command-input"
@@ -276,10 +195,6 @@ export function renderPage(state: AppState): string {
 								placeholder="Type a command..."
 								aria-label="Command search"
 								data-bind:command-query
-								data-on:keydown="if (evt.key === 'Enter') {
-									evt.preventDefault();
-									globalThis.__piUiRunFirstCommand?.();
-								}"
 							/>
 							<ul class="mt-3 list-none p-0">
 								{appCommands.map(renderCommandRow)}
@@ -288,35 +203,79 @@ export function renderPage(state: AppState): string {
 								Tip: {newChat.shortcut.display} starts a fresh chat. Press
 								Enter to run the first visible command.
 							</p>
+							<button
+								class="btn"
+								data-variant="ghost"
+								data-size="icon-sm"
+								type="button"
+								onclick="this.closest('dialog').close()"
+								aria-label="Close"
+							>
+								×
+							</button>
 						</div>
-					</div>
+					</dialog>
 
-					<div
-						class="bg-background/70 fixed inset-0 z-20 grid items-start justify-items-center pt-[10vh] backdrop-blur-sm"
-						data-show="$sessionOpen"
-						style="display: none;"
+					<dialog
+						id="workspace-dialog"
+						class="dialog"
+						aria-labelledby="workspace-dialog-title"
+						onclick="if (event.target === this) this.close()"
 					>
-						<div
-							class="card w-[min(46rem,calc(100vw-2rem))] p-4"
-							role="dialog"
-							aria-modal="true"
-							aria-label="Resume session"
-						>
-							<header class="mb-3 flex items-center justify-between">
-								<strong>Resume session</strong>
-								<button
-									class="btn"
-									data-variant="ghost"
-									data-size="icon-sm"
-									type="button"
-									data-on:click="
-										$sessionOpen = false;
-										$sessionQuery = '';
-									"
-									aria-label="Close"
-								>
-									×
-								</button>
+						<div class="w-[min(42rem,calc(100vw-2rem))] max-w-none">
+							<header>
+								<h2 id="workspace-dialog-title">Change workspace</h2>
+							</header>
+							<section>
+								<div class="flex gap-2">
+									<input
+										id="workspace-input"
+										class="input min-w-0 flex-1 font-mono text-sm"
+										placeholder="/path/to/project"
+										aria-label="Workspace path"
+										data-bind:workspace-path
+									/>
+									<button
+										class="btn"
+										type="button"
+										data-workspace-submit
+										data-on:click="@post('/workspace/open', { filterSignals: { include: /^workspacePath$/ } })"
+									>
+										Open
+									</button>
+								</div>
+								<div class="mt-4">
+									<p class="text-muted-foreground mb-2 text-xs">
+										Recent workspaces
+									</p>
+									<ul
+										id="workspace-recent-list"
+										class="max-h-72 list-none overflow-y-auto p-0"
+									/>
+								</div>
+							</section>
+							<button
+								class="btn"
+								data-variant="ghost"
+								data-size="icon-sm"
+								type="button"
+								onclick="this.closest('dialog').close()"
+								aria-label="Close"
+							>
+								×
+							</button>
+						</div>
+					</dialog>
+
+					<dialog
+						id="session-dialog"
+						class="dialog"
+						aria-labelledby="session-dialog-title"
+						onclick="if (event.target === this) this.close()"
+					>
+						<div class="w-[min(46rem,calc(100vw-2rem))] max-w-none">
+							<header>
+								<h2 id="session-dialog-title">Resume session</h2>
 							</header>
 							<input
 								id="session-input"
@@ -324,14 +283,20 @@ export function renderPage(state: AppState): string {
 								placeholder="Search sessions..."
 								aria-label="Session search"
 								data-bind:session-query
-								data-on:keydown="if (evt.key === 'Enter') {
-									evt.preventDefault();
-									globalThis.__piUiRunFirstSession?.();
-								}"
 							/>
 							{renderSessionPicker(state)}
+							<button
+								class="btn"
+								data-variant="ghost"
+								data-size="icon-sm"
+								type="button"
+								onclick="this.closest('dialog').close()"
+								aria-label="Close"
+							>
+								×
+							</button>
 						</div>
-					</div>
+					</dialog>
 				</body>
 			</html>,
 		)
@@ -369,16 +334,16 @@ function renderCommandRow(item: AppCommand): string {
 
 function commandAction(id: AppCommandId): string {
 	if (id === "new-chat") {
-		return "$commandOpen = false; $commandQuery = ''; @post('/sessions/new')";
+		return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; @post('/sessions/new')";
 	}
 	if (id === "resume-session") {
-		return "$commandOpen = false; $commandQuery = ''; @post('/sessions/list')";
+		return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; @post('/sessions/list'); setTimeout(() => document.getElementById('session-dialog')?.showModal(), 0)";
 	}
 	if (id === "command-palette") {
-		return "$commandOpen = true; $commandQuery = ''; document.getElementById('command-input')?.focus()";
+		return "document.getElementById('command-dialog')?.showModal(); $commandQuery = ''; document.getElementById('command-input')?.focus()";
 	}
 	if (id === "switch-model") {
-		return "$commandOpen = false; $commandQuery = ''; globalThis.__piUiOpenModelSelector?.()";
+		return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; document.getElementById('model-select-trigger')?.click()";
 	}
-	return "$commandOpen = false; $commandQuery = ''; globalThis.__piUiPromptWorkspace?.()";
+	return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; document.getElementById('workspace-dialog')?.showModal(); setTimeout(() => document.getElementById('workspace-input')?.focus(), 0)";
 }

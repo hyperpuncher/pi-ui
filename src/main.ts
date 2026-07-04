@@ -1,4 +1,3 @@
-import { appCommands, shortcutKeys, type AppCommandId } from "./commands/registry.ts";
 import { createApp } from "./server/app.ts";
 
 const app = await createApp();
@@ -22,21 +21,6 @@ function setupDesktopWindow(): void {
 			submenu: {
 				label: "App",
 				items: [{ role: { role: "quit" } }],
-			},
-		},
-		{
-			submenu: {
-				label: "File",
-				items: appCommands.map((command) => ({
-					item: {
-						label: command.title,
-						id: command.id,
-						...(command.shortcut.native
-							? { accelerator: command.shortcut.native }
-							: {}),
-						enabled: true,
-					},
-				})),
 			},
 		},
 		{
@@ -71,40 +55,13 @@ function setupDesktopWindow(): void {
 	]);
 
 	win.addEventListener("menuclick", (event) => {
-		const id = menuId(event);
-		if (isAppCommandId(id)) {
-			void executeAppCommand(win, id);
-		}
-		if (id === "devtools") {
+		if (menuId(event) === "devtools") {
 			win.openDevtools();
 		}
 	});
-
-	win.addEventListener("keydown", (event) => {
-		const keyEvent = event as KeyboardEvent;
-		if (!(keyEvent.ctrlKey || keyEvent.metaKey)) {
-			return;
-		}
-		const key = keyEvent.key.toLowerCase();
-		if (shortcutKeys().includes(key)) {
-			keyEvent.preventDefault();
-		}
-	});
-}
-
-async function executeAppCommand(
-	win: Deno.BrowserWindow,
-	command: AppCommandId,
-): Promise<void> {
-	const script = `globalThis.__piUiCommand?.(${JSON.stringify(command)})`;
-	await win.executeJs(script).catch(() => undefined);
 }
 
 function menuId(event: unknown): string | undefined {
 	const detail = (event as { detail?: { id?: string } }).detail;
 	return detail?.id;
-}
-
-function isAppCommandId(id: string | undefined): id is AppCommandId {
-	return appCommands.some((command) => command.id === id);
 }

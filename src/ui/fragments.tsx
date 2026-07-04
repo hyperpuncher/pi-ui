@@ -31,7 +31,7 @@ export function renderWorkspacePicker(state: AppState): string {
 			data-variant="ghost"
 			type="button"
 			title={state.workspacePath}
-			data-on:click="globalThis.__piUiPromptWorkspace?.()"
+			data-workspace-trigger
 		>
 			<span class="truncate" safe>
 				{label}
@@ -182,11 +182,6 @@ function renderSlashRow(item: AppSlashCommand): string {
 				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
 				type="button"
 				data-slash-command={commandText}
-				data-on:click={`
-					$composer = ${JSON.stringify(commandText)};
-					globalThis.__piUiUpdateSlashPicker?.(${JSON.stringify(commandText)});
-					setTimeout(() => globalThis.__piUiFocusComposerEnd?.(), 0);
-				`}
 			>
 				<span class="min-w-0">
 					<span class="block truncate">
@@ -242,8 +237,8 @@ function renderSessionRow(session: AppSessionSummary): string {
 				type="button"
 				data-on:click={`
 					$sessionPath = ${JSON.stringify(session.path)};
-					$sessionOpen = false;
 					$sessionQuery = '';
+					document.getElementById('session-dialog')?.close();
 					@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 				`}
 			>

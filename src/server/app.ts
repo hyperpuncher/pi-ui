@@ -60,29 +60,29 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 
 			if (request.method === "POST" && url.pathname === "/abort") {
 				await host?.abort();
-				return signalsResponse({});
+				return noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/sessions/new") {
 				await host?.newSession();
-				return signalsResponse({ commandOpen: false });
+				return noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/sessions/list") {
 				await host?.listSessions();
-				return signalsResponse({ sessionOpen: true, sessionQuery: "" });
+				return noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/sessions/resume") {
 				const sessionPath = await readSignalString(request, "sessionPath");
 				await host?.resumeSession(sessionPath);
-				return signalsResponse({ sessionOpen: false, sessionPath: "" });
+				return noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/model") {
 				const modelRef = await readSignalString(request, "model");
 				await host?.setModel(modelRef);
-				return signalsResponse({ model: state.currentModel ?? "" });
+				return noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/workspace/open") {
@@ -95,7 +95,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				);
 				host = result.host;
 				fileSearch = result.fileSearch;
-				return Response.json({ ok: result.ok });
+				return noContent();
 			}
 
 			if (request.method === "GET" && url.pathname === "/files/search") {
@@ -161,11 +161,6 @@ async function switchWorkspace(
 }
 
 async function readWorkspacePath(request: Request): Promise<string> {
-	const contentType = request.headers.get("content-type") ?? "";
-	if (contentType.includes("application/json")) {
-		const body = await request.json().catch(() => undefined);
-		return typeof body?.workspacePath === "string" ? body.workspacePath : "";
-	}
 	return await readSignalString(request, "workspacePath");
 }
 
@@ -173,6 +168,10 @@ function html(body: string): Response {
 	return new Response(body, {
 		headers: { "content-type": "text/html; charset=utf-8" },
 	});
+}
+
+function noContent(): Response {
+	return new Response(null, { status: 204 });
 }
 
 function notFound(): Response {
