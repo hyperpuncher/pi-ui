@@ -5,40 +5,16 @@ const app = await createApp();
 Deno.serve(app.fetch);
 setupDesktopWindow();
 
-type BrowserWindowConstructor = new (options?: {
-	title?: string;
-	width?: number;
-	height?: number;
-}) => BrowserWindowLike;
-
-type BrowserWindowLike = {
-	addEventListener(type: string, listener: (event: unknown) => void): void;
-	setApplicationMenu(items: unknown[]): void;
-	executeJs(script: string): Promise<unknown>;
-	openDevtools(options?: { deno?: boolean; renderer?: boolean }): void;
-};
-
-type DesktopKeyboardEvent = {
-	key: string;
-	ctrlKey?: boolean;
-	metaKey?: boolean;
-	preventDefault(): void;
-};
-
-type DesktopDeno = typeof Deno & {
-	BrowserWindow?: BrowserWindowConstructor;
-};
-
 function setupDesktopWindow(): void {
-	const BrowserWindow = (Deno as DesktopDeno).BrowserWindow;
+	const BrowserWindow = Deno.BrowserWindow;
 	if (!BrowserWindow) {
 		return;
 	}
 
 	const win = new BrowserWindow({
 		title: "pi-ui",
-		width: 1120,
-		height: 820,
+		width: 1000,
+		height: 1400,
 	});
 
 	win.setApplicationMenu([
@@ -103,7 +79,7 @@ function setupDesktopWindow(): void {
 	});
 
 	win.addEventListener("keydown", (event) => {
-		const keyEvent = event as DesktopKeyboardEvent;
+		const keyEvent = event as KeyboardEvent;
 		if (!(keyEvent.ctrlKey || keyEvent.metaKey)) {
 			return;
 		}
@@ -115,7 +91,7 @@ function setupDesktopWindow(): void {
 }
 
 async function executeAppCommand(
-	win: BrowserWindowLike,
+	win: Deno.BrowserWindow,
 	command: AppCommandId,
 ): Promise<void> {
 	const script = `globalThis.__piUiCommand?.(${JSON.stringify(command)})`;
