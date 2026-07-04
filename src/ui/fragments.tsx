@@ -1,4 +1,9 @@
-import type { AppMessage, AppSessionSummary, AppState } from "../state/app-state.ts";
+import type {
+	AppMessage,
+	AppMessageTitlePart,
+	AppSessionSummary,
+	AppState,
+} from "../state/app-state.ts";
 
 function sync(html: JSX.Element): string {
 	return html as string;
@@ -116,7 +121,7 @@ function renderSessionRow(session: AppSessionSummary): string {
 
 function renderPreOutput(text: string): JSX.Element {
 	return (
-		<pre class="bg-muted/40 text-muted-foreground m-0 max-h-80 overflow-auto rounded-md p-3 text-sm leading-relaxed whitespace-pre-wrap">
+		<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-sm bg-transparent text-sm leading-relaxed whitespace-pre-wrap">
 			<code safe>{text}</code>
 		</pre>
 	);
@@ -125,12 +130,35 @@ function renderPreOutput(text: string): JSX.Element {
 function renderDiffOutput(message: AppMessage): JSX.Element {
 	if (message.renderedHtml) {
 		return (
-			<div class="max-h-96 overflow-auto rounded-md [&_.shiki]:m-0 [&_.shiki]:p-3 [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			<div class="max-h-96 overflow-auto rounded-sm [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:p-0 [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
 				{message.renderedHtml}
 			</div>
 		);
 	}
 	return renderPreOutput(message.text);
+}
+
+function renderToolTitle(
+	title: string,
+	parts: AppMessageTitlePart[] | undefined,
+): JSX.Element {
+	if (!parts?.length) return <span safe>{title}</span>;
+	return (
+		<>
+			{parts.map((part) => (
+				<span class={toolTitlePartClass(part)} safe>
+					{part.text}
+				</span>
+			))}
+		</>
+	);
+}
+
+function toolTitlePartClass(part: AppMessageTitlePart): string {
+	if (part.tone === "accent") return "text-primary";
+	if (part.tone === "warning") return "text-amber-600 dark:text-yellow-300";
+	if (part.tone === "muted") return "text-muted-foreground";
+	return "";
 }
 
 function renderMessage(message: AppMessage): string {
@@ -148,17 +176,28 @@ function renderMessage(message: AppMessage): string {
 	}
 
 	if (message.role === "assistant") {
-		const markdownClass = [
-			"max-w-full self-start leading-relaxed",
-			"[&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4 [&_.shiki]:whitespace-pre-wrap [&_.shiki]:break-words [&_.shiki_code]:whitespace-pre-wrap",
-			"[&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4",
-			"[&_code]:rounded [&_code]:bg-muted [&_code]:px-1",
-			"[&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold",
-			"[&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6",
-			"[&_.table-container]:my-4",
-		].join(" ");
 		return sync(
-			<article class={markdownClass} data-message-id={message.id}>
+			<article
+				class="[&_code]:bg-muted max-w-full self-start leading-relaxed [&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4 [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap [&_.table-container]:my-4 [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6"
+				data-message-id={message.id}
+			>
+				{message.renderedHtml ? (
+					<div>{message.renderedHtml}</div>
+				) : (
+					<p class="m-0 whitespace-pre-wrap" safe>
+						{message.text}
+					</p>
+				)}
+			</article>,
+		);
+	}
+
+	if (message.role === "thought") {
+		return sync(
+			<article
+				class="text-muted-foreground [&_code]:bg-muted max-w-3xl self-start text-sm leading-relaxed italic [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_ul]:list-disc [&_ul]:pl-6"
+				data-message-id={message.id}
+			>
 				{message.renderedHtml ? (
 					<div>{message.renderedHtml}</div>
 				) : (
@@ -184,7 +223,9 @@ function renderMessage(message: AppMessage): string {
 	}
 
 	const title = message.title ?? "Tool";
-	const stateClass = message.state === "error" ? "border-destructive/40" : "";
+	const hasToolBody = message.text.trim().length > 0;
+	const stateClass =
+		message.state === "error" ? "border-destructive/40" : "border-transparent";
 	const dotClass =
 		message.state === "running"
 			? "bg-muted-foreground animate-pulse"
@@ -193,24 +234,34 @@ function renderMessage(message: AppMessage): string {
 				: "bg-emerald-500";
 	return sync(
 		<article
-			class={["card w-full max-w-3xl self-start p-3", stateClass]}
+			class={[
+				"bg-muted/40 dark:bg-muted/55 w-full max-w-3xl self-start rounded-sm border p-3",
+				stateClass,
+			]}
 			data-message-id={message.id}
 		>
-			<header class="text-muted-foreground mb-2 flex items-center justify-between gap-4 text-xs">
+			<header
+				class={[
+					"flex items-center justify-between gap-4 text-sm",
+					hasToolBody ? "mb-3" : "",
+				]}
+			>
 				<span class="flex min-w-0 items-center gap-2">
 					<span class={["h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
-					<span class="truncate" safe>
-						{title}
+					<span class="truncate font-medium">
+						{renderToolTitle(title, message.titleParts)}
 					</span>
 				</span>
-				<span class="flex shrink-0 items-center gap-3">
+				<span class="text-muted-foreground flex shrink-0 items-center gap-3 text-xs">
 					{message.meta && <span safe>{message.meta}</span>}
 					<time>{message.timestamp.toLocaleTimeString()}</time>
 				</span>
 			</header>
-			{message.format === "diff"
-				? renderDiffOutput(message)
-				: renderPreOutput(message.text)}
+			{hasToolBody
+				? message.format === "diff"
+					? renderDiffOutput(message)
+					: renderPreOutput(message.text)
+				: ""}
 		</article>,
 	);
 }

@@ -108,7 +108,7 @@ export function renderPage(state: AppState): string {
 
 						<div
 							id="composer"
-							class="card fixed bottom-6 left-1/2 z-10 w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 p-3 shadow-sm"
+							class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 p-3 shadow-sm"
 						>
 							<textarea
 								id="composer-input"

@@ -14,17 +14,26 @@ import {
 
 export type AppMessage = {
 	id: string;
-	role: "user" | "assistant" | "system" | "tool";
+	role: "user" | "assistant" | "system" | "tool" | "thought";
 	text: string;
 	timestamp: Date;
 	title?: string;
+	titleParts?: AppMessageTitlePart[];
 	meta?: string;
 	state?: "running" | "success" | "error";
 	format?: "pre" | "diff";
 	renderedHtml?: string;
 };
 
-export type AppMessageOptions = Pick<AppMessage, "title" | "meta" | "state" | "format">;
+export type AppMessageTitlePart = {
+	text: string;
+	tone?: "default" | "accent" | "warning" | "muted";
+};
+
+export type AppMessageOptions = Pick<
+	AppMessage,
+	"title" | "titleParts" | "meta" | "state" | "format"
+>;
 
 export type AppModel = {
 	id: string;
@@ -55,6 +64,7 @@ export class AppState {
 	private clients = new Map<string, StreamClient>();
 	private messageSeq = 0;
 	private activeAssistantId: string | undefined;
+	private activeThoughtId: string | undefined;
 	messages: AppMessage[] = [];
 	status = "Starting";
 	models: AppModel[] = [];
@@ -101,12 +111,15 @@ export class AppState {
 			timestamp: new Date(),
 			...options,
 			renderedHtml:
-				role === "assistant" && text.trim()
+				(role === "assistant" || role === "thought") && text.trim()
 					? renderMarkdownStreaming(text)
 					: undefined,
 		});
 		if (role === "assistant") {
 			this.activeAssistantId = id;
+		}
+		if (role === "thought") {
+			this.activeThoughtId = id;
 		}
 		this.broadcast();
 		if (role === "tool" && options.format === "diff" && text.trim()) {
@@ -130,7 +143,23 @@ export class AppState {
 		}
 	}
 
+	appendThoughtDelta(delta: string): void {
+		if (!this.activeThoughtId) {
+			this.appendMessage("thought", delta);
+			return;
+		}
+		const message = this.messages.find((item) => item.id === this.activeThoughtId);
+		if (!message) {
+			this.appendMessage("thought", delta);
+			return;
+		}
+		message.text += delta;
+		message.renderedHtml = renderMarkdownStreaming(message.text);
+		this.broadcast();
+	}
+
 	appendAssistantDelta(delta: string): void {
+		this.activeThoughtId = undefined;
 		if (!this.activeAssistantId) {
 			this.appendMessage("assistant", delta);
 			return;
@@ -147,8 +176,13 @@ export class AppState {
 
 	finishAssistant(): void {
 		const id = this.activeAssistantId;
+		const thoughtId = this.activeThoughtId;
 		this.activeAssistantId = undefined;
+		this.activeThoughtId = undefined;
 		this.broadcast();
+		if (thoughtId) {
+			void this.renderAssistantMarkdown(thoughtId);
+		}
 		if (id) {
 			void this.renderAssistantMarkdown(id);
 		}
@@ -157,17 +191,19 @@ export class AppState {
 	resetChat(): void {
 		this.messages = [];
 		this.activeAssistantId = undefined;
+		this.activeThoughtId = undefined;
 		this.broadcast();
 	}
 
 	replaceMessages(messages: AppMessageInput[]): void {
 		this.activeAssistantId = undefined;
+		this.activeThoughtId = undefined;
 		const finalizeFrom = Math.max(0, messages.length - finalizeRecentMessageCount);
 		this.messages = messages.map((message, index) => {
 			this.messageSeq += 1;
 			const id = `m-${this.messageSeq}`;
 			const shouldRenderStreaming =
-				message.role === "assistant" &&
+				(message.role === "assistant" || message.role === "thought") &&
 				message.text.trim() &&
 				index >= finalizeFrom;
 			return {
@@ -184,7 +220,7 @@ export class AppState {
 		for (const [index, message] of this.messages.entries()) {
 			if (
 				index >= finalizeFrom &&
-				message.role === "assistant" &&
+				(message.role === "assistant" || message.role === "thought") &&
 				message.text.trim()
 			) {
 				void this.renderAssistantMarkdown(message.id);
@@ -245,7 +281,11 @@ export class AppState {
 
 	private async renderAssistantMarkdown(id: string): Promise<void> {
 		const message = this.messages.find((item) => item.id === id);
-		if (!message || message.role !== "assistant" || !message.text.trim()) {
+		if (
+			!message ||
+			(message.role !== "assistant" && message.role !== "thought") ||
+			!message.text.trim()
+		) {
 			return;
 		}
 

@@ -13,10 +13,17 @@ import {
 	type SessionStats,
 } from "npm:@earendil-works/pi-coding-agent@0.80.3";
 
-import type { AppMessageInput, AppSessionSummary, AppState } from "../state/app-state.ts";
+import type {
+	AppMessageInput,
+	AppMessageTitlePart,
+	AppSessionSummary,
+	AppState,
+} from "../state/app-state.ts";
 
 const defaultProvider = "opencode-go";
 const defaultModelId = "deepseek-v4-flash";
+const bashPreviewLines = 8;
+const bashCompactThreshold = 14;
 
 export class AgentHost {
 	private unsubscribe: (() => void) | undefined;
@@ -221,6 +228,9 @@ export class AgentHost {
 				this.handleMessageStart(event.message);
 				break;
 			case "message_update":
+				if (event.assistantMessageEvent.type === "thinking_delta") {
+					this.state.appendThoughtDelta(event.assistantMessageEvent.delta);
+				}
 				if (event.assistantMessageEvent.type === "text_delta") {
 					this.state.appendAssistantDelta(event.assistantMessageEvent.delta);
 				}
@@ -234,15 +244,14 @@ export class AgentHost {
 			case "tool_execution_start": {
 				this.toolCallArgs.set(event.toolCallId, event.args);
 				this.toolStartedAt.set(event.toolCallId, Date.now());
-				const id = this.state.appendMessage(
-					"tool",
-					formatToolInput(event.toolName, event.args),
-					{
-						title: toolTitle("running", event.toolName, event.args),
-						meta: toolMeta(event.toolName, event.args),
-						state: "running",
-					},
-				);
+				const startView = formatToolStart(event.toolName, event.args);
+				const id = this.state.appendMessage("tool", startView.text, {
+					title: toolTitle("running", event.toolName, event.args),
+					titleParts: toolTitleParts(event.toolName, event.args),
+					meta: toolMeta(event.toolName, event.args),
+					state: "running",
+					format: startView.format,
+				});
 				this.toolMessageIds.set(event.toolCallId, id);
 				break;
 			}
@@ -250,7 +259,9 @@ export class AgentHost {
 				const id = this.toolMessageIds.get(event.toolCallId);
 				if (id) {
 					this.state.updateMessage(id, {
-						text: extractToolText(event.partialResult),
+						text: formatToolResult(event.toolName, event.partialResult, {
+							args: event.args,
+						}).text,
 						meta: toolMeta(event.toolName, event.args),
 					});
 				}
@@ -259,7 +270,10 @@ export class AgentHost {
 			case "tool_execution_end": {
 				const id = this.toolMessageIds.get(event.toolCallId);
 				const args = this.toolCallArgs.get(event.toolCallId) ?? {};
-				const resultView = formatToolResult(event.toolName, event.result);
+				const resultView = formatToolResult(event.toolName, event.result, {
+					args,
+					isError: event.isError,
+				});
 				const startedAt = this.toolStartedAt.get(event.toolCallId);
 				const patch = {
 					text: resultView.text,
@@ -270,6 +284,7 @@ export class AgentHost {
 					),
 					meta: toolEndMeta(startedAt),
 					state: event.isError ? "error" : "success",
+					titleParts: toolTitleParts(event.toolName, args),
 					format: resultView.format,
 				} as const;
 				if (id) {
@@ -314,14 +329,15 @@ export class AgentHost {
 
 	private loadCurrentSessionMessages(): void {
 		const branch = this.runtime.session.sessionManager.getBranch();
-		const visibleBranch = branch.slice(-160);
-		const messages = visibleBranch
-			.map((entry: SessionEntry) => this.entryToMessage(entry))
-			.filter((message): message is AppMessageInput => Boolean(message));
-		if (branch.length > visibleBranch.length) {
+		const visibleFrom = Math.max(0, branch.length - 160);
+		const pendingToolCalls = new Map<string, { name: string; args: unknown }>();
+		const messages = branch.flatMap((entry: SessionEntry, index) =>
+			this.entryToMessages(entry, pendingToolCalls, index >= visibleFrom),
+		);
+		if (visibleFrom > 0) {
 			messages.unshift({
 				role: "system",
-				text: `Showing latest ${visibleBranch.length} session entries. ${branch.length - visibleBranch.length} older entries hidden for performance.`,
+				text: `Showing latest ${branch.length - visibleFrom} session entries. ${visibleFrom} older entries hidden for performance.`,
 				timestamp: new Date(),
 			});
 		}
@@ -330,28 +346,53 @@ export class AgentHost {
 		this.state.setStatus(this.readyStatus(this.runtime.session));
 	}
 
-	private entryToMessage(entry: SessionEntry): AppMessageInput | undefined {
+	private entryToMessages(
+		entry: SessionEntry,
+		pendingToolCalls: Map<string, { name: string; args: unknown }>,
+		visible: boolean,
+	): AppMessageInput[] {
 		const timestamp = new Date(entry.timestamp);
 		if (entry.type === "message") {
-			return this.agentMessageToAppMessage(entry.message, timestamp);
+			if (entry.message.role === "assistant") {
+				for (const toolCall of extractToolCalls(entry.message.content)) {
+					pendingToolCalls.set(toolCall.id, {
+						name: toolCall.name,
+						args: toolCall.arguments,
+					});
+				}
+			}
+			if (!visible) {
+				return [];
+			}
+			if (entry.message.role === "toolResult") {
+				const toolCall = pendingToolCalls.get(entry.message.toolCallId);
+				pendingToolCalls.delete(entry.message.toolCallId);
+				return [toolResultToAppMessage(entry.message, timestamp, toolCall)];
+			}
+			return this.agentMessageToAppMessages(entry.message, timestamp);
+		}
+		if (!visible) {
+			return [];
 		}
 		if (entry.type === "custom_message" && entry.display) {
-			return {
-				role: "system",
-				text: contentToText(entry.content),
-				timestamp,
-			};
+			return [
+				{
+					role: "system",
+					text: contentToText(entry.content),
+					timestamp,
+				},
+			];
 		}
 		if (entry.type === "compaction") {
-			return { role: "system", text: entry.summary, timestamp };
+			return [{ role: "system", text: entry.summary, timestamp }];
 		}
 		if (entry.type === "branch_summary") {
-			return { role: "system", text: entry.summary, timestamp };
+			return [{ role: "system", text: entry.summary, timestamp }];
 		}
 		if (entry.type === "model_change" || entry.type === "thinking_level_change") {
-			return undefined;
+			return [];
 		}
-		return undefined;
+		return [];
 	}
 
 	private handleMessageStart(
@@ -366,6 +407,7 @@ export class AgentHost {
 		}
 		this.state.appendMessage(appMessage.role, appMessage.text, {
 			title: appMessage.title,
+			titleParts: appMessage.titleParts,
 			meta: appMessage.meta,
 			state: appMessage.state,
 			format: appMessage.format,
@@ -376,51 +418,144 @@ export class AgentHost {
 		message: Extract<AgentSessionEvent, { type: "message_start" }>["message"],
 		timestamp: Date,
 	): AppMessageInput | undefined {
+		return this.agentMessageToAppMessages(message, timestamp)[0];
+	}
+
+	private agentMessageToAppMessages(
+		message: Extract<AgentSessionEvent, { type: "message_start" }>["message"],
+		timestamp: Date,
+	): AppMessageInput[] {
 		switch (message.role) {
 			case "user":
-				return { role: "user", text: contentToText(message.content), timestamp };
+				return [
+					{ role: "user", text: contentToText(message.content), timestamp },
+				];
 			case "assistant":
-				return {
-					role: "assistant",
-					text: contentToText(message.content),
-					timestamp,
-				};
+				return assistantContentToMessages(message.content, timestamp);
 			case "toolResult":
-				return {
-					role: "tool",
-					text: contentToText(message.content),
-					timestamp,
-					title: `Tool result • ${message.toolName}`,
-					meta: message.isError ? "error" : "ok",
-					state: message.isError ? "error" : "success",
-				};
+				return [toolResultToAppMessage(message, timestamp)];
 			case "bashExecution":
-				return {
-					role: "tool",
-					text: `$ ${message.command}\n${message.output}`,
-					timestamp,
-					title: "Shell command",
-					meta:
-						message.exitCode === undefined
-							? "cancelled"
-							: `exit ${message.exitCode}`,
-					state: message.exitCode === 0 ? "success" : "error",
-				};
+				return [
+					{
+						role: "tool",
+						text: compactToolOutput(message.output),
+						timestamp,
+						title: `$ ${message.command}`,
+						titleParts: [{ text: `$ ${message.command}` }],
+						meta:
+							message.exitCode === undefined
+								? "cancelled"
+								: `exit ${message.exitCode}`,
+						state: message.exitCode === 0 ? "success" : "error",
+					},
+				];
 			case "custom":
 				if (message.display) {
-					return {
-						role: "system",
-						text: contentToText(message.content),
-						timestamp,
-					};
+					return [
+						{
+							role: "system",
+							text: contentToText(message.content),
+							timestamp,
+						},
+					];
 				}
-				return undefined;
+				return [];
 			case "branchSummary":
-				return { role: "system", text: message.summary, timestamp };
+				return [{ role: "system", text: message.summary, timestamp }];
 			case "compactionSummary":
-				return { role: "system", text: message.summary, timestamp };
+				return [{ role: "system", text: message.summary, timestamp }];
 		}
 	}
+}
+
+function toolResultToAppMessage(
+	message: Extract<AgentSessionEvent, { type: "message_start" }>["message"] & {
+		role: "toolResult";
+	},
+	timestamp: Date,
+	toolCall?: { name: string; args: unknown },
+): AppMessageInput {
+	const resultView = formatToolResult(message.toolName, message, {
+		args: toolCall?.args,
+		isError: message.isError,
+	});
+	return {
+		role: "tool",
+		text: resultView.text,
+		timestamp,
+		title: toolCall
+			? toolTitle(
+					message.isError ? "error" : "success",
+					toolCall.name,
+					toolCall.args,
+				)
+			: message.toolName,
+		titleParts: toolCall ? toolTitleParts(toolCall.name, toolCall.args) : undefined,
+		meta: undefined,
+		state: message.isError ? "error" : "success",
+		format: resultView.format,
+	};
+}
+
+function extractToolCalls(content: unknown): Array<{
+	id: string;
+	name: string;
+	arguments: unknown;
+}> {
+	if (!Array.isArray(content)) {
+		return [];
+	}
+	return content.flatMap((part) => {
+		if (
+			isRecord(part) &&
+			part.type === "toolCall" &&
+			typeof part.id === "string" &&
+			typeof part.name === "string"
+		) {
+			return [{ id: part.id, name: part.name, arguments: part.arguments }];
+		}
+		return [];
+	});
+}
+
+function assistantContentToMessages(
+	content: Extract<
+		AgentSessionEvent,
+		{ type: "message_start" }
+	>["message"] extends infer M
+		? M extends { role: "assistant"; content: infer C }
+			? C
+			: never
+		: never,
+	timestamp: Date,
+): AppMessageInput[] {
+	if (!Array.isArray(content)) {
+		return [{ role: "assistant", text: contentToText(content), timestamp }];
+	}
+
+	const messages: AppMessageInput[] = [];
+	let assistantText = "";
+	let thoughtText = "";
+	for (const part of content) {
+		if (
+			isRecord(part) &&
+			part.type === "thinking" &&
+			typeof part.thinking === "string"
+		) {
+			thoughtText += `${thoughtText ? "\n\n" : ""}${part.thinking}`;
+			continue;
+		}
+		if (isRecord(part) && part.type === "text" && typeof part.text === "string") {
+			assistantText += part.text;
+		}
+	}
+	if (thoughtText.trim()) {
+		messages.push({ role: "thought", text: thoughtText, timestamp });
+	}
+	if (assistantText.trim()) {
+		messages.push({ role: "assistant", text: stripAnsi(assistantText), timestamp });
+	}
+	return messages;
 }
 
 function formatSessionSummary(info: SessionInfo): AppSessionSummary {
@@ -475,6 +610,25 @@ function truncate(value: string, maxLength: number): string {
 	return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }
 
+function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] {
+	const record = asRecord(args);
+	if (toolName === "bash" && record) {
+		const timeout =
+			typeof record.timeout === "number" ? ` (timeout ${record.timeout}s)` : "";
+		return [
+			{ text: `$ ${stringValue(record.command) || "..."}` },
+			...(timeout ? [{ text: timeout, tone: "muted" } as const] : []),
+		];
+	}
+
+	const target = toolTarget(toolName, args);
+	return [
+		{ text: `${toolName}${target ? " " : ""}` },
+		...(target ? [{ text: target, tone: "accent" } as const] : []),
+		...(toolRange(args) ? [{ text: toolRange(args), tone: "warning" } as const] : []),
+	];
+}
+
 function toolTitle(
 	status: "running" | "success" | "error",
 	toolName: string,
@@ -482,26 +636,20 @@ function toolTitle(
 ): string {
 	const record = asRecord(args);
 	if (toolName === "bash" && record) {
-		return `$ ${stringValue(record.command) || "..."}`;
+		const timeout =
+			typeof record.timeout === "number" ? ` (timeout ${record.timeout}s)` : "";
+		return `$ ${stringValue(record.command) || "..."}${timeout}`;
 	}
 
-	const verb =
-		status === "running"
-			? toolName
-			: status === "error"
-				? `failed ${toolName}`
-				: toolName;
+	const verb = toolName;
 	const target = toolTarget(toolName, args);
-	return target ? `${verb} ${target}` : verb;
+	return target ? `${verb} ${target}${toolRange(args)}` : verb;
 }
 
 function toolMeta(toolName: string, args: unknown): string | undefined {
 	const record = asRecord(args);
 	if (!record) return undefined;
 	const details: string[] = [];
-	if (toolName === "bash" && typeof record.timeout === "number") {
-		details.push(`timeout ${record.timeout}s`);
-	}
 	if (toolName === "edit" && Array.isArray(record.edits)) {
 		details.push(
 			`${record.edits.length} edit${record.edits.length === 1 ? "" : "s"}`,
@@ -523,6 +671,13 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function toolRange(args: unknown): string {
+	const record = asRecord(args);
+	if (!record || typeof record.offset !== "number") return "";
+	if (typeof record.limit !== "number") return `:${record.offset}`;
+	return `:${record.offset}-${record.offset + record.limit - 1}`;
+}
+
 function toolTarget(toolName: string, args: unknown): string {
 	const record = asRecord(args);
 	if (!record) return "";
@@ -537,30 +692,30 @@ function toolTarget(toolName: string, args: unknown): string {
 		const path = stringValue(record.path);
 		return path ? `${pattern} in ${path}` : pattern;
 	}
-	return stringValue(record.path) || stringValue(record.file_path);
+	return shortenPath(stringValue(record.path) || stringValue(record.file_path));
 }
 
-function formatToolInput(toolName: string, args: unknown): string {
+function formatToolStart(
+	toolName: string,
+	args: unknown,
+): { text: string; format?: "pre" | "diff" } {
 	const record = asRecord(args);
-	if (!record) return summarizeValue(args);
-	if (toolName === "bash") return `$ ${stringValue(record.command)}`;
-	if (toolName === "read") return `Reading ${stringValue(record.path)}`;
-	if (toolName === "ls") return `Listing ${stringValue(record.path) || "."}`;
-	if (toolName === "grep") return `Searching ${stringValue(record.pattern)}`;
-	if (toolName === "find") return `Finding ${stringValue(record.pattern)}`;
-	if (toolName === "write") {
-		return `Writing ${stringValue(record.path)} (${stringValue(record.content).length} chars)`;
-	}
+	if (!record) return { text: summarizeValue(args), format: "pre" };
+	if (toolName === "bash") return { text: "", format: "pre" };
 	if (toolName === "edit") {
 		const count = Array.isArray(record.edits) ? record.edits.length : 0;
-		return `Editing ${stringValue(record.path)} (${count} replacement${count === 1 ? "" : "s"})`;
+		return {
+			text: `${count} replacement${count === 1 ? "" : "s"}`,
+			format: "pre",
+		};
 	}
-	return summarizeValue(args);
+	return { text: "", format: "pre" };
 }
 
 function formatToolResult(
 	toolName: string,
 	result: unknown,
+	options: { args?: unknown; isError?: boolean } = {},
 ): { text: string; format?: "pre" | "diff" } {
 	const record = asRecord(result);
 	const details = asRecord(record?.details);
@@ -570,7 +725,38 @@ function formatToolResult(
 	if (toolName === "edit" && typeof details?.diff === "string") {
 		return { text: details.diff, format: "diff" };
 	}
+	if (toolName === "read") {
+		return {
+			text: options.isError ? compactReadOutput(extractToolText(result)) : "",
+			format: "pre",
+		};
+	}
+	if (toolName === "bash") {
+		return { text: compactToolOutput(extractToolText(result)), format: "pre" };
+	}
 	return { text: extractToolText(result), format: "pre" };
+}
+
+function shortenPath(path: string): string {
+	const home = Deno.env.get("HOME");
+	return home && path.startsWith(home) ? `~${path.slice(home.length)}` : path;
+}
+
+function compactReadOutput(text: string): string {
+	return text
+		.replace(/\n\n\[[^\]]*more lines in file[\s\S]*?\]$/i, "")
+		.replace(/\n\n\[Showing lines [^\]]+\]$/i, "")
+		.trimEnd();
+}
+
+function compactToolOutput(text: string): string {
+	const trimmed = text.trimEnd();
+	const lines = trimmed.split("\n");
+	if (lines.length <= bashCompactThreshold) {
+		return trimmed;
+	}
+	const skipped = lines.length - bashPreviewLines;
+	return `... (${skipped} earlier lines)\n${lines.slice(-bashPreviewLines).join("\n")}`;
 }
 
 function extractToolText(result: unknown): string {
