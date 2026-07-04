@@ -37,8 +37,8 @@ export class AgentHost {
 		private readonly state: AppState,
 	) {}
 
-	static async create(state: AppState): Promise<AgentHost> {
-		const cwd = Deno.cwd();
+	static async create(state: AppState, cwd = Deno.cwd()): Promise<AgentHost> {
+		state.setWorkspacePath(cwd);
 		const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 			cwd,
 			sessionManager,

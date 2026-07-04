@@ -11,6 +11,7 @@ import {
 	renderSessionPicker,
 	renderSlashPicker,
 	renderTranscript,
+	renderWorkspacePicker,
 } from "./fragments.tsx";
 
 function sync(html: JSX.Element): string {
@@ -33,6 +34,7 @@ export function renderPage(state: AppState): string {
 		commandOpen: false,
 		commandQuery: "",
 		model: state.currentModel ?? "",
+		workspacePath: state.workspacePath,
 		sessionOpen: false,
 		sessionPath: "",
 		sessionQuery: "",
@@ -54,6 +56,7 @@ export function renderPage(state: AppState): string {
 				</head>
 				<body
 					class="h-full overflow-hidden"
+					data-workspace-path={state.workspacePath}
 					data-signals={initialSignals}
 					data-on:keydown__window="if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
 						evt.preventDefault();
@@ -98,6 +101,11 @@ export function renderPage(state: AppState): string {
 						$commandQuery = '';
 						globalThis.__piUiOpenModelSelector?.();
 					"
+					data-on:pi-change-workspace__window="
+						$commandOpen = false;
+						$commandQuery = '';
+						globalThis.__piUiPromptWorkspace?.();
+					"
 				>
 					<div
 						id="app"
@@ -117,6 +125,16 @@ export function renderPage(state: AppState): string {
 							>
 								{renderSlashPicker(state)}
 							</div>
+							<div
+								id="composer-file-popover"
+								class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
+								style="display: none;"
+							>
+								<ul
+									id="file-picker-list"
+									class="max-h-72 list-none overflow-y-auto p-1"
+								/>
+							</div>
 							<textarea
 								id="composer-input"
 								class="max-h-44 min-h-12 w-full resize-none border-0 bg-transparent p-1 outline-none"
@@ -128,7 +146,15 @@ export function renderPage(state: AppState): string {
 									evt.preventDefault();
 									globalThis.__piUiFocusSlashRow?.(1);
 								}
-								if (evt.key === 'Enter' && !evt.shiftKey) {
+								if ((evt.key === 'ArrowDown' || evt.key === 'ArrowUp') && globalThis.__piUiFileOpen?.()) {
+									evt.preventDefault();
+									evt.stopPropagation();
+									globalThis.__piUiFocusFileRow?.(evt.key === 'ArrowDown' ? 1 : -1);
+								}
+								if (evt.key === 'Enter' && !evt.shiftKey && globalThis.__piUiFileOpen?.()) {
+									evt.preventDefault();
+									globalThis.__piUiRunFirstFile?.();
+								} else if (evt.key === 'Enter' && !evt.shiftKey) {
 									evt.preventDefault();
 									globalThis.__piUiCloseSlashPicker?.();
 									@post('/prompt', { filterSignals: { include: /^composer$/ } });
@@ -167,6 +193,7 @@ export function renderPage(state: AppState): string {
 										data-variant="ghost"
 										data-size="icon-sm"
 										type="button"
+										data-on:click="globalThis.__piUiInsertFilePrefix?.()"
 										title="Files"
 									>
 										@
@@ -184,6 +211,7 @@ export function renderPage(state: AppState): string {
 								</div>
 								<div class="flex min-w-0 items-center justify-end gap-1.5">
 									{renderComposerStatus(state)}
+									{renderWorkspacePicker(state)}
 									{renderModelPicker(state)}
 									<button
 										class="btn"
@@ -331,7 +359,9 @@ function renderCommandRow(item: AppCommand): string {
 						{item.description}
 					</span>
 				</span>
-				<kbd class="kbd shrink-0">{item.shortcut.display}</kbd>
+				{item.shortcut.display && (
+					<kbd class="kbd shrink-0">{item.shortcut.display}</kbd>
+				)}
 			</button>
 		</li>,
 	);
@@ -347,5 +377,8 @@ function commandAction(id: AppCommandId): string {
 	if (id === "command-palette") {
 		return "$commandOpen = true; $commandQuery = ''; document.getElementById('command-input')?.focus()";
 	}
-	return "$commandOpen = false; $commandQuery = ''; document.getElementById('model-select-trigger')?.focus()";
+	if (id === "switch-model") {
+		return "$commandOpen = false; $commandQuery = ''; globalThis.__piUiOpenModelSelector?.()";
+	}
+	return "$commandOpen = false; $commandQuery = ''; globalThis.__piUiPromptWorkspace?.()";
 }

@@ -31,7 +31,9 @@ function setupDesktopWindow(): void {
 					item: {
 						label: command.title,
 						id: command.id,
-						accelerator: command.shortcut.native,
+						...(command.shortcut.native
+							? { accelerator: command.shortcut.native }
+							: {}),
 						enabled: true,
 					},
 				})),

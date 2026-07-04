@@ -2,7 +2,8 @@ export type AppCommandId =
 	| "new-chat"
 	| "resume-session"
 	| "command-palette"
-	| "switch-model";
+	| "switch-model"
+	| "change-workspace";
 
 export type AppCommand = {
 	id: AppCommandId;
@@ -39,6 +40,12 @@ export const appCommands: AppCommand[] = [
 		title: "Switch model",
 		description: "Open the model picker.",
 		shortcut: { display: "Ctrl L", native: "CmdOrCtrl+L", keys: ["l"] },
+	},
+	{
+		id: "change-workspace",
+		title: "Change workspace",
+		description: "Set the cwd used by pi sessions and tools.",
+		shortcut: { display: "", native: "", keys: [] },
 	},
 ];
 

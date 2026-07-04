@@ -6,6 +6,7 @@ import {
 	renderSessionPicker,
 	renderSlashPicker,
 	renderTranscript,
+	renderWorkspacePicker,
 } from "../ui/fragments.tsx";
 import {
 	renderCodeFinal,
@@ -90,6 +91,7 @@ export class AppState {
 	slashCommands: AppSlashCommand[] = [];
 	currentModel: string | undefined;
 	usageText = "$0.000 • 0 tokens";
+	workspacePath = Deno.cwd();
 
 	createStream(signal: AbortSignal): Response {
 		const id = crypto.randomUUID();
@@ -97,7 +99,12 @@ export class AppState {
 			(stream) => {
 				this.clients.set(id, { id, stream });
 				this.patchClient(stream);
-				stream.patchSignals(JSON.stringify({ model: this.currentModel ?? "" }));
+				stream.patchSignals(
+					JSON.stringify({
+						model: this.currentModel ?? "",
+						workspacePath: this.workspacePath,
+					}),
+				);
 				signal.addEventListener(
 					"abort",
 					() => {
@@ -286,6 +293,11 @@ export class AppState {
 		this.broadcast();
 	}
 
+	setWorkspacePath(workspacePath: string): void {
+		this.workspacePath = workspacePath;
+		this.broadcast();
+	}
+
 	private async renderCode(id: string, language: string): Promise<void> {
 		const message = this.messages.find((item) => item.id === id);
 		if (!message || !message.text.trim()) {
@@ -324,6 +336,7 @@ export class AppState {
 		return (
 			renderTranscript(this.messages) +
 			renderComposerStatus(this) +
+			renderWorkspacePicker(this) +
 			renderModelPicker(this) +
 			renderSessionPicker(this) +
 			renderSlashPicker(this)
@@ -333,7 +346,12 @@ export class AppState {
 	private patchClient(stream: DatastarStream): void {
 		try {
 			stream.patchElements(this.renderElements());
-			stream.patchSignals(JSON.stringify({ model: this.currentModel ?? "" }));
+			stream.patchSignals(
+				JSON.stringify({
+					model: this.currentModel ?? "",
+					workspacePath: this.workspacePath,
+				}),
+			);
 		} catch {
 			// Client already disconnected.
 		}

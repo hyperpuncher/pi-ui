@@ -22,6 +22,35 @@ export function renderComposerStatus(state: AppState): string {
 	);
 }
 
+export function renderWorkspacePicker(state: AppState): string {
+	const label = workspaceLabel(state.workspacePath);
+	return sync(
+		<button
+			id="workspace-picker"
+			class="btn max-w-[12rem] min-w-0 px-2 font-mono text-xs"
+			data-variant="ghost"
+			type="button"
+			title={state.workspacePath}
+			data-on:click="globalThis.__piUiPromptWorkspace?.()"
+		>
+			<span class="truncate" safe>
+				{label}
+			</span>
+		</button>,
+	);
+}
+
+function workspaceLabel(path: string): string {
+	const home = Deno.env.get("HOME");
+	const display =
+		home && path.startsWith(`${home}/`) ? `~/${path.slice(home.length + 1)}` : path;
+	const parts = display.split("/").filter(Boolean);
+	if (display === "~" || parts.length <= 2) {
+		return display;
+	}
+	return `${parts.at(-2)}/${parts.at(-1)}`;
+}
+
 export function renderModelPicker(state: AppState): string {
 	const current = state.models.find(
 		(model) => `${model.provider}/${model.id}` === state.currentModel,

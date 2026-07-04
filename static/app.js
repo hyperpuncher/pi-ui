@@ -10,6 +10,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	focusComposer();
 	bindComposerAutosize();
 	bindSlashPicker();
+	bindFilePicker();
 	bindModelSearch();
 	bindTranscriptAutoscroll();
 	bindCommandPaletteFocus();
@@ -23,6 +24,7 @@ function bindDesktopCommands() {
 			"resume-session": "pi-resume-session",
 			"command-palette": "pi-command-palette",
 			"switch-model": "pi-switch-model",
+			"change-workspace": "pi-change-workspace",
 		}[command];
 
 		if (eventName) {
@@ -53,6 +55,31 @@ function bindDesktopCommands() {
 	globalThis.__piUiCloseSlashPicker = () => closeSlashPicker();
 
 	globalThis.__piUiOpenModelSelector = () => openModelSelector();
+
+	globalThis.__piUiPromptWorkspace = () => promptWorkspace();
+
+	globalThis.__piUiFileOpen = () => isFilePickerOpen();
+
+	globalThis.__piUiFocusFileRow = (direction) => focusFileRow(direction);
+
+	globalThis.__piUiRunFirstFile = () => runBestFileRow();
+
+	globalThis.__piUiInsertFilePrefix = () => insertFilePrefix();
+}
+
+function promptWorkspace() {
+	const current = document.body?.dataset.workspacePath ?? "";
+	const next = window.prompt("Workspace folder", current);
+	if (!next?.trim()) {
+		return;
+	}
+	document.body.dataset.workspacePath = next.trim();
+	globalThis.Datastar?.signals?.set?.("workspacePath", next.trim());
+	fetch("/workspace/open", {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ workspacePath: next.trim() }),
+	}).catch(() => undefined);
 }
 
 function bindSystemThemeSync() {
@@ -227,6 +254,259 @@ function focusFirstVisibleModelRow() {
 	}
 }
 
+function bindFilePicker() {
+	document.addEventListener("keydown", (event) => {
+		if (event.key === "Escape" && isFilePickerOpen()) {
+			event.preventDefault();
+			closeFilePicker({ suppressUntilInput: true });
+			focusComposerEnd();
+			return;
+		}
+
+		if (document.activeElement?.closest?.("[data-file-row]")) {
+			if (event.key === "Backspace") {
+				event.preventDefault();
+				focusComposerEnd();
+				deleteComposerCharBeforeCursor();
+				return;
+			}
+			if (
+				event.key.length === 1 &&
+				!event.ctrlKey &&
+				!event.metaKey &&
+				!event.altKey
+			) {
+				event.preventDefault();
+				focusComposerEnd();
+				insertComposerText(event.key);
+			}
+		}
+	});
+
+	const syncFromComposer = (event) => {
+		if (
+			event.target instanceof HTMLTextAreaElement &&
+			event.target.id === "composer-input"
+		) {
+			if (filePickerSuppressUntilInput && event.type === "keyup") {
+				return;
+			}
+			if (event.type === "input") {
+				filePickerSuppressUntilInput = false;
+			}
+			updateFilePicker(event.target);
+		}
+	};
+	document.addEventListener("input", syncFromComposer);
+	document.addEventListener("keyup", syncFromComposer);
+	document.addEventListener("click", (event) => {
+		if (
+			event.target instanceof HTMLTextAreaElement &&
+			event.target.id === "composer-input"
+		) {
+			updateFilePicker(event.target);
+		}
+	});
+	document.addEventListener("pointerdown", (event) => {
+		const target = event.target;
+		if (!(target instanceof Node)) return;
+		const composer = document.getElementById("composer");
+		if (composer?.contains(target)) return;
+		closeFilePicker();
+	});
+}
+
+let filePickerAbort;
+let activeFilePrefix;
+let filePickerSuppressUntilInput = false;
+
+function updateFilePicker(input) {
+	if (filePickerSuppressUntilInput) {
+		return;
+	}
+	const match = extractFilePrefix(
+		input.value,
+		input.selectionStart ?? input.value.length,
+	);
+	if (!match) {
+		closeFilePicker();
+		return;
+	}
+	activeFilePrefix = match;
+	filePickerAbort?.abort();
+	filePickerAbort = new AbortController();
+	fetch(`/files/search?q=${encodeURIComponent(match.query)}`, {
+		signal: filePickerAbort.signal,
+	})
+		.then((response) => response.json())
+		.then((items) => {
+			if (activeFilePrefix !== match) return;
+			renderFileRows(Array.isArray(items) ? items : []);
+		})
+		.catch(() => undefined);
+}
+
+function extractFilePrefix(value, cursor) {
+	const before = value.slice(0, cursor);
+	const delimiter = Math.max(
+		before.lastIndexOf(" "),
+		before.lastIndexOf("\n"),
+		before.lastIndexOf("\t"),
+		before.lastIndexOf("="),
+	);
+	const start = delimiter + 1;
+	const token = before.slice(start);
+	if (!token.startsWith("@")) return undefined;
+	if (token.includes(" ")) return undefined;
+	return { start, end: cursor, query: token.slice(1) };
+}
+
+function renderFileRows(items) {
+	const popover = document.getElementById("composer-file-popover");
+	const list = document.getElementById("file-picker-list");
+	if (!(popover instanceof HTMLElement) || !(list instanceof HTMLElement)) return;
+	list.replaceChildren();
+	if (items.length === 0) {
+		const row = document.createElement("li");
+		row.className = "text-muted-foreground px-3 py-4 text-center text-sm";
+		row.textContent = "No files found.";
+		list.append(row);
+	} else {
+		for (const item of [...items].reverse()) {
+			list.append(createFileRow(item));
+		}
+	}
+	popover.style.display = "";
+	list.scrollTop = list.scrollHeight;
+}
+
+function createFileRow(item) {
+	const row = document.createElement("li");
+	row.dataset.fileRow = "";
+	const button = document.createElement("button");
+	button.type = "button";
+	button.className =
+		"hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none";
+	button.addEventListener("click", () => applyFileCompletion(item.value));
+	const text = document.createElement("span");
+	text.className = "min-w-0";
+	const label = document.createElement("span");
+	label.className = "block truncate font-medium";
+	label.textContent = item.label ?? item.value;
+	const description = document.createElement("span");
+	description.className = "text-muted-foreground block truncate text-xs";
+	description.textContent = item.description ?? item.value;
+	text.append(label, description);
+	const badge = document.createElement("span");
+	badge.className = "badge";
+	badge.dataset.variant = "secondary";
+	badge.textContent = item.isDirectory ? "dir" : "file";
+	button.append(text, badge);
+	row.append(button);
+	return row;
+}
+
+function applyFileCompletion(value) {
+	const input = document.getElementById("composer-input");
+	if (!(input instanceof HTMLTextAreaElement) || !activeFilePrefix) return;
+	const suffix = value.endsWith("/") ? "" : " ";
+	input.value = `${input.value.slice(0, activeFilePrefix.start)}@${value}${suffix}${input.value.slice(activeFilePrefix.end)}`;
+	const cursor = activeFilePrefix.start + value.length + 1 + suffix.length;
+	input.selectionStart = cursor;
+	input.selectionEnd = cursor;
+	input.dispatchEvent(new Event("input", { bubbles: true }));
+	input.focus();
+	if (value.endsWith("/")) {
+		updateFilePicker(input);
+	} else {
+		closeFilePicker();
+	}
+}
+
+function insertComposerText(text) {
+	const input = document.getElementById("composer-input");
+	if (!(input instanceof HTMLTextAreaElement)) return;
+	filePickerSuppressUntilInput = false;
+	const start = input.selectionStart ?? input.value.length;
+	const end = input.selectionEnd ?? start;
+	input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
+	const cursor = start + text.length;
+	input.selectionStart = cursor;
+	input.selectionEnd = cursor;
+	input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function deleteComposerCharBeforeCursor() {
+	const input = document.getElementById("composer-input");
+	if (!(input instanceof HTMLTextAreaElement)) return;
+	filePickerSuppressUntilInput = false;
+	const start = input.selectionStart ?? input.value.length;
+	const end = input.selectionEnd ?? start;
+	if (start !== end) {
+		input.value = `${input.value.slice(0, start)}${input.value.slice(end)}`;
+		input.selectionStart = start;
+		input.selectionEnd = start;
+	} else if (start > 0) {
+		input.value = `${input.value.slice(0, start - 1)}${input.value.slice(start)}`;
+		input.selectionStart = start - 1;
+		input.selectionEnd = start - 1;
+	}
+	input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function insertFilePrefix() {
+	const input = document.getElementById("composer-input");
+	if (!(input instanceof HTMLTextAreaElement)) return;
+	filePickerSuppressUntilInput = false;
+	const cursor = input.selectionStart ?? input.value.length;
+	const needsSpace = cursor > 0 && !/\s/.test(input.value[cursor - 1] ?? "");
+	const insert = `${needsSpace ? " " : ""}@`;
+	input.value = `${input.value.slice(0, cursor)}${insert}${input.value.slice(input.selectionEnd ?? cursor)}`;
+	const nextCursor = cursor + insert.length;
+	input.selectionStart = nextCursor;
+	input.selectionEnd = nextCursor;
+	input.dispatchEvent(new Event("input", { bubbles: true }));
+	input.focus();
+	updateFilePicker(input);
+}
+
+function closeFilePicker(options = {}) {
+	const popover = document.getElementById("composer-file-popover");
+	if (popover instanceof HTMLElement) {
+		popover.style.display = "none";
+	}
+	if (options.suppressUntilInput) {
+		filePickerSuppressUntilInput = true;
+	}
+	activeFilePrefix = undefined;
+	filePickerAbort?.abort();
+}
+
+function isFilePickerOpen() {
+	const popover = document.getElementById("composer-file-popover");
+	return popover instanceof HTMLElement && popover.style.display !== "none";
+}
+
+function runBestFileRow() {
+	const rows = visibleRows("[data-file-row]");
+	rows.at(-1)?.querySelector("button")?.click();
+}
+
+function focusFileRow(direction) {
+	const rows = visibleRows("[data-file-row]");
+	if (rows.length === 0) {
+		return;
+	}
+
+	const activeRow = document.activeElement?.closest?.("[data-file-row]");
+	const activeIndex = rows.findIndex((row) => row === activeRow);
+	const nextIndex =
+		activeIndex === -1
+			? rows.length - 1
+			: (activeIndex + direction + rows.length) % rows.length;
+	rows[nextIndex]?.querySelector("button")?.focus();
+}
+
 function bindComposerAutosize() {
 	const resize = () => {
 		const input = document.getElementById("composer-input");
@@ -313,6 +593,31 @@ function bindSessionKeyboard() {
 		) {
 			event.preventDefault();
 			document.activeElement.click();
+			return;
+		}
+
+		if (
+			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
+			document.activeElement?.closest?.("[data-file-row]")
+		) {
+			event.preventDefault();
+			focusFileRow(event.key === "ArrowDown" ? 1 : -1);
+			return;
+		}
+
+		if (
+			event.key === "Enter" &&
+			document.activeElement?.closest?.("[data-file-row]")
+		) {
+			event.preventDefault();
+			document.activeElement.click();
+			return;
+		}
+
+		if (event.key === "Escape" && isSlashPickerOpen()) {
+			event.preventDefault();
+			closeSlashPicker();
+			focusComposerEnd();
 			return;
 		}
 
