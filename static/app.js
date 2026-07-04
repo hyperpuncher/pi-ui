@@ -3,6 +3,7 @@ const transcriptState = {
 };
 
 bindReservedShortcutPrevention();
+bindDesktopCommands();
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusComposer();
@@ -10,6 +11,20 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindTranscriptAutoscroll();
 	bindCommandPaletteFocus();
 });
+
+function bindDesktopCommands() {
+	globalThis.__piUiCommand = (command) => {
+		const eventName = {
+			"new-chat": "pi-new-chat",
+			"command-palette": "pi-command-palette",
+			"switch-model": "pi-switch-model",
+		}[command];
+
+		if (eventName) {
+			window.dispatchEvent(new CustomEvent(eventName));
+		}
+	};
+}
 
 function bindReservedShortcutPrevention() {
 	window.addEventListener(
@@ -19,7 +34,7 @@ function bindReservedShortcutPrevention() {
 				return;
 			}
 
-			const appShortcutKeys = new Set(["k", "l", "m", "n"]);
+			const appShortcutKeys = new Set(["k", "l", "m", "o"]);
 			if (appShortcutKeys.has(event.key.toLowerCase())) {
 				event.preventDefault();
 			}

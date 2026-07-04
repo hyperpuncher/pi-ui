@@ -1,3 +1,4 @@
+import { command } from "../commands/registry.ts";
 import type { AppState } from "../state/app-state.ts";
 import { renderModelPicker, renderTopbar, renderTranscript } from "./fragments.tsx";
 
@@ -6,6 +7,8 @@ function sync(html: JSX.Element): string {
 }
 
 export function renderPage(state: AppState): string {
+	const newChat = command("new-chat");
+	const switchModel = command("switch-model");
 	const initialSignals = JSON.stringify({
 		composer: "",
 		commandOpen: false,
@@ -32,7 +35,7 @@ export function renderPage(state: AppState): string {
 						evt.preventDefault();
 						$commandOpen = !$commandOpen;
 					}
-					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'n') {
+					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'o') {
 						evt.preventDefault();
 						@post('/sessions/new');
 					}
@@ -45,6 +48,12 @@ export function renderPage(state: AppState): string {
 						document.getElementById('model-select')?.focus();
 					}
 					if (evt.key === 'Escape') $commandOpen = false"
+					data-on:pi-new-chat__window="@post('/sessions/new')"
+					data-on:pi-command-palette__window="$commandOpen = true"
+					data-on:pi-switch-model__window="
+						$commandOpen = false;
+						document.getElementById('model-select')?.focus();
+					"
 				>
 					<div
 						id="app"
@@ -65,7 +74,7 @@ export function renderPage(state: AppState): string {
 								aria-label="Message"
 								data-bind:composer
 								data-indicator:_prompting
-								data-on:keydown="if ((evt.ctrlKey || evt.metaKey) && evt.key === 'Enter') {
+								data-on:keydown="if (evt.key === 'Enter' && !evt.shiftKey) {
 									evt.preventDefault();
 									@post('/prompt', { filterSignals: { include: /^composer$/ } });
 								}"
@@ -173,7 +182,8 @@ export function renderPage(state: AppState): string {
 										type="button"
 										data-on:click="@post('/sessions/new')"
 									>
-										New chat <kbd class="kbd">Ctrl N</kbd>
+										{newChat.title}{" "}
+										<kbd class="kbd">{newChat.shortcut.display}</kbd>
 									</button>
 								</li>
 								<li>
@@ -185,7 +195,10 @@ export function renderPage(state: AppState): string {
 											document.getElementById('model-select')?.focus();
 										"
 									>
-										Switch model <kbd class="kbd">Ctrl L/M</kbd>
+										{switchModel.title}{" "}
+										<kbd class="kbd">
+											{switchModel.shortcut.display}
+										</kbd>
 									</button>
 								</li>
 								<li>

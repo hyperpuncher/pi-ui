@@ -23,6 +23,7 @@ This is not an IDE first. Coding is a killer workflow, but the app should feel u
 - CEF desktop task added.
 - Datastar SSE patch helper added.
 - Keyboard-first shell started with command palette, new chat, and model picker shortcuts.
+- Initial app command registry added for shared shortcut/menu metadata.
 - Pi SDK npm import smoke test passes in Deno.
 - `AgentHost` now creates a real pi `AgentSessionRuntime`.
 - Prompt route is wired to `session.prompt()` with preflight acceptance.
@@ -108,9 +109,10 @@ Default shortcuts:
 
 - `Ctrl/Cmd+K`: command palette
 - `Ctrl/Cmd+L`: model picker
-- `Ctrl/Cmd+N`: new chat/session
+- `Ctrl/Cmd+O`: new chat/session
 - `Ctrl/Cmd+R`: resume/search sessions
-- `Ctrl/Cmd+Enter`: send
+- `Enter`: send
+- `Shift+Enter`: newline
 - `Esc`: close modal / blur / normal mode
 - `/`: slash command picker
 - `@`: file/context picker
