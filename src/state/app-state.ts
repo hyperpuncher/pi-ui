@@ -14,7 +14,7 @@ import {
 
 export type AppMessage = {
 	id: string;
-	role: "user" | "assistant" | "system" | "tool" | "thought";
+	role: "user" | "assistant" | "system" | "tool" | "thought" | "compaction";
 	text: string;
 	timestamp: Date;
 	title?: string;
@@ -111,7 +111,8 @@ export class AppState {
 			timestamp: new Date(),
 			...options,
 			renderedHtml:
-				(role === "assistant" || role === "thought") && text.trim()
+				(role === "assistant" || role === "thought" || role === "compaction") &&
+				text.trim()
 					? renderMarkdownStreaming(text)
 					: undefined,
 		});
@@ -203,7 +204,9 @@ export class AppState {
 			this.messageSeq += 1;
 			const id = `m-${this.messageSeq}`;
 			const shouldRenderStreaming =
-				(message.role === "assistant" || message.role === "thought") &&
+				(message.role === "assistant" ||
+					message.role === "thought" ||
+					message.role === "compaction") &&
 				message.text.trim() &&
 				index >= finalizeFrom;
 			return {
@@ -220,7 +223,9 @@ export class AppState {
 		for (const [index, message] of this.messages.entries()) {
 			if (
 				index >= finalizeFrom &&
-				(message.role === "assistant" || message.role === "thought") &&
+				(message.role === "assistant" ||
+					message.role === "thought" ||
+					message.role === "compaction") &&
 				message.text.trim()
 			) {
 				void this.renderAssistantMarkdown(message.id);
@@ -283,7 +288,9 @@ export class AppState {
 		const message = this.messages.find((item) => item.id === id);
 		if (
 			!message ||
-			(message.role !== "assistant" && message.role !== "thought") ||
+			(message.role !== "assistant" &&
+				message.role !== "thought" &&
+				message.role !== "compaction") ||
 			!message.text.trim()
 		) {
 			return;

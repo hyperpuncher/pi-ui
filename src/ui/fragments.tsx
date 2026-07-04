@@ -222,6 +222,38 @@ function renderMessage(message: AppMessage): string {
 		);
 	}
 
+	if (message.role === "compaction") {
+		return sync(
+			<article
+				class="bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-sm p-3 text-sm"
+				data-message-id={message.id}
+			>
+				<details>
+					<summary class="cursor-pointer list-none">
+						<span class="font-semibold" safe>
+							{message.title ?? "[compaction]"}
+						</span>
+						{message.meta && (
+							<span class="ml-3" safe>
+								{message.meta}
+							</span>
+						)}
+						<span class="ml-2 text-xs">click to expand</span>
+					</summary>
+					<div class="[&_code]:bg-muted mt-3 [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_ul]:list-disc [&_ul]:pl-6">
+						{message.renderedHtml ? (
+							<div>{message.renderedHtml}</div>
+						) : (
+							<p class="m-0 whitespace-pre-wrap" safe>
+								{message.text}
+							</p>
+						)}
+					</div>
+				</details>
+			</article>,
+		);
+	}
+
 	const title = message.title ?? "Tool";
 	const hasToolBody = message.text.trim().length > 0;
 	const stateClass =

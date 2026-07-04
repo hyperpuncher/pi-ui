@@ -313,6 +313,9 @@ export class AgentHost {
 				this.state.setStatus(`Compacting (${event.reason})`);
 				break;
 			case "compaction_end":
+				if (event.result) {
+					this.loadCurrentSessionMessages();
+				}
 				this.state.setStatus(event.errorMessage ?? "Compaction complete");
 				break;
 		}
@@ -384,7 +387,15 @@ export class AgentHost {
 			];
 		}
 		if (entry.type === "compaction") {
-			return [{ role: "system", text: entry.summary, timestamp }];
+			return [
+				{
+					role: "compaction",
+					text: entry.summary,
+					timestamp,
+					title: "[compaction]",
+					meta: `Compacted from ${entry.tokensBefore.toLocaleString()} tokens`,
+				},
+			];
 		}
 		if (entry.type === "branch_summary") {
 			return [{ role: "system", text: entry.summary, timestamp }];
@@ -463,7 +474,15 @@ export class AgentHost {
 			case "branchSummary":
 				return [{ role: "system", text: message.summary, timestamp }];
 			case "compactionSummary":
-				return [{ role: "system", text: message.summary, timestamp }];
+				return [
+					{
+						role: "compaction",
+						text: message.summary,
+						timestamp,
+						title: "[compaction]",
+						meta: `Compacted from ${message.tokensBefore.toLocaleString()} tokens`,
+					},
+				];
 		}
 	}
 }
