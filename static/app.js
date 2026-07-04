@@ -10,6 +10,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	focusComposer();
 	bindComposerAutosize();
 	bindSlashPicker();
+	bindModelSearch();
 	bindTranscriptAutoscroll();
 	bindCommandPaletteFocus();
 	bindSessionKeyboard();
@@ -48,6 +49,10 @@ function bindDesktopCommands() {
 	globalThis.__piUiSlashOpen = () => isSlashPickerOpen();
 
 	globalThis.__piUiUpdateSlashPicker = (value) => updateSlashPicker(value ?? "");
+
+	globalThis.__piUiCloseSlashPicker = () => closeSlashPicker();
+
+	globalThis.__piUiOpenModelSelector = () => openModelSelector();
 }
 
 function bindSystemThemeSync() {
@@ -79,7 +84,7 @@ function bindReservedShortcutPrevention() {
 				return;
 			}
 
-			const appShortcutKeys = new Set(["k", "l", "m", "o", "r"]);
+			const appShortcutKeys = new Set(["k", "l", "o", "r"]);
 			if (appShortcutKeys.has(event.key.toLowerCase())) {
 				event.preventDefault();
 			}
@@ -116,13 +121,22 @@ function focusComposerEnd() {
 }
 
 function bindSlashPicker() {
-	document.addEventListener("input", (event) => {
+	const syncFromComposer = (event) => {
 		if (
 			event.target instanceof HTMLTextAreaElement &&
 			event.target.id === "composer-input"
 		) {
 			updateSlashPicker(event.target.value);
 		}
+	};
+	document.addEventListener("input", syncFromComposer);
+	document.addEventListener("keyup", syncFromComposer);
+	document.addEventListener("pointerdown", (event) => {
+		const target = event.target;
+		if (!(target instanceof Node)) return;
+		const composer = document.getElementById("composer");
+		if (composer?.contains(target)) return;
+		closeSlashPicker();
 	});
 	updateSlashPicker("");
 }
@@ -140,9 +154,77 @@ function updateSlashPicker(value) {
 	}
 }
 
+function closeSlashPicker() {
+	const popover = document.getElementById("composer-slash-popover");
+	if (popover instanceof HTMLElement) {
+		popover.style.display = "none";
+	}
+}
+
 function isSlashPickerOpen() {
 	const popover = document.getElementById("composer-slash-popover");
 	return popover instanceof HTMLElement && popover.style.display !== "none";
+}
+
+function openModelSelector() {
+	const trigger = document.getElementById("model-select-trigger");
+	if (trigger instanceof HTMLButtonElement) {
+		if (trigger.getAttribute("aria-expanded") !== "true") {
+			trigger.click();
+		}
+		setTimeout(() => document.getElementById("model-search-input")?.focus(), 0);
+	}
+}
+
+function bindModelSearch() {
+	document.addEventListener("input", (event) => {
+		if (
+			event.target instanceof HTMLInputElement &&
+			event.target.id === "model-search-input"
+		) {
+			filterModelRows(event.target.value);
+		}
+	});
+
+	document.addEventListener("keydown", (event) => {
+		if (
+			!(event.target instanceof HTMLInputElement) ||
+			event.target.id !== "model-search-input"
+		) {
+			return;
+		}
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			focusFirstVisibleModelRow();
+		}
+	});
+}
+
+function filterModelRows(query) {
+	const normalized = query.trim().toLowerCase();
+	for (const row of document.querySelectorAll("[data-model-row]")) {
+		if (!(row instanceof HTMLElement)) continue;
+		const haystack = row.dataset.modelHaystack ?? "";
+		row.style.display =
+			!normalized || fuzzyIncludes(haystack, normalized) ? "" : "none";
+	}
+}
+
+function fuzzyIncludes(haystack, needle) {
+	let index = 0;
+	for (const char of needle) {
+		index = haystack.indexOf(char, index);
+		if (index === -1) return false;
+		index += 1;
+	}
+	return true;
+}
+
+function focusFirstVisibleModelRow() {
+	const row = visibleRows("[data-model-row]")[0];
+	if (row instanceof HTMLElement) {
+		row.focus();
+	}
 }
 
 function bindComposerAutosize() {

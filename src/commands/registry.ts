@@ -37,8 +37,8 @@ export const appCommands: AppCommand[] = [
 	{
 		id: "switch-model",
 		title: "Switch model",
-		description: "Focus the model picker.",
-		shortcut: { display: "Ctrl M", native: "CmdOrCtrl+M", keys: ["m"] },
+		description: "Open the model picker.",
+		shortcut: { display: "Ctrl L", native: "CmdOrCtrl+L", keys: ["l"] },
 	},
 ];
 

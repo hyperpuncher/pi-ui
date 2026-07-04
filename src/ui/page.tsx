@@ -70,14 +70,11 @@ export function renderPage(state: AppState): string {
 						$commandQuery = '';
 						@post('/sessions/list');
 					}
-					if (
-						(evt.ctrlKey || evt.metaKey) &&
-						(evt.key.toLowerCase() === 'l' || evt.key.toLowerCase() === 'm')
-					) {
+					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
 						evt.preventDefault();
 						$commandOpen = false;
 						$commandQuery = '';
-						document.getElementById('model-select-trigger')?.focus();
+						globalThis.__piUiOpenModelSelector?.();
 					}
 					if (evt.key === 'Escape') {
 						$commandOpen = false;
@@ -99,7 +96,7 @@ export function renderPage(state: AppState): string {
 					data-on:pi-switch-model__window="
 						$commandOpen = false;
 						$commandQuery = '';
-						document.getElementById('model-select-trigger')?.focus();
+						globalThis.__piUiOpenModelSelector?.();
 					"
 				>
 					<div
@@ -133,6 +130,7 @@ export function renderPage(state: AppState): string {
 								}
 								if (evt.key === 'Enter' && !evt.shiftKey) {
 									evt.preventDefault();
+									globalThis.__piUiCloseSlashPicker?.();
 									@post('/prompt', { filterSignals: { include: /^composer$/ } });
 								}"
 							></textarea>
@@ -203,7 +201,10 @@ export function renderPage(state: AppState): string {
 										data-size="icon"
 										type="button"
 										data-indicator:_prompting
-										data-on:click="@post('/prompt', { filterSignals: { include: /^composer$/ } })"
+										data-on:click="
+											globalThis.__piUiCloseSlashPicker?.();
+											@post('/prompt', { filterSignals: { include: /^composer$/ } });
+										"
 										aria-label="Send"
 									>
 										↑

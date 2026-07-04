@@ -58,6 +58,16 @@ export function renderModelPicker(state: AppState): string {
 					data-side="top"
 					aria-hidden="true"
 				>
+					<div class="border-b p-2">
+						<input
+							id="model-search-input"
+							class="input h-8 w-full text-sm"
+							type="search"
+							placeholder="Search models..."
+							autocomplete="off"
+							spellcheck="false"
+						/>
+					</div>
 					<div
 						role="listbox"
 						id="model-select-listbox"
@@ -68,9 +78,13 @@ export function renderModelPicker(state: AppState): string {
 						{state.models.map((model) => {
 							const value = `${model.provider}/${model.id}`;
 							const configured = model.configured ? "" : " • no auth";
+							const haystack =
+								`${model.id} ${model.provider} ${model.name}`.toLowerCase();
 							return (
 								<div
 									role="option"
+									data-model-row
+									data-model-haystack={haystack}
 									data-value={value}
 									data-label={modelTriggerLabel(model)}
 									aria-selected={
