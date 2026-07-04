@@ -4,6 +4,7 @@
     "npm:@earendil-works/pi-coding-agent@0.80.3": "0.80.3_zod@4.4.3",
     "npm:@kitajs/html@5.0.0-next.1": "5.0.0-next.1",
     "npm:@kitajs/ts-html-plugin@5.0.0-next.1": "5.0.0-next.1_@kitajs+html@5.0.0-next.1_typescript@6.0.2",
+    "npm:@starfederation/datastar-sdk@1.0.0": "1.0.0",
     "npm:@tailwindcss/cli@*": "4.3.2",
     "npm:@tailwindcss/cli@^4.3.2": "4.3.2",
     "npm:basecoat-css@^1.0.1": "1.0.1",
@@ -872,6 +873,9 @@
         "tslib"
       ]
     },
+    "@starfederation/datastar-sdk@1.0.0": {
+      "integrity": "sha512-VT1co9LeRLJ3wynffvkxXLJaCh4PHt1YUhH3zCQYhjTuaeWjozNjQQrg+BUbkDMO58mSgeQp9pgOXRWciy0y6g=="
+    },
     "@tailwindcss/cli@4.3.2": {
       "integrity": "sha512-Fzt+HrIZHDlkRYKdLMBeufaroaPvwCBG70sMLdmurdeadNMO/LxbmT8Sbb+P83ep0iAlAImettb7Y+rO+37rXw==",
       "dependencies": [
@@ -1596,6 +1600,7 @@
     "dependencies": [
       "npm:@kitajs/html@5.0.0-next.1",
       "npm:@kitajs/ts-html-plugin@5.0.0-next.1",
+      "npm:@starfederation/datastar-sdk@1.0.0",
       "npm:@tailwindcss/cli@^4.3.2",
       "npm:basecoat-css@^1.0.1",
       "npm:tailwindcss@^4.3.2"

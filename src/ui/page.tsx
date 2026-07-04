@@ -6,6 +6,13 @@ function sync(html: JSX.Element): string {
 }
 
 export function renderPage(state: AppState): string {
+	const initialSignals = JSON.stringify({
+		composer: "",
+		commandOpen: false,
+		connected: false,
+		model: state.currentModel ?? "",
+	});
+
 	return (
 		"<!doctype html>" +
 		sync(
@@ -16,19 +23,11 @@ export function renderPage(state: AppState): string {
 					<title>pi-ui</title>
 					<link rel="stylesheet" href="/app.css" />
 					<script type="module" src="/app.js"></script>
-					<script
-						type="module"
-						src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"
-					></script>
+					<script type="module" src="/datastar.js"></script>
 				</head>
 				<body
 					class="h-full"
-					data-signals="{
-						composer: '',
-						commandOpen: false,
-						connected: false,
-						model: '',
-					}"
+					data-signals={initialSignals}
 					data-on:keydown__window="if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
 						evt.preventDefault();
 						$commandOpen = !$commandOpen;
@@ -52,6 +51,7 @@ export function renderPage(state: AppState): string {
 								placeholder="Ask pi anything..."
 								aria-label="Message"
 								data-bind:composer
+								data-indicator:_prompting
 								data-on:keydown="if ((evt.ctrlKey || evt.metaKey) && evt.key === 'Enter') {
 									evt.preventDefault();
 									@post('/prompt', { filterSignals: { include: /^composer$/ } });
@@ -94,7 +94,7 @@ export function renderPage(state: AppState): string {
 								<div class="flex min-w-0 items-center justify-end gap-2">
 									<span
 										class="text-muted-foreground text-sm"
-										data-text="$connected ? 'connected' : 'connecting…'"
+										data-text="$_prompting ? 'sending…' : $connected ? 'connected' : 'connecting…'"
 									>
 										connecting…
 									</span>
@@ -111,6 +111,7 @@ export function renderPage(state: AppState): string {
 										class="btn"
 										data-size="icon"
 										type="button"
+										data-indicator:_prompting
 										data-on:click="@post('/prompt', { filterSignals: { include: /^composer$/ } })"
 										aria-label="Send"
 									>

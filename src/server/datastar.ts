@@ -1,19 +1,35 @@
-export function sseHeaders(): Headers {
-	return new Headers({
-		"content-type": "text/event-stream; charset=utf-8",
-		"cache-control": "no-cache, no-transform",
-		connection: "keep-alive",
+import { ServerSentEventGenerator } from "@starfederation/datastar-sdk/web";
+
+export type DatastarSignals = Record<string, unknown>;
+export type DatastarStream = ServerSentEventGenerator;
+
+export function datastarStream(
+	onStart: (stream: DatastarStream) => Promise<void> | void,
+	options?: Parameters<typeof ServerSentEventGenerator.stream>[1],
+): Response {
+	return ServerSentEventGenerator.stream(onStart, options);
+}
+
+export function signalsResponse(signals: DatastarSignals): Response {
+	return datastarStream((stream) => {
+		stream.patchSignals(JSON.stringify(signals));
 	});
 }
 
-export function patchElements(elements: string): string {
-	return datastarEvent("datastar-patch-elements", `elements ${elements}`);
+export async function readSignals(request: Request): Promise<DatastarSignals> {
+	const result = await ServerSentEventGenerator.readSignals(request);
+	if (!result.success) {
+		return {};
+	}
+	return isRecord(result.signals.datastar) ? result.signals.datastar : result.signals;
 }
 
-export function patchSignals(signals: Record<string, unknown>): string {
-	return datastarEvent("datastar-patch-signals", `signals ${JSON.stringify(signals)}`);
+export async function readSignalString(request: Request, key: string): Promise<string> {
+	const signals = await readSignals(request);
+	const value = signals[key];
+	return typeof value === "string" ? value : String(value ?? "");
 }
 
-function datastarEvent(event: string, data: string): string {
-	return `event: ${event}\ndata: ${data.replaceAll("\n", "\ndata: ")}\n\n`;
+function isRecord(value: unknown): value is DatastarSignals {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

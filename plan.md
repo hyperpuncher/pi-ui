@@ -35,13 +35,15 @@ This is not an IDE first. Coding is a killer workflow, but the app should feel u
 - New chat starts a fresh pi session via `runtime.newSession()`.
 - UI rendering migrated to Kita JSX v5 (`@kitajs/html@next`).
 - Datastar interactions now avoid forms for prompt/model writes and use signals + `@post()`.
+- Datastar TypeScript SDK is used for SSE streams, signal reads, and patch responses.
+- Datastar browser bundle is self-hosted from `static/vendor/datastar.js` for desktop/offline use.
 - Custom CSS reduced to Tailwind/Basecoat imports; layout lives in TSX classes.
 
 ## Stack
 
 - Runtime/windowing: `deno desktop`
 - Web engine: CEF backend by default
-- Interactivity: Datastar
+- Interactivity: Datastar + `@starfederation/datastar-sdk`
 - Styling/components: Tailwind CSS + Basecoat Nova + Kita JSX components
 - Agent runtime: `@earendil-works/pi-coding-agent` SDK
 - Deno tasks:
@@ -72,7 +74,7 @@ Deno desktop process
 
 - `main.ts`: starts `Deno.serve()`.
 - `server/app.ts`: routes and static files.
-- `server/datastar.ts`: Datastar SSE helpers.
+- `server/datastar.ts`: thin Datastar SDK wrapper for streams, signal reads, and write responses.
 - `agent/host.ts`: pi SDK runtime wrapper and event reducer.
 - `agent/sdk-smoke.ts`: pi SDK import smoke test.
 - `state/app-state.ts`: UI state and SSE patch broadcast.

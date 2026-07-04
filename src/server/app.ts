@@ -2,11 +2,18 @@ import { AgentHost } from "../agent/host.ts";
 import { smokePiSdkImport } from "../agent/sdk-smoke.ts";
 import { AppState } from "../state/app-state.ts";
 import { renderPage } from "../ui/page.tsx";
-import { sseHeaders } from "./datastar.ts";
+import { readSignalString, signalsResponse } from "./datastar.ts";
 
 const staticFiles = new Map([
 	["/app.css", { path: "static/app.css", contentType: "text/css; charset=utf-8" }],
 	["/app.js", { path: "static/app.js", contentType: "text/javascript; charset=utf-8" }],
+	[
+		"/datastar.js",
+		{
+			path: "static/vendor/datastar.js",
+			contentType: "text/javascript; charset=utf-8",
+		},
+	],
 ]);
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
@@ -29,35 +36,31 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			}
 
 			if (request.method === "GET" && url.pathname === "/stream") {
-				return new Response(state.createStream(request.signal), {
-					headers: sseHeaders(),
-				});
+				return state.createStream(request.signal);
 			}
 
 			if (request.method === "POST" && url.pathname === "/prompt") {
-				const text = await readComposer(request);
-				const accepted = await host?.prompt(text);
-				return sseResponse(
-					`event: datastar-patch-signals\ndata: signals {"composer":""${accepted === false ? ',"lastPromptAccepted":false' : ""}}\n\n`,
+				const text = await readSignalString(request, "composer");
+				const accepted = host ? await host.prompt(text) : false;
+				return signalsResponse(
+					accepted ? { composer: "" } : { lastPromptAccepted: false },
 				);
 			}
 
 			if (request.method === "POST" && url.pathname === "/abort") {
 				await host?.abort();
-				return sseResponse("event: datastar-patch-signals\ndata: signals {}\n\n");
+				return signalsResponse({});
 			}
 
 			if (request.method === "POST" && url.pathname === "/sessions/new") {
 				await host?.newSession();
-				return sseResponse(
-					'event: datastar-patch-signals\ndata: signals {"commandOpen":false}\n\n',
-				);
+				return signalsResponse({ commandOpen: false });
 			}
 
 			if (request.method === "POST" && url.pathname === "/model") {
-				const modelRef = await readFormValue(request, "model");
+				const modelRef = await readSignalString(request, "model");
 				await host?.setModel(modelRef);
-				return sseResponse("event: datastar-patch-signals\ndata: signals {}\n\n");
+				return signalsResponse({ model: state.currentModel ?? "" });
 			}
 
 			if (request.method === "GET" && url.pathname === "/debug/pi-sdk") {
@@ -80,40 +83,10 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	};
 }
 
-async function readFormValue(request: Request, name: string): Promise<string> {
-	const contentType = request.headers.get("content-type") ?? "";
-	if (contentType.includes("application/json")) {
-		const body = await request.json().catch(() => ({}));
-		return String(body?.datastar?.[name] ?? body?.[name] ?? "");
-	}
-	if (contentType.includes("form")) {
-		const form = await request.formData();
-		return String(form.get(name) ?? "");
-	}
-	return "";
-}
-
-async function readComposer(request: Request): Promise<string> {
-	const contentType = request.headers.get("content-type") ?? "";
-	if (contentType.includes("application/json")) {
-		const body = await request.json().catch(() => ({}));
-		return String(body?.datastar?.composer ?? body?.composer ?? "");
-	}
-	if (contentType.includes("form")) {
-		const form = await request.formData();
-		return String(form.get("composer") ?? "");
-	}
-	return await request.text();
-}
-
 function html(body: string): Response {
 	return new Response(body, {
 		headers: { "content-type": "text/html; charset=utf-8" },
 	});
-}
-
-function sseResponse(body: string): Response {
-	return new Response(body, { headers: sseHeaders() });
 }
 
 function notFound(): Response {

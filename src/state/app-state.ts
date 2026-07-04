@@ -1,5 +1,6 @@
-import { patchElements, patchSignals } from "../server/datastar.ts";
-import { renderTopbar, renderTranscript } from "../ui/fragments.tsx";
+import type { DatastarStream } from "../server/datastar.ts";
+import { datastarStream } from "../server/datastar.ts";
+import { renderModelPicker, renderTopbar, renderTranscript } from "../ui/fragments.tsx";
 
 export type AppMessage = {
 	id: string;
@@ -22,10 +23,8 @@ export type AppModel = {
 
 type StreamClient = {
 	id: string;
-	controller: ReadableStreamDefaultController<Uint8Array>;
+	stream: DatastarStream;
 };
-
-const encoder = new TextEncoder();
 
 export class AppState {
 	private clients = new Map<string, StreamClient>();
@@ -36,21 +35,31 @@ export class AppState {
 	models: AppModel[] = [];
 	currentModel: string | undefined;
 
-	createStream(signal: AbortSignal): ReadableStream<Uint8Array> {
+	createStream(signal: AbortSignal): Response {
 		const id = crypto.randomUUID();
-		return new ReadableStream({
-			start: (controller) => {
-				this.clients.set(id, { id, controller });
-				this.sendTo(controller, this.renderPatch());
-				this.sendTo(controller, patchSignals({ connected: true }));
-				signal.addEventListener("abort", () => this.clients.delete(id), {
-					once: true,
-				});
+		return datastarStream(
+			(stream) => {
+				this.clients.set(id, { id, stream });
+				this.patchClient(stream);
+				stream.patchSignals(
+					JSON.stringify({ connected: true, model: this.currentModel ?? "" }),
+				);
+				signal.addEventListener(
+					"abort",
+					() => {
+						this.clients.delete(id);
+						stream.close();
+					},
+					{ once: true },
+				);
 			},
-			cancel: () => {
-				this.clients.delete(id);
+			{
+				keepalive: true,
+				onAbort: () => {
+					this.clients.delete(id);
+				},
 			},
-		});
+		);
 	}
 
 	appendMessage(
@@ -118,25 +127,24 @@ export class AppState {
 		this.broadcast();
 	}
 
-	private renderPatch(): string {
-		return patchElements(renderTopbar(this) + renderTranscript(this.messages));
+	private renderElements(): string {
+		return (
+			renderTopbar(this) + renderTranscript(this.messages) + renderModelPicker(this)
+		);
 	}
 
-	private broadcast(): void {
-		const payload = this.renderPatch();
-		for (const client of this.clients.values()) {
-			this.sendTo(client.controller, payload);
+	private patchClient(stream: DatastarStream): void {
+		try {
+			stream.patchElements(this.renderElements());
+			stream.patchSignals(JSON.stringify({ model: this.currentModel ?? "" }));
+		} catch {
+			// Client already disconnected.
 		}
 	}
 
-	private sendTo(
-		controller: ReadableStreamDefaultController<Uint8Array>,
-		chunk: string,
-	): void {
-		try {
-			controller.enqueue(encoder.encode(chunk));
-		} catch {
-			// Client already disconnected.
+	private broadcast(): void {
+		for (const client of this.clients.values()) {
+			this.patchClient(client.stream);
 		}
 	}
 }
