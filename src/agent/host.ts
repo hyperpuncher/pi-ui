@@ -8,9 +8,11 @@ import {
 	type AgentSessionEvent,
 	type AgentSessionRuntime,
 	type CreateAgentSessionRuntimeFactory,
+	type SessionEntry,
+	type SessionInfo,
 } from "npm:@earendil-works/pi-coding-agent@0.80.3";
 
-import type { AppState } from "../state/app-state.ts";
+import type { AppMessageInput, AppSessionSummary, AppState } from "../state/app-state.ts";
 
 const defaultProvider = "opencode-go";
 const defaultModelId = "deepseek-v4-flash";
@@ -111,6 +113,32 @@ export class AgentHost {
 		return true;
 	}
 
+	async listSessions(): Promise<void> {
+		this.state.setStatus("Loading sessions");
+		const sessionManager = this.runtime.session.sessionManager;
+		const sessions = await SessionManager.list(
+			sessionManager.getCwd(),
+			sessionManager.getSessionDir(),
+		);
+		this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
+		this.state.setStatus(this.readyStatus(this.runtime.session));
+	}
+
+	async resumeSession(sessionPath: string): Promise<boolean> {
+		if (!sessionPath.trim()) {
+			return false;
+		}
+		this.state.setStatus("Resuming session");
+		const result = await this.runtime.switchSession(sessionPath);
+		if (result.cancelled) {
+			this.state.setStatus("Resume cancelled");
+			return false;
+		}
+		await this.bindSession();
+		this.loadCurrentSessionMessages();
+		return true;
+	}
+
 	async setModel(modelRef: string): Promise<boolean> {
 		const [provider, ...idParts] = modelRef.split("/");
 		const modelId = idParts.join("/");
@@ -136,6 +164,7 @@ export class AgentHost {
 	private async bindSession(): Promise<void> {
 		this.unsubscribe?.();
 		const session = this.runtime.session;
+		this.toolMessageIds.clear();
 		await session.bindExtensions({ mode: "rpc" });
 		this.unsubscribe = session.subscribe((event) => this.handleEvent(event, session));
 		const defaultMissing =
@@ -247,50 +276,137 @@ export class AgentHost {
 		return `Ready · ${modelName} · thinking off${suffix}`;
 	}
 
+	private loadCurrentSessionMessages(): void {
+		const messages = this.runtime.session.sessionManager
+			.getBranch()
+			.map((entry: SessionEntry) => this.entryToMessage(entry))
+			.filter((message): message is AppMessageInput => Boolean(message));
+		this.state.replaceMessages(messages);
+		this.state.setStatus(this.readyStatus(this.runtime.session));
+	}
+
+	private entryToMessage(entry: SessionEntry): AppMessageInput | undefined {
+		const timestamp = new Date(entry.timestamp);
+		if (entry.type === "message") {
+			return this.agentMessageToAppMessage(entry.message, timestamp);
+		}
+		if (entry.type === "custom_message" && entry.display) {
+			return {
+				role: "system",
+				text: contentToText(entry.content),
+				timestamp,
+			};
+		}
+		if (entry.type === "compaction") {
+			return { role: "system", text: entry.summary, timestamp };
+		}
+		if (entry.type === "branch_summary") {
+			return { role: "system", text: entry.summary, timestamp };
+		}
+		if (entry.type === "model_change") {
+			return {
+				role: "system",
+				text: `Model changed to ${entry.provider}/${entry.modelId}`,
+				timestamp,
+			};
+		}
+		if (entry.type === "thinking_level_change") {
+			return {
+				role: "system",
+				text: `Thinking changed to ${entry.thinkingLevel}`,
+				timestamp,
+			};
+		}
+		return undefined;
+	}
+
 	private handleMessageStart(
 		message: Extract<AgentSessionEvent, { type: "message_start" }>["message"],
 	): void {
+		const appMessage = this.agentMessageToAppMessage(message, new Date());
+		if (!appMessage) {
+			return;
+		}
+		this.state.appendMessage(appMessage.role, appMessage.text, {
+			title: appMessage.title,
+			meta: appMessage.meta,
+			state: appMessage.state,
+		});
+	}
+
+	private agentMessageToAppMessage(
+		message: Extract<AgentSessionEvent, { type: "message_start" }>["message"],
+		timestamp: Date,
+	): AppMessageInput | undefined {
 		switch (message.role) {
 			case "user":
-				this.state.appendMessage("user", contentToText(message.content));
-				break;
+				return { role: "user", text: contentToText(message.content), timestamp };
 			case "assistant":
-				this.state.appendMessage("assistant", "");
-				break;
+				return {
+					role: "assistant",
+					text: contentToText(message.content),
+					timestamp,
+				};
 			case "toolResult":
-				this.state.appendMessage("tool", contentToText(message.content), {
+				return {
+					role: "tool",
+					text: contentToText(message.content),
+					timestamp,
 					title: `Tool result · ${message.toolName}`,
 					meta: message.isError ? "error" : "ok",
 					state: message.isError ? "error" : "success",
-				});
-				break;
+				};
 			case "bashExecution":
-				this.state.appendMessage(
-					"tool",
-					`$ ${message.command}\n${message.output}`,
-					{
-						title: "Shell command",
-						meta:
-							message.exitCode === undefined
-								? "cancelled"
-								: `exit ${message.exitCode}`,
-						state: message.exitCode === 0 ? "success" : "error",
-					},
-				);
-				break;
+				return {
+					role: "tool",
+					text: `$ ${message.command}\n${message.output}`,
+					timestamp,
+					title: "Shell command",
+					meta:
+						message.exitCode === undefined
+							? "cancelled"
+							: `exit ${message.exitCode}`,
+					state: message.exitCode === 0 ? "success" : "error",
+				};
 			case "custom":
 				if (message.display) {
-					this.state.appendMessage("system", contentToText(message.content));
+					return {
+						role: "system",
+						text: contentToText(message.content),
+						timestamp,
+					};
 				}
-				break;
+				return undefined;
 			case "branchSummary":
-				this.state.appendMessage("system", message.summary);
-				break;
+				return { role: "system", text: message.summary, timestamp };
 			case "compactionSummary":
-				this.state.appendMessage("system", message.summary);
-				break;
+				return { role: "system", text: message.summary, timestamp };
 		}
 	}
+}
+
+function formatSessionSummary(info: SessionInfo): AppSessionSummary {
+	const title = info.name?.trim() || info.firstMessage.trim() || "Untitled session";
+	const messageLabel = `${info.messageCount} message${info.messageCount === 1 ? "" : "s"}`;
+	return {
+		path: info.path,
+		title: truncate(title, 96),
+		subtitle: `${messageLabel} · ${truncate(info.cwd, 64)}`,
+		modified: formatDate(info.modified),
+	};
+}
+
+function formatDate(date: Date): string {
+	return date.toLocaleString(undefined, {
+		month: "short",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+}
+
+function truncate(value: string, maxLength: number): string {
+	return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }
 
 function contentToText(content: unknown): string {

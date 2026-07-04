@@ -1,4 +1,4 @@
-import type { AppMessage, AppState } from "../state/app-state.ts";
+import type { AppMessage, AppSessionSummary, AppState } from "../state/app-state.ts";
 
 function sync(html: JSX.Element): string {
 	return html as string;
@@ -78,6 +78,58 @@ export function renderTranscript(messages: AppMessage[]): string {
 		>
 			{messages.map(renderMessage)}
 		</main>,
+	);
+}
+
+export function renderSessionPicker(state: AppState): string {
+	return sync(
+		<div id="session-picker">
+			<ul class="mt-3 max-h-[55vh] list-none overflow-y-auto p-0">
+				{state.sessions.length === 0 ? (
+					<li class="text-muted-foreground px-3 py-6 text-center text-sm">
+						No saved sessions for this project yet.
+					</li>
+				) : (
+					state.sessions.map(renderSessionRow)
+				)}
+			</ul>
+		</div>,
+	);
+}
+
+function renderSessionRow(session: AppSessionSummary): string {
+	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
+	return sync(
+		<li
+			data-session-row
+			data-show={`
+				$sessionQuery === '' ||
+				${JSON.stringify(haystack)}.includes($sessionQuery.toLowerCase())
+			`}
+		>
+			<button
+				class="hover:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left"
+				type="button"
+				data-on:click={`
+					$sessionPath = ${JSON.stringify(session.path)};
+					$sessionOpen = false;
+					$sessionQuery = '';
+					@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
+				`}
+			>
+				<span class="min-w-0">
+					<span class="block truncate" safe>
+						{session.title}
+					</span>
+					<span class="text-muted-foreground mt-1 line-clamp-2 text-xs" safe>
+						{session.subtitle}
+					</span>
+				</span>
+				<time class="text-muted-foreground shrink-0 text-xs" safe>
+					{session.modified}
+				</time>
+			</button>
+		</li>,
 	);
 }
 

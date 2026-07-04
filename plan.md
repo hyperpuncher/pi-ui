@@ -22,7 +22,7 @@ This is not an IDE first. Coding is a killer workflow, but the app should feel u
 - Initial Deno app shell created.
 - CEF desktop task added.
 - Datastar SSE patch helper added.
-- Keyboard-first shell started with command palette, new chat, and model picker shortcuts.
+- Keyboard-first shell started with command palette, new chat, session resume, and model picker shortcuts.
 - Initial app command registry added for shared shortcut/menu metadata.
 - Pi SDK npm import smoke test passes in Deno.
 - `AgentHost` now creates a real pi `AgentSessionRuntime`.
@@ -34,6 +34,7 @@ This is not an IDE first. Coding is a killer workflow, but the app should feel u
 - Tailwind CSS and Basecoat are installed via Deno npm imports.
 - Basecoat Nova is the default style pack.
 - New chat starts a fresh pi session via `runtime.newSession()`.
+- Resume picker lists recent project sessions and switches via `runtime.switchSession()`.
 - UI rendering migrated to Kita JSX v5 (`@kitajs/html@next`).
 - Datastar interactions now avoid forms for prompt/model writes and use signals + `@post()`.
 - Datastar TypeScript SDK is used for SSE streams, signal reads, and patch responses.

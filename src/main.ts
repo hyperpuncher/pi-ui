@@ -94,14 +94,8 @@ function setupDesktopWindow(): void {
 
 	win.addEventListener("menuclick", (event) => {
 		const id = menuId(event);
-		if (id === "new-chat") {
-			void executeAppCommand(win, "new-chat");
-		}
-		if (id === "command-palette") {
-			void executeAppCommand(win, "command-palette");
-		}
-		if (id === "switch-model") {
-			void executeAppCommand(win, "switch-model");
+		if (isAppCommandId(id)) {
+			void executeAppCommand(win, id);
 		}
 		if (id === "devtools") {
 			win.openDevtools();
@@ -131,4 +125,8 @@ async function executeAppCommand(
 function menuId(event: unknown): string | undefined {
 	const detail = (event as { detail?: { id?: string } }).detail;
 	return detail?.id;
+}
+
+function isAppCommandId(id: string | undefined): id is AppCommandId {
+	return appCommands.some((command) => command.id === id);
 }

@@ -57,6 +57,17 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				return signalsResponse({ commandOpen: false });
 			}
 
+			if (request.method === "POST" && url.pathname === "/sessions/list") {
+				await host?.listSessions();
+				return signalsResponse({ sessionOpen: true, sessionQuery: "" });
+			}
+
+			if (request.method === "POST" && url.pathname === "/sessions/resume") {
+				const sessionPath = await readSignalString(request, "sessionPath");
+				await host?.resumeSession(sessionPath);
+				return signalsResponse({ sessionOpen: false, sessionPath: "" });
+			}
+
 			if (request.method === "POST" && url.pathname === "/model") {
 				const modelRef = await readSignalString(request, "model");
 				await host?.setModel(modelRef);

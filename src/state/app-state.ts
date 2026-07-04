@@ -1,6 +1,11 @@
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream } from "../server/datastar.ts";
-import { renderModelPicker, renderTopbar, renderTranscript } from "../ui/fragments.tsx";
+import {
+	renderModelPicker,
+	renderSessionPicker,
+	renderTopbar,
+	renderTranscript,
+} from "../ui/fragments.tsx";
 import { renderMarkdownFinal, renderMarkdownStreaming } from "../ui/markdown.ts";
 
 export type AppMessage = {
@@ -23,6 +28,17 @@ export type AppModel = {
 	configured: boolean;
 };
 
+export type AppSessionSummary = {
+	path: string;
+	title: string;
+	subtitle: string;
+	modified: string;
+};
+
+export type AppMessageInput = Omit<AppMessage, "id" | "renderedHtml"> & {
+	renderedHtml?: string;
+};
+
 type StreamClient = {
 	id: string;
 	stream: DatastarStream;
@@ -35,6 +51,7 @@ export class AppState {
 	messages: AppMessage[] = [];
 	status = "Starting";
 	models: AppModel[] = [];
+	sessions: AppSessionSummary[] = [];
 	currentModel: string | undefined;
 
 	createStream(signal: AbortSignal): Response {
@@ -128,6 +145,29 @@ export class AppState {
 		this.broadcast();
 	}
 
+	replaceMessages(messages: AppMessageInput[]): void {
+		this.activeAssistantId = undefined;
+		this.messages = messages.map((message) => {
+			this.messageSeq += 1;
+			const id = `m-${this.messageSeq}`;
+			return {
+				...message,
+				id,
+				renderedHtml:
+					message.renderedHtml ??
+					(message.role === "assistant" && message.text.trim()
+						? renderMarkdownStreaming(message.text)
+						: undefined),
+			};
+		});
+		this.broadcast();
+		for (const message of this.messages) {
+			if (message.role === "assistant" && message.text.trim()) {
+				void this.renderAssistantMarkdown(message.id);
+			}
+		}
+	}
+
 	setStatus(status: string): void {
 		this.status = status;
 		this.broadcast();
@@ -136,6 +176,11 @@ export class AppState {
 	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;
 		this.currentModel = currentModel;
+		this.broadcast();
+	}
+
+	setSessions(sessions: AppSessionSummary[]): void {
+		this.sessions = sessions;
 		this.broadcast();
 	}
 
@@ -163,7 +208,10 @@ export class AppState {
 
 	private renderElements(): string {
 		return (
-			renderTopbar(this) + renderTranscript(this.messages) + renderModelPicker(this)
+			renderTopbar(this) +
+			renderTranscript(this.messages) +
+			renderModelPicker(this) +
+			renderSessionPicker(this)
 		);
 	}
 

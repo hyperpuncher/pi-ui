@@ -5,7 +5,12 @@ import {
 	type AppCommandId,
 } from "../commands/registry.ts";
 import type { AppState } from "../state/app-state.ts";
-import { renderModelPicker, renderTopbar, renderTranscript } from "./fragments.tsx";
+import {
+	renderModelPicker,
+	renderSessionPicker,
+	renderTopbar,
+	renderTranscript,
+} from "./fragments.tsx";
 
 function sync(html: JSX.Element): string {
 	return html as string;
@@ -19,6 +24,9 @@ export function renderPage(state: AppState): string {
 		commandQuery: "",
 		connected: false,
 		model: state.currentModel ?? "",
+		sessionOpen: false,
+		sessionPath: "",
+		sessionQuery: "",
 	});
 
 	return (
@@ -45,6 +53,12 @@ export function renderPage(state: AppState): string {
 						evt.preventDefault();
 						@post('/sessions/new');
 					}
+					if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'r') {
+						evt.preventDefault();
+						$commandOpen = false;
+						$commandQuery = '';
+						@post('/sessions/list');
+					}
 					if (
 						(evt.ctrlKey || evt.metaKey) &&
 						(evt.key.toLowerCase() === 'l' || evt.key.toLowerCase() === 'm')
@@ -57,11 +71,18 @@ export function renderPage(state: AppState): string {
 					if (evt.key === 'Escape') {
 						$commandOpen = false;
 						$commandQuery = '';
+						$sessionOpen = false;
+						$sessionQuery = '';
 					}"
 					data-on:pi-new-chat__window="@post('/sessions/new')"
 					data-on:pi-command-palette__window="
 						$commandOpen = true;
 						$commandQuery = '';
+					"
+					data-on:pi-resume-session__window="
+						$commandOpen = false;
+						$commandQuery = '';
+						@post('/sessions/list');
 					"
 					data-on:pi-switch-model__window="
 						$commandOpen = false;
@@ -209,6 +230,48 @@ export function renderPage(state: AppState): string {
 							</p>
 						</div>
 					</div>
+
+					<div
+						class="bg-background/70 fixed inset-0 z-20 grid items-start justify-items-center pt-[10vh] backdrop-blur-sm"
+						data-show="$sessionOpen"
+						style="display: none;"
+					>
+						<div
+							class="card w-[min(46rem,calc(100vw-2rem))] p-4"
+							role="dialog"
+							aria-modal="true"
+							aria-label="Resume session"
+						>
+							<header class="mb-3 flex items-center justify-between">
+								<strong>Resume session</strong>
+								<button
+									class="btn"
+									data-variant="ghost"
+									data-size="icon-sm"
+									type="button"
+									data-on:click="
+										$sessionOpen = false;
+										$sessionQuery = '';
+									"
+									aria-label="Close"
+								>
+									×
+								</button>
+							</header>
+							<input
+								id="session-input"
+								class="input w-full"
+								placeholder="Search sessions..."
+								aria-label="Session search"
+								data-bind:session-query
+								data-on:keydown="if (evt.key === 'Enter') {
+									evt.preventDefault();
+									globalThis.__piUiRunFirstSession?.();
+								}"
+							/>
+							{renderSessionPicker(state)}
+						</div>
+					</div>
 				</body>
 			</html>,
 		)
@@ -245,6 +308,9 @@ function renderCommandRow(item: AppCommand): string {
 function commandAction(id: AppCommandId): string {
 	if (id === "new-chat") {
 		return "$commandOpen = false; $commandQuery = ''; @post('/sessions/new')";
+	}
+	if (id === "resume-session") {
+		return "$commandOpen = false; $commandQuery = ''; @post('/sessions/list')";
 	}
 	if (id === "command-palette") {
 		return "$commandOpen = true; $commandQuery = ''; document.getElementById('command-input')?.focus()";

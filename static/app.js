@@ -16,6 +16,7 @@ function bindDesktopCommands() {
 	globalThis.__piUiCommand = (command) => {
 		const eventName = {
 			"new-chat": "pi-new-chat",
+			"resume-session": "pi-resume-session",
 			"command-palette": "pi-command-palette",
 			"switch-model": "pi-switch-model",
 		}[command];
@@ -26,13 +27,11 @@ function bindDesktopCommands() {
 	};
 
 	globalThis.__piUiRunFirstCommand = () => {
-		const rows = document.querySelectorAll("[data-command-row]");
-		for (const row of rows) {
-			if (row instanceof HTMLElement && row.style.display !== "none") {
-				row.querySelector("button")?.click();
-				return;
-			}
-		}
+		runFirstVisible("[data-command-row]");
+	};
+
+	globalThis.__piUiRunFirstSession = () => {
+		runFirstVisible("[data-session-row]");
 	};
 }
 
@@ -44,13 +43,23 @@ function bindReservedShortcutPrevention() {
 				return;
 			}
 
-			const appShortcutKeys = new Set(["k", "l", "m", "o"]);
+			const appShortcutKeys = new Set(["k", "l", "m", "o", "r"]);
 			if (appShortcutKeys.has(event.key.toLowerCase())) {
 				event.preventDefault();
 			}
 		},
 		{ capture: true },
 	);
+}
+
+function runFirstVisible(selector) {
+	const rows = document.querySelectorAll(selector);
+	for (const row of rows) {
+		if (row instanceof HTMLElement && row.style.display !== "none") {
+			row.querySelector("button")?.click();
+			return;
+		}
+	}
 }
 
 function focusComposer() {
@@ -114,11 +123,21 @@ function bindCommandPaletteFocus() {
 	let wasOpen = false;
 	const observer = new MutationObserver(() => {
 		const palette = document.querySelector("[data-show='$commandOpen']");
-		const isOpen = palette instanceof HTMLElement && palette.style.display !== "none";
+		const sessionPicker = document.querySelector("[data-show='$sessionOpen']");
+		const isCommandOpen =
+			palette instanceof HTMLElement && palette.style.display !== "none";
+		const isSessionOpen =
+			sessionPicker instanceof HTMLElement &&
+			sessionPicker.style.display !== "none";
+		const isOpen = isCommandOpen || isSessionOpen;
 		if (isOpen && !wasOpen) {
-			requestAnimationFrame(() =>
-				document.getElementById("command-input")?.focus(),
-			);
+			requestAnimationFrame(() => {
+				if (isCommandOpen) {
+					document.getElementById("command-input")?.focus();
+				} else {
+					document.getElementById("session-input")?.focus();
+				}
+			});
 		}
 		wasOpen = isOpen;
 	});

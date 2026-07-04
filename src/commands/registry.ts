@@ -1,4 +1,8 @@
-export type AppCommandId = "new-chat" | "command-palette" | "switch-model";
+export type AppCommandId =
+	| "new-chat"
+	| "resume-session"
+	| "command-palette"
+	| "switch-model";
 
 export type AppCommand = {
 	id: AppCommandId;
@@ -17,6 +21,12 @@ export const appCommands: AppCommand[] = [
 		title: "New chat",
 		description: "Start a fresh pi session.",
 		shortcut: { display: "Ctrl O", native: "CmdOrCtrl+O", keys: ["o"] },
+	},
+	{
+		id: "resume-session",
+		title: "Resume session",
+		description: "Browse recent pi sessions for this project.",
+		shortcut: { display: "Ctrl R", native: "CmdOrCtrl+R", keys: ["r"] },
 	},
 	{
 		id: "command-palette",
