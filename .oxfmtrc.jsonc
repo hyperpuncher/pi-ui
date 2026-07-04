@@ -1,0 +1,14 @@
+{
+	"$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxfmt/configuration_schema.json",
+	"printWidth": 90,
+	"tabWidth": 4,
+	"useTabs": true,
+	"sortImports": true,
+	"sortTailwindcss": true,
+	"ignorePatterns": [
+		"node_modules/**",
+		"public/**",
+		"static/app.css",
+		"static/vendor/**",
+	],
+}

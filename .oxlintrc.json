@@ -1,0 +1,8 @@
+{
+	"ignorePatterns": [
+		".agents/**",
+		"node_modules/**",
+		"static/app.css",
+		"static/vendor/**"
+	]
+}

@@ -1,0 +1,24 @@
+{
+	"tasks": {
+		"check": "deno check src/main.ts",
+		"css:build": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
+		"dev": "deno task css:build && deno run -A --watch src/main.ts",
+		"desktop": "deno task css:build && deno desktop -A --backend cef --hmr src/main.ts",
+		"desktop:build:linux": "deno task css:build && deno desktop -A --backend cef --output dist/pi-ui.AppImage src/main.ts",
+		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
+		"lint": "deno run -A npm:oxlint"
+	},
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"jsxImportSource": "@kitajs/html",
+		"strict": true
+	},
+	"nodeModulesDir": "auto",
+	"imports": {
+		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
+		"@kitajs/ts-html-plugin": "npm:@kitajs/ts-html-plugin@5.0.0-next.1",
+		"@tailwindcss/cli": "npm:@tailwindcss/cli@^4.3.2",
+		"basecoat-css": "npm:basecoat-css@^1.0.1",
+		"tailwindcss": "npm:tailwindcss@^4.3.2"
+	}
+}
