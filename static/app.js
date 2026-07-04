@@ -4,6 +4,7 @@ const transcriptState = {
 
 bindReservedShortcutPrevention();
 bindDesktopCommands();
+bindSystemThemeSync();
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusComposer();
@@ -34,6 +35,27 @@ function bindDesktopCommands() {
 	globalThis.__piUiRunFirstSession = () => {
 		runFirstVisible("[data-session-row]");
 	};
+}
+
+function bindSystemThemeSync() {
+	const media = globalThis.matchMedia?.("(prefers-color-scheme: dark)");
+	if (!media) {
+		return;
+	}
+
+	const apply = () => {
+		const stored = localStorage.getItem("themeMode");
+		const dark = stored ? stored === "dark" : media.matches;
+		document.documentElement.classList.toggle("dark", dark);
+	};
+
+	apply();
+	media.addEventListener("change", apply);
+	globalThis.addEventListener("storage", (event) => {
+		if (event.key === "themeMode") {
+			apply();
+		}
+	});
 }
 
 function bindReservedShortcutPrevention() {

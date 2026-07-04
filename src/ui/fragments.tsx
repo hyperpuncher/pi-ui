@@ -89,7 +89,7 @@ function renderSessionRow(session: AppSessionSummary): string {
 			`}
 		>
 			<button
-				class="hover:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left"
+				class="hover:bg-muted focus:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
 				type="button"
 				data-on:click={`
 					$sessionPath = ${JSON.stringify(session.path)};
@@ -116,7 +116,7 @@ function renderSessionRow(session: AppSessionSummary): string {
 
 function renderPreOutput(text: string): JSX.Element {
 	return (
-		<pre class="bg-muted/40 m-0 max-h-80 overflow-auto rounded-md p-3 text-sm leading-relaxed whitespace-pre-wrap">
+		<pre class="bg-muted/40 text-muted-foreground m-0 max-h-80 overflow-auto rounded-md p-3 text-sm leading-relaxed whitespace-pre-wrap">
 			<code safe>{text}</code>
 		</pre>
 	);
@@ -150,7 +150,7 @@ function renderMessage(message: AppMessage): string {
 	if (message.role === "assistant") {
 		const markdownClass = [
 			"max-w-full self-start leading-relaxed",
-			"[&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4",
+			"[&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4 [&_.shiki]:whitespace-pre-wrap [&_.shiki]:break-words [&_.shiki_code]:whitespace-pre-wrap",
 			"[&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4",
 			"[&_code]:rounded [&_code]:bg-muted [&_code]:px-1",
 			"[&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold",

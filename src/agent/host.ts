@@ -22,6 +22,7 @@ export class AgentHost {
 	private unsubscribe: (() => void) | undefined;
 	private readonly toolMessageIds = new Map<string, string>();
 	private readonly toolCallArgs = new Map<string, unknown>();
+	private readonly toolStartedAt = new Map<string, number>();
 
 	private constructor(
 		private readonly runtime: AgentSessionRuntime,
@@ -170,6 +171,7 @@ export class AgentHost {
 		const session = this.runtime.session;
 		this.toolMessageIds.clear();
 		this.toolCallArgs.clear();
+		this.toolStartedAt.clear();
 		await session.bindExtensions({ mode: "rpc" });
 		this.unsubscribe = session.subscribe((event) => this.handleEvent(event, session));
 		this.syncModels();
@@ -231,6 +233,7 @@ export class AgentHost {
 				break;
 			case "tool_execution_start": {
 				this.toolCallArgs.set(event.toolCallId, event.args);
+				this.toolStartedAt.set(event.toolCallId, Date.now());
 				const id = this.state.appendMessage(
 					"tool",
 					formatToolInput(event.toolName, event.args),
@@ -257,6 +260,7 @@ export class AgentHost {
 				const id = this.toolMessageIds.get(event.toolCallId);
 				const args = this.toolCallArgs.get(event.toolCallId) ?? {};
 				const resultView = formatToolResult(event.toolName, event.result);
+				const startedAt = this.toolStartedAt.get(event.toolCallId);
 				const patch = {
 					text: resultView.text,
 					title: toolTitle(
@@ -264,7 +268,7 @@ export class AgentHost {
 						event.toolName,
 						args,
 					),
-					meta: toolMeta(event.toolName, args),
+					meta: toolEndMeta(startedAt),
 					state: event.isError ? "error" : "success",
 					format: resultView.format,
 				} as const;
@@ -275,6 +279,7 @@ export class AgentHost {
 					this.state.appendMessage("tool", patch.text, patch);
 				}
 				this.toolCallArgs.delete(event.toolCallId);
+				this.toolStartedAt.delete(event.toolCallId);
 				break;
 			}
 			case "agent_end":
@@ -475,25 +480,47 @@ function toolTitle(
 	toolName: string,
 	args: unknown,
 ): string {
-	const icon =
-		status === "running" ? "Running" : status === "error" ? "Failed" : "Done";
+	const record = asRecord(args);
+	if (toolName === "bash" && record) {
+		return `$ ${stringValue(record.command) || "..."}`;
+	}
+
+	const verb =
+		status === "running"
+			? toolName
+			: status === "error"
+				? `failed ${toolName}`
+				: toolName;
 	const target = toolTarget(toolName, args);
-	return target ? `${icon} ${toolName} • ${target}` : `${icon} ${toolName}`;
+	return target ? `${verb} ${target}` : verb;
 }
 
 function toolMeta(toolName: string, args: unknown): string | undefined {
 	const record = asRecord(args);
 	if (!record) return undefined;
+	const details: string[] = [];
 	if (toolName === "bash" && typeof record.timeout === "number") {
-		return `${record.timeout}s timeout`;
+		details.push(`timeout ${record.timeout}s`);
 	}
 	if (toolName === "edit" && Array.isArray(record.edits)) {
-		return `${record.edits.length} edit${record.edits.length === 1 ? "" : "s"}`;
+		details.push(
+			`${record.edits.length} edit${record.edits.length === 1 ? "" : "s"}`,
+		);
 	}
 	if (typeof record.limit === "number") {
-		return `limit ${record.limit}`;
+		details.push(`limit ${record.limit}`);
 	}
-	return undefined;
+	return details.join(" • ") || undefined;
+}
+
+function toolEndMeta(startedAt: number | undefined): string | undefined {
+	return startedAt === undefined
+		? undefined
+		: `Took ${formatDuration(Date.now() - startedAt)}`;
+}
+
+function formatDuration(ms: number): string {
+	return `${(ms / 1000).toFixed(1)}s`;
 }
 
 function toolTarget(toolName: string, args: unknown): string {

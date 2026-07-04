@@ -16,6 +16,15 @@ function sync(html: JSX.Element): string {
 	return html as string;
 }
 
+const systemThemeScript = `(() => {
+	try {
+		const stored = localStorage.getItem('themeMode');
+		if (stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches) {
+			document.documentElement.classList.add('dark');
+		}
+	} catch (_) {}
+})();`;
+
 export function renderPage(state: AppState): string {
 	const newChat = command("new-chat");
 	const initialSignals = JSON.stringify({
@@ -36,6 +45,7 @@ export function renderPage(state: AppState): string {
 					<meta charset="utf-8" />
 					<meta name="viewport" content="width=device-width, initial-scale=1" />
 					<title>pi-ui</title>
+					<script>{systemThemeScript}</script>
 					<link rel="stylesheet" href="/app.css" />
 					<script type="module" src="/app.js"></script>
 					<script type="module" src="/datastar.js"></script>
@@ -296,7 +306,7 @@ function renderCommandRow(item: AppCommand): string {
 			`}
 		>
 			<button
-				class="hover:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left"
+				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
 				type="button"
 				data-on:click={commandAction(item.id)}
 			>
