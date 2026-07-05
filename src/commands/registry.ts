@@ -3,6 +3,7 @@ export type AppCommandId =
 	| "resume-session"
 	| "command-palette"
 	| "switch-model"
+	| "cycle-thinking"
 	| "change-workspace";
 
 export type AppCommand = {
@@ -21,25 +22,31 @@ export const appCommands: AppCommand[] = [
 		id: "new-chat",
 		title: "New chat",
 		description: "Start a fresh pi session.",
-		shortcut: { display: "Ctrl O", native: "CmdOrCtrl+O", keys: ["o"] },
+		shortcut: { display: "ctrl O", native: "CmdOrCtrl+O", keys: ["o"] },
 	},
 	{
 		id: "resume-session",
 		title: "Resume session",
 		description: "Browse recent pi sessions for this project.",
-		shortcut: { display: "Ctrl R", native: "CmdOrCtrl+R", keys: ["r"] },
+		shortcut: { display: "ctrl R", native: "CmdOrCtrl+R", keys: ["r"] },
 	},
 	{
 		id: "command-palette",
 		title: "Command palette",
 		description: "Open the keyboard command launcher.",
-		shortcut: { display: "Ctrl K", native: "CmdOrCtrl+K", keys: ["k"] },
+		shortcut: { display: "ctrl K", native: "CmdOrCtrl+K", keys: ["k"] },
 	},
 	{
 		id: "switch-model",
 		title: "Switch model",
 		description: "Open the model picker.",
-		shortcut: { display: "Ctrl L", native: "CmdOrCtrl+L", keys: ["l"] },
+		shortcut: { display: "ctrl L", native: "CmdOrCtrl+L", keys: ["l"] },
+	},
+	{
+		id: "cycle-thinking",
+		title: "Cycle thinking",
+		description: "Cycle through available thinking levels.",
+		shortcut: { display: "alt T", native: "Alt+T", keys: [] },
 	},
 	{
 		id: "change-workspace",

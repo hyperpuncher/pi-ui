@@ -1,5 +1,6 @@
 import type {
 	AppMessage,
+	AppKeybindHint,
 	AppMessageTitlePart,
 	AppSessionSummary,
 	AppThinkingLevel,
@@ -8,13 +9,14 @@ import type {
 	AppState,
 } from "../state/app-state.ts";
 import { formatTime } from "../utils/locale.ts";
+import { ShortcutKbd } from "./keyboard.tsx";
 
 export function renderComposerAction(state: AppState): string {
 	if (state.activityText) {
 		return (
 			<button
 				id="composer-action"
-				class="btn"
+				class="btn leading-none"
 				data-variant="destructive"
 				data-size="icon"
 				type="button"
@@ -30,7 +32,7 @@ export function renderComposerAction(state: AppState): string {
 	return (
 		<button
 			id="composer-action"
-			class="btn"
+			class="btn leading-none"
 			data-size="icon"
 			type="button"
 			data-send-trigger
@@ -182,8 +184,13 @@ export function renderThinkingPicker(state: AppState): string {
 						aria-labelledby="thinking-select-trigger"
 					>
 						<div role="group" aria-labelledby="thinking-select-heading">
-							<div role="heading" id="thinking-select-heading">
-								Thinking
+							<div
+								role="heading"
+								id="thinking-select-heading"
+								class="flex items-center justify-between gap-4"
+							>
+								<span>Thinking</span>
+								<ShortcutKbd shortcut="alt T" />
 							</div>
 							{state.thinkingLevels.map((level) => (
 								<div
@@ -287,8 +294,13 @@ export function renderModelPicker(state: AppState): string {
 						aria-labelledby="model-select-trigger"
 					>
 						<div role="group" aria-labelledby="model-select-heading">
-							<div role="heading" id="model-select-heading">
-								Models
+							<div
+								role="heading"
+								id="model-select-heading"
+								class="flex items-center justify-between gap-4"
+							>
+								<span>Models</span>
+								<ShortcutKbd shortcut="ctrl L" />
 							</div>
 							{state.models.map((model) => {
 								const value = `${model.provider}/${model.id}`;
@@ -333,7 +345,10 @@ function modelTriggerLabel(model: AppState["models"][number]): string {
 	return model.id;
 }
 
-export function renderTranscript(messages: AppMessage[]): string {
+export function renderTranscript(
+	messages: AppMessage[],
+	emptyHint: AppKeybindHint,
+): string {
 	return (
 		<main
 			id="transcript"
@@ -341,7 +356,21 @@ export function renderTranscript(messages: AppMessage[]): string {
 			aria-live="polite"
 		>
 			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
-				{messages.map(renderMessage)}
+				{messages.length === 0 ? (
+					<div class="text-muted-foreground grid min-h-[calc(100vh-18rem)] place-items-center text-center">
+						<div>
+							<p class="text-foreground m-0 text-lg font-medium">
+								What can I help with?
+							</p>
+							<p class="m-0 mt-3 flex items-center justify-center gap-2 text-sm">
+								<ShortcutKbd shortcut={emptyHint.keys} />
+								<span safe>{emptyHint.description}</span>
+							</p>
+						</div>
+					</div>
+				) : (
+					messages.map(renderMessage)
+				)}
 			</div>
 		</main>
 	) as string;

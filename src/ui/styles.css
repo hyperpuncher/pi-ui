@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "basecoat-css/components/kbd.css";
 @import "basecoat-css/components/tooltip.css";
 @import "basecoat-css/nova";
 

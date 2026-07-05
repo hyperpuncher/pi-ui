@@ -10,6 +10,7 @@ import {
 	renderTranscript,
 	renderWorkspacePicker,
 } from "./fragments.tsx";
+import { ShortcutKbd } from "./keyboard.tsx";
 
 export function renderPage(state: AppState): string {
 	const initialSignals = JSON.stringify({
@@ -45,11 +46,11 @@ export function renderPage(state: AppState): string {
 					class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"
 					data-init="@get('/stream')"
 				>
-					{renderTranscript(state.messages)}
+					{renderTranscript(state.messages, state.emptyChatHint)}
 
 					<div
 						id="composer"
-						class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! p-3 shadow-lg"
+						class="bg-card text-card-foreground ring-foreground/10 fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! rounded-xl p-3 text-sm shadow-lg ring-1"
 					>
 						<div
 							id="composer-slash-popover"
@@ -70,9 +71,10 @@ export function renderPage(state: AppState): string {
 						</div>
 						<textarea
 							id="composer-input"
-							class="max-h-44 min-h-12 w-full resize-none border-0 bg-transparent p-1 outline-none"
+							class="block max-h-44 w-full resize-none border-0 bg-transparent p-1 outline-none"
 							placeholder="Ask pi anything..."
 							aria-label="Message"
+							rows="1"
 							data-bind:composer
 						></textarea>
 						<div class="flex flex-wrap items-center justify-between gap-2">
@@ -81,7 +83,7 @@ export function renderPage(state: AppState): string {
 								aria-label="Message tools"
 							>
 								<button
-									class="btn text-muted-foreground hover:text-foreground"
+									class="btn text-muted-foreground hover:text-foreground leading-none"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -92,7 +94,7 @@ export function renderPage(state: AppState): string {
 									⌘
 								</button>
 								<button
-									class="btn text-muted-foreground hover:text-foreground"
+									class="btn text-muted-foreground hover:text-foreground leading-none"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -104,7 +106,7 @@ export function renderPage(state: AppState): string {
 									+
 								</button>
 								<button
-									class="btn text-muted-foreground hover:text-foreground"
+									class="btn text-muted-foreground hover:text-foreground leading-none"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -115,7 +117,7 @@ export function renderPage(state: AppState): string {
 									@
 								</button>
 								<button
-									class="btn text-muted-foreground hover:text-foreground"
+									class="btn text-muted-foreground hover:text-foreground leading-none"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -225,7 +227,7 @@ export function renderPage(state: AppState): string {
 							</div>
 						</section>
 						<button
-							class="btn"
+							class="btn leading-none"
 							data-variant="ghost"
 							data-size="icon-sm"
 							type="button"
@@ -283,7 +285,9 @@ function renderCommandRow(item: AppCommand): string {
 					{item.description}
 				</span>
 			</span>
-			{item.shortcut.display && <span data-shortcut>{item.shortcut.display}</span>}
+			{item.shortcut.display && (
+				<ShortcutKbd shortcut={item.shortcut.display} shortcutSlot />
+			)}
 		</div>
 	) as string;
 }
@@ -300,6 +304,9 @@ function commandAction(id: AppCommandId): string {
 	}
 	if (id === "switch-model") {
 		return "document.getElementById('command-dialog')?.close(); document.getElementById('model-select-trigger')?.click()";
+	}
+	if (id === "cycle-thinking") {
+		return "document.getElementById('command-dialog')?.close(); @post('/thinking/cycle')";
 	}
 	return "document.getElementById('command-dialog')?.close(); document.getElementById('workspace-dialog')?.showModal(); setTimeout(() => document.getElementById('workspace-input')?.focus(), 0)";
 }

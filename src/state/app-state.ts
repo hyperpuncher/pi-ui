@@ -1,3 +1,4 @@
+import { appCommands } from "../commands/registry.ts";
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream } from "../server/datastar.ts";
 import {
@@ -15,6 +16,7 @@ import {
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
 } from "../ui/markdown.tsx";
+import { formatShortcut } from "../utils/keyboard.ts";
 
 export type AppMessage = {
 	id: string;
@@ -67,6 +69,11 @@ export type AppUsage = {
 	contextPercent?: number;
 };
 
+export type AppKeybindHint = {
+	keys: string;
+	description: string;
+};
+
 export type AppMessageInput = Omit<AppMessage, "id" | "renderedHtml"> & {
 	renderedHtml?: string;
 };
@@ -77,6 +84,17 @@ type StreamClient = {
 };
 
 const finalizeRecentMessageCount = 24;
+const emptyChatHints: AppKeybindHint[] = [
+	...appCommands
+		.filter((command) => command.shortcut.display)
+		.map((command) => ({
+			keys: formatShortcut(command.shortcut.display),
+			description: command.description,
+		})),
+	{ keys: "alt T", description: "Cycle thinking level." },
+	{ keys: "@", description: "Attach a file path." },
+	{ keys: "/", description: "Open slash commands and skills." },
+];
 const markdownMessageRoles = new Set<AppMessage["role"]>([
 	"assistant",
 	"thought",
@@ -86,6 +104,10 @@ const markdownMessageRoles = new Set<AppMessage["role"]>([
 
 function rendersMarkdown(role: AppMessage["role"]): boolean {
 	return markdownMessageRoles.has(role);
+}
+
+function randomEmptyChatHint(): AppKeybindHint {
+	return emptyChatHints[Math.floor(Math.random() * emptyChatHints.length)];
 }
 
 export class AppState {
@@ -101,6 +123,7 @@ export class AppState {
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usage: AppUsage = { text: "$0.000 • 0 tokens" };
+	emptyChatHint = randomEmptyChatHint();
 	activityText: string | undefined;
 	workspacePath = Deno.cwd();
 
@@ -230,12 +253,16 @@ export class AppState {
 		this.messages = [];
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
+		this.emptyChatHint = randomEmptyChatHint();
 		this.broadcast();
 	}
 
 	replaceMessages(messages: AppMessageInput[]): void {
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
+		if (messages.length === 0) {
+			this.emptyChatHint = randomEmptyChatHint();
+		}
 		const finalizeFrom = Math.max(0, messages.length - finalizeRecentMessageCount);
 		this.messages = messages.map((message, index) => {
 			this.messageSeq += 1;
@@ -352,7 +379,7 @@ export class AppState {
 
 	private renderElements(): string {
 		return (
-			renderTranscript(this.messages) +
+			renderTranscript(this.messages, this.emptyChatHint) +
 			renderComposerAction(this) +
 			renderComposerStatus(this) +
 			renderWorkspacePicker(this) +
