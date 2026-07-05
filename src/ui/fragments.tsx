@@ -130,13 +130,14 @@ export function renderWorkspacePicker(state: AppState): string {
 	return (
 		<button
 			id="workspace-picker"
-			class="btn hidden max-w-[12rem] min-w-0 font-mono sm:inline-flex"
+			class="btn text-muted-foreground hover:text-foreground hidden max-w-[12rem] min-w-0 font-mono sm:inline-flex"
 			data-variant="ghost"
 			data-size="sm"
 			type="button"
 			aria-label={state.workspacePath}
 			data-workspace-trigger
 			data-tooltip="Workspace"
+			data-tooltip-delay
 		>
 			<span class="truncate" safe>
 				{label}
@@ -155,7 +156,7 @@ export function renderThinkingPicker(state: AppState): string {
 			<div id="thinking-select" class="dropdown-menu">
 				<button
 					type="button"
-					class="btn w-fit max-w-[10rem] font-mono"
+					class="btn text-muted-foreground hover:text-foreground w-fit max-w-[10rem] font-mono"
 					data-variant="ghost"
 					data-size="sm"
 					id="thinking-select-trigger"
@@ -163,6 +164,7 @@ export function renderThinkingPicker(state: AppState): string {
 					aria-expanded="false"
 					aria-controls="thinking-select-menu"
 					data-tooltip="Thinking"
+					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
 				>
 					<span class="truncate">{thinkingLabel(current)}</span>
@@ -258,7 +260,7 @@ export function renderModelPicker(state: AppState): string {
 			<div id="model-select" class="dropdown-menu">
 				<button
 					type="button"
-					class="btn w-fit font-mono"
+					class="btn text-muted-foreground hover:text-foreground w-fit font-mono"
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
@@ -266,6 +268,7 @@ export function renderModelPicker(state: AppState): string {
 					aria-expanded="false"
 					aria-controls="model-select-menu"
 					data-tooltip="Model"
+					data-tooltip-delay
 					disabled={state.models.length === 0}
 				>
 					<span class="truncate">{currentLabel}</span>

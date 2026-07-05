@@ -31,4 +31,9 @@
 	[data-tooltip][data-tooltip-suppressed]::after {
 		display: none;
 	}
+
+	[data-tooltip][data-tooltip-delay]:hover::before,
+	[data-tooltip][data-tooltip-delay]:hover::after {
+		transition-delay: 600ms;
+	}
 }

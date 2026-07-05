@@ -356,8 +356,8 @@ export class AppState {
 			renderComposerAction(this) +
 			renderComposerStatus(this) +
 			renderWorkspacePicker(this) +
-			renderThinkingPicker(this) +
 			renderModelPicker(this) +
+			renderThinkingPicker(this) +
 			renderSessionPicker(this) +
 			renderSlashPicker(this)
 		);

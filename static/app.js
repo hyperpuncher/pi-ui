@@ -58,6 +58,8 @@ function bindAppCommands() {
 		if (target.closest("[data-dialog-trigger='command-dialog']")) {
 			event.preventDefault();
 			openDialog("command-dialog", "command-input");
+		} else if (target.closest("[data-new-chat-trigger]")) {
+			setTimeout(focusComposer, 0);
 		} else if (target.closest("[data-file-trigger]")) {
 			event.preventDefault();
 			insertFilePrefix();

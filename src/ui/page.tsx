@@ -49,7 +49,7 @@ export function renderPage(state: AppState): string {
 
 					<div
 						id="composer"
-						class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! p-3 shadow-sm"
+						class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! p-3 shadow-lg"
 					>
 						<div
 							id="composer-slash-popover"
@@ -81,7 +81,7 @@ export function renderPage(state: AppState): string {
 								aria-label="Message tools"
 							>
 								<button
-									class="btn"
+									class="btn text-muted-foreground hover:text-foreground"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -92,7 +92,7 @@ export function renderPage(state: AppState): string {
 									⌘
 								</button>
 								<button
-									class="btn"
+									class="btn text-muted-foreground hover:text-foreground"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -104,7 +104,7 @@ export function renderPage(state: AppState): string {
 									+
 								</button>
 								<button
-									class="btn"
+									class="btn text-muted-foreground hover:text-foreground"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -115,7 +115,7 @@ export function renderPage(state: AppState): string {
 									@
 								</button>
 								<button
-									class="btn"
+									class="btn text-muted-foreground hover:text-foreground"
 									data-variant="ghost"
 									data-size="icon-sm"
 									type="button"
@@ -133,8 +133,16 @@ export function renderPage(state: AppState): string {
 							<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
 								{renderComposerStatus(state)}
 								{renderWorkspacePicker(state)}
-								{renderThinkingPicker(state)}
+								<span
+									class="bg-border hidden h-4 w-px shrink-0 sm:block"
+									aria-hidden="true"
+								/>
 								{renderModelPicker(state)}
+								<span
+									class="bg-border hidden h-4 w-px shrink-0 sm:block"
+									aria-hidden="true"
+								/>
+								{renderThinkingPicker(state)}
 								{renderComposerAction(state)}
 							</div>
 						</div>
