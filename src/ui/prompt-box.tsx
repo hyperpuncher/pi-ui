@@ -35,7 +35,10 @@ export function renderPromptBox(state: AppState): string {
 				data-bind:prompt
 			></textarea>
 			<div class="flex flex-wrap items-center justify-between gap-2">
-				<div class="flex shrink-0 items-center gap-2" aria-label="Message tools">
+				<div
+					class="flex shrink-0 items-center gap-0.5"
+					aria-label="Message tools"
+				>
 					<PromptToolbarButton label="Commands" action="commands">
 						⌘
 					</PromptToolbarButton>

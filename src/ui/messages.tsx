@@ -13,7 +13,7 @@ export function renderMessages(
 	return (
 		<main
 			id="messages"
-			class="min-h-0 overflow-y-auto px-[max(1rem,calc((100vw-46rem)/2))] pt-24 pb-48"
+			class="min-h-0 overflow-y-auto mask-b-from-90% px-[max(1rem,calc((100vw-46rem)/2))] pt-24 pb-48"
 			aria-live="polite"
 		>
 			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
@@ -190,13 +190,13 @@ function renderMessage(message: AppMessage): string {
 		>
 			<header
 				class={[
-					"flex items-center justify-between gap-4 text-sm",
+					"flex items-center justify-between gap-4 text-sm leading-none",
 					hasToolBody ? "mb-3" : "",
 				]}
 			>
-				<span class="flex min-w-0 items-center gap-2">
+				<span class="flex min-w-0 items-center gap-2 leading-none">
 					<span class={["h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
-					<span class="truncate font-medium">
+					<span class="truncate leading-none font-medium">
 						{renderToolTitle(title, message.titleParts)}
 					</span>
 				</span>
