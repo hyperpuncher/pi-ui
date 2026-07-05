@@ -80,8 +80,8 @@ function renderSessionRow(session: AppSessionSummary): string {
 			data-filter={haystack}
 			data-keywords={haystack}
 			data-on:click={`
-				$sessionPath = ${JSON.stringify(session.path)};
 				document.getElementById('session-dialog')?.close();
+				$sessionPath = ${JSON.stringify(session.path)};
 				@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 			`}
 		>

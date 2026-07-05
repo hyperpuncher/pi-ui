@@ -5,7 +5,7 @@ import { smokePiSdkImport } from "../agent/sdk-smoke.ts";
 import { AppState } from "../state/app-state.ts";
 import { preloadMarkdownHighlighter } from "../ui/markdown.tsx";
 import { renderPage } from "../ui/page.tsx";
-import { readSignals, signalsResponse } from "./datastar.ts";
+import { readSignals, scriptResponse, signalsResponse } from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
 
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
@@ -59,8 +59,12 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 
 			if (request.method === "POST" && url.pathname === "/sessions/resume") {
 				const signals = await readSignals(request);
-				await host?.resumeSession(signals.sessionPath as string);
-				return noContent();
+				const resumed = await host?.resumeSession(signals.sessionPath as string);
+				return resumed
+					? scriptResponse(
+							"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
+						)
+					: noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/model") {

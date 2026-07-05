@@ -16,6 +16,12 @@ export function signalsResponse(signals: Record<string, Jsonifiable>) {
 	});
 }
 
+export function scriptResponse(script: string) {
+	return datastarStream((stream) => {
+		stream.executeScript(script);
+	});
+}
+
 export async function readSignals(request: Request) {
 	const result = await ds.readSignals(request);
 	if (!result.success) {

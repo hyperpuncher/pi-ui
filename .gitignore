@@ -2,6 +2,7 @@ node_modules/
 dist/
 .agents/
 skills-lock.json
+.envrc
 static/vendor/datastar-inspector.min.js
 
 static/app.css
