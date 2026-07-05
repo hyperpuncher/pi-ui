@@ -85,7 +85,7 @@ export function renderThinkingPicker(state: AppState): string {
 										@post('/thinking', { filterSignals: { include: /^thinkingLevel$/ } });
 									`}
 								>
-									<span data-ignore__self data-indicator>
+									<span data-ignore data-indicator>
 										✓
 									</span>
 									<span class="min-w-0">
@@ -194,7 +194,7 @@ export function renderModelPicker(state: AppState): string {
 											@post('/model', { filterSignals: { include: /^model$/ } });
 										`}
 									>
-										<span data-ignore__self data-indicator>
+										<span data-ignore data-indicator>
 											✓
 										</span>
 										<span class="min-w-0">
