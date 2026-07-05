@@ -22,7 +22,7 @@ import type {
 	AppThinkingLevel,
 } from "../state/app-state.ts";
 import { formatDateTime } from "../utils/locale.ts";
-import { defaultWorkspacePath } from "../utils/workspace.ts";
+import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 
 const defaultProvider = "opencode-go";
 const defaultModelId = "deepseek-v4-flash";
@@ -671,12 +671,8 @@ function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 		path: info.path,
 		title: truncate(title, 96),
 		subtitle: `${messageLabel} • ${truncate(info.cwd, 64)}`,
-		modified: formatDate(info.modified),
+		modified: formatDateTime(info.modified),
 	};
-}
-
-function formatDate(date: Date): string {
-	return formatDateTime(date);
 }
 
 function formatStats(stats: SessionStats): AppUsage {
@@ -843,8 +839,7 @@ function formatToolResult(
 }
 
 function shortenPath(path: string): string {
-	const home = Deno.env.get("HOME");
-	return home && path.startsWith(home) ? `~${path.slice(home.length)}` : path;
+	return formatHomePath(path);
 }
 
 function compactReadOutput(text: string): string {

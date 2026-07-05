@@ -55,15 +55,3 @@ export const appCommands: AppCommand[] = [
 		shortcut: { display: "", native: "", keys: [] },
 	},
 ];
-
-export function command(id: AppCommandId): AppCommand {
-	const found = appCommands.find((item) => item.id === id);
-	if (!found) {
-		throw new Error(`Unknown command: ${id}`);
-	}
-	return found;
-}
-
-export function shortcutKeys(): string[] {
-	return appCommands.flatMap((item) => item.shortcut.keys);
-}

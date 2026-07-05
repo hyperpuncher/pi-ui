@@ -1,4 +1,5 @@
 import type { AppState, AppThinkingLevel, AppUsage } from "../state/app-state.ts";
+import { formatHomePath } from "../utils/workspace.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderSlashPicker } from "./pickers.tsx";
 
@@ -337,14 +338,11 @@ function thinkingDescription(level: AppThinkingLevel): string {
 }
 
 function workspaceLabel(path: string): string {
-	const home = Deno.env.get("HOME");
-	const display =
-		home && path.startsWith(`${home}/`) ? `~/${path.slice(home.length + 1)}` : path;
+	const display = formatHomePath(path).replaceAll("\\", "/");
 	const parts = display.split("/").filter(Boolean);
-	if (display === "~" || parts.length <= 2) {
-		return display;
-	}
-	return `${parts.at(-2)}/${parts.at(-1)}`;
+	return display === "~" || parts.length <= 2
+		? display
+		: `${parts.at(-2)}/${parts.at(-1)}`;
 }
 
 export function renderModelPicker(state: AppState): string {
