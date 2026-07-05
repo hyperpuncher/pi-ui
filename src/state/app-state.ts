@@ -1,6 +1,7 @@
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream } from "../server/datastar.ts";
 import {
+	renderComposerAction,
 	renderComposerStatus,
 	renderModelPicker,
 	renderSessionPicker,
@@ -347,6 +348,7 @@ export class AppState {
 	private renderElements(): string {
 		return (
 			renderTranscript(this.messages) +
+			renderComposerAction(this) +
 			renderComposerStatus(this) +
 			renderWorkspacePicker(this) +
 			renderThinkingPicker(this) +

@@ -1,6 +1,7 @@
 import { appCommands, type AppCommand, type AppCommandId } from "../commands/registry.ts";
 import type { AppState } from "../state/app-state.ts";
 import {
+	renderComposerAction,
 	renderComposerStatus,
 	renderModelPicker,
 	renderSessionPicker,
@@ -85,6 +86,7 @@ export function renderPage(state: AppState): string {
 									data-size="icon-sm"
 									type="button"
 									data-dialog-trigger="command-dialog"
+									data-tooltip="Commands"
 									title="Commands"
 								>
 									⌘
@@ -96,6 +98,7 @@ export function renderPage(state: AppState): string {
 									type="button"
 									data-new-chat-trigger
 									data-on:click="@post('/sessions/new')"
+									data-tooltip="New chat"
 									title="New chat"
 								>
 									+
@@ -106,6 +109,7 @@ export function renderPage(state: AppState): string {
 									data-size="icon-sm"
 									type="button"
 									data-file-trigger
+									data-tooltip="Files"
 									title="Files"
 								>
 									@
@@ -120,6 +124,7 @@ export function renderPage(state: AppState): string {
 										@post('/sessions/list');
 										document.getElementById('session-dialog')?.showModal();
 									"
+									data-tooltip="Resume session"
 									title="Resume session"
 								>
 									↩
@@ -130,27 +135,7 @@ export function renderPage(state: AppState): string {
 								{renderWorkspacePicker(state)}
 								{renderThinkingPicker(state)}
 								{renderModelPicker(state)}
-								<button
-									class="btn"
-									data-variant="ghost"
-									data-size="icon-sm"
-									type="button"
-									data-on:click="@post('/abort')"
-									title="Abort"
-									aria-label="Abort"
-								>
-									■
-								</button>
-								<button
-									class="btn"
-									data-size="icon"
-									type="button"
-									data-send-trigger
-									data-on:click="@post('/prompt', { filterSignals: { include: /^composer$/ } })"
-									aria-label="Send"
-								>
-									↑
-								</button>
+								{renderComposerAction(state)}
 							</div>
 						</div>
 					</div>

@@ -8,6 +8,42 @@ import type {
 } from "../state/app-state.ts";
 import { formatTime } from "../utils/locale.ts";
 
+export function renderComposerAction(state: AppState): string {
+	if (state.activityText) {
+		return (
+			<button
+				id="composer-action"
+				class="btn"
+				data-variant="destructive"
+				data-size="icon"
+				type="button"
+				data-on:click="@post('/abort')"
+				data-tooltip="Abort"
+				title="Abort"
+				aria-label="Abort"
+			>
+				■
+			</button>
+		) as string;
+	}
+
+	return (
+		<button
+			id="composer-action"
+			class="btn"
+			data-size="icon"
+			type="button"
+			data-send-trigger
+			data-attr:disabled="$composer.trim() === ''"
+			data-on:click="@post('/prompt', { filterSignals: { include: /^composer$/ } })"
+			data-tooltip="Send"
+			aria-label="Send"
+		>
+			↑
+		</button>
+	) as string;
+}
+
 export function renderComposerStatus(state: AppState): string {
 	return (
 		<span
@@ -58,6 +94,7 @@ export function renderWorkspacePicker(state: AppState): string {
 			type="button"
 			title={state.workspacePath}
 			data-workspace-trigger
+			data-tooltip="Workspace"
 		>
 			<span class="truncate" safe>
 				{label}
@@ -82,6 +119,7 @@ export function renderThinkingPicker(state: AppState): string {
 					aria-haspopup="menu"
 					aria-expanded="false"
 					aria-controls="thinking-select-menu"
+					data-tooltip="Thinking"
 					disabled={state.thinkingLevels.length <= 1}
 				>
 					<span class="truncate">{thinkingLabel(current)}</span>
@@ -183,6 +221,7 @@ export function renderModelPicker(state: AppState): string {
 					aria-haspopup="menu"
 					aria-expanded="false"
 					aria-controls="model-select-menu"
+					data-tooltip="Model"
 					disabled={state.models.length === 0}
 				>
 					<span class="truncate">{currentLabel}</span>
