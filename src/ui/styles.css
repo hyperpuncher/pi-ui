@@ -25,3 +25,10 @@
 		color: var(--shiki-dark) !important;
 	}
 }
+
+@layer components {
+	[data-tooltip][data-tooltip-suppressed]::before,
+	[data-tooltip][data-tooltip-suppressed]::after {
+		display: none;
+	}
+}

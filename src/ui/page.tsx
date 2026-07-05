@@ -87,7 +87,7 @@ export function renderPage(state: AppState): string {
 									type="button"
 									data-dialog-trigger="command-dialog"
 									data-tooltip="Commands"
-									title="Commands"
+									aria-label="Commands"
 								>
 									⌘
 								</button>
@@ -99,7 +99,7 @@ export function renderPage(state: AppState): string {
 									data-new-chat-trigger
 									data-on:click="@post('/sessions/new')"
 									data-tooltip="New chat"
-									title="New chat"
+									aria-label="New chat"
 								>
 									+
 								</button>
@@ -110,7 +110,7 @@ export function renderPage(state: AppState): string {
 									type="button"
 									data-file-trigger
 									data-tooltip="Files"
-									title="Files"
+									aria-label="Files"
 								>
 									@
 								</button>
@@ -125,7 +125,7 @@ export function renderPage(state: AppState): string {
 										document.getElementById('session-dialog')?.showModal();
 									"
 									data-tooltip="Resume session"
-									title="Resume session"
+									aria-label="Resume session"
 								>
 									↩
 								</button>

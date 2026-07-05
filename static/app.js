@@ -13,6 +13,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindTranscriptAutoscroll();
 	bindCommandRefresh();
 	bindCodeCopy();
+	bindTooltipSuppression();
 	bindPickerKeyboard();
 	bindDialogKeyboard();
 });
@@ -197,6 +198,21 @@ function renderRecentWorkspaces() {
 		row.append(button);
 		list.append(row);
 	}
+}
+
+function bindTooltipSuppression() {
+	document.addEventListener("pointerdown", (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		const trigger = target.closest("[data-tooltip]");
+		if (!(trigger instanceof HTMLElement)) return;
+		trigger.setAttribute("data-tooltip-suppressed", "");
+		trigger.addEventListener(
+			"pointerleave",
+			() => trigger.removeAttribute("data-tooltip-suppressed"),
+			{ once: true },
+		);
+	});
 }
 
 function bindDialogKeyboard() {

@@ -20,7 +20,6 @@ export function renderComposerAction(state: AppState): string {
 				type="button"
 				data-on:click="@post('/abort')"
 				data-tooltip="Abort"
-				title="Abort"
 				aria-label="Abort"
 			>
 				■
@@ -76,7 +75,7 @@ function renderUsageIndicator(usage: AppUsage): string {
 	return (
 		<span
 			id="composer-status"
-			class="hidden size-8 shrink-0 items-center justify-center lg:inline-flex"
+			class="hidden size-8 shrink-0 items-center justify-center font-mono lg:inline-flex"
 			data-tooltip={usage.text}
 			aria-label={usage.text}
 		>
@@ -131,10 +130,11 @@ export function renderWorkspacePicker(state: AppState): string {
 	return (
 		<button
 			id="workspace-picker"
-			class="btn hidden max-w-[12rem] min-w-0 px-2 font-mono text-xs sm:inline-flex"
+			class="btn hidden max-w-[12rem] min-w-0 font-mono sm:inline-flex"
 			data-variant="ghost"
+			data-size="sm"
 			type="button"
-			title={state.workspacePath}
+			aria-label={state.workspacePath}
 			data-workspace-trigger
 			data-tooltip="Workspace"
 		>
@@ -155,8 +155,9 @@ export function renderThinkingPicker(state: AppState): string {
 			<div id="thinking-select" class="dropdown-menu">
 				<button
 					type="button"
-					class="btn h-9 w-fit max-w-[10rem] px-2 text-sm"
+					class="btn w-fit max-w-[10rem] font-mono"
 					data-variant="ghost"
+					data-size="sm"
 					id="thinking-select-trigger"
 					aria-haspopup="menu"
 					aria-expanded="false"
@@ -257,8 +258,9 @@ export function renderModelPicker(state: AppState): string {
 			<div id="model-select" class="dropdown-menu">
 				<button
 					type="button"
-					class="btn h-9 w-fit px-2 text-sm font-medium"
+					class="btn w-fit font-mono"
 					data-variant="ghost"
+					data-size="sm"
 					id="model-select-trigger"
 					aria-haspopup="menu"
 					aria-expanded="false"
