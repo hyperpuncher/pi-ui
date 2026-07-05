@@ -16,52 +16,12 @@ function setupDesktopWindow(): void {
 		height: 1400,
 	});
 
-	win.setApplicationMenu([
-		{
-			submenu: {
-				label: "App",
-				items: [{ role: { role: "quit" } }],
-			},
-		},
-		{
-			submenu: {
-				label: "Edit",
-				items: [
-					{ role: { role: "undo" } },
-					{ role: { role: "redo" } },
-					"separator",
-					{ role: { role: "cut" } },
-					{ role: { role: "copy" } },
-					{ role: { role: "paste" } },
-					{ role: { role: "selectAll" } },
-				],
-			},
-		},
-		{
-			submenu: {
-				label: "View",
-				items: [
-					{
-						item: {
-							label: "Open DevTools",
-							id: "devtools",
-							accelerator: "F12",
-							enabled: true,
-						},
-					},
-				],
-			},
-		},
-	]);
+	win.setApplicationMenu([]);
 
-	win.addEventListener("menuclick", (event) => {
-		if (menuId(event) === "devtools") {
+	win.addEventListener("keydown", (event) => {
+		if (event.key === "F12") {
+			event.preventDefault();
 			win.openDevtools();
 		}
 	});
-}
-
-function menuId(event: unknown): string | undefined {
-	const detail = (event as { detail?: { id?: string } }).detail;
-	return detail?.id;
 }
