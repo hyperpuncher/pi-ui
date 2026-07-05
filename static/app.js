@@ -12,6 +12,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindFilePicker();
 	bindTranscriptAutoscroll();
 	bindCommandRefresh();
+	bindCodeCopy();
 	bindPickerKeyboard();
 	bindDialogKeyboard();
 });
@@ -660,6 +661,27 @@ function bindCommandRefresh() {
 	});
 
 	observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function bindCodeCopy() {
+	document.addEventListener("click", async (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		const button = target.closest("[data-copy-code]");
+		if (!(button instanceof HTMLButtonElement)) return;
+		const code = button.closest("[data-code-block]")?.querySelector("code");
+		if (!code?.textContent) return;
+		try {
+			await navigator.clipboard.writeText(code.textContent);
+			const previous = button.textContent;
+			button.textContent = "Copied";
+			setTimeout(() => {
+				button.textContent = previous;
+			}, 1200);
+		} catch {
+			button.textContent = "Failed";
+		}
+	});
 }
 
 function bindPickerKeyboard() {

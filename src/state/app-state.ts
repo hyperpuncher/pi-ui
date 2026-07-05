@@ -95,6 +95,7 @@ export class AppState {
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usageText = "$0.000 • 0 tokens";
+	activityText: string | undefined;
 	workspacePath = Deno.cwd();
 
 	createStream(signal: AbortSignal): Response {
@@ -299,6 +300,11 @@ export class AppState {
 		this.broadcast();
 	}
 
+	setActivityText(activityText: string | undefined): void {
+		this.activityText = activityText;
+		this.broadcast();
+	}
+
 	setWorkspacePath(workspacePath: string): void {
 		this.workspacePath = workspacePath;
 		this.broadcast();
@@ -311,7 +317,7 @@ export class AppState {
 		}
 
 		const text = message.text;
-		const renderedHtml = await renderCodeFinal(text, language);
+		const renderedHtml = await renderCodeFinal(text, language, { chrome: false });
 		const current = this.messages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
 			return;

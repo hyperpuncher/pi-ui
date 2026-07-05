@@ -74,7 +74,7 @@ export function renderPage(state: AppState): string {
 							aria-label="Message"
 							data-bind:composer
 						></textarea>
-						<div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+						<div class="flex flex-wrap items-center justify-between gap-2">
 							<div
 								class="flex shrink-0 items-center gap-2"
 								aria-label="Message tools"

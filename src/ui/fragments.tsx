@@ -6,16 +6,46 @@ import type {
 	AppSlashCommand,
 	AppState,
 } from "../state/app-state.ts";
+import { formatTime } from "../utils/locale.ts";
 
 export function renderComposerStatus(state: AppState): string {
 	return (
 		<span
 			id="composer-status"
-			class="text-muted-foreground hidden min-w-0 truncate font-mono text-xs lg:inline"
+			class={[
+				"text-muted-foreground min-w-0 truncate font-mono text-xs",
+				state.activityText ? "inline-flex shrink-0" : "hidden lg:inline",
+			]}
 		>
-			{state.usageText}
+			{state.activityText ? (
+				<span class="inline-flex items-center gap-1.5">
+					{loaderIcon()}
+					<span safe>{state.activityText}</span>
+				</span>
+			) : (
+				state.usageText
+			)}
 		</span>
 	) as string;
+}
+
+function loaderIcon(): JSX.Element {
+	return (
+		<svg
+			aria-label="Loading"
+			role="status"
+			class="lucide lucide-loader size-3 animate-spin"
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		>
+			<path d="M12 2v4m4.2 1.8l2.9-2.9M18 12h4m-5.8 4.2l2.9 2.9M12 18v4m-7.1-2.9l2.9-2.9M2 12h4M4.9 4.9l2.9 2.9" />
+		</svg>
+	);
 }
 
 export function renderWorkspacePicker(state: AppState): string {
@@ -286,6 +316,7 @@ export function renderSessionPicker(state: AppState): string {
 		<div
 			role="menu"
 			id="session-menu"
+			class="mt-1"
 			aria-orientation="vertical"
 			data-empty="No saved sessions for this project yet."
 		>
@@ -341,7 +372,7 @@ function renderPreOutput(text: string): JSX.Element {
 function renderDiffOutput(message: AppMessage): JSX.Element {
 	if (message.renderedHtml) {
 		return (
-			<div class="max-h-96 overflow-auto rounded-sm [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:p-0 [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			<div class="max-h-96 overflow-auto rounded-sm bg-[var(--code-background)] [&_.shiki]:m-0 [&_.shiki]:bg-[var(--code-background)]! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
 				{message.renderedHtml}
 			</div>
 		);
@@ -498,7 +529,7 @@ function renderMessage(message: AppMessage): string {
 				</span>
 				<span class="text-muted-foreground flex shrink-0 items-center gap-3 text-xs">
 					{message.meta && <span safe>{message.meta}</span>}
-					<time>{message.timestamp.toLocaleTimeString()}</time>
+					<time>{formatTime(message.timestamp)}</time>
 				</span>
 			</header>
 			{hasToolBody

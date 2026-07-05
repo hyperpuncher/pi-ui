@@ -1,28 +1,26 @@
 @import "tailwindcss";
 @import "basecoat-css/nova";
 
+@layer theme {
+	:root,
+	:host {
+		--font-sans:
+			ui-sans-serif, system-ui, "Inter", sans-serif, "Apple Color Emoji",
+			"Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+		--font-mono:
+			ui-monospace, "Cascadia Mono", SFMono-Regular, Menlo, Monaco, Consolas,
+			"Liberation Mono", "Courier New", monospace;
+		--code-background: var(--muted);
+	}
+}
+
 @layer base {
 	* {
-		scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent)
-			transparent;
+		scrollbar-color: var(--muted-foreground) transparent;
 		scrollbar-width: thin;
 	}
 
-	::-webkit-scrollbar {
-		width: 0.5rem;
-		height: 0.5rem;
-	}
-
-	::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	::-webkit-scrollbar-thumb {
-		background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
-		border-radius: 9999px;
-	}
-
-	::-webkit-scrollbar-thumb:hover {
-		background: color-mix(in oklch, var(--muted-foreground) 65%, transparent);
+	html.dark .shiki span {
+		color: var(--shiki-dark) !important;
 	}
 }

@@ -20,6 +20,7 @@ import type {
 	AppState,
 	AppThinkingLevel,
 } from "../state/app-state.ts";
+import { formatDateTime } from "../utils/locale.ts";
 
 const defaultProvider = "opencode-go";
 const defaultModelId = "deepseek-v4-flash";
@@ -207,6 +208,7 @@ export class AgentHost {
 		this.toolStartedAt.clear();
 		await session.bindExtensions({ mode: "rpc" });
 		this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
+		this.state.setActivityText(undefined);
 		this.syncModels();
 		this.syncThinking();
 		this.syncSlashCommands();
@@ -244,6 +246,9 @@ export class AgentHost {
 
 	private handleEvent(event: AgentSessionEvent): void {
 		switch (event.type) {
+			case "agent_start":
+				this.state.setActivityText("Working...");
+				break;
 			case "message_start":
 				this.handleMessageStart(event.message);
 				break;
@@ -318,9 +323,26 @@ export class AgentHost {
 				break;
 			}
 			case "agent_end":
+				this.state.setActivityText(undefined);
 				this.syncUsage();
 				break;
+			case "auto_retry_start":
+				this.state.setActivityText(
+					`Retrying (${event.attempt}/${event.maxAttempts})...`,
+				);
+				break;
+			case "auto_retry_end":
+				this.state.setActivityText(undefined);
+				break;
+			case "compaction_start":
+				this.state.setActivityText(
+					event.reason === "manual"
+						? "Compacting context..."
+						: `${event.reason === "overflow" ? "Context overflow detected, " : ""}Auto-compacting...`,
+				);
+				break;
 			case "compaction_end":
+				this.state.setActivityText(undefined);
 				if (event.result) {
 					this.loadCurrentSessionMessages();
 				}
@@ -649,12 +671,7 @@ function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 }
 
 function formatDate(date: Date): string {
-	return date.toLocaleString(undefined, {
-		month: "short",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
+	return formatDateTime(date);
 }
 
 function formatStats(stats: SessionStats): string {
@@ -798,11 +815,11 @@ function formatToolResult(
 ): { text: string; format?: "pre" | "diff" } {
 	const record = asRecord(result);
 	const details = asRecord(record?.details);
-	if (toolName === "edit" && typeof details?.patch === "string") {
-		return { text: details.patch, format: "diff" };
-	}
 	if (toolName === "edit" && typeof details?.diff === "string") {
 		return { text: details.diff, format: "diff" };
+	}
+	if (toolName === "edit" && typeof details?.patch === "string") {
+		return { text: details.patch, format: "diff" };
 	}
 	if (toolName === "read") {
 		return {

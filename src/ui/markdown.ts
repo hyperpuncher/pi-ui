@@ -132,8 +132,12 @@ function compileMarkdown(markdown: string): string {
 	return result.html;
 }
 
-export async function renderCodeFinal(code: string, language: string): Promise<string> {
-	return await highlightCode(code, normalizeLanguage(language));
+export async function renderCodeFinal(
+	code: string,
+	language: string,
+	options: { chrome?: boolean } = {},
+): Promise<string> {
+	return await highlightCode(code, normalizeLanguage(language), options);
 }
 
 async function highlightCodeBlocks(html: string): Promise<string> {
@@ -150,15 +154,23 @@ async function highlightCodeBlocks(html: string): Promise<string> {
 	for (const block of blocks) {
 		const [raw, rawLanguage, rawCode] = block;
 		const language = normalizeLanguage(rawLanguage);
-		const replacement = await highlightCode(decodeHtml(rawCode), language);
+		const replacement = await highlightCode(decodeHtml(rawCode), language, {
+			chrome: true,
+		});
 		highlighted = highlighted.replace(raw, replacement);
 	}
 	return highlighted;
 }
 
-async function highlightCode(code: string, language: string): Promise<string> {
+async function highlightCode(
+	code: string,
+	language: string,
+	options: { chrome?: boolean } = {},
+): Promise<string> {
+	const chrome = options.chrome ?? true;
 	if (!isBundledLanguage(language)) {
-		return fallbackCode(code, language);
+		const pre = fallbackCode(code, language);
+		return chrome ? codeBlock(pre, language) : pre;
 	}
 
 	try {
@@ -166,32 +178,53 @@ async function highlightCode(code: string, language: string): Promise<string> {
 		if (!highlighter.getLoadedLanguages().includes(language)) {
 			await highlighter.loadLanguage(language);
 		}
-		return highlighter.codeToHtml(code, {
+		const pre = highlighter.codeToHtml(code, {
 			lang: language,
-			theme: "github-dark-default",
+			themes: {
+				light: "ayu-light",
+				dark: "ayu-dark",
+			},
 		});
+		return chrome ? codeBlock(pre, language) : pre;
 	} catch {
-		return fallbackCode(code, language);
+		const pre = fallbackCode(code, language);
+		return chrome ? codeBlock(pre, language) : pre;
 	}
 }
 
 function getHighlighter(): Promise<Highlighter> {
 	highlighterPromise ??= createHighlighter({
 		langs: [
+			"astro",
 			"bash",
 			"css",
 			"diff",
+			"elixir",
 			"html",
+			"ini",
 			"javascript",
 			"json",
+			"json5",
+			"jsonc",
+			"lua",
 			"markdown",
+			"nu",
+			"nushell",
+			"odin",
+			"powershell",
 			"shellscript",
 			"tsx",
+			"typst",
 			"typescript",
 		],
-		themes: ["github-dark-default"],
+		themes: ["ayu-light", "ayu-dark"],
 	});
 	return highlighterPromise;
+}
+
+function codeBlock(pre: string, language: string): string {
+	const label = language === "text" ? "text" : language;
+	return `<div class="code-block my-4 overflow-hidden rounded-lg border bg-[var(--code-background)] [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-[var(--code-background)]! [&_pre]:p-4! [&_pre]:text-sm! [&_pre]:leading-relaxed!" data-code-block><div class="bg-muted text-muted-foreground flex items-center justify-between gap-3 border-b px-3 py-1 font-mono text-xs"><span>${escapeHtml(label)}</span><button class="btn h-7 w-7 p-0" data-variant="ghost" type="button" data-copy-code aria-label="Copy code"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M16 4h2a2 2 0 0 1 2 2v4m1 4H11"/><path d="m15 10l-4 4l4 4"/></g></svg></button></div>${pre}</div>`;
 }
 
 function fallbackCode(code: string, language: string): string {
