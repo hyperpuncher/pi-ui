@@ -18,6 +18,7 @@ import type {
 	AppMessageTitlePart,
 	AppSessionSummary,
 	AppState,
+	AppUsage,
 	AppThinkingLevel,
 } from "../state/app-state.ts";
 import { formatDateTime } from "../utils/locale.ts";
@@ -362,7 +363,7 @@ export class AgentHost {
 	}
 
 	private syncUsage(): void {
-		this.state.setUsageText(formatStats(this.runtime.session.getSessionStats()));
+		this.state.setUsage(formatStats(this.runtime.session.getSessionStats()));
 	}
 
 	private syncSlashCommands(): void {
@@ -674,14 +675,18 @@ function formatDate(date: Date): string {
 	return formatDateTime(date);
 }
 
-function formatStats(stats: SessionStats): string {
+function formatStats(stats: SessionStats): AppUsage {
 	const cost = formatCost(stats.cost);
 	if (stats.contextUsage) {
-		return `${cost} • ${formatPercent(stats.contextUsage.percent)}/${formatTokens(
+		const context = `${formatPercent(stats.contextUsage.percent)}/${formatTokens(
 			stats.contextUsage.contextWindow,
 		)}`;
+		return {
+			text: `${cost} • ${context}`,
+			contextPercent: stats.contextUsage.percent ?? undefined,
+		};
 	}
-	return `${cost} • ${formatTokens(stats.tokens.total)} tokens`;
+	return { text: `${cost} • ${formatTokens(stats.tokens.total)} tokens` };
 }
 
 function formatTokens(count: number): string {

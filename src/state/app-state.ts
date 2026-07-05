@@ -62,6 +62,11 @@ export type AppSessionSummary = {
 	modified: string;
 };
 
+export type AppUsage = {
+	text: string;
+	contextPercent?: number;
+};
+
 export type AppMessageInput = Omit<AppMessage, "id" | "renderedHtml"> & {
 	renderedHtml?: string;
 };
@@ -95,7 +100,7 @@ export class AppState {
 	currentModel: string | undefined;
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
-	usageText = "$0.000 • 0 tokens";
+	usage: AppUsage = { text: "$0.000 • 0 tokens" };
 	activityText: string | undefined;
 	workspacePath = Deno.cwd();
 
@@ -296,8 +301,8 @@ export class AppState {
 		this.broadcast();
 	}
 
-	setUsageText(usageText: string): void {
-		this.usageText = usageText;
+	setUsage(usage: AppUsage): void {
+		this.usage = usage;
 		this.broadcast();
 	}
 

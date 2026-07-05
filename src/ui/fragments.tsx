@@ -3,6 +3,7 @@ import type {
 	AppMessageTitlePart,
 	AppSessionSummary,
 	AppThinkingLevel,
+	AppUsage,
 	AppSlashCommand,
 	AppState,
 } from "../state/app-state.ts";
@@ -45,22 +46,63 @@ export function renderComposerAction(state: AppState): string {
 }
 
 export function renderComposerStatus(state: AppState): string {
-	return (
-		<span
-			id="composer-status"
-			class={[
-				"text-muted-foreground min-w-0 truncate font-mono text-xs",
-				state.activityText ? "inline-flex shrink-0" : "hidden lg:inline",
-			]}
-		>
-			{state.activityText ? (
+	if (state.activityText) {
+		return (
+			<span
+				id="composer-status"
+				class="text-muted-foreground inline-flex min-w-0 shrink-0 truncate font-mono text-xs"
+			>
 				<span class="inline-flex items-center gap-1.5">
 					{loaderIcon()}
 					<span safe>{state.activityText}</span>
 				</span>
-			) : (
-				state.usageText
-			)}
+			</span>
+		) as string;
+	}
+
+	return renderUsageIndicator(state.usage);
+}
+
+function renderUsageIndicator(usage: AppUsage): string {
+	const percent = usage.contextPercent ?? 0;
+	const circumference = 2 * Math.PI * 10;
+	const strokeDashoffset = circumference - (percent / 100) * circumference;
+	const colorClass =
+		percent > 90
+			? "text-red-500"
+			: percent > 70
+				? "text-yellow-500"
+				: "text-violet-400";
+	return (
+		<span
+			id="composer-status"
+			class="hidden size-8 shrink-0 items-center justify-center lg:inline-flex"
+			data-tooltip={usage.text}
+			aria-label={usage.text}
+		>
+			<svg class="size-4 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
+				<circle
+					cx="12"
+					cy="12"
+					r="10"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="3"
+					class="text-muted-foreground/30"
+				/>
+				<circle
+					cx="12"
+					cy="12"
+					r="10"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="3"
+					stroke-linecap="round"
+					class={colorClass}
+					stroke-dasharray={circumference}
+					stroke-dashoffset={strokeDashoffset}
+				/>
+			</svg>
 		</span>
 	) as string;
 }
