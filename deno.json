@@ -4,9 +4,8 @@
 		"check": "deno check --conditions browser src/main.ts",
 		"css:build": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
-		"dev": "deno task css:build && deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts",
-		"desktop": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno task desktop:app\"",
-		"desktop:app": "deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --hmr src/main.ts --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync",
+		"dev": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --hmr src/main.ts --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync\"",
+		"server": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts\"",
 		"run:linux": "./dist/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
 		"lint": "deno run -A npm:oxlint"
