@@ -37,9 +37,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				const accepted = host
 					? await host.prompt(signals.composer as string)
 					: false;
-				return signalsResponse(
-					accepted ? { composer: "" } : { lastPromptAccepted: false },
-				);
+				return accepted ? signalsResponse({ composer: "" }) : noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/abort") {

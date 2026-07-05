@@ -7,24 +7,20 @@ import type {
 	AppState,
 } from "../state/app-state.ts";
 
-function sync(html: JSX.Element): string {
-	return html as string;
-}
-
 export function renderComposerStatus(state: AppState): string {
-	return sync(
+	return (
 		<span
 			id="composer-status"
 			class="text-muted-foreground hidden min-w-0 truncate font-mono text-xs lg:inline"
 		>
 			{state.usageText}
-		</span>,
-	);
+		</span>
+	) as string;
 }
 
 export function renderWorkspacePicker(state: AppState): string {
 	const label = workspaceLabel(state.workspacePath);
-	return sync(
+	return (
 		<button
 			id="workspace-picker"
 			class="btn hidden max-w-[12rem] min-w-0 px-2 font-mono text-xs sm:inline-flex"
@@ -36,13 +32,13 @@ export function renderWorkspacePicker(state: AppState): string {
 			<span class="truncate" safe>
 				{label}
 			</span>
-		</button>,
-	);
+		</button>
+	) as string;
 }
 
 export function renderThinkingPicker(state: AppState): string {
 	const current = state.thinkingLevel;
-	return sync(
+	return (
 		<div id="thinking-picker" class="hidden min-w-0 sm:block">
 			<label class="sr-only" for="thinking-select-trigger">
 				Thinking level
@@ -102,8 +98,8 @@ export function renderThinkingPicker(state: AppState): string {
 					</div>
 				</div>
 			</div>
-		</div>,
-	);
+		</div>
+	) as string;
 }
 
 function thinkingLabel(level: AppThinkingLevel): string {
@@ -143,7 +139,7 @@ export function renderModelPicker(state: AppState): string {
 		(model) => `${model.provider}/${model.id}` === state.currentModel,
 	);
 	const currentLabel = current ? modelTriggerLabel(current) : "Loading models…";
-	return sync(
+	return (
 		<div id="model-picker" class="shrink-0">
 			<label class="sr-only" for="model-select-trigger">
 				Model
@@ -213,8 +209,8 @@ export function renderModelPicker(state: AppState): string {
 					</div>
 				</div>
 			</div>
-		</div>,
-	);
+		</div>
+	) as string;
 }
 
 function modelTriggerLabel(model: AppState["models"][number]): string {
@@ -222,7 +218,7 @@ function modelTriggerLabel(model: AppState["models"][number]): string {
 }
 
 export function renderTranscript(messages: AppMessage[]): string {
-	return sync(
+	return (
 		<main
 			id="transcript"
 			class="min-h-0 overflow-y-auto px-[max(1rem,calc((100vw-46rem)/2))] pt-24 pb-48"
@@ -231,12 +227,12 @@ export function renderTranscript(messages: AppMessage[]): string {
 			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
 				{messages.map(renderMessage)}
 			</div>
-		</main>,
-	);
+		</main>
+	) as string;
 }
 
 export function renderSlashPicker(state: AppState): string {
-	return sync(
+	return (
 		<div id="slash-picker">
 			<ul class="max-h-72 list-none overflow-y-auto p-1">
 				{state.slashCommands.length === 0 ? (
@@ -247,15 +243,15 @@ export function renderSlashPicker(state: AppState): string {
 					state.slashCommands.map(renderSlashRow)
 				)}
 			</ul>
-		</div>,
-	);
+		</div>
+	) as string;
 }
 
 function renderSlashRow(item: AppSlashCommand): string {
 	const label = `/${item.name}`;
 	const haystack = `${item.name} ${item.description} ${item.source}`.toLowerCase();
 	const commandText = `${label} `;
-	return sync(
+	return (
 		<li data-slash-row data-slash-haystack={haystack}>
 			<button
 				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
@@ -281,12 +277,12 @@ function renderSlashRow(item: AppSlashCommand): string {
 					{item.source}
 				</span>
 			</button>
-		</li>,
-	);
+		</li>
+	) as string;
 }
 
 export function renderSessionPicker(state: AppState): string {
-	return sync(
+	return (
 		<div
 			role="menu"
 			id="session-menu"
@@ -299,13 +295,13 @@ export function renderSessionPicker(state: AppState): string {
 				</span>
 				{state.sessions.map(renderSessionRow)}
 			</div>
-		</div>,
-	);
+		</div>
+	) as string;
 }
 
 function renderSessionRow(session: AppSessionSummary): string {
 	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
-	return sync(
+	return (
 		<div
 			role="menuitem"
 			tabindex="-1"
@@ -330,8 +326,8 @@ function renderSessionRow(session: AppSessionSummary): string {
 			<span class="w-32 shrink-0 text-right whitespace-nowrap" data-shortcut safe>
 				{session.modified}
 			</span>
-		</div>,
-	);
+		</div>
+	) as string;
 }
 
 function renderPreOutput(text: string): JSX.Element {
@@ -378,7 +374,7 @@ function toolTitlePartClass(part: AppMessageTitlePart): string {
 
 function renderMessage(message: AppMessage): string {
 	if (message.role === "user") {
-		return sync(
+		return (
 			<article
 				class="bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-xl px-3.5 py-2.5"
 				data-message-id={message.id}
@@ -386,12 +382,12 @@ function renderMessage(message: AppMessage): string {
 				<p class="m-0 whitespace-pre-wrap" safe>
 					{message.text}
 				</p>
-			</article>,
-		);
+			</article>
+		) as string;
 	}
 
 	if (message.role === "assistant") {
-		return sync(
+		return (
 			<article
 				class="[&_code]:bg-muted max-w-full self-start leading-relaxed [&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4 [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap [&_.table-container]:my-4 [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6"
 				data-message-id={message.id}
@@ -403,12 +399,12 @@ function renderMessage(message: AppMessage): string {
 						{message.text}
 					</p>
 				)}
-			</article>,
-		);
+			</article>
+		) as string;
 	}
 
 	if (message.role === "thought") {
-		return sync(
+		return (
 			<article
 				class="text-muted-foreground [&_code]:bg-muted max-w-3xl self-start text-sm leading-relaxed italic [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_ul]:list-disc [&_ul]:pl-6"
 				data-message-id={message.id}
@@ -420,12 +416,12 @@ function renderMessage(message: AppMessage): string {
 						{message.text}
 					</p>
 				)}
-			</article>,
-		);
+			</article>
+		) as string;
 	}
 
 	if (message.role === "system") {
-		return sync(
+		return (
 			<article
 				class="text-muted-foreground max-w-3xl self-start"
 				data-message-id={message.id}
@@ -433,13 +429,13 @@ function renderMessage(message: AppMessage): string {
 				<p class="m-0 whitespace-pre-wrap" safe>
 					{message.text}
 				</p>
-			</article>,
-		);
+			</article>
+		) as string;
 	}
 
 	if (message.role === "compaction" || message.role === "skill") {
 		const label = message.role === "skill" ? "[skill]" : "[compaction]";
-		return sync(
+		return (
 			<article
 				class="bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-sm p-3 text-sm"
 				data-message-id={message.id}
@@ -466,8 +462,8 @@ function renderMessage(message: AppMessage): string {
 						)}
 					</div>
 				</details>
-			</article>,
-		);
+			</article>
+		) as string;
 	}
 
 	const title = message.title ?? "Tool";
@@ -480,7 +476,7 @@ function renderMessage(message: AppMessage): string {
 			: message.state === "error"
 				? "bg-destructive"
 				: "bg-emerald-500";
-	return sync(
+	return (
 		<article
 			class={[
 				"bg-muted/40 dark:bg-muted/55 w-full max-w-3xl self-start rounded-sm border p-3",
@@ -510,6 +506,6 @@ function renderMessage(message: AppMessage): string {
 					? renderDiffOutput(message)
 					: renderPreOutput(message.text)
 				: ""}
-		</article>,
-	);
+		</article>
+	) as string;
 }

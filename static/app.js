@@ -4,7 +4,6 @@ const transcriptState = {
 
 bindReservedShortcutPrevention();
 bindAppCommands();
-bindSystemThemeSync();
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusComposer();
@@ -18,14 +17,6 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 function bindAppCommands() {
-	window.addEventListener("pi-new-chat", () => clickFirst("[data-new-chat-trigger]"));
-	window.addEventListener("pi-command-palette", () =>
-		openDialog("command-dialog", "command-input"),
-	);
-	window.addEventListener("pi-resume-session", () => openSessionDialog());
-	window.addEventListener("pi-switch-model", () => openModelSelector());
-	window.addEventListener("pi-change-workspace", () => openWorkspaceDialog());
-
 	document.addEventListener("keydown", (event) => {
 		const key = event.key.toLowerCase();
 		if (event.altKey && key === "t") {
@@ -205,27 +196,6 @@ function renderRecentWorkspaces() {
 		row.append(button);
 		list.append(row);
 	}
-}
-
-function bindSystemThemeSync() {
-	const media = window.matchMedia?.("(prefers-color-scheme: dark)");
-	if (!media) {
-		return;
-	}
-
-	const apply = () => {
-		const stored = localStorage.getItem("themeMode");
-		const dark = stored ? stored === "dark" : media.matches;
-		document.documentElement.classList.toggle("dark", dark);
-	};
-
-	apply();
-	media.addEventListener("change", apply);
-	window.addEventListener("storage", (event) => {
-		if (event.key === "themeMode") {
-			apply();
-		}
-	});
 }
 
 function bindDialogKeyboard() {
@@ -682,7 +652,7 @@ function bindCommandRefresh() {
 			mutations.some(
 				(mutation) =>
 					mutation.target instanceof Element &&
-					mutation.target.closest(".command"),
+					mutation.target.closest(".command, .dropdown-menu"),
 			)
 		) {
 			queueRefresh();
