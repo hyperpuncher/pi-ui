@@ -1,12 +1,13 @@
 import { appCommands } from "../commands/registry.ts";
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream } from "../server/datastar.ts";
+import { renderDebugOverlay } from "../ui/debug.tsx";
 import {
 	renderCodeFinal,
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
 } from "../ui/markdown.tsx";
-import { renderMessages } from "../ui/messages.tsx";
+import { renderMessage, renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker, renderSlashPicker } from "../ui/pickers.tsx";
 import {
 	renderPromptAction,
@@ -110,11 +111,18 @@ function randomEmptyChatHint(): AppKeybindHint {
 	return emptyChatHints[Math.floor(Math.random() * emptyChatHints.length)];
 }
 
+function debugUiEnabled(): boolean {
+	return Deno.env.get("PI_UI_DEBUG") === "1";
+}
+
 export class AppState {
 	private clients = new Map<string, StreamClient>();
 	private messageSeq = 0;
 	private activeAssistantId: string | undefined;
 	private activeThoughtId: string | undefined;
+	private streamingPatchTimer: ReturnType<typeof setTimeout> | undefined;
+	readonly debugUi = debugUiEnabled();
+	streamingPatchIntervalMs = 7;
 	messages: AppMessage[] = [];
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
@@ -133,13 +141,7 @@ export class AppState {
 			(stream) => {
 				this.clients.set(id, { id, stream });
 				this.patchClient(stream);
-				stream.patchSignals(
-					JSON.stringify({
-						model: this.currentModel ?? "",
-						thinkingLevel: this.thinkingLevel,
-						workspacePath: this.workspacePath,
-					}),
-				);
+				this.patchSignals(stream);
 				signal.addEventListener(
 					"abort",
 					() => {
@@ -173,7 +175,7 @@ export class AppState {
 			...options,
 			renderedHtml:
 				rendersMarkdown(role) && text.trim()
-					? renderMarkdownStreaming(text)
+					? renderMarkdownStreaming(text, { cacheKey: id })
 					: undefined,
 		});
 		if (role === "assistant") {
@@ -215,8 +217,7 @@ export class AppState {
 			return;
 		}
 		message.text += delta;
-		message.renderedHtml = renderMarkdownStreaming(message.text);
-		this.broadcast();
+		this.scheduleStreamingPatch();
 	}
 
 	appendAssistantDelta(delta: string): void {
@@ -231,11 +232,11 @@ export class AppState {
 			return;
 		}
 		message.text += delta;
-		message.renderedHtml = renderMarkdownStreaming(message.text);
-		this.broadcast();
+		this.scheduleStreamingPatch();
 	}
 
 	finishAssistant(): void {
+		this.flushStreamingPatch();
 		const id = this.activeAssistantId;
 		const thoughtId = this.activeThoughtId;
 		this.activeAssistantId = undefined;
@@ -250,6 +251,7 @@ export class AppState {
 	}
 
 	resetChat(): void {
+		this.clearStreamingPatchTimer();
 		this.messages = [];
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
@@ -258,6 +260,7 @@ export class AppState {
 	}
 
 	replaceMessages(messages: AppMessageInput[]): void {
+		this.clearStreamingPatchTimer();
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
 		if (messages.length === 0) {
@@ -277,7 +280,7 @@ export class AppState {
 				renderedHtml:
 					message.renderedHtml ??
 					(shouldRenderStreaming
-						? renderMarkdownStreaming(message.text)
+						? renderMarkdownStreaming(message.text, { cacheKey: id })
 						: undefined),
 			};
 		});
@@ -305,12 +308,14 @@ export class AppState {
 		this.models = models;
 		this.currentModel = currentModel;
 		this.broadcast();
+		this.broadcastSignals();
 	}
 
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
 		this.broadcast();
+		this.broadcastSignals();
 	}
 
 	setSessions(sessions: AppSessionSummary[]): void {
@@ -326,6 +331,7 @@ export class AppState {
 	setCurrentModel(currentModel: string | undefined): void {
 		this.currentModel = currentModel;
 		this.broadcast();
+		this.broadcastSignals();
 	}
 
 	setUsage(usage: AppUsage): void {
@@ -341,6 +347,42 @@ export class AppState {
 	setWorkspacePath(workspacePath: string): void {
 		this.workspacePath = workspacePath;
 		this.broadcast();
+		this.broadcastSignals();
+	}
+
+	get streamingPatchRateHz(): number {
+		return Math.round(1000 / this.streamingPatchIntervalMs);
+	}
+
+	private scheduleStreamingPatch(): void {
+		if (this.streamingPatchTimer !== undefined) return;
+		this.streamingPatchTimer = setTimeout(() => {
+			this.streamingPatchTimer = undefined;
+			this.flushStreamingPatch();
+		}, this.streamingPatchIntervalMs);
+	}
+
+	private clearStreamingPatchTimer(): void {
+		if (this.streamingPatchTimer === undefined) return;
+		clearTimeout(this.streamingPatchTimer);
+		this.streamingPatchTimer = undefined;
+	}
+
+	private flushStreamingPatch(): void {
+		this.clearStreamingPatchTimer();
+		if (this.activeThoughtId) {
+			this.patchStreamingMessage(this.activeThoughtId);
+		}
+		if (this.activeAssistantId) {
+			this.patchStreamingMessage(this.activeAssistantId);
+		}
+	}
+
+	private patchStreamingMessage(id: string): void {
+		const message = this.messages.find((item) => item.id === id);
+		if (!message || !rendersMarkdown(message.role) || !message.text.trim()) return;
+		message.renderedHtml = renderMarkdownStreaming(message.text, { cacheKey: id });
+		this.broadcastMessage(message);
 	}
 
 	private async renderCode(id: string, language: string): Promise<void> {
@@ -385,6 +427,7 @@ export class AppState {
 			renderWorkspacePicker(this) +
 			renderModelPicker(this) +
 			renderThinkingPicker(this) +
+			renderDebugOverlay(this) +
 			renderSessionPicker(this) +
 			renderSlashPicker(this)
 		);
@@ -393,6 +436,13 @@ export class AppState {
 	private patchClient(stream: DatastarStream): void {
 		try {
 			stream.patchElements(this.renderElements());
+		} catch {
+			// Client already disconnected.
+		}
+	}
+
+	private patchSignals(stream: DatastarStream): void {
+		try {
 			stream.patchSignals(
 				JSON.stringify({
 					model: this.currentModel ?? "",
@@ -408,6 +458,24 @@ export class AppState {
 	private broadcast(): void {
 		for (const client of this.clients.values()) {
 			this.patchClient(client.stream);
+		}
+	}
+
+	private broadcastMessage(message: AppMessage): void {
+		for (const client of this.clients.values()) {
+			try {
+				client.stream.patchElements(renderMessage(message), {
+					selector: `[data-message-id="${message.id}"]`,
+				});
+			} catch {
+				// Client already disconnected.
+			}
+		}
+	}
+
+	private broadcastSignals(): void {
+		for (const client of this.clients.values()) {
+			this.patchSignals(client.stream);
 		}
 	}
 }

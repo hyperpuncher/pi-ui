@@ -144,21 +144,21 @@ export function renderPromptAction(state: AppState): string {
 }
 
 export function renderPromptStatus(state: AppState): string {
-	if (state.activityText) {
-		return (
-			<span
-				id="prompt-status"
-				class="text-muted-foreground inline-flex min-w-0 shrink-0 truncate font-mono text-xs"
-			>
-				<span class="inline-flex items-center gap-1.5">
-					{loaderIcon()}
-					<span safe>{state.activityText}</span>
+	return (
+		<span id="prompt-status" class="inline-flex min-w-0 shrink-0 items-center gap-2">
+			{state.activityText && (
+				<span class="text-muted-foreground inline-flex min-w-0 truncate font-mono text-xs">
+					<span class="inline-flex items-center gap-1.5">
+						{loaderIcon()}
+						<span safe>{state.activityText}</span>
+					</span>
 				</span>
+			)}
+			<span class="inline-flex shrink-0 items-center gap-1">
+				{renderUsageIndicator(state.usage)}
 			</span>
-		) as string;
-	}
-
-	return renderUsageIndicator(state.usage);
+		</span>
+	) as string;
 }
 
 function renderUsageIndicator(usage: AppUsage): string {
@@ -173,7 +173,6 @@ function renderUsageIndicator(usage: AppUsage): string {
 				: "text-violet-400";
 	return (
 		<span
-			id="prompt-status"
 			class="hidden size-8 shrink-0 items-center justify-center font-mono lg:inline-flex"
 			data-tooltip={usage.text}
 			aria-label={usage.text}

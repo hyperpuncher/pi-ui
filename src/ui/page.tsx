@@ -1,5 +1,6 @@
 import type { AppState } from "../state/app-state.ts";
 import { renderCommandMenu } from "./command-menu.tsx";
+import { renderDebugOverlay } from "./debug.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
@@ -33,6 +34,7 @@ export function renderPage(state: AppState): string {
 				data-signals={initialSignals}
 			>
 				<datastar-inspector />
+				{renderDebugOverlay(state)}
 				<div
 					id="app"
 					class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"

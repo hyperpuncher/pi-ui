@@ -3,6 +3,7 @@ import { serveDir } from "jsr:@std/http/file-server";
 import { AgentHost } from "../agent/host.ts";
 import { smokePiSdkImport } from "../agent/sdk-smoke.ts";
 import { AppState } from "../state/app-state.ts";
+import { preloadMarkdownHighlighter } from "../ui/markdown.tsx";
 import { renderPage } from "../ui/page.tsx";
 import { readSignals, signalsResponse } from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
@@ -10,6 +11,7 @@ import { FileSearchHost } from "./file-search.ts";
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
+	await preloadMarkdownHighlighter();
 	const state = new AppState();
 	let host = await AgentHost.create(state).catch((error: unknown) => {
 		state.appendMessage(

@@ -1,13 +1,13 @@
 {
 	"tasks": {
-		"build:linux": "deno task desktop:build:linux",
+		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --output dist/pi-ui.AppImage src/main.ts",
 		"check": "deno check --conditions browser src/main.ts",
 		"css:build": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
 		"dev": "deno task css:build && deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts",
 		"desktop": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno task desktop:app\"",
-		"desktop:app": "deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --hmr src/main.ts",
-		"desktop:build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --output dist/pi-ui.AppImage src/main.ts",
+		"desktop:app": "deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --hmr src/main.ts --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync",
+		"run:linux": "./dist/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
 		"lint": "deno run -A npm:oxlint"
 	},
@@ -22,12 +22,13 @@
 	"imports": {
 		"@bruits/satteri-wasm32-wasi": "npm:@bruits/satteri-wasm32-wasi@0.9.4",
 		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
+		"@shikijs/stream": "npm:@shikijs/stream@^4.3.1",
 		"@starfederation/datastar-sdk": "npm:@starfederation/datastar-sdk@1.0.0",
 		"@kitajs/ts-html-plugin": "npm:@kitajs/ts-html-plugin@5.0.0-next.1",
 		"@tailwindcss/cli": "npm:@tailwindcss/cli@^4.3.2",
 		"basecoat-css": "npm:basecoat-css@^1.0.1",
 		"satteri": "npm:satteri@^0.9.4",
-		"shiki": "npm:shiki@^4.3.0",
+		"shiki": "npm:shiki@4.3.1",
 		"tailwindcss": "npm:tailwindcss@^4.3.2"
 	}
 }

@@ -1,14 +1,26 @@
+import { ShikiStreamTokenizer } from "@shikijs/stream";
 import {
 	defineHastPlugin,
 	defineMdastPlugin,
 	markdownToHtml,
 	type CompileOptions,
 } from "satteri";
-import { createHighlighter, type Highlighter } from "shiki";
+import { createHighlighter, type Highlighter, type ThemedToken } from "shiki";
+
+import { escapeHtml } from "../utils/html.ts";
 
 const streamingCache = new Map<string, string>();
 const highlightedCache = new Map<string, string>();
+const codeBlockCache = new Map<string, string>();
+const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
+let highlighter: Highlighter | undefined;
 let highlighterPromise: Promise<Highlighter> | undefined;
+
+type StreamingCodeBlockState = {
+	language: string;
+	code: string;
+	tokenizer: ShikiStreamTokenizer;
+};
 
 const stripRawHtml = defineMdastPlugin({
 	name: "pi-ui-strip-raw-html",
@@ -100,13 +112,25 @@ const compileOptions = {
 	mdastPlugins: [stripRawHtml],
 } satisfies CompileOptions;
 
-export function renderMarkdownStreaming(markdown: string): string {
-	const cached = streamingCache.get(markdown);
+export async function preloadMarkdownHighlighter(): Promise<void> {
+	highlighter = await getHighlighter();
+}
+
+export function renderMarkdownStreaming(
+	markdown: string,
+	options: { cacheKey?: string } = {},
+): string {
+	const cacheKey = `${options.cacheKey ?? ""}\0${markdown}`;
+	const cached = streamingCache.get(cacheKey);
 	if (cached) {
 		return cached;
 	}
-	const html = compileMarkdown(markdown);
-	streamingCache.set(markdown, html);
+	const html = highlighter
+		? highlightCodeBlocks(compileMarkdown(markdown), highlighter, {
+				cacheKey: options.cacheKey,
+			})
+		: compileMarkdown(markdown);
+	streamingCache.set(cacheKey, html);
 	return html;
 }
 
@@ -115,7 +139,7 @@ export async function renderMarkdownFinal(markdown: string): Promise<string> {
 	if (cached) {
 		return cached;
 	}
-	const html = await highlightCodeBlocks(compileMarkdown(markdown));
+	const html = highlightCodeBlocks(compileMarkdown(markdown), await getHighlighter());
 	highlightedCache.set(markdown, html);
 	return html;
 }
@@ -133,7 +157,11 @@ export async function renderCodeFinal(
 	return await highlightCode(code, codeFenceLanguage(language), options);
 }
 
-async function highlightCodeBlocks(html: string): Promise<string> {
+function highlightCodeBlocks(
+	html: string,
+	highlighter: Highlighter,
+	options: { cacheKey?: string } = {},
+): string {
 	const blocks = [
 		...html.matchAll(
 			/<pre><code class="language-([^"]*)">([\s\S]*?)<\/code><\/pre>/g,
@@ -144,12 +172,18 @@ async function highlightCodeBlocks(html: string): Promise<string> {
 	}
 
 	let highlighted = html;
-	for (const block of blocks) {
+	for (const [index, block] of blocks.entries()) {
 		const [raw, rawLanguage, rawCode] = block;
 		const language = codeFenceLanguage(rawLanguage);
-		const replacement = await highlightCode(decodeHtml(rawCode), language, {
-			chrome: true,
-		});
+		const code = decodeHtml(rawCode);
+		const replacement = options.cacheKey
+			? highlightStreamingCodeBlock(
+					highlighter,
+					code,
+					language,
+					`${options.cacheKey}:${index}`,
+				)
+			: cachedHighlightedCodeBlock(highlighter, code, language);
 		highlighted = highlighted.replace(raw, replacement);
 	}
 	return highlighted;
@@ -160,9 +194,105 @@ async function highlightCode(
 	language: string,
 	options: { chrome?: boolean } = {},
 ): Promise<string> {
+	return highlightCodeWithHighlighter(await getHighlighter(), code, language, options);
+}
+
+function cachedHighlightedCodeBlock(
+	highlighter: Highlighter,
+	code: string,
+	language: string,
+): string {
+	const key = `${language}\0${code}`;
+	const cached = codeBlockCache.get(key);
+	if (cached) return cached;
+
+	const highlighted = highlightCodeWithHighlighter(highlighter, code, language, {
+		chrome: true,
+	});
+	codeBlockCache.set(key, highlighted);
+	return highlighted;
+}
+
+function highlightStreamingCodeBlock(
+	highlighter: Highlighter,
+	code: string,
+	language: string,
+	cacheKey: string,
+): string {
+	let state = streamingCodeBlockStates.get(cacheKey);
+	if (!state || state.language !== language || !code.startsWith(state.code)) {
+		state = createStreamingCodeBlockState(highlighter, language);
+		streamingCodeBlockStates.set(cacheKey, state);
+	}
+
+	const chunk = code.slice(state.code.length);
+	if (chunk) {
+		void state.tokenizer.enqueue(chunk).catch(() => state.tokenizer.clear());
+		state.code = code;
+	}
+
+	return (
+		<CodeBlock
+			pre={renderStreamingTokensPre([
+				...state.tokenizer.tokensStable,
+				...state.tokenizer.tokensUnstable,
+			])}
+			language={language}
+		/>
+	) as string;
+}
+
+function createStreamingCodeBlockState(
+	highlighter: Highlighter,
+	language: string,
+): StreamingCodeBlockState {
+	return {
+		language,
+		code: "",
+		tokenizer: new ShikiStreamTokenizer({
+			highlighter,
+			lang: language,
+			themes: {
+				light: "ayu-light",
+				dark: "ayu-dark",
+			},
+		}),
+	};
+}
+
+function renderStreamingTokensPre(tokens: ThemedToken[]): string {
+	return `<pre class="shiki shiki-themes ayu-light ayu-dark" style="background-color:var(--code-background);color:#5C6166" tabindex="0"><code>${tokens
+		.map(renderToken)
+		.join("")}</code></pre>`;
+}
+
+function renderToken(token: ThemedToken): string {
+	const style = styleObjectToAttribute(token.htmlStyle ?? tokenStyle(token));
+	const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
+	return `<span${styleAttribute}>${escapeHtml(token.content)}</span>`;
+}
+
+function tokenStyle(token: ThemedToken): Record<string, string> {
+	const style: Record<string, string> = {};
+	if (token.color) style.color = token.color;
+	if (token.bgColor) style["background-color"] = token.bgColor;
+	return style;
+}
+
+function styleObjectToAttribute(style: Record<string, string>): string {
+	return Object.entries(style)
+		.map(([key, value]) => `${key}:${value}`)
+		.join(";");
+}
+
+function highlightCodeWithHighlighter(
+	highlighter: Highlighter,
+	code: string,
+	language: string,
+	options: { chrome?: boolean } = {},
+): string {
 	const chrome = options.chrome ?? true;
 	try {
-		const highlighter = await getHighlighter();
 		const pre = highlighter.codeToHtml(code, {
 			lang: language,
 			themes: {
@@ -209,6 +339,9 @@ function getHighlighter(): Promise<Highlighter> {
 			"typescript",
 		],
 		themes: ["ayu-light", "ayu-dark"],
+	}).then((instance) => {
+		highlighter = instance;
+		return instance;
 	});
 	return highlighterPromise;
 }

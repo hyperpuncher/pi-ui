@@ -76,7 +76,7 @@ function toolTitlePartClass(part: AppMessageTitlePart): string {
 	return "";
 }
 
-function renderMessage(message: AppMessage): string {
+export function renderMessage(message: AppMessage): string {
 	if (message.role === "user") {
 		return (
 			<article
