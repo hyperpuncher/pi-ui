@@ -16,6 +16,7 @@ import {
 	renderWorkspacePicker,
 } from "../ui/prompt-box.tsx";
 import { formatShortcut } from "../utils/keyboard.ts";
+import { defaultWorkspacePath } from "../utils/workspace.ts";
 
 export type AppMessage = {
 	id: string;
@@ -124,7 +125,7 @@ export class AppState {
 	usage: AppUsage = { text: "$0.000 • 0 tokens" };
 	emptyChatHint = randomEmptyChatHint();
 	activityText: string | undefined;
-	workspacePath = Deno.cwd();
+	workspacePath = defaultWorkspacePath();
 
 	createStream(signal: AbortSignal): Response {
 		const id = crypto.randomUUID();

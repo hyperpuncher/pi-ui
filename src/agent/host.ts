@@ -22,6 +22,7 @@ import type {
 	AppThinkingLevel,
 } from "../state/app-state.ts";
 import { formatDateTime } from "../utils/locale.ts";
+import { defaultWorkspacePath } from "../utils/workspace.ts";
 
 const defaultProvider = "opencode-go";
 const defaultModelId = "deepseek-v4-flash";
@@ -39,7 +40,10 @@ export class AgentHost {
 		private readonly state: AppState,
 	) {}
 
-	static async create(state: AppState, cwd = Deno.cwd()): Promise<AgentHost> {
+	static async create(
+		state: AppState,
+		cwd = defaultWorkspacePath(),
+	): Promise<AgentHost> {
 		state.setWorkspacePath(cwd);
 		const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 			cwd,
