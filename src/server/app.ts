@@ -2,7 +2,7 @@ import { AgentHost } from "../agent/host.ts";
 import { smokePiSdkImport } from "../agent/sdk-smoke.ts";
 import { AppState } from "../state/app-state.ts";
 import { renderPage } from "../ui/page.tsx";
-import { readSignalString, signalsResponse } from "./datastar.ts";
+import { readSignals, signalsResponse } from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
 
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
@@ -33,7 +33,6 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			"system",
 			`Failed to start pi SDK runtime: ${formatError(error)}`,
 		);
-		state.setStatus("Pi SDK startup failed");
 		return undefined;
 	});
 	let fileSearch = await FileSearchHost.create(state.workspacePath);
@@ -51,8 +50,10 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			}
 
 			if (request.method === "POST" && url.pathname === "/prompt") {
-				const text = await readSignalString(request, "composer");
-				const accepted = host ? await host.prompt(text) : false;
+				const signals = await readSignals(request);
+				const accepted = host
+					? await host.prompt(signals.composer as string)
+					: false;
 				return signalsResponse(
 					accepted ? { composer: "" } : { lastPromptAccepted: false },
 				);
@@ -74,24 +75,35 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			}
 
 			if (request.method === "POST" && url.pathname === "/sessions/resume") {
-				const sessionPath = await readSignalString(request, "sessionPath");
-				await host?.resumeSession(sessionPath);
+				const signals = await readSignals(request);
+				await host?.resumeSession(signals.sessionPath as string);
 				return noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/model") {
-				const modelRef = await readSignalString(request, "model");
-				await host?.setModel(modelRef);
+				const signals = await readSignals(request);
+				await host?.setModel(signals.model as string);
+				return noContent();
+			}
+
+			if (request.method === "POST" && url.pathname === "/thinking") {
+				const signals = await readSignals(request);
+				await host?.setThinkingLevel(signals.thinkingLevel as string);
+				return noContent();
+			}
+
+			if (request.method === "POST" && url.pathname === "/thinking/cycle") {
+				host?.cycleThinkingLevel();
 				return noContent();
 			}
 
 			if (request.method === "POST" && url.pathname === "/workspace/open") {
-				const workspacePath = await readWorkspacePath(request);
+				const signals = await readSignals(request);
 				const result = await switchWorkspace(
 					state,
 					host,
 					fileSearch,
-					workspacePath,
+					signals.workspacePath as string,
 				);
 				host = result.host;
 				fileSearch = result.fileSearch;
@@ -148,20 +160,14 @@ async function switchWorkspace(
 		fileSearch?.dispose();
 		state.resetChat();
 		state.setSessions([]);
-		state.setStatus(`Opening ${realPath}`);
 		const nextHost = await AgentHost.create(state, realPath);
 		const nextFileSearch = await FileSearchHost.create(realPath);
 		state.appendMessage("system", `Workspace: ${realPath}`);
 		return { ok: true, host: nextHost, fileSearch: nextFileSearch };
 	} catch (error) {
 		state.appendMessage("system", `Failed to open workspace: ${formatError(error)}`);
-		state.setStatus("Workspace change failed");
 		return { ok: false, host, fileSearch };
 	}
-}
-
-async function readWorkspacePath(request: Request): Promise<string> {
-	return await readSignalString(request, "workspacePath");
 }
 
 function html(body: string): Response {

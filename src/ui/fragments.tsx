@@ -2,6 +2,7 @@ import type {
 	AppMessage,
 	AppMessageTitlePart,
 	AppSessionSummary,
+	AppThinkingLevel,
 	AppSlashCommand,
 	AppState,
 } from "../state/app-state.ts";
@@ -14,8 +15,7 @@ export function renderComposerStatus(state: AppState): string {
 	return sync(
 		<span
 			id="composer-status"
-			class="text-muted-foreground min-w-0 truncate font-mono text-xs"
-			title={state.status}
+			class="text-muted-foreground hidden min-w-0 truncate font-mono text-xs lg:inline"
 		>
 			{state.usageText}
 		</span>,
@@ -27,7 +27,7 @@ export function renderWorkspacePicker(state: AppState): string {
 	return sync(
 		<button
 			id="workspace-picker"
-			class="btn max-w-[12rem] min-w-0 px-2 font-mono text-xs"
+			class="btn hidden max-w-[12rem] min-w-0 px-2 font-mono text-xs sm:inline-flex"
 			data-variant="ghost"
 			type="button"
 			title={state.workspacePath}
@@ -38,6 +38,91 @@ export function renderWorkspacePicker(state: AppState): string {
 			</span>
 		</button>,
 	);
+}
+
+export function renderThinkingPicker(state: AppState): string {
+	const current = state.thinkingLevel;
+	return sync(
+		<div id="thinking-picker" class="hidden min-w-0 sm:block">
+			<label class="sr-only" for="thinking-select-trigger">
+				Thinking level
+			</label>
+			<div id="thinking-select" class="dropdown-menu">
+				<button
+					type="button"
+					class="btn h-9 w-fit max-w-[10rem] px-2 text-sm"
+					data-variant="ghost"
+					id="thinking-select-trigger"
+					aria-haspopup="menu"
+					aria-expanded="false"
+					aria-controls="thinking-select-menu"
+					disabled={state.thinkingLevels.length <= 1}
+				>
+					<span class="truncate">{thinkingLabel(current)}</span>
+				</button>
+				<div
+					id="thinking-select-popover"
+					data-popover
+					data-side="top"
+					aria-hidden="true"
+					class="min-w-48"
+				>
+					<div
+						role="menu"
+						id="thinking-select-menu"
+						aria-labelledby="thinking-select-trigger"
+					>
+						<div role="group" aria-labelledby="thinking-select-heading">
+							<div role="heading" id="thinking-select-heading">
+								Thinking
+							</div>
+							{state.thinkingLevels.map((level) => (
+								<div
+									role="menuitemradio"
+									aria-checked={level === current ? "true" : "false"}
+									data-on:click={`
+										$thinkingLevel = ${JSON.stringify(level)};
+										@post('/thinking', { filterSignals: { include: /^thinkingLevel$/ } });
+									`}
+								>
+									<span data-indicator>✓</span>
+									<span class="min-w-0">
+										<span class="block truncate">
+											{thinkingLabel(level)}
+										</span>
+										<span class="text-muted-foreground block truncate text-xs">
+											{thinkingDescription(level)}
+										</span>
+									</span>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>,
+	);
+}
+
+function thinkingLabel(level: AppThinkingLevel): string {
+	return level === "off" ? "thinking off" : level;
+}
+
+function thinkingDescription(level: AppThinkingLevel): string {
+	switch (level) {
+		case "off":
+			return "No extended reasoning";
+		case "minimal":
+			return "Very brief reasoning";
+		case "low":
+			return "Light reasoning";
+		case "medium":
+			return "Moderate reasoning";
+		case "high":
+			return "Deep reasoning";
+		case "xhigh":
+			return "Maximum reasoning";
+	}
 }
 
 function workspaceLabel(path: string): string {
@@ -57,26 +142,19 @@ export function renderModelPicker(state: AppState): string {
 	);
 	const currentLabel = current ? modelTriggerLabel(current) : "Loading models…";
 	return sync(
-		<div id="model-picker" class="min-w-0">
+		<div id="model-picker" class="shrink-0">
 			<label class="sr-only" for="model-select-trigger">
 				Model
 			</label>
-			<div
-				id="model-select"
-				class="select"
-				data-placeholder="Loading models…"
-				data-on:change="
-					$model = evt.detail.value;
-					@post('/model', { filterSignals: { include: /^model$/ } });
-				"
-			>
+			<div id="model-select" class="dropdown-menu">
 				<button
 					type="button"
-					class="h-9 w-fit max-w-[14rem] text-sm font-medium"
+					class="btn h-9 w-fit px-2 text-sm font-medium"
+					data-variant="ghost"
 					id="model-select-trigger"
-					aria-haspopup="listbox"
+					aria-haspopup="menu"
 					aria-expanded="false"
-					aria-controls="model-select-listbox"
+					aria-controls="model-select-menu"
 					disabled={state.models.length === 0}
 				>
 					<span class="truncate">{currentLabel}</span>
@@ -86,54 +164,50 @@ export function renderModelPicker(state: AppState): string {
 					data-popover
 					data-side="top"
 					aria-hidden="true"
+					class="min-w-72"
 				>
-					<div class="border-b p-2">
-						<input
-							id="model-search-input"
-							class="input h-8 w-full text-sm"
-							type="search"
-							placeholder="Search models..."
-							autocomplete="off"
-							spellcheck="false"
-						/>
-					</div>
 					<div
-						role="listbox"
-						id="model-select-listbox"
-						class="max-h-70 min-w-[20rem] overflow-y-auto"
-						aria-orientation="vertical"
+						role="menu"
+						id="model-select-menu"
+						class="max-h-70 overflow-y-auto"
 						aria-labelledby="model-select-trigger"
 					>
-						{state.models.map((model) => {
-							const value = `${model.provider}/${model.id}`;
-							const configured = model.configured ? "" : " • no auth";
-							const haystack =
-								`${model.id} ${model.provider} ${model.name}`.toLowerCase();
-							return (
-								<div
-									role="option"
-									tabindex="-1"
-									data-model-row
-									data-model-haystack={haystack}
-									data-value={value}
-									data-label={modelTriggerLabel(model)}
-									aria-selected={
-										value === state.currentModel ? "true" : "false"
-									}
-								>
-									<span class="block truncate font-medium">
-										{model.id}
-									</span>
-									<span class="text-muted-foreground block truncate text-xs">
-										{model.provider}
-										{configured}
-									</span>
-								</div>
-							);
-						})}
+						<div role="group" aria-labelledby="model-select-heading">
+							<div role="heading" id="model-select-heading">
+								Models
+							</div>
+							{state.models.map((model) => {
+								const value = `${model.provider}/${model.id}`;
+								const configured = model.configured ? "" : " • no auth";
+								return (
+									<div
+										role="menuitemradio"
+										aria-checked={
+											value === state.currentModel
+												? "true"
+												: "false"
+										}
+										data-on:click={`
+											$model = ${JSON.stringify(value)};
+											@post('/model', { filterSignals: { include: /^model$/ } });
+										`}
+									>
+										<span data-indicator>✓</span>
+										<span class="min-w-0">
+											<span class="block truncate font-medium">
+												{model.id}
+											</span>
+											<span class="text-muted-foreground block truncate text-xs">
+												{model.provider}
+												{configured}
+											</span>
+										</span>
+									</div>
+								);
+							})}
+						</div>
 					</div>
 				</div>
-				<input type="hidden" name="model" value={state.currentModel ?? ""} />
 			</div>
 		</div>,
 	);
@@ -231,6 +305,7 @@ function renderSessionRow(session: AppSessionSummary): string {
 		<div
 			role="menuitem"
 			tabindex="-1"
+			class="items-start gap-4"
 			data-session-row
 			data-filter={haystack}
 			data-keywords={haystack}
@@ -240,7 +315,7 @@ function renderSessionRow(session: AppSessionSummary): string {
 				@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 			`}
 		>
-			<span class="min-w-0">
+			<span class="min-w-0 flex-1">
 				<span class="block truncate" safe>
 					{session.title}
 				</span>
@@ -248,7 +323,7 @@ function renderSessionRow(session: AppSessionSummary): string {
 					{session.subtitle}
 				</span>
 			</span>
-			<span data-shortcut safe>
+			<span class="w-32 shrink-0 text-right whitespace-nowrap" data-shortcut safe>
 				{session.modified}
 			</span>
 		</div>,

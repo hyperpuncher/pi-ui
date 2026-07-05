@@ -28,6 +28,13 @@ function bindAppCommands() {
 	window.addEventListener("pi-change-workspace", () => openWorkspaceDialog());
 
 	document.addEventListener("keydown", (event) => {
+		const key = event.key.toLowerCase();
+		if (event.altKey && key === "t") {
+			event.preventDefault();
+			cycleThinkingLevel();
+			return;
+		}
+
 		if (!(event.ctrlKey || event.metaKey)) {
 			if (event.key === "Escape") {
 				closeSlashPicker();
@@ -37,7 +44,6 @@ function bindAppCommands() {
 			return;
 		}
 
-		const key = event.key.toLowerCase();
 		if (key === "k") {
 			event.preventDefault();
 			openDialog("command-dialog", "command-input");
@@ -244,12 +250,17 @@ function bindReservedShortcutPrevention() {
 	window.addEventListener(
 		"keydown",
 		(event) => {
+			const key = event.key.toLowerCase();
+			if (event.altKey && key === "t") {
+				event.preventDefault();
+				return;
+			}
 			if (!(event.ctrlKey || event.metaKey)) {
 				return;
 			}
 
 			const appShortcutKeys = new Set(["k", "l", "o", "r"]);
-			if (appShortcutKeys.has(event.key.toLowerCase())) {
+			if (appShortcutKeys.has(key)) {
 				event.preventDefault();
 			}
 		},
@@ -333,6 +344,10 @@ function closeSlashPicker() {
 function isSlashPickerOpen() {
 	const popover = document.getElementById("composer-slash-popover");
 	return popover instanceof HTMLElement && popover.style.display !== "none";
+}
+
+function cycleThinkingLevel() {
+	fetch("/thinking/cycle", { method: "POST" }).catch(() => undefined);
 }
 
 function openModelSelector() {

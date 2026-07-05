@@ -5,6 +5,7 @@ import {
 	renderModelPicker,
 	renderSessionPicker,
 	renderSlashPicker,
+	renderThinkingPicker,
 	renderTranscript,
 	renderWorkspacePicker,
 } from "./fragments.tsx";
@@ -26,6 +27,7 @@ export function renderPage(state: AppState): string {
 	const initialSignals = JSON.stringify({
 		composer: "",
 		model: state.currentModel ?? "",
+		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
 		sessionPath: "",
 	});
@@ -85,9 +87,9 @@ export function renderPage(state: AppState): string {
 								data-bind:composer
 								data-indicator:_prompting
 							></textarea>
-							<div class="mt-2 flex items-center justify-between gap-3">
+							<div class="mt-2 flex flex-wrap items-center justify-between gap-2">
 								<div
-									class="flex items-center gap-2"
+									class="flex shrink-0 items-center gap-2"
 									aria-label="Message tools"
 								>
 									<button
@@ -136,9 +138,10 @@ export function renderPage(state: AppState): string {
 										↩
 									</button>
 								</div>
-								<div class="flex min-w-0 items-center justify-end gap-1.5">
+								<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
 									{renderComposerStatus(state)}
 									{renderWorkspacePicker(state)}
+									{renderThinkingPicker(state)}
 									{renderModelPicker(state)}
 									<button
 										class="btn"

@@ -5,6 +5,7 @@ import {
 	renderModelPicker,
 	renderSessionPicker,
 	renderSlashPicker,
+	renderThinkingPicker,
 	renderTranscript,
 	renderWorkspacePicker,
 } from "../ui/fragments.tsx";
@@ -44,10 +45,12 @@ export type AppModel = {
 	configured: boolean;
 };
 
+export type AppThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
 export type AppSlashCommand = {
 	name: string;
 	description: string;
-	source: "prompt" | "skill" | "extension";
+	source: "prompt" | "skill" | "extension" | "system";
 	argumentHint?: string;
 };
 
@@ -85,11 +88,12 @@ export class AppState {
 	private activeAssistantId: string | undefined;
 	private activeThoughtId: string | undefined;
 	messages: AppMessage[] = [];
-	status = "Starting";
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	currentModel: string | undefined;
+	thinkingLevel: AppThinkingLevel = "off";
+	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usageText = "$0.000 • 0 tokens";
 	workspacePath = Deno.cwd();
 
@@ -102,6 +106,7 @@ export class AppState {
 				stream.patchSignals(
 					JSON.stringify({
 						model: this.currentModel ?? "",
+						thinkingLevel: this.thinkingLevel,
 						workspacePath: this.workspacePath,
 					}),
 				);
@@ -262,14 +267,15 @@ export class AppState {
 		}
 	}
 
-	setStatus(status: string): void {
-		this.status = status;
-		this.broadcast();
-	}
-
 	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;
 		this.currentModel = currentModel;
+		this.broadcast();
+	}
+
+	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
+		this.thinkingLevel = level;
+		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
 		this.broadcast();
 	}
 
@@ -337,6 +343,7 @@ export class AppState {
 			renderTranscript(this.messages) +
 			renderComposerStatus(this) +
 			renderWorkspacePicker(this) +
+			renderThinkingPicker(this) +
 			renderModelPicker(this) +
 			renderSessionPicker(this) +
 			renderSlashPicker(this)
@@ -349,6 +356,7 @@ export class AppState {
 			stream.patchSignals(
 				JSON.stringify({
 					model: this.currentModel ?? "",
+					thinkingLevel: this.thinkingLevel,
 					workspacePath: this.workspacePath,
 				}),
 			);

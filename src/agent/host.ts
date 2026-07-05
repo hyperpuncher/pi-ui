@@ -5,7 +5,6 @@ import {
 	getAgentDir,
 	parseSkillBlock,
 	SessionManager,
-	type AgentSession,
 	type AgentSessionEvent,
 	type AgentSessionRuntime,
 	type CreateAgentSessionRuntimeFactory,
@@ -19,6 +18,7 @@ import type {
 	AppMessageTitlePart,
 	AppSessionSummary,
 	AppState,
+	AppThinkingLevel,
 } from "../state/app-state.ts";
 
 const defaultProvider = "opencode-go";
@@ -75,10 +75,13 @@ export class AgentHost {
 		if (!trimmed) {
 			return false;
 		}
-
-		this.state.setStatus(
-			this.runtime.session.isStreaming ? "Queued follow-up" : "Sending prompt",
-		);
+		if (trimmed === "/compact" || trimmed.startsWith("/compact ")) {
+			const customInstructions = trimmed.startsWith("/compact ")
+				? trimmed.slice(9).trim()
+				: undefined;
+			await this.compact(customInstructions);
+			return true;
+		}
 
 		let resolveAccepted: (accepted: boolean) => void = () => {};
 		let settled = false;
@@ -102,7 +105,6 @@ export class AgentHost {
 			.catch((error: unknown) => {
 				resolveAccepted(false);
 				this.state.appendMessage("system", formatError(error));
-				this.state.setStatus("Prompt failed");
 			});
 
 		return await accepted;
@@ -110,13 +112,11 @@ export class AgentHost {
 
 	async abort(): Promise<void> {
 		await this.runtime.session.abort();
-		this.state.setStatus("Aborted");
 	}
 
 	async newSession(): Promise<boolean> {
 		const result = await this.runtime.newSession();
 		if (result.cancelled) {
-			this.state.setStatus("New chat cancelled");
 			return false;
 		}
 		this.state.resetChat();
@@ -125,7 +125,6 @@ export class AgentHost {
 	}
 
 	async listSessions(): Promise<void> {
-		this.state.setStatus("Loading sessions");
 		const sessionManager = this.runtime.session.sessionManager;
 		const sessions = await SessionManager.list(
 			sessionManager.getCwd(),
@@ -133,22 +132,48 @@ export class AgentHost {
 		);
 		this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
 		this.syncUsage();
-		this.state.setStatus(this.readyStatus(this.runtime.session));
 	}
 
 	async resumeSession(sessionPath: string): Promise<boolean> {
 		if (!sessionPath.trim()) {
 			return false;
 		}
-		this.state.setStatus("Resuming session");
 		const result = await this.runtime.switchSession(sessionPath);
 		if (result.cancelled) {
-			this.state.setStatus("Resume cancelled");
 			return false;
 		}
 		await this.bindSession();
 		this.loadCurrentSessionMessages();
 		return true;
+	}
+
+	async setThinkingLevel(level: string): Promise<boolean> {
+		if (!isThinkingLevel(level)) {
+			return false;
+		}
+		this.runtime.session.setThinkingLevel(level);
+		this.syncThinking();
+		return true;
+	}
+
+	cycleThinkingLevel(): boolean {
+		const level = this.runtime.session.cycleThinkingLevel();
+		if (!level) {
+			return false;
+		}
+		this.syncThinking();
+		return true;
+	}
+
+	async compact(customInstructions?: string): Promise<boolean> {
+		try {
+			await this.runtime.session.compact(customInstructions);
+			this.loadCurrentSessionMessages();
+			return true;
+		} catch (error) {
+			this.state.appendMessage("system", formatError(error));
+			return false;
+		}
 	}
 
 	async setModel(modelRef: string): Promise<boolean> {
@@ -164,8 +189,8 @@ export class AgentHost {
 		}
 		await this.runtime.session.setModel(model);
 		this.syncModels();
+		this.syncThinking();
 		this.syncUsage();
-		this.state.setStatus(this.readyStatus(this.runtime.session));
 		return true;
 	}
 
@@ -181,11 +206,11 @@ export class AgentHost {
 		this.toolCallArgs.clear();
 		this.toolStartedAt.clear();
 		await session.bindExtensions({ mode: "rpc" });
-		this.unsubscribe = session.subscribe((event) => this.handleEvent(event, session));
+		this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
 		this.syncModels();
+		this.syncThinking();
 		this.syncSlashCommands();
 		this.syncUsage();
-		this.state.setStatus(this.readyStatus(session));
 	}
 
 	private syncModels(): void {
@@ -217,7 +242,7 @@ export class AgentHost {
 		this.state.setModels(models, currentModel);
 	}
 
-	private handleEvent(event: AgentSessionEvent, session: AgentSession): void {
+	private handleEvent(event: AgentSessionEvent): void {
 		switch (event.type) {
 			case "message_start":
 				this.handleMessageStart(event.message);
@@ -294,31 +319,24 @@ export class AgentHost {
 			}
 			case "agent_end":
 				this.syncUsage();
-				this.state.setStatus(this.readyStatus(session));
-				break;
-			case "queue_update":
-				this.state.setStatus(
-					`Queued ${event.steering.length + event.followUp.length} message(s)`,
-				);
-				break;
-			case "auto_retry_start":
-				this.state.setStatus(`Retrying ${event.attempt}/${event.maxAttempts}`);
-				break;
-			case "compaction_start":
-				this.state.setStatus(`Compacting (${event.reason})`);
 				break;
 			case "compaction_end":
 				if (event.result) {
 					this.loadCurrentSessionMessages();
 				}
-				this.state.setStatus(event.errorMessage ?? "Compaction complete");
+				if (event.errorMessage) {
+					this.state.appendMessage("system", event.errorMessage);
+				}
 				break;
 		}
 	}
 
-	private readyStatus(session: AgentSession): string {
-		const modelName = session.model?.name ?? session.model?.id ?? "no model selected";
-		return `Ready • ${modelName} • thinking off`;
+	private syncThinking(): void {
+		const session = this.runtime.session;
+		this.state.setThinking(
+			session.thinkingLevel as AppThinkingLevel,
+			session.getAvailableThinkingLevels() as AppThinkingLevel[],
+		);
 	}
 
 	private syncUsage(): void {
@@ -339,7 +357,16 @@ export class AgentHost {
 				description: skill.description,
 				source: "skill" as const,
 			}));
-		this.state.setSlashCommands([...prompts, ...skills]);
+		this.state.setSlashCommands([
+			{
+				name: "compact",
+				description: "Manually compact the session context",
+				source: "system" as const,
+				argumentHint: "[instructions]",
+			},
+			...prompts,
+			...skills,
+		]);
 	}
 
 	private loadCurrentSessionMessages(): void {
@@ -358,7 +385,6 @@ export class AgentHost {
 		}
 		this.state.replaceMessages(messages);
 		this.syncUsage();
-		this.state.setStatus(this.readyStatus(this.runtime.session));
 	}
 
 	private entryToMessages(
@@ -494,6 +520,10 @@ export class AgentHost {
 				];
 		}
 	}
+}
+
+function isThinkingLevel(level: string): level is AppThinkingLevel {
+	return ["off", "minimal", "low", "medium", "high", "xhigh"].includes(level);
 }
 
 function userContentToMessages(text: string, timestamp: Date): AppMessageInput[] {
