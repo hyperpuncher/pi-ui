@@ -1,4 +1,4 @@
-const transcriptState = {
+const messagesScrollState = {
 	wasPinnedToBottom: true,
 };
 
@@ -6,11 +6,11 @@ bindReservedShortcutPrevention();
 bindAppCommands();
 
 window.addEventListener("DOMContentLoaded", () => {
-	focusComposer();
-	bindComposerAutosize();
+	focusPrompt();
+	bindPromptAutosize();
 	bindSlashPicker();
 	bindFilePicker();
-	bindTranscriptAutoscroll();
+	bindMessagesAutoscroll();
 	bindCommandRefresh();
 	bindCodeCopy();
 	bindTooltipSuppression();
@@ -31,7 +31,7 @@ function bindAppCommands() {
 			if (event.key === "Escape") {
 				closeSlashPicker();
 				closeFilePicker({ suppressUntilInput: true });
-				if (composerValue() === "/") setComposerValue("");
+				if (promptValue() === "/") setPromptValue("");
 			}
 			return;
 		}
@@ -59,7 +59,7 @@ function bindAppCommands() {
 			event.preventDefault();
 			openDialog("command-dialog", "command-input");
 		} else if (target.closest("[data-new-chat-trigger]")) {
-			setTimeout(focusComposer, 0);
+			setTimeout(focusPrompt, 0);
 		} else if (target.closest("[data-file-trigger]")) {
 			event.preventDefault();
 			insertFilePrefix();
@@ -73,9 +73,9 @@ function bindAppCommands() {
 			openWorkspaceDialog();
 		} else if (slash instanceof HTMLElement) {
 			event.preventDefault();
-			setComposerValue(slash.dataset.slashCommand ?? "");
+			setPromptValue(slash.dataset.slashCommand ?? "");
 			closeSlashPicker();
-			focusComposerEnd();
+			focusPromptEnd();
 		}
 	});
 }
@@ -106,13 +106,13 @@ function clickFirst(selector) {
 	document.querySelector(selector)?.click();
 }
 
-function composerValue() {
-	const input = document.getElementById("composer-input");
+function promptValue() {
+	const input = document.getElementById("prompt-input");
 	return input instanceof HTMLTextAreaElement ? input.value : "";
 }
 
-function setComposerValue(value) {
-	const input = document.getElementById("composer-input");
+function setPromptValue(value) {
+	const input = document.getElementById("prompt-input");
 	if (!(input instanceof HTMLTextAreaElement)) return;
 	input.value = value;
 	input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -272,15 +272,15 @@ function visibleRows(selector) {
 	);
 }
 
-function focusComposer() {
-	const input = document.getElementById("composer-input");
+function focusPrompt() {
+	const input = document.getElementById("prompt-input");
 	if (input instanceof HTMLTextAreaElement) {
 		input.focus();
 	}
 }
 
-function focusComposerEnd() {
-	const input = document.getElementById("composer-input");
+function focusPromptEnd() {
+	const input = document.getElementById("prompt-input");
 	if (input instanceof HTMLTextAreaElement) {
 		input.focus();
 		input.selectionStart = input.value.length;
@@ -289,28 +289,28 @@ function focusComposerEnd() {
 }
 
 function bindSlashPicker() {
-	const syncFromComposer = (event) => {
+	const syncFromPrompt = (event) => {
 		if (
 			event.target instanceof HTMLTextAreaElement &&
-			event.target.id === "composer-input"
+			event.target.id === "prompt-input"
 		) {
 			updateSlashPicker(event.target.value);
 		}
 	};
-	document.addEventListener("input", syncFromComposer);
-	document.addEventListener("keyup", syncFromComposer);
+	document.addEventListener("input", syncFromPrompt);
+	document.addEventListener("keyup", syncFromPrompt);
 	document.addEventListener("pointerdown", (event) => {
 		const target = event.target;
 		if (!(target instanceof Node)) return;
-		const composer = document.getElementById("composer");
-		if (composer?.contains(target)) return;
+		const promptBox = document.getElementById("prompt-box");
+		if (promptBox?.contains(target)) return;
 		closeSlashPicker();
 	});
 	updateSlashPicker("");
 }
 
 function updateSlashPicker(value) {
-	const popover = document.getElementById("composer-slash-popover");
+	const popover = document.getElementById("prompt-slash-popover");
 	if (!(popover instanceof HTMLElement)) return;
 	const open = value.startsWith("/") && !value.includes(" ");
 	const query = open ? value.slice(1).toLowerCase() : "";
@@ -323,14 +323,14 @@ function updateSlashPicker(value) {
 }
 
 function closeSlashPicker() {
-	const popover = document.getElementById("composer-slash-popover");
+	const popover = document.getElementById("prompt-slash-popover");
 	if (popover instanceof HTMLElement) {
 		popover.style.display = "none";
 	}
 }
 
 function isSlashPickerOpen() {
-	const popover = document.getElementById("composer-slash-popover");
+	const popover = document.getElementById("prompt-slash-popover");
 	return popover instanceof HTMLElement && popover.style.display !== "none";
 }
 
@@ -350,15 +350,15 @@ function bindFilePicker() {
 		if (event.key === "Escape" && isFilePickerOpen()) {
 			event.preventDefault();
 			closeFilePicker({ suppressUntilInput: true });
-			focusComposerEnd();
+			focusPromptEnd();
 			return;
 		}
 
 		if (document.activeElement?.closest?.("[data-file-row]")) {
 			if (event.key === "Backspace") {
 				event.preventDefault();
-				focusComposerEnd();
-				deleteComposerCharBeforeCursor();
+				focusPromptEnd();
+				deletePromptCharBeforeCursor();
 				return;
 			}
 			if (
@@ -368,16 +368,16 @@ function bindFilePicker() {
 				!event.altKey
 			) {
 				event.preventDefault();
-				focusComposerEnd();
-				insertComposerText(event.key);
+				focusPromptEnd();
+				insertPromptText(event.key);
 			}
 		}
 	});
 
-	const syncFromComposer = (event) => {
+	const syncFromPrompt = (event) => {
 		if (
 			event.target instanceof HTMLTextAreaElement &&
-			event.target.id === "composer-input"
+			event.target.id === "prompt-input"
 		) {
 			if (filePickerSuppressUntilInput && event.type === "keyup") {
 				return;
@@ -388,12 +388,12 @@ function bindFilePicker() {
 			updateFilePicker(event.target);
 		}
 	};
-	document.addEventListener("input", syncFromComposer);
-	document.addEventListener("keyup", syncFromComposer);
+	document.addEventListener("input", syncFromPrompt);
+	document.addEventListener("keyup", syncFromPrompt);
 	document.addEventListener("click", (event) => {
 		if (
 			event.target instanceof HTMLTextAreaElement &&
-			event.target.id === "composer-input"
+			event.target.id === "prompt-input"
 		) {
 			updateFilePicker(event.target);
 		}
@@ -401,8 +401,8 @@ function bindFilePicker() {
 	document.addEventListener("pointerdown", (event) => {
 		const target = event.target;
 		if (!(target instanceof Node)) return;
-		const composer = document.getElementById("composer");
-		if (composer?.contains(target)) return;
+		const promptBox = document.getElementById("prompt-box");
+		if (promptBox?.contains(target)) return;
 		closeFilePicker();
 	});
 }
@@ -453,7 +453,7 @@ function extractFilePrefix(value, cursor) {
 }
 
 function renderFileRows(items) {
-	const popover = document.getElementById("composer-file-popover");
+	const popover = document.getElementById("prompt-file-popover");
 	const list = document.getElementById("file-picker-list");
 	if (!(popover instanceof HTMLElement) || !(list instanceof HTMLElement)) return;
 	list.replaceChildren();
@@ -498,7 +498,7 @@ function createFileRow(item) {
 }
 
 function applyFileCompletion(value) {
-	const input = document.getElementById("composer-input");
+	const input = document.getElementById("prompt-input");
 	if (!(input instanceof HTMLTextAreaElement) || !activeFilePrefix) return;
 	const suffix = value.endsWith("/") ? "" : " ";
 	input.value = `${input.value.slice(0, activeFilePrefix.start)}@${value}${suffix}${input.value.slice(activeFilePrefix.end)}`;
@@ -514,8 +514,8 @@ function applyFileCompletion(value) {
 	}
 }
 
-function insertComposerText(text) {
-	const input = document.getElementById("composer-input");
+function insertPromptText(text) {
+	const input = document.getElementById("prompt-input");
 	if (!(input instanceof HTMLTextAreaElement)) return;
 	filePickerSuppressUntilInput = false;
 	const start = input.selectionStart ?? input.value.length;
@@ -527,8 +527,8 @@ function insertComposerText(text) {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function deleteComposerCharBeforeCursor() {
-	const input = document.getElementById("composer-input");
+function deletePromptCharBeforeCursor() {
+	const input = document.getElementById("prompt-input");
 	if (!(input instanceof HTMLTextAreaElement)) return;
 	filePickerSuppressUntilInput = false;
 	const start = input.selectionStart ?? input.value.length;
@@ -546,7 +546,7 @@ function deleteComposerCharBeforeCursor() {
 }
 
 function insertFilePrefix() {
-	const input = document.getElementById("composer-input");
+	const input = document.getElementById("prompt-input");
 	if (!(input instanceof HTMLTextAreaElement)) return;
 	filePickerSuppressUntilInput = false;
 	const cursor = input.selectionStart ?? input.value.length;
@@ -562,7 +562,7 @@ function insertFilePrefix() {
 }
 
 function closeFilePicker(options = {}) {
-	const popover = document.getElementById("composer-file-popover");
+	const popover = document.getElementById("prompt-file-popover");
 	if (popover instanceof HTMLElement) {
 		popover.style.display = "none";
 	}
@@ -574,7 +574,7 @@ function closeFilePicker(options = {}) {
 }
 
 function isFilePickerOpen() {
-	const popover = document.getElementById("composer-file-popover");
+	const popover = document.getElementById("prompt-file-popover");
 	return popover instanceof HTMLElement && popover.style.display !== "none";
 }
 
@@ -598,9 +598,9 @@ function focusFileRow(direction) {
 	focusRow(rows[nextIndex]);
 }
 
-function bindComposerAutosize() {
+function bindPromptAutosize() {
 	const resize = () => {
-		const input = document.getElementById("composer-input");
+		const input = document.getElementById("prompt-input");
 		if (!(input instanceof HTMLTextAreaElement)) {
 			return;
 		}
@@ -611,7 +611,7 @@ function bindComposerAutosize() {
 	document.addEventListener("input", (event) => {
 		if (
 			event.target instanceof HTMLTextAreaElement &&
-			event.target.id === "composer-input"
+			event.target.id === "prompt-input"
 		) {
 			resize();
 		}
@@ -620,28 +620,28 @@ function bindComposerAutosize() {
 	resize();
 }
 
-function bindTranscriptAutoscroll() {
+function bindMessagesAutoscroll() {
 	document.addEventListener(
 		"scroll",
 		() => {
-			const transcript = document.getElementById("transcript");
-			if (!transcript) {
+			const messages = document.getElementById("messages");
+			if (!messages) {
 				return;
 			}
 			const distanceFromBottom =
-				transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight;
-			transcriptState.wasPinnedToBottom = distanceFromBottom < 120;
+				messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+			messagesScrollState.wasPinnedToBottom = distanceFromBottom < 120;
 		},
 		true,
 	);
 
 	const observer = new MutationObserver(() => {
 		requestAnimationFrame(() => {
-			const transcript = document.getElementById("transcript");
-			if (!transcript || !transcriptState.wasPinnedToBottom) {
+			const messages = document.getElementById("messages");
+			if (!messages || !messagesScrollState.wasPinnedToBottom) {
 				return;
 			}
-			transcript.scrollTop = transcript.scrollHeight;
+			messages.scrollTop = messages.scrollHeight;
 		});
 	});
 
@@ -705,7 +705,7 @@ function bindCodeCopy() {
 function bindPickerKeyboard() {
 	document.addEventListener("keydown", (event) => {
 		const active = document.activeElement;
-		if (active?.id === "composer-input") {
+		if (active?.id === "prompt-input") {
 			if (event.key === "ArrowDown" && isSlashPickerOpen()) {
 				event.preventDefault();
 				focusSlashRow(1);

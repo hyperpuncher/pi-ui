@@ -222,7 +222,7 @@ function CodeBlock(props: { pre: string; language: string }) {
 			<div class="bg-muted text-muted-foreground flex items-center justify-between gap-3 border-b px-3 py-1 font-mono text-xs">
 				<span safe>{props.language}</span>
 				<button
-					class="btn h-7 w-7 p-0"
+					class="btn h-7 w-7 p-0 leading-none"
 					data-variant="ghost"
 					type="button"
 					data-copy-code

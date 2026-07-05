@@ -2,20 +2,19 @@ import { appCommands } from "../commands/registry.ts";
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream } from "../server/datastar.ts";
 import {
-	renderComposerAction,
-	renderComposerStatus,
-	renderModelPicker,
-	renderSessionPicker,
-	renderSlashPicker,
-	renderThinkingPicker,
-	renderTranscript,
-	renderWorkspacePicker,
-} from "../ui/fragments.tsx";
-import {
 	renderCodeFinal,
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
 } from "../ui/markdown.tsx";
+import { renderMessages } from "../ui/messages.tsx";
+import { renderSessionPicker, renderSlashPicker } from "../ui/pickers.tsx";
+import {
+	renderPromptAction,
+	renderPromptStatus,
+	renderModelPicker,
+	renderThinkingPicker,
+	renderWorkspacePicker,
+} from "../ui/prompt-box.tsx";
 import { formatShortcut } from "../utils/keyboard.ts";
 
 export type AppMessage = {
@@ -379,9 +378,9 @@ export class AppState {
 
 	private renderElements(): string {
 		return (
-			renderTranscript(this.messages, this.emptyChatHint) +
-			renderComposerAction(this) +
-			renderComposerStatus(this) +
+			renderMessages(this.messages, this.emptyChatHint) +
+			renderPromptAction(this) +
+			renderPromptStatus(this) +
 			renderWorkspacePicker(this) +
 			renderModelPicker(this) +
 			renderThinkingPicker(this) +
