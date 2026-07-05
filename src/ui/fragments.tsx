@@ -107,7 +107,7 @@ function renderUsageIndicator(usage: AppUsage): string {
 	) as string;
 }
 
-function loaderIcon(): JSX.Element {
+function loaderIcon() {
 	return (
 		<svg
 			aria-label="Loading"
@@ -442,7 +442,7 @@ function renderSessionRow(session: AppSessionSummary): string {
 	) as string;
 }
 
-function renderPreOutput(text: string): JSX.Element {
+function renderPreOutput(text: string) {
 	return (
 		<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-sm bg-transparent text-sm leading-relaxed whitespace-pre-wrap">
 			<code safe>{text}</code>
@@ -450,7 +450,7 @@ function renderPreOutput(text: string): JSX.Element {
 	);
 }
 
-function renderDiffOutput(message: AppMessage): JSX.Element {
+function renderDiffOutput(message: AppMessage) {
 	if (message.renderedHtml) {
 		return (
 			<div class="max-h-96 overflow-auto rounded-sm bg-[var(--code-background)] [&_.shiki]:m-0 [&_.shiki]:bg-[var(--code-background)]! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
@@ -461,10 +461,7 @@ function renderDiffOutput(message: AppMessage): JSX.Element {
 	return renderPreOutput(message.text);
 }
 
-function renderToolTitle(
-	title: string,
-	parts: AppMessageTitlePart[] | undefined,
-): JSX.Element {
+function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined) {
 	if (!parts?.length) return <span safe>{title}</span>;
 	return (
 		<>

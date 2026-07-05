@@ -14,7 +14,7 @@ import {
 	renderCodeFinal,
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
-} from "../ui/markdown.ts";
+} from "../ui/markdown.tsx";
 
 export type AppMessage = {
 	id: string;

@@ -4,14 +4,7 @@ import {
 	markdownToHtml,
 	type CompileOptions,
 } from "satteri";
-import {
-	bundledLanguages,
-	createHighlighter,
-	type BundledLanguage,
-	type Highlighter,
-} from "shiki";
-
-import { escapeHtml } from "../utils/html.ts";
+import { createHighlighter, type Highlighter } from "shiki";
 
 const streamingCache = new Map<string, string>();
 const highlightedCache = new Map<string, string>();
@@ -137,7 +130,7 @@ export async function renderCodeFinal(
 	language: string,
 	options: { chrome?: boolean } = {},
 ): Promise<string> {
-	return await highlightCode(code, normalizeLanguage(language), options);
+	return await highlightCode(code, codeFenceLanguage(language), options);
 }
 
 async function highlightCodeBlocks(html: string): Promise<string> {
@@ -153,7 +146,7 @@ async function highlightCodeBlocks(html: string): Promise<string> {
 	let highlighted = html;
 	for (const block of blocks) {
 		const [raw, rawLanguage, rawCode] = block;
-		const language = normalizeLanguage(rawLanguage);
+		const language = codeFenceLanguage(rawLanguage);
 		const replacement = await highlightCode(decodeHtml(rawCode), language, {
 			chrome: true,
 		});
@@ -168,16 +161,8 @@ async function highlightCode(
 	options: { chrome?: boolean } = {},
 ): Promise<string> {
 	const chrome = options.chrome ?? true;
-	if (!isBundledLanguage(language)) {
-		const pre = fallbackCode(code, language);
-		return chrome ? codeBlock(pre, language) : pre;
-	}
-
 	try {
 		const highlighter = await getHighlighter();
-		if (!highlighter.getLoadedLanguages().includes(language)) {
-			await highlighter.loadLanguage(language);
-		}
 		const pre = highlighter.codeToHtml(code, {
 			lang: language,
 			themes: {
@@ -185,10 +170,16 @@ async function highlightCode(
 				dark: "ayu-dark",
 			},
 		});
-		return chrome ? codeBlock(pre, language) : pre;
+		return chrome ? ((<CodeBlock pre={pre} language={language} />) as string) : pre;
 	} catch {
-		const pre = fallbackCode(code, language);
-		return chrome ? codeBlock(pre, language) : pre;
+		const pre = (
+			<pre>
+				<code class={`language-${language}`} safe>
+					{code}
+				</code>
+			</pre>
+		) as string;
+		return chrome ? ((<CodeBlock pre={pre} language={language} />) as string) : pre;
 	}
 }
 
@@ -222,37 +213,48 @@ function getHighlighter(): Promise<Highlighter> {
 	return highlighterPromise;
 }
 
-function codeBlock(pre: string, language: string): string {
-	const label = language === "text" ? "text" : language;
-	return `<div class="code-block my-4 overflow-hidden rounded-lg border bg-[var(--code-background)] [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-[var(--code-background)]! [&_pre]:p-4! [&_pre]:text-sm! [&_pre]:leading-relaxed!" data-code-block><div class="bg-muted text-muted-foreground flex items-center justify-between gap-3 border-b px-3 py-1 font-mono text-xs"><span>${escapeHtml(label)}</span><button class="btn h-7 w-7 p-0" data-variant="ghost" type="button" data-copy-code aria-label="Copy code"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M16 4h2a2 2 0 0 1 2 2v4m1 4H11"/><path d="m15 10l-4 4l4 4"/></g></svg></button></div>${pre}</div>`;
+function CodeBlock(props: { pre: string; language: string }) {
+	return (
+		<div
+			class="code-block my-4 overflow-hidden rounded-lg border bg-[var(--code-background)] [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-[var(--code-background)]! [&_pre]:p-4! [&_pre]:text-sm! [&_pre]:leading-relaxed!"
+			data-code-block
+		>
+			<div class="bg-muted text-muted-foreground flex items-center justify-between gap-3 border-b px-3 py-1 font-mono text-xs">
+				<span safe>{props.language}</span>
+				<button
+					class="btn h-7 w-7 p-0"
+					data-variant="ghost"
+					type="button"
+					data-copy-code
+					aria-label="Copy code"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<g
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+						>
+							<rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+							<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+						</g>
+					</svg>
+				</button>
+			</div>
+			{props.pre}
+		</div>
+	);
 }
 
-function fallbackCode(code: string, language: string): string {
-	return `<pre><code class="language-${escapeHtml(language)}">${escapeHtml(code)}</code></pre>`;
-}
-
-function normalizeLanguage(language: string | undefined): string {
-	const value = language?.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
-	if (value === "") {
-		return "text";
-	}
-	if (value === "js") {
-		return "javascript";
-	}
-	if (value === "ts") {
-		return "typescript";
-	}
-	if (value === "sh" || value === "shell") {
-		return "shellscript";
-	}
-	if (value === "md") {
-		return "markdown";
-	}
-	return value;
-}
-
-function isBundledLanguage(language: string): language is BundledLanguage {
-	return language in bundledLanguages;
+function codeFenceLanguage(language: string | undefined): string {
+	return language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
 }
 
 function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {
