@@ -15,7 +15,8 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "@kitajs/html",
 		"lib": ["deno.window", "deno.desktop"],
-		"strict": true
+		"strict": true,
+		"types": ["./src/app.d.ts"]
 	},
 	"nodeModulesDir": "auto",
 	"imports": {

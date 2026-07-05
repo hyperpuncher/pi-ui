@@ -11,7 +11,6 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindComposerAutosize();
 	bindSlashPicker();
 	bindFilePicker();
-	bindModelSearch();
 	bindTranscriptAutoscroll();
 	bindCommandRefresh();
 	bindPickerKeyboard();
@@ -353,122 +352,8 @@ function cycleThinkingLevel() {
 function openModelSelector() {
 	const trigger = document.getElementById("model-select-trigger");
 	if (trigger instanceof HTMLButtonElement) {
-		if (trigger.getAttribute("aria-expanded") !== "true") {
-			trigger.click();
-		}
-		document.getElementById("model-search-input")?.focus();
+		trigger.click();
 	}
-}
-
-function bindModelSearch() {
-	document.addEventListener("input", (event) => {
-		if (
-			event.target instanceof HTMLInputElement &&
-			event.target.id === "model-search-input"
-		) {
-			filterModelRows(event.target.value);
-		}
-	});
-
-	document.addEventListener("keydown", (event) => {
-		if (
-			!(event.target instanceof HTMLInputElement) ||
-			event.target.id !== "model-search-input"
-		) {
-			return;
-		}
-		if (event.key === "Escape") {
-			event.preventDefault();
-			closeModelSelector();
-			return;
-		}
-		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-			event.preventDefault();
-			focusModelRow(event.key === "ArrowDown" ? 1 : -1);
-		}
-	});
-
-	document.addEventListener("keydown", (event) => {
-		const active = document.activeElement;
-		if (!active?.closest?.("[data-model-row]")) {
-			return;
-		}
-		if (event.key === "Escape") {
-			event.preventDefault();
-			closeModelSelector();
-			return;
-		}
-		if (event.key === "Enter") {
-			event.preventDefault();
-			active.click();
-			return;
-		}
-		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-			event.preventDefault();
-			focusModelRow(event.key === "ArrowDown" ? 1 : -1);
-			return;
-		}
-		if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-			const input = document.getElementById("model-search-input");
-			if (input instanceof HTMLInputElement) {
-				event.preventDefault();
-				input.focus();
-				input.value += event.key;
-				input.dispatchEvent(new Event("input", { bubbles: true }));
-			}
-		}
-	});
-}
-
-function filterModelRows(query) {
-	const normalized = query.trim().toLowerCase();
-	for (const row of document.querySelectorAll("[data-model-row]")) {
-		if (!(row instanceof HTMLElement)) continue;
-		const haystack = row.dataset.modelHaystack ?? "";
-		row.style.display =
-			!normalized || fuzzyIncludes(haystack, normalized) ? "" : "none";
-	}
-	const select = document.getElementById("model-select");
-	if (typeof select?.refresh === "function") {
-		select.refresh();
-	}
-}
-
-function fuzzyIncludes(haystack, needle) {
-	let index = 0;
-	for (const char of needle) {
-		index = haystack.indexOf(char, index);
-		if (index === -1) return false;
-		index += 1;
-	}
-	return true;
-}
-
-function closeModelSelector() {
-	const select = document.getElementById("model-select");
-	if (typeof select?.close === "function") {
-		select.close();
-		return;
-	}
-	const trigger = document.getElementById("model-select-trigger");
-	trigger?.focus();
-}
-
-function focusModelRow(direction) {
-	const rows = visibleRows("[data-model-row]");
-	if (rows.length === 0) {
-		return;
-	}
-
-	const activeRow = document.activeElement?.closest?.("[data-model-row]");
-	const activeIndex = rows.findIndex((row) => row === activeRow);
-	const nextIndex =
-		activeIndex === -1
-			? direction > 0
-				? 0
-				: rows.length - 1
-			: (activeIndex + direction + rows.length) % rows.length;
-	focusRow(rows[nextIndex]);
 }
 
 function bindFilePicker() {
@@ -778,7 +663,7 @@ function bindCommandRefresh() {
 	let queued = false;
 	const refresh = () => {
 		queued = false;
-		document.querySelectorAll(".command, .select").forEach((component) => {
+		document.querySelectorAll(".command, .dropdown-menu").forEach((component) => {
 			if (typeof component.refresh === "function") {
 				component.refresh();
 			} else {

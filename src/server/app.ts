@@ -1,3 +1,5 @@
+import { serveDir } from "jsr:@std/http/file-server";
+
 import { AgentHost } from "../agent/host.ts";
 import { smokePiSdkImport } from "../agent/sdk-smoke.ts";
 import { AppState } from "../state/app-state.ts";
@@ -6,25 +8,6 @@ import { readSignals, signalsResponse } from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
 
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
-
-const staticFiles = new Map([
-	["/app.css", { path: "static/app.css", contentType: "text/css; charset=utf-8" }],
-	["/app.js", { path: "static/app.js", contentType: "text/javascript; charset=utf-8" }],
-	[
-		"/datastar.js",
-		{
-			path: "static/vendor/datastar.js",
-			contentType: "text/javascript; charset=utf-8",
-		},
-	],
-	[
-		"/basecoat.js",
-		{
-			path: basecoatJsPath,
-			contentType: "text/javascript; charset=utf-8",
-		},
-	],
-]);
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const state = new AppState();
@@ -119,15 +102,14 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				return Response.json(await smokePiSdkImport());
 			}
 
-			const staticFile = staticFiles.get(url.pathname);
-			if (request.method === "GET" && staticFile) {
-				try {
-					return new Response(await Deno.readFile(staticFile.path), {
-						headers: { "content-type": staticFile.contentType },
-					});
-				} catch {
-					return notFound();
-				}
+			if (request.method === "GET" && url.pathname === "/basecoat.js") {
+				return new Response(await Deno.readFile(basecoatJsPath), {
+					headers: { "content-type": "text/javascript; charset=utf-8" },
+				});
+			}
+
+			if (request.method === "GET") {
+				return serveDir(request, { fsRoot: "static" });
 			}
 
 			return notFound();

@@ -10,19 +10,6 @@ import {
 	renderWorkspacePicker,
 } from "./fragments.tsx";
 
-function sync(html: JSX.Element): string {
-	return html as string;
-}
-
-const systemThemeScript = `(() => {
-	try {
-		const stored = localStorage.getItem('themeMode');
-		if (stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches) {
-			document.documentElement.classList.add('dark');
-		}
-	} catch (_) {}
-})();`;
-
 export function renderPage(state: AppState): string {
 	const initialSignals = JSON.stringify({
 		composer: "",
@@ -32,265 +19,263 @@ export function renderPage(state: AppState): string {
 		sessionPath: "",
 	});
 
-	return (
-		"<!doctype html>" +
-		sync(
-			<html lang="en" class="h-full overflow-hidden">
-				<head>
-					<meta charset="utf-8" />
-					<meta name="viewport" content="width=device-width, initial-scale=1" />
-					<title>pi-ui</title>
-					<script>{systemThemeScript}</script>
-					<link rel="stylesheet" href="/app.css" />
-					<script src="/basecoat.js" defer></script>
-					<script type="module" src="/app.js"></script>
-					<script type="module" src="/datastar.js"></script>
-				</head>
-				<body
-					class="h-full overflow-hidden"
-					data-workspace-path={state.workspacePath}
-					data-signals={initialSignals}
+	return ("<!doctype html>" +
+	(
+		<html lang="en" class="h-full overflow-hidden">
+			<head>
+				<meta charset="utf-8" />
+				<meta name="viewport" content="width=device-width, initial-scale=1" />
+				<title>pi-ui</title>
+				<script src="/theme.js"></script>
+				<link rel="stylesheet" href="/app.css" />
+				<script src="/basecoat.js" defer></script>
+				<script type="module" src="/vendor/datastar.js"></script>
+				<script type="module" src="/app.js"></script>
+				<script type="module" src="/vendor/datastar-inspector.min.js"></script>
+			</head>
+			<body
+				class="h-full overflow-hidden"
+				data-workspace-path={state.workspacePath}
+				data-signals={initialSignals}
+			>
+				<datastar-inspector />
+				<div
+					id="app"
+					class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"
+					data-init="@get('/stream')"
 				>
-					<div
-						id="app"
-						class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"
-						data-init="@get('/stream')"
-					>
-						{renderTranscript(state.messages)}
+					{renderTranscript(state.messages)}
 
+					<div
+						id="composer"
+						class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! p-3 shadow-sm"
+					>
 						<div
-							id="composer"
-							class="card fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! p-3 shadow-sm"
+							id="composer-slash-popover"
+							class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
+							style="display: none;"
 						>
+							{renderSlashPicker(state)}
+						</div>
+						<div
+							id="composer-file-popover"
+							class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
+							style="display: none;"
+						>
+							<ul
+								id="file-picker-list"
+								class="max-h-72 list-none overflow-y-auto p-1"
+							/>
+						</div>
+						<textarea
+							id="composer-input"
+							class="max-h-44 min-h-12 w-full resize-none border-0 bg-transparent p-1 outline-none"
+							placeholder="Ask pi anything..."
+							aria-label="Message"
+							data-bind:composer
+						></textarea>
+						<div class="mt-2 flex flex-wrap items-center justify-between gap-2">
 							<div
-								id="composer-slash-popover"
-								class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
-								style="display: none;"
+								class="flex shrink-0 items-center gap-2"
+								aria-label="Message tools"
 							>
-								{renderSlashPicker(state)}
-							</div>
-							<div
-								id="composer-file-popover"
-								class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
-								style="display: none;"
-							>
-								<ul
-									id="file-picker-list"
-									class="max-h-72 list-none overflow-y-auto p-1"
-								/>
-							</div>
-							<textarea
-								id="composer-input"
-								class="max-h-44 min-h-12 w-full resize-none border-0 bg-transparent p-1 outline-none"
-								placeholder="Ask pi anything..."
-								aria-label="Message"
-								data-bind:composer
-								data-indicator:_prompting
-							></textarea>
-							<div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-								<div
-									class="flex shrink-0 items-center gap-2"
-									aria-label="Message tools"
+								<button
+									class="btn"
+									data-variant="ghost"
+									data-size="icon-sm"
+									type="button"
+									data-dialog-trigger="command-dialog"
+									title="Commands"
 								>
-									<button
-										class="btn"
-										data-variant="ghost"
-										data-size="icon-sm"
-										type="button"
-										data-dialog-trigger="command-dialog"
-										title="Commands"
-									>
-										⌘
-									</button>
-									<button
-										class="btn"
-										data-variant="ghost"
-										data-size="icon-sm"
-										type="button"
-										data-new-chat-trigger
-										data-on:click="@post('/sessions/new')"
-										title="New chat"
-									>
-										+
-									</button>
-									<button
-										class="btn"
-										data-variant="ghost"
-										data-size="icon-sm"
-										type="button"
-										data-file-trigger
-										title="Files"
-									>
-										@
-									</button>
-									<button
-										class="btn"
-										data-variant="ghost"
-										data-size="icon-sm"
-										type="button"
-										data-session-trigger
-										data-on:click="
-											@post('/sessions/list');
-											document.getElementById('session-dialog')?.showModal();
-										"
-										title="Resume session"
-									>
-										↩
-									</button>
-								</div>
-								<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
-									{renderComposerStatus(state)}
-									{renderWorkspacePicker(state)}
-									{renderThinkingPicker(state)}
-									{renderModelPicker(state)}
-									<button
-										class="btn"
-										data-variant="ghost"
-										data-size="icon-sm"
-										type="button"
-										data-on:click="@post('/abort')"
-										title="Abort"
-										aria-label="Abort"
-									>
-										■
-									</button>
-									<button
-										class="btn"
-										data-size="icon"
-										type="button"
-										data-indicator:_prompting
-										data-send-trigger
-										data-on:click="@post('/prompt', { filterSignals: { include: /^composer$/ } })"
-										aria-label="Send"
-									>
-										↑
-									</button>
-								</div>
+									⌘
+								</button>
+								<button
+									class="btn"
+									data-variant="ghost"
+									data-size="icon-sm"
+									type="button"
+									data-new-chat-trigger
+									data-on:click="@post('/sessions/new')"
+									title="New chat"
+								>
+									+
+								</button>
+								<button
+									class="btn"
+									data-variant="ghost"
+									data-size="icon-sm"
+									type="button"
+									data-file-trigger
+									title="Files"
+								>
+									@
+								</button>
+								<button
+									class="btn"
+									data-variant="ghost"
+									data-size="icon-sm"
+									type="button"
+									data-session-trigger
+									data-on:click="
+										@post('/sessions/list');
+										document.getElementById('session-dialog')?.showModal();
+									"
+									title="Resume session"
+								>
+									↩
+								</button>
+							</div>
+							<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+								{renderComposerStatus(state)}
+								{renderWorkspacePicker(state)}
+								{renderThinkingPicker(state)}
+								{renderModelPicker(state)}
+								<button
+									class="btn"
+									data-variant="ghost"
+									data-size="icon-sm"
+									type="button"
+									data-on:click="@post('/abort')"
+									title="Abort"
+									aria-label="Abort"
+								>
+									■
+								</button>
+								<button
+									class="btn"
+									data-size="icon"
+									type="button"
+									data-send-trigger
+									data-on:click="@post('/prompt', { filterSignals: { include: /^composer$/ } })"
+									aria-label="Send"
+								>
+									↑
+								</button>
 							</div>
 						</div>
 					</div>
+				</div>
 
-					<dialog
-						id="command-dialog"
-						class="command-dialog"
-						aria-label="Command menu"
-						onclick="if (event.target === this) this.close()"
-					>
-						<div class="command">
-							<header>
-								<input
-									id="command-input"
-									type="text"
-									placeholder="Type a command or search..."
-									autocomplete="off"
-									autocorrect="off"
-									spellcheck="false"
-									aria-autocomplete="list"
-									role="combobox"
-									aria-expanded="true"
-									aria-controls="command-menu"
-								/>
-							</header>
-							<div
-								role="menu"
-								id="command-menu"
-								aria-orientation="vertical"
-								data-empty="No commands found."
-							>
-								<div role="group" aria-labelledby="command-menu-heading">
-									<span role="heading" id="command-menu-heading">
-										Commands
-									</span>
-									{appCommands.map(renderCommandRow)}
-								</div>
+				<dialog
+					id="command-dialog"
+					class="command-dialog"
+					aria-label="Command menu"
+					onclick="if (event.target === this) this.close()"
+				>
+					<div class="command">
+						<header>
+							<input
+								id="command-input"
+								type="text"
+								placeholder="Type a command or search..."
+								autocomplete="off"
+								autocorrect="off"
+								spellcheck="false"
+								aria-autocomplete="list"
+								role="combobox"
+								aria-expanded="true"
+								aria-controls="command-menu"
+							/>
+						</header>
+						<div
+							role="menu"
+							id="command-menu"
+							aria-orientation="vertical"
+							data-empty="No commands found."
+						>
+							<div role="group" aria-labelledby="command-menu-heading">
+								<span role="heading" id="command-menu-heading">
+									Commands
+								</span>
+								{appCommands.map(renderCommandRow)}
 							</div>
 						</div>
-					</dialog>
+					</div>
+				</dialog>
 
-					<dialog
-						id="workspace-dialog"
-						class="dialog"
-						aria-labelledby="workspace-dialog-title"
-						onclick="if (event.target === this) this.close()"
-					>
-						<div class="w-[min(42rem,calc(100vw-2rem))] max-w-none">
-							<header>
-								<h2 id="workspace-dialog-title">Change workspace</h2>
-							</header>
-							<section>
-								<div class="flex gap-2">
-									<input
-										id="workspace-input"
-										class="input min-w-0 flex-1 font-mono text-sm"
-										placeholder="/path/to/project"
-										aria-label="Workspace path"
-										data-bind:workspace-path
-									/>
-									<button
-										class="btn"
-										type="button"
-										data-workspace-submit
-										data-on:click="@post('/workspace/open', { filterSignals: { include: /^workspacePath$/ } })"
-									>
-										Open
-									</button>
-								</div>
-								<div class="mt-4">
-									<p class="text-muted-foreground mb-2 text-xs">
-										Recent workspaces
-									</p>
-									<ul
-										id="workspace-recent-list"
-										class="max-h-72 list-none overflow-y-auto p-0"
-									/>
-								</div>
-							</section>
-							<button
-								class="btn"
-								data-variant="ghost"
-								data-size="icon-sm"
-								type="button"
-								onclick="this.closest('dialog').close()"
-								aria-label="Close"
-							>
-								×
-							</button>
-						</div>
-					</dialog>
-
-					<dialog
-						id="session-dialog"
-						class="command-dialog"
-						aria-label="Resume session"
-						onclick="if (event.target === this) this.close()"
-					>
-						<div class="command sm:max-w-2xl">
-							<header>
+				<dialog
+					id="workspace-dialog"
+					class="dialog"
+					aria-labelledby="workspace-dialog-title"
+					onclick="if (event.target === this) this.close()"
+				>
+					<div class="w-[min(42rem,calc(100vw-2rem))] max-w-none">
+						<header>
+							<h2 id="workspace-dialog-title">Change workspace</h2>
+						</header>
+						<section>
+							<div class="flex gap-2">
 								<input
-									id="session-input"
-									type="text"
-									placeholder="Search sessions..."
-									autocomplete="off"
-									autocorrect="off"
-									spellcheck="false"
-									aria-autocomplete="list"
-									role="combobox"
-									aria-expanded="true"
-									aria-controls="session-menu"
-									autofocus
+									id="workspace-input"
+									class="input min-w-0 flex-1 font-mono text-sm"
+									placeholder="/path/to/project"
+									aria-label="Workspace path"
+									data-bind:workspace-path
 								/>
-							</header>
-							{renderSessionPicker(state)}
-						</div>
-					</dialog>
-				</body>
-			</html>,
-		)
-	);
+								<button
+									class="btn"
+									type="button"
+									data-workspace-submit
+									data-on:click="@post('/workspace/open', { filterSignals: { include: /^workspacePath$/ } })"
+								>
+									Open
+								</button>
+							</div>
+							<div class="mt-4">
+								<p class="text-muted-foreground mb-2 text-xs">
+									Recent workspaces
+								</p>
+								<ul
+									id="workspace-recent-list"
+									class="max-h-72 list-none overflow-y-auto p-0"
+								/>
+							</div>
+						</section>
+						<button
+							class="btn"
+							data-variant="ghost"
+							data-size="icon-sm"
+							type="button"
+							onclick="this.closest('dialog').close()"
+							aria-label="Close"
+						>
+							×
+						</button>
+					</div>
+				</dialog>
+
+				<dialog
+					id="session-dialog"
+					class="command-dialog"
+					aria-label="Resume session"
+					onclick="if (event.target === this) this.close()"
+				>
+					<div class="command sm:max-w-2xl">
+						<header>
+							<input
+								id="session-input"
+								type="text"
+								placeholder="Search sessions..."
+								autocomplete="off"
+								autocorrect="off"
+								spellcheck="false"
+								aria-autocomplete="list"
+								role="combobox"
+								aria-expanded="true"
+								aria-controls="session-menu"
+								autofocus
+							/>
+						</header>
+						{renderSessionPicker(state)}
+					</div>
+				</dialog>
+			</body>
+		</html>
+	)) as string;
 }
 
 function renderCommandRow(item: AppCommand): string {
-	return sync(
+	return (
 		<div
 			role="menuitem"
 			tabindex="-1"
@@ -306,8 +291,8 @@ function renderCommandRow(item: AppCommand): string {
 				</span>
 			</span>
 			{item.shortcut.display && <span data-shortcut>{item.shortcut.display}</span>}
-		</div>,
-	);
+		</div>
+	) as string;
 }
 
 function commandAction(id: AppCommandId): string {
