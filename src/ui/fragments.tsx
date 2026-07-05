@@ -112,6 +112,7 @@ export function renderModelPicker(state: AppState): string {
 							return (
 								<div
 									role="option"
+									tabindex="-1"
 									data-model-row
 									data-model-haystack={haystack}
 									data-value={value}
@@ -208,16 +209,18 @@ function renderSlashRow(item: AppSlashCommand): string {
 
 export function renderSessionPicker(state: AppState): string {
 	return sync(
-		<div id="session-picker">
-			<ul class="mt-3 max-h-[55vh] list-none overflow-y-auto p-0">
-				{state.sessions.length === 0 ? (
-					<li class="text-muted-foreground px-3 py-6 text-center text-sm">
-						No saved sessions for this project yet.
-					</li>
-				) : (
-					state.sessions.map(renderSessionRow)
-				)}
-			</ul>
+		<div
+			role="menu"
+			id="session-menu"
+			aria-orientation="vertical"
+			data-empty="No saved sessions for this project yet."
+		>
+			<div role="group" aria-labelledby="session-menu-heading">
+				<span role="heading" id="session-menu-heading">
+					Recent sessions
+				</span>
+				{state.sessions.map(renderSessionRow)}
+			</div>
 		</div>,
 	);
 }
@@ -225,36 +228,30 @@ export function renderSessionPicker(state: AppState): string {
 function renderSessionRow(session: AppSessionSummary): string {
 	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
 	return sync(
-		<li
+		<div
+			role="menuitem"
+			tabindex="-1"
 			data-session-row
-			data-show={`
-				$sessionQuery === '' ||
-				${JSON.stringify(haystack)}.includes($sessionQuery.toLowerCase())
+			data-filter={haystack}
+			data-keywords={haystack}
+			data-on:click={`
+				$sessionPath = ${JSON.stringify(session.path)};
+				document.getElementById('session-dialog')?.close();
+				@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 			`}
 		>
-			<button
-				class="hover:bg-muted focus:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
-				type="button"
-				data-on:click={`
-					$sessionPath = ${JSON.stringify(session.path)};
-					$sessionQuery = '';
-					document.getElementById('session-dialog')?.close();
-					@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
-				`}
-			>
-				<span class="min-w-0">
-					<span class="block truncate" safe>
-						{session.title}
-					</span>
-					<span class="text-muted-foreground mt-1 line-clamp-2 text-xs" safe>
-						{session.subtitle}
-					</span>
+			<span class="min-w-0">
+				<span class="block truncate" safe>
+					{session.title}
 				</span>
-				<time class="text-muted-foreground shrink-0 text-xs" safe>
-					{session.modified}
-				</time>
-			</button>
-		</li>,
+				<span class="text-muted-foreground mt-1 line-clamp-2 text-xs" safe>
+					{session.subtitle}
+				</span>
+			</span>
+			<span data-shortcut safe>
+				{session.modified}
+			</span>
+		</div>,
 	);
 }
 

@@ -1,9 +1,4 @@
-import {
-	appCommands,
-	command,
-	type AppCommand,
-	type AppCommandId,
-} from "../commands/registry.ts";
+import { appCommands, type AppCommand, type AppCommandId } from "../commands/registry.ts";
 import type { AppState } from "../state/app-state.ts";
 import {
 	renderComposerStatus,
@@ -28,14 +23,11 @@ const systemThemeScript = `(() => {
 })();`;
 
 export function renderPage(state: AppState): string {
-	const newChat = command("new-chat");
 	const initialSignals = JSON.stringify({
 		composer: "",
-		commandQuery: "",
 		model: state.currentModel ?? "",
 		workspacePath: state.workspacePath,
 		sessionPath: "",
-		sessionQuery: "",
 	});
 
 	return (
@@ -135,6 +127,10 @@ export function renderPage(state: AppState): string {
 										data-size="icon-sm"
 										type="button"
 										data-session-trigger
+										data-on:click="
+											@post('/sessions/list');
+											document.getElementById('session-dialog')?.showModal();
+										"
 										title="Resume session"
 									>
 										↩
@@ -171,48 +167,40 @@ export function renderPage(state: AppState): string {
 						</div>
 					</div>
 
-					<button
-						id="session-list-action"
-						type="button"
-						class="hidden"
-						data-on:click="@post('/sessions/list')"
-					/>
-
 					<dialog
 						id="command-dialog"
-						class="dialog"
-						aria-labelledby="command-dialog-title"
+						class="command-dialog"
+						aria-label="Command menu"
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="w-[min(42rem,calc(100vw-2rem))] max-w-none">
+						<div class="command">
 							<header>
-								<h2 id="command-dialog-title">Command palette</h2>
+								<input
+									id="command-input"
+									type="text"
+									placeholder="Type a command or search..."
+									autocomplete="off"
+									autocorrect="off"
+									spellcheck="false"
+									aria-autocomplete="list"
+									role="combobox"
+									aria-expanded="true"
+									aria-controls="command-menu"
+								/>
 							</header>
-							<input
-								id="command-input"
-								class="input w-full"
-								autofocus
-								placeholder="Type a command..."
-								aria-label="Command search"
-								data-bind:command-query
-							/>
-							<ul class="mt-3 list-none p-0">
-								{appCommands.map(renderCommandRow)}
-							</ul>
-							<p class="text-muted-foreground mt-3 text-xs">
-								Tip: {newChat.shortcut.display} starts a fresh chat. Press
-								Enter to run the first visible command.
-							</p>
-							<button
-								class="btn"
-								data-variant="ghost"
-								data-size="icon-sm"
-								type="button"
-								onclick="this.closest('dialog').close()"
-								aria-label="Close"
+							<div
+								role="menu"
+								id="command-menu"
+								aria-orientation="vertical"
+								data-empty="No commands found."
 							>
-								×
-							</button>
+								<div role="group" aria-labelledby="command-menu-heading">
+									<span role="heading" id="command-menu-heading">
+										Commands
+									</span>
+									{appCommands.map(renderCommandRow)}
+								</div>
+							</div>
 						</div>
 					</dialog>
 
@@ -269,32 +257,27 @@ export function renderPage(state: AppState): string {
 
 					<dialog
 						id="session-dialog"
-						class="dialog"
-						aria-labelledby="session-dialog-title"
+						class="command-dialog"
+						aria-label="Resume session"
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="w-[min(46rem,calc(100vw-2rem))] max-w-none">
+						<div class="command sm:max-w-2xl">
 							<header>
-								<h2 id="session-dialog-title">Resume session</h2>
+								<input
+									id="session-input"
+									type="text"
+									placeholder="Search sessions..."
+									autocomplete="off"
+									autocorrect="off"
+									spellcheck="false"
+									aria-autocomplete="list"
+									role="combobox"
+									aria-expanded="true"
+									aria-controls="session-menu"
+									autofocus
+								/>
 							</header>
-							<input
-								id="session-input"
-								class="input w-full"
-								placeholder="Search sessions..."
-								aria-label="Session search"
-								data-bind:session-query
-							/>
 							{renderSessionPicker(state)}
-							<button
-								class="btn"
-								data-variant="ghost"
-								data-size="icon-sm"
-								type="button"
-								onclick="this.closest('dialog').close()"
-								aria-label="Close"
-							>
-								×
-							</button>
 						</div>
 					</dialog>
 				</body>
@@ -304,46 +287,38 @@ export function renderPage(state: AppState): string {
 }
 
 function renderCommandRow(item: AppCommand): string {
-	const haystack = `${item.title} ${item.description} ${item.id}`.toLowerCase();
 	return sync(
-		<li
+		<div
+			role="menuitem"
+			tabindex="-1"
 			data-command-row
-			data-show={`
-				$commandQuery === '' ||
-				${JSON.stringify(haystack)}.includes($commandQuery.toLowerCase())
-			`}
+			data-filter={item.title}
+			data-keywords={`${item.description} ${item.id}`}
+			data-on:click={commandAction(item.id)}
 		>
-			<button
-				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
-				type="button"
-				data-on:click={commandAction(item.id)}
-			>
-				<span class="min-w-0">
-					<span class="block truncate">{item.title}</span>
-					<span class="text-muted-foreground block truncate text-xs">
-						{item.description}
-					</span>
+			<span class="min-w-0">
+				<span class="block truncate">{item.title}</span>
+				<span class="text-muted-foreground block truncate text-xs">
+					{item.description}
 				</span>
-				{item.shortcut.display && (
-					<kbd class="kbd shrink-0">{item.shortcut.display}</kbd>
-				)}
-			</button>
-		</li>,
+			</span>
+			{item.shortcut.display && <span data-shortcut>{item.shortcut.display}</span>}
+		</div>,
 	);
 }
 
 function commandAction(id: AppCommandId): string {
 	if (id === "new-chat") {
-		return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; @post('/sessions/new')";
+		return "document.getElementById('command-dialog')?.close(); @post('/sessions/new')";
 	}
 	if (id === "resume-session") {
-		return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; @post('/sessions/list'); setTimeout(() => document.getElementById('session-dialog')?.showModal(), 0)";
+		return "document.getElementById('command-dialog')?.close(); @post('/sessions/list'); document.getElementById('session-dialog')?.showModal()";
 	}
 	if (id === "command-palette") {
-		return "document.getElementById('command-dialog')?.showModal(); $commandQuery = ''; document.getElementById('command-input')?.focus()";
+		return "document.getElementById('command-dialog')?.showModal(); document.getElementById('command-input')?.focus()";
 	}
 	if (id === "switch-model") {
-		return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; document.getElementById('model-select-trigger')?.click()";
+		return "document.getElementById('command-dialog')?.close(); document.getElementById('model-select-trigger')?.click()";
 	}
-	return "document.getElementById('command-dialog')?.close(); $commandQuery = ''; document.getElementById('workspace-dialog')?.showModal(); setTimeout(() => document.getElementById('workspace-input')?.focus(), 0)";
+	return "document.getElementById('command-dialog')?.close(); document.getElementById('workspace-dialog')?.showModal(); setTimeout(() => document.getElementById('workspace-input')?.focus(), 0)";
 }

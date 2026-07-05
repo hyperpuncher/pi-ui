@@ -13,6 +13,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindFilePicker();
 	bindModelSearch();
 	bindTranscriptAutoscroll();
+	bindCommandRefresh();
 	bindPickerKeyboard();
 	bindDialogKeyboard();
 });
@@ -59,9 +60,6 @@ function bindAppCommands() {
 		if (target.closest("[data-dialog-trigger='command-dialog']")) {
 			event.preventDefault();
 			openDialog("command-dialog", "command-input");
-		} else if (target.closest("[data-session-trigger]")) {
-			event.preventDefault();
-			openSessionDialog();
 		} else if (target.closest("[data-file-trigger]")) {
 			event.preventDefault();
 			insertFilePrefix();
@@ -101,8 +99,7 @@ function closeDialog(id) {
 
 function openSessionDialog() {
 	closeDialog("command-dialog");
-	clickFirst("#session-list-action");
-	setTimeout(() => openDialog("session-dialog", "session-input"), 0);
+	clickFirst("[data-session-trigger]");
 }
 
 function clickFirst(selector) {
@@ -262,7 +259,12 @@ function bindReservedShortcutPrevention() {
 
 function runFirstVisible(selector) {
 	const row = visibleRows(selector)[0];
-	row?.querySelector("button")?.click();
+	const button = row?.querySelector("button");
+	if (button instanceof HTMLElement) {
+		button.click();
+	} else if (row instanceof HTMLElement) {
+		row.click();
+	}
 }
 
 function visibleRows(selector) {
@@ -339,7 +341,7 @@ function openModelSelector() {
 		if (trigger.getAttribute("aria-expanded") !== "true") {
 			trigger.click();
 		}
-		setTimeout(() => document.getElementById("model-search-input")?.focus(), 0);
+		document.getElementById("model-search-input")?.focus();
 	}
 }
 
@@ -360,9 +362,45 @@ function bindModelSearch() {
 		) {
 			return;
 		}
-		if (event.key === "ArrowDown") {
+		if (event.key === "Escape") {
 			event.preventDefault();
-			focusFirstVisibleModelRow();
+			closeModelSelector();
+			return;
+		}
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			focusModelRow(event.key === "ArrowDown" ? 1 : -1);
+		}
+	});
+
+	document.addEventListener("keydown", (event) => {
+		const active = document.activeElement;
+		if (!active?.closest?.("[data-model-row]")) {
+			return;
+		}
+		if (event.key === "Escape") {
+			event.preventDefault();
+			closeModelSelector();
+			return;
+		}
+		if (event.key === "Enter") {
+			event.preventDefault();
+			active.click();
+			return;
+		}
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			focusModelRow(event.key === "ArrowDown" ? 1 : -1);
+			return;
+		}
+		if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+			const input = document.getElementById("model-search-input");
+			if (input instanceof HTMLInputElement) {
+				event.preventDefault();
+				input.focus();
+				input.value += event.key;
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+			}
 		}
 	});
 }
@@ -374,6 +412,10 @@ function filterModelRows(query) {
 		const haystack = row.dataset.modelHaystack ?? "";
 		row.style.display =
 			!normalized || fuzzyIncludes(haystack, normalized) ? "" : "none";
+	}
+	const select = document.getElementById("model-select");
+	if (typeof select?.refresh === "function") {
+		select.refresh();
 	}
 }
 
@@ -387,11 +429,31 @@ function fuzzyIncludes(haystack, needle) {
 	return true;
 }
 
-function focusFirstVisibleModelRow() {
-	const row = visibleRows("[data-model-row]")[0];
-	if (row instanceof HTMLElement) {
-		row.focus();
+function closeModelSelector() {
+	const select = document.getElementById("model-select");
+	if (typeof select?.close === "function") {
+		select.close();
+		return;
 	}
+	const trigger = document.getElementById("model-select-trigger");
+	trigger?.focus();
+}
+
+function focusModelRow(direction) {
+	const rows = visibleRows("[data-model-row]");
+	if (rows.length === 0) {
+		return;
+	}
+
+	const activeRow = document.activeElement?.closest?.("[data-model-row]");
+	const activeIndex = rows.findIndex((row) => row === activeRow);
+	const nextIndex =
+		activeIndex === -1
+			? direction > 0
+				? 0
+				: rows.length - 1
+			: (activeIndex + direction + rows.length) % rows.length;
+	focusRow(rows[nextIndex]);
 }
 
 function bindFilePicker() {
@@ -644,7 +706,7 @@ function focusFileRow(direction) {
 		activeIndex === -1
 			? rows.length - 1
 			: (activeIndex + direction + rows.length) % rows.length;
-	rows[nextIndex]?.querySelector("button")?.focus();
+	focusRow(rows[nextIndex]);
 }
 
 function bindComposerAutosize() {
@@ -697,6 +759,39 @@ function bindTranscriptAutoscroll() {
 	observer.observe(document.body, { childList: true, subtree: true });
 }
 
+function bindCommandRefresh() {
+	let queued = false;
+	const refresh = () => {
+		queued = false;
+		document.querySelectorAll(".command, .select").forEach((component) => {
+			if (typeof component.refresh === "function") {
+				component.refresh();
+			} else {
+				window.basecoat?.refresh?.(component);
+			}
+		});
+	};
+	const queueRefresh = () => {
+		if (queued) return;
+		queued = true;
+		queueMicrotask(refresh);
+	};
+
+	const observer = new MutationObserver((mutations) => {
+		if (
+			mutations.some(
+				(mutation) =>
+					mutation.target instanceof Element &&
+					mutation.target.closest(".command"),
+			)
+		) {
+			queueRefresh();
+		}
+	});
+
+	observer.observe(document.body, { childList: true, subtree: true });
+}
+
 function bindPickerKeyboard() {
 	document.addEventListener("keydown", (event) => {
 		const active = document.activeElement;
@@ -727,20 +822,6 @@ function bindPickerKeyboard() {
 
 		if (
 			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
-			(active?.id === "command-input" || active?.closest?.("[data-command-row]"))
-		) {
-			event.preventDefault();
-			focusCommandRow(event.key === "ArrowDown" ? 1 : -1);
-			return;
-		}
-		if (event.key === "Enter" && active?.closest?.("[data-command-row]")) {
-			event.preventDefault();
-			active.click();
-			return;
-		}
-
-		if (
-			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
 			active?.closest?.("[data-slash-row]")
 		) {
 			event.preventDefault();
@@ -766,37 +847,7 @@ function bindPickerKeyboard() {
 			active.click();
 			return;
 		}
-
-		if (
-			(event.key === "ArrowDown" || event.key === "ArrowUp") &&
-			(active?.id === "session-input" || active?.closest?.("[data-session-row]"))
-		) {
-			event.preventDefault();
-			focusSessionRow(event.key === "ArrowDown" ? 1 : -1);
-			return;
-		}
-		if (event.key === "Enter" && active?.closest?.("[data-session-row]")) {
-			event.preventDefault();
-			active.click();
-		}
 	});
-}
-
-function focusCommandRow(direction) {
-	const rows = visibleRows("[data-command-row]");
-	if (rows.length === 0) {
-		return;
-	}
-
-	const activeRow = document.activeElement?.closest?.("[data-command-row]");
-	const activeIndex = rows.findIndex((row) => row === activeRow);
-	const nextIndex =
-		activeIndex === -1
-			? direction > 0
-				? 0
-				: rows.length - 1
-			: (activeIndex + direction + rows.length) % rows.length;
-	rows[nextIndex]?.querySelector("button")?.focus();
 }
 
 function focusSlashRow(direction) {
@@ -813,22 +864,14 @@ function focusSlashRow(direction) {
 				? 0
 				: rows.length - 1
 			: (activeIndex + direction + rows.length) % rows.length;
-	rows[nextIndex]?.querySelector("button")?.focus();
+	focusRow(rows[nextIndex]);
 }
 
-function focusSessionRow(direction) {
-	const rows = visibleRows("[data-session-row]");
-	if (rows.length === 0) {
-		return;
+function focusRow(row) {
+	const button = row?.querySelector("button");
+	if (button instanceof HTMLElement) {
+		button.focus();
+	} else if (row instanceof HTMLElement) {
+		row.focus();
 	}
-
-	const activeRow = document.activeElement?.closest?.("[data-session-row]");
-	const activeIndex = rows.findIndex((row) => row === activeRow);
-	const nextIndex =
-		activeIndex === -1
-			? direction > 0
-				? 0
-				: rows.length - 1
-			: (activeIndex + direction + rows.length) % rows.length;
-	rows[nextIndex]?.querySelector("button")?.focus();
 }
