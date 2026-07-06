@@ -34,6 +34,7 @@ export function renderPage(state: AppState): string {
 			</head>
 			<body
 				class="h-full overflow-hidden"
+				spellcheck="false"
 				data-workspace-path={state.workspacePath}
 				data-signals={initialSignals}
 			>
