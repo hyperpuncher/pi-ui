@@ -24,12 +24,12 @@ jobs:
                       output: dist/pi-ui-linux-arm64.AppImage
                       artifact: pi-ui-linux-arm64.AppImage
                     - name: darwin-x64
-                      os: macos-latest
+                      os: ubuntu-latest
                       target: x86_64-apple-darwin
                       output: dist/pi-ui.app
                       artifact: pi-ui-darwin-x64.zip
                     - name: darwin-arm64
-                      os: macos-latest
+                      os: ubuntu-latest
                       target: aarch64-apple-darwin
                       output: dist/pi-ui.app
                       artifact: pi-ui-darwin-arm64.zip
@@ -60,8 +60,8 @@ jobs:
                   src/main.ts
 
             - name: Zip macOS app
-              if: runner.os == 'macOS'
-              run: ditto -c -k --keepParent "${{ matrix.output }}" "dist/${{ matrix.artifact }}"
+              if: startsWith(matrix.name, 'darwin-')
+              run: cd dist && zip -qry "${{ matrix.artifact }}" "pi-ui.app"
 
             - name: Upload artifact
               uses: actions/upload-artifact@v7
