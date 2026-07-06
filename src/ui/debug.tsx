@@ -11,6 +11,8 @@ export function renderDebugOverlay(state: AppState): string {
 		>
 			<div class="text-muted-foreground mb-1 uppercase">debug</div>
 			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+				<dt class="text-muted-foreground">fps</dt>
+				<dd id="debug-fps">—</dd>
 				<dt class="text-muted-foreground">stream</dt>
 				<dd>{state.streamingPatchRateHz}Hz</dd>
 				<dt class="text-muted-foreground">interval</dt>

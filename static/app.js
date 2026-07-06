@@ -16,6 +16,8 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindTooltipSuppression();
 	bindPickerKeyboard();
 	bindDialogKeyboard();
+	bindVimControls();
+	bindDebugFps();
 });
 
 function bindAppCommands() {
@@ -598,6 +600,24 @@ function focusFileRow(direction) {
 	focusRow(rows[nextIndex]);
 }
 
+function bindDebugFps() {
+	const fps = document.getElementById("debug-fps");
+	if (!(fps instanceof HTMLElement)) return;
+	let frames = 0;
+	let startedAt = performance.now();
+	const tick = (now) => {
+		frames += 1;
+		const elapsed = now - startedAt;
+		if (elapsed >= 500) {
+			fps.textContent = String(Math.round((frames * 1000) / elapsed));
+			frames = 0;
+			startedAt = now;
+		}
+		requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
+}
+
 function bindPromptAutosize() {
 	const resize = () => {
 		const input = document.getElementById("prompt-input");
@@ -618,6 +638,179 @@ function bindPromptAutosize() {
 	});
 
 	resize();
+}
+
+function bindVimControls() {
+	let pendingG = false;
+	document.addEventListener("keydown", (event) => {
+		if (event.ctrlKey || event.metaKey || event.altKey) return;
+		if (isTextInputFocused()) return;
+		if (document.querySelector("dialog[open]")) return;
+
+		const key = event.key;
+		if (pendingG) {
+			pendingG = false;
+			if (key === "g") {
+				event.preventDefault();
+				scrollMessagesTo("top");
+				return;
+			}
+			if (key === "i") {
+				event.preventDefault();
+				focusPromptEnd();
+				return;
+			}
+		}
+
+		if (key === "g") {
+			event.preventDefault();
+			pendingG = true;
+			return;
+		}
+		if (key === "G") {
+			event.preventDefault();
+			scrollMessagesTo("bottom");
+			return;
+		}
+		if (key === "j" || key === "k") {
+			event.preventDefault();
+			scrollMessagesBy(key === "j" ? 100 : -100, event.repeat);
+		}
+	});
+	document.addEventListener("keyup", (event) => {
+		if (event.key === "j" || event.key === "k") {
+			stopVimiumLineScroll();
+		}
+	});
+}
+
+function isTextInputFocused() {
+	const active = document.activeElement;
+	return (
+		active instanceof HTMLInputElement ||
+		active instanceof HTMLTextAreaElement ||
+		active instanceof HTMLSelectElement ||
+		active?.isContentEditable === true
+	);
+}
+
+const vimScrollStepPx = 100;
+const vimScrollStepDurationMs = 120;
+const vimScrollFrameMs = 1000 / 144;
+let vimScrollAnimation;
+let vimScrollTarget;
+let vimScrollLastFrame = 0;
+let vimScrollDirection = 0;
+let vimScrollKeyHeld = false;
+let vimScrollDelta = 0;
+let vimScrollRemainder = 0;
+
+function scrollMessagesBy(delta, _repeated) {
+	if (vimScrollAnimation && vimScrollTarget !== undefined) {
+		cancelAnimationFrame(vimScrollAnimation);
+		vimScrollAnimation = undefined;
+		vimScrollTarget = undefined;
+	}
+	const direction = Math.sign(delta);
+	if (!vimScrollAnimation || vimScrollDirection !== direction) {
+		vimScrollDirection = direction;
+		vimScrollDelta = 0;
+		vimScrollRemainder = 0;
+		vimScrollLastFrame = performance.now();
+	}
+	vimScrollKeyHeld = true;
+	startVimiumLineScroll();
+	messagesScrollState.wasPinnedToBottom = false;
+}
+
+function scrollMessagesTo(position) {
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	vimScrollDirection = 0;
+	vimScrollKeyHeld = false;
+	const max = messages.scrollHeight - messages.clientHeight;
+	vimScrollTarget = position === "top" ? 0 : max;
+	startVimiumTargetScroll();
+	messagesScrollState.wasPinnedToBottom = position === "bottom";
+}
+
+function stopVimiumLineScroll() {
+	vimScrollKeyHeld = false;
+}
+
+function startVimiumLineScroll() {
+	if (vimScrollAnimation) return;
+	const tick = (now) => {
+		const messages = document.getElementById("messages");
+		if (!(messages instanceof HTMLElement) || !vimScrollDirection) {
+			vimScrollAnimation = undefined;
+			return;
+		}
+		const elapsed = Math.min(Math.max(now - vimScrollLastFrame, 0), vimScrollFrameMs);
+		vimScrollLastFrame = now;
+		const max = messages.scrollHeight - messages.clientHeight;
+		const wanted =
+			vimScrollDirection * ((vimScrollStepPx * elapsed) / vimScrollStepDurationMs) +
+			vimScrollRemainder;
+		const before = messages.scrollTop;
+		const next = Math.max(0, Math.min(before + wanted, max));
+		messages.scrollTop = next;
+		const actual = next - before;
+		vimScrollRemainder = wanted - actual;
+		vimScrollDelta += Math.abs(actual);
+		if (
+			next === 0 ||
+			next === max ||
+			(!vimScrollKeyHeld && vimScrollDelta >= vimScrollStepPx)
+		) {
+			vimScrollDirection = 0;
+			vimScrollDelta = 0;
+			vimScrollRemainder = 0;
+			vimScrollAnimation = undefined;
+			return;
+		}
+		vimScrollAnimation = requestAnimationFrame(tick);
+	};
+	vimScrollAnimation = requestAnimationFrame(tick);
+}
+
+function startVimiumTargetScroll() {
+	if (vimScrollAnimation) {
+		cancelAnimationFrame(vimScrollAnimation);
+	}
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement) || vimScrollTarget === undefined) return;
+	const start = messages.scrollTop;
+	const target = Math.max(
+		0,
+		Math.min(vimScrollTarget, messages.scrollHeight - messages.clientHeight),
+	);
+	const amount = Math.abs(target - start);
+	const duration = Math.max(
+		vimScrollStepDurationMs,
+		20 * Math.log(Math.max(amount, 1)),
+	);
+	let elapsedTotal = 0;
+	vimScrollLastFrame = 0;
+	const tick = (now) => {
+		const currentMessages = document.getElementById("messages");
+		if (!(currentMessages instanceof HTMLElement) || vimScrollTarget === undefined) {
+			vimScrollAnimation = undefined;
+			return;
+		}
+		const elapsed = vimScrollLastFrame ? now - vimScrollLastFrame : 16.7;
+		vimScrollLastFrame = now;
+		elapsedTotal += elapsed;
+		const progress = Math.min(1, elapsedTotal / duration);
+		currentMessages.scrollTop = start + (target - start) * progress;
+		if (progress >= 1) {
+			vimScrollTarget = undefined;
+			vimScrollAnimation = undefined;
+			return;
+		}
+		vimScrollAnimation = requestAnimationFrame(tick);
+	};
+	vimScrollAnimation = requestAnimationFrame(tick);
 }
 
 function bindMessagesAutoscroll() {
