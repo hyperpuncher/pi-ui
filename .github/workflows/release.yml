@@ -49,6 +49,7 @@ jobs:
               run: deno task css:build
 
             - name: Build desktop app
+              shell: bash
               run: |
                   args=(
                     -A
