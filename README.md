@@ -2,6 +2,20 @@
 
 keyboard-first desktop gui for [pi](https://pi.dev).
 
+<div>
+	<picture>
+		<source
+			srcset=".github/assets/screenshot-dark.png"
+			media="(prefers-color-scheme: dark)"
+		>
+		<source
+			srcset=".github/assets/screenshot-light.png"
+			media="(prefers-color-scheme: light)"
+		>
+		<img src=".github/assets/screenshot-dark.png" alt="pi-ui screenshot">
+	</picture>
+</div>
+
 same power as the pi tui, packaged as a normy-friendly desktop app:
 
 - agent runtime, sessions, and session tree
@@ -29,20 +43,6 @@ paru -S pi-ui-bin
 
 ```sh
 brew install --cask hyperpuncher/tap/pi-ui
-```
-
-## dev
-
-```sh
-deno task dev
-```
-
-```sh
-deno task css:build && deno task fmt && deno task lint && deno task check
-```
-
-```sh
-deno task build:linux
 ```
 
 ## keybinds
