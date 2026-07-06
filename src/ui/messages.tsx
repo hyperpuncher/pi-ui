@@ -18,11 +18,7 @@ export function renderMessages(
 		<main
 			id="messages"
 			class="min-h-0 overflow-y-auto mask-b-from-95% px-[max(1rem,calc((100vw-46rem)/2))] pt-24 pb-48"
-			data-on:scroll="
-				el.scrollTop < el.clientHeight * 2 &&
-				window.piUiCaptureMessagesAnchor?.() &&
-				@post('/messages/older')
-			"
+			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
 			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
@@ -93,6 +89,14 @@ function resumeSessionAction(path: string): string {
 	return `
 		$sessionPath = ${JSON.stringify(path)};
 		@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
+	`;
+}
+
+function loadOlderMessagesAction(): string {
+	return `
+		el.scrollTop < el.clientHeight * 2 &&
+		window.piUiCaptureMessagesAnchor?.() &&
+		@post('/messages/older')
 	`;
 }
 

@@ -68,7 +68,9 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			}
 
 			if (request.method === "POST" && url.pathname === "/messages/older") {
-				state.loadOlderMessages({ broadcast: false });
+				if (!state.loadOlderMessages({ broadcast: false })) {
+					return noContent();
+				}
 				return elementsAndScriptResponse(
 					state.renderMessagesElement(),
 					"window.piUiRestoreMessagesAnchor?.()",
