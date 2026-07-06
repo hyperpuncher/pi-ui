@@ -16,28 +16,18 @@ jobs:
                     - name: linux-x64
                       os: ubuntu-latest
                       target: x86_64-unknown-linux-gnu
-                      output: dist/pi-ui-linux-x64.AppImage
-                      artifact: pi-ui-linux-x64.AppImage
                     - name: linux-arm64
                       os: ubuntu-24.04-arm
                       target: aarch64-unknown-linux-gnu
-                      output: dist/pi-ui-linux-arm64.AppImage
-                      artifact: pi-ui-linux-arm64.AppImage
                     - name: darwin-x64
                       os: macos-15-intel
                       target: x86_64-apple-darwin
-                      output: dist/pi-ui.app
-                      artifact: pi-ui-darwin-x64.zip
                     - name: darwin-arm64
                       os: macos-14
                       target: aarch64-apple-darwin
-                      output: dist/pi-ui.app
-                      artifact: pi-ui-darwin-arm64.zip
                     - name: windows-x64
                       os: windows-latest
                       target: x86_64-pc-windows-msvc
-                      output: dist/pi-ui-windows-x64.msi
-                      artifact: pi-ui-windows-x64.msi
 
         steps:
             - uses: actions/checkout@v7
@@ -51,28 +41,32 @@ jobs:
             - name: Build desktop app
               shell: bash
               run: |
-                  args=(
-                    -A
-                    --unstable-no-legacy-abort
-                    --conditions browser
-                    --backend cef
-                    --target "${{ matrix.target }}"
-                    --output "${{ matrix.output }}"
-                  )
+                  compress=""
                   if [[ "${{ matrix.name }}" != darwin-* ]]; then
-                    args+=(--compress=xz)
+                    compress="--compress=zstd"
                   fi
-                  deno desktop "${args[@]}" src/main.ts
+                  deno desktop -A \
+                    --unstable-no-legacy-abort \
+                    --conditions browser \
+                    --backend cef \
+                    $compress \
+                    --target "${{ matrix.target }}" \
+                    src/main.ts
 
-            - name: Zip macOS app
-              if: runner.os == 'macOS'
-              run: ditto -c -k --keepParent "${{ matrix.output }}" "dist/${{ matrix.artifact }}"
+            - name: Package artifact
+              shell: bash
+              run: |
+                  case "${{ matrix.name }}" in
+                    linux-*) mv dist/linux/pi-ui.AppImage "dist/pi-ui-${{ matrix.name }}.AppImage" ;;
+                    windows-*) mv dist/windows/pi-ui.msi "dist/pi-ui-${{ matrix.name }}.msi" ;;
+                    darwin-*) ditto -c -k --keepParent dist/macos/pi-ui.app "dist/pi-ui-${{ matrix.name }}.zip" ;;
+                  esac
 
             - name: Upload artifact
               uses: actions/upload-artifact@v7
               with:
                   name: ${{ matrix.name }}
-                  path: dist/${{ matrix.artifact }}
+                  path: dist/pi-ui-${{ matrix.name }}.*
 
     publish:
         name: Publish release and packages
