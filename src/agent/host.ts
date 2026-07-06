@@ -330,13 +330,14 @@ export class AgentHost {
 				this.syncUsage();
 				break;
 			case "tool_execution_start": {
+				this.state.finishAssistant();
 				this.toolCallArgs.set(event.toolCallId, event.args);
 				this.toolStartedAt.set(event.toolCallId, Date.now());
 				const startView = formatToolStart(event.toolName, event.args);
 				const id = this.state.appendMessage("tool", startView.text, {
 					title: toolTitle("running", event.toolName, event.args),
 					titleParts: toolTitleParts(event.toolName, event.args),
-					meta: toolMeta(event.toolName, event.args),
+					meta: toolMeta(event.toolName, event.args) ?? "Running...",
 					state: "running",
 					format: startView.format,
 				});
