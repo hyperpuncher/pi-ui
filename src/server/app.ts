@@ -156,6 +156,14 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				});
 			}
 
+			if (
+				request.method === "GET" &&
+				url.pathname === "/vendor/datastar-inspector.min.js" &&
+				!state.debugUi
+			) {
+				return notFound();
+			}
+
 			if (request.method === "GET") {
 				return serveDir(request, { fsRoot: "static" });
 			}

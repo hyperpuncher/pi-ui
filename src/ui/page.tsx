@@ -30,7 +30,12 @@ export function renderPage(state: AppState): string {
 				<script src="/basecoat.js" defer></script>
 				<script type="module" src="/vendor/datastar.js"></script>
 				<script type="module" src="/app.js"></script>
-				<script type="module" src="/vendor/datastar-inspector.min.js"></script>
+				{state.debugUi && (
+					<script
+						type="module"
+						src="/vendor/datastar-inspector.min.js"
+					></script>
+				)}
 			</head>
 			<body
 				class="h-full overflow-hidden"
@@ -38,7 +43,7 @@ export function renderPage(state: AppState): string {
 				data-workspace-path={state.workspacePath}
 				data-signals={initialSignals}
 			>
-				<datastar-inspector />
+				{state.debugUi && <datastar-inspector />}
 				{renderDebugOverlay(state)}
 				<div
 					id="app"
