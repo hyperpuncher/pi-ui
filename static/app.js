@@ -13,11 +13,13 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindMessagesAutoscroll();
 	bindCommandRefresh();
 	bindCodeCopy();
+	bindMessagesHistoryPagination();
 	bindTooltipSuppression();
 	bindPickerKeyboard();
 	bindDialogKeyboard();
 	bindVimControls();
 	bindDebugFps();
+	scrollMessagesBottomSoon();
 });
 
 function bindAppCommands() {
@@ -699,6 +701,7 @@ const vimScrollStepDurationMs = 120;
 const vimScrollFrameMs = 1000 / 144;
 let vimScrollAnimation;
 let vimScrollTarget;
+let vimScrollTargetPosition;
 let vimScrollLastFrame = 0;
 let vimScrollDirection = 0;
 let vimScrollKeyHeld = false;
@@ -710,6 +713,7 @@ function scrollMessagesBy(delta, _repeated) {
 		cancelAnimationFrame(vimScrollAnimation);
 		vimScrollAnimation = undefined;
 		vimScrollTarget = undefined;
+		vimScrollTargetPosition = undefined;
 	}
 	const direction = Math.sign(delta);
 	if (!vimScrollAnimation || vimScrollDirection !== direction) {
@@ -729,6 +733,7 @@ function scrollMessagesTo(position) {
 	vimScrollDirection = 0;
 	vimScrollKeyHeld = false;
 	const max = messages.scrollHeight - messages.clientHeight;
+	vimScrollTargetPosition = position;
 	vimScrollTarget = position === "top" ? 0 : max;
 	startVimiumTargetScroll();
 	messagesScrollState.wasPinnedToBottom = position === "bottom";
@@ -802,9 +807,15 @@ function startVimiumTargetScroll() {
 		vimScrollLastFrame = now;
 		elapsedTotal += elapsed;
 		const progress = Math.min(1, elapsedTotal / duration);
-		currentMessages.scrollTop = start + (target - start) * progress;
+		const currentMax = currentMessages.scrollHeight - currentMessages.clientHeight;
+		const currentTarget = vimScrollTargetPosition === "bottom" ? currentMax : target;
+		currentMessages.scrollTop = start + (currentTarget - start) * progress;
 		if (progress >= 1) {
+			if (vimScrollTargetPosition === "bottom") {
+				scrollMessagesBottomSoon();
+			}
 			vimScrollTarget = undefined;
+			vimScrollTargetPosition = undefined;
 			vimScrollAnimation = undefined;
 			return;
 		}
@@ -839,6 +850,53 @@ function bindMessagesAutoscroll() {
 	});
 
 	observer.observe(document.body, { childList: true, subtree: true });
+}
+
+let messagesAnchor;
+let messagesHistoryLoading = false;
+
+function bindMessagesHistoryPagination() {
+	window.piUiCaptureMessagesAnchor = captureMessagesAnchor;
+	window.piUiRestoreMessagesAnchor = restoreMessagesAnchor;
+	window.piUiScrollMessagesBottom = scrollMessagesBottomSoon;
+}
+
+function captureMessagesAnchor() {
+	if (messagesHistoryLoading) return false;
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return false;
+	messagesHistoryLoading = true;
+	messagesScrollState.wasPinnedToBottom = false;
+	messagesAnchor = {
+		scrollHeight: messages.scrollHeight,
+		scrollTop: messages.scrollTop,
+	};
+	return true;
+}
+
+function restoreMessagesAnchor() {
+	const anchor = messagesAnchor;
+	messagesAnchor = undefined;
+	messagesHistoryLoading = false;
+	if (!anchor) return;
+	requestAnimationFrame(() => {
+		const messages = document.getElementById("messages");
+		if (!(messages instanceof HTMLElement)) return;
+		messages.scrollTop =
+			anchor.scrollTop + messages.scrollHeight - anchor.scrollHeight;
+	});
+}
+
+function scrollMessagesBottomSoon() {
+	messagesScrollState.wasPinnedToBottom = true;
+	for (const delay of [0, 16, 80, 180]) {
+		setTimeout(() => {
+			const messages = document.getElementById("messages");
+			if (messages instanceof HTMLElement) {
+				messages.scrollTop = messages.scrollHeight;
+			}
+		}, delay);
+	}
 }
 
 function bindCommandRefresh() {

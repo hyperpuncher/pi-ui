@@ -9,11 +9,18 @@ import { ShortcutKbd } from "./keyboard.tsx";
 export function renderMessages(
 	messages: AppMessage[],
 	emptyHint: AppKeybindHint,
+	hasOlderMessages = false,
 ): string {
+	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
 	return (
 		<main
 			id="messages"
 			class="min-h-0 overflow-y-auto mask-b-from-95% px-[max(1rem,calc((100vw-46rem)/2))] pt-24 pb-48"
+			data-on:scroll="
+				el.scrollTop < el.clientHeight * 2 &&
+				window.piUiCaptureMessagesAnchor?.() &&
+				@post('/messages/older')
+			"
 			aria-live="polite"
 		>
 			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
@@ -30,11 +37,30 @@ export function renderMessages(
 						</div>
 					</div>
 				) : (
-					messages.map(renderMessage)
+					messages.map((message, index) => (
+						<>
+							{hasOlderMessages && index === olderMessagesTriggerIndex
+								? renderOlderMessagesTrigger()
+								: ""}
+							{renderMessage(message)}
+						</>
+					))
 				)}
 			</div>
 		</main>
 	) as string;
+}
+
+function renderOlderMessagesTrigger() {
+	return (
+		<div
+			class="pointer-events-none -mb-[40vh] h-[40vh] opacity-0"
+			data-load-older-messages
+			data-on:click="window.piUiCaptureMessagesAnchor?.() && @post('/messages/older')"
+			data-on-intersect="window.piUiCaptureMessagesAnchor?.() && @post('/messages/older')"
+			aria-hidden="true"
+		/>
+	);
 }
 
 function renderPreOutput(text: string) {

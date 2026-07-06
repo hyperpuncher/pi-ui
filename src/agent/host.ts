@@ -443,18 +443,10 @@ export class AgentHost {
 
 	private loadCurrentSessionMessages(): void {
 		const branch = this.runtime.session.sessionManager.getBranch();
-		const visibleFrom = Math.max(0, branch.length - 160);
 		const pendingToolCalls = new Map<string, { name: string; args: unknown }>();
-		const messages = branch.flatMap((entry: SessionEntry, index) =>
-			this.entryToMessages(entry, pendingToolCalls, index >= visibleFrom),
+		const messages = branch.flatMap((entry: SessionEntry) =>
+			this.entryToMessages(entry, pendingToolCalls),
 		);
-		if (visibleFrom > 0) {
-			messages.unshift({
-				role: "system",
-				text: `Showing latest ${branch.length - visibleFrom} session entries. ${visibleFrom} older entries hidden for performance.`,
-				timestamp: new Date(),
-			});
-		}
 		this.state.replaceMessages(messages);
 		this.syncUsage();
 	}
@@ -462,7 +454,6 @@ export class AgentHost {
 	private entryToMessages(
 		entry: SessionEntry,
 		pendingToolCalls: Map<string, { name: string; args: unknown }>,
-		visible: boolean,
 	): AppMessageInput[] {
 		const timestamp = new Date(entry.timestamp);
 		if (entry.type === "message") {
@@ -474,18 +465,12 @@ export class AgentHost {
 					});
 				}
 			}
-			if (!visible) {
-				return [];
-			}
 			if (entry.message.role === "toolResult") {
 				const toolCall = pendingToolCalls.get(entry.message.toolCallId);
 				pendingToolCalls.delete(entry.message.toolCallId);
 				return [toolResultToAppMessage(entry.message, timestamp, toolCall)];
 			}
 			return this.agentMessageToAppMessages(entry.message, timestamp);
-		}
-		if (!visible) {
-			return [];
 		}
 		if (entry.type === "custom_message" && entry.display) {
 			return [

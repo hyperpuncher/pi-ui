@@ -98,7 +98,8 @@ type StreamClient = {
 	stream: DatastarStream;
 };
 
-const finalizeRecentMessageCount = 24;
+const restoredMessagePageSize = 50;
+const olderMessagePageSize = 50;
 const emptyChatHints: AppKeybindHint[] = [
 	...appCommands
 		.filter((command) => command.shortcut.display)
@@ -135,6 +136,8 @@ export class AppState {
 	private activeAssistantId: string | undefined;
 	private activeThoughtId: string | undefined;
 	private streamingPatchTimer: ReturnType<typeof setTimeout> | undefined;
+	private transcriptMessages: AppMessage[] = [];
+	private visibleMessageStart = 0;
 	readonly debugUi = debugUiEnabled();
 	streamingPatchIntervalMs = 7;
 	messages: AppMessage[] = [];
@@ -149,6 +152,10 @@ export class AppState {
 	emptyChatHint = randomEmptyChatHint();
 	activityText: string | undefined;
 	workspacePath = defaultWorkspacePath();
+
+	get hasOlderMessages(): boolean {
+		return this.visibleMessageStart > 0;
+	}
 
 	createStream(signal: AbortSignal): Response {
 		const id = crypto.randomUUID();
@@ -182,7 +189,7 @@ export class AppState {
 	): string {
 		this.messageSeq += 1;
 		const id = `m-${this.messageSeq}`;
-		this.messages.push({
+		const message = {
 			id,
 			role,
 			text,
@@ -192,7 +199,9 @@ export class AppState {
 				rendersMarkdown(role) && text.trim()
 					? renderMarkdownStreaming(text, { cacheKey: id })
 					: undefined,
-		});
+		};
+		this.transcriptMessages.push(message);
+		this.refreshVisibleMessages();
 		if (role === "assistant") {
 			this.activeAssistantId = id;
 		}
@@ -207,7 +216,7 @@ export class AppState {
 	}
 
 	updateMessage(id: string, patch: Partial<Omit<AppMessage, "id">>): void {
-		const message = this.messages.find((item) => item.id === id);
+		const message = this.transcriptMessages.find((item) => item.id === id);
 		if (!message) {
 			return;
 		}
@@ -226,7 +235,9 @@ export class AppState {
 			this.appendMessage("thought", delta);
 			return;
 		}
-		const message = this.messages.find((item) => item.id === this.activeThoughtId);
+		const message = this.transcriptMessages.find(
+			(item) => item.id === this.activeThoughtId,
+		);
 		if (!message) {
 			this.appendMessage("thought", delta);
 			return;
@@ -241,7 +252,9 @@ export class AppState {
 			this.appendMessage("assistant", delta);
 			return;
 		}
-		const message = this.messages.find((item) => item.id === this.activeAssistantId);
+		const message = this.transcriptMessages.find(
+			(item) => item.id === this.activeAssistantId,
+		);
 		if (!message) {
 			this.appendMessage("assistant", delta);
 			return;
@@ -267,7 +280,9 @@ export class AppState {
 
 	resetChat(): void {
 		this.clearStreamingPatchTimer();
+		this.transcriptMessages = [];
 		this.messages = [];
+		this.visibleMessageStart = 0;
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
 		this.emptyChatHint = randomEmptyChatHint();
@@ -281,38 +296,67 @@ export class AppState {
 		if (messages.length === 0) {
 			this.emptyChatHint = randomEmptyChatHint();
 		}
-		const finalizeFrom = Math.max(0, messages.length - finalizeRecentMessageCount);
-		this.messages = messages.map((message, index) => {
+		this.transcriptMessages = messages.map((message) => {
 			this.messageSeq += 1;
-			const id = `m-${this.messageSeq}`;
-			const shouldRenderStreaming =
-				rendersMarkdown(message.role) &&
-				message.text.trim() &&
-				index >= finalizeFrom;
 			return {
 				...message,
-				id,
-				renderedHtml:
-					message.renderedHtml ??
-					(shouldRenderStreaming
-						? renderMarkdownStreaming(message.text, { cacheKey: id })
-						: undefined),
+				id: `m-${this.messageSeq}`,
 			};
 		});
+		this.visibleMessageStart = Math.max(
+			0,
+			this.transcriptMessages.length - restoredMessagePageSize,
+		);
+		this.refreshVisibleMessages();
 		this.broadcast();
-		for (const [index, message] of this.messages.entries()) {
+		this.renderVisibleDiffs();
+	}
+
+	loadOlderMessages(options: { broadcast?: boolean } = {}): boolean {
+		if (!this.hasOlderMessages) return false;
+		this.visibleMessageStart = Math.max(
+			0,
+			this.visibleMessageStart - olderMessagePageSize,
+		);
+		this.refreshVisibleMessages();
+		if (options.broadcast !== false) {
+			this.broadcast();
+		}
+		this.renderVisibleDiffs();
+		return true;
+	}
+
+	renderMessagesElement(): string {
+		return renderMessages(this.messages, this.emptyChatHint, this.hasOlderMessages);
+	}
+
+	private refreshVisibleMessages(): void {
+		this.messages = this.transcriptMessages.slice(this.visibleMessageStart);
+		for (const message of this.messages) {
+			this.prepareMessageForDisplay(message);
+		}
+	}
+
+	private prepareMessageForDisplay(message: AppMessage): void {
+		if (
+			!rendersMarkdown(message.role) ||
+			!message.text.trim() ||
+			message.renderedHtml
+		) {
+			return;
+		}
+		message.renderedHtml = renderMarkdownStreaming(message.text, {
+			cacheKey: message.id,
+		});
+	}
+
+	private renderVisibleDiffs(): void {
+		for (const message of this.messages) {
 			if (
-				index >= finalizeFrom &&
-				rendersMarkdown(message.role) &&
-				message.text.trim()
-			) {
-				void this.renderAssistantMarkdown(message.id);
-			}
-			if (
-				index >= finalizeFrom &&
 				message.role === "tool" &&
 				message.format === "diff" &&
-				message.text.trim()
+				message.text.trim() &&
+				!message.renderedHtml
 			) {
 				void this.renderCode(message.id, "diff");
 			}
@@ -395,21 +439,21 @@ export class AppState {
 	}
 
 	private patchStreamingMessage(id: string): void {
-		const message = this.messages.find((item) => item.id === id);
+		const message = this.transcriptMessages.find((item) => item.id === id);
 		if (!message || !rendersMarkdown(message.role) || !message.text.trim()) return;
 		message.renderedHtml = renderMarkdownStreaming(message.text, { cacheKey: id });
 		this.broadcastMessage(message);
 	}
 
 	private async renderCode(id: string, language: string): Promise<void> {
-		const message = this.messages.find((item) => item.id === id);
+		const message = this.transcriptMessages.find((item) => item.id === id);
 		if (!message || !message.text.trim()) {
 			return;
 		}
 
 		const text = message.text;
 		const renderedHtml = await renderCodeFinal(text, language, { chrome: false });
-		const current = this.messages.find((item) => item.id === id);
+		const current = this.transcriptMessages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
 			return;
 		}
@@ -419,14 +463,14 @@ export class AppState {
 	}
 
 	private async renderAssistantMarkdown(id: string): Promise<void> {
-		const message = this.messages.find((item) => item.id === id);
+		const message = this.transcriptMessages.find((item) => item.id === id);
 		if (!message || !rendersMarkdown(message.role) || !message.text.trim()) {
 			return;
 		}
 
 		const text = message.text;
 		const renderedHtml = await renderMarkdownFinal(text);
-		const current = this.messages.find((item) => item.id === id);
+		const current = this.transcriptMessages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
 			return;
 		}
@@ -437,7 +481,7 @@ export class AppState {
 
 	private renderElements(): string {
 		return (
-			renderMessages(this.messages, this.emptyChatHint) +
+			this.renderMessagesElement() +
 			renderPromptAction(this) +
 			renderPromptStatus(this) +
 			renderWorkspacePicker(this) +

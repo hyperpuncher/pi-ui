@@ -67,6 +67,14 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				return noContent();
 			}
 
+			if (request.method === "POST" && url.pathname === "/messages/older") {
+				state.loadOlderMessages({ broadcast: false });
+				return elementsAndScriptResponse(
+					state.renderMessagesElement(),
+					"window.piUiRestoreMessagesAnchor?.()",
+				);
+			}
+
 			if (request.method === "POST" && url.pathname === "/tree/open") {
 				host?.openTree();
 				return treeOpenResponse(state);
@@ -94,7 +102,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				const resumed = await host?.resumeSession(signals.sessionPath as string);
 				return resumed
 					? scriptResponse(
-							"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
+							"window.piUiScrollMessagesBottom?.(); document.getElementById('prompt-input')?.focus({ preventScroll: true })",
 						)
 					: noContent();
 			}
