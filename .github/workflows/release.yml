@@ -49,6 +49,7 @@ jobs:
                     --unstable-no-legacy-abort \
                     --conditions browser \
                     --backend cef \
+                    --include static \
                     $compress \
                     --target "${{ matrix.target }}" \
                     src/main.ts
@@ -148,10 +149,11 @@ jobs:
                   cp /tmp/PKGBUILD /tmp/aur-repo/PKGBUILD
                   cp /tmp/.SRCINFO /tmp/aur-repo/.SRCINFO
                   cp icons/pi-logo.svg /tmp/aur-repo/pi-logo.svg
+                  cp packaging/aur/pi-ui.desktop /tmp/aur-repo/pi-ui.desktop
                   cp LICENSE /tmp/aur-repo/LICENSE
                   cd /tmp/aur-repo
                   git config user.name "hyperpuncher"
                   git config user.email "hyperpuncher@users.noreply.github.com"
-                  git add PKGBUILD .SRCINFO pi-logo.svg LICENSE
+                  git add PKGBUILD .SRCINFO pi-logo.svg pi-ui.desktop LICENSE
                   git diff --staged --quiet || git commit -m "upgpkg: pi-ui-bin ${GITHUB_REF_NAME#v}"
                   git push

@@ -7,7 +7,7 @@
 		"dev": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --hmr src/main.ts\"",
 		"server": "deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts",
 		"build": "deno task build:linux",
-		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef src/main.ts",
+		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --include static src/main.ts",
 		"run:linux": "./dist/linux/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync --disable-spell-checking",
 		"css:build": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",

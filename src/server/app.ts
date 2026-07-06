@@ -16,6 +16,7 @@ import {
 import { FileSearchHost } from "./file-search.ts";
 
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
+const staticRoot = new URL("../../static", import.meta.url).pathname;
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	await preloadMarkdownHighlighter();
@@ -167,7 +168,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			}
 
 			if (request.method === "GET") {
-				return serveDir(request, { fsRoot: "static" });
+				return serveDir(request, { fsRoot: staticRoot });
 			}
 
 			return notFound();
