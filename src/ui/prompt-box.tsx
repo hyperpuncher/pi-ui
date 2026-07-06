@@ -167,8 +167,9 @@ function renderUsageIndicator(usage: AppUsage): string {
 	return (
 		<span class="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs">
 			<span
-				class="inline-flex size-5 shrink-0 items-center justify-center"
+				class="inline-flex size-4 shrink-0 items-center justify-center"
 				data-tooltip={usage.text}
+				data-tooltip-multiline
 				aria-label={usage.text}
 			>
 				{usageCircle({
@@ -179,18 +180,19 @@ function renderUsageIndicator(usage: AppUsage): string {
 			</span>
 			{usage.codexText && (
 				<span
-					class="inline-flex size-5 shrink-0 items-center justify-center"
-					data-tooltip={`codex limits • ${usage.codexText}`}
+					class="inline-flex size-4 shrink-0 items-center justify-center"
+					data-tooltip={`codex limits\n${usage.codexText.replace("  ", "\n")}`}
+					data-tooltip-multiline
 					aria-label={`codex limits • ${usage.codexText}`}
 				>
-					<svg class="size-5 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
+					<svg class="size-4 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
 						<circle
 							cx="12"
 							cy="12"
 							r="10"
 							fill="none"
 							stroke="currentColor"
-							stroke-width="2.5"
+							stroke-width="3"
 							class="text-muted-foreground/20"
 						/>
 						<circle
@@ -199,9 +201,12 @@ function renderUsageIndicator(usage: AppUsage): string {
 							r="10"
 							fill="none"
 							stroke="currentColor"
-							stroke-width="2.5"
+							stroke-width="3"
 							stroke-linecap="round"
-							class="text-violet-400/45"
+							class={codexUsageColor(
+								usage.codexSecondaryPercent ?? 0,
+								"secondary",
+							)}
 							stroke-dasharray={circumference}
 							stroke-dashoffset={usageDashOffset(
 								usage.codexSecondaryPercent ?? 0,
@@ -214,9 +219,12 @@ function renderUsageIndicator(usage: AppUsage): string {
 							r="10"
 							fill="none"
 							stroke="currentColor"
-							stroke-width="2.5"
+							stroke-width="3"
 							stroke-linecap="round"
-							class="text-emerald-400"
+							class={codexUsageColor(
+								usage.codexPrimaryPercent ?? 0,
+								"primary",
+							)}
 							stroke-dasharray={circumference}
 							stroke-dashoffset={usageDashOffset(
 								usage.codexPrimaryPercent ?? 0,
@@ -236,14 +244,14 @@ function usageCircle(props: {
 	className: string;
 }): string {
 	return (
-		<svg class="size-5 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
+		<svg class="size-4 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
 			<circle
 				cx="12"
 				cy="12"
 				r="10"
 				fill="none"
 				stroke="currentColor"
-				stroke-width="2.5"
+				stroke-width="3"
 				class="text-muted-foreground/30"
 			/>
 			<circle
@@ -252,7 +260,7 @@ function usageCircle(props: {
 				r="10"
 				fill="none"
 				stroke="currentColor"
-				stroke-width="2.5"
+				stroke-width="3"
 				stroke-linecap="round"
 				class={props.className}
 				stroke-dasharray={props.circumference}
@@ -267,9 +275,14 @@ function usageDashOffset(percent: number, circumference: number): number {
 }
 
 function contextUsageColor(percent: number): string {
-	if (percent > 90) return "text-red-500";
-	if (percent > 70) return "text-yellow-500";
-	return "text-violet-400";
+	return percent > 90 ? "text-destructive" : "text-foreground";
+}
+
+function codexUsageColor(percent: number, layer: "primary" | "secondary"): string {
+	if (percent > 90) {
+		return layer === "primary" ? "text-destructive" : "text-destructive/45";
+	}
+	return layer === "primary" ? "text-foreground" : "text-muted-foreground/45";
 }
 
 function loaderIcon() {

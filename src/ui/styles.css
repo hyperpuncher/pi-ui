@@ -37,4 +37,11 @@
 	[data-tooltip][data-tooltip-delay]:hover::after {
 		transition-delay: 600ms;
 	}
+
+	[data-tooltip][data-tooltip-multiline]::before {
+		max-width: none;
+		white-space: pre;
+		text-align: right;
+		text-overflow: clip;
+	}
 }
