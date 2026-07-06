@@ -23,11 +23,17 @@ import type {
 	AppUsage,
 	AppThinkingLevel,
 } from "../state/app-state.ts";
+import { applyHttpProxySetting } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
+import {
+	codexUsageTtlMs,
+	fetchCodexUsage,
+	formatCodexUsage,
+	isOpenAICodex,
+	type CodexUsage,
+} from "./codex-usage.ts";
 
-const defaultProvider = "opencode-go";
-const defaultModelId = "deepseek-v4-flash";
 const bashPreviewLines = 8;
 const bashCompactThreshold = 14;
 
@@ -36,6 +42,11 @@ export class AgentHost {
 	private readonly toolMessageIds = new Map<string, string>();
 	private readonly toolCallArgs = new Map<string, unknown>();
 	private readonly toolStartedAt = new Map<string, number>();
+	private codexUsageText = "";
+	private codexUsage: CodexUsage | undefined;
+	private codexUsageFetchedAt = 0;
+	private codexUsageFetching = false;
+	private codexUsageTimer: ReturnType<typeof setTimeout> | undefined;
 
 	private constructor(
 		private readonly runtime: AgentSessionRuntime,
@@ -53,14 +64,12 @@ export class AgentHost {
 			sessionStartEvent,
 		}) => {
 			const services = await createAgentSessionServices({ cwd });
-			const model = services.modelRegistry.find(defaultProvider, defaultModelId);
+			applyHttpProxySetting(services.settingsManager.getGlobalSettings().httpProxy);
 			return {
 				...(await createAgentSessionFromServices({
 					services,
 					sessionManager,
 					sessionStartEvent,
-					model,
-					thinkingLevel: "off",
 				})),
 				services,
 				diagnostics: services.diagnostics,
@@ -224,14 +233,19 @@ export class AgentHost {
 			return false;
 		}
 		await this.runtime.session.setModel(model);
+		this.codexUsageText = "";
+		this.codexUsage = undefined;
+		this.codexUsageFetchedAt = 0;
 		this.syncModels();
 		this.syncThinking();
 		this.syncUsage();
+		this.refreshCodexUsage(true);
 		return true;
 	}
 
 	dispose(): void {
 		this.unsubscribe?.();
+		this.clearCodexUsageTimer();
 		this.runtime.dispose();
 	}
 
@@ -249,6 +263,7 @@ export class AgentHost {
 		this.syncThinking();
 		this.syncSlashCommands();
 		this.syncUsage();
+		this.refreshCodexUsage(true);
 		void this.refreshSessions();
 	}
 
@@ -280,9 +295,7 @@ export class AgentHost {
 			}))
 			.filter(
 				(model) =>
-					model.configured ||
-					`${model.provider}/${model.id}` === currentModel ||
-					(model.provider === defaultProvider && model.id === defaultModelId),
+					model.configured || `${model.provider}/${model.id}` === currentModel,
 			)
 			.sort((a, b) => {
 				const aIsCurrent = `${a.provider}/${a.id}` === currentModel;
@@ -375,6 +388,7 @@ export class AgentHost {
 			case "agent_end":
 				this.state.setActivityText(undefined);
 				this.syncUsage();
+				this.refreshCodexUsage(true);
 				break;
 			case "auto_retry_start":
 				this.state.setActivityText(
@@ -412,7 +426,67 @@ export class AgentHost {
 	}
 
 	private syncUsage(): void {
-		this.state.setUsage(formatStats(this.runtime.session.getSessionStats()));
+		this.state.setUsage(
+			formatStats(
+				this.runtime.session.getSessionStats(),
+				this.codexUsageText,
+				this.codexUsage,
+			),
+		);
+	}
+
+	private clearCodexUsageTimer(): void {
+		if (!this.codexUsageTimer) return;
+		clearTimeout(this.codexUsageTimer);
+		this.codexUsageTimer = undefined;
+	}
+
+	private scheduleCodexUsageRefresh(): void {
+		this.clearCodexUsageTimer();
+		this.codexUsageTimer = setTimeout(() => {
+			this.codexUsageTimer = undefined;
+			this.refreshCodexUsage(true);
+		}, codexUsageTtlMs);
+		this.codexUsageTimer.unref?.();
+	}
+
+	private refreshCodexUsage(force = false): void {
+		if (!isOpenAICodex(this.runtime.session.model)) {
+			this.codexUsageText = "";
+			this.codexUsage = undefined;
+			this.codexUsageFetchedAt = 0;
+			this.clearCodexUsageTimer();
+			this.syncUsage();
+			return;
+		}
+		if (this.codexUsageFetching) return;
+		if (!force && Date.now() - this.codexUsageFetchedAt < codexUsageTtlMs) {
+			return;
+		}
+
+		this.codexUsageFetching = true;
+		if (!this.codexUsageText) {
+			this.codexUsageText = "loading";
+			this.syncUsage();
+		}
+		void fetchCodexUsage(this.runtime.session)
+			.then((usage) => {
+				this.codexUsageText = usage ? formatCodexUsage(usage) : "unavailable";
+				this.codexUsage = usage;
+				this.codexUsageFetchedAt = Date.now();
+				this.syncUsage();
+			})
+			.catch((error: unknown) => {
+				console.warn("Failed to fetch Codex usage", error);
+				this.codexUsageText = "unavailable";
+				this.codexUsage = undefined;
+				this.codexUsageFetchedAt = Date.now();
+				this.syncUsage();
+			})
+			.finally(() => {
+				this.codexUsageFetching = false;
+				this.scheduleCodexUsageRefresh();
+			});
 	}
 
 	private syncSlashCommands(): void {
@@ -934,7 +1008,11 @@ function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 	};
 }
 
-function formatStats(stats: SessionStats): AppUsage {
+function formatStats(
+	stats: SessionStats,
+	codexUsageText = "",
+	codexUsage?: CodexUsage,
+): AppUsage {
 	const cost = formatCost(stats.cost);
 	if (stats.contextUsage) {
 		const context = `${formatPercent(stats.contextUsage.percent)}/${formatTokens(
@@ -943,9 +1021,17 @@ function formatStats(stats: SessionStats): AppUsage {
 		return {
 			text: `${cost} • ${context}`,
 			contextPercent: stats.contextUsage.percent ?? undefined,
+			codexText: codexUsageText || undefined,
+			codexPrimaryPercent: codexUsage?.primary?.usedPercent,
+			codexSecondaryPercent: codexUsage?.secondary?.usedPercent,
 		};
 	}
-	return { text: `${cost} • ${formatTokens(stats.tokens.total)} tokens` };
+	return {
+		text: `${cost} • ${formatTokens(stats.tokens.total)} tokens`,
+		codexText: codexUsageText || undefined,
+		codexPrimaryPercent: codexUsage?.primary?.usedPercent,
+		codexSecondaryPercent: codexUsage?.secondary?.usedPercent,
+	};
 }
 
 function formatTokens(count: number): string {

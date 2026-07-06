@@ -162,46 +162,114 @@ export function renderPromptStatus(state: AppState): string {
 }
 
 function renderUsageIndicator(usage: AppUsage): string {
-	const percent = usage.contextPercent ?? 0;
+	const contextPercent = usage.contextPercent ?? 0;
 	const circumference = 2 * Math.PI * 10;
-	const strokeDashoffset = circumference - (percent / 100) * circumference;
-	const colorClass =
-		percent > 90
-			? "text-red-500"
-			: percent > 70
-				? "text-yellow-500"
-				: "text-violet-400";
 	return (
-		<span
-			class="hidden size-8 shrink-0 items-center justify-center font-mono lg:inline-flex"
-			data-tooltip={usage.text}
-			aria-label={usage.text}
-		>
-			<svg class="size-4 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
-				<circle
-					cx="12"
-					cy="12"
-					r="10"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="3"
-					class="text-muted-foreground/30"
-				/>
-				<circle
-					cx="12"
-					cy="12"
-					r="10"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="3"
-					stroke-linecap="round"
-					class={colorClass}
-					stroke-dasharray={circumference}
-					stroke-dashoffset={strokeDashoffset}
-				/>
-			</svg>
+		<span class="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs">
+			<span
+				class="inline-flex size-5 shrink-0 items-center justify-center"
+				data-tooltip={usage.text}
+				aria-label={usage.text}
+			>
+				{usageCircle({
+					percent: contextPercent,
+					circumference,
+					className: contextUsageColor(contextPercent),
+				})}
+			</span>
+			{usage.codexText && (
+				<span
+					class="inline-flex size-5 shrink-0 items-center justify-center"
+					data-tooltip={`codex limits • ${usage.codexText}`}
+					aria-label={`codex limits • ${usage.codexText}`}
+				>
+					<svg class="size-5 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
+						<circle
+							cx="12"
+							cy="12"
+							r="10"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							class="text-muted-foreground/20"
+						/>
+						<circle
+							cx="12"
+							cy="12"
+							r="10"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							class="text-violet-400/45"
+							stroke-dasharray={circumference}
+							stroke-dashoffset={usageDashOffset(
+								usage.codexSecondaryPercent ?? 0,
+								circumference,
+							)}
+						/>
+						<circle
+							cx="12"
+							cy="12"
+							r="10"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							class="text-emerald-400"
+							stroke-dasharray={circumference}
+							stroke-dashoffset={usageDashOffset(
+								usage.codexPrimaryPercent ?? 0,
+								circumference,
+							)}
+						/>
+					</svg>
+				</span>
+			)}
 		</span>
 	) as string;
+}
+
+function usageCircle(props: {
+	percent: number;
+	circumference: number;
+	className: string;
+}): string {
+	return (
+		<svg class="size-5 -rotate-90" viewBox="0 0 24 24" aria-hidden="true">
+			<circle
+				cx="12"
+				cy="12"
+				r="10"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				class="text-muted-foreground/30"
+			/>
+			<circle
+				cx="12"
+				cy="12"
+				r="10"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				stroke-linecap="round"
+				class={props.className}
+				stroke-dasharray={props.circumference}
+				stroke-dashoffset={usageDashOffset(props.percent, props.circumference)}
+			/>
+		</svg>
+	) as string;
+}
+
+function usageDashOffset(percent: number, circumference: number): number {
+	return circumference - (Math.min(100, Math.max(0, percent)) / 100) * circumference;
+}
+
+function contextUsageColor(percent: number): string {
+	if (percent > 90) return "text-red-500";
+	if (percent > 70) return "text-yellow-500";
+	return "text-violet-400";
 }
 
 function loaderIcon() {

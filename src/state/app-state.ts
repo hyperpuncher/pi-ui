@@ -87,6 +87,9 @@ export type AppTreeEntry = {
 export type AppUsage = {
 	text: string;
 	contextPercent?: number;
+	codexText?: string;
+	codexPrimaryPercent?: number;
+	codexSecondaryPercent?: number;
 };
 
 export type AppKeybindHint = {
