@@ -370,10 +370,6 @@ export class AppState {
 		this.broadcastSignals();
 	}
 
-	get streamingPatchRateHz(): number {
-		return Math.round(1000 / this.streamingPatchIntervalMs);
-	}
-
 	private scheduleStreamingPatch(): void {
 		if (this.streamingPatchTimer !== undefined) return;
 		this.streamingPatchTimer = setTimeout(() => {
