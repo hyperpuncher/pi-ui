@@ -1,14 +1,19 @@
 {
+	"name": "pi-ui",
+	"version": "0.1.0",
+	"license": "MIT",
+	"exports": "./src/main.ts",
 	"tasks": {
-		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --output dist/pi-ui.AppImage src/main.ts",
-		"check": "deno check --conditions browser src/main.ts",
+		"dev": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --hmr src/main.ts\"",
+		"server": "deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts",
+		"build": "deno task build:linux",
+		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef src/main.ts",
+		"run:linux": "./dist/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync --disable-spell-checking",
 		"css:build": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
-		"dev": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef --hmr src/main.ts --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync --disable-spell-checking\"",
-		"server": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts\"",
-		"run:linux": "./dist/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync --disable-spell-checking",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
-		"lint": "deno run -A npm:oxlint"
+		"lint": "deno run -A npm:oxlint",
+		"check": "deno check --conditions browser src/main.ts"
 	},
 	"compilerOptions": {
 		"jsx": "react-jsx",
@@ -16,6 +21,30 @@
 		"lib": ["deno.window", "deno.desktop"],
 		"strict": true,
 		"types": ["./src/app.d.ts"]
+	},
+	"desktop": {
+		"app": {
+			"name": "pi-ui",
+			"identifier": "dev.pi.ui",
+			"icons": {
+				"macos": [
+					{ "path": "./icons/pi-logo-16.png", "size": 16 },
+					{ "path": "./icons/pi-logo-32.png", "size": 32 },
+					{ "path": "./icons/pi-logo-128.png", "size": 128 },
+					{ "path": "./icons/pi-logo-256.png", "size": 256 },
+					{ "path": "./icons/pi-logo-512.png", "size": 512 },
+					{ "path": "./icons/pi-logo-1024.png", "size": 1024 }
+				],
+				"windows": "./icons/pi-logo.ico",
+				"linux": "./icons/pi-logo.png"
+			}
+		},
+		"backend": "cef",
+		"output": {
+			"macos": "./dist/pi-ui.app",
+			"windows": "./dist/pi-ui.msi",
+			"linux": "./dist/pi-ui.AppImage"
+		}
 	},
 	"nodeModulesDir": "auto",
 	"imports": {
@@ -29,5 +58,10 @@
 		"satteri": "npm:satteri@^0.9.4",
 		"shiki": "npm:shiki@4.3.1",
 		"tailwindcss": "npm:tailwindcss@^4.3.2"
-	}
+	},
+	"allowScripts": [
+		"npm:@google/genai@1.52.0",
+		"npm:@parcel/watcher@2.5.1",
+		"npm:protobufjs@7.6.4"
+	]
 }

@@ -13,6 +13,7 @@ Read relevant docs in full before implementing against them:
     - Menus/accelerators: https://docs.deno.com/runtime/desktop/menus.md
     - DevTools: https://docs.deno.com/runtime/desktop/devtools.md
     - Distribution: https://docs.deno.com/runtime/desktop/distribution.md
+    - Tray/dock/icons: https://docs.deno.com/runtime/desktop/tray_and_dock.md
 - Basecoat docs LLM index: https://basecoatui.com/llms.txt
 - Datastar docs already mirrored under `~/docs/datastar-docs/`
 - Datastar TypeScript SDK docs/source under `~/docs/datastar-typescript/`
@@ -26,6 +27,7 @@ Read relevant docs in full before implementing against them:
 - HTML rendering: Kita JSX (`@kitajs/html`), not React.
 - Markdown rendering: Sätteri with WASI/browser condition plus Shiki for finalized code highlighting.
 - Styling: Tailwind utilities + Basecoat Nova. Avoid custom CSS unless unavoidable.
+- Desktop packaging: use `desktop` config in `deno.json` for backend, icons, and output paths; local builds target Linux, release workflow builds all platforms.
 - Prefer backend-owned UI state; use frontend signals only for local UI state and writes.
 - Datastar attributes in TSX: use normal JSX attributes unless the attribute name contains a `.` and must be passed another way.
 - Datastar write interactions should use signals + `@post()`, not forms.

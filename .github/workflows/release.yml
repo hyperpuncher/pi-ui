@@ -1,0 +1,158 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - "v*"
+
+jobs:
+    build:
+        name: Build ${{ matrix.name }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: linux-x64
+                      os: ubuntu-latest
+                      target: x86_64-unknown-linux-gnu
+                      output: dist/pi-ui-linux-x64.AppImage
+                      artifact: pi-ui-linux-x64.AppImage
+                    - name: linux-arm64
+                      os: ubuntu-24.04-arm
+                      target: aarch64-unknown-linux-gnu
+                      output: dist/pi-ui-linux-arm64.AppImage
+                      artifact: pi-ui-linux-arm64.AppImage
+                    - name: darwin-x64
+                      os: macos-latest
+                      target: x86_64-apple-darwin
+                      output: dist/pi-ui.app
+                      artifact: pi-ui-darwin-x64.zip
+                    - name: darwin-arm64
+                      os: macos-latest
+                      target: aarch64-apple-darwin
+                      output: dist/pi-ui.app
+                      artifact: pi-ui-darwin-arm64.zip
+                    - name: windows-x64
+                      os: windows-latest
+                      target: x86_64-pc-windows-msvc
+                      output: dist/pi-ui-windows-x64.msi
+                      artifact: pi-ui-windows-x64.msi
+
+        steps:
+            - uses: actions/checkout@v7
+            - uses: denoland/setup-deno@v2.0.5
+              with:
+                  deno-version: v2.x
+
+            - name: Build CSS
+              run: deno task css:build
+
+            - name: Build desktop app
+              run: >-
+                  deno desktop -A
+                  --unstable-no-legacy-abort
+                  --conditions browser
+                  --backend cef
+                  --compress=xz
+                  --target ${{ matrix.target }}
+                  --output ${{ matrix.output }}
+                  src/main.ts
+
+            - name: Zip macOS app
+              if: runner.os == 'macOS'
+              run: ditto -c -k --keepParent "${{ matrix.output }}" "dist/${{ matrix.artifact }}"
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v7
+              with:
+                  name: ${{ matrix.name }}
+                  path: dist/${{ matrix.artifact }}
+
+    publish:
+        name: Publish release and packages
+        needs: [build]
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/download-artifact@v8
+              with:
+                  path: dist
+
+            - name: Flatten artifacts
+              run: |
+                  find dist -mindepth 2 -type f -exec mv {} dist/ \;
+                  find dist -mindepth 1 -type d -empty -delete
+                  ls -lh dist
+
+            - name: GitHub release
+              uses: softprops/action-gh-release@v3
+              with:
+                  files: dist/*
+                  generate_release_notes: true
+
+            - name: Compute checksums
+              id: sha
+              run: |
+                  echo "linux-x64=$(sha256sum dist/pi-ui-linux-x64.AppImage | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+                  echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.AppImage | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+                  echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+                  echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+            - name: Generate Homebrew cask
+              run: |
+                  V="${GITHUB_REF_NAME#v}"
+                  sed -e "s/{{VERSION}}/$V/g" \
+                      -e "s/{{SHA_DARWIN_X64}}/${{ steps.sha.outputs.darwin-x64 }}/g" \
+                      -e "s/{{SHA_DARWIN_ARM64}}/${{ steps.sha.outputs.darwin-arm64 }}/g" \
+                      packaging/homebrew/pi-ui.rb.in > /tmp/pi-ui.rb
+
+            - name: Push Homebrew cask
+              env:
+                  GH_PAT: ${{ secrets.GH_PAT }}
+              run: |
+                  git clone "https://x-access-token:${GH_PAT}@github.com/hyperpuncher/homebrew-tap.git" /tmp/homebrew-tap
+                  mkdir -p /tmp/homebrew-tap/Casks
+                  cp /tmp/pi-ui.rb /tmp/homebrew-tap/Casks/pi-ui.rb
+                  cd /tmp/homebrew-tap
+                  git config user.name "github-actions"
+                  git config user.email "github-actions@github.com"
+                  git add Casks/pi-ui.rb
+                  git diff --staged --quiet || git commit -m "pi-ui ${GITHUB_REF_NAME}"
+                  git push
+
+            - name: Generate AUR package
+              run: |
+                  V="${GITHUB_REF_NAME#v}"
+                  sed -e "s/{{VERSION}}/$V/g" \
+                      -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
+                      -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
+                      packaging/aur/PKGBUILD.in > /tmp/PKGBUILD
+                  sed -e "s/{{VERSION}}/$V/g" \
+                      -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
+                      -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
+                      packaging/aur/.SRCINFO.in > /tmp/.SRCINFO
+
+            - name: Push AUR package
+              env:
+                  AUR_KEY: ${{ secrets.AUR_KEY }}
+              run: |
+                  mkdir -p ~/.ssh
+                  echo "$AUR_KEY" > ~/.ssh/aur_key
+                  chmod 600 ~/.ssh/aur_key
+                  ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts
+                  export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur_key"
+                  git clone ssh://aur@aur.archlinux.org/pi-ui-bin.git /tmp/aur-repo
+                  cp /tmp/PKGBUILD /tmp/aur-repo/PKGBUILD
+                  cp /tmp/.SRCINFO /tmp/aur-repo/.SRCINFO
+                  cp icons/pi-logo.svg /tmp/aur-repo/pi-logo.svg
+                  cp LICENSE /tmp/aur-repo/LICENSE
+                  cd /tmp/aur-repo
+                  git config user.name "hyperpuncher"
+                  git config user.email "hyperpuncher@users.noreply.github.com"
+                  git add PKGBUILD .SRCINFO pi-logo.svg LICENSE
+                  git diff --staged --quiet || git commit -m "upgpkg: pi-ui-bin ${GITHUB_REF_NAME#v}"
+                  git push
