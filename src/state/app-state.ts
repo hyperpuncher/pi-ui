@@ -8,7 +8,11 @@ import {
 	renderMarkdownStreaming,
 } from "../ui/markdown.tsx";
 import { renderMessage, renderMessages } from "../ui/messages.tsx";
-import { renderSessionPicker, renderSlashPicker } from "../ui/pickers.tsx";
+import {
+	renderSessionPicker,
+	renderSlashPicker,
+	renderWorkspaceDialogMenu,
+} from "../ui/pickers.tsx";
 import {
 	renderPromptAction,
 	renderPromptStatus,
@@ -496,6 +500,7 @@ export class AppState {
 			renderPromptAction(this) +
 			renderPromptStatus(this) +
 			renderWorkspacePicker(this) +
+			renderWorkspaceDialogMenu(this) +
 			renderModelPicker(this) +
 			renderThinkingPicker(this) +
 			renderDebugOverlay(this) +

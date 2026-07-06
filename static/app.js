@@ -7,7 +7,6 @@ bindAppCommands();
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusPrompt();
-	loadRecentWorkspaces();
 	bindPromptAutosize();
 	bindSlashPicker();
 	bindFilePicker();
@@ -124,16 +123,13 @@ function setPromptValue(value) {
 }
 
 function openWorkspaceDialog() {
-	const current = document.body?.dataset.workspacePath ?? "";
 	openDialog("workspace-dialog", "workspace-input");
-	void loadRecentWorkspaces();
-	renderRecentWorkspaces();
 	setTimeout(() => {
 		const input = document.getElementById("workspace-input");
 		if (input instanceof HTMLInputElement) {
-			input.value = current;
+			input.value = "";
+			input.dispatchEvent(new Event("input", { bubbles: true }));
 			input.focus();
-			input.select();
 		}
 	}, 0);
 }
@@ -143,65 +139,6 @@ function rememberSubmittedWorkspace() {
 	const workspacePath = input instanceof HTMLInputElement ? input.value.trim() : "";
 	if (!workspacePath) return;
 	document.body.dataset.workspacePath = workspacePath;
-	closeDialog("workspace-dialog");
-	renderRecentWorkspaces();
-}
-
-let recentWorkspacesCache = [];
-
-async function loadRecentWorkspaces() {
-	try {
-		const response = await fetch("/workspaces/recent");
-		const items = await response.json();
-		recentWorkspacesCache = Array.isArray(items)
-			? items.filter((item) => typeof item === "string")
-			: [];
-		renderRecentWorkspaces();
-	} catch {
-		// Recent workspaces are a convenience cache.
-	}
-}
-
-function recentWorkspaces() {
-	return recentWorkspacesCache;
-}
-
-function renderRecentWorkspaces() {
-	const list = document.getElementById("workspace-recent-list");
-	if (!(list instanceof HTMLElement)) return;
-	const current = document.body?.dataset.workspacePath ?? "";
-	const recent = [current, ...recentWorkspaces()]
-		.filter(Boolean)
-		.filter((item, index, array) => array.indexOf(item) === index);
-	list.replaceChildren();
-	if (recent.length === 0) {
-		const row = document.createElement("li");
-		row.className = "text-muted-foreground px-3 py-4 text-center text-sm";
-		row.textContent = "No recent workspaces.";
-		list.append(row);
-		return;
-	}
-	for (const workspacePath of recent) {
-		const row = document.createElement("li");
-		const button = document.createElement("button");
-		button.type = "button";
-		button.className =
-			"hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none";
-		button.addEventListener("click", () => {
-			const input = document.getElementById("workspace-input");
-			if (input instanceof HTMLInputElement) {
-				input.value = workspacePath;
-				input.dispatchEvent(new Event("input", { bubbles: true }));
-			}
-			clickFirst("[data-workspace-submit]");
-		});
-		const label = document.createElement("span");
-		label.className = "min-w-0 truncate font-mono text-sm";
-		label.textContent = workspacePath;
-		button.append(label);
-		row.append(button);
-		list.append(row);
-	}
 }
 
 function bindTooltipSuppression() {

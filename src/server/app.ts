@@ -146,10 +146,6 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				return Response.json(await fileSearch.search(query));
 			}
 
-			if (request.method === "GET" && url.pathname === "/workspaces/recent") {
-				return Response.json(state.recentWorkspaces);
-			}
-
 			if (request.method === "GET" && url.pathname === "/debug/pi-sdk") {
 				return Response.json(await smokePiSdkImport());
 			}

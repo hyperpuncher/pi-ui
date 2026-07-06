@@ -1,4 +1,5 @@
 import type { AppSessionSummary, AppSlashCommand, AppState } from "../state/app-state.ts";
+import { formatHomePath } from "../utils/workspace.ts";
 
 export function renderSlashPicker(state: AppState): string {
 	return (
@@ -48,6 +49,86 @@ function renderSlashRow(item: AppSlashCommand): string {
 			</button>
 		</li>
 	) as string;
+}
+
+export function renderWorkspaceDialogMenu(state: AppState): string {
+	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
+	return (
+		<div
+			role="menu"
+			id="workspace-menu"
+			aria-orientation="vertical"
+			data-empty="No matching workspaces."
+		>
+			<div role="group" aria-labelledby="workspace-open-heading">
+				<span role="heading" id="workspace-open-heading">
+					Open
+				</span>
+				<div
+					role="menuitem"
+					data-force
+					data-workspace-submit
+					data-on:click={openWorkspaceAction("$workspacePath")}
+				>
+					<span>Open typed path</span>
+					<span data-shortcut>Enter</span>
+				</div>
+			</div>
+			<hr role="separator" />
+			<div role="group" aria-labelledby="workspace-recent-heading">
+				<span role="heading" id="workspace-recent-heading">
+					Recent workspaces
+				</span>
+				{workspaces.map((workspacePath) =>
+					renderWorkspaceRow(
+						workspacePath,
+						workspacePath === state.workspacePath,
+					),
+				)}
+			</div>
+		</div>
+	) as string;
+}
+
+function renderWorkspaceRow(workspacePath: string, current: boolean): string {
+	const label = formatHomePath(workspacePath);
+	return (
+		<div
+			role="menuitem"
+			data-filter={`${label} ${workspacePath}`}
+			data-keywords={`${label} ${workspacePath}`}
+			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
+		>
+			<span class="min-w-0">
+				<span class="block truncate font-mono text-sm" safe>
+					{label}
+				</span>
+				<span class="text-muted-foreground mt-1 block truncate text-xs" safe>
+					{workspacePath}
+				</span>
+			</span>
+			{current && <span data-shortcut>Current</span>}
+		</div>
+	) as string;
+}
+
+function openWorkspaceAction(valueExpression: string): string {
+	return `
+		document.getElementById('workspace-dialog')?.close();
+		$workspacePath = ${valueExpression};
+		@post('/workspace/open', { filterSignals: { include: /^workspacePath$/ } });
+	`;
+}
+
+function uniqueWorkspaces(workspaces: string[]): string[] {
+	const unique: string[] = [];
+	for (const workspacePath of workspaces) {
+		if (!workspacePath || unique.includes(workspacePath)) {
+			continue;
+		}
+		unique.push(workspacePath);
+	}
+	return unique;
 }
 
 export function renderSessionPicker(state: AppState): string {

@@ -255,8 +255,8 @@ export class AgentHost {
 	private async refreshSessions(): Promise<void> {
 		try {
 			const sessions = await SessionManager.listAll();
-			this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
 			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
+			this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
 		} catch (error) {
 			this.state.appendMessage(
 				"system",
