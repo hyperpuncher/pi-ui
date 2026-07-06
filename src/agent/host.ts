@@ -12,7 +12,7 @@ import {
 	type SessionInfo,
 	type SessionTreeNode,
 	type SessionStats,
-} from "npm:@earendil-works/pi-coding-agent@0.80.3";
+} from "@earendil-works/pi-coding-agent";
 
 import type {
 	AppMessageInput,

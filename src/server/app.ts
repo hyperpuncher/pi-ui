@@ -1,7 +1,6 @@
 import { serveDir } from "jsr:@std/http/file-server";
 
 import { AgentHost } from "../agent/host.ts";
-import { smokePiSdkImport } from "../agent/sdk-smoke.ts";
 import { AppState } from "../state/app-state.ts";
 import { preloadMarkdownHighlighter } from "../ui/markdown.tsx";
 import { renderPage } from "../ui/page.tsx";
@@ -147,10 +146,6 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			if (request.method === "GET" && url.pathname === "/files/search") {
 				const query = url.searchParams.get("q") ?? "";
 				return Response.json(await fileSearch.search(query));
-			}
-
-			if (request.method === "GET" && url.pathname === "/debug/pi-sdk") {
-				return Response.json(await smokePiSdkImport());
 			}
 
 			if (request.method === "GET" && url.pathname === "/basecoat.js") {

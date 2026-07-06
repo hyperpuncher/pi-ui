@@ -1,4 +1,4 @@
-import type { AgentSession } from "npm:@earendil-works/pi-coding-agent@0.80.3";
+import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
 import { createProxyClient } from "../utils/http-proxy.ts";
 
