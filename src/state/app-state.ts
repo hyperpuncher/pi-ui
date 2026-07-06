@@ -16,6 +16,7 @@ import {
 	renderThinkingPicker,
 	renderWorkspacePicker,
 } from "../ui/prompt-box.tsx";
+import { renderTreePicker } from "../ui/tree-picker.tsx";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
 
@@ -63,6 +64,19 @@ export type AppSessionSummary = {
 	title: string;
 	subtitle: string;
 	modified: string;
+};
+
+export type AppTreeEntry = {
+	id: string;
+	parentId: string | null;
+	prefix: string;
+	continuationPrefix: string;
+	label?: string;
+	role: string;
+	text: string;
+	meta: string;
+	active: boolean;
+	inPath: boolean;
 };
 
 export type AppUsage = {
@@ -126,6 +140,7 @@ export class AppState {
 	messages: AppMessage[] = [];
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
+	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	currentModel: string | undefined;
 	thinkingLevel: AppThinkingLevel = "off";
@@ -328,6 +343,11 @@ export class AppState {
 		this.broadcast();
 	}
 
+	setTreeEntries(entries: AppTreeEntry[]): void {
+		this.treeEntries = entries;
+		this.broadcast();
+	}
+
 	setCurrentModel(currentModel: string | undefined): void {
 		this.currentModel = currentModel;
 		this.broadcast();
@@ -429,7 +449,8 @@ export class AppState {
 			renderThinkingPicker(this) +
 			renderDebugOverlay(this) +
 			renderSessionPicker(this) +
-			renderSlashPicker(this)
+			renderSlashPicker(this) +
+			renderTreePicker(this)
 		);
 	}
 
@@ -448,6 +469,9 @@ export class AppState {
 					model: this.currentModel ?? "",
 					thinkingLevel: this.thinkingLevel,
 					workspacePath: this.workspacePath,
+					treeEntryId: "",
+					treeSummarize: false,
+					treeSummaryInstructions: "",
 				}),
 			);
 		} catch {

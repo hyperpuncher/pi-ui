@@ -73,6 +73,9 @@ function commandAction(id: AppCommandId): string {
 	if (id === "resume-session") {
 		return "document.getElementById('command-dialog')?.close(); @post('/sessions/list'); document.getElementById('session-dialog')?.showModal()";
 	}
+	if (id === "session-tree") {
+		return "document.getElementById('command-dialog')?.close(); @post('/tree/open')";
+	}
 	if (id === "command-palette") {
 		return "document.getElementById('command-dialog')?.showModal(); document.getElementById('command-input')?.focus()";
 	}

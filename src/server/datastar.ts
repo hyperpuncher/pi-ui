@@ -22,6 +22,30 @@ export function scriptResponse(script: string) {
 	});
 }
 
+export function scriptAndSignalsResponse(
+	script: string,
+	signals: Record<string, Jsonifiable>,
+) {
+	return datastarStream((stream) => {
+		stream.patchSignals(JSON.stringify(signals));
+		stream.executeScript(script);
+	});
+}
+
+export function elementsAndScriptResponse(
+	elements: string,
+	script: string,
+	signals: Record<string, Jsonifiable> = {},
+) {
+	return datastarStream((stream) => {
+		stream.patchElements(elements);
+		if (Object.keys(signals).length > 0) {
+			stream.patchSignals(JSON.stringify(signals));
+		}
+		stream.executeScript(script);
+	});
+}
+
 export async function readSignals(request: Request) {
 	const result = await ds.readSignals(request);
 	if (!result.success) {

@@ -1,6 +1,7 @@
 export type AppCommandId =
 	| "new-chat"
 	| "resume-session"
+	| "session-tree"
 	| "command-palette"
 	| "switch-model"
 	| "cycle-thinking"
@@ -29,6 +30,12 @@ export const appCommands: AppCommand[] = [
 		title: "Resume session",
 		description: "Browse recent pi sessions for this project.",
 		shortcut: { display: "ctrl R", native: "CmdOrCtrl+R", keys: ["r"] },
+	},
+	{
+		id: "session-tree",
+		title: "Session tree",
+		description: "Navigate and branch within the current session.",
+		shortcut: { display: "", native: "", keys: [] },
 	},
 	{
 		id: "command-palette",

@@ -5,7 +5,14 @@ import { smokePiSdkImport } from "../agent/sdk-smoke.ts";
 import { AppState } from "../state/app-state.ts";
 import { preloadMarkdownHighlighter } from "../ui/markdown.tsx";
 import { renderPage } from "../ui/page.tsx";
-import { readSignals, scriptResponse, signalsResponse } from "./datastar.ts";
+import { renderTreePicker } from "../ui/tree-picker.tsx";
+import {
+	elementsAndScriptResponse,
+	readSignals,
+	scriptAndSignalsResponse,
+	scriptResponse,
+	signalsResponse,
+} from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
 
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
@@ -36,9 +43,12 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 
 			if (request.method === "POST" && url.pathname === "/prompt") {
 				const signals = await readSignals(request);
-				const accepted = host
-					? await host.prompt(signals.prompt as string)
-					: false;
+				const prompt = signals.prompt as string;
+				if (prompt.trim() === "/tree") {
+					host?.openTree();
+					return treeOpenResponse(state, { prompt: "" });
+				}
+				const accepted = host ? await host.prompt(prompt) : false;
 				return accepted ? signalsResponse({ prompt: "" }) : noContent();
 			}
 
@@ -55,6 +65,28 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			if (request.method === "POST" && url.pathname === "/sessions/list") {
 				await host?.listSessions();
 				return noContent();
+			}
+
+			if (request.method === "POST" && url.pathname === "/tree/open") {
+				host?.openTree();
+				return treeOpenResponse(state);
+			}
+
+			if (request.method === "POST" && url.pathname === "/tree/navigate") {
+				const signals = await readSignals(request);
+				const editorText = await host?.navigateTree(
+					signals.treeEntryId as string,
+					{
+						summarize: signals.treeSummarize === true,
+						customInstructions:
+							String(signals.treeSummaryInstructions ?? "").trim() ||
+							undefined,
+					},
+				);
+				return scriptAndSignalsResponse(
+					"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
+					{ prompt: editorText ?? "" },
+				);
 			}
 
 			if (request.method === "POST" && url.pathname === "/sessions/resume") {
@@ -154,6 +186,17 @@ async function switchWorkspace(
 		state.appendMessage("system", `Failed to open workspace: ${formatError(error)}`);
 		return { ok: false, host, fileSearch };
 	}
+}
+
+function treeOpenResponse(
+	state: AppState,
+	signals: Record<string, string | boolean> = {},
+): Response {
+	return elementsAndScriptResponse(renderTreePicker(state), openTreeScript(), signals);
+}
+
+function openTreeScript(): string {
+	return "const dialog = document.getElementById('tree-dialog'); if (!dialog?.open) dialog?.showModal(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });";
 }
 
 function html(body: string): Response {

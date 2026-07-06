@@ -4,6 +4,7 @@ import { renderDebugOverlay } from "./debug.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
+import { renderTreePicker } from "./tree-picker.tsx";
 
 export function renderPage(state: AppState): string {
 	const initialSignals = JSON.stringify({
@@ -12,6 +13,9 @@ export function renderPage(state: AppState): string {
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
 		sessionPath: "",
+		treeEntryId: "",
+		treeSummarize: false,
+		treeSummaryInstructions: "",
 	});
 
 	return ("<!doctype html>" +
@@ -95,6 +99,32 @@ export function renderPage(state: AppState): string {
 						>
 							×
 						</button>
+					</div>
+				</dialog>
+
+				<dialog
+					id="tree-dialog"
+					class="command-dialog"
+					aria-label="Session tree"
+					onclick="if (event.target === this) this.close()"
+				>
+					<div class="command sm:max-w-4xl">
+						<header>
+							<input
+								id="tree-input"
+								type="text"
+								placeholder="Search tree..."
+								autocomplete="off"
+								autocorrect="off"
+								spellcheck="false"
+								aria-autocomplete="list"
+								role="combobox"
+								aria-expanded="true"
+								aria-controls="tree-menu"
+								autofocus
+							/>
+						</header>
+						{renderTreePicker(state)}
 					</div>
 				</dialog>
 
