@@ -61,6 +61,7 @@ export type AppSlashCommand = {
 
 export type AppSessionSummary = {
 	path: string;
+	cwd: string;
 	title: string;
 	subtitle: string;
 	modified: string;
@@ -152,6 +153,7 @@ export class AppState {
 	emptyChatHint = randomEmptyChatHint();
 	activityText: string | undefined;
 	workspacePath = defaultWorkspacePath();
+	recentWorkspaces: string[] = [];
 
 	get hasOlderMessages(): boolean {
 		return this.visibleMessageStart > 0;
@@ -327,7 +329,12 @@ export class AppState {
 	}
 
 	renderMessagesElement(): string {
-		return renderMessages(this.messages, this.emptyChatHint, this.hasOlderMessages);
+		return renderMessages(
+			this.messages,
+			this.emptyChatHint,
+			this.hasOlderMessages,
+			this.sessions,
+		);
 	}
 
 	private refreshVisibleMessages(): void {
@@ -380,6 +387,10 @@ export class AppState {
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
 		this.broadcast();
+	}
+
+	setRecentWorkspaces(recentWorkspaces: string[]): void {
+		this.recentWorkspaces = recentWorkspaces;
 	}
 
 	setSlashCommands(commands: AppSlashCommand[]): void {

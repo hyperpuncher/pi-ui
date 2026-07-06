@@ -44,7 +44,12 @@ export function renderPage(state: AppState): string {
 					class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"
 					data-init="@get('/stream')"
 				>
-					{renderMessages(state.messages, state.emptyChatHint)}
+					{renderMessages(
+						state.messages,
+						state.emptyChatHint,
+						state.hasOlderMessages,
+						state.sessions,
+					)}
 
 					{renderPromptBox(state)}
 				</div>

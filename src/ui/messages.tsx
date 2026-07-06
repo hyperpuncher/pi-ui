@@ -2,6 +2,7 @@ import type {
 	AppKeybindHint,
 	AppMessage,
 	AppMessageTitlePart,
+	AppSessionSummary,
 } from "../state/app-state.ts";
 import { formatTime } from "../utils/locale.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
@@ -10,6 +11,7 @@ export function renderMessages(
 	messages: AppMessage[],
 	emptyHint: AppKeybindHint,
 	hasOlderMessages = false,
+	sessions: AppSessionSummary[] = [],
 ): string {
 	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
 	return (
@@ -24,31 +26,74 @@ export function renderMessages(
 			aria-live="polite"
 		>
 			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
-				{messages.length === 0 ? (
-					<div class="text-muted-foreground grid min-h-[calc(100vh-18rem)] place-items-center text-center">
-						<div>
-							<p class="text-foreground m-0 text-lg font-medium">
-								What can I help with?
-							</p>
-							<p class="m-0 mt-3 flex items-center justify-center gap-2 text-sm">
-								<ShortcutKbd shortcut={emptyHint.keys} />
-								<span safe>{emptyHint.description}</span>
-							</p>
-						</div>
-					</div>
-				) : (
-					messages.map((message, index) => (
-						<>
-							{hasOlderMessages && index === olderMessagesTriggerIndex
-								? renderOlderMessagesTrigger()
-								: ""}
-							{renderMessage(message)}
-						</>
-					))
-				)}
+				{messages.length === 0
+					? renderEmptyMessages(emptyHint, sessions.slice(0, 3))
+					: messages.map((message, index) => (
+							<>
+								{hasOlderMessages && index === olderMessagesTriggerIndex
+									? renderOlderMessagesTrigger()
+									: ""}
+								{renderMessage(message)}
+							</>
+						))}
 			</div>
 		</main>
 	) as string;
+}
+
+function renderEmptyMessages(emptyHint: AppKeybindHint, sessions: AppSessionSummary[]) {
+	return (
+		<div class="text-muted-foreground grid min-h-[calc(100vh-18rem)] place-items-center text-center">
+			<div class="w-full max-w-xl">
+				<p class="text-foreground m-0 text-lg font-medium">
+					What can I help with?
+				</p>
+				<p class="m-0 mt-3 flex items-center justify-center gap-2 text-sm">
+					<ShortcutKbd shortcut={emptyHint.keys} />
+					<span safe>{emptyHint.description}</span>
+				</p>
+				{sessions.length > 0 && (
+					<div class="mt-8 text-left">
+						<p class="text-muted-foreground mb-2 px-2 text-xs font-medium tracking-wide uppercase">
+							Recent sessions
+						</p>
+						<div class="flex flex-col gap-1">
+							{sessions.map(renderRecentSession)}
+						</div>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function renderRecentSession(session: AppSessionSummary) {
+	return (
+		<button
+			type="button"
+			class="hover:bg-muted focus:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none"
+			data-on:click={resumeSessionAction(session.path)}
+		>
+			<span class="min-w-0">
+				<span class="text-foreground block truncate text-sm" safe>
+					{session.title}
+				</span>
+				<span class="text-muted-foreground mt-1 line-clamp-2 text-xs" safe>
+					{session.subtitle}
+				</span>
+			</span>
+			<span class="text-muted-foreground shrink-0 text-xs whitespace-nowrap" safe>
+				{session.modified}
+			</span>
+		</button>
+	);
+}
+
+function resumeSessionAction(path: string): string {
+	return `
+		$sessionPath = ${JSON.stringify(path)};
+		@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
+	`;
 }
 
 function renderOlderMessagesTrigger() {

@@ -7,6 +7,7 @@ bindAppCommands();
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusPrompt();
+	loadRecentWorkspaces();
 	bindPromptAutosize();
 	bindSlashPicker();
 	bindFilePicker();
@@ -124,10 +125,8 @@ function setPromptValue(value) {
 
 function openWorkspaceDialog() {
 	const current = document.body?.dataset.workspacePath ?? "";
-	if (current) {
-		rememberWorkspace(current);
-	}
 	openDialog("workspace-dialog", "workspace-input");
+	void loadRecentWorkspaces();
 	renderRecentWorkspaces();
 	setTimeout(() => {
 		const input = document.getElementById("workspace-input");
@@ -144,28 +143,27 @@ function rememberSubmittedWorkspace() {
 	const workspacePath = input instanceof HTMLInputElement ? input.value.trim() : "";
 	if (!workspacePath) return;
 	document.body.dataset.workspacePath = workspacePath;
-	rememberWorkspace(workspacePath);
 	closeDialog("workspace-dialog");
 	renderRecentWorkspaces();
 }
 
-function recentWorkspaces() {
+let recentWorkspacesCache = [];
+
+async function loadRecentWorkspaces() {
 	try {
-		const parsed = JSON.parse(localStorage.getItem("recentWorkspaces") ?? "[]");
-		return Array.isArray(parsed)
-			? parsed.filter((item) => typeof item === "string")
+		const response = await fetch("/workspaces/recent");
+		const items = await response.json();
+		recentWorkspacesCache = Array.isArray(items)
+			? items.filter((item) => typeof item === "string")
 			: [];
+		renderRecentWorkspaces();
 	} catch {
-		return [];
+		// Recent workspaces are a convenience cache.
 	}
 }
 
-function rememberWorkspace(workspacePath) {
-	const recent = [
-		workspacePath,
-		...recentWorkspaces().filter((item) => item !== workspacePath),
-	].slice(0, 8);
-	localStorage.setItem("recentWorkspaces", JSON.stringify(recent));
+function recentWorkspaces() {
+	return recentWorkspacesCache;
 }
 
 function renderRecentWorkspaces() {

@@ -138,13 +138,12 @@ export class AgentHost {
 	}
 
 	async listSessions(): Promise<void> {
-		const sessionManager = this.runtime.session.sessionManager;
-		const sessions = await SessionManager.list(
-			sessionManager.getCwd(),
-			sessionManager.getSessionDir(),
-		);
-		this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
+		await this.refreshSessions();
 		this.syncUsage();
+	}
+
+	getWorkspacePath(): string {
+		return this.runtime.session.sessionManager.getCwd();
 	}
 
 	async resumeSession(sessionPath: string): Promise<boolean> {
@@ -239,6 +238,7 @@ export class AgentHost {
 	private async bindSession(): Promise<void> {
 		this.unsubscribe?.();
 		const session = this.runtime.session;
+		this.state.setWorkspacePath(session.sessionManager.getCwd());
 		this.toolMessageIds.clear();
 		this.toolCallArgs.clear();
 		this.toolStartedAt.clear();
@@ -249,6 +249,20 @@ export class AgentHost {
 		this.syncThinking();
 		this.syncSlashCommands();
 		this.syncUsage();
+		void this.refreshSessions();
+	}
+
+	private async refreshSessions(): Promise<void> {
+		try {
+			const sessions = await SessionManager.listAll();
+			this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
+			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
+		} catch (error) {
+			this.state.appendMessage(
+				"system",
+				`Failed to list sessions: ${formatError(error)}`,
+			);
+		}
 	}
 
 	private syncModels(): void {
@@ -894,11 +908,26 @@ function normalizeTreeText(text: string): string {
 		.slice(0, 240);
 }
 
+function recentSessionWorkspaces(sessions: SessionInfo[]): string[] {
+	const workspaces: string[] = [];
+	for (const session of sessions) {
+		if (!session.cwd || workspaces.includes(session.cwd)) {
+			continue;
+		}
+		workspaces.push(session.cwd);
+		if (workspaces.length >= 8) {
+			break;
+		}
+	}
+	return workspaces;
+}
+
 function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 	const title = info.name?.trim() || info.firstMessage.trim() || "Untitled session";
 	const messageLabel = `${info.messageCount} message${info.messageCount === 1 ? "" : "s"}`;
 	return {
 		path: info.path,
+		cwd: info.cwd,
 		title: truncate(title, 96),
 		subtitle: `${messageLabel} • ${truncate(info.cwd, 64)}`,
 		modified: formatDateTime(info.modified),

@@ -100,11 +100,15 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			if (request.method === "POST" && url.pathname === "/sessions/resume") {
 				const signals = await readSignals(request);
 				const resumed = await host?.resumeSession(signals.sessionPath as string);
-				return resumed
-					? scriptResponse(
-							"window.piUiScrollMessagesBottom?.(); document.getElementById('prompt-input')?.focus({ preventScroll: true })",
-						)
-					: noContent();
+				if (!resumed || !host) {
+					return noContent();
+				}
+				const workspacePath = host.getWorkspacePath();
+				fileSearch.dispose();
+				fileSearch = await FileSearchHost.create(workspacePath);
+				return scriptResponse(
+					"window.piUiScrollMessagesBottom?.(); document.getElementById('prompt-input')?.focus({ preventScroll: true })",
+				);
 			}
 
 			if (request.method === "POST" && url.pathname === "/model") {
@@ -140,6 +144,10 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			if (request.method === "GET" && url.pathname === "/files/search") {
 				const query = url.searchParams.get("q") ?? "";
 				return Response.json(await fileSearch.search(query));
+			}
+
+			if (request.method === "GET" && url.pathname === "/workspaces/recent") {
+				return Response.json(state.recentWorkspaces);
 			}
 
 			if (request.method === "GET" && url.pathname === "/debug/pi-sdk") {
