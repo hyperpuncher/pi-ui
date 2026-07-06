@@ -24,12 +24,12 @@ jobs:
                       output: dist/pi-ui-linux-arm64.AppImage
                       artifact: pi-ui-linux-arm64.AppImage
                     - name: darwin-x64
-                      os: ubuntu-latest
+                      os: macos-15-intel
                       target: x86_64-apple-darwin
                       output: dist/pi-ui.app
                       artifact: pi-ui-darwin-x64.zip
                     - name: darwin-arm64
-                      os: ubuntu-latest
+                      os: macos-14
                       target: aarch64-apple-darwin
                       output: dist/pi-ui.app
                       artifact: pi-ui-darwin-arm64.zip
@@ -49,19 +49,23 @@ jobs:
               run: deno task css:build
 
             - name: Build desktop app
-              run: >-
-                  deno desktop -A
-                  --unstable-no-legacy-abort
-                  --conditions browser
-                  --backend cef
-                  --compress=xz
-                  --target ${{ matrix.target }}
-                  --output ${{ matrix.output }}
-                  src/main.ts
+              run: |
+                  args=(
+                    -A
+                    --unstable-no-legacy-abort
+                    --conditions browser
+                    --backend cef
+                    --target "${{ matrix.target }}"
+                    --output "${{ matrix.output }}"
+                  )
+                  if [[ "${{ matrix.name }}" != darwin-* ]]; then
+                    args+=(--compress=xz)
+                  fi
+                  deno desktop "${args[@]}" src/main.ts
 
             - name: Zip macOS app
-              if: startsWith(matrix.name, 'darwin-')
-              run: cd dist && zip -qry "${{ matrix.artifact }}" "pi-ui.app"
+              if: runner.os == 'macOS'
+              run: ditto -c -k --keepParent "${{ matrix.output }}" "dist/${{ matrix.artifact }}"
 
             - name: Upload artifact
               uses: actions/upload-artifact@v7

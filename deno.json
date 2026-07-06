@@ -8,7 +8,7 @@
 		"server": "deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts",
 		"build": "deno task build:linux",
 		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --backend cef src/main.ts",
-		"run:linux": "./dist/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync --disable-spell-checking",
+		"run:linux": "./dist/linux/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-frame-rate-limit --disable-gpu-vsync --disable-spell-checking",
 		"css:build": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A @tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
@@ -41,9 +41,9 @@
 		},
 		"backend": "cef",
 		"output": {
-			"macos": "./dist/pi-ui.app",
-			"windows": "./dist/pi-ui.msi",
-			"linux": "./dist/pi-ui.AppImage"
+			"macos": "./dist/macos/pi-ui.app",
+			"windows": "./dist/windows/pi-ui.msi",
+			"linux": "./dist/linux/pi-ui.AppImage"
 		}
 	},
 	"nodeModulesDir": "auto",
