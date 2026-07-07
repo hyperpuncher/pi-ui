@@ -125,7 +125,7 @@ function renderOlderMessagesTrigger() {
 
 function renderPreOutput(text: string) {
 	return (
-		<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-sm bg-transparent text-sm leading-relaxed whitespace-pre-wrap">
+		<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-sm bg-transparent text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
 			<code safe>{text}</code>
 		</pre>
 	);
@@ -134,7 +134,7 @@ function renderPreOutput(text: string) {
 function renderDiffOutput(message: AppMessage) {
 	if (message.renderedHtml) {
 		return (
-			<div class="max-h-96 overflow-auto rounded-sm bg-transparent [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			<div class="max-h-96 overflow-auto rounded-sm bg-transparent [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
 				{message.renderedHtml}
 			</div>
 		);
@@ -281,8 +281,10 @@ export function renderMessage(message: AppMessage): string {
 				]}
 			>
 				<span class="flex min-w-0 items-start gap-2 leading-tight">
-					<span class={["h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
-					<span class="min-w-0 leading-tight font-medium break-words">
+					<span
+						class={["mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", dotClass]}
+					/>
+					<span class="min-w-0 leading-tight font-medium wrap-anywhere">
 						{renderToolTitle(title, message.titleParts)}
 					</span>
 				</span>
