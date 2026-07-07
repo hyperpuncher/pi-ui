@@ -18,8 +18,14 @@
 
 @layer base {
 	* {
-		scrollbar-color: var(--muted-foreground) transparent;
+		scrollbar-color: transparent transparent;
 		scrollbar-width: thin;
+	}
+
+	*:hover,
+	*:focus-within {
+		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent)
+			transparent;
 	}
 
 	html.dark .shiki span {
