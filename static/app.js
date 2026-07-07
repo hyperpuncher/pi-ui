@@ -612,8 +612,11 @@ function bindMessagesAutoscroll() {
 		true,
 	);
 
+	let autoscrollFrame;
 	const observer = new MutationObserver(() => {
-		requestAnimationFrame(() => {
+		if (autoscrollFrame) return;
+		autoscrollFrame = requestAnimationFrame(() => {
+			autoscrollFrame = undefined;
 			const messages = document.getElementById("messages");
 			if (!messages || !messagesScrollState.wasPinnedToBottom) {
 				return;
@@ -622,7 +625,10 @@ function bindMessagesAutoscroll() {
 		});
 	});
 
-	observer.observe(document.body, { childList: true, subtree: true });
+	const messages = document.getElementById("messages");
+	if (messages) {
+		observer.observe(messages, { childList: true, subtree: true });
+	}
 }
 
 let messagesAnchor;
