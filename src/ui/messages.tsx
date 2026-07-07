@@ -53,7 +53,9 @@ function renderEmptyMessages(emptyHint: AppKeybindHint, sessions: AppSessionSumm
 							Recent sessions
 						</p>
 						<div class="flex flex-col gap-1">
-							{sessions.map(renderRecentSession)}
+							{sessions.map((session, index) =>
+								renderRecentSession(session, index),
+							)}
 						</div>
 					</div>
 				)}
@@ -62,12 +64,14 @@ function renderEmptyMessages(emptyHint: AppKeybindHint, sessions: AppSessionSumm
 	);
 }
 
-function renderRecentSession(session: AppSessionSummary) {
+function renderRecentSession(session: AppSessionSummary, index: number) {
+	const shortcut = `ctrl ${index + 1}`;
 	return (
 		<button
 			type="button"
 			class="hover:bg-muted focus:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none"
 			data-on:click={resumeSessionAction(session.path)}
+			data-on:keydown__window={resumeSessionShortcutAction(session.path, index)}
 		>
 			<span class="min-w-0">
 				<span class="text-foreground block truncate text-sm" safe>
@@ -77,8 +81,9 @@ function renderRecentSession(session: AppSessionSummary) {
 					{session.subtitle}
 				</span>
 			</span>
-			<span class="text-muted-foreground shrink-0 text-xs whitespace-nowrap" safe>
-				{session.modified}
+			<span class="text-muted-foreground flex shrink-0 items-center gap-2 text-xs whitespace-nowrap">
+				<span safe>{session.modified}</span>
+				<ShortcutKbd shortcut={shortcut} />
 			</span>
 		</button>
 	);
@@ -89,6 +94,13 @@ function resumeSessionAction(path: string): string {
 		$sessionPath = ${JSON.stringify(path)};
 		@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 	`;
+}
+
+function resumeSessionShortcutAction(path: string, index: number): string {
+	return `if ((evt.ctrlKey || evt.metaKey) && evt.key === '${index + 1}') {
+		evt.preventDefault();
+		${resumeSessionAction(path)}
+	}`;
 }
 
 function loadOlderMessagesAction(): string {
