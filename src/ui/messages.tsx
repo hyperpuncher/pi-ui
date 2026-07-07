@@ -20,7 +20,7 @@ export function renderMessages(
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
-			<div class="mx-auto flex w-full max-w-[52rem] flex-col gap-8">
+			<div class="mx-auto flex w-full max-w-[52rem] flex-col gap-8 [&_.message-user+_.message-user]:-mt-6">
 				{messages.length === 0
 					? renderEmptyMessages(emptyHint, sessions.slice(0, 3))
 					: messages.map((message, index) => (
@@ -166,7 +166,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "user") {
 		return (
 			<article
-				class="bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-xl px-3.5 py-2.5"
+				class="message-user bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-xl px-3.5 py-2.5"
 				data-message-id={message.id}
 			>
 				<p class="m-0 whitespace-pre-wrap" safe>
