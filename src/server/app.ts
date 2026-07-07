@@ -8,6 +8,7 @@ import { renderTreePicker } from "../ui/tree-picker.tsx";
 import {
 	elementsAndScriptResponse,
 	readSignals,
+	refreshBasecoatComponentsScript,
 	scriptAndSignalsResponse,
 	scriptResponse,
 	signalsResponse,
@@ -214,7 +215,7 @@ function treeOpenResponse(
 }
 
 function openTreeScript(): string {
-	return "const dialog = document.getElementById('tree-dialog'); if (!dialog?.open) dialog?.showModal(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });";
+	return `${refreshBasecoatComponentsScript("#tree-dialog .command")}; const dialog = document.getElementById('tree-dialog'); if (!dialog?.open) dialog?.showModal(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });`;
 }
 
 function html(body: string): Response {

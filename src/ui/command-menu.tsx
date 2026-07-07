@@ -1,4 +1,4 @@
-import { appCommands, type AppCommand, type AppCommandId } from "../commands/registry.ts";
+import { appCommands, type AppCommand } from "../commands/registry.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 
 export function renderCommandMenu(): string {
@@ -35,7 +35,9 @@ export function renderCommandMenu(): string {
 						<span role="heading" id="command-menu-heading">
 							Commands
 						</span>
-						{appCommands.map(renderCommandRow)}
+						{appCommands
+							.filter((command) => command.id !== "command-palette")
+							.map(renderCommandRow)}
 					</div>
 				</div>
 			</div>
@@ -51,7 +53,7 @@ function renderCommandRow(item: AppCommand): string {
 			data-command-row
 			data-filter={item.title}
 			data-keywords={`${item.description} ${item.id}`}
-			data-on:click={commandAction(item.id)}
+			data-on:click={item.action}
 		>
 			<span class="min-w-0">
 				<span class="block truncate">{item.title}</span>
@@ -64,26 +66,4 @@ function renderCommandRow(item: AppCommand): string {
 			)}
 		</div>
 	) as string;
-}
-
-function commandAction(id: AppCommandId): string {
-	if (id === "new-chat") {
-		return "document.getElementById('command-dialog')?.close(); @post('/sessions/new')";
-	}
-	if (id === "resume-session") {
-		return "document.getElementById('command-dialog')?.close(); @post('/sessions/list'); document.getElementById('session-dialog')?.showModal()";
-	}
-	if (id === "session-tree") {
-		return "document.getElementById('command-dialog')?.close(); @post('/tree/open')";
-	}
-	if (id === "command-palette") {
-		return "document.getElementById('command-dialog')?.showModal(); document.getElementById('command-input')?.focus()";
-	}
-	if (id === "switch-model") {
-		return "document.getElementById('command-dialog')?.close(); document.getElementById('model-select-trigger')?.click()";
-	}
-	if (id === "cycle-thinking") {
-		return "document.getElementById('command-dialog')?.close(); @post('/thinking/cycle')";
-	}
-	return "document.getElementById('command-dialog')?.close(); document.getElementById('workspace-dialog')?.showModal(); setTimeout(() => document.getElementById('workspace-input')?.focus(), 0)";
 }

@@ -1,6 +1,6 @@
 import { appCommands } from "../commands/registry.ts";
 import type { DatastarStream } from "../server/datastar.ts";
-import { datastarStream } from "../server/datastar.ts";
+import { datastarStream, refreshBasecoatComponentsScript } from "../server/datastar.ts";
 import { renderDebugOverlay } from "../ui/debug.tsx";
 import {
 	renderCodeFinal,
@@ -380,20 +380,25 @@ export class AppState {
 	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;
 		this.currentModel = currentModel;
-		this.broadcast();
+		this.broadcast(refreshBasecoatComponentsScript("#model-select"));
 		this.broadcastSignals();
 	}
 
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
-		this.broadcast();
+		this.broadcast(refreshBasecoatComponentsScript("#thinking-select"));
 		this.broadcastSignals();
 	}
 
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
-		this.broadcast();
+		this.broadcast(
+			refreshBasecoatComponentsScript(
+				"#session-dialog .command",
+				"#workspace-dialog .command",
+			),
+		);
 	}
 
 	setRecentWorkspaces(recentWorkspaces: string[]): void {
@@ -407,12 +412,12 @@ export class AppState {
 
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
-		this.broadcast();
+		this.broadcast(refreshBasecoatComponentsScript("#tree-dialog .command"));
 	}
 
 	setCurrentModel(currentModel: string | undefined): void {
 		this.currentModel = currentModel;
-		this.broadcast();
+		this.broadcast(refreshBasecoatComponentsScript("#model-select"));
 		this.broadcastSignals();
 	}
 
@@ -428,7 +433,7 @@ export class AppState {
 
 	setWorkspacePath(workspacePath: string): void {
 		this.workspacePath = workspacePath;
-		this.broadcast();
+		this.broadcast(refreshBasecoatComponentsScript("#workspace-dialog .command"));
 		this.broadcastSignals();
 	}
 
@@ -513,9 +518,12 @@ export class AppState {
 		);
 	}
 
-	private patchClient(stream: DatastarStream): void {
+	private patchClient(stream: DatastarStream, script?: string): void {
 		try {
 			stream.patchElements(this.renderElements());
+			if (script) {
+				stream.executeScript(script);
+			}
 		} catch {
 			// Client already disconnected.
 		}
@@ -538,9 +546,9 @@ export class AppState {
 		}
 	}
 
-	private broadcast(): void {
+	private broadcast(script?: string): void {
 		for (const client of this.clients.values()) {
-			this.patchClient(client.stream);
+			this.patchClient(client.stream, script);
 		}
 	}
 

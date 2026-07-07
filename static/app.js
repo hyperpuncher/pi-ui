@@ -2,78 +2,44 @@ const messagesScrollState = {
 	wasPinnedToBottom: true,
 };
 
-bindReservedShortcutPrevention();
-bindAppCommands();
-
 window.addEventListener("DOMContentLoaded", () => {
 	focusPrompt();
+	bindPromptInteractions();
 	bindSlashPicker();
 	bindFilePicker();
 	bindMessagesAutoscroll();
-	bindCommandRefresh();
 	bindCodeCopy();
 	bindMessagesHistoryPagination();
 	bindTooltipSuppression();
 	bindPickerKeyboard();
-	bindDialogKeyboard();
 	bindVimControls();
 	bindDebugFps();
 	scrollMessagesBottomSoon();
 });
 
-function bindAppCommands() {
+function bindPromptInteractions() {
 	document.addEventListener("keydown", (event) => {
-		const key = event.key.toLowerCase();
-		if (event.altKey && key === "t") {
-			event.preventDefault();
-			cycleThinkingLevel();
+		if (event.ctrlKey || event.metaKey || event.altKey) {
 			return;
 		}
-
-		if (!(event.ctrlKey || event.metaKey)) {
-			if (event.key === "Escape") {
-				closeSlashPicker();
-				closeFilePicker({ suppressUntilInput: true });
-				if (promptValue() === "/") setPromptValue("");
-			}
+		if (event.key !== "Escape") {
 			return;
 		}
-
-		if (key === "k") {
-			event.preventDefault();
-			openDialog("command-dialog", "command-input");
-		} else if (key === "o") {
-			event.preventDefault();
-			clickFirst("[data-new-chat-trigger]");
-		} else if (key === "r") {
-			event.preventDefault();
-			openSessionDialog();
-		} else if (key === "l") {
-			event.preventDefault();
-			openModelSelector();
-		}
+		closeSlashPicker();
+		closeFilePicker({ suppressUntilInput: true });
+		if (promptValue() === "/") setPromptValue("");
 	});
 
 	document.addEventListener("click", (event) => {
 		const target = event.target;
 		if (!(target instanceof Element)) return;
 		const slash = target.closest("[data-slash-command]");
-		if (target.closest("[data-dialog-trigger='command-dialog']")) {
-			event.preventDefault();
-			openDialog("command-dialog", "command-input");
-		} else if (target.closest("[data-new-chat-trigger]")) {
-			setTimeout(focusPrompt, 0);
-		} else if (target.closest("[data-file-trigger]")) {
+		if (target.closest("[data-file-trigger]")) {
 			event.preventDefault();
 			insertFilePrefix();
 		} else if (target.closest("[data-send-trigger]")) {
 			closeSlashPicker();
 			closeFilePicker({ suppressUntilInput: true });
-		} else if (target.closest("[data-workspace-submit]")) {
-			rememberSubmittedWorkspace();
-		} else if (target.closest("[data-workspace-trigger]")) {
-			event.preventDefault();
-			openWorkspaceDialog();
 		} else if (slash instanceof HTMLElement) {
 			event.preventDefault();
 			setPromptValue(slash.dataset.slashCommand ?? "");
@@ -81,32 +47,6 @@ function bindAppCommands() {
 			focusPromptEnd();
 		}
 	});
-}
-
-function openDialog(id, focusId) {
-	const dialog = document.getElementById(id);
-	if (dialog instanceof HTMLDialogElement && !dialog.open) {
-		dialog.showModal();
-	}
-	if (focusId) {
-		setTimeout(() => document.getElementById(focusId)?.focus(), 0);
-	}
-}
-
-function closeDialog(id) {
-	const dialog = document.getElementById(id);
-	if (dialog instanceof HTMLDialogElement && dialog.open) {
-		dialog.close();
-	}
-}
-
-function openSessionDialog() {
-	closeDialog("command-dialog");
-	clickFirst("[data-session-trigger]");
-}
-
-function clickFirst(selector) {
-	document.querySelector(selector)?.click();
 }
 
 function promptValue() {
@@ -119,25 +59,6 @@ function setPromptValue(value) {
 	if (!(input instanceof HTMLTextAreaElement)) return;
 	input.value = value;
 	input.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function openWorkspaceDialog() {
-	openDialog("workspace-dialog", "workspace-input");
-	setTimeout(() => {
-		const input = document.getElementById("workspace-input");
-		if (input instanceof HTMLInputElement) {
-			input.value = "";
-			input.dispatchEvent(new Event("input", { bubbles: true }));
-			input.focus();
-		}
-	}, 0);
-}
-
-function rememberSubmittedWorkspace() {
-	const input = document.getElementById("workspace-input");
-	const workspacePath = input instanceof HTMLInputElement ? input.value.trim() : "";
-	if (!workspacePath) return;
-	document.body.dataset.workspacePath = workspacePath;
 }
 
 function bindTooltipSuppression() {
@@ -153,55 +74,6 @@ function bindTooltipSuppression() {
 			{ once: true },
 		);
 	});
-}
-
-function bindDialogKeyboard() {
-	document.addEventListener("keydown", (event) => {
-		if (event.key === "Enter" && document.activeElement?.id === "workspace-input") {
-			event.preventDefault();
-			clickFirst("[data-workspace-submit]");
-		}
-		if (event.key === "Enter" && document.activeElement?.id === "command-input") {
-			event.preventDefault();
-			runFirstVisible("[data-command-row]");
-		}
-		if (event.key === "Enter" && document.activeElement?.id === "session-input") {
-			event.preventDefault();
-			runFirstVisible("[data-session-row]");
-		}
-	});
-}
-
-function bindReservedShortcutPrevention() {
-	window.addEventListener(
-		"keydown",
-		(event) => {
-			const key = event.key.toLowerCase();
-			if (event.altKey && key === "t") {
-				event.preventDefault();
-				return;
-			}
-			if (!(event.ctrlKey || event.metaKey)) {
-				return;
-			}
-
-			const appShortcutKeys = new Set(["k", "l", "o", "r"]);
-			if (appShortcutKeys.has(key)) {
-				event.preventDefault();
-			}
-		},
-		{ capture: true },
-	);
-}
-
-function runFirstVisible(selector) {
-	const row = visibleRows(selector)[0];
-	const button = row?.querySelector("button");
-	if (button instanceof HTMLElement) {
-		button.click();
-	} else if (row instanceof HTMLElement) {
-		row.click();
-	}
 }
 
 function visibleRows(selector) {
@@ -270,17 +142,6 @@ function closeSlashPicker() {
 function isSlashPickerOpen() {
 	const popover = document.getElementById("prompt-slash-popover");
 	return popover instanceof HTMLElement && popover.style.display !== "none";
-}
-
-function cycleThinkingLevel() {
-	fetch("/thinking/cycle", { method: "POST" }).catch(() => undefined);
-}
-
-function openModelSelector() {
-	const trigger = document.getElementById("model-select-trigger");
-	if (trigger instanceof HTMLButtonElement) {
-		trigger.click();
-	}
 }
 
 function bindFilePicker() {
@@ -811,39 +672,6 @@ function scrollMessagesBottomSoon() {
 	}
 }
 
-function bindCommandRefresh() {
-	let queued = false;
-	const refresh = () => {
-		queued = false;
-		document.querySelectorAll(".command, .dropdown-menu").forEach((component) => {
-			if (typeof component.refresh === "function") {
-				component.refresh();
-			} else {
-				window.basecoat?.refresh?.(component);
-			}
-		});
-	};
-	const queueRefresh = () => {
-		if (queued) return;
-		queued = true;
-		queueMicrotask(refresh);
-	};
-
-	const observer = new MutationObserver((mutations) => {
-		if (
-			mutations.some(
-				(mutation) =>
-					mutation.target instanceof Element &&
-					mutation.target.closest(".command, .dropdown-menu"),
-			)
-		) {
-			queueRefresh();
-		}
-	});
-
-	observer.observe(document.body, { childList: true, subtree: true });
-}
-
 function bindCodeCopy() {
 	document.addEventListener("click", async (event) => {
 		const target = event.target;
@@ -887,7 +715,7 @@ function bindPickerKeyboard() {
 				if (isFilePickerOpen()) {
 					runBestFileRow();
 				} else {
-					clickFirst("[data-send-trigger]");
+					document.querySelector("[data-send-trigger]")?.click();
 				}
 				return;
 			}

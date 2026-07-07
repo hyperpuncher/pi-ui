@@ -114,7 +114,6 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 
 function openWorkspaceAction(valueExpression: string): string {
 	return `
-		document.getElementById('workspace-dialog')?.close();
 		$workspacePath = ${valueExpression};
 		@post('/workspace/open', { filterSignals: { include: /^workspacePath$/ } });
 	`;
@@ -161,7 +160,6 @@ function renderSessionRow(session: AppSessionSummary): string {
 			data-filter={haystack}
 			data-keywords={haystack}
 			data-on:click={`
-				document.getElementById('session-dialog')?.close();
 				$sessionPath = ${JSON.stringify(session.path)};
 				@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 			`}

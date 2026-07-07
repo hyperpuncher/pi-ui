@@ -3,6 +3,12 @@ import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web
 
 export type DatastarStream = ds;
 
+export function refreshBasecoatComponentsScript(...selectors: string[]): string {
+	return `queueMicrotask(() => document.querySelectorAll(${JSON.stringify(
+		selectors.join(", "),
+	)}).forEach((component) => component.refresh?.()))`;
+}
+
 export function datastarStream(
 	onStart: (stream: DatastarStream) => Promise<void> | void,
 	options?: Parameters<typeof ds.stream>[1],

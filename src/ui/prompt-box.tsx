@@ -89,13 +89,9 @@ function PromptToolbarButton(props: {
 			data-variant="ghost"
 			data-size="icon-sm"
 			type="button"
-			data-dialog-trigger={
-				props.action === "commands" ? "command-dialog" : undefined
-			}
-			data-new-chat-trigger={props.action === "new-chat" ? "" : undefined}
 			data-file-trigger={props.action === "files" ? "" : undefined}
-			data-session-trigger={props.action === "sessions" ? "" : undefined}
-			data-on:click={promptToolbarAction(props.action)}
+			data-on:click={promptToolbarClickAction(props.action)}
+			data-on:keydown__window={promptToolbarKeydownAction(props.action)}
 			data-tooltip={props.label}
 			aria-label={props.label}
 		>
@@ -104,12 +100,45 @@ function PromptToolbarButton(props: {
 	);
 }
 
-function promptToolbarAction(action: PromptToolbarAction): string | undefined {
-	if (action === "new-chat") return "@post('/sessions/new')";
+function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
+	if (action === "commands") return openCommandPaletteAction();
+	if (action === "new-chat") return newChatAction();
+	if (action === "sessions") return openSessionDialogAction();
+	return undefined;
+}
+
+function promptToolbarKeydownAction(action: PromptToolbarAction): string | undefined {
+	if (action === "commands") {
+		return `if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'k') {
+			evt.preventDefault();
+			${openCommandPaletteAction()}
+		}`;
+	}
+	if (action === "new-chat") {
+		return `if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'o') {
+			evt.preventDefault();
+			${newChatAction()}
+		}`;
+	}
 	if (action === "sessions") {
-		return "@post('/sessions/list'); document.getElementById('session-dialog')?.showModal();";
+		return `if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'r') {
+			evt.preventDefault();
+			${openSessionDialogAction()}
+		}`;
 	}
 	return undefined;
+}
+
+function openCommandPaletteAction(): string {
+	return "document.getElementById('command-dialog')?.showModal(); requestAnimationFrame(() => document.getElementById('command-input')?.focus())";
+}
+
+function newChatAction(): string {
+	return "@post('/sessions/new'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus())";
+}
+
+function openSessionDialogAction(): string {
+	return "@post('/sessions/list'); document.getElementById('session-dialog')?.showModal(); requestAnimationFrame(() => document.getElementById('session-input')?.focus())";
 }
 
 export function renderPromptAction(state: AppState): string {
@@ -318,7 +347,11 @@ export function renderWorkspacePicker(state: AppState): string {
 			data-size="sm"
 			type="button"
 			aria-label={state.workspacePath}
-			data-workspace-trigger
+			data-on:click="
+				$workspacePath = '';
+				document.getElementById('workspace-dialog')?.showModal();
+				requestAnimationFrame(() => document.getElementById('workspace-input')?.focus());
+			"
 			data-tooltip="Workspace"
 			data-tooltip-delay
 		>
@@ -336,7 +369,14 @@ export function renderThinkingPicker(state: AppState): string {
 			<label class="sr-only" for="thinking-select-trigger">
 				Thinking level
 			</label>
-			<div id="thinking-select" class="dropdown-menu">
+			<div
+				id="thinking-select"
+				class="dropdown-menu"
+				data-on:keydown__window={`if (evt.altKey && evt.key.toLowerCase() === 't') {
+					evt.preventDefault();
+					@post('/thinking/cycle');
+				}`}
+			>
 				<button
 					type="button"
 					class="btn text-muted-foreground hover:text-foreground w-fit max-w-[10rem] font-mono"
@@ -442,7 +482,15 @@ export function renderModelPicker(state: AppState): string {
 			<label class="sr-only" for="model-select-trigger">
 				Model
 			</label>
-			<div id="model-select" class="dropdown-menu">
+			<div
+				id="model-select"
+				class="dropdown-menu"
+				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
+					evt.preventDefault();
+					document.getElementById('model-select-trigger')?.focus();
+					el.toggle?.();
+				}`}
+			>
 				<button
 					type="button"
 					class="btn text-muted-foreground hover:text-foreground w-fit font-mono"
@@ -494,6 +542,7 @@ export function renderModelPicker(state: AppState): string {
 										data-on:click={`
 											$model = ${JSON.stringify(value)};
 											@post('/model', { filterSignals: { include: /^model$/ } });
+											requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
 										`}
 									>
 										<span data-ignore data-indicator>
