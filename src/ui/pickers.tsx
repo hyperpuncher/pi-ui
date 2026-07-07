@@ -95,10 +95,15 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	return (
 		<div
 			role="menuitem"
+			class={["items-start gap-3", current && "bg-muted"]}
+			aria-current={current ? "true" : undefined}
 			data-filter={`${label} ${workspacePath}`}
 			data-keywords={`${label} ${workspacePath}`}
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
+			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">
+				{current ? "•" : ""}
+			</span>
 			<span class="min-w-0">
 				<span class="block truncate font-mono text-sm" safe>
 					{label}
@@ -107,7 +112,6 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 					{workspacePath}
 				</span>
 			</span>
-			{current && <span data-shortcut>Current</span>}
 		</div>
 	) as string;
 }
@@ -143,19 +147,22 @@ export function renderSessionPicker(state: AppState): string {
 				<span role="heading" id="session-menu-heading">
 					Recent sessions
 				</span>
-				{state.sessions.map(renderSessionRow)}
+				{state.sessions.map((session) =>
+					renderSessionRow(session, session.path === state.currentSessionPath),
+				)}
 			</div>
 		</div>
 	) as string;
 }
 
-function renderSessionRow(session: AppSessionSummary): string {
+function renderSessionRow(session: AppSessionSummary, current: boolean): string {
 	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
 	return (
 		<div
 			role="menuitem"
 			tabindex="-1"
-			class="items-start gap-4"
+			class={["items-start gap-3", current && "bg-muted"]}
+			aria-current={current ? "true" : undefined}
 			data-session-row
 			data-filter={haystack}
 			data-keywords={haystack}
@@ -164,6 +171,9 @@ function renderSessionRow(session: AppSessionSummary): string {
 				@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 			`}
 		>
+			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">
+				{current ? "•" : ""}
+			</span>
 			<span class="min-w-0 flex-1">
 				<span class="block truncate" safe>
 					{session.title}

@@ -433,7 +433,7 @@ export function renderThinkingPicker(state: AppState): string {
 									`}
 								>
 									<span data-ignore data-indicator>
-										✓
+										•
 									</span>
 									<span class="min-w-0">
 										<span class="block truncate">
@@ -556,7 +556,7 @@ export function renderModelPicker(state: AppState): string {
 										`}
 									>
 										<span data-ignore data-indicator>
-											✓
+											•
 										</span>
 										<span class="min-w-0">
 											<span class="block truncate font-medium">

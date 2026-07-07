@@ -154,6 +154,7 @@ export class AppState {
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	currentModel: string | undefined;
+	currentSessionPath: string | undefined;
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usage: AppUsage = { text: "$0.000 • 0 tokens" };
@@ -429,6 +430,11 @@ export class AppState {
 	setActivityText(activityText: string | undefined): void {
 		this.activityText = activityText;
 		this.broadcast();
+	}
+
+	setCurrentSessionPath(currentSessionPath: string | undefined): void {
+		this.currentSessionPath = currentSessionPath;
+		this.broadcast(refreshBasecoatComponentsScript("#session-dialog .command"));
 	}
 
 	setWorkspacePath(workspacePath: string): void {

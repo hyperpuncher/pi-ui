@@ -254,6 +254,7 @@ export class AgentHost {
 		this.unsubscribe?.();
 		const session = this.runtime.session;
 		this.state.setWorkspacePath(session.sessionManager.getCwd());
+		this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
 		this.toolMessageIds.clear();
 		this.toolCallArgs.clear();
 		this.toolStartedAt.clear();
