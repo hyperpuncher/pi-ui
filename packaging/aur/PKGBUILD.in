@@ -33,8 +33,6 @@ package() {
 #!/bin/sh
 exec /opt/pi-ui/pi-ui.AppImage \
   --enable-blink-features=MiddleClickAutoscroll \
-  --disable-frame-rate-limit \
-  --disable-gpu-vsync \
   --disable-spell-checking \
   "$@"
 EOF
