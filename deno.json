@@ -53,7 +53,7 @@
 		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
 		"@pierre/diffs": "npm:@pierre/diffs@^1.2.12",
 		"@starfederation/datastar-sdk": "npm:@starfederation/datastar-sdk@1.0.0",
-		"basecoat-css": "npm:basecoat-css@^1.0.1",
+		"basecoat-css": "npm:basecoat-css@^1.0.2",
 		"satteri": "npm:satteri@^0.9.4",
 		"tailwindcss": "npm:tailwindcss@^4.3.2",
 		"undici": "npm:undici@^8.7.0"
