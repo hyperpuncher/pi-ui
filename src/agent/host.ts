@@ -1061,7 +1061,7 @@ function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] 
 	const record = asRecord(args);
 	if (toolName === "bash" && record) {
 		const timeout =
-			typeof record.timeout === "number" ? ` (timeout ${record.timeout}s)` : "";
+			typeof record.timeout === "number" ? ` timeout ${record.timeout}s` : "";
 		return [
 			{ text: `$ ${stringValue(record.command) || "..."}` },
 			...(timeout ? [{ text: timeout, tone: "muted" } as const] : []),
@@ -1084,7 +1084,7 @@ function toolTitle(
 	const record = asRecord(args);
 	if (toolName === "bash" && record) {
 		const timeout =
-			typeof record.timeout === "number" ? ` (timeout ${record.timeout}s)` : "";
+			typeof record.timeout === "number" ? ` timeout ${record.timeout}s` : "";
 		return `$ ${stringValue(record.command) || "..."}${timeout}`;
 	}
 
@@ -1109,9 +1109,9 @@ function toolMeta(toolName: string, args: unknown): string | undefined {
 }
 
 function toolEndMeta(startedAt: number | undefined): string | undefined {
-	return startedAt === undefined
-		? undefined
-		: `Took ${formatDuration(Date.now() - startedAt)}`;
+	if (startedAt === undefined) return undefined;
+	const duration = formatDuration(Date.now() - startedAt);
+	return duration === "0.0s" ? undefined : duration;
 }
 
 function formatDuration(ms: number): string {

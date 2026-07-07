@@ -4,7 +4,6 @@ import type {
 	AppMessageTitlePart,
 	AppSessionSummary,
 } from "../state/app-state.ts";
-import { formatTime } from "../utils/locale.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 
 export function renderMessages(
@@ -277,7 +276,6 @@ export function renderMessage(message: AppMessage): string {
 				</span>
 				<span class="text-muted-foreground flex shrink-0 items-center gap-3 text-xs">
 					{message.meta && <span safe>{message.meta}</span>}
-					<time>{formatTime(message.timestamp)}</time>
 				</span>
 			</header>
 			{hasToolBody
