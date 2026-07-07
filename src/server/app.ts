@@ -53,6 +53,21 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				return accepted ? signalsResponse({ prompt: "" }) : noContent();
 			}
 
+			if (request.method === "POST" && url.pathname === "/prompt/follow-up") {
+				const signals = await readSignals(request);
+				const accepted = host
+					? await host.prompt(signals.prompt as string, {
+							streamingBehavior: "followUp",
+						})
+					: false;
+				return accepted ? signalsResponse({ prompt: "" }) : noContent();
+			}
+
+			if (request.method === "POST" && url.pathname === "/prompt/dequeue") {
+				const queued = host?.restoreQueuedMessages() ?? "";
+				return queued ? signalsResponse({ prompt: queued }) : noContent();
+			}
+
 			if (request.method === "POST" && url.pathname === "/abort") {
 				await host?.abort();
 				return noContent();

@@ -15,6 +15,7 @@ import {
 } from "../ui/pickers.tsx";
 import {
 	renderPromptAction,
+	renderPromptQueue,
 	renderPromptStatus,
 	renderModelPicker,
 	renderThinkingPicker,
@@ -160,6 +161,8 @@ export class AppState {
 	usage: AppUsage = { text: "$0.000 • 0 tokens" };
 	emptyChatHint = randomEmptyChatHint();
 	activityText: string | undefined;
+	queuedSteeringMessages: string[] = [];
+	queuedFollowUpMessages: string[] = [];
 	workspacePath = defaultWorkspacePath();
 	recentWorkspaces: string[] = [];
 
@@ -433,6 +436,12 @@ export class AppState {
 		this.broadcastSignals();
 	}
 
+	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void {
+		this.queuedSteeringMessages = [...steering];
+		this.queuedFollowUpMessages = [...followUp];
+		this.broadcast();
+	}
+
 	setCurrentSessionPath(currentSessionPath: string | undefined): void {
 		this.currentSessionPath = currentSessionPath;
 		this.broadcast(refreshBasecoatComponentsScript("#session-dialog .command"));
@@ -513,6 +522,7 @@ export class AppState {
 		return (
 			this.renderMessagesElement() +
 			renderPromptAction(this) +
+			renderPromptQueue(this) +
 			renderPromptStatus(this) +
 			renderWorkspacePicker(this) +
 			renderWorkspaceDialogMenu(this) +

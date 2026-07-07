@@ -88,7 +88,10 @@ export class AgentHost {
 		return host;
 	}
 
-	async prompt(text: string): Promise<boolean> {
+	async prompt(
+		text: string,
+		options: { streamingBehavior?: "steer" | "followUp" } = {},
+	): Promise<boolean> {
 		const trimmed = text.trim();
 		if (!trimmed) {
 			return false;
@@ -121,7 +124,7 @@ export class AgentHost {
 		this.runtime.session
 			.prompt(trimmed, {
 				streamingBehavior: this.runtime.session.isStreaming
-					? "followUp"
+					? (options.streamingBehavior ?? "steer")
 					: undefined,
 				preflightResult: resolveAccepted,
 			})
@@ -135,6 +138,12 @@ export class AgentHost {
 
 	async abort(): Promise<void> {
 		await this.runtime.session.abort();
+	}
+
+	restoreQueuedMessages(): string {
+		const { steering, followUp } = this.runtime.session.clearQueue();
+		this.state.setQueuedMessages([], []);
+		return [...steering, ...followUp].join("\n\n");
 	}
 
 	async newSession(): Promise<boolean> {
@@ -392,6 +401,9 @@ export class AgentHost {
 				this.state.setActivityText(undefined);
 				this.syncUsage();
 				this.refreshCodexUsage(true);
+				break;
+			case "queue_update":
+				this.state.setQueuedMessages(event.steering, event.followUp);
 				break;
 			case "auto_retry_start":
 				this.state.setActivityText(

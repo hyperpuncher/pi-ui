@@ -145,6 +145,7 @@ function isSlashPickerOpen() {
 }
 
 function bindFilePicker() {
+	window.piUiIsFilePickerOpen = isFilePickerOpen;
 	document.addEventListener("keydown", (event) => {
 		if (event.key === "Escape" && isFilePickerOpen()) {
 			event.preventDefault();
@@ -716,13 +717,9 @@ function bindPickerKeyboard() {
 				focusFileRow(event.key === "ArrowDown" ? 1 : -1);
 				return;
 			}
-			if (event.key === "Enter" && !event.shiftKey) {
+			if (event.key === "Enter" && !event.shiftKey && isFilePickerOpen()) {
 				event.preventDefault();
-				if (isFilePickerOpen()) {
-					runBestFileRow();
-				} else {
-					document.querySelector("[data-send-trigger]")?.click();
-				}
+				runBestFileRow();
 				return;
 			}
 		}

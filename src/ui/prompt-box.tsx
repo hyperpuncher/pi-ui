@@ -27,6 +27,7 @@ export function renderPromptBox(state: AppState): string {
 					class="max-h-72 list-none overflow-y-auto p-1"
 				/>
 			</div>
+			{renderPromptQueue(state)}
 			<textarea
 				id="prompt-input"
 				class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1"
@@ -44,6 +45,21 @@ export function renderPromptBox(state: AppState): string {
 				) {
 					evt.preventDefault();
 					el.blur();
+				}
+				if (evt.altKey && evt.key === 'ArrowUp') {
+					evt.preventDefault();
+					@post('/prompt/dequeue');
+				}
+				if (
+					evt.key === 'Enter' &&
+					!evt.shiftKey &&
+					$prompt.trim() !== '' &&
+					!window.piUiIsFilePickerOpen?.()
+				) {
+					evt.preventDefault();
+					evt.altKey
+						? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
+						: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
 				}`}
 			></textarea>
 			<footer
@@ -83,6 +99,34 @@ export function renderPromptBox(state: AppState): string {
 					{renderPromptAction(state)}
 				</div>
 			</footer>
+		</div>
+	) as string;
+}
+
+export function renderPromptQueue(state: AppState): string {
+	return (<div id="prompt-queue">{renderQueuedMessages(state)}</div>) as string;
+}
+
+function renderQueuedMessages(state: AppState): string {
+	const items = [
+		...state.queuedSteeringMessages.map((text) => ["Steering", text] as const),
+		...state.queuedFollowUpMessages.map((text) => ["Follow-up", text] as const),
+	];
+	if (items.length === 0) return "";
+	return (
+		<div class="border-border/60 text-muted-foreground mb-2 border-b pb-2 text-xs">
+			<div class="flex items-center justify-between gap-2 px-1">
+				<span>Queued messages</span>
+				<ShortcutKbd shortcut="alt ↑" />
+			</div>
+			<div class="mt-1 flex max-h-24 flex-col gap-1 overflow-y-auto px-1">
+				{items.map(([label, text]) => (
+					<div class="truncate">
+						<span class="text-foreground">{label}:</span>{" "}
+						<span safe>{text}</span>
+					</div>
+				))}
+			</div>
 		</div>
 	) as string;
 }
