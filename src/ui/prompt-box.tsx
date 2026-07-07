@@ -243,9 +243,12 @@ export function renderPromptAction(state: AppState): string {
 
 export function renderPromptStatus(state: AppState): string {
 	return (
-		<span id="prompt-status" class="inline-flex min-w-0 shrink-0 items-center gap-2">
+		<span
+			id="prompt-status"
+			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
+		>
 			{state.activityText && (
-				<span class="text-muted-foreground inline-flex min-w-0 truncate font-mono text-xs">
+				<span class="text-muted-foreground inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none">
 					<span class="inline-flex items-center gap-1.5">
 						{loaderIcon()}
 						<span safe>{state.activityText}</span>
