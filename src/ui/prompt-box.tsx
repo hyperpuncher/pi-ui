@@ -7,7 +7,8 @@ export function renderPromptBox(state: AppState): string {
 	return (
 		<div
 			id="prompt-box"
-			class="bg-card text-card-foreground ring-foreground/10 fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible! rounded-xl p-3 text-sm shadow-lg ring-1"
+			class="input-group bg-card text-card-foreground ring-foreground/10 focus-within:ring-foreground/10 fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible rounded-xl border-transparent p-3 text-sm shadow-lg ring-1 transition-none focus-within:border-transparent focus-within:ring-1"
+			data-orientation="vertical"
 		>
 			<div
 				id="prompt-slash-popover"
@@ -28,13 +29,16 @@ export function renderPromptBox(state: AppState): string {
 			</div>
 			<textarea
 				id="prompt-input"
-				class="block max-h-44 w-full resize-none border-0 bg-transparent p-1 outline-none"
+				class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1"
 				placeholder="Ask pi anything..."
 				aria-label="Message"
 				rows="1"
 				data-bind:prompt
 			></textarea>
-			<div class="flex flex-wrap items-center justify-between gap-2">
+			<footer
+				class="flex flex-wrap items-center justify-between gap-2 p-0"
+				data-align="end"
+			>
 				<div
 					class="flex shrink-0 items-center gap-0.5"
 					aria-label="Message tools"
@@ -67,7 +71,7 @@ export function renderPromptBox(state: AppState): string {
 					{renderThinkingPicker(state)}
 					{renderPromptAction(state)}
 				</div>
-			</div>
+			</footer>
 		</div>
 	) as string;
 }

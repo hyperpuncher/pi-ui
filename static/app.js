@@ -7,7 +7,6 @@ bindAppCommands();
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusPrompt();
-	bindPromptAutosize();
 	bindSlashPicker();
 	bindFilePicker();
 	bindMessagesAutoscroll();
@@ -553,28 +552,6 @@ function bindDebugFps() {
 		requestAnimationFrame(tick);
 	};
 	requestAnimationFrame(tick);
-}
-
-function bindPromptAutosize() {
-	const resize = () => {
-		const input = document.getElementById("prompt-input");
-		if (!(input instanceof HTMLTextAreaElement)) {
-			return;
-		}
-		input.style.height = "auto";
-		input.style.height = `${input.scrollHeight}px`;
-	};
-
-	document.addEventListener("input", (event) => {
-		if (
-			event.target instanceof HTMLTextAreaElement &&
-			event.target.id === "prompt-input"
-		) {
-			resize();
-		}
-	});
-
-	resize();
 }
 
 function bindVimControls() {
