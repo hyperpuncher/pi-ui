@@ -276,20 +276,18 @@ export function renderMessage(message: AppMessage): string {
 		>
 			<header
 				class={[
-					"flex items-start justify-between gap-4 text-sm leading-tight",
+					"flex items-start gap-2 text-sm leading-tight",
 					hasToolBody ? "mb-3" : "",
 				]}
 			>
-				<span class="flex min-w-0 items-start gap-2 leading-tight">
-					<span
-						class={["mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", dotClass]}
-					/>
-					<span class="min-w-0 leading-tight font-medium wrap-anywhere">
-						{renderToolTitle(title, message.titleParts)}
-					</span>
-				</span>
-				<span class="text-muted-foreground flex shrink-0 items-center gap-3 text-xs">
-					{message.meta && <span safe>{message.meta}</span>}
+				<span class={["mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
+				<span class="min-w-0 leading-tight font-medium wrap-anywhere">
+					{renderToolTitle(title, message.titleParts)}
+					{message.meta && (
+						<span class="text-muted-foreground ml-1 text-xs font-normal" safe>
+							{message.meta}
+						</span>
+					)}
 				</span>
 			</header>
 			{hasToolBody
