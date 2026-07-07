@@ -16,11 +16,11 @@ export function renderMessages(
 	return (
 		<main
 			id="messages"
-			class="min-h-0 overflow-y-auto mask-b-from-95% px-[max(1rem,calc((100vw-46rem)/2))] pt-24 pb-48"
+			class="min-h-0 overflow-y-auto mask-b-from-95% px-[max(1rem,calc((100vw-52rem)/2))] pt-24 pb-48"
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
-			<div class="mx-auto flex w-full max-w-3xl flex-col gap-8">
+			<div class="mx-auto flex w-full max-w-[52rem] flex-col gap-8">
 				{messages.length === 0
 					? renderEmptyMessages(emptyHint, sessions.slice(0, 3))
 					: messages.map((message, index) => (
