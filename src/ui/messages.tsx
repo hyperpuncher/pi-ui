@@ -179,7 +179,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "assistant") {
 		return (
 			<article
-				class="[&_code]:bg-muted max-w-full self-start leading-relaxed [&_.shiki]:my-4 [&_.shiki]:overflow-auto [&_.shiki]:rounded-lg [&_.shiki]:p-4 [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap [&_.table-container]:my-4 [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:pl-6"
+				class="markdown-content max-w-full self-start"
 				data-message-id={message.id}
 			>
 				{message.renderedHtml ? (
@@ -196,7 +196,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "thought") {
 		return (
 			<article
-				class="text-muted-foreground [&_code]:bg-muted max-w-3xl self-start text-sm leading-relaxed italic [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_ul]:list-disc [&_ul]:pl-6"
+				class="markdown-content text-muted-foreground max-w-3xl self-start text-sm italic"
 				data-message-id={message.id}
 			>
 				{message.renderedHtml ? (
@@ -242,7 +242,7 @@ export function renderMessage(message: AppMessage): string {
 						)}
 						<span class="ml-2 text-xs">click to expand</span>
 					</summary>
-					<div class="[&_code]:bg-muted mt-3 [&_a]:underline [&_blockquote]:border-l [&_blockquote]:pl-4 [&_code]:rounded [&_code]:px-1 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_p]:whitespace-pre-wrap [&_ul]:list-disc [&_ul]:pl-6">
+					<div class="markdown-content mt-3">
 						{message.renderedHtml ? (
 							<div>{message.renderedHtml}</div>
 						) : (

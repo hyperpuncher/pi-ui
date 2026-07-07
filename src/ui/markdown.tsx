@@ -38,7 +38,12 @@ const basecoatTables = defineHastPlugin({
 				ctx.setProperty(
 					node,
 					"className",
-					classes(node.properties.className, ["table", "text-sm"]),
+					classes(node.properties.className, [
+						"table",
+						"w-full",
+						"table-fixed",
+						"text-sm",
+					]),
 				);
 				ctx.wrapNode(node, {
 					type: "element",
@@ -53,10 +58,13 @@ const basecoatTables = defineHastPlugin({
 					node,
 					"className",
 					classes(node.properties.className, [
+						"break-words",
 						"px-3",
 						"py-2",
 						"text-left",
+						"align-top",
 						"font-semibold",
+						"whitespace-normal",
 					]),
 				);
 			}
@@ -65,7 +73,13 @@ const basecoatTables = defineHastPlugin({
 				ctx.setProperty(
 					node,
 					"className",
-					classes(node.properties.className, ["px-3", "py-2"]),
+					classes(node.properties.className, [
+						"break-words",
+						"px-3",
+						"py-2",
+						"align-top",
+						"whitespace-normal",
+					]),
 				);
 			}
 		},

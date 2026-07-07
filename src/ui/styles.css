@@ -38,6 +38,105 @@
 }
 
 @layer components {
+	.markdown-content {
+		line-height: 1.7;
+	}
+
+	.markdown-content > :first-child {
+		margin-top: 0;
+	}
+
+	.markdown-content > :last-child {
+		margin-bottom: 0;
+	}
+
+	.markdown-content :where(h1, h2, h3, h4, h5, h6) {
+		margin-block: 1.4em 0.45em;
+		font-weight: 600;
+		line-height: 1.2;
+	}
+
+	.markdown-content h1 {
+		font-size: var(--text-2xl);
+	}
+
+	.markdown-content h2 {
+		font-size: var(--text-xl);
+	}
+
+	.markdown-content h3 {
+		font-size: var(--text-lg);
+	}
+
+	.markdown-content :where(p, ul, ol, blockquote, .table-container) {
+		margin-block: 0.75rem;
+	}
+
+	.markdown-content p {
+		white-space: pre-wrap;
+	}
+
+	.markdown-content :where(ul, ol) {
+		padding-left: 1.5rem;
+	}
+
+	.markdown-content ul {
+		list-style: disc;
+	}
+
+	.markdown-content ol {
+		list-style: decimal;
+	}
+
+	.markdown-content li {
+		margin-block: 0.25rem;
+	}
+
+	.markdown-content li::marker {
+		color: var(--muted-foreground);
+	}
+
+	.markdown-content blockquote {
+		border-left: 2px solid var(--border);
+		padding-left: 1rem;
+		color: var(--muted-foreground);
+	}
+
+	.markdown-content a {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.markdown-content code:not(pre code) {
+		border-radius: var(--radius-sm);
+		background: var(--muted);
+		padding-inline: 0.25rem;
+	}
+
+	.markdown-content pre code {
+		background: transparent;
+		padding: 0;
+	}
+
+	.markdown-content .shiki {
+		margin-block: 1rem;
+		overflow: auto;
+		border-radius: var(--radius-lg);
+		padding: 1rem;
+		font-size: var(--text-sm);
+		line-height: 1.625;
+		word-break: break-word;
+		white-space: pre-wrap;
+	}
+
+	.markdown-content .shiki code {
+		white-space: pre-wrap;
+	}
+
+	.markdown-content hr {
+		display: none;
+	}
+
 	[data-tooltip][data-tooltip-suppressed]::before,
 	[data-tooltip][data-tooltip-suppressed]::after {
 		display: none;
