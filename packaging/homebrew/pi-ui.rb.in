@@ -15,4 +15,10 @@ cask "pi-ui" do
   end
 
   app "pi-ui.app"
+
+  postflight do
+    system_command "/usr/bin/xattr",
+      args: ["-dr", "com.apple.quarantine", "#{appdir}/pi-ui.app"],
+      must_succeed: false
+  end
 end
