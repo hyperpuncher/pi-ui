@@ -7,7 +7,7 @@ export type FileSuggestion = {
 	isDirectory: boolean;
 };
 
-const maxDepth = 8;
+const maxDepth = 0;
 const maxScanned = 5_000;
 const maxCollected = 30;
 const maxResults = 20;
@@ -41,6 +41,8 @@ async function searchWithFd(
 		scoped.baseDir,
 		"--max-results",
 		String(fdMaxResults),
+		"--max-depth",
+		"1",
 		"--type",
 		"f",
 		"--type",
@@ -54,9 +56,6 @@ async function searchWithFd(
 		"--exclude",
 		".git/**",
 	];
-	if (query.includes("/")) {
-		args.push("--full-path");
-	}
 	if (scoped.query) {
 		args.push(buildFdPathQuery(scoped.query));
 	}
