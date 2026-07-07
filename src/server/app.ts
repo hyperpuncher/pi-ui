@@ -125,7 +125,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				fileSearch.dispose();
 				fileSearch = await FileSearchHost.create(workspacePath);
 				return scriptResponse(
-					"window.piUiScrollMessagesBottom?.(); document.getElementById('prompt-input')?.focus({ preventScroll: true })",
+					"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
 				);
 			}
 
