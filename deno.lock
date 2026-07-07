@@ -23,7 +23,8 @@
     "npm:oxlint@*": "1.72.0",
     "npm:satteri@~0.9.4": "0.9.4",
     "npm:shiki@4.3.1": "4.3.1",
-    "npm:tailwindcss@^4.3.2": "4.3.2"
+    "npm:tailwindcss@^4.3.2": "4.3.2",
+    "npm:undici@^8.7.0": "8.7.0"
   },
   "jsr": {
     "@std/cli@1.0.32": {
@@ -446,7 +447,7 @@
         "proper-lockfile",
         "semver",
         "typebox",
-        "undici",
+        "undici@8.5.0",
         "yaml"
       ],
       "optionalDependencies": [
@@ -1883,6 +1884,9 @@
     "undici@8.5.0": {
       "integrity": "sha512-xamtWoB1EshgjpmlXd7GGm2VfdDtw1+rD8uhry8pSNW3If6S8E0m2T2+orSKeZXEn/aPJMviCpDBA65WJt8zhg=="
     },
+    "undici@8.7.0": {
+      "integrity": "sha512-N7iQtfyLhIMOFgQubvmLV26svHpO0bqKnAiWotTQCVKCmWrcGbBotPuW1x+xwYZ2VHdSTVUfPQQnlEt1/LouTQ=="
+    },
     "unist-util-is@6.0.1": {
       "integrity": "sha512-LsiILbtBETkDz8I9p1dQ0uyRUWuaQzd/cuEeS1hoRSyW5E5XGmTzlwY1OrNzzakGowI9Dr/I8HVaw4hTtnxy8g==",
       "dependencies": [
@@ -1970,7 +1974,8 @@
       "npm:basecoat-css@^1.0.1",
       "npm:satteri@~0.9.4",
       "npm:shiki@4.3.1",
-      "npm:tailwindcss@^4.3.2"
+      "npm:tailwindcss@^4.3.2",
+      "npm:undici@^8.7.0"
     ]
   }
 }

@@ -23,7 +23,7 @@ import type {
 	AppUsage,
 	AppThinkingLevel,
 } from "../state/app-state.ts";
-import { applyHttpProxySetting } from "../utils/http-proxy.ts";
+import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 import {
@@ -65,6 +65,7 @@ export class AgentHost {
 		}) => {
 			const services = await createAgentSessionServices({ cwd });
 			applyHttpProxySetting(services.settingsManager.getGlobalSettings().httpProxy);
+			configureHttpDispatcher(services.settingsManager.getHttpIdleTimeoutMs());
 			return {
 				...(await createAgentSessionFromServices({
 					services,

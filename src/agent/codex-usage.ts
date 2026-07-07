@@ -1,7 +1,5 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
-import { createProxyClient } from "../utils/http-proxy.ts";
-
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";
 const codexUsageTimeoutMs = 15_000;
@@ -43,18 +41,15 @@ export async function fetchCodexUsage(
 
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), codexUsageTimeoutMs);
-	const client = createProxyClient(codexUsageUrl);
 	try {
 		const response = await fetch(codexUsageUrl, {
 			headers,
 			signal: controller.signal,
-			...(client ? { client } : {}),
 		});
 		if (!response.ok) return undefined;
 		return parseCodexUsage(await response.json());
 	} finally {
 		clearTimeout(timeout);
-		client?.close();
 	}
 }
 

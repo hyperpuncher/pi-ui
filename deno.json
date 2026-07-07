@@ -56,7 +56,8 @@
 		"basecoat-css": "npm:basecoat-css@^1.0.1",
 		"satteri": "npm:satteri@^0.9.4",
 		"shiki": "npm:shiki@4.3.1",
-		"tailwindcss": "npm:tailwindcss@^4.3.2"
+		"tailwindcss": "npm:tailwindcss@^4.3.2",
+		"undici": "npm:undici@^8.7.0"
 	},
 	"allowScripts": [
 		"npm:@google/genai@1.52.0",
