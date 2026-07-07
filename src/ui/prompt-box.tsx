@@ -151,6 +151,16 @@ export function renderPromptAction(state: AppState): string {
 				data-size="icon"
 				type="button"
 				data-on:click="@post('/abort')"
+				data-on:keydown__window="if (
+					evt.key === 'Escape' &&
+					!evt.ctrlKey &&
+					!evt.metaKey &&
+					!evt.altKey &&
+					!evt.shiftKey
+				) {
+					evt.preventDefault();
+					@post('/abort');
+				}"
 				data-tooltip="Abort"
 				aria-label="Abort"
 			>
