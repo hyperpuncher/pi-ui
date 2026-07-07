@@ -2,6 +2,7 @@ import { appCommands } from "../commands/registry.ts";
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream, refreshBasecoatComponentsScript } from "../server/datastar.ts";
 import { renderDebugOverlay } from "../ui/debug.tsx";
+import { renderPierreDiff } from "../ui/diffs.ts";
 import {
 	renderCodeFinal,
 	renderMarkdownFinal,
@@ -323,6 +324,7 @@ export class AppState {
 		this.refreshVisibleMessages();
 		this.broadcast();
 		this.renderVisibleDiffs();
+		this.renderVisibleMarkdownFinals();
 	}
 
 	loadOlderMessages(options: { broadcast?: boolean } = {}): boolean {
@@ -336,6 +338,7 @@ export class AppState {
 			this.broadcast();
 		}
 		this.renderVisibleDiffs();
+		this.renderVisibleMarkdownFinals();
 		return true;
 	}
 
@@ -377,6 +380,14 @@ export class AppState {
 				!message.renderedHtml
 			) {
 				void this.renderCode(message.id, "diff");
+			}
+		}
+	}
+
+	private renderVisibleMarkdownFinals(): void {
+		for (const message of this.messages) {
+			if (rendersMarkdown(message.role) && message.text.trim()) {
+				void this.renderAssistantMarkdown(message.id);
 			}
 		}
 	}
@@ -491,7 +502,9 @@ export class AppState {
 		}
 
 		const text = message.text;
-		const renderedHtml = await renderCodeFinal(text, language, { chrome: false });
+		const renderedHtml =
+			(language === "diff" ? await renderPierreDiff(text) : undefined) ??
+			(await renderCodeFinal(text, language, { chrome: false }));
 		const current = this.transcriptMessages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
 			return;

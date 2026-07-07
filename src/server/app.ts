@@ -2,7 +2,7 @@ import { serveDir } from "jsr:@std/http/file-server";
 
 import { AgentHost } from "../agent/host.ts";
 import { AppState } from "../state/app-state.ts";
-import { preloadMarkdownHighlighter } from "../ui/markdown.tsx";
+import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { renderPage } from "../ui/page.tsx";
 import { renderTreePicker } from "../ui/tree-picker.tsx";
 import {
@@ -19,7 +19,7 @@ const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).path
 const staticRoot = new URL("../../static", import.meta.url).pathname;
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
-	await preloadMarkdownHighlighter();
+	await preloadPierreHighlighter();
 	const state = new AppState();
 	let host = await AgentHost.create(state).catch((error: unknown) => {
 		state.appendMessage(

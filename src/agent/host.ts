@@ -1180,11 +1180,11 @@ function formatToolResult(
 ): { text: string; format?: "pre" | "diff" } {
 	const record = asRecord(result);
 	const details = asRecord(record?.details);
-	if (toolName === "edit" && typeof details?.diff === "string") {
-		return { text: details.diff, format: "diff" };
-	}
 	if (toolName === "edit" && typeof details?.patch === "string") {
 		return { text: details.patch, format: "diff" };
+	}
+	if (toolName === "edit" && typeof details?.diff === "string") {
+		return { text: details.diff, format: "diff" };
 	}
 	if (toolName === "read") {
 		return {

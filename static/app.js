@@ -14,6 +14,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindPickerKeyboard();
 	bindVimControls();
 	bindDebugFps();
+	hydratePierreDiffs();
 	scrollMessagesBottomSoon();
 });
 
@@ -598,6 +599,16 @@ function startVimiumTargetScroll() {
 	vimScrollAnimation = requestAnimationFrame(tick);
 }
 
+function hydratePierreDiffs() {
+	for (const host of document.querySelectorAll("[data-pierre-diff]")) {
+		if (!(host instanceof HTMLElement) || host.shadowRoot) continue;
+		const template = host.querySelector('template[shadowrootmode="open"]');
+		if (!(template instanceof HTMLTemplateElement)) continue;
+		host.attachShadow({ mode: "open" }).append(template.content.cloneNode(true));
+		template.remove();
+	}
+}
+
 function bindMessagesAutoscroll() {
 	document.addEventListener(
 		"scroll",
@@ -615,6 +626,7 @@ function bindMessagesAutoscroll() {
 
 	let autoscrollFrame;
 	const observer = new MutationObserver(() => {
+		hydratePierreDiffs();
 		if (autoscrollFrame) return;
 		autoscrollFrame = requestAnimationFrame(() => {
 			autoscrollFrame = undefined;
@@ -685,10 +697,13 @@ function bindCodeCopy() {
 		if (!(target instanceof Element)) return;
 		const button = target.closest("[data-copy-code]");
 		if (!(button instanceof HTMLButtonElement)) return;
-		const code = button.closest("[data-code-block]")?.querySelector("code");
-		if (!code?.textContent) return;
+		const block = button.closest("[data-code-block]");
+		const source = block?.querySelector("[data-code-source]");
+		const code = block?.querySelector("code");
+		const text = source?.textContent || code?.textContent;
+		if (!text) return;
 		try {
-			await navigator.clipboard.writeText(code.textContent);
+			await navigator.clipboard.writeText(text);
 			const previous = button.textContent;
 			button.textContent = "Copied";
 			setTimeout(() => {

@@ -30,7 +30,7 @@ export function renderPromptBox(state: AppState): string {
 			{renderPromptQueue(state)}
 			<textarea
 				id="prompt-input"
-				class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1"
+				class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 text-[15px]"
 				placeholder="Ask pi anything..."
 				aria-label="Message"
 				rows="1"

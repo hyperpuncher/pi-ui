@@ -125,16 +125,18 @@ function renderOlderMessagesTrigger() {
 
 function renderPreOutput(text: string) {
 	return (
-		<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-sm bg-transparent text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
-			<code safe>{text}</code>
-		</pre>
+		<div class="border-border/60 rounded-t-md border-t bg-[var(--code-background)] p-3">
+			<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-md bg-transparent text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
+				<code safe>{text}</code>
+			</pre>
+		</div>
 	);
 }
 
 function renderDiffOutput(message: AppMessage) {
 	if (message.renderedHtml) {
 		return (
-			<div class="max-h-96 overflow-auto rounded-sm bg-transparent [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			<div class="diff-output border-border/60 max-h-96 overflow-auto rounded-md border-t [&_.pierre-diff]:block [&_.pierre-diff]:min-w-0 [&_.pierre-diff]:overflow-hidden [&_.pierre-diff]:rounded-md [&_.pierre-diff+_.pierre-diff]:mt-3 [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
 				{message.renderedHtml}
 			</div>
 		);
@@ -227,7 +229,7 @@ export function renderMessage(message: AppMessage): string {
 		const label = message.role === "skill" ? "[skill]" : "[compaction]";
 		return (
 			<article
-				class="bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-sm p-3 text-sm"
+				class="bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-md p-3 text-sm"
 				data-message-id={message.id}
 			>
 				<details>
@@ -259,7 +261,7 @@ export function renderMessage(message: AppMessage): string {
 	const title = message.title ?? "Tool";
 	const hasToolBody = message.text.trim().length > 0;
 	const stateClass =
-		message.state === "error" ? "border-destructive/40" : "border-transparent";
+		message.state === "error" ? "border-destructive/40" : "border-border/60";
 	const dotClass =
 		message.state === "running"
 			? "bg-muted-foreground animate-pulse"
@@ -269,15 +271,15 @@ export function renderMessage(message: AppMessage): string {
 	return (
 		<article
 			class={[
-				"bg-muted/40 dark:bg-muted/55 w-full max-w-3xl self-start rounded-sm border p-3",
+				"bg-muted/40 dark:bg-muted/55 w-full max-w-3xl self-start overflow-hidden rounded-md border",
 				stateClass,
 			]}
 			data-message-id={message.id}
 		>
 			<header
 				class={[
-					"flex items-start gap-2 text-sm leading-tight",
-					hasToolBody ? "mb-3" : "",
+					"flex items-start gap-2 px-3 py-2 text-sm leading-tight",
+					hasToolBody ? "" : "",
 				]}
 			>
 				<span class={["mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />

@@ -32,12 +32,45 @@
 		--code-background: color-mix(in oklab, var(--muted) 55%, transparent);
 	}
 
-	html.dark .shiki span {
+	html.dark .shiki span,
+	html.dark .streaming-token {
 		color: var(--shiki-dark) !important;
+	}
+
+	html.dark .streaming-token {
+		background-color: var(--shiki-dark-bg, transparent) !important;
 	}
 }
 
 @layer components {
+	.diff-output {
+		background: color-mix(in oklab, var(--muted) 40%, transparent);
+		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
+			color-mix(in oklab, var(--muted) 40%, transparent);
+	}
+
+	html.dark .diff-output {
+		background: color-mix(in oklab, var(--muted) 55%, transparent);
+		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
+			color-mix(in oklab, var(--muted) 55%, transparent);
+	}
+
+	.diff-output::-webkit-scrollbar,
+	.diff-output::-webkit-scrollbar-track,
+	.diff-output::-webkit-scrollbar-corner {
+		background: color-mix(in oklab, var(--muted) 40%, transparent);
+	}
+
+	html.dark .diff-output::-webkit-scrollbar,
+	html.dark .diff-output::-webkit-scrollbar-track,
+	html.dark .diff-output::-webkit-scrollbar-corner {
+		background: color-mix(in oklab, var(--muted) 55%, transparent);
+	}
+
+	.diff-output::-webkit-scrollbar-thumb {
+		background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+	}
+
 	.markdown-content {
 		line-height: 1.7;
 		overflow-wrap: anywhere;
@@ -117,6 +150,39 @@
 	.markdown-content pre code {
 		background: transparent;
 		padding: 0;
+	}
+
+	.code-block .plain-code {
+		padding-block: 0 !important;
+	}
+
+	.streaming-code {
+		display: grid;
+		grid-template-columns: minmax(2ch, max-content) minmax(0, 1fr);
+		column-gap: 1rem;
+	}
+
+	.streaming-code-line-number {
+		color: var(--muted-foreground);
+		text-align: right;
+		user-select: none;
+	}
+
+	.streaming-code-line {
+		min-width: 0;
+		white-space: pre-wrap;
+	}
+
+	.markdown-content .pierre-code {
+		display: block;
+		margin-block: 1rem;
+		overflow: hidden;
+		border-radius: var(--radius-lg);
+	}
+
+	.markdown-content .code-block .pierre-code {
+		margin-block: 0;
+		border-radius: 0;
 	}
 
 	.markdown-content .shiki {

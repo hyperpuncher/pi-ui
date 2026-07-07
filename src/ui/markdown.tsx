@@ -1,20 +1,24 @@
-import { ShikiStreamTokenizer } from "@shikijs/stream";
+import {
+	DEFAULT_THEMES,
+	getHighlighterIfLoaded,
+	ShikiStreamTokenizer,
+	type SupportedLanguages,
+	type ThemedToken,
+} from "@pierre/diffs";
 import {
 	defineHastPlugin,
 	defineMdastPlugin,
 	markdownToHtml,
 	type CompileOptions,
 } from "satteri";
-import { createHighlighter, type Highlighter, type ThemedToken } from "shiki";
 
 import { escapeHtml } from "../utils/html.ts";
+import { pierreLanguages, renderPierreCode } from "./diffs.ts";
 
 const streamingCache = new Map<string, string>();
 const highlightedCache = new Map<string, string>();
-const codeBlockCache = new Map<string, string>();
+const pierreCodeBlockCache = new Map<string, string>();
 const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
-let highlighter: Highlighter | undefined;
-let highlighterPromise: Promise<Highlighter> | undefined;
 
 type StreamingCodeBlockState = {
 	language: string;
@@ -126,10 +130,6 @@ const compileOptions = {
 	mdastPlugins: [stripRawHtml],
 } satisfies CompileOptions;
 
-export async function preloadMarkdownHighlighter(): Promise<void> {
-	highlighter = await getHighlighter();
-}
-
 export function renderMarkdownStreaming(
 	markdown: string,
 	options: { cacheKey?: string } = {},
@@ -139,11 +139,10 @@ export function renderMarkdownStreaming(
 	if (cached) {
 		return cached;
 	}
-	const html = highlighter
-		? highlightCodeBlocks(compileMarkdown(markdown), highlighter, {
-				cacheKey: options.cacheKey,
-			})
-		: compileMarkdown(markdown);
+	const html = renderStreamingCodeBlocks(
+		compileMarkdown(markdown),
+		options.cacheKey ?? "",
+	);
 	streamingCache.set(cacheKey, html);
 	return html;
 }
@@ -153,7 +152,7 @@ export async function renderMarkdownFinal(markdown: string): Promise<string> {
 	if (cached) {
 		return cached;
 	}
-	const html = highlightCodeBlocks(compileMarkdown(markdown), await getHighlighter());
+	const html = await highlightCodeBlocksFinal(compileMarkdown(markdown));
 	highlightedCache.set(markdown, html);
 	return html;
 }
@@ -171,11 +170,7 @@ export async function renderCodeFinal(
 	return await highlightCode(code, codeFenceLanguage(language), options);
 }
 
-function highlightCodeBlocks(
-	html: string,
-	highlighter: Highlighter,
-	options: { cacheKey?: string } = {},
-): string {
+function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
 	const blocks = [
 		...html.matchAll(
 			/<pre><code class="language-([^"]*)">([\s\S]*?)<\/code><\/pre>/g,
@@ -190,14 +185,9 @@ function highlightCodeBlocks(
 		const [raw, rawLanguage, rawCode] = block;
 		const language = codeFenceLanguage(rawLanguage);
 		const code = decodeHtml(rawCode);
-		const replacement = options.cacheKey
-			? highlightStreamingCodeBlock(
-					highlighter,
-					code,
-					language,
-					`${options.cacheKey}:${index}`,
-				)
-			: cachedHighlightedCodeBlock(highlighter, code, language);
+		const replacement = cacheKeyPrefix
+			? highlightStreamingCodeBlock(code, language, `${cacheKeyPrefix}:${index}`)
+			: renderPlainCodeBlock(code, language);
 		highlighted = highlighted.replace(raw, replacement);
 	}
 	return highlighted;
@@ -208,34 +198,62 @@ async function highlightCode(
 	language: string,
 	options: { chrome?: boolean } = {},
 ): Promise<string> {
-	return highlightCodeWithHighlighter(await getHighlighter(), code, language, options);
+	return renderPlainCode(code, language, options);
 }
 
-function cachedHighlightedCodeBlock(
-	highlighter: Highlighter,
-	code: string,
-	language: string,
-): string {
-	const key = `${language}\0${code}`;
-	const cached = codeBlockCache.get(key);
-	if (cached) return cached;
+async function highlightCodeBlocksFinal(html: string): Promise<string> {
+	const blocks = [
+		...html.matchAll(
+			/<pre><code class="language-([^"]*)">([\s\S]*?)<\/code><\/pre>/g,
+		),
+	];
+	if (blocks.length === 0) return html;
 
-	const highlighted = highlightCodeWithHighlighter(highlighter, code, language, {
-		chrome: true,
-	});
-	codeBlockCache.set(key, highlighted);
+	let highlighted = html;
+	for (const block of blocks) {
+		const [raw, rawLanguage, rawCode] = block;
+		const language = codeFenceLanguage(rawLanguage);
+		const code = decodeHtml(rawCode);
+		const replacement = (
+			<CodeBlock
+				pre={await cachedPierreCodeBlock(code, language)}
+				language={language}
+				source={code}
+			/>
+		) as string;
+		highlighted = highlighted.replace(raw, replacement);
+	}
+	return highlighted;
+}
+
+async function cachedPierreCodeBlock(code: string, language: string): Promise<string> {
+	const key = `${language}\0${code}`;
+	const cached = pierreCodeBlockCache.get(key);
+	if (cached) return cached;
+	const highlighted = await renderPierreCode(code, language);
+	pierreCodeBlockCache.set(key, highlighted);
 	return highlighted;
 }
 
 function highlightStreamingCodeBlock(
-	highlighter: Highlighter,
 	code: string,
 	language: string,
 	cacheKey: string,
 ): string {
+	const highlighter = getHighlighterIfLoaded();
+	if (!highlighter) return renderPlainCodeBlock(code, language);
+
 	let state = streamingCodeBlockStates.get(cacheKey);
 	if (!state || state.language !== language || !code.startsWith(state.code)) {
-		state = createStreamingCodeBlockState(highlighter, language);
+		state = {
+			language,
+			code: "",
+			tokenizer: new ShikiStreamTokenizer({
+				highlighter,
+				lang: language as SupportedLanguages,
+				themes: DEFAULT_THEMES,
+			}),
+		};
 		streamingCodeBlockStates.set(cacheKey, state);
 	}
 
@@ -252,38 +270,32 @@ function highlightStreamingCodeBlock(
 				...state.tokenizer.tokensUnstable,
 			])}
 			language={language}
+			source={code}
 		/>
 	) as string;
 }
 
-function createStreamingCodeBlockState(
-	highlighter: Highlighter,
-	language: string,
-): StreamingCodeBlockState {
-	return {
-		language,
-		code: "",
-		tokenizer: new ShikiStreamTokenizer({
-			highlighter,
-			lang: language,
-			themes: {
-				light: "ayu-light",
-				dark: "ayu-dark",
-			},
-		}),
-	};
-}
-
 function renderStreamingTokensPre(tokens: ThemedToken[]): string {
-	return `<pre class="shiki shiki-themes ayu-light ayu-dark" style="background-color:var(--code-background);color:#5C6166" tabindex="0"><code>${tokens
-		.map(renderToken)
+	const lines = [""];
+	for (const token of tokens) {
+		const style = styleObjectToAttribute(token.htmlStyle ?? tokenStyle(token));
+		const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
+		const classAttribute = style ? ` class="streaming-token"` : "";
+		const parts = token.content.split("\n");
+		for (const [index, part] of parts.entries()) {
+			if (part) {
+				lines[lines.length - 1] +=
+					`<span${classAttribute}${styleAttribute}>${escapeHtml(part)}</span>`;
+			}
+			if (index < parts.length - 1) lines.push("");
+		}
+	}
+	return `<pre class="plain-code" tabindex="0"><code class="streaming-code">${lines
+		.map(
+			(line, index) =>
+				`<span class="streaming-code-line-number">${index + 1}</span><span class="streaming-code-line">${line || "&nbsp;"}</span>`,
+		)
 		.join("")}</code></pre>`;
-}
-
-function renderToken(token: ThemedToken): string {
-	const style = styleObjectToAttribute(token.htmlStyle ?? tokenStyle(token));
-	const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
-	return `<span${styleAttribute}>${escapeHtml(token.content)}</span>`;
 }
 
 function tokenStyle(token: ThemedToken): Record<string, string> {
@@ -299,86 +311,52 @@ function styleObjectToAttribute(style: Record<string, string>): string {
 		.join(";");
 }
 
-function highlightCodeWithHighlighter(
-	highlighter: Highlighter,
+function renderPlainCodeBlock(code: string, language: string): string {
+	return (
+		<CodeBlock
+			pre={renderPlainCode(code, language, { chrome: false })}
+			language={language}
+			source={code}
+		/>
+	) as string;
+}
+
+function renderPlainCode(
 	code: string,
 	language: string,
 	options: { chrome?: boolean } = {},
 ): string {
-	const chrome = options.chrome ?? true;
-	try {
-		const pre = highlighter.codeToHtml(code, {
-			lang: language,
-			themes: {
-				light: "ayu-light",
-				dark: "ayu-dark",
-			},
-		});
-		return chrome ? ((<CodeBlock pre={pre} language={language} />) as string) : pre;
-	} catch {
-		const pre = (
-			<pre>
-				<code class={`language-${language}`} safe>
-					{code}
-				</code>
-			</pre>
-		) as string;
-		return chrome ? ((<CodeBlock pre={pre} language={language} />) as string) : pre;
-	}
+	const pre = `<pre class="plain-code" tabindex="0"><code class="language-${escapeHtml(language)}">${escapeHtml(code)}</code></pre>`;
+	return options.chrome === false
+		? pre
+		: ((<CodeBlock pre={pre} language={language} />) as string);
 }
 
-function getHighlighter(): Promise<Highlighter> {
-	highlighterPromise ??= createHighlighter({
-		langs: [
-			"astro",
-			"bash",
-			"css",
-			"diff",
-			"elixir",
-			"html",
-			"ini",
-			"javascript",
-			"json",
-			"json5",
-			"jsonc",
-			"lua",
-			"markdown",
-			"nu",
-			"nushell",
-			"odin",
-			"powershell",
-			"shellscript",
-			"tsx",
-			"typst",
-			"typescript",
-		],
-		themes: ["ayu-light", "ayu-dark"],
-	}).then((instance) => {
-		highlighter = instance;
-		return instance;
-	});
-	return highlighterPromise;
-}
-
-function CodeBlock(props: { pre: string; language: string }) {
+function CodeBlock(props: { pre: string; language: string; source?: string }) {
 	return (
 		<div
-			class="code-block my-4 overflow-hidden rounded-lg border bg-[var(--code-background)] [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-[var(--code-background)]! [&_pre]:p-4! [&_pre]:text-sm! [&_pre]:leading-relaxed!"
+			class="code-block [&_pre]:tab-size-4! bg-muted/40 dark:bg-muted/55 border-border/60 my-4 overflow-hidden rounded-md border [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-[var(--code-background)]! [&_pre]:p-4! [&_pre]:text-[13px]! [&_pre]:leading-[22px]!"
 			data-code-block
 		>
-			<div class="text-muted-foreground flex items-center justify-between gap-3 border-b bg-[var(--code-background)] px-3 py-1 font-mono text-xs">
+			{props.source !== undefined && (
+				<script type="text/plain" data-code-source safe>
+					{props.source}
+				</script>
+			)}
+			<div class="text-muted-foreground flex items-center justify-between gap-3 px-3 py-0.5 font-mono text-xs">
 				<span safe>{props.language}</span>
 				<button
-					class="btn h-7 w-7 p-0 leading-none"
+					class="btn"
 					data-variant="ghost"
+					data-size="icon-xs"
 					type="button"
 					data-copy-code
 					aria-label="Copy code"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
-						width="16"
-						height="16"
+						width="24"
+						height="24"
 						viewBox="0 0 24 24"
 						aria-hidden="true"
 					>
@@ -395,13 +373,19 @@ function CodeBlock(props: { pre: string; language: string }) {
 					</svg>
 				</button>
 			</div>
-			{props.pre}
+			<div class="border-border/60 overflow-hidden rounded-t-md border-t bg-[var(--code-background)]">
+				{props.pre}
+			</div>
 		</div>
 	);
 }
 
+const supportedCodeLanguages = new Set<string>([...pierreLanguages, "text"]);
+
 function codeFenceLanguage(language: string | undefined): string {
-	return language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
+	const normalized = language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
+	if (["plain", "plaintext", "txt"].includes(normalized)) return "text";
+	return supportedCodeLanguages.has(normalized) ? normalized : "text";
 }
 
 function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {
