@@ -134,7 +134,7 @@ function renderPreOutput(text: string) {
 function renderDiffOutput(message: AppMessage) {
 	if (message.renderedHtml) {
 		return (
-			<div class="max-h-96 overflow-auto rounded-sm bg-[var(--code-background)] [&_.shiki]:m-0 [&_.shiki]:bg-[var(--code-background)]! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			<div class="max-h-96 overflow-auto rounded-sm bg-transparent [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:break-words [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
 				{message.renderedHtml}
 			</div>
 		);

@@ -352,7 +352,7 @@ function CodeBlock(props: { pre: string; language: string }) {
 			class="code-block my-4 overflow-hidden rounded-lg border bg-[var(--code-background)] [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-[var(--code-background)]! [&_pre]:p-4! [&_pre]:text-sm! [&_pre]:leading-relaxed!"
 			data-code-block
 		>
-			<div class="bg-muted text-muted-foreground flex items-center justify-between gap-3 border-b px-3 py-1 font-mono text-xs">
+			<div class="text-muted-foreground flex items-center justify-between gap-3 border-b bg-[var(--code-background)] px-3 py-1 font-mono text-xs">
 				<span safe>{props.language}</span>
 				<button
 					class="btn h-7 w-7 p-0 leading-none"
