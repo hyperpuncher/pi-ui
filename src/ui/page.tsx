@@ -12,6 +12,7 @@ export function renderPage(state: AppState): string {
 		model: state.currentModel ?? "",
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
+		isBusy: Boolean(state.activityText),
 		sessionPath: "",
 		treeEntryId: "",
 		treeSummarize: false,

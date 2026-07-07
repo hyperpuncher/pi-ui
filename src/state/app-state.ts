@@ -430,6 +430,7 @@ export class AppState {
 	setActivityText(activityText: string | undefined): void {
 		this.activityText = activityText;
 		this.broadcast();
+		this.broadcastSignals();
 	}
 
 	setCurrentSessionPath(currentSessionPath: string | undefined): void {
@@ -542,6 +543,7 @@ export class AppState {
 					model: this.currentModel ?? "",
 					thinkingLevel: this.thinkingLevel,
 					workspacePath: this.workspacePath,
+					isBusy: Boolean(this.activityText),
 					treeEntryId: "",
 					treeSummarize: false,
 					treeSummaryInstructions: "",

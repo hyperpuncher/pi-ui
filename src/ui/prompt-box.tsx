@@ -34,6 +34,17 @@ export function renderPromptBox(state: AppState): string {
 				aria-label="Message"
 				rows="1"
 				data-bind:prompt
+				data-on:keydown={`if (
+					evt.key === 'Escape' &&
+					!evt.ctrlKey &&
+					!evt.metaKey &&
+					!evt.altKey &&
+					!evt.shiftKey &&
+					!$isBusy
+				) {
+					evt.preventDefault();
+					el.blur();
+				}`}
 			></textarea>
 			<footer
 				class="flex flex-wrap items-center justify-between gap-2 p-0"
