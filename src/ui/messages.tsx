@@ -276,13 +276,13 @@ export function renderMessage(message: AppMessage): string {
 		>
 			<header
 				class={[
-					"flex items-center justify-between gap-4 text-sm leading-tight",
+					"flex items-start justify-between gap-4 text-sm leading-tight",
 					hasToolBody ? "mb-3" : "",
 				]}
 			>
-				<span class="flex min-w-0 items-center gap-2 leading-tight">
+				<span class="flex min-w-0 items-start gap-2 leading-tight">
 					<span class={["h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
-					<span class="truncate leading-tight font-medium">
+					<span class="min-w-0 leading-tight font-medium break-words">
 						{renderToolTitle(title, message.titleParts)}
 					</span>
 				</span>
