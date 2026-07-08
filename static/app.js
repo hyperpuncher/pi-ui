@@ -123,14 +123,17 @@ function bindSlashPicker() {
 function updateSlashPicker(value) {
 	const popover = document.getElementById("prompt-slash-popover");
 	if (!(popover instanceof HTMLElement)) return;
-	const open = value.startsWith("/") && !value.includes(" ");
-	const query = open ? value.slice(1).toLowerCase() : "";
-	popover.style.display = open ? "" : "none";
+	const canOpen = value.startsWith("/") && !value.includes(" ");
+	const query = canOpen ? value.slice(1).toLowerCase() : "";
+	let visibleCount = 0;
 	for (const row of document.querySelectorAll("[data-slash-row]")) {
 		if (!(row instanceof HTMLElement)) continue;
-		row.style.display =
-			!query || (row.dataset.slashHaystack ?? "").includes(query) ? "" : "none";
+		const visible =
+			canOpen && (!query || (row.dataset.slashHaystack ?? "").includes(query));
+		row.style.display = visible ? "" : "none";
+		if (visible) visibleCount += 1;
 	}
+	popover.style.display = visibleCount > 0 ? "" : "none";
 }
 
 function closeSlashPicker() {
