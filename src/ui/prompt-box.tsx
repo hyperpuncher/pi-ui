@@ -202,7 +202,7 @@ function newChatAction(): string {
 }
 
 function openSessionDialogAction(): string {
-	return "document.getElementById('session-dialog')?.showModal(); requestAnimationFrame(() => document.getElementById('session-input')?.focus())";
+	return "document.getElementById('session-dialog')?.showModal()";
 }
 
 export function renderPromptAction(state: AppState): string {

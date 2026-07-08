@@ -454,12 +454,15 @@ export class AppState {
 
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
-		this.broadcast(
-			refreshBasecoatComponentsScript(
-				"#session-dialog .command",
-				"#workspace-dialog .command",
-			),
-		);
+		this.broadcast(`
+			queueMicrotask(() => {
+				document.querySelector('#workspace-dialog .command')?.refresh?.();
+				const sessionDialog = document.getElementById('session-dialog');
+				if (!sessionDialog?.open) {
+					document.querySelector('#session-dialog .command')?.refresh?.();
+				}
+			});
+		`);
 	}
 
 	setRecentWorkspaces(recentWorkspaces: string[]): void {
@@ -501,8 +504,7 @@ export class AppState {
 
 	setCurrentSessionPath(currentSessionPath: string | undefined): void {
 		this.currentSessionPath = currentSessionPath;
-		this.broadcast(refreshBasecoatComponentsScript("#session-dialog .command"));
-		this.broadcastSignals();
+		this.broadcast();
 	}
 
 	setWorkspacePath(workspacePath: string): void {

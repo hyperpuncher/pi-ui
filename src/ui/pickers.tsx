@@ -161,7 +161,7 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 		<div
 			role="menuitem"
 			tabindex="-1"
-			class={["items-start gap-3", current && "bg-muted"]}
+			class="items-start gap-3"
 			aria-current={current ? "true" : undefined}
 			data-session-row
 			data-filter={haystack}
