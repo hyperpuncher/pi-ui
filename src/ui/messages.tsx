@@ -158,10 +158,12 @@ function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined
 }
 
 function toolTitlePartClass(part: AppMessageTitlePart): string {
-	if (part.tone === "accent") return "text-primary";
-	if (part.tone === "warning") return "text-amber-600 dark:text-yellow-300";
-	if (part.tone === "muted") return "text-muted-foreground";
-	return "";
+	const classes = [];
+	if (part.mono) classes.push("font-mono");
+	if (part.tone === "accent") classes.push("text-primary");
+	if (part.tone === "warning") classes.push("text-amber-600 dark:text-yellow-300");
+	if (part.tone === "muted") classes.push("text-muted-foreground");
+	return classes.join(" ");
 }
 
 export function renderMessage(message: AppMessage): string {
@@ -283,14 +285,17 @@ export function renderMessage(message: AppMessage): string {
 				]}
 			>
 				<span class={["mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
-				<span class="min-w-0 leading-tight font-medium wrap-anywhere">
+				<span class="min-w-0 flex-1 leading-tight font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
-					{message.meta && (
-						<span class="text-muted-foreground ml-1 text-xs font-normal" safe>
-							{message.meta}
-						</span>
-					)}
 				</span>
+				{message.meta && (
+					<span
+						class="text-muted-foreground mt-0.5 ml-auto shrink-0 text-xs leading-tight font-normal"
+						safe
+					>
+						{message.meta}
+					</span>
+				)}
 			</header>
 			{hasToolBody
 				? message.format === "diff"

@@ -42,6 +42,7 @@ export type AppMessage = {
 export type AppMessageTitlePart = {
 	text: string;
 	tone?: "default" | "accent" | "warning" | "muted";
+	mono?: boolean;
 };
 
 export type AppMessageOptions = Pick<

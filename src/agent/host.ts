@@ -1077,16 +1077,18 @@ function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] 
 		const timeout =
 			typeof record.timeout === "number" ? ` timeout ${record.timeout}s` : "";
 		return [
-			{ text: `$ ${stringValue(record.command) || "..."}` },
-			...(timeout ? [{ text: timeout, tone: "muted" } as const] : []),
+			{ text: `$ ${stringValue(record.command) || "..."}`, mono: true },
+			...(timeout ? [{ text: timeout, tone: "muted", mono: true } as const] : []),
 		];
 	}
 
 	const target = toolTarget(toolName, args);
 	return [
 		{ text: `${toolName}${target ? " " : ""}` },
-		...(target ? [{ text: target, tone: "accent" } as const] : []),
-		...(toolRange(args) ? [{ text: toolRange(args), tone: "warning" } as const] : []),
+		...(target ? [{ text: target, tone: "accent", mono: true } as const] : []),
+		...(toolRange(args)
+			? [{ text: toolRange(args), tone: "warning", mono: true } as const]
+			: []),
 	];
 }
 
