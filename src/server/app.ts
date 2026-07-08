@@ -164,6 +164,10 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				return Response.json(await fileSearch.search(query));
 			}
 
+			if (request.method === "POST" && url.pathname === "/files/import") {
+				return Response.json({ paths: await importTransferredFiles(request) });
+			}
+
 			if (request.method === "GET" && url.pathname === "/basecoat.js") {
 				return new Response(await Deno.readFile(basecoatJsPath), {
 					headers: { "content-type": "text/javascript; charset=utf-8" },
@@ -231,6 +235,27 @@ function treeOpenResponse(
 
 function openTreeScript(): string {
 	return `${refreshBasecoatComponentsScript("#tree-dialog .command")}; const dialog = document.getElementById('tree-dialog'); if (!dialog?.open) dialog?.showModal(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });`;
+}
+
+async function importTransferredFiles(request: Request): Promise<string[]> {
+	const formData = await request.formData();
+	const paths: string[] = [];
+	for (const file of formData.getAll("file")) {
+		if (!(file instanceof File)) continue;
+		const path = await Deno.makeTempFile({
+			prefix: "pi-ui-",
+			suffix: `-${sanitizeFileName(file.name || "pasted-file")}`,
+		});
+		await Deno.writeFile(path, new Uint8Array(await file.arrayBuffer()));
+		paths.push(path);
+	}
+	return paths;
+}
+
+function sanitizeFileName(name: string): string {
+	return (
+		name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "pasted-file"
+	);
 }
 
 function html(body: string): Response {

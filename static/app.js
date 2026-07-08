@@ -7,6 +7,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindPromptInteractions();
 	bindSlashPicker();
 	bindFilePicker();
+	bindFileTransfers();
 	bindMessagesAutoscroll();
 	bindCodeCopy();
 	bindMessagesHistoryPagination();
@@ -363,6 +364,92 @@ function insertFilePrefix() {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 	input.focus();
 	updateFilePicker(input);
+}
+
+function bindFileTransfers() {
+	let dragDepth = 0;
+	window.piUiHasTransferredFiles = hasTransferredFiles;
+	window.piUiInsertTransferredFiles = insertTransferredFiles;
+	window.piUiEnterFileDrag = () => {
+		dragDepth += 1;
+		return true;
+	};
+	window.piUiLeaveFileDrag = () => {
+		dragDepth = Math.max(0, dragDepth - 1);
+		return dragDepth > 0;
+	};
+	window.piUiResetFileDrag = () => {
+		dragDepth = 0;
+	};
+}
+
+function hasTransferredFiles(data) {
+	if (!data) return false;
+	if (data.files?.length) return true;
+	return [...data.types].some((type) => type === "Files" || type === "text/uri-list");
+}
+
+async function insertTransferredFiles(data) {
+	if (!data) return;
+	const paths = extractTransferredFilePaths(data);
+	const files = [...(data.files ?? [])];
+	if (paths.length > 0) {
+		insertFileReferences(paths);
+		return;
+	}
+	if (files.length === 0) return;
+	const uploaded = await uploadTransferredFiles(files);
+	if (uploaded.length > 0) insertFileReferences(uploaded);
+}
+
+function extractTransferredFilePaths(data) {
+	const uriList = data.getData("text/uri-list");
+	return uriList
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter((line) => line && !line.startsWith("#"))
+		.map(fileUriToPath)
+		.filter(Boolean);
+}
+
+function fileUriToPath(uri) {
+	try {
+		const url = new URL(uri);
+		if (url.protocol !== "file:") return undefined;
+		return decodeURIComponent(url.pathname);
+	} catch {
+		return undefined;
+	}
+}
+
+async function uploadTransferredFiles(files) {
+	const formData = new FormData();
+	for (const file of files) {
+		formData.append("file", file, file.name || "pasted-file");
+	}
+	const response = await fetch("/files/import", { method: "POST", body: formData });
+	if (!response.ok) return [];
+	const result = await response.json();
+	return Array.isArray(result.paths) ? result.paths : [];
+}
+
+function insertFileReferences(paths) {
+	const input = document.getElementById("prompt-input");
+	if (!(input instanceof HTMLTextAreaElement)) return;
+	const start = input.selectionStart ?? input.value.length;
+	const end = input.selectionEnd ?? start;
+	const prefix = start > 0 && !/\s/.test(input.value[start - 1] ?? "") ? " " : "";
+	const suffix =
+		end < input.value.length && !/\s/.test(input.value[end] ?? "") ? " " : "";
+	const text = `${prefix}${paths.map((path) => `@${path}`).join(" ")}${suffix}`;
+	input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
+	const cursor = start + text.length;
+	input.selectionStart = cursor;
+	input.selectionEnd = cursor;
+	input.dispatchEvent(new Event("input", { bubbles: true }));
+	input.focus();
+	closeSlashPicker();
+	closeFilePicker({ suppressUntilInput: true });
 }
 
 function closeFilePicker(options = {}) {

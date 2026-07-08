@@ -35,6 +35,10 @@ export function renderPromptBox(state: AppState): string {
 				aria-label="Message"
 				rows="1"
 				data-bind:prompt
+				data-on:paste={`if (window.piUiHasTransferredFiles?.(evt.clipboardData)) {
+					evt.preventDefault();
+					window.piUiInsertTransferredFiles?.(evt.clipboardData);
+				}`}
 				data-on:keydown={`if (
 					evt.key === 'Escape' &&
 					!evt.ctrlKey &&

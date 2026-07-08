@@ -13,6 +13,7 @@ export function renderPage(state: AppState): string {
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
 		isBusy: Boolean(state.activityText),
+		isDraggingFile: false,
 		sessionPath: "",
 		treeEntryId: "",
 		treeSummarize: false,
@@ -43,9 +44,56 @@ export function renderPage(state: AppState): string {
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
 				data-signals={initialSignals}
+				data-on:dragenter__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
+					evt.preventDefault();
+					$isDraggingFile = window.piUiEnterFileDrag?.() ?? true;
+				}`}
+				data-on:dragleave__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
+					$isDraggingFile = window.piUiLeaveFileDrag?.() ?? false;
+				}`}
+				data-on:dragover__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
+					evt.preventDefault();
+					evt.dataTransfer.dropEffect = 'copy';
+				}`}
+				data-on:drop__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
+					evt.preventDefault();
+					$isDraggingFile = false;
+					window.piUiResetFileDrag?.();
+					window.piUiInsertTransferredFiles?.(evt.dataTransfer);
+				}`}
 			>
 				{state.debugUi && <datastar-inspector />}
 				{renderDebugOverlay(state)}
+				<div
+					id="file-drop-overlay"
+					class="bg-background/55 pointer-events-none fixed inset-0 z-50 items-center justify-center backdrop-blur-sm"
+					style="display: none;"
+					data-style:display="$isDraggingFile ? 'flex' : 'none'"
+					aria-hidden="true"
+				>
+					<div class="border-border bg-card/95 text-card-foreground flex items-center gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm shadow-lg">
+						<svg
+							class="text-muted-foreground size-8"
+							xmlns="http://www.w3.org/2000/svg"
+							width="32"
+							height="32"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
+							<g
+								fill="none"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+							>
+								<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+								<path d="M14 2v5a1 1 0 0 0 1 1h5m-8 4v6m3-3l-3-3l-3 3" />
+							</g>
+						</svg>
+						<span>Drop files to attach</span>
+					</div>
+				</div>
 				<div
 					id="app"
 					class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"
