@@ -14,14 +14,14 @@ import {
 	type SessionStats,
 } from "@earendil-works/pi-coding-agent";
 
+import { AppState } from "../state/app-state.ts";
 import type {
 	AppMessageInput,
 	AppMessageTitlePart,
 	AppSessionSummary,
-	AppTreeEntry,
-	AppState,
-	AppUsage,
 	AppThinkingLevel,
+	AppTreeEntry,
+	AppUsage,
 } from "../state/app-state.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
@@ -37,6 +37,15 @@ import {
 const bashPreviewLines = 8;
 const bashCompactThreshold = 14;
 
+type BackgroundSession = {
+	runtime: AgentSessionRuntime;
+	state: AppState;
+	toolMessageIds: Map<string, string>;
+	toolCallArgs: Map<string, unknown>;
+	toolStartedAt: Map<string, number>;
+	unsubscribe: () => void;
+};
+
 export class AgentHost {
 	private unsubscribe: (() => void) | undefined;
 	private readonly toolMessageIds = new Map<string, string>();
@@ -48,9 +57,12 @@ export class AgentHost {
 	private codexUsageFetching = false;
 	private codexUsageTimer: ReturnType<typeof setTimeout> | undefined;
 
+	private readonly backgroundSessions = new Map<string, BackgroundSession>();
+
 	private constructor(
-		private readonly runtime: AgentSessionRuntime,
+		private runtime: AgentSessionRuntime,
 		private readonly state: AppState,
+		private readonly runtimeFactory: CreateAgentSessionRuntimeFactory,
 	) {}
 
 	static async create(
@@ -83,7 +95,8 @@ export class AgentHost {
 			sessionManager: SessionManager.create(cwd),
 		});
 
-		const host = new AgentHost(runtime, state);
+		const host = new AgentHost(runtime, state, createRuntime);
+		host.bindRuntimeCallbacks(runtime);
 		await host.bindSession();
 		return host;
 	}
@@ -138,6 +151,10 @@ export class AgentHost {
 
 	async abort(): Promise<void> {
 		await this.runtime.session.abort();
+		this.state.setActivityText(undefined);
+		this.state.setQueuedMessages([], []);
+		this.loadCurrentSessionMessages();
+		this.syncUsage();
 	}
 
 	restoreQueuedMessages(): string {
@@ -169,13 +186,33 @@ export class AgentHost {
 		if (!sessionPath.trim()) {
 			return false;
 		}
-		const result = await this.runtime.switchSession(sessionPath);
-		if (result.cancelled) {
+		const sessionManager = SessionManager.open(sessionPath);
+		const targetSessionFile = sessionManager.getSessionFile();
+		if (!targetSessionFile) {
 			return false;
 		}
-		await this.bindSession();
-		this.loadCurrentSessionMessages();
-		return true;
+		const backgroundSession = this.backgroundSessions.get(targetSessionFile);
+		if (backgroundSession) {
+			this.backgroundSessions.delete(targetSessionFile);
+			this.activateRuntime(backgroundSession);
+			return true;
+		}
+
+		if (this.runtime.session.isStreaming) {
+			this.backgroundCurrentRuntime();
+			this.runtime = await createAgentSessionRuntime(this.runtimeFactory, {
+				cwd: sessionManager.getCwd(),
+				agentDir: getAgentDir(),
+				sessionManager,
+			});
+			this.bindRuntimeCallbacks(this.runtime);
+			await this.bindSession();
+			this.loadCurrentSessionMessages();
+			return true;
+		}
+
+		const result = await this.runtime.switchSession(sessionPath);
+		return !result.cancelled;
 	}
 
 	openTree(): boolean {
@@ -257,25 +294,229 @@ export class AgentHost {
 		this.unsubscribe?.();
 		this.clearCodexUsageTimer();
 		this.runtime.dispose();
+		for (const { runtime, unsubscribe } of this.backgroundSessions.values()) {
+			unsubscribe();
+			runtime.dispose();
+		}
+		this.backgroundSessions.clear();
 	}
 
-	private async bindSession(): Promise<void> {
-		this.unsubscribe?.();
-		const session = this.runtime.session;
-		this.state.setWorkspacePath(session.sessionManager.getCwd());
-		this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
+	private bindRuntimeCallbacks(runtime: AgentSessionRuntime): void {
+		runtime.setBeforeSessionInvalidate(() => this.unbindSession());
+		runtime.setRebindSession(async () => {
+			this.bindSessionState();
+			this.loadCurrentSessionMessages();
+			await this.bindSessionExtensions();
+		});
+	}
+
+	private backgroundCurrentRuntime(): void {
+		this.unbindSession();
+		this.state.setQueuedMessages([], []);
+		const sessionFile = this.runtime.session.sessionManager.getSessionFile();
+		if (sessionFile) {
+			const backgroundState = new AppState();
+			backgroundState.restoreChat(this.state.snapshotChat());
+			backgroundState.setWorkspacePath(
+				this.runtime.session.sessionManager.getCwd(),
+			);
+			backgroundState.setCurrentSessionPath(sessionFile);
+			const backgroundSession: BackgroundSession = {
+				runtime: this.runtime,
+				state: backgroundState,
+				toolMessageIds: new Map(this.toolMessageIds),
+				toolCallArgs: new Map(this.toolCallArgs),
+				toolStartedAt: new Map(this.toolStartedAt),
+				unsubscribe: () => {},
+			};
+			backgroundSession.unsubscribe = this.runtime.session.subscribe((event) =>
+				this.handleBackgroundEvent(sessionFile, backgroundSession, event),
+			);
+			this.backgroundSessions.set(sessionFile, backgroundSession);
+		}
+	}
+
+	private handleBackgroundEvent(
+		sessionFile: string,
+		backgroundSession: BackgroundSession,
+		event: AgentSessionEvent,
+	): void {
+		switch (event.type) {
+			case "agent_start":
+				backgroundSession.state.setActivityText("Working...");
+				break;
+			case "message_start":
+				this.handleMessageStart(event.message, backgroundSession.state);
+				break;
+			case "message_update":
+				if (event.assistantMessageEvent.type === "thinking_delta") {
+					backgroundSession.state.appendThoughtDelta(
+						event.assistantMessageEvent.delta,
+					);
+				}
+				if (event.assistantMessageEvent.type === "text_delta") {
+					backgroundSession.state.appendAssistantDelta(
+						event.assistantMessageEvent.delta,
+					);
+				}
+				break;
+			case "message_end":
+				if (event.message.role === "assistant") {
+					backgroundSession.state.finishAssistant();
+				}
+				break;
+			case "tool_execution_start": {
+				backgroundSession.state.finishAssistant();
+				backgroundSession.toolCallArgs.set(event.toolCallId, event.args);
+				backgroundSession.toolStartedAt.set(event.toolCallId, Date.now());
+				const startView = formatToolStart(event.toolName, event.args);
+				const id = backgroundSession.state.appendMessage("tool", startView.text, {
+					title: toolTitle("running", event.toolName, event.args),
+					titleParts: toolTitleParts(event.toolName, event.args),
+					meta: toolMeta(event.toolName, event.args) ?? "Running...",
+					state: "running",
+					format: startView.format,
+				});
+				backgroundSession.toolMessageIds.set(event.toolCallId, id);
+				break;
+			}
+			case "tool_execution_update": {
+				const id = backgroundSession.toolMessageIds.get(event.toolCallId);
+				if (id) {
+					backgroundSession.state.updateMessage(id, {
+						text: formatToolResult(event.toolName, event.partialResult, {
+							args: event.args,
+						}).text,
+						meta: toolMeta(event.toolName, event.args),
+					});
+				}
+				break;
+			}
+			case "tool_execution_end": {
+				const id = backgroundSession.toolMessageIds.get(event.toolCallId);
+				const args = backgroundSession.toolCallArgs.get(event.toolCallId) ?? {};
+				const resultView = formatToolResult(event.toolName, event.result, {
+					args,
+					isError: event.isError,
+				});
+				const startedAt = backgroundSession.toolStartedAt.get(event.toolCallId);
+				const patch = {
+					text: resultView.text,
+					title: toolTitle(
+						event.isError ? "error" : "success",
+						event.toolName,
+						args,
+					),
+					meta: toolEndMeta(startedAt),
+					state: event.isError ? "error" : "success",
+					titleParts: toolTitleParts(event.toolName, args),
+					format: resultView.format,
+				} as const;
+				if (id) {
+					backgroundSession.state.updateMessage(id, patch);
+					backgroundSession.toolMessageIds.delete(event.toolCallId);
+				} else {
+					backgroundSession.state.appendMessage("tool", patch.text, patch);
+				}
+				backgroundSession.toolCallArgs.delete(event.toolCallId);
+				backgroundSession.toolStartedAt.delete(event.toolCallId);
+				break;
+			}
+			case "queue_update":
+				backgroundSession.state.setQueuedMessages(event.steering, event.followUp);
+				break;
+			case "agent_end":
+				backgroundSession.state.setActivityText(undefined);
+				backgroundSession.unsubscribe();
+				this.notifyBackgroundSessionDone(backgroundSession.runtime);
+				void this.refreshSessions();
+				break;
+		}
+		this.backgroundSessions.set(sessionFile, backgroundSession);
+	}
+
+	private async notifyBackgroundSessionDone(
+		runtime: AgentSessionRuntime,
+	): Promise<void> {
+		if (typeof Notification !== "function") return;
+		try {
+			if (Notification.permission !== "granted") {
+				const permission = await Notification.requestPermission();
+				if (permission !== "granted") return;
+			}
+			const workspace = formatHomePath(runtime.session.sessionManager.getCwd());
+			new Notification(`pi finished: ${workspace}`, {
+				body: "Background session completed.",
+				tag: runtime.session.sessionManager.getSessionFile() ?? workspace,
+			});
+		} catch {
+			// Notifications are best-effort.
+		}
+	}
+
+	private activateRuntime(backgroundSession: BackgroundSession): void {
+		if (this.runtime.session.isStreaming) {
+			this.backgroundCurrentRuntime();
+		} else {
+			this.unbindSession();
+			this.runtime.dispose();
+		}
+		backgroundSession.unsubscribe();
+		this.runtime = backgroundSession.runtime;
 		this.toolMessageIds.clear();
 		this.toolCallArgs.clear();
 		this.toolStartedAt.clear();
-		await session.bindExtensions({ mode: "rpc" });
+		for (const [key, value] of backgroundSession.toolMessageIds) {
+			this.toolMessageIds.set(key, value);
+		}
+		for (const [key, value] of backgroundSession.toolCallArgs) {
+			this.toolCallArgs.set(key, value);
+		}
+		for (const [key, value] of backgroundSession.toolStartedAt) {
+			this.toolStartedAt.set(key, value);
+		}
+		this.bindRuntimeCallbacks(this.runtime);
+		this.bindSessionState({ resetToolState: false });
+		if (this.runtime.session.isStreaming) {
+			this.state.restoreChat(backgroundSession.state.snapshotChat());
+		} else {
+			this.loadCurrentSessionMessages();
+		}
+	}
+
+	private async bindSession(): Promise<void> {
+		this.unbindSession();
+		this.bindSessionState();
+		await this.bindSessionExtensions();
+	}
+
+	private unbindSession(): void {
+		this.unsubscribe?.();
+		this.unsubscribe = undefined;
+	}
+
+	private bindSessionState(options: { resetToolState?: boolean } = {}): void {
+		const session = this.runtime.session;
+		const resetToolState = options.resetToolState ?? true;
+		this.state.setWorkspacePath(session.sessionManager.getCwd());
+		this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
+		if (resetToolState) {
+			this.toolMessageIds.clear();
+			this.toolCallArgs.clear();
+			this.toolStartedAt.clear();
+		}
 		this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
-		this.state.setActivityText(undefined);
+		this.state.setActivityText(session.isStreaming ? "Working..." : undefined);
 		this.syncModels();
 		this.syncThinking();
 		this.syncSlashCommands();
 		this.syncUsage();
 		this.refreshCodexUsage(true);
 		void this.refreshSessions();
+	}
+
+	private async bindSessionExtensions(): Promise<void> {
+		await this.runtime.session.bindExtensions({ mode: "rpc" });
 	}
 
 	private async refreshSessions(): Promise<void> {
@@ -606,13 +847,14 @@ export class AgentHost {
 
 	private handleMessageStart(
 		message: Extract<AgentSessionEvent, { type: "message_start" }>["message"],
+		state = this.state,
 	): void {
 		if (message.role === "toolResult") {
 			return;
 		}
 		const appMessages = this.agentMessageToAppMessages(message, new Date());
 		for (const appMessage of appMessages) {
-			this.state.appendMessage(appMessage.role, appMessage.text, {
+			state.appendMessage(appMessage.role, appMessage.text, {
 				title: appMessage.title,
 				titleParts: appMessage.titleParts,
 				meta: appMessage.meta,

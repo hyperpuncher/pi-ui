@@ -50,6 +50,18 @@ export type AppMessageOptions = Pick<
 	"title" | "titleParts" | "meta" | "state" | "format"
 >;
 
+export type AppChatSnapshot = {
+	messageSeq: number;
+	activeAssistantId: string | undefined;
+	activeThoughtId: string | undefined;
+	transcriptMessages: AppMessage[];
+	visibleMessageStart: number;
+	emptyChatHint: AppKeybindHint;
+	activityText: string | undefined;
+	queuedSteeringMessages: string[];
+	queuedFollowUpMessages: string[];
+};
+
 export type AppModel = {
 	id: string;
 	provider: string;
@@ -291,6 +303,39 @@ export class AppState {
 		if (id) {
 			void this.renderAssistantMarkdown(id);
 		}
+	}
+
+	snapshotChat(): AppChatSnapshot {
+		return {
+			messageSeq: this.messageSeq,
+			activeAssistantId: this.activeAssistantId,
+			activeThoughtId: this.activeThoughtId,
+			transcriptMessages: this.transcriptMessages.map((message) => ({
+				...message,
+			})),
+			visibleMessageStart: this.visibleMessageStart,
+			emptyChatHint: this.emptyChatHint,
+			activityText: this.activityText,
+			queuedSteeringMessages: [...this.queuedSteeringMessages],
+			queuedFollowUpMessages: [...this.queuedFollowUpMessages],
+		};
+	}
+
+	restoreChat(snapshot: AppChatSnapshot): void {
+		this.clearStreamingPatchTimer();
+		this.messageSeq = snapshot.messageSeq;
+		this.activeAssistantId = snapshot.activeAssistantId;
+		this.activeThoughtId = snapshot.activeThoughtId;
+		this.transcriptMessages = snapshot.transcriptMessages.map((message) => ({
+			...message,
+		}));
+		this.visibleMessageStart = snapshot.visibleMessageStart;
+		this.emptyChatHint = snapshot.emptyChatHint;
+		this.activityText = snapshot.activityText;
+		this.queuedSteeringMessages = [...snapshot.queuedSteeringMessages];
+		this.queuedFollowUpMessages = [...snapshot.queuedFollowUpMessages];
+		this.refreshVisibleMessages();
+		this.broadcast();
 	}
 
 	resetChat(): void {

@@ -21,6 +21,7 @@ const staticRoot = new URL("../../static", import.meta.url).pathname;
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	await preloadPierreHighlighter();
 	const state = new AppState();
+	installUnhandledErrorReporter(state);
 	let host = await AgentHost.create(state).catch((error: unknown) => {
 		state.appendMessage(
 			"system",
@@ -33,162 +34,181 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	return {
 		fetch: async (request) => {
 			const url = new URL(request.url);
+			try {
+				if (request.method === "GET" && url.pathname === "/") {
+					return html(renderPage(state));
+				}
 
-			if (request.method === "GET" && url.pathname === "/") {
-				return html(renderPage(state));
-			}
+				if (request.method === "GET" && url.pathname === "/stream") {
+					return state.createStream(request.signal);
+				}
 
-			if (request.method === "GET" && url.pathname === "/stream") {
-				return state.createStream(request.signal);
-			}
+				if (request.method === "POST" && url.pathname === "/prompt") {
+					const signals = await readSignals(request);
+					const prompt = signals.prompt as string;
+					if (prompt.trim() === "/tree") {
+						host?.openTree();
+						return treeOpenResponse(state, { prompt: "" });
+					}
+					const accepted = host ? await host.prompt(prompt) : false;
+					return accepted ? signalsResponse({ prompt: "" }) : noContent();
+				}
 
-			if (request.method === "POST" && url.pathname === "/prompt") {
-				const signals = await readSignals(request);
-				const prompt = signals.prompt as string;
-				if (prompt.trim() === "/tree") {
+				if (request.method === "POST" && url.pathname === "/prompt/follow-up") {
+					const signals = await readSignals(request);
+					const accepted = host
+						? await host.prompt(signals.prompt as string, {
+								streamingBehavior: "followUp",
+							})
+						: false;
+					return accepted ? signalsResponse({ prompt: "" }) : noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/prompt/dequeue") {
+					const queued = host?.restoreQueuedMessages() ?? "";
+					return queued ? signalsResponse({ prompt: queued }) : noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/abort") {
+					await host?.abort();
+					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/sessions/new") {
+					await host?.newSession();
+					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/sessions/list") {
+					await host?.listSessions();
+					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/messages/older") {
+					if (!state.loadOlderMessages({ broadcast: false })) {
+						return noContent();
+					}
+					return elementsAndScriptResponse(
+						state.renderMessagesElement(),
+						"window.piUiRestoreMessagesAnchor?.()",
+					);
+				}
+
+				if (request.method === "POST" && url.pathname === "/tree/open") {
 					host?.openTree();
-					return treeOpenResponse(state, { prompt: "" });
+					return treeOpenResponse(state);
 				}
-				const accepted = host ? await host.prompt(prompt) : false;
-				return accepted ? signalsResponse({ prompt: "" }) : noContent();
-			}
 
-			if (request.method === "POST" && url.pathname === "/prompt/follow-up") {
-				const signals = await readSignals(request);
-				const accepted = host
-					? await host.prompt(signals.prompt as string, {
-							streamingBehavior: "followUp",
-						})
-					: false;
-				return accepted ? signalsResponse({ prompt: "" }) : noContent();
-			}
+				if (request.method === "POST" && url.pathname === "/tree/navigate") {
+					const signals = await readSignals(request);
+					const editorText = await host?.navigateTree(
+						signals.treeEntryId as string,
+						{
+							summarize: signals.treeSummarize === true,
+							customInstructions:
+								String(signals.treeSummaryInstructions ?? "").trim() ||
+								undefined,
+						},
+					);
+					return scriptAndSignalsResponse(
+						"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
+						{ prompt: editorText ?? "" },
+					);
+				}
 
-			if (request.method === "POST" && url.pathname === "/prompt/dequeue") {
-				const queued = host?.restoreQueuedMessages() ?? "";
-				return queued ? signalsResponse({ prompt: queued }) : noContent();
-			}
+				if (request.method === "POST" && url.pathname === "/sessions/resume") {
+					const signals = await readSignals(request);
+					const resumed = await host?.resumeSession(
+						signals.sessionPath as string,
+					);
+					if (!resumed || !host) {
+						return noContent();
+					}
+					const workspacePath = host.getWorkspacePath();
+					fileSearch.dispose();
+					fileSearch = await FileSearchHost.create(workspacePath);
+					return scriptResponse(
+						"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
+					);
+				}
 
-			if (request.method === "POST" && url.pathname === "/abort") {
-				await host?.abort();
-				return noContent();
-			}
-
-			if (request.method === "POST" && url.pathname === "/sessions/new") {
-				await host?.newSession();
-				return noContent();
-			}
-
-			if (request.method === "POST" && url.pathname === "/sessions/list") {
-				await host?.listSessions();
-				return noContent();
-			}
-
-			if (request.method === "POST" && url.pathname === "/messages/older") {
-				if (!state.loadOlderMessages({ broadcast: false })) {
+				if (request.method === "POST" && url.pathname === "/model") {
+					const signals = await readSignals(request);
+					await host?.setModel(signals.model as string);
 					return noContent();
 				}
-				return elementsAndScriptResponse(
-					state.renderMessagesElement(),
-					"window.piUiRestoreMessagesAnchor?.()",
-				);
-			}
 
-			if (request.method === "POST" && url.pathname === "/tree/open") {
-				host?.openTree();
-				return treeOpenResponse(state);
-			}
-
-			if (request.method === "POST" && url.pathname === "/tree/navigate") {
-				const signals = await readSignals(request);
-				const editorText = await host?.navigateTree(
-					signals.treeEntryId as string,
-					{
-						summarize: signals.treeSummarize === true,
-						customInstructions:
-							String(signals.treeSummaryInstructions ?? "").trim() ||
-							undefined,
-					},
-				);
-				return scriptAndSignalsResponse(
-					"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
-					{ prompt: editorText ?? "" },
-				);
-			}
-
-			if (request.method === "POST" && url.pathname === "/sessions/resume") {
-				const signals = await readSignals(request);
-				const resumed = await host?.resumeSession(signals.sessionPath as string);
-				if (!resumed || !host) {
+				if (request.method === "POST" && url.pathname === "/thinking") {
+					const signals = await readSignals(request);
+					await host?.setThinkingLevel(signals.thinkingLevel as string);
 					return noContent();
 				}
-				const workspacePath = host.getWorkspacePath();
-				fileSearch.dispose();
-				fileSearch = await FileSearchHost.create(workspacePath);
-				return scriptResponse(
-					"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
-				);
-			}
 
-			if (request.method === "POST" && url.pathname === "/model") {
-				const signals = await readSignals(request);
-				await host?.setModel(signals.model as string);
-				return noContent();
-			}
+				if (request.method === "POST" && url.pathname === "/thinking/cycle") {
+					host?.cycleThinkingLevel();
+					return noContent();
+				}
 
-			if (request.method === "POST" && url.pathname === "/thinking") {
-				const signals = await readSignals(request);
-				await host?.setThinkingLevel(signals.thinkingLevel as string);
-				return noContent();
-			}
+				if (request.method === "POST" && url.pathname === "/workspace/open") {
+					const signals = await readSignals(request);
+					const result = await switchWorkspace(
+						state,
+						host,
+						fileSearch,
+						signals.workspacePath as string,
+					);
+					host = result.host;
+					fileSearch = result.fileSearch;
+					return noContent();
+				}
 
-			if (request.method === "POST" && url.pathname === "/thinking/cycle") {
-				host?.cycleThinkingLevel();
-				return noContent();
-			}
+				if (request.method === "GET" && url.pathname === "/files/search") {
+					const query = url.searchParams.get("q") ?? "";
+					return Response.json(await fileSearch.search(query));
+				}
 
-			if (request.method === "POST" && url.pathname === "/workspace/open") {
-				const signals = await readSignals(request);
-				const result = await switchWorkspace(
-					state,
-					host,
-					fileSearch,
-					signals.workspacePath as string,
-				);
-				host = result.host;
-				fileSearch = result.fileSearch;
-				return noContent();
-			}
+				if (request.method === "POST" && url.pathname === "/files/import") {
+					return Response.json({
+						paths: await importTransferredFiles(request),
+					});
+				}
 
-			if (request.method === "GET" && url.pathname === "/files/search") {
-				const query = url.searchParams.get("q") ?? "";
-				return Response.json(await fileSearch.search(query));
-			}
+				if (request.method === "GET" && url.pathname === "/basecoat.js") {
+					return new Response(await Deno.readFile(basecoatJsPath), {
+						headers: { "content-type": "text/javascript; charset=utf-8" },
+					});
+				}
 
-			if (request.method === "POST" && url.pathname === "/files/import") {
-				return Response.json({ paths: await importTransferredFiles(request) });
-			}
+				if (
+					request.method === "GET" &&
+					url.pathname === "/vendor/datastar-inspector.min.js" &&
+					!state.debugUi
+				) {
+					return notFound();
+				}
 
-			if (request.method === "GET" && url.pathname === "/basecoat.js") {
-				return new Response(await Deno.readFile(basecoatJsPath), {
-					headers: { "content-type": "text/javascript; charset=utf-8" },
-				});
-			}
+				if (request.method === "GET") {
+					return serveDir(request, { fsRoot: staticRoot });
+				}
 
-			if (
-				request.method === "GET" &&
-				url.pathname === "/vendor/datastar-inspector.min.js" &&
-				!state.debugUi
-			) {
 				return notFound();
+			} catch (error) {
+				state.appendMessage("system", formatError(error));
+				return noContent();
 			}
-
-			if (request.method === "GET") {
-				return serveDir(request, { fsRoot: staticRoot });
-			}
-
-			return notFound();
 		},
 	};
+}
+
+function installUnhandledErrorReporter(state: AppState): void {
+	addEventListener("unhandledrejection", (event) => {
+		event.preventDefault();
+		state.appendMessage("system", formatError(event.reason));
+	});
+	addEventListener("error", (event) => {
+		event.preventDefault();
+		state.appendMessage("system", formatError(event.error ?? event.message));
+	});
 }
 
 async function switchWorkspace(
