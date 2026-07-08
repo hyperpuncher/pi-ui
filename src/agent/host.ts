@@ -105,7 +105,7 @@ export class AgentHost {
 			const customInstructions = trimmed.startsWith("/compact ")
 				? trimmed.slice(9).trim()
 				: undefined;
-			await this.compact(customInstructions);
+			void this.compact(customInstructions);
 			return true;
 		}
 
