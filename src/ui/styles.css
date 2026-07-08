@@ -156,7 +156,8 @@
 	.markdown-content code:not(pre code) {
 		border-radius: var(--radius-sm);
 		background: var(--muted);
-		padding: 0.075rem 0.375rem;
+		padding: 0.1rem 0.425rem;
+		font-size: 0.9em;
 	}
 
 	.markdown-content pre code {
