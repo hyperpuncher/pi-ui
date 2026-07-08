@@ -43,7 +43,7 @@ jobs:
               run: |
                   compress=""
                   if [[ "${{ matrix.name }}" != darwin-* ]]; then
-                    compress="--compress=xz"
+                    compress="--compress=zstd"
                   fi
                   deno desktop -A \
                     --unstable-no-legacy-abort \
