@@ -16,6 +16,9 @@ export function renderPage(state: AppState): string {
 		isSessionReady: true,
 		isDraggingFile: false,
 		sessionPath: "",
+		sessionDeletePath: "",
+		sessionDeleteTitle: "",
+		sessionDeleteHover: "",
 		treeEntryId: "",
 		treeSummarize: false,
 		treeSummaryInstructions: "",
@@ -187,6 +190,51 @@ export function renderPage(state: AppState): string {
 							/>
 						</header>
 						{renderSessionPicker(state)}
+					</div>
+				</dialog>
+
+				<dialog
+					id="session-delete-dialog"
+					class="dialog"
+					aria-labelledby="session-delete-title"
+					aria-describedby="session-delete-description"
+					onclick="if (event.target === this) this.close()"
+				>
+					<div class="sm:max-w-md">
+						<header>
+							<h2 id="session-delete-title">Delete session?</h2>
+							<p id="session-delete-description">
+								This will permanently delete{" "}
+								<span data-text="$sessionDeleteTitle">
+									the selected session
+								</span>
+								.
+							</p>
+						</header>
+						<footer>
+							<button
+								type="button"
+								class="btn"
+								data-variant="outline"
+								onclick="this.closest('dialog').close()"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								class="btn"
+								data-variant="destructive"
+								data-attr:disabled="$sessionDeletePath === ''"
+								data-on:click="
+									evt.target.closest('dialog').close();
+									@post('/sessions/delete', {
+									filterSignals: { include: /^sessionDeletePath$/ },
+								});
+								"
+							>
+								Delete session
+							</button>
+						</footer>
 					</div>
 				</dialog>
 			</body>

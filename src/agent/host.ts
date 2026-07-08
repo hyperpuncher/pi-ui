@@ -178,6 +178,36 @@ export class AgentHost {
 		this.syncUsage();
 	}
 
+	async deleteSession(sessionPath: string): Promise<boolean> {
+		const targetSessionFile = SessionManager.open(sessionPath).getSessionFile();
+		if (!targetSessionFile) {
+			return false;
+		}
+		if (targetSessionFile === this.runtime.session.sessionManager.getSessionFile()) {
+			this.state.appendMessage("system", "Cannot delete the current session.");
+			return false;
+		}
+		if (this.backgroundSessions.has(targetSessionFile)) {
+			this.state.appendMessage(
+				"system",
+				"Cannot delete a running background session.",
+			);
+			return false;
+		}
+		try {
+			await moveToTrash(targetSessionFile);
+			this.state.removeSession(targetSessionFile);
+			void this.refreshSessions();
+			return true;
+		} catch (error) {
+			this.state.appendMessage(
+				"system",
+				`Failed to delete session: ${formatError(error)}`,
+			);
+			return false;
+		}
+	}
+
 	getWorkspacePath(): string {
 		return this.runtime.session.sessionManager.getCwd();
 	}
@@ -1237,6 +1267,48 @@ function normalizeTreeText(text: string): string {
 		.replace(/\s+/g, " ")
 		.trim()
 		.slice(0, 240);
+}
+
+async function moveToTrash(path: string): Promise<void> {
+	const command = trashCommand(path);
+	try {
+		const output = await new Deno.Command(command.command, {
+			args: command.args,
+		}).output();
+		if (!output.success) {
+			const stderr = new TextDecoder().decode(output.stderr).trim();
+			throw new Error(stderr || `Trash command failed with code ${output.code}`);
+		}
+	} catch (error) {
+		if (error instanceof Deno.errors.NotFound) {
+			await Deno.remove(path);
+			return;
+		}
+		throw error;
+	}
+}
+
+function trashCommand(path: string): { command: string; args: string[] } {
+	if (Deno.build.os === "darwin") {
+		return {
+			command: "osascript",
+			args: [
+				"-e",
+				`tell application "Finder" to delete POSIX file ${JSON.stringify(path)}`,
+			],
+		};
+	}
+	if (Deno.build.os === "windows") {
+		return {
+			command: "powershell",
+			args: [
+				"-NoProfile",
+				"-Command",
+				`Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(${JSON.stringify(path)}, 'OnlyErrorDialogs', 'SendToRecycleBin')`,
+			],
+		};
+	}
+	return { command: "trash", args: [path] };
 }
 
 function recentSessionWorkspaces(sessions: SessionInfo[]): string[] {

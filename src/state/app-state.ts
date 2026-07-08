@@ -465,6 +465,10 @@ export class AppState {
 		`);
 	}
 
+	removeSession(path: string): void {
+		this.setSessions(this.sessions.filter((session) => session.path !== path));
+	}
+
 	setRecentWorkspaces(recentWorkspaces: string[]): void {
 		this.recentWorkspaces = recentWorkspaces;
 	}

@@ -4,6 +4,7 @@ import { AgentHost } from "../agent/host.ts";
 import { AppState } from "../state/app-state.ts";
 import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { renderPage } from "../ui/page.tsx";
+import { renderSessionPicker } from "../ui/pickers.tsx";
 import { renderTreePicker } from "../ui/tree-picker.tsx";
 import {
 	elementsAndScriptResponse,
@@ -81,6 +82,22 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				if (request.method === "POST" && url.pathname === "/sessions/list") {
 					await host?.listSessions();
 					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/sessions/delete") {
+					const signals = await readSignals(request);
+					const deleted = await host?.deleteSession(
+						String(signals.sessionDeletePath ?? ""),
+					);
+					return deleted
+						? elementsAndScriptResponse(
+								renderSessionPicker(state),
+								`document.getElementById('session-delete-dialog')?.close();
+							document.querySelector('#session-dialog .command')?.refresh?.();
+							document.getElementById('session-input')?.focus();`,
+								{ sessionDeletePath: "", sessionDeleteTitle: "" },
+							)
+						: noContent();
 				}
 
 				if (request.method === "POST" && url.pathname === "/messages/older") {
