@@ -16,5 +16,9 @@ function setupDesktopWindow(): void {
 		height: 1400,
 	});
 
-	win.setApplicationMenu([]);
+	// Hide menu on Windows/Linux, but keep macOS' default application menu so
+	// native shortcuts like Cmd+Q and Cmd+W keep working.
+	if (Deno.build.os !== "darwin") {
+		win.setApplicationMenu([]);
+	}
 }
