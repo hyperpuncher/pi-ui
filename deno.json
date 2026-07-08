@@ -27,14 +27,7 @@
 			"name": "pi-ui",
 			"identifier": "dev.pi.ui",
 			"icons": {
-				"macos": [
-					{ "path": "./icons/pi-logo-16.png", "size": 16 },
-					{ "path": "./icons/pi-logo-32.png", "size": 32 },
-					{ "path": "./icons/pi-logo-128.png", "size": 128 },
-					{ "path": "./icons/pi-logo-256.png", "size": 256 },
-					{ "path": "./icons/pi-logo-512.png", "size": 512 },
-					{ "path": "./icons/pi-logo-1024.png", "size": 1024 }
-				],
+				"macos": "./icons/pi-logo.icns",
 				"windows": "./icons/pi-logo.ico",
 				"linux": "./icons/pi-logo.png"
 			}
