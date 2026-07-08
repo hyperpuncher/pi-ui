@@ -44,15 +44,25 @@ const basecoatTables = defineHastPlugin({
 					"className",
 					classes(node.properties.className, [
 						"table",
+						"min-w-max",
 						"w-full",
-						"table-fixed",
+						"table-auto",
 						"text-sm",
 					]),
 				);
 				ctx.wrapNode(node, {
 					type: "element",
 					tagName: "div",
-					properties: { className: ["table-container"] },
+					properties: {
+						className: [
+							"table-container",
+							"border-border/60",
+							"bg-background",
+							"overflow-x-auto",
+							"rounded-md",
+							"border",
+						],
+					},
 					children: [],
 				});
 			}

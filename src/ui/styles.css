@@ -122,6 +122,40 @@
 		white-space: pre-wrap;
 	}
 
+	.markdown-content .table-container {
+		max-width: 100%;
+		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
+			color-mix(in oklab, var(--muted) 35%, transparent);
+	}
+
+	.markdown-content .table-container table {
+		border-collapse: separate;
+		border-spacing: 0;
+	}
+
+	.markdown-content .table-container :where(th, td) {
+		border-bottom: 1px solid var(--border);
+		border-right: 1px solid var(--border);
+		max-width: 24rem;
+	}
+
+	.markdown-content .table-container :where(th, td):last-child {
+		border-right: 0;
+	}
+
+	.markdown-content .table-container tbody tr:last-child td {
+		border-bottom: 0;
+	}
+
+	.markdown-content .table-container th {
+		background: color-mix(in oklab, var(--muted) 55%, transparent);
+		white-space: nowrap;
+	}
+
+	.markdown-content .table-container tr:nth-child(even) td {
+		background: color-mix(in oklab, var(--muted) 20%, transparent);
+	}
+
 	.markdown-content :where(ul, ol) {
 		padding-left: 1.5rem;
 	}
