@@ -13,6 +13,7 @@ export function renderPage(state: AppState): string {
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
 		isBusy: Boolean(state.activityText),
+		isSessionReady: true,
 		isDraggingFile: false,
 		sessionPath: "",
 		treeEntryId: "",

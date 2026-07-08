@@ -167,6 +167,8 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 			data-filter={haystack}
 			data-keywords={haystack}
 			data-on:click={`
+				document.getElementById('session-dialog')?.close();
+				$isSessionReady = false;
 				$sessionPath = ${JSON.stringify(session.path)};
 				@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
 			`}

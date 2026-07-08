@@ -3,7 +3,7 @@ const messagesScrollState = {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-	focusPrompt();
+	focusPromptEnd();
 	bindPromptInteractions();
 	bindSlashPicker();
 	bindFilePicker();
@@ -84,17 +84,10 @@ function visibleRows(selector) {
 	);
 }
 
-function focusPrompt() {
-	const input = document.getElementById("prompt-input");
-	if (input instanceof HTMLTextAreaElement) {
-		input.focus();
-	}
-}
-
 function focusPromptEnd() {
 	const input = document.getElementById("prompt-input");
 	if (input instanceof HTMLTextAreaElement) {
-		input.focus();
+		input.focus({ preventScroll: true });
 		input.selectionStart = input.value.length;
 		input.selectionEnd = input.value.length;
 	}

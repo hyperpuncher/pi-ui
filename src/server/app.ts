@@ -10,7 +10,6 @@ import {
 	readSignals,
 	refreshBasecoatComponentsScript,
 	scriptAndSignalsResponse,
-	scriptResponse,
 	signalsResponse,
 } from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
@@ -127,9 +126,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 					const workspacePath = host.getWorkspacePath();
 					fileSearch.dispose();
 					fileSearch = await FileSearchHost.create(workspacePath);
-					return scriptResponse(
-						"document.getElementById('prompt-input')?.focus({ preventScroll: true })",
-					);
+					return noContent();
 				}
 
 				if (request.method === "POST" && url.pathname === "/model") {

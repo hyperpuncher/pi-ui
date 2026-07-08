@@ -502,6 +502,7 @@ export class AppState {
 	setCurrentSessionPath(currentSessionPath: string | undefined): void {
 		this.currentSessionPath = currentSessionPath;
 		this.broadcast(refreshBasecoatComponentsScript("#session-dialog .command"));
+		this.broadcastSignals();
 	}
 
 	setWorkspacePath(workspacePath: string): void {
@@ -612,6 +613,7 @@ export class AppState {
 					model: this.currentModel ?? "",
 					thinkingLevel: this.thinkingLevel,
 					workspacePath: this.workspacePath,
+					isSessionReady: true,
 					isBusy: Boolean(this.activityText),
 					treeEntryId: "",
 					treeSummarize: false,
