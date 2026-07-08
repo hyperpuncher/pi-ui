@@ -43,6 +43,18 @@
 }
 
 @layer components {
+	[data-copied-icon] {
+		display: none;
+	}
+
+	[data-copy-code][data-copy-state="copied"] [data-copy-icon] {
+		display: none;
+	}
+
+	[data-copy-code][data-copy-state="copied"] [data-copied-icon] {
+		display: block;
+	}
+
 	.diff-output {
 		background: color-mix(in oklab, var(--muted) 40%, transparent);
 		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)

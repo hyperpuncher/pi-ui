@@ -700,19 +700,28 @@ function bindCodeCopy() {
 		const block = button.closest("[data-code-block]");
 		const source = block?.querySelector("[data-code-source]");
 		const code = block?.querySelector("code");
-		const text = source?.textContent || code?.textContent;
+		const text = source?.textContent
+			? decodeHtmlEntities(source.textContent)
+			: code?.textContent;
 		if (!text) return;
 		try {
 			await navigator.clipboard.writeText(text);
-			const previous = button.textContent;
-			button.textContent = "Copied";
+			button.dataset.copyState = "copied";
+			button.setAttribute("aria-label", "Copied");
 			setTimeout(() => {
-				button.textContent = previous;
+				delete button.dataset.copyState;
+				button.setAttribute("aria-label", "Copy code");
 			}, 1200);
 		} catch {
-			button.textContent = "Failed";
+			button.setAttribute("aria-label", "Copy failed");
 		}
 	});
+}
+
+function decodeHtmlEntities(text) {
+	const textarea = document.createElement("textarea");
+	textarea.innerHTML = text;
+	return textarea.value;
 }
 
 function bindPickerKeyboard() {
