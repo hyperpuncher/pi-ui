@@ -48,7 +48,6 @@ jobs:
                   deno desktop -A \
                     --unstable-no-legacy-abort \
                     --conditions browser \
-                    --backend cef \
                     --include static \
                     $compress \
                     --target "${{ matrix.target }}" \
