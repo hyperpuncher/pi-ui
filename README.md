@@ -16,11 +16,8 @@ keyboard-first desktop gui for [pi](https://pi.dev).
 	</picture>
 </div>
 
-same power as the pi tui, packaged as a normy-friendly desktop app:
-
-- agent runtime, sessions, and session tree
-- tools, skills, slash commands, and `@` files
-- workspaces, models, thinking levels, and compaction
+feature parity with the pi tui, plus desktop niceties like background sessions,
+native notifications, file paste/drop, and rich code/diff rendering.
 
 built with:
 
@@ -28,7 +25,7 @@ built with:
 - [datastar](https://data-star.dev/)
 - [kita jsx](https://github.com/kitajs/html)
 - [sätteri](https://github.com/bruits/satteri)
-- [shiki](https://shiki.style/)
+- [pierre](https://github.com/pierre-codes/pierre)
 - [basecoat](https://basecoatui.com/)
 
 ## install
@@ -56,6 +53,8 @@ brew install --cask hyperpuncher/tap/pi-ui
 | `alt+t`      | cycle thinking level |
 | `/`          | slash commands       |
 | `@`          | file picker          |
+| `alt+enter`  | queue follow-up      |
+| `alt+↑`      | restore queued text  |
 | `j` / `k`    | scroll messages      |
 | `gg` / `G`   | top / bottom         |
 | `gi`         | focus prompt         |
