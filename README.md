@@ -1,6 +1,6 @@
 # pi-ui
 
-keyboard-first desktop gui for [pi](https://pi.dev).
+keyboard-first desktop gui for [`pi`](https://pi.dev).
 
 <div>
 	<picture>
@@ -21,12 +21,12 @@ native notifications, file paste/drop, and rich code/diff rendering.
 
 built with:
 
-- [deno desktop](https://docs.deno.com/runtime/desktop/)
-- [datastar](https://data-star.dev/)
-- [kita jsx](https://github.com/kitajs/html)
-- [sätteri](https://github.com/bruits/satteri)
-- [pierre](https://github.com/pierre-codes/pierre)
-- [basecoat](https://basecoatui.com/)
+- [`deno-desktop`](https://docs.deno.com/runtime/desktop/)
+- [`datastar`](https://data-star.dev/)
+- [`kita-jsx`](https://github.com/kitajs/html)
+- [`sätteri`](https://github.com/bruits/satteri)
+- [`pierre-diffs`](https://diffs.com/)
+- [`basecoat`](https://basecoatui.com/)
 
 ## install
 
