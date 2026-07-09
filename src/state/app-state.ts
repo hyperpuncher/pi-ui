@@ -18,6 +18,7 @@ import {
 	renderPromptAction,
 	renderPromptQueue,
 	renderPromptStatus,
+	renderPromptToolbar,
 	renderModelPicker,
 	renderThinkingPicker,
 	renderWorkspacePicker,
@@ -171,6 +172,7 @@ export class AppState {
 	slashCommands: AppSlashCommand[] = [];
 	currentModel: string | undefined;
 	currentSessionPath: string | undefined;
+	isTemporarySession = false;
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usage: AppUsage = { text: "$0.000 • 0 tokens" };
@@ -524,6 +526,12 @@ export class AppState {
 		this.broadcast();
 	}
 
+	setTemporarySession(isTemporarySession: boolean): void {
+		this.isTemporarySession = isTemporarySession;
+		this.broadcast();
+		this.broadcastSignals();
+	}
+
 	setWorkspacePath(workspacePath: string): void {
 		this.workspacePath = workspacePath;
 		this.broadcast(refreshBasecoatComponentsScript("#workspace-dialog .command"));
@@ -604,6 +612,7 @@ export class AppState {
 			this.renderMessagesElement() +
 			renderPromptAction(this) +
 			renderPromptQueue(this) +
+			renderPromptToolbar(this) +
 			renderPromptStatus(this) +
 			renderWorkspacePicker(this) +
 			renderWorkspaceDialogMenu(this) +

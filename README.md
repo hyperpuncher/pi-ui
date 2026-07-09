@@ -44,20 +44,21 @@ brew install --cask hyperpuncher/tap/pi-ui
 
 ## keybinds
 
-| key          | action               |
-| ------------ | -------------------- |
-| `ctrl/cmd+k` | command menu         |
-| `ctrl/cmd+o` | new session          |
-| `ctrl/cmd+r` | session picker       |
-| `ctrl/cmd+l` | model picker         |
-| `alt+t`      | cycle thinking level |
-| `/`          | slash commands       |
-| `@`          | file picker          |
-| `alt+enter`  | queue follow-up      |
-| `alt+↑`      | restore queued text  |
-| `j` / `k`    | scroll messages      |
-| `gg` / `G`   | top / bottom         |
-| `gi`         | focus prompt         |
+| key              | action               |
+| ---------------- | -------------------- |
+| `ctrl/cmd+k`     | command menu         |
+| `ctrl/cmd+o`     | new session          |
+| `ctrl/cmd+alt+o` | temporary chat       |
+| `ctrl/cmd+r`     | session picker       |
+| `ctrl/cmd+l`     | model picker         |
+| `alt+t`          | cycle thinking level |
+| `/`              | slash commands       |
+| `@`              | file picker          |
+| `alt+enter`      | queue follow-up      |
+| `alt+↑`          | restore queued text  |
+| `j` / `k`        | scroll messages      |
+| `gg` / `G`       | top / bottom         |
+| `gi`             | focus prompt         |
 
 ## license
 

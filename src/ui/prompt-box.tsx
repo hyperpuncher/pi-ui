@@ -76,23 +76,7 @@ export function renderPromptBox(state: AppState): string {
 				class="flex flex-wrap items-center justify-between gap-2 p-0"
 				data-align="end"
 			>
-				<div
-					class="flex shrink-0 items-center gap-0.5"
-					aria-label="Message tools"
-				>
-					<PromptToolbarButton label="Commands" action="commands">
-						⌘
-					</PromptToolbarButton>
-					<PromptToolbarButton label="New chat" action="new-chat">
-						+
-					</PromptToolbarButton>
-					<PromptToolbarButton label="Files" action="files">
-						@
-					</PromptToolbarButton>
-					<PromptToolbarButton label="Resume session" action="sessions">
-						↩
-					</PromptToolbarButton>
-				</div>
+				{renderPromptToolbar(state)}
 				<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
 					{renderPromptStatus(state)}
 					{renderWorkspacePicker(state)}
@@ -141,17 +125,67 @@ function renderQueuedMessages(state: AppState): string {
 	) as string;
 }
 
-type PromptToolbarAction = "commands" | "new-chat" | "files" | "sessions";
+type PromptToolbarAction =
+	| "commands"
+	| "new-chat"
+	| "new-temporary-chat"
+	| "files"
+	| "sessions";
+
+export function renderPromptToolbar(state: AppState): string {
+	return (
+		<div
+			id="prompt-toolbar"
+			class="flex shrink-0 items-center gap-0.5"
+			aria-label="Message tools"
+		>
+			<PromptToolbarButton label="Commands" action="commands">
+				⌘
+			</PromptToolbarButton>
+			<PromptToolbarButton label="Files" action="files">
+				@
+			</PromptToolbarButton>
+			<PromptToolbarButton label="Resume session" action="sessions">
+				↩
+			</PromptToolbarButton>
+			<PromptToolbarButton label="New chat" action="new-chat">
+				+
+			</PromptToolbarButton>
+			<PromptToolbarButton
+				label="New temporary chat"
+				action="new-temporary-chat"
+				variant={state.isTemporarySession ? "secondary" : "ghost"}
+				pressed={state.isTemporarySession}
+			>
+				<svg
+					class="size-3.5"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<path d="M5 22h14M5 2h14m-2 20v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
+				</svg>
+			</PromptToolbarButton>
+		</div>
+	) as string;
+}
 
 function PromptToolbarButton(props: {
 	label: string;
 	action: PromptToolbarAction;
-	children: string;
+	variant?: "primary" | "secondary" | "ghost";
+	pressed?: boolean;
+	children: JSX.Element;
 }) {
 	return (
 		<button
-			class="btn text-muted-foreground hover:text-foreground leading-none"
-			data-variant="ghost"
+			class="btn leading-none"
+			data-variant={props.variant ?? "ghost"}
+			aria-pressed={props.pressed ? "true" : undefined}
 			data-size="icon-sm"
 			type="button"
 			data-file-trigger={props.action === "files" ? "" : undefined}
@@ -168,6 +202,7 @@ function PromptToolbarButton(props: {
 function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
 	if (action === "commands") return openCommandPaletteAction();
 	if (action === "new-chat") return newChatAction();
+	if (action === "new-temporary-chat") return newTemporaryChatAction();
 	if (action === "sessions") return openSessionDialogAction();
 	return undefined;
 }
@@ -180,9 +215,15 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 		}`;
 	}
 	if (action === "new-chat") {
-		return `if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'o') {
+		return `if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && evt.key.toLowerCase() === 'o') {
 			evt.preventDefault();
 			${newChatAction()}
+		}`;
+	}
+	if (action === "new-temporary-chat") {
+		return `if ((evt.ctrlKey || evt.metaKey) && evt.altKey && evt.key.toLowerCase() === 'o') {
+			evt.preventDefault();
+			${newTemporaryChatAction()}
 		}`;
 	}
 	if (action === "sessions") {
@@ -200,6 +241,10 @@ function openCommandPaletteAction(): string {
 
 function newChatAction(): string {
 	return "@post('/sessions/new'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus())";
+}
+
+function newTemporaryChatAction(): string {
+	return "@post('/sessions/new-temporary'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus())";
 }
 
 function openSessionDialogAction(): string {
@@ -260,6 +305,11 @@ export function renderPromptStatus(state: AppState): string {
 			id="prompt-status"
 			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
 		>
+			{state.isTemporarySession && (
+				<span class="badge" data-variant="outline" aria-label="Temporary chat">
+					temp
+				</span>
+			)}
 			{state.activityText && (
 				<span class="text-muted-foreground inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none">
 					<span class="inline-flex items-center gap-1.5">

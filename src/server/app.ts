@@ -84,6 +84,14 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 					return noContent();
 				}
 
+				if (
+					request.method === "POST" &&
+					url.pathname === "/sessions/new-temporary"
+				) {
+					await host?.newTemporarySession();
+					return noContent();
+				}
+
 				if (request.method === "POST" && url.pathname === "/sessions/list") {
 					await host?.listSessions();
 					return noContent();

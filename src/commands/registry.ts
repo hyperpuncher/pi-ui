@@ -1,5 +1,6 @@
 export type AppCommandId =
 	| "new-chat"
+	| "new-temporary-chat"
 	| "resume-session"
 	| "session-tree"
 	| "command-palette"
@@ -26,6 +27,17 @@ export const appCommands: AppCommand[] = [
 		description: "Start a fresh pi session.",
 		shortcut: { display: "ctrl O", native: "CmdOrCtrl+O", keys: ["o"] },
 		action: "@post('/sessions/new'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus())",
+	},
+	{
+		id: "new-temporary-chat",
+		title: "New temporary chat",
+		description: "Start a temporary chat that is not saved.",
+		shortcut: {
+			display: "ctrl alt O",
+			native: "CmdOrCtrl+Alt+O",
+			keys: ["o"],
+		},
+		action: "@post('/sessions/new-temporary'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus())",
 	},
 	{
 		id: "resume-session",

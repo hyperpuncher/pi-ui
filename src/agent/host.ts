@@ -175,10 +175,66 @@ export class AgentHost {
 	}
 
 	async newSession(): Promise<boolean> {
-		const result = await this.runtime.newSession();
-		if (result.cancelled) {
-			return false;
+		if (!this.runtime.session.sessionManager.isPersisted()) {
+			if (this.runtime.session.isStreaming) {
+				this.state.appendMessage(
+					"system",
+					"Cannot start a saved chat while this temporary chat is running.",
+				);
+				return false;
+			}
+
+			const cwd = this.runtime.session.sessionManager.getCwd();
+			this.unbindSession();
+			this.runtime.dispose();
+			const runtime = await createAgentSessionRuntime(this.runtimeFactory, {
+				cwd,
+				agentDir: getAgentDir(),
+				sessionManager: SessionManager.create(cwd),
+				sessionStartEvent: { type: "session_start", reason: "new" },
+			});
+			this.runtime = runtime;
+			this.bindRuntimeCallbacks(runtime);
+		} else {
+			const result = await this.runtime.newSession();
+			if (result.cancelled) {
+				return false;
+			}
 		}
+		this.state.resetChat();
+		await this.bindSession();
+		return true;
+	}
+
+	async newTemporarySession(): Promise<boolean> {
+		const previousSessionFile = this.runtime.session.sessionManager.getSessionFile();
+		const cwd = this.runtime.session.sessionManager.getCwd();
+		if (this.runtime.session.isStreaming) {
+			if (!this.runtime.session.sessionManager.getSessionFile()) {
+				this.state.appendMessage(
+					"system",
+					"Cannot start another temporary chat while this temporary chat is running.",
+				);
+				return false;
+			}
+			this.backgroundCurrentRuntime();
+		} else {
+			this.unbindSession();
+			this.runtime.dispose();
+		}
+
+		const runtime = await createAgentSessionRuntime(this.runtimeFactory, {
+			cwd,
+			agentDir: getAgentDir(),
+			sessionManager: SessionManager.inMemory(cwd),
+			sessionStartEvent: {
+				type: "session_start",
+				reason: "new",
+				previousSessionFile,
+			},
+		});
+		this.runtime = runtime;
+		this.bindRuntimeCallbacks(runtime);
 		this.state.resetChat();
 		await this.bindSession();
 		return true;
@@ -361,6 +417,7 @@ export class AgentHost {
 				this.runtime.session.sessionManager.getCwd(),
 			);
 			backgroundState.setCurrentSessionPath(sessionFile);
+			backgroundState.setTemporarySession(false);
 			const backgroundSession: BackgroundSession = {
 				runtime: this.runtime,
 				state: backgroundState,
@@ -544,6 +601,7 @@ export class AgentHost {
 		const resetToolState = options.resetToolState ?? true;
 		this.state.setWorkspacePath(session.sessionManager.getCwd());
 		this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
+		this.state.setTemporarySession(!session.sessionManager.isPersisted());
 		if (resetToolState) {
 			this.toolMessageIds.clear();
 			this.toolCallArgs.clear();
