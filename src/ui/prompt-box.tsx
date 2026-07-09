@@ -305,11 +305,6 @@ export function renderPromptStatus(state: AppState): string {
 			id="prompt-status"
 			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
 		>
-			{state.isTemporarySession && (
-				<span class="badge" data-variant="outline" aria-label="Temporary chat">
-					temp
-				</span>
-			)}
 			{state.activityText && (
 				<span class="text-muted-foreground inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none">
 					<span class="inline-flex items-center gap-1.5">
