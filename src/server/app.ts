@@ -4,7 +4,6 @@ import { AgentHost } from "../agent/host.ts";
 import { AppState } from "../state/app-state.ts";
 import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { renderPage } from "../ui/page.tsx";
-import { renderSessionPicker } from "../ui/pickers.tsx";
 import { renderTreePicker } from "../ui/tree-picker.tsx";
 import {
 	elementsAndScriptResponse,
@@ -19,7 +18,7 @@ const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).path
 const staticRoot = new URL("../../static", import.meta.url).pathname;
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
-	await preloadPierreHighlighter();
+	const preloadHighlighterPromise = preloadPierreHighlighter();
 	const state = new AppState();
 	installUnhandledErrorReporter(state);
 	let host = await AgentHost.create(state).catch((error: unknown) => {
@@ -28,6 +27,12 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			`Failed to start pi SDK runtime: ${formatError(error)}`,
 		);
 		return undefined;
+	});
+	await preloadHighlighterPromise.catch((error: unknown) => {
+		state.appendMessage(
+			"system",
+			`Failed to preload highlighter: ${formatError(error)}`,
+		);
 	});
 	let fileSearch = await FileSearchHost.create(state.workspacePath);
 
@@ -90,10 +95,9 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 						String(signals.sessionDeletePath ?? ""),
 					);
 					return deleted
-						? elementsAndScriptResponse(
-								renderSessionPicker(state),
+						? scriptAndSignalsResponse(
 								`document.getElementById('session-delete-dialog')?.close();
-							document.querySelector('#session-dialog .command')?.refresh?.();
+							${refreshBasecoatComponentsScript("#session-dialog .command")};
 							document.getElementById('session-input')?.focus();`,
 								{ sessionDeletePath: "", sessionDeleteTitle: "" },
 							)

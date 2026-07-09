@@ -454,15 +454,23 @@ export class AppState {
 
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
-		this.broadcast(`
-			queueMicrotask(() => {
-				document.querySelector('#workspace-dialog .command')?.refresh?.();
-				const sessionDialog = document.getElementById('session-dialog');
-				if (!sessionDialog?.open) {
-					document.querySelector('#session-dialog .command')?.refresh?.();
-				}
-			});
-		`);
+		for (const client of this.clients.values()) {
+			try {
+				client.stream.patchElements(
+					this.renderMessagesElement() +
+						renderWorkspaceDialogMenu(this) +
+						renderSessionPicker(this),
+				);
+				client.stream.executeScript(
+					refreshBasecoatComponentsScript(
+						"#workspace-dialog .command",
+						"#session-dialog .command",
+					),
+				);
+			} catch {
+				// Client already disconnected.
+			}
+		}
 	}
 
 	removeSession(path: string): void {
@@ -595,7 +603,6 @@ export class AppState {
 			renderModelPicker(this) +
 			renderThinkingPicker(this) +
 			renderDebugOverlay(this) +
-			renderSessionPicker(this) +
 			renderSlashPicker(this) +
 			renderTreePicker(this)
 		);

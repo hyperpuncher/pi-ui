@@ -70,6 +70,7 @@ export class AgentHost {
 		cwd = defaultWorkspacePath(),
 	): Promise<AgentHost> {
 		state.setWorkspacePath(cwd);
+		const sessionsPromise = SessionManager.listAll();
 		const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 			cwd,
 			sessionManager,
@@ -97,7 +98,17 @@ export class AgentHost {
 
 		const host = new AgentHost(runtime, state, createRuntime);
 		host.bindRuntimeCallbacks(runtime);
-		await host.bindSession();
+		await host.bindSession({ refreshSessions: false });
+		try {
+			const sessions = await sessionsPromise;
+			state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
+			state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
+		} catch (error) {
+			state.appendMessage(
+				"system",
+				`Failed to list sessions: ${formatError(error)}`,
+			);
+		}
 		return host;
 	}
 
@@ -197,7 +208,6 @@ export class AgentHost {
 		try {
 			await moveToTrash(targetSessionFile);
 			this.state.removeSession(targetSessionFile);
-			void this.refreshSessions();
 			return true;
 		} catch (error) {
 			this.state.appendMessage(
@@ -514,9 +524,11 @@ export class AgentHost {
 		}
 	}
 
-	private async bindSession(): Promise<void> {
+	private async bindSession(
+		options: { refreshSessions?: boolean } = {},
+	): Promise<void> {
 		this.unbindSession();
-		this.bindSessionState();
+		this.bindSessionState(options);
 		await this.bindSessionExtensions();
 	}
 
@@ -525,7 +537,9 @@ export class AgentHost {
 		this.unsubscribe = undefined;
 	}
 
-	private bindSessionState(options: { resetToolState?: boolean } = {}): void {
+	private bindSessionState(
+		options: { resetToolState?: boolean; refreshSessions?: boolean } = {},
+	): void {
 		const session = this.runtime.session;
 		const resetToolState = options.resetToolState ?? true;
 		this.state.setWorkspacePath(session.sessionManager.getCwd());
@@ -542,7 +556,9 @@ export class AgentHost {
 		this.syncSlashCommands();
 		this.syncUsage();
 		this.refreshCodexUsage(true);
-		void this.refreshSessions();
+		if (options.refreshSessions !== false) {
+			void this.refreshSessions();
+		}
 	}
 
 	private async bindSessionExtensions(): Promise<void> {
