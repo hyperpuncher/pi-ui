@@ -141,22 +141,53 @@ function renderPreOutput(text: string) {
 }
 
 function renderDiffOutput(message: AppMessage) {
-	if (message.renderedHtml) {
-		return (
-			<div class="diff-output border-border/60 max-h-96 overflow-auto rounded-md border-t [&_.pierre-diff]:block [&_.pierre-diff]:min-w-0 [&_.pierre-diff]:overflow-hidden [&_.pierre-diff]:rounded-md [&_.pierre-diff+_.pierre-diff]:mt-3 [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
-				{message.renderedHtml}
-			</div>
-		);
-	}
-	return renderPreOutput(message.text);
+	return (
+		<div class="diff-output border-border/60 max-h-96 overflow-auto rounded-md border-t bg-[var(--code-background)] [&_.pierre-diff]:block [&_.pierre-diff]:min-w-0 [&_.pierre-diff]:overflow-hidden [&_.pierre-diff]:rounded-md [&_.pierre-diff+_.pierre-diff]:mt-3 [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			{message.renderedHtml ??
+				renderPendingToolOutput(stripDiffMetadata(message.text), "pl-13")}
+		</div>
+	);
 }
 
 function renderCodeOutput(message: AppMessage) {
 	return (
-		<div class="code-output border-border/60 max-h-80 overflow-auto rounded-md border-t [&_.pierre-code]:block [&_.pierre-code]:min-w-0 [&_.pierre-code]:overflow-hidden [&_.pierre-code]:rounded-md [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
-			{message.renderedHtml ?? ""}
+		<div class="code-output border-border/60 max-h-80 overflow-auto rounded-md border-t bg-[var(--code-background)] [&_.pierre-code]:block [&_.pierre-code]:min-w-0 [&_.pierre-code]:overflow-hidden [&_.pierre-code]:rounded-md [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			{message.renderedHtml ?? renderPendingCodeOutput(message.text)}
 		</div>
 	);
+}
+
+function renderPendingCodeOutput(text: string) {
+	return (
+		<pre class="text-muted-foreground m-0 bg-[var(--code-background)] pr-3 pl-2 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap">
+			<code>{renderInlineBash(text)}</code>
+		</pre>
+	);
+}
+
+function renderPendingToolOutput(text: string, paddingClass: string) {
+	return (
+		<pre
+			class={[
+				"text-muted-foreground m-0 bg-[var(--code-background)] pr-3 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap",
+				paddingClass,
+			]}
+		>
+			<code safe>{text}</code>
+		</pre>
+	);
+}
+
+function stripDiffMetadata(text: string): string {
+	return text
+		.split("\n")
+		.filter(
+			(line) =>
+				!line.startsWith("--- ") &&
+				!line.startsWith("+++ ") &&
+				!line.startsWith("@@ "),
+		)
+		.join("\n");
 }
 
 function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined) {

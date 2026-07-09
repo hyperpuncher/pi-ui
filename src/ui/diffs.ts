@@ -7,6 +7,12 @@ import {
 import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
 
 const pierreUnsafeCSS = `
+	:host {
+		--diffs-bg: var(--code-background) !important;
+		--diffs-light-bg: var(--code-background) !important;
+		--diffs-dark-bg: var(--code-background) !important;
+	}
+
 	[data-code] {
 		align-self: stretch;
 		background: var(--diffs-bg);
@@ -70,8 +76,9 @@ const hostStyle = [
 	"--diffs-tab-size: 4",
 	"--diffs-gap-block: 0px",
 	"--diffs-gap-inline: 0px",
-	"--diffs-light-bg: color-mix(in oklab, var(--muted) 40%, transparent)",
-	"--diffs-dark-bg: color-mix(in oklab, var(--muted) 55%, transparent)",
+	"--diffs-bg: var(--code-background)",
+	"--diffs-light-bg: var(--code-background)",
+	"--diffs-dark-bg: var(--code-background)",
 	"--diffs-bg-buffer-override: transparent",
 	"--diffs-bg-context-override: transparent",
 	"--diffs-bg-context-gutter-override: transparent",

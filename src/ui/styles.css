@@ -60,27 +60,15 @@
 	}
 
 	.diff-output {
-		background: color-mix(in oklab, var(--muted) 40%, transparent);
+		background: var(--code-background);
 		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
-			color-mix(in oklab, var(--muted) 40%, transparent);
-	}
-
-	html.dark .diff-output {
-		background: color-mix(in oklab, var(--muted) 55%, transparent);
-		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
-			color-mix(in oklab, var(--muted) 55%, transparent);
+			var(--code-background);
 	}
 
 	.diff-output::-webkit-scrollbar,
 	.diff-output::-webkit-scrollbar-track,
 	.diff-output::-webkit-scrollbar-corner {
-		background: color-mix(in oklab, var(--muted) 40%, transparent);
-	}
-
-	html.dark .diff-output::-webkit-scrollbar,
-	html.dark .diff-output::-webkit-scrollbar-track,
-	html.dark .diff-output::-webkit-scrollbar-corner {
-		background: color-mix(in oklab, var(--muted) 55%, transparent);
+		background: var(--code-background);
 	}
 
 	.diff-output::-webkit-scrollbar-thumb {

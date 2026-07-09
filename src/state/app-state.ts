@@ -161,6 +161,7 @@ export class AppState {
 	private activeAssistantId: string | undefined;
 	private activeThoughtId: string | undefined;
 	private streamingPatchTimer: ReturnType<typeof setTimeout> | undefined;
+	private replaceMessagesRenderSeq = 0;
 	private transcriptMessages: AppMessage[] = [];
 	private visibleMessageStart = 0;
 	readonly debugUi = debugUiEnabled();
@@ -239,7 +240,7 @@ export class AppState {
 			this.activeThoughtId = id;
 		}
 		this.broadcast();
-		this.renderToolCodeMessage(id);
+		void this.renderToolCodeMessage(id);
 		return id;
 	}
 
@@ -253,7 +254,7 @@ export class AppState {
 			message.renderedHtml = undefined;
 		}
 		this.broadcast();
-		this.renderToolCodeMessage(id);
+		void this.renderToolCodeMessage(id);
 	}
 
 	appendThoughtDelta(delta: string): void {
@@ -335,7 +336,7 @@ export class AppState {
 		this.queuedFollowUpMessages = [...snapshot.queuedFollowUpMessages];
 		this.refreshVisibleMessages();
 		this.broadcast();
-		this.renderVisibleToolCode();
+		void this.renderVisibleToolCode();
 		this.renderVisibleMarkdownFinals();
 	}
 
@@ -369,9 +370,16 @@ export class AppState {
 			this.transcriptMessages.length - restoredMessagePageSize,
 		);
 		this.refreshVisibleMessages();
-		this.broadcast();
-		this.renderVisibleToolCode();
-		this.renderVisibleMarkdownFinals();
+		const renderSeq = ++this.replaceMessagesRenderSeq;
+		void this.renderVisibleToolCode({ broadcast: false })
+			.catch((error: unknown) =>
+				console.warn("Failed to render tool output", error),
+			)
+			.finally(() => {
+				if (renderSeq !== this.replaceMessagesRenderSeq) return;
+				this.broadcast();
+				this.renderVisibleMarkdownFinals();
+			});
 	}
 
 	loadOlderMessages(options: { broadcast?: boolean } = {}): boolean {
@@ -384,7 +392,7 @@ export class AppState {
 		if (options.broadcast !== false) {
 			this.broadcast();
 		}
-		this.renderVisibleToolCode();
+		void this.renderVisibleToolCode();
 		this.renderVisibleMarkdownFinals();
 		return true;
 	}
@@ -418,23 +426,31 @@ export class AppState {
 		});
 	}
 
-	private renderVisibleToolCode(): void {
-		for (const message of this.messages) {
-			this.renderToolCodeMessage(message.id);
-		}
+	private async renderVisibleToolCode(
+		options: { broadcast?: boolean } = {},
+	): Promise<void> {
+		await Promise.all(
+			this.messages.map((message) =>
+				this.renderToolCodeMessage(message.id, options),
+			),
+		);
 	}
 
-	private renderToolCodeMessage(id: string): void {
+	private async renderToolCodeMessage(
+		id: string,
+		options: { broadcast?: boolean } = {},
+	): Promise<boolean> {
 		const message = this.transcriptMessages.find((item) => item.id === id);
 		if (message?.role !== "tool" || !message.text.trim() || message.renderedHtml) {
-			return;
+			return false;
 		}
 		if (message.format === "diff") {
-			void this.renderCode(message.id, "diff");
+			return await this.renderCode(message.id, "diff", options);
 		}
 		if (message.format === "code") {
-			void this.renderCode(message.id, "bash");
+			return await this.renderCode(message.id, "bash", options);
 		}
+		return false;
 	}
 
 	private renderVisibleMarkdownFinals(): void {
@@ -569,10 +585,14 @@ export class AppState {
 		this.broadcastMessage(message);
 	}
 
-	private async renderCode(id: string, language: string): Promise<void> {
+	private async renderCode(
+		id: string,
+		language: string,
+		options: { broadcast?: boolean } = {},
+	): Promise<boolean> {
 		const message = this.transcriptMessages.find((item) => item.id === id);
 		if (!message || !message.text.trim()) {
-			return;
+			return false;
 		}
 
 		const text = message.text;
@@ -583,11 +603,14 @@ export class AppState {
 				: await renderPierreCode(text, language, { disableLineNumbers: true });
 		const current = this.transcriptMessages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
-			return;
+			return false;
 		}
 
 		current.renderedHtml = renderedHtml;
-		this.broadcast();
+		if (options.broadcast !== false) {
+			this.broadcast();
+		}
+		return true;
 	}
 
 	private async renderAssistantMarkdown(id: string): Promise<void> {

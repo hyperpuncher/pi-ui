@@ -480,11 +480,17 @@ export class AgentHost {
 			case "tool_execution_update": {
 				const id = backgroundSession.toolMessageIds.get(event.toolCallId);
 				if (id) {
-					backgroundSession.state.updateMessage(id, {
-						text: formatToolResult(event.toolName, event.partialResult, {
+					const resultView = formatToolResult(
+						event.toolName,
+						event.partialResult,
+						{
 							args: event.args,
-						}).text,
+						},
+					);
+					backgroundSession.state.updateMessage(id, {
+						text: resultView.text,
 						meta: toolMeta(event.toolName, event.args),
+						format: resultView.format,
 					});
 				}
 				break;
@@ -703,11 +709,17 @@ export class AgentHost {
 			case "tool_execution_update": {
 				const id = this.toolMessageIds.get(event.toolCallId);
 				if (id) {
-					this.state.updateMessage(id, {
-						text: formatToolResult(event.toolName, event.partialResult, {
+					const resultView = formatToolResult(
+						event.toolName,
+						event.partialResult,
+						{
 							args: event.args,
-						}).text,
+						},
+					);
+					this.state.updateMessage(id, {
+						text: resultView.text,
 						meta: toolMeta(event.toolName, event.args),
+						format: resultView.format,
 					});
 				}
 				break;
@@ -999,6 +1011,7 @@ export class AgentHost {
 								? "cancelled"
 								: `exit ${message.exitCode}`,
 						state: message.exitCode === 0 ? "success" : "error",
+						format: "code",
 					},
 				];
 			case "custom":
