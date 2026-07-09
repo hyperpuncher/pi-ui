@@ -66,6 +66,7 @@ export function renderPromptBox(state: AppState): string {
 					!window.piUiIsFilePickerOpen?.()
 				) {
 					evt.preventDefault();
+					window.piUiScrollMessagesBottom?.();
 					evt.altKey
 						? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
 						: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
@@ -241,7 +242,10 @@ export function renderPromptAction(state: AppState): string {
 			type="button"
 			data-send-trigger
 			data-attr:disabled="$prompt.trim() === ''"
-			data-on:click="@post('/prompt', { filterSignals: { include: /^prompt$/ } })"
+			data-on:click="
+				window.piUiScrollMessagesBottom?.();
+				@post('/prompt', { filterSignals: { include: /^prompt$/ } });
+			"
 			data-tooltip="Send"
 			aria-label="Send"
 		>
