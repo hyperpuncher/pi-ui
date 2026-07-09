@@ -100,7 +100,11 @@ export async function renderPierreDiff(patch: string): Promise<string | undefine
 		.join("");
 }
 
-export async function renderPierreCode(code: string, language: string): Promise<string> {
+export async function renderPierreCode(
+	code: string,
+	language: string,
+	options: { disableLineNumbers?: boolean } = {},
+): Promise<string> {
 	const file = await preloadFile({
 		file: {
 			name: language === "text" ? "code" : `code.${language}`,
@@ -111,6 +115,7 @@ export async function renderPierreCode(code: string, language: string): Promise<
 			theme: DEFAULT_THEMES,
 			themeType: "system",
 			disableFileHeader: true,
+			disableLineNumbers: options.disableLineNumbers,
 			overflow: "wrap",
 			unsafeCSS: pierreUnsafeCSS,
 		},

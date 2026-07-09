@@ -1,10 +1,16 @@
+import { DEFAULT_THEMES, getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
+
 import type {
 	AppKeybindHint,
 	AppMessage,
 	AppMessageTitlePart,
 	AppSessionSummary,
 } from "../state/app-state.ts";
+import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
+
+const inlineBashCache = new Map<string, string>();
+const maxInlineBashCacheEntries = 500;
 
 export function renderMessages(
 	messages: AppMessage[],
@@ -144,17 +150,77 @@ function renderDiffOutput(message: AppMessage) {
 	return renderPreOutput(message.text);
 }
 
+function renderCodeOutput(message: AppMessage) {
+	return (
+		<div class="code-output border-border/60 max-h-80 overflow-auto rounded-md border-t [&_.pierre-code]:block [&_.pierre-code]:min-w-0 [&_.pierre-code]:overflow-hidden [&_.pierre-code]:rounded-md [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+			{message.renderedHtml ?? ""}
+		</div>
+	);
+}
+
 function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined) {
 	if (!parts?.length) return <span safe>{title}</span>;
 	return (
 		<>
-			{parts.map((part) => (
-				<span class={toolTitlePartClass(part)} safe>
-					{part.text}
-				</span>
-			))}
+			{parts.map((part) =>
+				part.highlight === "bash" ? (
+					<span class={toolTitlePartClass(part)}>
+						{renderInlineBash(part.text)}
+					</span>
+				) : (
+					<span class={toolTitlePartClass(part)} safe>
+						{part.text}
+					</span>
+				),
+			)}
 		</>
 	);
+}
+
+function renderInlineBash(command: string): string {
+	const cached = inlineBashCache.get(command);
+	if (cached) return cached;
+
+	const highlighter = getHighlighterIfLoaded();
+	if (!highlighter) return escapeHtml(command);
+
+	try {
+		const result = highlighter.codeToTokens(command, {
+			lang: "bash",
+			themes: DEFAULT_THEMES,
+		});
+		const highlighted = result.tokens.flat().map(renderInlineToken).join("");
+		cacheInlineBash(command, highlighted);
+		return highlighted;
+	} catch {
+		return escapeHtml(command);
+	}
+}
+
+function cacheInlineBash(command: string, html: string): void {
+	if (inlineBashCache.size >= maxInlineBashCacheEntries) {
+		inlineBashCache.delete(inlineBashCache.keys().next().value ?? "");
+	}
+	inlineBashCache.set(command, html);
+}
+
+function renderInlineToken(token: ThemedToken): string {
+	const style = styleObjectToAttribute(token.htmlStyle ?? tokenStyle(token));
+	const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
+	return `<span class="streaming-token"${styleAttribute}>${escapeHtml(token.content)}</span>`;
+}
+
+function tokenStyle(token: ThemedToken): Record<string, string> {
+	const style: Record<string, string> = {};
+	if (token.color) style.color = token.color;
+	if (token.bgColor) style["background-color"] = token.bgColor;
+	return style;
+}
+
+function styleObjectToAttribute(style: Record<string, string>): string {
+	return Object.entries(style)
+		.map(([key, value]) => `${key}:${value}`)
+		.join(";");
 }
 
 function toolTitlePartClass(part: AppMessageTitlePart): string {
@@ -303,7 +369,9 @@ export function renderMessage(message: AppMessage): string {
 			{hasToolBody
 				? message.format === "diff"
 					? renderDiffOutput(message)
-					: renderPreOutput(message.text)
+					: message.format === "code"
+						? renderCodeOutput(message)
+						: renderPreOutput(message.text)
 				: ""}
 		</article>
 	) as string;

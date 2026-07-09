@@ -1407,7 +1407,8 @@ function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] 
 		const timeout =
 			typeof record.timeout === "number" ? ` timeout ${record.timeout}s` : "";
 		return [
-			{ text: `$ ${stringValue(record.command) || "..."}`, mono: true },
+			{ text: "$ ", tone: "accent", mono: true },
+			{ text: stringValue(record.command) || "...", mono: true, highlight: "bash" },
 			...(timeout ? [{ text: timeout, tone: "muted", mono: true } as const] : []),
 		];
 	}
@@ -1491,7 +1492,7 @@ function toolTarget(toolName: string, args: unknown): string {
 function formatToolStart(
 	toolName: string,
 	args: unknown,
-): { text: string; format?: "pre" | "diff" } {
+): { text: string; format?: "pre" | "diff" | "code" } {
 	const record = asRecord(args);
 	if (!record) return { text: summarizeValue(args), format: "pre" };
 	if (toolName === "bash") return { text: "", format: "pre" };
@@ -1509,7 +1510,7 @@ function formatToolResult(
 	toolName: string,
 	result: unknown,
 	options: { args?: unknown; isError?: boolean } = {},
-): { text: string; format?: "pre" | "diff" } {
+): { text: string; format?: "pre" | "diff" | "code" } {
 	const record = asRecord(result);
 	const details = asRecord(record?.details);
 	if (toolName === "edit" && typeof details?.patch === "string") {
@@ -1525,7 +1526,7 @@ function formatToolResult(
 		};
 	}
 	if (toolName === "bash") {
-		return { text: compactToolOutput(extractToolText(result)), format: "pre" };
+		return { text: compactToolOutput(extractToolText(result)), format: "code" };
 	}
 	return { text: extractToolText(result), format: "pre" };
 }

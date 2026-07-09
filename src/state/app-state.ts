@@ -2,7 +2,7 @@ import { appCommands } from "../commands/registry.ts";
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream, refreshBasecoatComponentsScript } from "../server/datastar.ts";
 import { renderDebugOverlay } from "../ui/debug.tsx";
-import { renderPierreDiff } from "../ui/diffs.ts";
+import { renderPierreCode, renderPierreDiff } from "../ui/diffs.ts";
 import {
 	renderCodeFinal,
 	renderMarkdownFinal,
@@ -35,7 +35,7 @@ export type AppMessage = {
 	titleParts?: AppMessageTitlePart[];
 	meta?: string;
 	state?: "running" | "success" | "error";
-	format?: "pre" | "diff";
+	format?: "pre" | "diff" | "code";
 	renderedHtml?: string;
 };
 
@@ -43,6 +43,7 @@ export type AppMessageTitlePart = {
 	text: string;
 	tone?: "default" | "accent" | "warning" | "muted";
 	mono?: boolean;
+	highlight?: "bash";
 };
 
 export type AppMessageOptions = Pick<
@@ -236,9 +237,7 @@ export class AppState {
 			this.activeThoughtId = id;
 		}
 		this.broadcast();
-		if (role === "tool" && options.format === "diff" && text.trim()) {
-			void this.renderCode(id, "diff");
-		}
+		this.renderToolCodeMessage(id);
 		return id;
 	}
 
@@ -252,9 +251,7 @@ export class AppState {
 			message.renderedHtml = undefined;
 		}
 		this.broadcast();
-		if (message.role === "tool" && message.format === "diff" && message.text.trim()) {
-			void this.renderCode(id, "diff");
-		}
+		this.renderToolCodeMessage(id);
 	}
 
 	appendThoughtDelta(delta: string): void {
@@ -336,6 +333,8 @@ export class AppState {
 		this.queuedFollowUpMessages = [...snapshot.queuedFollowUpMessages];
 		this.refreshVisibleMessages();
 		this.broadcast();
+		this.renderVisibleToolCode();
+		this.renderVisibleMarkdownFinals();
 	}
 
 	resetChat(): void {
@@ -369,7 +368,7 @@ export class AppState {
 		);
 		this.refreshVisibleMessages();
 		this.broadcast();
-		this.renderVisibleDiffs();
+		this.renderVisibleToolCode();
 		this.renderVisibleMarkdownFinals();
 	}
 
@@ -383,7 +382,7 @@ export class AppState {
 		if (options.broadcast !== false) {
 			this.broadcast();
 		}
-		this.renderVisibleDiffs();
+		this.renderVisibleToolCode();
 		this.renderVisibleMarkdownFinals();
 		return true;
 	}
@@ -417,16 +416,22 @@ export class AppState {
 		});
 	}
 
-	private renderVisibleDiffs(): void {
+	private renderVisibleToolCode(): void {
 		for (const message of this.messages) {
-			if (
-				message.role === "tool" &&
-				message.format === "diff" &&
-				message.text.trim() &&
-				!message.renderedHtml
-			) {
-				void this.renderCode(message.id, "diff");
-			}
+			this.renderToolCodeMessage(message.id);
+		}
+	}
+
+	private renderToolCodeMessage(id: string): void {
+		const message = this.transcriptMessages.find((item) => item.id === id);
+		if (message?.role !== "tool" || !message.text.trim() || message.renderedHtml) {
+			return;
+		}
+		if (message.format === "diff") {
+			void this.renderCode(message.id, "diff");
+		}
+		if (message.format === "code") {
+			void this.renderCode(message.id, "bash");
 		}
 	}
 
@@ -564,8 +569,10 @@ export class AppState {
 
 		const text = message.text;
 		const renderedHtml =
-			(language === "diff" ? await renderPierreDiff(text) : undefined) ??
-			(await renderCodeFinal(text, language, { chrome: false }));
+			language === "diff"
+				? ((await renderPierreDiff(text)) ??
+					(await renderCodeFinal(text, language, { chrome: false })))
+				: await renderPierreCode(text, language, { disableLineNumbers: true });
 		const current = this.transcriptMessages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
 			return;
