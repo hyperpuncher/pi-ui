@@ -22,6 +22,16 @@
 }
 
 @layer base {
+	::selection {
+		background: color-mix(in oklab, var(--foreground) 85%, transparent);
+		color: var(--background);
+	}
+
+	.message-user ::selection {
+		background: color-mix(in oklab, var(--primary-foreground) 85%, transparent);
+		color: var(--primary);
+	}
+
 	* {
 		scrollbar-color: transparent transparent;
 		scrollbar-width: thin;
