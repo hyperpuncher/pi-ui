@@ -488,7 +488,10 @@ export function renderThinkingPicker(state: AppState): string {
 				class="dropdown-menu"
 				data-on:keydown__window={`if (evt.altKey && evt.key.toLowerCase() === 't') {
 					evt.preventDefault();
-					@post('/thinking/cycle');
+					$thinkingCycleDirection = evt.shiftKey ? 'backward' : 'forward';
+					@post('/thinking/cycle', {
+						filterSignals: { include: /^thinkingCycleDirection$/ },
+					});
 				}`}
 			>
 				<button

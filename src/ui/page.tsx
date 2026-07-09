@@ -11,6 +11,7 @@ export function renderPage(state: AppState): string {
 		prompt: "",
 		model: state.currentModel ?? "",
 		modelCycleDirection: "forward",
+		thinkingCycleDirection: "forward",
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
 		isBusy: Boolean(state.activityText),

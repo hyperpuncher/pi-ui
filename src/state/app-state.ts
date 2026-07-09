@@ -674,6 +674,7 @@ export class AppState {
 				JSON.stringify({
 					model: this.currentModel ?? "",
 					modelCycleDirection: "forward",
+					thinkingCycleDirection: "forward",
 					thinkingLevel: this.thinkingLevel,
 					workspacePath: this.workspacePath,
 					isSessionReady: true,

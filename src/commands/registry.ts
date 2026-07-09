@@ -7,6 +7,7 @@ export type AppCommandId =
 	| "switch-model"
 	| "cycle-model"
 	| "cycle-thinking"
+	| "cycle-thinking-backward"
 	| "change-workspace";
 
 export type AppCommand = {
@@ -80,7 +81,14 @@ export const appCommands: AppCommand[] = [
 		title: "Cycle thinking",
 		description: "Cycle through available thinking levels.",
 		shortcut: { display: "alt T", native: "Alt+T", keys: [] },
-		action: "@post('/thinking/cycle')",
+		action: "$thinkingCycleDirection = 'forward'; @post('/thinking/cycle', { filterSignals: { include: /^thinkingCycleDirection$/ } })",
+	},
+	{
+		id: "cycle-thinking-backward",
+		title: "Cycle thinking backward",
+		description: "Cycle backward through available thinking levels.",
+		shortcut: { display: "alt shift T", native: "Alt+Shift+T", keys: [] },
+		action: "$thinkingCycleDirection = 'backward'; @post('/thinking/cycle', { filterSignals: { include: /^thinkingCycleDirection$/ } })",
 	},
 	{
 		id: "change-workspace",

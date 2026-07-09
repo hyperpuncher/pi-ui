@@ -52,6 +52,7 @@ brew install --cask hyperpuncher/tap/pi-ui
 | `ctrl/cmd+r`     | session picker       |
 | `ctrl/cmd+l`     | model picker         |
 | `alt+t`          | cycle thinking level |
+| `alt+shift+t`    | cycle thinking back  |
 | `/`              | slash commands       |
 | `@`              | file picker          |
 | `alt+enter`      | queue follow-up      |

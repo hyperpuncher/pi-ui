@@ -415,11 +415,30 @@ export class AgentHost {
 		return true;
 	}
 
-	cycleThinkingLevel(): boolean {
-		const level = this.runtime.session.cycleThinkingLevel();
-		if (!level) {
+	cycleThinkingLevel(direction: "forward" | "backward" = "forward"): boolean {
+		if (direction === "forward") {
+			const level = this.runtime.session.cycleThinkingLevel();
+			if (!level) {
+				return false;
+			}
+			this.syncThinking();
+			return true;
+		}
+
+		if (!this.runtime.session.supportsThinking()) {
 			return false;
 		}
+
+		const levels =
+			this.runtime.session.getAvailableThinkingLevels() as AppThinkingLevel[];
+		if (levels.length === 0) {
+			return false;
+		}
+		const currentIndex = levels.indexOf(
+			this.runtime.session.thinkingLevel as AppThinkingLevel,
+		);
+		const previousIndex = currentIndex <= 0 ? levels.length - 1 : currentIndex - 1;
+		this.runtime.session.setThinkingLevel(levels[previousIndex]);
 		this.syncThinking();
 		return true;
 	}
