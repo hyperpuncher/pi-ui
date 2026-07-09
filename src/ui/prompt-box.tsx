@@ -432,7 +432,7 @@ function usageColor(percent: number, layer: "primary" | "secondary"): string {
 	return layer === "primary" ? "text-foreground" : "text-muted-foreground/45";
 }
 
-function loaderIcon() {
+export function loaderIcon() {
 	return (
 		<svg
 			aria-label="Loading"

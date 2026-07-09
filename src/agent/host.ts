@@ -1615,6 +1615,7 @@ function extractToolText(result: unknown): string {
 	if (record?.content !== undefined) {
 		const text = contentToText(record.content);
 		if (text.trim()) return text;
+		if (Array.isArray(record.content) && record.content.length === 0) return "";
 	}
 	if (record?.text !== undefined) {
 		return stripAnsi(String(record.text));

@@ -8,6 +8,7 @@ import type {
 } from "../state/app-state.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
+import { loaderIcon } from "./prompt-box.tsx";
 
 const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
@@ -357,13 +358,20 @@ export function renderMessage(message: AppMessage): string {
 				<span class="min-w-0 flex-1 leading-tight font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
 				</span>
-				{message.meta && (
+				{message.state === "running" ? (
+					<span class="text-muted-foreground mt-0.5 ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs leading-tight font-normal">
+						{loaderIcon()}
+						{message.meta && <span safe>{message.meta}</span>}
+					</span>
+				) : message.meta ? (
 					<span
 						class="text-muted-foreground mt-0.5 ml-auto shrink-0 text-xs leading-tight font-normal"
 						safe
 					>
 						{message.meta}
 					</span>
+				) : (
+					""
 				)}
 			</header>
 			{hasToolBody
