@@ -50,6 +50,7 @@ brew install --cask hyperpuncher/tap/pi-ui
 | `ctrl/cmd+o`     | new session          |
 | `ctrl/cmd+alt+o` | temporary chat       |
 | `ctrl/cmd+r`     | session picker       |
+| `ctrl/cmd+/`     | workspace picker     |
 | `ctrl/cmd+l`     | model picker         |
 | `alt+t`          | cycle thinking level |
 | `alt+shift+t`    | cycle thinking back  |

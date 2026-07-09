@@ -94,7 +94,7 @@ export const appCommands: AppCommand[] = [
 		id: "change-workspace",
 		title: "Change workspace",
 		description: "Set the cwd used by pi sessions and tools.",
-		shortcut: { display: "", native: "", keys: [] },
-		action: "$workspacePath = ''; document.getElementById('workspace-dialog')?.showModal(); requestAnimationFrame(() => document.getElementById('workspace-input')?.focus())",
+		shortcut: { display: "ctrl /", native: "CmdOrCtrl+/", keys: ["/"] },
+		action: "$workspacePath = ''; document.getElementById('command-dialog')?.close(); const dialog = document.getElementById('workspace-dialog'); if (!dialog?.open) dialog?.showModal(); requestAnimationFrame(() => document.getElementById('workspace-input')?.focus())",
 	},
 ];

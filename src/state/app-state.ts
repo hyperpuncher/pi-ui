@@ -156,6 +156,15 @@ function debugUiEnabled(): boolean {
 	return Deno.env.get("PI_UI_DEBUG") === "1";
 }
 
+function uniqueStrings(values: string[]): string[] {
+	const unique: string[] = [];
+	for (const value of values) {
+		if (!value || unique.includes(value)) continue;
+		unique.push(value);
+	}
+	return unique;
+}
+
 export class AppState {
 	private clients = new Map<string, StreamClient>();
 	private messageSeq = 0;
@@ -163,6 +172,7 @@ export class AppState {
 	private activeThoughtId: string | undefined;
 	private streamingPatchTimer: ReturnType<typeof setTimeout> | undefined;
 	private replaceMessagesRenderSeq = 0;
+	private suppressMessagePatchesDepth = 0;
 	private transcriptMessages: AppMessage[] = [];
 	private visibleMessageStart = 0;
 	readonly debugUi = debugUiEnabled();
@@ -187,6 +197,15 @@ export class AppState {
 
 	get hasOlderMessages(): boolean {
 		return this.visibleMessageStart > 0;
+	}
+
+	async suppressMessagePatches<T>(callback: () => Promise<T>): Promise<T> {
+		this.suppressMessagePatchesDepth += 1;
+		try {
+			return await callback();
+		} finally {
+			this.suppressMessagePatchesDepth -= 1;
+		}
 	}
 
 	createStream(signal: AbortSignal): Response {
@@ -341,15 +360,19 @@ export class AppState {
 		this.renderVisibleMarkdownFinals();
 	}
 
-	resetChat(): void {
+	resetChat(options: { preserveEmptyHint?: boolean; broadcast?: boolean } = {}): void {
 		this.clearStreamingPatchTimer();
 		this.transcriptMessages = [];
 		this.messages = [];
 		this.visibleMessageStart = 0;
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
-		this.emptyChatHint = randomEmptyChatHint();
-		this.broadcast();
+		if (!options.preserveEmptyHint) {
+			this.emptyChatHint = randomEmptyChatHint();
+		}
+		if (options.broadcast !== false) {
+			this.broadcast();
+		}
 	}
 
 	replaceMessages(messages: AppMessageInput[]): void {
@@ -485,12 +508,16 @@ export class AppState {
 		this.broadcastSignals();
 	}
 
-	setSessions(sessions: AppSessionSummary[]): void {
+	setSessions(
+		sessions: AppSessionSummary[],
+		options: { patchMessages?: boolean } = {},
+	): void {
 		this.sessions = sessions;
+		const patchMessages = options.patchMessages ?? true;
 		for (const client of this.clients.values()) {
 			try {
 				client.stream.patchElements(
-					this.renderMessagesElement() +
+					(patchMessages ? this.renderMessagesElement() : "") +
 						renderWorkspaceDialogMenu(this) +
 						renderSessionPicker(this),
 				);
@@ -511,7 +538,21 @@ export class AppState {
 	}
 
 	setRecentWorkspaces(recentWorkspaces: string[]): void {
-		this.recentWorkspaces = recentWorkspaces;
+		this.recentWorkspaces = uniqueStrings([
+			this.workspacePath,
+			...recentWorkspaces,
+			...this.recentWorkspaces,
+		]).slice(0, 8);
+		for (const client of this.clients.values()) {
+			try {
+				client.stream.patchElements(renderWorkspaceDialogMenu(this));
+				client.stream.executeScript(
+					refreshBasecoatComponentsScript("#workspace-dialog .command"),
+				);
+			} catch {
+				// Client already disconnected.
+			}
+		}
 	}
 
 	setSlashCommands(commands: AppSlashCommand[]): void {
@@ -641,8 +682,10 @@ export class AppState {
 	}
 
 	private renderElements(): string {
+		const messages =
+			this.suppressMessagePatchesDepth > 0 ? "" : this.renderMessagesElement();
 		return (
-			this.renderMessagesElement() +
+			messages +
 			renderPromptAction(this) +
 			renderPromptQueue(this) +
 			renderPromptToolbar(this) +

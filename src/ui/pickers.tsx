@@ -68,9 +68,17 @@ export function renderWorkspaceDialogMenu(state: AppState): string {
 					role="menuitem"
 					data-force
 					data-workspace-submit
+					data-indicator:_workspaceOpening
 					data-on:click={openWorkspaceAction("$workspacePath")}
 				>
 					<span>Open typed path</span>
+					<span
+						class="text-muted-foreground text-xs"
+						data-show="$_workspaceOpening"
+						style="display: none"
+					>
+						Opening…
+					</span>
 					<span data-shortcut>Enter</span>
 				</div>
 			</div>
@@ -95,10 +103,11 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	return (
 		<div
 			role="menuitem"
-			class={["items-start gap-3", current && "bg-muted"]}
+			class="items-start gap-3"
 			aria-current={current ? "true" : undefined}
 			data-filter={`${label} ${workspacePath}`}
 			data-keywords={`${label} ${workspacePath}`}
+			data-indicator:_workspaceOpening
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
 			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">

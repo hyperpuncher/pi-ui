@@ -461,11 +461,11 @@ export function renderWorkspacePicker(state: AppState): string {
 			data-size="sm"
 			type="button"
 			aria-label={state.workspacePath}
-			data-on:click="
-				$workspacePath = '';
-				document.getElementById('workspace-dialog')?.showModal();
-				requestAnimationFrame(() => document.getElementById('workspace-input')?.focus());
-			"
+			data-on:click={openWorkspaceDialogAction()}
+			data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key === '/') {
+			evt.preventDefault();
+			${openWorkspaceDialogAction()}
+			}`}
 			data-tooltip="Workspace"
 			data-tooltip-delay
 		>
@@ -579,6 +579,15 @@ function thinkingDescription(level: AppThinkingLevel): string {
 		case "xhigh":
 			return "Maximum reasoning";
 	}
+}
+
+function openWorkspaceDialogAction(): string {
+	return `
+		$workspacePath = '';
+		const dialog = document.getElementById('workspace-dialog');
+		if (!dialog?.open) dialog?.showModal();
+		requestAnimationFrame(() => document.getElementById('workspace-input')?.focus());
+	`;
 }
 
 function workspaceLabel(path: string): string {

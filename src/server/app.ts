@@ -5,6 +5,7 @@ import { AppState } from "../state/app-state.ts";
 import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { renderPage } from "../ui/page.tsx";
 import { renderTreePicker } from "../ui/tree-picker.tsx";
+import { expandHomePath } from "../utils/workspace.ts";
 import {
 	elementsAndScriptResponse,
 	readSignals,
@@ -276,20 +277,30 @@ async function switchWorkspace(
 		return { ok: false, host, fileSearch };
 	}
 	try {
-		const realPath = await Deno.realPath(requestedPath);
+		const realPath = await Deno.realPath(expandHomePath(requestedPath));
 		const stat = await Deno.stat(realPath);
 		if (!stat.isDirectory) {
 			state.appendMessage("system", `Not a directory: ${requestedPath}`);
 			return { ok: false, host, fileSearch };
 		}
-		host?.dispose();
-		fileSearch?.dispose();
-		state.resetChat();
-		state.setSessions([]);
-		const nextHost = await AgentHost.create(state, realPath);
-		const nextFileSearch = await FileSearchHost.create(realPath);
-		state.appendMessage("system", `Workspace: ${realPath}`);
-		return { ok: true, host: nextHost, fileSearch: nextFileSearch };
+		const patchMessages = state.messages.length > 0;
+		const openWorkspace = async () => {
+			host?.dispose();
+			fileSearch?.dispose();
+			state.resetChat({
+				preserveEmptyHint: true,
+				broadcast: patchMessages,
+			});
+			const nextHost = await AgentHost.create(state, realPath, {
+				patchSessionMessages: false,
+				refreshWorkspaces: false,
+			});
+			const nextFileSearch = await FileSearchHost.create(realPath);
+			return { ok: true, host: nextHost, fileSearch: nextFileSearch };
+		};
+		return patchMessages
+			? await openWorkspace()
+			: await state.suppressMessagePatches(openWorkspace);
 	} catch (error) {
 		state.appendMessage("system", `Failed to open workspace: ${formatError(error)}`);
 		return { ok: false, host, fileSearch };

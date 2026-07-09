@@ -132,6 +132,7 @@ export class AgentHost {
 	static async create(
 		state: AppState,
 		cwd = defaultWorkspacePath(),
+		options: { patchSessionMessages?: boolean; refreshWorkspaces?: boolean } = {},
 	): Promise<AgentHost> {
 		state.setWorkspacePath(cwd);
 		const sessionsPromise = SessionManager.listAll();
@@ -172,8 +173,12 @@ export class AgentHost {
 		await host.bindSession({ refreshSessions: false });
 		try {
 			const sessions = await sessionsPromise;
-			state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
-			state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
+			if (options.refreshWorkspaces !== false) {
+				state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
+			}
+			state.setSessions(sessions.slice(0, 50).map(formatSessionSummary), {
+				patchMessages: options.patchSessionMessages,
+			});
 		} catch (error) {
 			state.appendMessage(
 				"system",
