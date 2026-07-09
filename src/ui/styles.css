@@ -17,6 +17,7 @@
 		--message-user-gap: 0.5rem;
 		--message-tool-gap: 1.25rem;
 		--message-tool-narrative-gap: 1rem;
+		--message-thought-assistant-gap: 0.25rem;
 	}
 }
 
@@ -96,6 +97,10 @@
 	.messages-stack > .message-tool + .message-narrative,
 	.messages-stack > .message-narrative + .message-tool {
 		margin-top: var(--message-tool-narrative-gap);
+	}
+
+	.messages-stack > .message-thought + .message-assistant {
+		margin-top: var(--message-thought-assistant-gap);
 	}
 
 	.markdown-content {
