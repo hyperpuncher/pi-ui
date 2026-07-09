@@ -46,6 +46,70 @@ type BackgroundSession = {
 	unsubscribe: () => void;
 };
 
+type ScopedModelCandidate = {
+	id: string;
+	provider: string;
+	name?: string;
+};
+
+function resolveScopedModels<T extends ScopedModelCandidate>(
+	patterns: string[],
+	models: T[],
+): Array<{ model: T; thinkingLevel?: AppThinkingLevel }> {
+	const scoped: Array<{ model: T; thinkingLevel?: AppThinkingLevel }> = [];
+	const seen = new Set<string>();
+	for (const pattern of patterns) {
+		const parsed = parseScopedModelPattern(pattern);
+		if (!parsed.modelPattern) continue;
+		const matches = models.filter((model) =>
+			modelMatchesPattern(model, parsed.modelPattern),
+		);
+		for (const model of matches) {
+			const key = `${model.provider}/${model.id}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			scoped.push({ model, thinkingLevel: parsed.thinkingLevel });
+		}
+	}
+	return scoped;
+}
+
+function parseScopedModelPattern(pattern: string): {
+	modelPattern: string;
+	thinkingLevel?: AppThinkingLevel;
+} {
+	const trimmed = pattern.trim();
+	const colonIndex = trimmed.lastIndexOf(":");
+	if (colonIndex === -1) {
+		return { modelPattern: trimmed };
+	}
+	const suffix = trimmed.slice(colonIndex + 1);
+	if (!isThinkingLevel(suffix)) {
+		return { modelPattern: trimmed };
+	}
+	return {
+		modelPattern: trimmed.slice(0, colonIndex),
+		thinkingLevel: suffix,
+	};
+}
+
+function modelMatchesPattern(model: ScopedModelCandidate, pattern: string): boolean {
+	const normalized = pattern.toLowerCase();
+	const refs = [model.id, model.name ?? "", `${model.provider}/${model.id}`].map(
+		(value) => value.toLowerCase(),
+	);
+	if (normalized.includes("*")) {
+		const regex = wildcardPatternRegex(normalized);
+		return refs.some((value) => regex.test(value));
+	}
+	return refs.some((value) => value === normalized || value.includes(normalized));
+}
+
+function wildcardPatternRegex(pattern: string): RegExp {
+	const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`^${escaped.replaceAll("*", ".*")}$`, "i");
+}
+
 export class AgentHost {
 	private unsubscribe: (() => void) | undefined;
 	private readonly toolMessageIds = new Map<string, string>();
@@ -79,11 +143,18 @@ export class AgentHost {
 			const services = await createAgentSessionServices({ cwd });
 			applyHttpProxySetting(services.settingsManager.getGlobalSettings().httpProxy);
 			configureHttpDispatcher(services.settingsManager.getHttpIdleTimeoutMs());
+			const scopedModels = resolveScopedModels(
+				services.settingsManager.getEnabledModels() ?? [],
+				services.modelRegistry
+					.getAll()
+					.filter((model) => services.modelRegistry.hasConfiguredAuth(model)),
+			);
 			return {
 				...(await createAgentSessionFromServices({
 					services,
 					sessionManager,
 					sessionStartEvent,
+					scopedModels,
 				})),
 				services,
 				diagnostics: services.diagnostics,
@@ -365,24 +436,52 @@ export class AgentHost {
 	}
 
 	async setModel(modelRef: string): Promise<boolean> {
-		const [provider, ...idParts] = modelRef.split("/");
-		const modelId = idParts.join("/");
-		if (!provider || !modelId) {
-			return false;
-		}
-		const model = this.runtime.session.modelRegistry.find(provider, modelId);
+		const model = this.findModelRef(modelRef);
 		if (!model) {
 			this.state.appendMessage("system", `Model not found: ${modelRef}`);
 			return false;
 		}
 		await this.runtime.session.setModel(model);
-		this.codexUsageText = "";
-		this.codexUsage = undefined;
-		this.codexUsageFetchedAt = 0;
-		this.syncModels();
-		this.syncThinking();
-		this.syncUsage();
-		this.refreshCodexUsage(true);
+		this.afterModelChange();
+		return true;
+	}
+
+	async cycleModel(direction: "forward" | "backward" = "forward"): Promise<boolean> {
+		const result = await this.runtime.session.cycleModel(direction);
+		if (!result) {
+			return false;
+		}
+		this.afterModelChange();
+		return true;
+	}
+
+	async toggleScopedModel(modelRef: string): Promise<boolean> {
+		const model = this.findModelRef(modelRef);
+		if (!model) {
+			this.state.appendMessage("system", `Model not found: ${modelRef}`);
+			return false;
+		}
+		const session = this.runtime.session;
+		const modelKey = `${model.provider}/${model.id}`;
+		const scoped = session.scopedModels.filter(
+			(item) => `${item.model.provider}/${item.model.id}` !== modelKey,
+		);
+		if (scoped.length === session.scopedModels.length) {
+			scoped.push({ model });
+		}
+
+		const configuredCount = session.modelRegistry
+			.getAll()
+			.filter((item) => session.modelRegistry.hasConfiguredAuth(item)).length;
+		const enabledModels =
+			scoped.length === 0 || scoped.length === configuredCount
+				? undefined
+				: scoped.map((item) => `${item.model.provider}/${item.model.id}`);
+		this.runtime.services.settingsManager.setEnabledModels(enabledModels);
+		await this.runtime.services.settingsManager.flush();
+
+		session.setScopedModels(enabledModels === undefined ? [] : scoped);
+		this.syncModels({ reopenPicker: true });
 		return true;
 	}
 
@@ -642,11 +741,35 @@ export class AgentHost {
 		}
 	}
 
-	private syncModels(): void {
+	private findModelRef(modelRef: string) {
+		const [provider, ...idParts] = modelRef.split("/");
+		const modelId = idParts.join("/");
+		if (!provider || !modelId) {
+			return undefined;
+		}
+		return this.runtime.session.modelRegistry.find(provider, modelId);
+	}
+
+	private afterModelChange(): void {
+		this.codexUsageText = "";
+		this.codexUsage = undefined;
+		this.codexUsageFetchedAt = 0;
+		this.syncModels();
+		this.syncThinking();
+		this.syncUsage();
+		this.refreshCodexUsage(true);
+	}
+
+	private syncModels(options: { reopenPicker?: boolean } = {}): void {
 		const session = this.runtime.session;
 		const currentModel = session.model
 			? `${session.model.provider}/${session.model.id}`
 			: undefined;
+		const scopedModelRefs = new Set(
+			session.scopedModels.map(
+				(scoped) => `${scoped.model.provider}/${scoped.model.id}`,
+			),
+		);
 		const models = session.modelRegistry
 			.getAll()
 			.map((model) => ({
@@ -654,6 +777,7 @@ export class AgentHost {
 				provider: model.provider,
 				name: model.name ?? model.id,
 				configured: session.modelRegistry.hasConfiguredAuth(model),
+				scoped: scopedModelRefs.has(`${model.provider}/${model.id}`),
 			}))
 			.filter(
 				(model) =>
@@ -666,7 +790,7 @@ export class AgentHost {
 				if (!aIsCurrent && bIsCurrent) return 1;
 				return a.provider.localeCompare(b.provider);
 			});
-		this.state.setModels(models, currentModel);
+		this.state.setModels(models, currentModel, options);
 	}
 
 	private handleEvent(event: AgentSessionEvent): void {

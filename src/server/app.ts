@@ -164,6 +164,25 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 					return noContent();
 				}
 
+				if (request.method === "POST" && url.pathname === "/model/cycle") {
+					const signals = await readSignals(request);
+					const direction =
+						signals.modelCycleDirection === "backward"
+							? "backward"
+							: "forward";
+					await host?.cycleModel(direction);
+					return noContent();
+				}
+
+				if (
+					request.method === "POST" &&
+					url.pathname === "/models/scope/toggle"
+				) {
+					const signals = await readSignals(request);
+					await host?.toggleScopedModel(signals.model as string);
+					return noContent();
+				}
+
 				if (request.method === "POST" && url.pathname === "/thinking") {
 					const signals = await readSignals(request);
 					await host?.setThinkingLevel(signals.thinkingLevel as string);

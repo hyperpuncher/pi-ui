@@ -10,6 +10,7 @@ export function renderPage(state: AppState): string {
 	const initialSignals = JSON.stringify({
 		prompt: "",
 		model: state.currentModel ?? "",
+		modelCycleDirection: "forward",
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
 		isBusy: Boolean(state.activityText),

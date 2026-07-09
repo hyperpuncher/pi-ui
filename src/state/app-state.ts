@@ -69,6 +69,7 @@ export type AppModel = {
 	provider: string;
 	name: string;
 	configured: boolean;
+	scoped: boolean;
 };
 
 export type AppThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -461,10 +462,19 @@ export class AppState {
 		}
 	}
 
-	setModels(models: AppModel[], currentModel: string | undefined): void {
+	setModels(
+		models: AppModel[],
+		currentModel: string | undefined,
+		options: { reopenPicker?: boolean } = {},
+	): void {
 		this.models = models;
 		this.currentModel = currentModel;
-		this.broadcast(refreshBasecoatComponentsScript("#model-select"));
+		const reopenScript = options.reopenPicker
+			? ";requestAnimationFrame(() => { document.getElementById('model-select-trigger')?.focus(); document.getElementById('model-select')?.toggle?.(); })"
+			: "";
+		this.broadcast(
+			`${refreshBasecoatComponentsScript("#model-select")}${reopenScript}`,
+		);
 		this.broadcastSignals();
 	}
 
@@ -663,6 +673,7 @@ export class AppState {
 			stream.patchSignals(
 				JSON.stringify({
 					model: this.currentModel ?? "",
+					modelCycleDirection: "forward",
 					thinkingLevel: this.thinkingLevel,
 					workspacePath: this.workspacePath,
 					isSessionReady: true,

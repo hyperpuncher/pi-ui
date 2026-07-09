@@ -603,6 +603,12 @@ export function renderModelPicker(state: AppState): string {
 					evt.preventDefault();
 					document.getElementById('model-select-trigger')?.focus();
 					el.toggle?.();
+				} else if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'p') {
+					evt.preventDefault();
+					$modelCycleDirection = evt.shiftKey ? 'backward' : 'forward';
+					@post('/model/cycle', {
+						filterSignals: { include: /^modelCycleDirection$/ },
+					});
 				}`}
 			>
 				<button
@@ -618,7 +624,9 @@ export function renderModelPicker(state: AppState): string {
 					data-tooltip-delay
 					disabled={state.models.length === 0}
 				>
-					<span class="truncate">{currentLabel}</span>
+					<span class="truncate" safe>
+						{currentLabel}
+					</span>
 				</button>
 				<div
 					id="model-select-popover"
@@ -662,15 +670,55 @@ export function renderModelPicker(state: AppState): string {
 										<span data-ignore data-indicator>
 											•
 										</span>
-										<span class="min-w-0">
-											<span class="block truncate font-medium">
+										<span class="min-w-0 flex-1">
+											<span class="block truncate font-medium" safe>
 												{model.id}
 											</span>
-											<span class="text-muted-foreground block truncate text-xs">
+											<span
+												class="text-muted-foreground block truncate text-xs"
+												safe
+											>
 												{model.provider}
 												{configured}
 											</span>
 										</span>
+										<button
+											type="button"
+											class="btn size-7 shrink-0"
+											data-variant={
+												model.scoped ? "secondary" : "ghost"
+											}
+											data-size="icon-sm"
+											aria-pressed={model.scoped ? "true" : "false"}
+											aria-label="Toggle scoped model"
+											data-on:click={`
+												evt.stopPropagation();
+												$model = ${JSON.stringify(value)};
+												@post('/models/scope/toggle', { filterSignals: { include: /^model$/ } });
+											`}
+										>
+											<svg
+												class="size-4"
+												xmlns="http://www.w3.org/2000/svg"
+												width="32"
+												height="32"
+												viewBox="0 0 24 24"
+												aria-hidden="true"
+											>
+												<path
+													fill={
+														model.scoped
+															? "currentColor"
+															: "none"
+													}
+													stroke="currentColor"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"
+												/>
+											</svg>
+										</button>
 									</div>
 								);
 							})}

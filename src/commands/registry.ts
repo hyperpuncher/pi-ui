@@ -5,6 +5,7 @@ export type AppCommandId =
 	| "session-tree"
 	| "command-palette"
 	| "switch-model"
+	| "cycle-model"
 	| "cycle-thinking"
 	| "change-workspace";
 
@@ -66,6 +67,13 @@ export const appCommands: AppCommand[] = [
 		description: "Open the model picker.",
 		shortcut: { display: "ctrl L", native: "CmdOrCtrl+L", keys: ["l"] },
 		action: "setTimeout(() => { document.getElementById('model-select-trigger')?.focus(); document.getElementById('model-select')?.toggle?.(); }, 0)",
+	},
+	{
+		id: "cycle-model",
+		title: "Cycle model",
+		description: "Cycle through scoped models.",
+		shortcut: { display: "ctrl P", native: "CmdOrCtrl+P", keys: [] },
+		action: "$modelCycleDirection = 'forward'; @post('/model/cycle', { filterSignals: { include: /^modelCycleDirection$/ } })",
 	},
 	{
 		id: "cycle-thinking",
