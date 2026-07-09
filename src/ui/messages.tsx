@@ -20,7 +20,7 @@ export function renderMessages(
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
-			<div class="mx-auto flex w-full max-w-[52rem] flex-col gap-8 [&_.message-user+_.message-user]:-mt-6">
+			<div class="messages-stack mx-auto w-full max-w-[52rem]">
 				{messages.length === 0
 					? renderEmptyMessages(emptyHint, sessions.slice(0, 3))
 					: messages.map((message, index) => (
@@ -170,7 +170,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "user") {
 		return (
 			<article
-				class="message-user bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-xl px-3.5 py-2.5"
+				class="message message-user bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-xl px-3.5 py-2.5"
 				data-message-id={message.id}
 			>
 				<p class="m-0 whitespace-pre-wrap" safe>
@@ -183,7 +183,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "assistant") {
 		return (
 			<article
-				class="markdown-content max-w-full self-start"
+				class="message message-narrative message-assistant markdown-content max-w-full self-start"
 				data-message-id={message.id}
 			>
 				{message.renderedHtml ? (
@@ -200,7 +200,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "thought") {
 		return (
 			<article
-				class="markdown-content text-muted-foreground max-w-3xl self-start text-sm italic"
+				class="message message-narrative message-thought markdown-content text-muted-foreground max-w-3xl self-start text-sm italic"
 				data-message-id={message.id}
 			>
 				{message.renderedHtml ? (
@@ -217,7 +217,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "system") {
 		return (
 			<article
-				class="text-muted-foreground max-w-3xl self-start"
+				class="message message-narrative message-system text-muted-foreground max-w-3xl self-start"
 				data-message-id={message.id}
 			>
 				<p class="m-0 whitespace-pre-wrap" safe>
@@ -231,7 +231,10 @@ export function renderMessage(message: AppMessage): string {
 		const label = message.role === "skill" ? "[skill]" : "[compaction]";
 		return (
 			<article
-				class="bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-md p-3 text-sm"
+				class={[
+					"message message-narrative bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-md p-3 text-sm",
+					message.role === "skill" ? "message-skill" : "message-compaction",
+				]}
 				data-message-id={message.id}
 			>
 				<details>
@@ -273,7 +276,7 @@ export function renderMessage(message: AppMessage): string {
 	return (
 		<article
 			class={[
-				"bg-muted/40 dark:bg-muted/55 w-full max-w-3xl self-start overflow-hidden rounded-md border",
+				"message message-tool bg-muted/40 dark:bg-muted/55 w-full max-w-3xl self-start overflow-hidden rounded-md border",
 				stateClass,
 			]}
 			data-message-id={message.id}

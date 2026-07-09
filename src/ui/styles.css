@@ -13,6 +13,10 @@
 			ui-monospace, "Cascadia Mono", SFMono-Regular, Menlo, Monaco, Consolas,
 			"Liberation Mono", "Courier New", monospace;
 		--code-background: color-mix(in oklab, var(--muted) 40%, transparent);
+		--message-gap: 2rem;
+		--message-user-gap: 0.5rem;
+		--message-tool-gap: 1.25rem;
+		--message-tool-narrative-gap: 1rem;
 	}
 }
 
@@ -81,6 +85,29 @@
 
 	.diff-output::-webkit-scrollbar-thumb {
 		background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+	}
+
+	.messages-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.messages-stack > .message + .message {
+		margin-top: var(--message-gap);
+	}
+
+	.messages-stack > .message-user + .message-user {
+		margin-top: var(--message-user-gap);
+	}
+
+	.messages-stack > .message-tool + .message-tool {
+		margin-top: var(--message-tool-gap);
+	}
+
+	.messages-stack > .message-tool + .message-narrative,
+	.messages-stack > .message-narrative + .message-tool {
+		margin-top: var(--message-tool-narrative-gap);
 	}
 
 	.markdown-content {
