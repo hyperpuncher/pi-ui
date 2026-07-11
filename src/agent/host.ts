@@ -1682,7 +1682,7 @@ function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] 
 
 	const target = toolTarget(toolName, args);
 	return [
-		{ text: `${toolName}${target ? " " : ""}` },
+		{ text: toolName },
 		...(target ? [{ text: target, tone: "accent", mono: true } as const] : []),
 		...(toolRange(args)
 			? [{ text: toolRange(args), tone: "warning", mono: true } as const]

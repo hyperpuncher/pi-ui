@@ -194,13 +194,13 @@ function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined
 	if (!parts?.length) return <span safe>{title}</span>;
 	return (
 		<>
-			{parts.map((part) =>
+			{parts.map((part, index) =>
 				part.highlight === "bash" ? (
-					<span class={toolTitlePartClass(part)}>
+					<span class={toolTitlePartClass(part, index)}>
 						{renderInlineBash(part.text)}
 					</span>
 				) : (
-					<span class={toolTitlePartClass(part)} safe>
+					<span class={toolTitlePartClass(part, index)} safe>
 						{part.text}
 					</span>
 				),
@@ -255,8 +255,9 @@ function styleObjectToAttribute(style: Record<string, string>): string {
 		.join(";");
 }
 
-function toolTitlePartClass(part: AppMessageTitlePart): string {
+function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	const classes = [];
+	if (index === 0 && !part.mono) classes.push("mr-2");
 	if (part.mono) classes.push("font-mono");
 	if (part.tone === "accent") classes.push("text-primary");
 	if (part.tone === "warning") classes.push("text-amber-600 dark:text-yellow-300");
@@ -381,7 +382,7 @@ export function renderMessage(message: AppMessage): string {
 		>
 			<header
 				class={[
-					"flex items-start gap-2 px-3 py-2 text-sm leading-tight",
+					"flex items-start gap-2 px-3 py-2 font-mono text-sm leading-tight",
 					hasToolBody ? "" : "",
 				]}
 			>
