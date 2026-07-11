@@ -153,7 +153,12 @@
 	}
 
 	.markdown-content .table-container {
-		max-width: 100%;
+		position: relative;
+		left: 50%;
+		width: max-content;
+		min-width: 100%;
+		max-width: calc(100vw - 2rem);
+		transform: translateX(-50%);
 		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
 			color-mix(in oklab, var(--muted) 35%, transparent);
 	}
