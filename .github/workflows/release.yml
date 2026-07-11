@@ -91,15 +91,10 @@ jobs:
             - name: Build desktop app
               shell: bash
               run: |
-                  compress=""
-                  if [[ "${{ matrix.name }}" != darwin-* ]]; then
-                    compress="--compress=zstd"
-                  fi
                   deno desktop -A \
                     --unstable-no-legacy-abort \
                     --conditions browser \
                     --include static \
-                    $compress \
                     --target "${{ matrix.target }}" \
                     src/main.ts
 
