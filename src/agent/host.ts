@@ -26,6 +26,7 @@ import type {
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
+import { CodexUsageRequestTracker } from "./codex-usage-request.ts";
 import {
 	codexUsageTtlMs,
 	fetchCodexUsage,
@@ -128,7 +129,7 @@ export class AgentHost {
 	private codexUsageText = "";
 	private codexUsage: CodexUsage | undefined;
 	private codexUsageFetchedAt = 0;
-	private codexUsageFetching = false;
+	private readonly codexUsageRequests = new CodexUsageRequestTracker();
 	private codexUsageTimer: ReturnType<typeof setTimeout> | undefined;
 
 	private readonly backgroundSessions = new Map<string, BackgroundSession>();
@@ -560,7 +561,7 @@ export class AgentHost {
 
 	dispose(): void {
 		this.unsubscribe?.();
-		this.clearCodexUsageTimer();
+		this.invalidateCodexUsageRequest();
 		this.runtime.dispose();
 		for (const { runtime, unsubscribe } of this.backgroundSessions.values()) {
 			unsubscribe();
@@ -797,6 +798,7 @@ export class AgentHost {
 	private unbindSession(): void {
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
+		this.resetCodexUsage();
 	}
 
 	private bindSessionState(
@@ -851,9 +853,7 @@ export class AgentHost {
 	}
 
 	private afterModelChange(): void {
-		this.codexUsageText = "";
-		this.codexUsage = undefined;
-		this.codexUsageFetchedAt = 0;
+		this.resetCodexUsage();
 		this.syncModels();
 		this.syncThinking();
 		this.syncUsage();
@@ -1037,6 +1037,18 @@ export class AgentHost {
 		this.codexUsageTimer = undefined;
 	}
 
+	private invalidateCodexUsageRequest(): void {
+		this.codexUsageRequests.invalidate();
+		this.clearCodexUsageTimer();
+	}
+
+	private resetCodexUsage(): void {
+		this.invalidateCodexUsageRequest();
+		this.codexUsageText = "";
+		this.codexUsage = undefined;
+		this.codexUsageFetchedAt = 0;
+	}
+
 	private scheduleCodexUsageRefresh(): void {
 		this.clearCodexUsageTimer();
 		this.codexUsageTimer = setTimeout(() => {
@@ -1047,32 +1059,49 @@ export class AgentHost {
 	}
 
 	private refreshCodexUsage(force = false): void {
-		if (!isOpenAICodex(this.runtime.session.model)) {
-			this.codexUsageText = "";
-			this.codexUsage = undefined;
-			this.codexUsageFetchedAt = 0;
-			this.clearCodexUsageTimer();
+		const runtime = this.runtime;
+		const session = runtime.session;
+		if (!isOpenAICodex(session.model)) {
+			this.resetCodexUsage();
 			this.syncUsage();
 			return;
 		}
-		if (this.codexUsageFetching) return;
+		if (this.codexUsageRequests.loading) return;
 		if (!force && Date.now() - this.codexUsageFetchedAt < codexUsageTtlMs) {
 			return;
 		}
 
-		this.codexUsageFetching = true;
+		const request = this.codexUsageRequests.begin(runtime, session, session.model);
 		if (!this.codexUsageText) {
 			this.codexUsageText = "loading";
 			this.syncUsage();
 		}
-		void fetchCodexUsage(this.runtime.session)
+		void fetchCodexUsage(session)
 			.then((usage) => {
+				if (
+					!this.codexUsageRequests.owns(
+						request,
+						this.runtime,
+						this.runtime.session,
+						this.runtime.session.model,
+					)
+				)
+					return;
 				this.codexUsageText = usage ? formatCodexUsage(usage) : "unavailable";
 				this.codexUsage = usage;
 				this.codexUsageFetchedAt = Date.now();
 				this.syncUsage();
 			})
 			.catch((error: unknown) => {
+				if (
+					!this.codexUsageRequests.owns(
+						request,
+						this.runtime,
+						this.runtime.session,
+						this.runtime.session.model,
+					)
+				)
+					return;
 				console.warn("Failed to fetch Codex usage", error);
 				this.codexUsageText = "unavailable";
 				this.codexUsage = undefined;
@@ -1080,7 +1109,15 @@ export class AgentHost {
 				this.syncUsage();
 			})
 			.finally(() => {
-				this.codexUsageFetching = false;
+				if (
+					!this.codexUsageRequests.release(
+						request,
+						this.runtime,
+						this.runtime.session,
+						this.runtime.session.model,
+					)
+				)
+					return;
 				this.scheduleCodexUsageRefresh();
 			});
 	}
