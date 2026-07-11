@@ -51,6 +51,14 @@ jobs:
                     libxkbcommon-dev libdbus-1-dev libxext-dev libxfixes-dev \
                     libayatana-appindicator3-dev
 
+            - name: Patch Laufey for Ayatana AppIndicator
+              if: runner.os == 'Linux'
+              shell: bash
+              run: |
+                  sed -i \
+                    's|<libappindicator/app-indicator.h>|<libayatana-appindicator/app-indicator.h>|' \
+                    "$RUNNER_TEMP/laufey/backend-common/src/tray_linux.cc"
+
             - name: Install macOS dependencies
               if: runner.os == 'macOS'
               run: brew install llvm ninja
@@ -71,6 +79,9 @@ jobs:
             - name: Build Laufey against CEF 150
               shell: bash
               run: |
+                  if [[ "${{ runner.os }}" == "Windows" ]]; then
+                    export TAR_OPTIONS=--force-local
+                  fi
                   make -C "$RUNNER_TEMP/laufey" cef \
                     CEF_VERSION="$CEF_VERSION" \
                     CEF_FULL_VERSION="$CEF_FULL_VERSION"
