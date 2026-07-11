@@ -382,6 +382,7 @@ export function renderPromptAction(state: AppState): string {
 				@post('/prompt', { filterSignals: { include: /^prompt$/ } });
 			"
 			data-tooltip="Send"
+			data-tooltip-delay
 			aria-label="Send"
 		>
 			<SendIcon />
