@@ -1,7 +1,25 @@
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web";
 
-export type DatastarStream = ds;
+export class DatastarStream {
+	constructor(private readonly stream: ds) {}
+
+	patchElements(elements: string, options?: Parameters<ds["patchElements"]>[1]) {
+		return this.stream.patchElements(normalizeSseData(elements), options);
+	}
+
+	patchSignals(...args: Parameters<ds["patchSignals"]>) {
+		return this.stream.patchSignals(...args);
+	}
+
+	executeScript(...args: Parameters<ds["executeScript"]>) {
+		return this.stream.executeScript(...args);
+	}
+
+	close(): void {
+		this.stream.close();
+	}
+}
 
 export function refreshBasecoatComponentsScript(...selectors: string[]): string {
 	return `queueMicrotask(() => document.querySelectorAll(${JSON.stringify(
@@ -13,7 +31,7 @@ export function datastarStream(
 	onStart: (stream: DatastarStream) => Promise<void> | void,
 	options?: Parameters<typeof ds.stream>[1],
 ) {
-	return ds.stream(onStart, options);
+	return ds.stream((stream) => onStart(new DatastarStream(stream)), options);
 }
 
 export function signalsResponse(signals: Record<string, Jsonifiable>) {
@@ -50,6 +68,10 @@ export function elementsAndScriptResponse(
 		}
 		stream.executeScript(script);
 	});
+}
+
+function normalizeSseData(value: string): string {
+	return value.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
 }
 
 export async function readSignals(request: Request) {
