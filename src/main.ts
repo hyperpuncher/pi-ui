@@ -52,20 +52,9 @@ function setupDesktopWindow(): void {
 		}
 	});
 
-	win.setApplicationMenu(
-		Deno.build.os === "darwin" ? macosApplicationMenu() : applicationMenu(),
-	);
-}
-
-function applicationMenu(): Deno.MenuItem[] {
-	return [
-		{
-			submenu: {
-				label: "File",
-				items: [workspaceMenuItem()],
-			},
-		},
-	];
+	if (Deno.build.os === "darwin") {
+		win.setApplicationMenu(macosApplicationMenu());
+	}
 }
 
 function macosApplicationMenu(): Deno.MenuItem[] {
