@@ -1786,16 +1786,20 @@ function formatToolResult(
 	if (toolName === "edit" && typeof details?.diff === "string") {
 		return { text: details.diff, format: "diff" };
 	}
+	const text = extractToolText(result);
+	if (!options.isError && /^\(no output\)$/i.test(text.trim())) {
+		return { text: "", format: "pre" };
+	}
 	if (toolName === "read") {
 		return {
-			text: options.isError ? compactReadOutput(extractToolText(result)) : "",
+			text: options.isError ? compactReadOutput(text) : "",
 			format: "pre",
 		};
 	}
 	if (toolName === "bash") {
-		return { text: compactToolOutput(extractToolText(result)), format: "code" };
+		return { text: compactToolOutput(text), format: "code" };
 	}
-	return { text: extractToolText(result), format: "pre" };
+	return { text, format: "pre" };
 }
 
 function shortenPath(path: string): string {
