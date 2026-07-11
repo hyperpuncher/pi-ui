@@ -1,3 +1,5 @@
+import { fileUriToPath } from "./file-uri.js";
+
 const messagesScrollState = {
 	wasPinnedToBottom: true,
 };
@@ -415,16 +417,6 @@ function extractTransferredFilePaths(data) {
 		.filter((line) => line && !line.startsWith("#"))
 		.map(fileUriToPath)
 		.filter(Boolean);
-}
-
-function fileUriToPath(uri) {
-	try {
-		const url = new URL(uri);
-		if (url.protocol !== "file:") return undefined;
-		return decodeURIComponent(url.pathname);
-	} catch {
-		return undefined;
-	}
 }
 
 function validateTransferredFiles(files) {
