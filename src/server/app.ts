@@ -1,4 +1,4 @@
-import { serveDir } from "jsr:@std/http/file-server";
+import { serveDir } from "@std/http/file-server";
 
 import { AgentHost } from "../agent/host.ts";
 import {
