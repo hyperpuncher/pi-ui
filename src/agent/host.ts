@@ -33,6 +33,7 @@ import {
 	isOpenAICodex,
 	type CodexUsage,
 } from "./codex-usage.ts";
+import { classifySessionLeave, transitionRuntime } from "./session-transition.ts";
 
 const bashPreviewLines = 8;
 const bashCompactThreshold = 14;
@@ -252,17 +253,13 @@ export class AgentHost {
 
 	async newSession(): Promise<boolean> {
 		if (!this.runtime.session.sessionManager.isPersisted()) {
-			if (this.runtime.session.isStreaming) {
-				this.state.appendMessage(
-					"system",
-					"Cannot start a saved chat while this temporary chat is running.",
-				);
-				return false;
-			}
-
 			const cwd = this.runtime.session.sessionManager.getCwd();
-			this.unbindSession();
-			this.runtime.dispose();
+			if (this.runtime.session.isStreaming) {
+				await this.discardTemporaryRuntime();
+			} else {
+				this.unbindSession();
+				this.runtime.dispose();
+			}
 			const runtime = await createAgentSessionRuntime(this.runtimeFactory, {
 				cwd,
 				agentDir: getAgentDir(),
@@ -286,14 +283,11 @@ export class AgentHost {
 		const previousSessionFile = this.runtime.session.sessionManager.getSessionFile();
 		const cwd = this.runtime.session.sessionManager.getCwd();
 		if (this.runtime.session.isStreaming) {
-			if (!this.runtime.session.sessionManager.getSessionFile()) {
-				this.state.appendMessage(
-					"system",
-					"Cannot start another temporary chat while this temporary chat is running.",
-				);
-				return false;
+			if (this.runtime.session.sessionManager.isPersisted()) {
+				this.backgroundCurrentRuntime();
+			} else {
+				await this.discardTemporaryRuntime();
 			}
-			this.backgroundCurrentRuntime();
 		} else {
 			this.unbindSession();
 			this.runtime.dispose();
@@ -366,12 +360,29 @@ export class AgentHost {
 		const backgroundSession = this.backgroundSessions.get(targetSessionFile);
 		if (backgroundSession) {
 			this.backgroundSessions.delete(targetSessionFile);
-			this.activateRuntime(backgroundSession);
+			await this.activateRuntime(backgroundSession);
 			return true;
 		}
 
-		if (this.runtime.session.isStreaming) {
-			this.backgroundCurrentRuntime();
+		if (
+			this.runtime.session.isStreaming ||
+			!this.runtime.session.sessionManager.isPersisted()
+		) {
+			if (this.runtime.session.isStreaming) {
+				const action = classifySessionLeave({
+					persisted: this.runtime.session.sessionManager.isPersisted(),
+					running: true,
+					requiresNewRuntime: true,
+				});
+				if (action === "background") {
+					this.backgroundCurrentRuntime();
+				} else {
+					await this.discardTemporaryRuntime();
+				}
+			} else {
+				this.unbindSession();
+				this.runtime.dispose();
+			}
 			this.runtime = await createAgentSessionRuntime(this.runtimeFactory, {
 				cwd: sessionManager.getCwd(),
 				agentDir: getAgentDir(),
@@ -529,6 +540,29 @@ export class AgentHost {
 		});
 	}
 
+	private async discardTemporaryRuntime(): Promise<void> {
+		const runtime = this.runtime;
+		await transitionRuntime({
+			action: "discard",
+			unsubscribe: () => this.unbindSession(),
+			abort: () => runtime.session.abort(),
+			dispose: () => runtime.dispose(),
+			background: () => {},
+			bindReplacement: () => {},
+			onAbortError: (error) => {
+				this.state.appendMessage(
+					"system",
+					`Failed to abort temporary session: ${formatError(error)}`,
+				);
+			},
+		});
+		this.state.setActivityText(undefined);
+		this.state.setQueuedMessages([], []);
+		this.toolMessageIds.clear();
+		this.toolCallArgs.clear();
+		this.toolStartedAt.clear();
+	}
+
 	private backgroundCurrentRuntime(): void {
 		this.unbindSession();
 		this.state.setQueuedMessages([], []);
@@ -680,9 +714,13 @@ export class AgentHost {
 		}
 	}
 
-	private activateRuntime(backgroundSession: BackgroundSession): void {
+	private async activateRuntime(backgroundSession: BackgroundSession): Promise<void> {
 		if (this.runtime.session.isStreaming) {
-			this.backgroundCurrentRuntime();
+			if (this.runtime.session.sessionManager.isPersisted()) {
+				this.backgroundCurrentRuntime();
+			} else {
+				await this.discardTemporaryRuntime();
+			}
 		} else {
 			this.unbindSession();
 			this.runtime.dispose();
