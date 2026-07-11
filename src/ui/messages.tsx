@@ -281,7 +281,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "assistant") {
 		return (
 			<article
-				class="message message-narrative message-assistant markdown-content max-w-full self-start"
+				class="message message-narrative message-assistant markdown-content w-full self-start"
 				data-message-id={message.id}
 			>
 				{message.renderedHtml ? (
@@ -298,7 +298,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "thought") {
 		return (
 			<article
-				class="message message-narrative message-thought markdown-content text-muted-foreground max-w-3xl self-start text-sm italic"
+				class="message message-narrative message-thought markdown-content text-muted-foreground w-full self-start text-sm italic"
 				data-message-id={message.id}
 			>
 				{message.renderedHtml ? (
@@ -330,7 +330,7 @@ export function renderMessage(message: AppMessage): string {
 		return (
 			<article
 				class={[
-					"message message-narrative bg-muted/40 text-muted-foreground w-full max-w-3xl self-start rounded-md p-3 text-sm",
+					"message message-narrative bg-muted/40 text-muted-foreground w-full self-start rounded-md p-3 text-sm",
 					message.role === "skill" ? "message-skill" : "message-compaction",
 				]}
 				data-message-id={message.id}
@@ -374,7 +374,7 @@ export function renderMessage(message: AppMessage): string {
 	return (
 		<article
 			class={[
-				"message message-tool bg-muted/40 dark:bg-muted/55 w-full max-w-3xl self-start overflow-hidden rounded-md border",
+				"message message-tool bg-muted/40 dark:bg-muted/55 w-full self-start overflow-hidden rounded-md border",
 				stateClass,
 			]}
 			data-message-id={message.id}
