@@ -55,21 +55,25 @@ jobs:
 
                   gh release download "$CEF_BACKEND_TAG" \
                     --pattern "$asset" \
-                    --pattern SHA256SUMS \
                     --dir "$download_dir"
 
-                  expected=$(awk -v asset="$asset" '$2 == asset { print $1 }' "$download_dir/SHA256SUMS")
+                  expected=$(gh release view "$CEF_BACKEND_TAG" \
+                    --repo "$GITHUB_REPOSITORY" \
+                    --json assets \
+                    --jq ".assets[] | select(.name == \"$asset\") | .digest | ltrimstr(\"sha256:\")" \
+                    | tr -d '\r')
                   if [[ -z "$expected" ]]; then
                     echo "::error::No checksum found for $asset"
                     exit 1
                   fi
                   if command -v sha256sum >/dev/null; then
-                    actual=$(sha256sum "$download_dir/$asset" | awk '{ print $1 }')
+                    checksum=$(sha256sum "$download_dir/$asset")
                   else
-                    actual=$(shasum -a 256 "$download_dir/$asset" | awk '{ print $1 }')
+                    checksum=$(shasum -a 256 "$download_dir/$asset")
                   fi
+                  actual=${checksum%% *}
                   if [[ "$actual" != "$expected" ]]; then
-                    echo "::error::Checksum mismatch for $asset"
+                    echo "::error::Checksum mismatch for $asset (expected $expected, got $actual)"
                     exit 1
                   fi
 
