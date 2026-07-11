@@ -34,6 +34,11 @@ import {
 	isOpenAICodex,
 	type CodexUsage,
 } from "./codex-usage.ts";
+import {
+	reduceSessionEvent,
+	type SessionEventStateSink,
+	type SessionEventToolState,
+} from "./session-event-reducer.ts";
 import { classifySessionLeave, transitionRuntime } from "./session-transition.ts";
 
 const bashPreviewLines = 8;
@@ -291,9 +296,13 @@ export class AgentHost {
 	}
 
 	async newSession(): Promise<boolean> {
-		if (!this.runtime.session.sessionManager.isPersisted()) {
-			const cwd = this.runtime.session.sessionManager.getCwd();
-			if (this.runtime.session.isStreaming) {
+		const session = this.runtime.session;
+		const persisted = session.sessionManager.isPersisted();
+		if (session.isStreaming || !persisted) {
+			const cwd = session.sessionManager.getCwd();
+			if (session.isStreaming && persisted) {
+				this.backgroundCurrentRuntime();
+			} else if (session.isStreaming) {
 				await this.discardTemporaryRuntime();
 			} else {
 				this.unbindSession();
@@ -634,102 +643,24 @@ export class AgentHost {
 		backgroundSession: BackgroundSession,
 		event: AgentSessionEvent,
 	): void {
-		switch (event.type) {
-			case "agent_start":
-				backgroundSession.state.setActivityText("Working...");
-				break;
-			case "message_start":
-				this.handleMessageStart(event.message, backgroundSession.state);
-				break;
-			case "message_update":
-				if (event.assistantMessageEvent.type === "thinking_delta") {
-					backgroundSession.state.appendThoughtDelta(
-						event.assistantMessageEvent.delta,
-					);
-				}
-				if (event.assistantMessageEvent.type === "text_delta") {
-					backgroundSession.state.appendAssistantDelta(
-						event.assistantMessageEvent.delta,
-					);
-				}
-				break;
-			case "message_end":
-				if (event.message.role === "assistant") {
-					backgroundSession.state.finishAssistant();
-				}
-				break;
-			case "tool_execution_start": {
-				backgroundSession.state.finishAssistant();
-				backgroundSession.toolCallArgs.set(event.toolCallId, event.args);
-				backgroundSession.toolStartedAt.set(event.toolCallId, Date.now());
-				const startView = formatToolStart(event.toolName, event.args);
-				const id = backgroundSession.state.appendMessage("tool", startView.text, {
-					title: toolTitle("running", event.toolName, event.args),
-					titleParts: toolTitleParts(event.toolName, event.args),
-					meta: toolMeta(event.toolName, event.args) ?? "Running...",
-					state: "running",
-					format: startView.format,
-				});
-				backgroundSession.toolMessageIds.set(event.toolCallId, id);
-				break;
-			}
-			case "tool_execution_update": {
-				const id = backgroundSession.toolMessageIds.get(event.toolCallId);
-				if (id) {
-					const resultView = formatToolResult(
-						event.toolName,
-						event.partialResult,
-						{
-							args: event.args,
-						},
-					);
-					backgroundSession.state.updateMessage(id, {
-						text: resultView.text,
-						meta: toolMeta(event.toolName, event.args),
-						format: resultView.format,
-					});
-				}
-				break;
-			}
-			case "tool_execution_end": {
-				const id = backgroundSession.toolMessageIds.get(event.toolCallId);
-				const args = backgroundSession.toolCallArgs.get(event.toolCallId) ?? {};
-				const resultView = formatToolResult(event.toolName, event.result, {
-					args,
-					isError: event.isError,
-				});
-				const startedAt = backgroundSession.toolStartedAt.get(event.toolCallId);
-				const patch = {
-					text: resultView.text,
-					title: toolTitle(
-						event.isError ? "error" : "success",
-						event.toolName,
-						args,
-					),
-					meta: toolEndMeta(startedAt),
-					state: event.isError ? "error" : "success",
-					titleParts: toolTitleParts(event.toolName, args),
-					format: resultView.format,
-				} as const;
-				if (id) {
-					backgroundSession.state.updateMessage(id, patch);
-					backgroundSession.toolMessageIds.delete(event.toolCallId);
-				} else {
-					backgroundSession.state.appendMessage("tool", patch.text, patch);
-				}
-				backgroundSession.toolCallArgs.delete(event.toolCallId);
-				backgroundSession.toolStartedAt.delete(event.toolCallId);
-				break;
-			}
-			case "queue_update":
-				backgroundSession.state.setQueuedMessages(event.steering, event.followUp);
-				break;
-			case "agent_end":
-				backgroundSession.state.setActivityText(undefined);
-				backgroundSession.unsubscribe();
-				this.notifyBackgroundSessionDone(backgroundSession.runtime);
-				void this.refreshSessions();
-				break;
+		const outcome = this.reduceEvent(
+			event,
+			backgroundSession.state,
+			{
+				messageIds: backgroundSession.toolMessageIds,
+				callArgs: backgroundSession.toolCallArgs,
+				startedAt: backgroundSession.toolStartedAt,
+			},
+			() =>
+				this.loadRuntimeMessages(
+					backgroundSession.runtime,
+					backgroundSession.state,
+				),
+		);
+		if (outcome.agentCompleted) {
+			backgroundSession.unsubscribe();
+			this.notifyBackgroundSessionDone(backgroundSession.runtime);
+			void this.refreshSessions();
 		}
 		this.backgroundSessions.set(sessionFile, backgroundSession);
 	}
@@ -894,123 +825,84 @@ export class AgentHost {
 	}
 
 	private handleEvent(event: AgentSessionEvent): void {
-		switch (event.type) {
-			case "agent_start":
-				this.state.setActivityText("Working...");
-				break;
-			case "message_start":
-				this.handleMessageStart(event.message);
-				break;
-			case "message_update":
-				if (event.assistantMessageEvent.type === "thinking_delta") {
-					this.state.appendThoughtDelta(event.assistantMessageEvent.delta);
-				}
-				if (event.assistantMessageEvent.type === "text_delta") {
-					this.state.appendAssistantDelta(event.assistantMessageEvent.delta);
-				}
-				break;
-			case "message_end":
-				if (event.message.role === "assistant") {
-					this.state.finishAssistant();
-				}
-				this.syncUsage();
-				break;
-			case "tool_execution_start": {
-				this.state.finishAssistant();
-				this.toolCallArgs.set(event.toolCallId, event.args);
-				this.toolStartedAt.set(event.toolCallId, Date.now());
-				const startView = formatToolStart(event.toolName, event.args);
-				const id = this.state.appendMessage("tool", startView.text, {
-					title: toolTitle("running", event.toolName, event.args),
-					titleParts: toolTitleParts(event.toolName, event.args),
-					meta: toolMeta(event.toolName, event.args) ?? "Running...",
-					state: "running",
-					format: startView.format,
-				});
-				this.toolMessageIds.set(event.toolCallId, id);
-				break;
-			}
-			case "tool_execution_update": {
-				const id = this.toolMessageIds.get(event.toolCallId);
-				if (id) {
-					const resultView = formatToolResult(
-						event.toolName,
-						event.partialResult,
-						{
-							args: event.args,
-						},
-					);
-					this.state.updateMessage(id, {
-						text: resultView.text,
-						meta: toolMeta(event.toolName, event.args),
-						format: resultView.format,
-					});
-				}
-				break;
-			}
-			case "tool_execution_end": {
-				const id = this.toolMessageIds.get(event.toolCallId);
-				const args = this.toolCallArgs.get(event.toolCallId) ?? {};
-				const resultView = formatToolResult(event.toolName, event.result, {
-					args,
-					isError: event.isError,
-				});
-				const startedAt = this.toolStartedAt.get(event.toolCallId);
-				const patch = {
-					text: resultView.text,
-					title: toolTitle(
-						event.isError ? "error" : "success",
-						event.toolName,
-						args,
-					),
-					meta: toolEndMeta(startedAt),
-					state: event.isError ? "error" : "success",
-					titleParts: toolTitleParts(event.toolName, args),
-					format: resultView.format,
-				} as const;
-				if (id) {
-					this.state.updateMessage(id, patch);
-					this.toolMessageIds.delete(event.toolCallId);
-				} else {
-					this.state.appendMessage("tool", patch.text, patch);
-				}
-				this.toolCallArgs.delete(event.toolCallId);
-				this.toolStartedAt.delete(event.toolCallId);
-				break;
-			}
-			case "agent_end":
-				this.state.setActivityText(undefined);
-				this.syncUsage();
-				this.refreshCodexUsage(true);
-				break;
-			case "queue_update":
-				this.state.setQueuedMessages(event.steering, event.followUp);
-				break;
-			case "auto_retry_start":
-				this.state.setActivityText(
-					`Retrying (${event.attempt}/${event.maxAttempts})...`,
-				);
-				break;
-			case "auto_retry_end":
-				this.state.setActivityText(undefined);
-				break;
-			case "compaction_start":
-				this.state.setActivityText(
-					event.reason === "manual"
-						? "Compacting context..."
-						: `${event.reason === "overflow" ? "Context overflow detected, " : ""}Auto-compacting...`,
-				);
-				break;
-			case "compaction_end":
-				this.state.setActivityText(undefined);
-				if (event.result) {
-					this.loadCurrentSessionMessages();
-				}
-				if (event.errorMessage) {
-					this.state.appendMessage("system", event.errorMessage);
-				}
-				break;
+		const outcome = this.reduceEvent(
+			event,
+			this.state,
+			{
+				messageIds: this.toolMessageIds,
+				callArgs: this.toolCallArgs,
+				startedAt: this.toolStartedAt,
+			},
+			() => this.loadCurrentSessionMessages(),
+			() => this.syncUsage(),
+		);
+		if (outcome.agentCompleted) {
+			this.syncUsage();
+			this.refreshCodexUsage(true);
 		}
+	}
+
+	private reduceEvent(
+		event: AgentSessionEvent,
+		state: SessionEventStateSink,
+		tools: SessionEventToolState,
+		reloadMessages: () => void,
+		syncUsage?: () => void,
+	) {
+		return reduceSessionEvent(event, {
+			state,
+			tools,
+			convertMessage: (message, timestamp) =>
+				this.agentMessageToAppMessages(message, timestamp),
+			formatToolStart: (toolEvent) => {
+				const view = formatToolStart(toolEvent.toolName, toolEvent.args);
+				return {
+					text: view.text,
+					options: {
+						title: toolTitle("running", toolEvent.toolName, toolEvent.args),
+						titleParts: toolTitleParts(toolEvent.toolName, toolEvent.args),
+						meta:
+							toolMeta(toolEvent.toolName, toolEvent.args) ?? "Running...",
+						state: "running",
+						format: view.format,
+					},
+				};
+			},
+			formatToolUpdate: (toolEvent) => {
+				const view = formatToolResult(
+					toolEvent.toolName,
+					toolEvent.partialResult,
+					{ args: toolEvent.args },
+				);
+				return {
+					text: view.text,
+					meta: toolMeta(toolEvent.toolName, toolEvent.args),
+					format: view.format,
+				};
+			},
+			formatToolEnd: (toolEvent, args, startedAt) => {
+				const view = formatToolResult(toolEvent.toolName, toolEvent.result, {
+					args,
+					isError: toolEvent.isError,
+				});
+				return {
+					text: view.text,
+					options: {
+						title: toolTitle(
+							toolEvent.isError ? "error" : "success",
+							toolEvent.toolName,
+							args,
+						),
+						meta: toolEndMeta(startedAt),
+						state: toolEvent.isError ? "error" : "success",
+						titleParts: toolTitleParts(toolEvent.toolName, args),
+						format: view.format,
+					},
+				};
+			},
+			syncUsage,
+			reloadMessages,
+		});
 	}
 
 	private syncThinking(): void {
@@ -1163,13 +1055,17 @@ export class AgentHost {
 	}
 
 	private loadCurrentSessionMessages(): void {
-		const branch = this.runtime.session.sessionManager.getBranch();
+		this.loadRuntimeMessages(this.runtime, this.state);
+		this.syncUsage();
+	}
+
+	private loadRuntimeMessages(runtime: AgentSessionRuntime, state: AppState): void {
+		const branch = runtime.session.sessionManager.getBranch();
 		const pendingToolCalls = new Map<string, { name: string; args: unknown }>();
 		const messages = branch.flatMap((entry: SessionEntry) =>
 			this.entryToMessages(entry, pendingToolCalls),
 		);
-		this.state.replaceMessages(messages);
-		this.syncUsage();
+		state.replaceMessages(messages);
 	}
 
 	private entryToMessages(
@@ -1220,25 +1116,6 @@ export class AgentHost {
 			return [];
 		}
 		return [];
-	}
-
-	private handleMessageStart(
-		message: Extract<AgentSessionEvent, { type: "message_start" }>["message"],
-		state = this.state,
-	): void {
-		if (message.role === "toolResult") {
-			return;
-		}
-		const appMessages = this.agentMessageToAppMessages(message, new Date());
-		for (const appMessage of appMessages) {
-			state.appendMessage(appMessage.role, appMessage.text, {
-				title: appMessage.title,
-				titleParts: appMessage.titleParts,
-				meta: appMessage.meta,
-				state: appMessage.state,
-				format: appMessage.format,
-			});
-		}
 	}
 
 	private agentMessageToAppMessage(
