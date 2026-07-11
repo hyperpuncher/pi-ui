@@ -48,16 +48,7 @@ jobs:
                     libatk1.0-dev libatk-bridge2.0-dev libcups2-dev libdrm-dev \
                     libgtk-3-dev libgbm-dev libasound2-dev libpango1.0-dev \
                     libcairo2-dev libxcomposite-dev libxdamage-dev libxrandr-dev \
-                    libxkbcommon-dev libdbus-1-dev libxext-dev libxfixes-dev \
-                    libayatana-appindicator3-dev
-
-            - name: Patch Laufey for Ayatana AppIndicator
-              if: runner.os == 'Linux'
-              shell: bash
-              run: |
-                  sed -i \
-                    's|<libappindicator/app-indicator.h>|<libayatana-appindicator/app-indicator.h>|' \
-                    "$RUNNER_TEMP/laufey/backend-common/src/tray_linux.cc"
+                    libxkbcommon-dev libdbus-1-dev libxext-dev libxfixes-dev
 
             - name: Install macOS dependencies
               if: runner.os == 'macOS'
