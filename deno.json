@@ -13,7 +13,9 @@
 		"css:watch": "deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
 		"lint": "deno run -A npm:oxlint",
-		"check": "deno check --conditions browser src/main.ts"
+		"check": "deno check --conditions browser src/main.ts",
+		"test": "deno test --conditions browser -A",
+		"perf:session": "deno run --conditions browser -A src/perf/session-benchmark.ts"
 	},
 	"compilerOptions": {
 		"jsx": "react-jsx",

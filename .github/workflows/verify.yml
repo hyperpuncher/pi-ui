@@ -1,0 +1,22 @@
+name: Verify
+
+on:
+    push:
+    pull_request:
+
+jobs:
+    verify:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+            - uses: denoland/setup-deno@v2.0.5
+              with:
+                  deno-version: v2.9.2
+            - name: Build CSS
+              run: deno task css:build
+            - name: Lint
+              run: deno task lint
+            - name: Check
+              run: deno task check
+            - name: Test
+              run: deno task test

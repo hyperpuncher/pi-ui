@@ -14,6 +14,7 @@ import {
 	type SessionStats,
 } from "@earendil-works/pi-coding-agent";
 
+import { sessionPerformance } from "../perf/session-performance.ts";
 import { AppState } from "../state/app-state.ts";
 import type {
 	AppMessageInput,
@@ -444,6 +445,19 @@ export class AgentHost {
 	}
 
 	async resumeSession(sessionPath: string): Promise<boolean> {
+		sessionPerformance.startSessionTransition();
+		try {
+			const resumed = await this.resumeSessionTransition(sessionPath);
+			if (resumed) sessionPerformance.markSessionTransitionComplete();
+			else sessionPerformance.cancelSessionTransition();
+			return resumed;
+		} catch (error) {
+			sessionPerformance.cancelSessionTransition();
+			throw error;
+		}
+	}
+
+	private async resumeSessionTransition(sessionPath: string): Promise<boolean> {
 		if (!sessionPath.trim()) {
 			return false;
 		}
@@ -478,18 +492,22 @@ export class AgentHost {
 				this.unbindSession();
 				this.runtime.dispose();
 			}
-			this.runtime = await createAgentSessionRuntime(this.runtimeFactory, {
-				cwd: sessionManager.getCwd(),
-				agentDir: getAgentDir(),
-				sessionManager,
-			});
+			this.runtime = await sessionPerformance.measure("runtimeSwitchCreate", () =>
+				createAgentSessionRuntime(this.runtimeFactory, {
+					cwd: sessionManager.getCwd(),
+					agentDir: getAgentDir(),
+					sessionManager,
+				}),
+			);
 			this.bindRuntimeCallbacks(this.runtime);
 			await this.bindSession();
 			this.loadCurrentSessionMessages();
 			return true;
 		}
 
-		const result = await this.runtime.switchSession(sessionPath);
+		const result = await sessionPerformance.measure("runtimeSwitchCreate", () =>
+			this.runtime.switchSession(sessionPath),
+		);
 		return !result.cancelled;
 	}
 
@@ -838,7 +856,9 @@ export class AgentHost {
 	}
 
 	private async bindSessionExtensions(): Promise<void> {
-		await this.runtime.session.bindExtensions({ mode: "rpc" });
+		await sessionPerformance.measure("extensionBind", () =>
+			this.runtime.session.bindExtensions({ mode: "rpc" }),
+		);
 	}
 
 	private async refreshSessions(): Promise<void> {

@@ -1,4 +1,5 @@
 import { appCommands } from "../commands/registry.ts";
+import { sessionPerformance } from "../perf/session-performance.ts";
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream, refreshBasecoatComponentsScript } from "../server/datastar.ts";
 import { renderAuthDialogContent } from "../ui/auth-dialog.tsx";
@@ -176,7 +177,6 @@ const markdownMessageRoles = new Set<AppMessage["role"]>([
 	"compaction",
 	"skill",
 ]);
-
 function rendersMarkdown(role: AppMessage["role"]): boolean {
 	return markdownMessageRoles.has(role);
 }
@@ -376,6 +376,7 @@ export class AppState {
 	}
 
 	restoreChat(snapshot: AppChatSnapshot): void {
+		const endProjection = sessionPerformance.startSpan("transcriptProjection");
 		this.clearStreamingPatchTimer();
 		this.messageSeq = snapshot.messageSeq;
 		this.activeAssistantId = snapshot.activeAssistantId;
@@ -389,6 +390,8 @@ export class AppState {
 		this.queuedSteeringMessages = [...snapshot.queuedSteeringMessages];
 		this.queuedFollowUpMessages = [...snapshot.queuedFollowUpMessages];
 		this.refreshVisibleMessages();
+		endProjection();
+		sessionPerformance.markTranscriptProjected();
 		this.broadcast();
 		void this.renderVisibleToolCode();
 		this.renderVisibleMarkdownFinals();
@@ -411,6 +414,7 @@ export class AppState {
 	}
 
 	replaceMessages(messages: AppMessageInput[]): void {
+		const endProjection = sessionPerformance.startSpan("transcriptProjection");
 		this.clearStreamingPatchTimer();
 		this.releaseTranscriptMarkdownStreamingState();
 		this.activeAssistantId = undefined;
@@ -430,6 +434,8 @@ export class AppState {
 			this.transcriptMessages.length - restoredMessagePageSize,
 		);
 		this.refreshVisibleMessages();
+		endProjection();
+		sessionPerformance.markTranscriptProjected();
 		const renderSeq = ++this.replaceMessagesRenderSeq;
 		void this.renderVisibleToolCode({ broadcast: false })
 			.catch((error: unknown) =>
@@ -552,11 +558,12 @@ export class AppState {
 		const patchMessages = options.patchMessages ?? true;
 		for (const client of this.clients.values()) {
 			try {
-				client.stream.patchElements(
+				const elements =
 					(patchMessages ? this.renderMessagesElement() : "") +
-						renderWorkspaceDialogMenu(this) +
-						renderSessionPicker(this),
-				);
+					renderWorkspaceDialogMenu(this) +
+					renderSessionPicker(this);
+				client.stream.patchElements(elements);
+				sessionPerformance.recordFatMorph(elements);
 				client.stream.executeScript(
 					refreshBasecoatComponentsScript(
 						"#workspace-dialog .command",
@@ -581,7 +588,9 @@ export class AppState {
 		]).slice(0, 8);
 		for (const client of this.clients.values()) {
 			try {
-				client.stream.patchElements(renderWorkspaceDialogMenu(this));
+				const elements = renderWorkspaceDialogMenu(this);
+				client.stream.patchElements(elements);
+				sessionPerformance.recordFatMorph(elements);
 				client.stream.executeScript(
 					refreshBasecoatComponentsScript("#workspace-dialog .command"),
 				);
@@ -703,11 +712,19 @@ export class AppState {
 		}
 
 		const text = message.text;
-		const renderedHtml =
-			language === "diff"
-				? ((await renderPierreDiff(text)) ??
-					(await renderCodeFinal(text, language, { chrome: false })))
-				: await renderPierreCode(text, language, { disableLineNumbers: true });
+		const endEnhancement = sessionPerformance.startSpan("toolEnhancement");
+		let renderedHtml: string;
+		try {
+			renderedHtml =
+				language === "diff"
+					? ((await renderPierreDiff(text)) ??
+						(await renderCodeFinal(text, language, { chrome: false })))
+					: await renderPierreCode(text, language, {
+							disableLineNumbers: true,
+						});
+		} finally {
+			endEnhancement();
+		}
 		const current = this.transcriptMessages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
 			return false;
@@ -727,7 +744,9 @@ export class AppState {
 		}
 
 		const text = message.text;
-		const renderedHtml = await renderMarkdownFinal(text);
+		const renderedHtml = await sessionPerformance.measure("markdownEnhancement", () =>
+			renderMarkdownFinal(text),
+		);
 		const current = this.transcriptMessages.find((item) => item.id === id);
 		if (!current || current.text !== text) {
 			return;
@@ -766,7 +785,10 @@ export class AppState {
 
 	private patchClient(stream: DatastarStream, script?: string): void {
 		try {
-			stream.patchElements(this.renderElements());
+			const elements = this.renderElements();
+			stream.patchElements(elements);
+			sessionPerformance.recordFatMorph(elements);
+			sessionPerformance.markFirstTranscriptPatch();
 			if (script) {
 				stream.executeScript(script);
 			}
@@ -805,9 +827,11 @@ export class AppState {
 	private broadcastMessage(message: AppMessage): void {
 		for (const client of this.clients.values()) {
 			try {
-				client.stream.patchElements(renderMessage(message), {
+				const elements = renderMessage(message);
+				client.stream.patchElements(elements, {
 					selector: `[data-message-id="${message.id}"]`,
 				});
+				sessionPerformance.recordTargetedMessagePatch(elements);
 			} catch {
 				// Client already disconnected.
 			}
