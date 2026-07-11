@@ -1,5 +1,9 @@
 name: Release
 
+env:
+    CEF_BACKEND_TAG: cef-150.0.11-laufey-0.5.0
+    DENO_VERSION: v2.9.2
+
 on:
     push:
         tags:
@@ -33,7 +37,49 @@ jobs:
             - uses: actions/checkout@v7
             - uses: denoland/setup-deno@v2.0.5
               with:
-                  deno-version: v2.x
+                  deno-version: ${{ env.DENO_VERSION }}
+
+            - name: Download CEF 150 backend
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  case "${{ matrix.target }}" in
+                    *windows*) asset="laufey-cef-${{ matrix.target }}.zip" ;;
+                    *) asset="laufey-cef-${{ matrix.target }}.tar.gz" ;;
+                  esac
+
+                  download_dir="$RUNNER_TEMP/laufey-download"
+                  backend_dir="$RUNNER_TEMP/laufey/cef/build/Release"
+                  mkdir -p "$download_dir" "$backend_dir"
+
+                  gh release download "$CEF_BACKEND_TAG" \
+                    --pattern "$asset" \
+                    --pattern SHA256SUMS \
+                    --dir "$download_dir"
+
+                  expected=$(awk -v asset="$asset" '$2 == asset { print $1 }' "$download_dir/SHA256SUMS")
+                  if [[ -z "$expected" ]]; then
+                    echo "::error::No checksum found for $asset"
+                    exit 1
+                  fi
+                  if command -v sha256sum >/dev/null; then
+                    actual=$(sha256sum "$download_dir/$asset" | awk '{ print $1 }')
+                  else
+                    actual=$(shasum -a 256 "$download_dir/$asset" | awk '{ print $1 }')
+                  fi
+                  if [[ "$actual" != "$expected" ]]; then
+                    echo "::error::Checksum mismatch for $asset"
+                    exit 1
+                  fi
+
+                  if [[ "$asset" == *.zip ]]; then
+                    7z x -y "$download_dir/$asset" "-o$backend_dir"
+                  else
+                    tar xzf "$download_dir/$asset" -C "$backend_dir"
+                  fi
+
+                  echo "LAUFEY_DEV_DIR=$RUNNER_TEMP/laufey" >> "$GITHUB_ENV"
 
             - name: Build CSS
               run: deno task css:build
