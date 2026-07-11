@@ -22,10 +22,15 @@ import type {
 	AppThinkingLevel,
 	AppTreeEntry,
 	AppUsage,
+	BackgroundSessionStatus,
 } from "../state/app-state.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
+import {
+	abortRunningBackgroundSession,
+	mergeBackgroundSessionStatuses,
+} from "./background-session-status.ts";
 import { CodexUsageRequestTracker } from "./codex-usage-request.ts";
 import {
 	codexUsageTtlMs,
@@ -47,6 +52,7 @@ const bashCompactThreshold = 14;
 type BackgroundSession = {
 	runtime: AgentSessionRuntime;
 	state: AppState;
+	status: BackgroundSessionStatus;
 	toolMessageIds: Map<string, string>;
 	toolCallArgs: Map<string, unknown>;
 	toolStartedAt: Map<string, number>;
@@ -228,9 +234,12 @@ export class AgentHost {
 		if (this.activationOptions.refreshWorkspaces !== false) {
 			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
 		}
-		this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary), {
-			patchMessages: this.activationOptions.patchSessionMessages,
-		});
+		this.state.setSessions(
+			this.mergeBackgroundStatuses(sessions.slice(0, 50).map(formatSessionSummary)),
+			{
+				patchMessages: this.activationOptions.patchSessionMessages,
+			},
+		);
 	}
 
 	async prompt(
@@ -287,6 +296,18 @@ export class AgentHost {
 		this.state.setQueuedMessages([], []);
 		this.loadCurrentSessionMessages();
 		this.syncUsage();
+	}
+
+	async abortBackgroundSession(sessionPath: string): Promise<boolean> {
+		const aborted = await abortRunningBackgroundSession(
+			this.backgroundSessions,
+			sessionPath,
+			(session) => session.runtime.session.abort(),
+		);
+		if (!aborted) return false;
+		this.syncBackgroundStatuses();
+		await this.refreshSessions();
+		return true;
 	}
 
 	restoreQueuedMessages(): string {
@@ -372,7 +393,7 @@ export class AgentHost {
 			this.state.appendMessage("system", "Cannot delete the current session.");
 			return false;
 		}
-		if (this.backgroundSessions.has(targetSessionFile)) {
+		if (this.backgroundSessions.get(targetSessionFile)?.status === "running") {
 			this.state.appendMessage(
 				"system",
 				"Cannot delete a running background session.",
@@ -381,6 +402,12 @@ export class AgentHost {
 		}
 		try {
 			await moveToTrash(targetSessionFile);
+			const backgroundSession = this.backgroundSessions.get(targetSessionFile);
+			if (backgroundSession) {
+				backgroundSession.unsubscribe();
+				backgroundSession.runtime.dispose();
+				this.backgroundSessions.delete(targetSessionFile);
+			}
 			this.state.removeSession(targetSessionFile);
 			return true;
 		} catch (error) {
@@ -626,6 +653,7 @@ export class AgentHost {
 			const backgroundSession: BackgroundSession = {
 				runtime: this.runtime,
 				state: backgroundState,
+				status: "running",
 				toolMessageIds: new Map(this.toolMessageIds),
 				toolCallArgs: new Map(this.toolCallArgs),
 				toolStartedAt: new Map(this.toolStartedAt),
@@ -635,6 +663,8 @@ export class AgentHost {
 				this.handleBackgroundEvent(sessionFile, backgroundSession, event),
 			);
 			this.backgroundSessions.set(sessionFile, backgroundSession);
+			this.state.setCurrentSessionPath(undefined);
+			this.syncBackgroundStatuses();
 		}
 	}
 
@@ -659,8 +689,12 @@ export class AgentHost {
 		);
 		if (outcome.agentCompleted) {
 			backgroundSession.unsubscribe();
+			backgroundSession.status = "completed";
+			this.backgroundSessions.set(sessionFile, backgroundSession);
+			this.syncBackgroundStatuses();
 			this.notifyBackgroundSessionDone(backgroundSession.runtime);
 			void this.refreshSessions();
+			return;
 		}
 		this.backgroundSessions.set(sessionFile, backgroundSession);
 	}
@@ -716,6 +750,7 @@ export class AgentHost {
 		} else {
 			this.loadCurrentSessionMessages();
 		}
+		this.syncBackgroundStatuses();
 	}
 
 	private async bindSession(
@@ -765,13 +800,36 @@ export class AgentHost {
 		try {
 			const sessions = await SessionManager.listAll();
 			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
-			this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary));
+			this.state.setSessions(
+				this.mergeBackgroundStatuses(
+					sessions.slice(0, 50).map(formatSessionSummary),
+				),
+			);
 		} catch (error) {
 			this.state.appendMessage(
 				"system",
 				`Failed to list sessions: ${formatError(error)}`,
 			);
 		}
+	}
+
+	private syncBackgroundStatuses(): void {
+		this.state.setSessions(this.mergeBackgroundStatuses(this.state.sessions));
+	}
+
+	private mergeBackgroundStatuses(
+		sessions: readonly AppSessionSummary[],
+	): AppSessionSummary[] {
+		return mergeBackgroundSessionStatuses(
+			sessions,
+			new Map(
+				[...this.backgroundSessions].map(([path, session]) => [
+					path,
+					session.status,
+				]),
+			),
+			this.state.currentSessionPath,
+		);
 	}
 
 	private findModelRef(modelRef: string) {

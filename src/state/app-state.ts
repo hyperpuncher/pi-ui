@@ -82,12 +82,15 @@ export type AppSlashCommand = {
 	argumentHint?: string;
 };
 
+export type BackgroundSessionStatus = "running" | "completed";
+
 export type AppSessionSummary = {
 	path: string;
 	cwd: string;
 	title: string;
 	subtitle: string;
 	modified: string;
+	backgroundStatus?: BackgroundSessionStatus;
 };
 
 export type AppTreeEntry = {

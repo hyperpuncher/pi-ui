@@ -120,6 +120,19 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 					return noContent();
 				}
 
+				if (
+					request.method === "POST" &&
+					url.pathname === "/sessions/background/abort"
+				) {
+					const signals = await readSignals(request);
+					const aborted = await host?.abortBackgroundSession(
+						String(signals.backgroundSessionPath ?? ""),
+					);
+					return aborted
+						? signalsResponse({ backgroundSessionPath: "" })
+						: noContent();
+				}
+
 				if (request.method === "POST" && url.pathname === "/sessions/delete") {
 					const signals = await readSignals(request);
 					const deleted = await host?.deleteSession(
