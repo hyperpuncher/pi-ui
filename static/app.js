@@ -2,6 +2,12 @@ const messagesScrollState = {
 	wasPinnedToBottom: true,
 };
 
+// Convenience checks mirrored from src/server/transferred-files.ts. The server
+// remains authoritative.
+const MAX_TRANSFER_FILES = 10;
+const MAX_TRANSFER_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
+
 window.addEventListener("DOMContentLoaded", () => {
 	focusPromptEnd();
 	bindPromptInteractions();
@@ -384,6 +390,7 @@ function hasTransferredFiles(data) {
 
 async function insertTransferredFiles(data) {
 	if (!data) return;
+	showTransferError("");
 	const paths = extractTransferredFilePaths(data);
 	const files = [...(data.files ?? [])];
 	if (paths.length > 0) {
@@ -391,6 +398,11 @@ async function insertTransferredFiles(data) {
 		return;
 	}
 	if (files.length === 0) return;
+	const validationError = validateTransferredFiles(files);
+	if (validationError) {
+		showTransferError(validationError);
+		return;
+	}
 	const uploaded = await uploadTransferredFiles(files);
 	if (uploaded.length > 0) insertFileReferences(uploaded);
 }
@@ -415,15 +427,57 @@ function fileUriToPath(uri) {
 	}
 }
 
+function validateTransferredFiles(files) {
+	if (files.length > MAX_TRANSFER_FILES) {
+		return `Attach at most ${MAX_TRANSFER_FILES} files at a time.`;
+	}
+	if (files.some((file) => file.size > MAX_TRANSFER_FILE_BYTES)) {
+		return "Each transferred file must be 20 MiB or smaller.";
+	}
+	const totalBytes = files.reduce((total, file) => total + file.size, 0);
+	if (totalBytes > MAX_TRANSFER_TOTAL_BYTES) {
+		return "Transferred files must total 50 MiB or less.";
+	}
+}
+
 async function uploadTransferredFiles(files) {
 	const formData = new FormData();
 	for (const file of files) {
 		formData.append("file", file, file.name || "pasted-file");
 	}
-	const response = await fetch("/files/import", { method: "POST", body: formData });
-	if (!response.ok) return [];
-	const result = await response.json();
-	return Array.isArray(result.paths) ? result.paths : [];
+	try {
+		const response = await fetch("/files/import", { method: "POST", body: formData });
+		const result = await response.json().catch(() => ({}));
+		if (!response.ok) {
+			showTransferError(
+				typeof result.message === "string"
+					? result.message
+					: "Could not transfer the selected files.",
+			);
+			return [];
+		}
+		showTransferError("");
+		return Array.isArray(result.paths) ? result.paths : [];
+	} catch {
+		showTransferError("Could not transfer the selected files.");
+		return [];
+	}
+}
+
+function showTransferError(message) {
+	const input = document.getElementById("prompt-input");
+	if (!(input instanceof HTMLTextAreaElement)) return;
+	let error = document.getElementById("file-transfer-error");
+	if (!(error instanceof HTMLParagraphElement)) {
+		error = document.createElement("p");
+		error.id = "file-transfer-error";
+		error.className = "text-destructive mb-1 px-1 text-xs";
+		error.setAttribute("role", "alert");
+		error.setAttribute("aria-live", "polite");
+		input.before(error);
+	}
+	error.textContent = message;
+	error.hidden = !message;
 }
 
 function insertFileReferences(paths) {

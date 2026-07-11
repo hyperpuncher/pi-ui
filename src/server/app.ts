@@ -14,6 +14,13 @@ import {
 	signalsResponse,
 } from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
+import {
+	getTransferredFiles,
+	TransferredFileError,
+	TransferredFileStore,
+	validateTransferContentLength,
+	validateTransferredFiles,
+} from "./transferred-files.ts";
 import { transitionWorkspaceResources } from "./workspace-transition.ts";
 
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
@@ -37,6 +44,20 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		);
 	});
 	let fileSearch = await FileSearchHost.create(state.workspacePath);
+	const transferredFiles = await TransferredFileStore.create();
+	// unload is best-effort. An abnormal termination can leave this one owned
+	// directory behind for the operating system's temporary-file cleanup.
+	addEventListener(
+		"unload",
+		() => {
+			try {
+				transferredFiles.disposeSync();
+			} catch {
+				// Best-effort only during process teardown.
+			}
+		},
+		{ once: true },
+	);
 
 	return {
 		fetch: async (request) => {
@@ -220,9 +241,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				}
 
 				if (request.method === "POST" && url.pathname === "/files/import") {
-					return Response.json({
-						paths: await importTransferredFiles(request),
-					});
+					return await importTransferredFiles(request, transferredFiles);
 				}
 
 				if (request.method === "GET" && url.pathname === "/basecoat.js") {
@@ -324,24 +343,41 @@ function openTreeScript(): string {
 	return `${refreshBasecoatComponentsScript("#tree-dialog .command")}; const dialog = document.getElementById('tree-dialog'); if (!dialog?.open) dialog?.showModal(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });`;
 }
 
-async function importTransferredFiles(request: Request): Promise<string[]> {
+async function importTransferredFiles(
+	request: Request,
+	store: TransferredFileStore,
+): Promise<Response> {
+	const contentLengthError = validateTransferContentLength(
+		request.headers.get("content-length"),
+	);
+	if (contentLengthError) return transferredFileErrorResponse(contentLengthError);
+
+	// Content-Length is not guaranteed in CEF. request.formData() may therefore
+	// parse the multipart body before file sizes are available; no file is copied
+	// or read into an application ArrayBuffer until all parsed sizes are valid.
 	const formData = await request.formData();
-	const paths: string[] = [];
-	for (const file of formData.getAll("file")) {
-		if (!(file instanceof File)) continue;
-		const path = await Deno.makeTempFile({
-			prefix: "pi-ui-",
-			suffix: `-${sanitizeFileName(file.name || "pasted-file")}`,
-		});
-		await Deno.writeFile(path, new Uint8Array(await file.arrayBuffer()));
-		paths.push(path);
+	const files = getTransferredFiles(formData);
+	const validationError = validateTransferredFiles(files);
+	if (validationError) return transferredFileErrorResponse(validationError);
+
+	try {
+		return Response.json({ paths: await store.importFiles(files) });
+	} catch (error) {
+		if (error instanceof TransferredFileError) {
+			return transferredFileErrorResponse(error);
+		}
+		throw error;
 	}
-	return paths;
 }
 
-function sanitizeFileName(name: string): string {
-	return (
-		name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "pasted-file"
+function transferredFileErrorResponse(error: {
+	code: string;
+	message: string;
+	status: number;
+}): Response {
+	return Response.json(
+		{ error: error.code, message: error.message },
+		{ status: error.status },
 	);
 }
 
