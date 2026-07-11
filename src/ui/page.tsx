@@ -5,6 +5,7 @@ import { renderDebugOverlay } from "./debug.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
+import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 
 export function renderPage(state: AppState): string {
@@ -16,7 +17,15 @@ export function renderPage(state: AppState): string {
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
 		isBusy: Boolean(state.activityText),
-		isSessionReady: true,
+		isSessionReady: state.sessionTransition.status !== "loading",
+		sessionTransitionLoading: state.sessionTransition.status === "loading",
+		sessionTransitionVisible: state.sessionTransition.status !== "idle",
+		sessionTransitionTarget:
+			state.sessionTransition.status === "idle"
+				? ""
+				: state.sessionTransition.targetPath,
+		_sessionLoading: false,
+		_sessionTarget: "",
 		isDraggingFile: false,
 		sessionPath: "",
 		sessionDeletePath: "",
@@ -115,7 +124,9 @@ export function renderPage(state: AppState): string {
 						state.emptyChatHint,
 						state.hasOlderMessages,
 						state.sessions,
+						state.sessionTransition.status !== "idle",
 					)}
+					{renderSessionTransition(state)}
 
 					{renderPromptBox(state)}
 				</div>

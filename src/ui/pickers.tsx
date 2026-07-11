@@ -1,5 +1,6 @@
 import type { AppSessionSummary, AppSlashCommand, AppState } from "../state/app-state.ts";
 import { formatHomePath } from "../utils/workspace.ts";
+import { resumeSessionAction } from "./session-transition.tsx";
 
 export function renderSlashPicker(state: AppState): string {
 	return (
@@ -69,6 +70,8 @@ export function renderWorkspaceDialogMenu(state: AppState): string {
 					data-force
 					data-workspace-submit
 					data-indicator:_workspaceOpening
+					data-indicator:_session-loading
+					data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
 					data-on:click={openWorkspaceAction("$workspacePath")}
 				>
 					<span>Open typed path</span>
@@ -108,6 +111,8 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-filter={`${label} ${workspacePath}`}
 			data-keywords={`${label} ${workspacePath}`}
 			data-indicator:_workspaceOpening
+			data-indicator:_session-loading
+			data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
 			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">
@@ -126,10 +131,11 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 }
 
 function openWorkspaceAction(valueExpression: string): string {
-	return `
+	return `if (!$sessionTransitionLoading) {
 		$workspacePath = ${valueExpression};
+		$_sessionTarget = $workspacePath;
 		@post('/workspace/open', { filterSignals: { include: /^workspacePath$/ } });
-	`;
+	}`;
 }
 
 function uniqueWorkspaces(workspaces: string[]): string[] {
@@ -177,12 +183,9 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 			data-session-row
 			data-filter={haystack}
 			data-keywords={haystack}
-			data-on:click={`
-				document.getElementById('session-dialog')?.close();
-				$isSessionReady = false;
-				$sessionPath = ${JSON.stringify(session.path)};
-				@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
-			`}
+			data-indicator:_session-loading
+			data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
+			data-on:click={resumeSessionAction(session.path, { closeDialog: true })}
 		>
 			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">
 				{current ? "•" : ""}

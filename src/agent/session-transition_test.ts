@@ -1,3 +1,11 @@
+import { sessionTransitionResponse } from "../server/app.ts";
+import type { AppState } from "../state/app-state.ts";
+import { renderMessages } from "../ui/messages.tsx";
+import { renderSessionPicker } from "../ui/pickers.tsx";
+import {
+	renderSessionTransition,
+	resumeSessionAction,
+} from "../ui/session-transition.tsx";
 import {
 	classifySessionLeave,
 	transitionRuntime,
@@ -112,6 +120,83 @@ Deno.test("idle replacement is disposed once", async () => {
 	const fake = lifecycle("dispose");
 	await fake.run();
 	assertEvents(fake.events, ["unsubscribe", "dispose", "bind"]);
+});
+
+Deno.test("session transition renderer escapes targets and renders loading and errors", () => {
+	const targetPath = '<session name="bad">';
+	const loading = renderSessionTransition({
+		sessionTransition: { status: "loading", generation: 1, targetPath },
+	} as AppState);
+	if (!loading.includes('role="status"')) throw new Error("Missing loading status");
+	if (!loading.includes("&lt;session name=&#34;bad&#34;>")) {
+		throw new Error("Target path was not escaped");
+	}
+	if (loading.includes(targetPath)) throw new Error("Unsafe target path rendered");
+
+	const error = renderSessionTransition({
+		sessionTransition: {
+			status: "error",
+			generation: 2,
+			targetPath,
+			message: "Try another session.",
+		},
+	} as AppState);
+	if (!error.includes('role="alert"') || !error.includes("Try another session.")) {
+		throw new Error("Missing recoverable transition error");
+	}
+});
+
+Deno.test("shared resume action drives every immediate loading signal", () => {
+	const action = resumeSessionAction("/sessions/one.json", { closeDialog: true });
+	for (const expected of [
+		"$_sessionLoading",
+		"$sessionTransitionLoading",
+		"$sessionPath",
+		"/sessions/resume",
+		"session-dialog",
+	]) {
+		if (!action.includes(expected)) throw new Error(`Missing ${expected}`);
+	}
+});
+
+Deno.test("resume renderers share loading behavior and disable controls", () => {
+	const session = {
+		path: "/sessions/one.json",
+		cwd: "/workspace",
+		title: "One",
+		subtitle: "1 message",
+		modified: "Today",
+	};
+	const recent = renderMessages([], { keys: "ctrl 1", description: "Resume" }, false, [
+		session,
+	]);
+	const picker = renderSessionPicker({
+		sessions: [session],
+		currentSessionPath: undefined,
+	} as AppState);
+	for (const html of [recent, picker]) {
+		if (!html.includes("/sessions/resume")) throw new Error("Missing resume action");
+		if (!html.includes("_sessionLoading")) throw new Error("Missing indicator");
+		if (!html.includes("$sessionTransitionLoading")) {
+			throw new Error("Missing disabled transition guard");
+		}
+	}
+	if (!recent.includes("evt.ctrlKey")) throw new Error("Missing keyboard resume");
+});
+
+Deno.test("session transition responses use meaningful statuses", () => {
+	const cases = [
+		["success", 204],
+		["busy", 409],
+		["cancelled", 422],
+		["error", 500],
+	] as const;
+	for (const [status, expected] of cases) {
+		const response = sessionTransitionResponse({ status });
+		if (response.status !== expected) {
+			throw new Error(`Expected ${expected}, received ${response.status}`);
+		}
+	}
 });
 
 function assertEvents(actual: string[], expected: string[]): void {

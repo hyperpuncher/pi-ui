@@ -195,6 +195,14 @@ function PromptToolbarButton(props: {
 			data-size="icon-sm"
 			type="button"
 			data-file-trigger={props.action === "files" ? "" : undefined}
+			data-indicator:_session-loading={
+				isSessionChangingAction(props.action) ? "" : undefined
+			}
+			data-attr:disabled={
+				isSessionChangingAction(props.action)
+					? "$sessionTransitionLoading"
+					: undefined
+			}
 			data-on:click={promptToolbarClickAction(props.action)}
 			data-on:keydown__window={promptToolbarKeydownAction(props.action)}
 			data-tooltip={props.label}
@@ -206,6 +214,10 @@ function PromptToolbarButton(props: {
 			)}
 		</button>
 	);
+}
+
+function isSessionChangingAction(action: PromptToolbarAction): boolean {
+	return action === "new-chat" || action === "new-temporary-chat";
 }
 
 function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
@@ -249,11 +261,11 @@ function openCommandPaletteAction(): string {
 }
 
 function newChatAction(): string {
-	return "@post('/sessions/new'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus())";
+	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New session'; @post('/sessions/new'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
 }
 
 function newTemporaryChatAction(): string {
-	return "@post('/sessions/new-temporary'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus())";
+	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New temporary session'; @post('/sessions/new-temporary'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
 }
 
 function openSessionDialogAction(): string {
@@ -467,6 +479,7 @@ export function renderWorkspacePicker(state: AppState): string {
 			data-size="sm"
 			type="button"
 			aria-label={state.workspacePath}
+			data-attr:disabled="$sessionTransitionLoading"
 			data-on:click={openWorkspaceDialogAction()}
 			data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key === '/') {
 			evt.preventDefault();

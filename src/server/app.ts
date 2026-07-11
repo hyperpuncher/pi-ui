@@ -1,6 +1,10 @@
 import { serveDir } from "jsr:@std/http/file-server";
 
 import { AgentHost } from "../agent/host.ts";
+import {
+	SessionTransitionController,
+	type SessionTransitionResult,
+} from "../agent/session-transition-controller.ts";
 import { AppState } from "../state/app-state.ts";
 import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { renderPage } from "../ui/page.tsx";
@@ -29,8 +33,13 @@ const staticRoot = new URL("../../static", import.meta.url).pathname;
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const preloadHighlighterPromise = preloadPierreHighlighter();
 	const state = new AppState();
+	const sessionTransitions = new SessionTransitionController((transition) =>
+		state.setSessionTransition(transition),
+	);
 	installUnhandledErrorReporter(state);
-	let host = await AgentHost.create(state).catch((error: unknown) => {
+	let host = await AgentHost.create(state, undefined, {
+		transitionController: sessionTransitions,
+	}).catch((error: unknown) => {
 		state.appendMessage(
 			"system",
 			`Failed to start pi SDK runtime: ${formatError(error)}`,
@@ -139,16 +148,14 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				}
 
 				if (request.method === "POST" && url.pathname === "/sessions/new") {
-					await host?.newSession();
-					return noContent();
+					return sessionTransitionResponse(await host?.newSession());
 				}
 
 				if (
 					request.method === "POST" &&
 					url.pathname === "/sessions/new-temporary"
 				) {
-					await host?.newTemporarySession();
-					return noContent();
+					return sessionTransitionResponse(await host?.newTemporarySession());
 				}
 
 				if (request.method === "POST" && url.pathname === "/sessions/list") {
@@ -218,12 +225,17 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 
 				if (request.method === "POST" && url.pathname === "/sessions/resume") {
 					const signals = await readSignals(request);
-					const resumed = await host?.resumeSession(
-						signals.sessionPath as string,
-					);
-					if (!resumed || !host) {
-						return noContent();
-					}
+					const sessionPath = String(signals.sessionPath ?? "").trim();
+					if (!sessionPath)
+						return transitionErrorResponse(400, "Invalid session path.");
+					if (!host)
+						return transitionErrorResponse(
+							503,
+							"Session runtime unavailable.",
+						);
+					const result = await host.resumeSession(sessionPath);
+					if (result.status !== "success")
+						return sessionTransitionResponse(result);
 					const workspacePath = host.getWorkspacePath();
 					fileSearch.dispose();
 					fileSearch = await FileSearchHost.create(workspacePath);
@@ -278,6 +290,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 						host,
 						fileSearch,
 						signals.workspacePath as string,
+						sessionTransitions,
 					);
 					host = result.host;
 					fileSearch = result.fileSearch;
@@ -336,6 +349,7 @@ async function switchWorkspace(
 	host: AgentHost | undefined,
 	fileSearch: FileSearchHost,
 	workspacePath: string,
+	transitions: SessionTransitionController,
 ): Promise<{
 	ok: boolean;
 	host: AgentHost | undefined;
@@ -345,12 +359,12 @@ async function switchWorkspace(
 	if (!requestedPath) {
 		return { ok: false, host, fileSearch };
 	}
-	try {
+	let replacement: { host: AgentHost; fileSearch: FileSearchHost } | undefined;
+	const transition = await transitions.run(requestedPath, async () => {
 		const realPath = await Deno.realPath(expandHomePath(requestedPath));
 		const stat = await Deno.stat(realPath);
 		if (!stat.isDirectory) {
-			state.appendMessage("system", `Not a directory: ${requestedPath}`);
-			return { ok: false, host, fileSearch };
+			throw new Error(`Not a directory: ${requestedPath}`);
 		}
 		const patchMessages = state.messages.length > 0;
 		const openWorkspace = async () => {
@@ -360,6 +374,7 @@ async function switchWorkspace(
 					AgentHost.prepare(state, realPath, {
 						patchSessionMessages: false,
 						refreshWorkspaces: false,
+						transitionController: transitions,
 					}),
 				prepareFileSearch: () => FileSearchHost.create(realPath),
 				commit: ({ host: nextHost }) => {
@@ -372,13 +387,15 @@ async function switchWorkspace(
 			});
 			return { ok: true, ...replacement };
 		};
-		return patchMessages
+		replacement = patchMessages
 			? await openWorkspace()
 			: await state.suppressMessagePatches(openWorkspace);
-	} catch (error) {
-		state.appendMessage("system", `Failed to open workspace: ${formatError(error)}`);
+		return true;
+	});
+	if (transition.status !== "success" || !replacement) {
 		return { ok: false, host, fileSearch };
 	}
+	return { ok: true, ...replacement };
 }
 
 function treeOpenResponse(
@@ -434,6 +451,29 @@ function html(body: string): Response {
 	return new Response(body, {
 		headers: { "content-type": "text/html; charset=utf-8" },
 	});
+}
+
+export function sessionTransitionResponse(
+	result: SessionTransitionResult | undefined,
+): Response {
+	if (!result) return transitionErrorResponse(503, "Session runtime unavailable.");
+	switch (result.status) {
+		case "success":
+			return noContent();
+		case "busy":
+			return transitionErrorResponse(
+				409,
+				"A session transition is already running.",
+			);
+		case "cancelled":
+			return transitionErrorResponse(422, "Session transition was cancelled.");
+		case "error":
+			return transitionErrorResponse(500, "Session transition failed.");
+	}
+}
+
+function transitionErrorResponse(status: number, message: string): Response {
+	return Response.json({ error: message }, { status });
 }
 
 function noContent(): Response {

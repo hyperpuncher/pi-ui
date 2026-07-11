@@ -1,3 +1,4 @@
+import type { SessionTransitionState } from "../agent/session-transition-controller.ts";
 import { appCommands } from "../commands/registry.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import type { DatastarStream } from "../server/datastar.ts";
@@ -26,6 +27,7 @@ import {
 	renderThinkingPicker,
 	renderWorkspacePicker,
 } from "../ui/prompt-box.tsx";
+import { renderSessionTransition } from "../ui/session-transition.tsx";
 import { renderTreePicker } from "../ui/tree-picker.tsx";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
@@ -228,6 +230,7 @@ export class AppState {
 	queuedFollowUpMessages: string[] = [];
 	workspacePath = defaultWorkspacePath();
 	recentWorkspaces: string[] = [];
+	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };
 
 	get hasOlderMessages(): boolean {
 		return this.visibleMessageStart > 0;
@@ -469,6 +472,7 @@ export class AppState {
 			this.emptyChatHint,
 			this.hasOlderMessages,
 			this.sessions,
+			this.sessionTransition.status !== "idle",
 		);
 	}
 
@@ -670,6 +674,12 @@ export class AppState {
 		this.broadcastSignals();
 	}
 
+	setSessionTransition(sessionTransition: SessionTransitionState): void {
+		this.sessionTransition = sessionTransition;
+		this.broadcast();
+		this.broadcastSignals();
+	}
+
 	private scheduleStreamingPatch(): void {
 		if (this.streamingPatchTimer !== undefined) return;
 		this.streamingPatchTimer = setTimeout(() => {
@@ -777,6 +787,7 @@ export class AppState {
 			renderWorkspaceDialogMenu(this) +
 			renderModelPicker(this) +
 			renderThinkingPicker(this) +
+			renderSessionTransition(this) +
 			renderDebugOverlay(this) +
 			renderSlashPicker(this) +
 			renderTreePicker(this)
@@ -806,7 +817,13 @@ export class AppState {
 					thinkingCycleDirection: "forward",
 					thinkingLevel: this.thinkingLevel,
 					workspacePath: this.workspacePath,
-					isSessionReady: true,
+					isSessionReady: this.sessionTransition.status !== "loading",
+					sessionTransitionLoading: this.sessionTransition.status === "loading",
+					sessionTransitionVisible: this.sessionTransition.status !== "idle",
+					sessionTransitionTarget:
+						this.sessionTransition.status === "idle"
+							? ""
+							: this.sessionTransition.targetPath,
 					isBusy: Boolean(this.activityText),
 					treeEntryId: "",
 					treeSummarize: false,

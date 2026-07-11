@@ -46,6 +46,10 @@ import {
 	type SessionEventStateSink,
 	type SessionEventToolState,
 } from "./session-event-reducer.ts";
+import {
+	SessionTransitionController,
+	type SessionTransitionResult,
+} from "./session-transition-controller.ts";
 import { classifySessionLeave, transitionRuntime } from "./session-transition.ts";
 
 const bashPreviewLines = 8;
@@ -74,6 +78,7 @@ type PreparedSessionList =
 type AgentHostActivationOptions = {
 	patchSessionMessages?: boolean;
 	refreshWorkspaces?: boolean;
+	transitionController?: SessionTransitionController;
 };
 
 function resolveScopedModels<T extends ScopedModelCandidate>(
@@ -145,6 +150,7 @@ export class AgentHost {
 	private readonly codexUsageRequests = new CodexUsageRequestTracker();
 	private codexUsageTimer: ReturnType<typeof setTimeout> | undefined;
 	private readonly auth: AuthController;
+	private readonly transitionController: SessionTransitionController;
 
 	private readonly backgroundSessions = new Map<string, BackgroundSession>();
 
@@ -160,6 +166,11 @@ export class AgentHost {
 			state,
 			() => this.syncModels(),
 		);
+		this.transitionController =
+			activationOptions.transitionController ??
+			new SessionTransitionController((transition) =>
+				state.setSessionTransition(transition),
+			);
 	}
 
 	static async create(
@@ -337,7 +348,13 @@ export class AgentHost {
 		return [...steering, ...followUp].join("\n\n");
 	}
 
-	async newSession(): Promise<boolean> {
+	async newSession(): Promise<SessionTransitionResult> {
+		return await this.transitionController.run("New session", () =>
+			this.createNewSession(),
+		);
+	}
+
+	private async createNewSession(): Promise<boolean> {
 		const session = this.runtime.session;
 		const persisted = session.sessionManager.isPersisted();
 		if (session.isStreaming || !persisted) {
@@ -369,7 +386,13 @@ export class AgentHost {
 		return true;
 	}
 
-	async newTemporarySession(): Promise<boolean> {
+	async newTemporarySession(): Promise<SessionTransitionResult> {
+		return await this.transitionController.run("New temporary session", () =>
+			this.createNewTemporarySession(),
+		);
+	}
+
+	private async createNewTemporarySession(): Promise<boolean> {
 		const previousSessionFile = this.runtime.session.sessionManager.getSessionFile();
 		const cwd = this.runtime.session.sessionManager.getCwd();
 		if (this.runtime.session.isStreaming) {
@@ -444,17 +467,19 @@ export class AgentHost {
 		return this.runtime.session.sessionManager.getCwd();
 	}
 
-	async resumeSession(sessionPath: string): Promise<boolean> {
-		sessionPerformance.startSessionTransition();
-		try {
-			const resumed = await this.resumeSessionTransition(sessionPath);
-			if (resumed) sessionPerformance.markSessionTransitionComplete();
-			else sessionPerformance.cancelSessionTransition();
-			return resumed;
-		} catch (error) {
-			sessionPerformance.cancelSessionTransition();
-			throw error;
-		}
+	async resumeSession(sessionPath: string): Promise<SessionTransitionResult> {
+		return await this.transitionController.run(sessionPath, async () => {
+			sessionPerformance.startSessionTransition();
+			try {
+				const resumed = await this.resumeSessionTransition(sessionPath);
+				if (resumed) sessionPerformance.markSessionTransitionComplete();
+				else sessionPerformance.cancelSessionTransition();
+				return resumed;
+			} catch (error) {
+				sessionPerformance.cancelSessionTransition();
+				throw error;
+			}
+		});
 	}
 
 	private async resumeSessionTransition(sessionPath: string): Promise<boolean> {

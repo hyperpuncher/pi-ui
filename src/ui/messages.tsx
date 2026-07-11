@@ -9,6 +9,7 @@ import type {
 import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { loaderIcon } from "./prompt-box.tsx";
+import { resumeSessionAction } from "./session-transition.tsx";
 
 const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
@@ -18,12 +19,15 @@ export function renderMessages(
 	emptyHint: AppKeybindHint,
 	hasOlderMessages = false,
 	sessions: AppSessionSummary[] = [],
+	sessionTransitionVisible = false,
 ): string {
 	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
 	return (
 		<main
 			id="messages"
 			class="min-h-0 overflow-y-auto mask-b-from-95% px-[max(1rem,calc((100vw-52rem)/2))] pt-24 pb-48"
+			style={sessionTransitionVisible ? "display: none" : undefined}
+			data-show="!($_sessionLoading || $sessionTransitionVisible)"
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
@@ -77,6 +81,8 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 		<button
 			type="button"
 			class="hover:bg-muted focus:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none"
+			data-indicator:_session-loading
+			data-attr:disabled="$sessionTransitionLoading"
 			data-on:click={resumeSessionAction(session.path)}
 			data-on:keydown__window={resumeSessionShortcutAction(session.path, index)}
 		>
@@ -94,13 +100,6 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 			</span>
 		</button>
 	);
-}
-
-function resumeSessionAction(path: string): string {
-	return `
-		$sessionPath = ${JSON.stringify(path)};
-		@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
-	`;
 }
 
 function resumeSessionShortcutAction(path: string, index: number): string {
