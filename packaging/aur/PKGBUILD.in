@@ -32,7 +32,6 @@ package() {
   cat > "$pkgdir/usr/bin/pi-ui" <<'EOF'
 #!/bin/sh
 exec /opt/pi-ui/pi-ui.AppImage \
-  --enable-blink-features=MiddleClickAutoscroll \
   --disable-spell-checking \
   "$@"
 EOF

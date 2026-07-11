@@ -1,0 +1,55 @@
+diff --git a/cef/src/app.h b/cef/src/app.h
+index 125d4e5..a039942 100644
+--- a/cef/src/app.h
++++ b/cef/src/app.h
+@@ -163,6 +163,15 @@ class LaufeyApp : public CefApp, public CefBrowserProcessHandler {
+       CefRefPtr<CefCommandLine> command_line) override {
+     command_line->AppendSwitch("use-mock-keychain");
+ 
++    // Match pi-ui's Chromium behavior across installed launches. CEF is
++    // initialized before the Deno runtime starts, so these defaults must be
++    // configured by the native backend rather than main.ts. Respect explicit
++    // command-line feature overrides.
++    if (process_type.empty() && !command_line->HasSwitch("enable-features")) {
++      command_line->AppendSwitchWithValue(
++          "enable-features", "MiddleClickAutoscroll,OverlayScrollbar");
++    }
++
+     // Silence Chromium's background networking. The GCM (Google Cloud
+     // Messaging) client tries to register on startup and logs noisy
+     // `registration_request.cc ... PHONE_REGISTRATION_ERROR` /
+diff --git a/cef/src/main_linux.cc b/cef/src/main_linux.cc
+index fe6034d..a190a87 100644
+--- a/cef/src/main_linux.cc
++++ b/cef/src/main_linux.cc
+@@ -691,8 +691,8 @@ class LaufeyCombinedApp : public CefApp, public CefBrowserProcessHandler {
+     // switch; CEF propagates resolved features to its subprocesses. Skip if the
+     // embedder already set enable-features so we don't clobber their list.
+     if (process_type.empty() && !command_line->HasSwitch("enable-features")) {
+-      command_line->AppendSwitchWithValue("enable-features",
+-                                          "OverlayScrollbar");
++      command_line->AppendSwitchWithValue(
++          "enable-features", "MiddleClickAutoscroll,OverlayScrollbar");
+     }
+ 
+     // Silence Chromium's background networking. The GCM (Google Cloud
+diff --git a/cef/src/main_windows.cc b/cef/src/main_windows.cc
+index 6c976d5..f1c35ef 100644
+--- a/cef/src/main_windows.cc
++++ b/cef/src/main_windows.cc
+@@ -185,6 +185,15 @@ class LaufeyCombinedApp : public CefApp, public CefBrowserProcessHandler {
+   void OnBeforeCommandLineProcessing(
+       const CefString& process_type,
+       CefRefPtr<CefCommandLine> command_line) override {
++    // Match pi-ui's Chromium behavior across installed launches. CEF is
++    // initialized before the Deno runtime starts, so these defaults must be
++    // configured by the native backend rather than main.ts. Respect explicit
++    // command-line feature overrides.
++    if (process_type.empty() && !command_line->HasSwitch("enable-features")) {
++      command_line->AppendSwitchWithValue(
++          "enable-features", "MiddleClickAutoscroll,OverlayScrollbar");
++    }
++
+     // Silence Chromium's background networking. The GCM (Google Cloud
+     // Messaging) client tries to register on startup and logs noisy
+     // `registration_request.cc ... PHONE_REGISTRATION_ERROR` /

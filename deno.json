@@ -8,7 +8,7 @@
 		"server": "deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts",
 		"build": "deno task build:linux",
 		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --include static src/main.ts",
-		"run:linux": "./dist/linux/pi-ui.AppImage --enable-blink-features=MiddleClickAutoscroll --disable-spell-checking",
+		"run:linux": "./dist/linux/pi-ui.AppImage --disable-spell-checking",
 		"css:build": "deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",

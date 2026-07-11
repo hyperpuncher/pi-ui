@@ -1,7 +1,7 @@
 name: Build CEF backends
 
 env:
-    CEF_BACKEND_TAG: cef-150.0.11-laufey-0.5.0
+    CEF_BACKEND_TAG: cef-150.0.11-laufey-0.5.0-pi-ui.1
     CEF_FULL_VERSION: 150.0.11+gb887805+chromium-150.0.7871.115
     CEF_VERSION: 150.0.11
     LAUFEY_VERSION: 0.5.0
@@ -29,6 +29,8 @@ jobs:
                       target: x86_64-pc-windows-msvc
 
         steps:
+            - uses: actions/checkout@v7
+
             - name: Clone Laufey
               shell: bash
               run: |
@@ -37,6 +39,12 @@ jobs:
                     --depth 1 \
                     https://github.com/littledivy/laufey.git \
                     "$RUNNER_TEMP/laufey"
+
+            - name: Apply feature defaults
+              shell: bash
+              run: |
+                  git -C "$RUNNER_TEMP/laufey" apply \
+                    "$GITHUB_WORKSPACE/packaging/laufey/default-features.patch"
 
             - name: Install Linux dependencies
               if: runner.os == 'Linux'
@@ -130,7 +138,7 @@ jobs:
                       --repo "$GITHUB_REPOSITORY" \
                       --prerelease \
                       --title "CEF 150 backends for Deno Desktop" \
-                      --notes "Laufey v$LAUFEY_VERSION (ABI 29) built against CEF $CEF_FULL_VERSION."
+                      --notes "Laufey v$LAUFEY_VERSION (ABI 29) built against CEF $CEF_FULL_VERSION. All backends enable MiddleClickAutoscroll and OverlayScrollbar by default."
                   fi
 
                   gh release upload "$CEF_BACKEND_TAG" artifacts/* \
