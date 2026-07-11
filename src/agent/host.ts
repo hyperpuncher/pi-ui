@@ -27,6 +27,7 @@ import type {
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
+import { AuthController } from "./auth-controller.ts";
 import {
 	abortRunningBackgroundSession,
 	mergeBackgroundSessionStatuses,
@@ -142,6 +143,7 @@ export class AgentHost {
 	private codexUsageFetchedAt = 0;
 	private readonly codexUsageRequests = new CodexUsageRequestTracker();
 	private codexUsageTimer: ReturnType<typeof setTimeout> | undefined;
+	private readonly auth: AuthController;
 
 	private readonly backgroundSessions = new Map<string, BackgroundSession>();
 
@@ -151,7 +153,13 @@ export class AgentHost {
 		private readonly runtimeFactory: CreateAgentSessionRuntimeFactory,
 		private readonly preparedSessions: PreparedSessionList,
 		private readonly activationOptions: AgentHostActivationOptions,
-	) {}
+	) {
+		this.auth = new AuthController(
+			() => this.runtime,
+			state,
+			() => this.syncModels(),
+		);
+	}
 
 	static async create(
 		state: AppState,
@@ -252,6 +260,18 @@ export class AgentHost {
 		}
 		if (trimmed === "/tree") {
 			this.loadTreeEntries();
+			return true;
+		}
+
+		if (trimmed === "/login" || trimmed.startsWith("/login ")) {
+			this.openLogin(
+				trimmed.startsWith("/login ") ? trimmed.slice(7).trim() : undefined,
+			);
+			return true;
+		}
+
+		if (trimmed === "/logout") {
+			this.openLogout();
 			return true;
 		}
 
@@ -545,6 +565,30 @@ export class AgentHost {
 		}
 	}
 
+	openLogin(providerRef?: string): void {
+		this.auth.openLogin(providerRef);
+	}
+
+	openLogout(): void {
+		this.auth.openLogout();
+	}
+
+	startLogin(providerId: string, authType: string): boolean {
+		return this.auth.startLogin(providerId, authType);
+	}
+
+	submitAuthInput(value: string): boolean {
+		return this.auth.submitInput(value);
+	}
+
+	logout(providerId: string): boolean {
+		return this.auth.logout(providerId);
+	}
+
+	closeAuth(): void {
+		this.auth.close();
+	}
+
 	async setModel(modelRef: string): Promise<boolean> {
 		const model = this.findModelRef(modelRef);
 		if (!model) {
@@ -597,6 +641,7 @@ export class AgentHost {
 
 	dispose(): void {
 		this.unsubscribe?.();
+		this.auth.dispose();
 		this.invalidateCodexUsageRequest();
 		this.runtime.dispose();
 		for (const { runtime, unsubscribe } of this.backgroundSessions.values()) {
@@ -1087,6 +1132,17 @@ export class AgentHost {
 				source: "skill" as const,
 			}));
 		this.state.setSlashCommands([
+			{
+				name: "login",
+				description: "Log in with a subscription or API key",
+				source: "system" as const,
+				argumentHint: "[provider]",
+			},
+			{
+				name: "logout",
+				description: "Remove stored provider credentials",
+				source: "system" as const,
+			},
 			{
 				name: "tree",
 				description: "Navigate and branch within the current session",

@@ -1,4 +1,5 @@
 import type { AppState } from "../state/app-state.ts";
+import { renderAuthDialog } from "./auth-dialog.tsx";
 import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderMessages } from "./messages.tsx";
@@ -24,6 +25,9 @@ export function renderPage(state: AppState): string {
 		treeEntryId: "",
 		treeSummarize: false,
 		treeSummaryInstructions: "",
+		authProvider: "",
+		authType: "",
+		authInput: "",
 	});
 
 	return ("<!doctype html>" +
@@ -117,6 +121,7 @@ export function renderPage(state: AppState): string {
 				</div>
 
 				{renderCommandMenu()}
+				{renderAuthDialog(state.authDialog)}
 
 				<dialog
 					id="workspace-dialog"

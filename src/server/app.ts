@@ -82,6 +82,42 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 					return accepted ? signalsResponse({ prompt: "" }) : noContent();
 				}
 
+				if (request.method === "POST" && url.pathname === "/auth/open-login") {
+					host?.openLogin();
+					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/auth/open-logout") {
+					host?.openLogout();
+					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/auth/login/start") {
+					const signals = await readSignals(request);
+					host?.startLogin(
+						String(signals.authProvider ?? ""),
+						String(signals.authType ?? ""),
+					);
+					return signalsResponse({ authInput: "" });
+				}
+
+				if (request.method === "POST" && url.pathname === "/auth/input") {
+					const signals = await readSignals(request);
+					host?.submitAuthInput(String(signals.authInput ?? ""));
+					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/auth/logout") {
+					const signals = await readSignals(request);
+					host?.logout(String(signals.authProvider ?? ""));
+					return noContent();
+				}
+
+				if (request.method === "POST" && url.pathname === "/auth/close") {
+					host?.closeAuth();
+					return noContent();
+				}
+
 				if (request.method === "POST" && url.pathname === "/prompt/follow-up") {
 					const signals = await readSignals(request);
 					const accepted = host

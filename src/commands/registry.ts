@@ -8,7 +8,9 @@ export type AppCommandId =
 	| "cycle-model"
 	| "cycle-thinking"
 	| "cycle-thinking-backward"
-	| "change-workspace";
+	| "change-workspace"
+	| "login"
+	| "logout";
 
 export type AppCommand = {
 	id: AppCommandId;
@@ -89,6 +91,20 @@ export const appCommands: AppCommand[] = [
 		description: "Cycle backward through available thinking levels.",
 		shortcut: { display: "alt shift T", native: "Alt+Shift+T", keys: [] },
 		action: "$thinkingCycleDirection = 'backward'; @post('/thinking/cycle', { filterSignals: { include: /^thinkingCycleDirection$/ } })",
+	},
+	{
+		id: "login",
+		title: "Log in",
+		description: "Add a subscription or API key.",
+		shortcut: { display: "", native: "", keys: [] },
+		action: "document.getElementById('command-dialog')?.close(); @post('/auth/open-login')",
+	},
+	{
+		id: "logout",
+		title: "Log out",
+		description: "Remove stored provider credentials.",
+		shortcut: { display: "", native: "", keys: [] },
+		action: "document.getElementById('command-dialog')?.close(); @post('/auth/open-logout')",
 	},
 	{
 		id: "change-workspace",

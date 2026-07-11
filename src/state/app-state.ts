@@ -1,6 +1,7 @@
 import { appCommands } from "../commands/registry.ts";
 import type { DatastarStream } from "../server/datastar.ts";
 import { datastarStream, refreshBasecoatComponentsScript } from "../server/datastar.ts";
+import { renderAuthDialogContent } from "../ui/auth-dialog.tsx";
 import { renderDebugOverlay } from "../ui/debug.tsx";
 import { renderPierreCode, renderPierreDiff } from "../ui/diffs.ts";
 import {
@@ -80,6 +81,34 @@ export type AppSlashCommand = {
 	description: string;
 	source: "prompt" | "skill" | "extension" | "system";
 	argumentHint?: string;
+};
+
+export type AppAuthProvider = {
+	id: string;
+	name: string;
+	authType: "oauth" | "api_key";
+};
+
+export type AppAuthPrompt = {
+	message: string;
+	placeholder?: string;
+	allowEmpty?: boolean;
+	options?: Array<{ id: string; label: string }>;
+};
+
+export type AppAuthDialog = {
+	mode: "login" | "logout";
+	phase: "providers" | "api-key" | "oauth" | "result";
+	providers: AppAuthProvider[];
+	providerId?: string;
+	providerName?: string;
+	status?: string;
+	url?: string;
+	instructions?: string;
+	deviceCode?: string;
+	prompt?: AppAuthPrompt;
+	progress: string[];
+	error?: string;
 };
 
 export type BackgroundSessionStatus = "running" | "completed";
@@ -186,6 +215,7 @@ export class AppState {
 	sessions: AppSessionSummary[] = [];
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
+	authDialog: AppAuthDialog | undefined;
 	currentModel: string | undefined;
 	currentSessionPath: string | undefined;
 	isTemporarySession = false;
@@ -566,6 +596,26 @@ export class AppState {
 		this.broadcast();
 	}
 
+	setAuthDialog(
+		dialog: AppAuthDialog | undefined,
+		options: { resetInput?: boolean } = {},
+	): void {
+		this.authDialog = dialog;
+		const script = dialog
+			? "{ const dialog = document.getElementById('auth-dialog'); if (dialog && !dialog.open) dialog.showModal(); }"
+			: "document.getElementById('auth-dialog')?.close?.()";
+		this.broadcast(script);
+		if (options.resetInput) {
+			for (const client of this.clients.values()) {
+				try {
+					client.stream.patchSignals(JSON.stringify({ authInput: "" }));
+				} catch {
+					// Client already disconnected.
+				}
+			}
+		}
+	}
+
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
 		this.broadcast(refreshBasecoatComponentsScript("#tree-dialog .command"));
@@ -699,6 +749,7 @@ export class AppState {
 			this.suppressMessagePatchesDepth > 0 ? "" : this.renderMessagesElement();
 		return (
 			messages +
+			renderAuthDialogContent(this.authDialog) +
 			renderPromptAction(this) +
 			renderPromptQueue(this) +
 			renderPromptToolbar(this) +
