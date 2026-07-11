@@ -67,9 +67,9 @@ jobs:
                     exit 1
                   fi
                   if command -v sha256sum >/dev/null; then
-                    checksum=$(sha256sum "$download_dir/$asset")
+                    checksum=$(sha256sum < "$download_dir/$asset")
                   else
-                    checksum=$(shasum -a 256 "$download_dir/$asset")
+                    checksum=$(shasum -a 256 < "$download_dir/$asset")
                   fi
                   actual=${checksum%% *}
                   if [[ "$actual" != "$expected" ]]; then
