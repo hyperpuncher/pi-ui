@@ -53,6 +53,15 @@ type ScopedModelCandidate = {
 	name?: string;
 };
 
+type PreparedSessionList =
+	| { ok: true; sessions: SessionInfo[] }
+	| { ok: false; error: unknown };
+
+type AgentHostActivationOptions = {
+	patchSessionMessages?: boolean;
+	refreshWorkspaces?: boolean;
+};
+
 function resolveScopedModels<T extends ScopedModelCandidate>(
 	patterns: string[],
 	models: T[],
@@ -128,15 +137,30 @@ export class AgentHost {
 		private runtime: AgentSessionRuntime,
 		private readonly state: AppState,
 		private readonly runtimeFactory: CreateAgentSessionRuntimeFactory,
+		private readonly preparedSessions: PreparedSessionList,
+		private readonly activationOptions: AgentHostActivationOptions,
 	) {}
 
 	static async create(
 		state: AppState,
 		cwd = defaultWorkspacePath(),
-		options: { patchSessionMessages?: boolean; refreshWorkspaces?: boolean } = {},
+		options: AgentHostActivationOptions = {},
 	): Promise<AgentHost> {
-		state.setWorkspacePath(cwd);
-		const sessionsPromise = SessionManager.listAll();
+		const host = await AgentHost.prepare(state, cwd, options);
+		host.activate();
+		return host;
+	}
+
+	static async prepare(
+		state: AppState,
+		cwd = defaultWorkspacePath(),
+		options: AgentHostActivationOptions = {},
+	): Promise<AgentHost> {
+		const sessionsPromise: Promise<PreparedSessionList> =
+			SessionManager.listAll().then(
+				(sessions) => ({ ok: true, sessions }),
+				(error: unknown) => ({ ok: false, error }),
+			);
 		const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 			cwd,
 			sessionManager,
@@ -168,25 +192,39 @@ export class AgentHost {
 			agentDir: getAgentDir(),
 			sessionManager: SessionManager.create(cwd),
 		});
-
-		const host = new AgentHost(runtime, state, createRuntime);
-		host.bindRuntimeCallbacks(runtime);
-		await host.bindSession({ refreshSessions: false });
 		try {
-			const sessions = await sessionsPromise;
-			if (options.refreshWorkspaces !== false) {
-				state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
-			}
-			state.setSessions(sessions.slice(0, 50).map(formatSessionSummary), {
-				patchMessages: options.patchSessionMessages,
-			});
-		} catch (error) {
-			state.appendMessage(
-				"system",
-				`Failed to list sessions: ${formatError(error)}`,
+			const host = new AgentHost(
+				runtime,
+				state,
+				createRuntime,
+				await sessionsPromise,
+				options,
 			);
+			host.bindRuntimeCallbacks(runtime);
+			await host.bindSessionExtensions();
+			return host;
+		} catch (error) {
+			await runtime.dispose();
+			throw error;
 		}
-		return host;
+	}
+
+	activate(): void {
+		this.bindSessionState({ refreshSessions: false });
+		if (!this.preparedSessions.ok) {
+			this.state.appendMessage(
+				"system",
+				`Failed to list sessions: ${formatError(this.preparedSessions.error)}`,
+			);
+			return;
+		}
+		const sessions = this.preparedSessions.sessions;
+		if (this.activationOptions.refreshWorkspaces !== false) {
+			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
+		}
+		this.state.setSessions(sessions.slice(0, 50).map(formatSessionSummary), {
+			patchMessages: this.activationOptions.patchSessionMessages,
+		});
 	}
 
 	async prompt(
@@ -534,9 +572,9 @@ export class AgentHost {
 	private bindRuntimeCallbacks(runtime: AgentSessionRuntime): void {
 		runtime.setBeforeSessionInvalidate(() => this.unbindSession());
 		runtime.setRebindSession(async () => {
+			await this.bindSessionExtensions();
 			this.bindSessionState();
 			this.loadCurrentSessionMessages();
-			await this.bindSessionExtensions();
 		});
 	}
 
@@ -752,8 +790,8 @@ export class AgentHost {
 		options: { refreshSessions?: boolean } = {},
 	): Promise<void> {
 		this.unbindSession();
-		this.bindSessionState(options);
 		await this.bindSessionExtensions();
+		this.bindSessionState(options);
 	}
 
 	private unbindSession(): void {

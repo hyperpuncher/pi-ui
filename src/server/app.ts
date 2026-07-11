@@ -14,6 +14,7 @@ import {
 	signalsResponse,
 } from "./datastar.ts";
 import { FileSearchHost } from "./file-search.ts";
+import { transitionWorkspaceResources } from "./workspace-transition.ts";
 
 const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
 const staticRoot = new URL("../../static", import.meta.url).pathname;
@@ -285,18 +286,23 @@ async function switchWorkspace(
 		}
 		const patchMessages = state.messages.length > 0;
 		const openWorkspace = async () => {
-			host?.dispose();
-			fileSearch?.dispose();
-			state.resetChat({
-				preserveEmptyHint: true,
-				broadcast: patchMessages,
+			const replacement = await transitionWorkspaceResources({
+				current: { host, fileSearch },
+				prepareHost: () =>
+					AgentHost.prepare(state, realPath, {
+						patchSessionMessages: false,
+						refreshWorkspaces: false,
+					}),
+				prepareFileSearch: () => FileSearchHost.create(realPath),
+				commit: ({ host: nextHost }) => {
+					state.resetChat({
+						preserveEmptyHint: true,
+						broadcast: patchMessages,
+					});
+					nextHost.activate();
+				},
 			});
-			const nextHost = await AgentHost.create(state, realPath, {
-				patchSessionMessages: false,
-				refreshWorkspaces: false,
-			});
-			const nextFileSearch = await FileSearchHost.create(realPath);
-			return { ok: true, host: nextHost, fileSearch: nextFileSearch };
+			return { ok: true, ...replacement };
 		};
 		return patchMessages
 			? await openWorkspace()
