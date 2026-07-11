@@ -1,6 +1,6 @@
 import type { AppState, AppThinkingLevel, AppUsage } from "../state/app-state.ts";
 import { formatHomePath } from "../utils/workspace.ts";
-import { ShortcutKbd } from "./keyboard.tsx";
+import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { renderSlashPicker } from "./pickers.tsx";
 
 export function renderPromptBox(state: AppState): string {
@@ -139,21 +139,26 @@ export function renderPromptToolbar(state: AppState): string {
 			class="flex shrink-0 items-center gap-0.5"
 			aria-label="Message tools"
 		>
-			<PromptToolbarButton label="Commands" action="commands">
+			<PromptToolbarButton label="Commands" action="commands" shortcut="ctrl K">
 				⌘
 			</PromptToolbarButton>
-			<PromptToolbarButton label="Files" action="files">
+			<PromptToolbarButton label="Files" action="files" shortcut="@">
 				@
 			</PromptToolbarButton>
-			<PromptToolbarButton label="Resume session" action="sessions">
+			<PromptToolbarButton
+				label="Resume session"
+				action="sessions"
+				shortcut="ctrl R"
+			>
 				↩
 			</PromptToolbarButton>
-			<PromptToolbarButton label="New chat" action="new-chat">
+			<PromptToolbarButton label="New chat" action="new-chat" shortcut="ctrl O">
 				+
 			</PromptToolbarButton>
 			<PromptToolbarButton
 				label="New temporary chat"
 				action="new-temporary-chat"
+				shortcut="ctrl alt O"
 				variant={state.isTemporarySession ? "secondary" : "ghost"}
 				pressed={state.isTemporarySession}
 			>
@@ -177,6 +182,7 @@ export function renderPromptToolbar(state: AppState): string {
 function PromptToolbarButton(props: {
 	label: string;
 	action: PromptToolbarAction;
+	shortcut?: string;
 	variant?: "primary" | "secondary" | "ghost";
 	pressed?: boolean;
 	children: JSX.Element;
@@ -195,6 +201,9 @@ function PromptToolbarButton(props: {
 			aria-label={props.label}
 		>
 			{props.children}
+			{props.shortcut && (
+				<ShortcutTooltip label={props.label} shortcut={props.shortcut} />
+			)}
 		</button>
 	);
 }
@@ -275,6 +284,7 @@ export function renderPromptAction(state: AppState): string {
 				aria-label="Abort"
 			>
 				■
+				<ShortcutTooltip label="Abort" shortcut="Esc" />
 			</button>
 		) as string;
 	}
@@ -295,6 +305,7 @@ export function renderPromptAction(state: AppState): string {
 			aria-label="Send"
 		>
 			↑
+			<ShortcutTooltip label="Send" shortcut="Enter" />
 		</button>
 	) as string;
 }
@@ -467,6 +478,7 @@ export function renderWorkspacePicker(state: AppState): string {
 			<span class="truncate" safe>
 				{label}
 			</span>
+			<ShortcutTooltip label="Workspace" shortcut="ctrl /" />
 		</button>
 	) as string;
 }
@@ -503,6 +515,7 @@ export function renderThinkingPicker(state: AppState): string {
 					disabled={state.thinkingLevels.length <= 1}
 				>
 					<span class="truncate">{thinkingLabel(current)}</span>
+					<ShortcutTooltip label="Thinking" shortcut="alt T" />
 				</button>
 				<div
 					id="thinking-select-popover"
@@ -634,6 +647,7 @@ export function renderModelPicker(state: AppState): string {
 					<span class="truncate" safe>
 						{currentLabel}
 					</span>
+					<ShortcutTooltip label="Model" shortcut="ctrl L" />
 				</button>
 				<div
 					id="model-select-popover"

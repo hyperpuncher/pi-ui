@@ -286,13 +286,28 @@
 		display: none;
 	}
 
+	[data-tooltip]:has(> [data-slot="tooltip-content"])::before,
+	[data-tooltip]:has(> [data-slot="tooltip-content"])::after {
+		display: none;
+	}
+
+	[data-tooltip] > [data-slot="tooltip-content"] {
+		@apply bg-foreground text-background pointer-events-none invisible absolute bottom-full left-1/2 z-[60] mb-1.5 inline-flex w-max max-w-xs -translate-x-1/2 translate-y-2 scale-95 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs opacity-0 transition-all;
+	}
+
+	[data-tooltip]:hover > [data-slot="tooltip-content"] {
+		@apply visible translate-y-0 scale-100 opacity-100;
+	}
+
 	[data-tooltip][data-tooltip-suppressed]::before,
-	[data-tooltip][data-tooltip-suppressed]::after {
+	[data-tooltip][data-tooltip-suppressed]::after,
+	[data-tooltip][data-tooltip-suppressed] > [data-slot="tooltip-content"] {
 		display: none;
 	}
 
 	[data-tooltip][data-tooltip-delay]:hover::before,
-	[data-tooltip][data-tooltip-delay]:hover::after {
+	[data-tooltip][data-tooltip-delay]:hover::after,
+	[data-tooltip][data-tooltip-delay]:hover > [data-slot="tooltip-content"] {
 		transition-delay: 600ms;
 	}
 
