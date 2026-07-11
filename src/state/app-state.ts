@@ -4,6 +4,7 @@ import { datastarStream, refreshBasecoatComponentsScript } from "../server/datas
 import { renderDebugOverlay } from "../ui/debug.tsx";
 import { renderPierreCode, renderPierreDiff } from "../ui/diffs.ts";
 import {
+	releaseMarkdownStreamingState,
 	renderCodeFinal,
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
@@ -362,6 +363,7 @@ export class AppState {
 
 	resetChat(options: { preserveEmptyHint?: boolean; broadcast?: boolean } = {}): void {
 		this.clearStreamingPatchTimer();
+		this.releaseTranscriptMarkdownStreamingState();
 		this.transcriptMessages = [];
 		this.messages = [];
 		this.visibleMessageStart = 0;
@@ -377,6 +379,7 @@ export class AppState {
 
 	replaceMessages(messages: AppMessageInput[]): void {
 		this.clearStreamingPatchTimer();
+		this.releaseTranscriptMarkdownStreamingState();
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
 		if (messages.length === 0) {
@@ -678,7 +681,14 @@ export class AppState {
 		}
 
 		current.renderedHtml = renderedHtml;
+		releaseMarkdownStreamingState(id);
 		this.broadcast();
+	}
+
+	private releaseTranscriptMarkdownStreamingState(): void {
+		for (const message of this.transcriptMessages) {
+			releaseMarkdownStreamingState(message.id);
+		}
 	}
 
 	private renderElements(): string {

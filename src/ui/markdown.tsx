@@ -14,10 +14,19 @@ import {
 
 import { escapeHtml } from "../utils/html.ts";
 import { pierreLanguages, renderPierreCode } from "./diffs.ts";
+import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
 
-const streamingCache = new Map<string, string>();
-const highlightedCache = new Map<string, string>();
-const pierreCodeBlockCache = new Map<string, string>();
+// Streaming entries track roughly two restored pages; final results can deduplicate
+// repeated content across a much longer desktop session.
+const maxStreamingEntries = 100;
+const maxFinalMarkdownEntries = 500;
+const maxPierreCodeBlockEntries = 500;
+
+const streamingCache = new BoundedCache<string, { markdown: string; html: string }>(
+	maxStreamingEntries,
+);
+const highlightedCache = new BoundedCache<string, string>(maxFinalMarkdownEntries);
+const pierreCodeBlockCache = new BoundedCache<string, string>(maxPierreCodeBlockEntries);
 const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
 
 type StreamingCodeBlockState = {
@@ -144,17 +153,30 @@ export function renderMarkdownStreaming(
 	markdown: string,
 	options: { cacheKey?: string } = {},
 ): string {
-	const cacheKey = `${options.cacheKey ?? ""}\0${markdown}`;
-	const cached = streamingCache.get(cacheKey);
-	if (cached) {
-		return cached;
+	const cacheKey = options.cacheKey;
+	if (cacheKey) {
+		const cached = streamingCache.get(cacheKey);
+		if (cached?.markdown === markdown) return cached.html;
 	}
-	const html = renderStreamingCodeBlocks(
-		compileMarkdown(markdown),
-		options.cacheKey ?? "",
-	);
-	streamingCache.set(cacheKey, html);
+
+	const html = renderStreamingCodeBlocks(compileMarkdown(markdown), cacheKey ?? "");
+	if (cacheKey) streamingCache.set(cacheKey, { markdown, html });
 	return html;
+}
+
+export function releaseMarkdownStreamingState(cacheKey: string): void {
+	streamingCache.delete(cacheKey);
+	deleteStringKeysWithPrefix(streamingCodeBlockStates, `${cacheKey}:`);
+}
+
+export function markdownCacheStatsForTest(): {
+	streamingEntries: number;
+	streamingCodeBlockStates: number;
+} {
+	return {
+		streamingEntries: streamingCache.size,
+		streamingCodeBlockStates: streamingCodeBlockStates.size,
+	};
 }
 
 export async function renderMarkdownFinal(markdown: string): Promise<string> {
