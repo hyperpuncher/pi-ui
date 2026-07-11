@@ -33,6 +33,7 @@ export function renderPage(state: AppState): string {
 				<meta charset="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>pi-ui</title>
+				<link rel="icon" type="image/png" href="/favicon.png" />
 				<script src="/theme.js"></script>
 				<link rel="stylesheet" href="/app.css" />
 				<script src="/basecoat.js" defer></script>
