@@ -17,17 +17,7 @@ const pierreUnsafeCSS = `
 		align-self: stretch;
 		background: var(--diffs-bg);
 		overflow: auto clip;
-		scrollbar-gutter: auto;
 		width: 100%;
-	}
-
-	[data-code]::-webkit-scrollbar-track,
-	[data-code]::-webkit-scrollbar-corner {
-		background: var(--diffs-bg);
-	}
-
-	[data-code]::-webkit-scrollbar-thumb {
-		background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
 	}
 
 	[data-diff],

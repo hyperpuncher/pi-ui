@@ -32,17 +32,6 @@
 		color: var(--primary);
 	}
 
-	* {
-		scrollbar-color: transparent transparent;
-		scrollbar-width: thin;
-	}
-
-	*:hover,
-	*:focus-within {
-		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent)
-			transparent;
-	}
-
 	html.dark {
 		--code-background: color-mix(in oklab, var(--muted) 55%, transparent);
 	}
@@ -72,18 +61,6 @@
 
 	.diff-output {
 		background: var(--code-background);
-		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
-			var(--code-background);
-	}
-
-	.diff-output::-webkit-scrollbar,
-	.diff-output::-webkit-scrollbar-track,
-	.diff-output::-webkit-scrollbar-corner {
-		background: var(--code-background);
-	}
-
-	.diff-output::-webkit-scrollbar-thumb {
-		background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
 	}
 
 	.messages-stack {
@@ -159,8 +136,6 @@
 		min-width: 100%;
 		max-width: calc(100vw - 2rem);
 		transform: translateX(-50%);
-		scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
-			color-mix(in oklab, var(--muted) 35%, transparent);
 	}
 
 	.markdown-content .table-container table {
