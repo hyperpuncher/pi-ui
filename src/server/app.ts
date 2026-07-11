@@ -1,4 +1,5 @@
 import { serveDir } from "@std/http/file-server";
+import { fromFileUrl } from "@std/path";
 
 import { AgentHost } from "../agent/host.ts";
 import {
@@ -27,8 +28,8 @@ import {
 } from "./transferred-files.ts";
 import { transitionWorkspaceResources } from "./workspace-transition.ts";
 
-const basecoatJsPath = new URL(import.meta.resolve("basecoat-css/all.min")).pathname;
-const staticRoot = new URL("../../static", import.meta.url).pathname;
+const basecoatJsPath = fromFileUrl(import.meta.resolve("basecoat-css/all.min"));
+const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const preloadHighlighterPromise = preloadPierreHighlighter();
