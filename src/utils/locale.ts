@@ -19,9 +19,9 @@ export function formatDateTime(date: Date): string {
 	});
 }
 
-function posixLocaleToBcp47(locale: string | undefined): string | undefined {
-	if (!locale || locale === "C" || locale === "POSIX") {
-		return undefined;
-	}
-	return locale.split(".")[0].split("@")[0].replaceAll("_", "-");
+export function posixLocaleToBcp47(locale: string | undefined): string | undefined {
+	if (!locale) return undefined;
+
+	const normalized = locale.split(".")[0].split("@")[0].replaceAll("_", "-");
+	return normalized === "C" || normalized === "POSIX" ? undefined : normalized;
 }
