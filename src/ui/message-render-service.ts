@@ -86,6 +86,7 @@ export class MessageRenderService {
 			this.store.hasOlderMessages,
 			this.store.sessions,
 			this.store.sessionTransition.status !== "idle",
+			this.store.models.some((model) => model.configured),
 		);
 	}
 	messageAppended(id: string): void {

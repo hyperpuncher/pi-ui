@@ -122,6 +122,7 @@ export function renderPage(state: AppRenderSnapshot): string {
 						state.hasOlderMessages,
 						state.sessions,
 						state.sessionTransition.status !== "idle",
+						state.models.some((model) => model.configured),
 					)}
 					{renderSessionTransition(state)}
 

@@ -227,6 +227,31 @@ Deno.test("shared resume action drives every immediate loading signal", () => {
 	}
 });
 
+Deno.test("empty chat shows login instead of recent sessions without auth", () => {
+	const html = renderMessages(
+		[],
+		{ keys: "/", description: "Open commands" },
+		false,
+		[
+			{
+				path: "/sessions/one.json",
+				cwd: "/workspace",
+				title: "One",
+				subtitle: "1 message",
+				modified: "Today",
+			},
+		],
+		false,
+		false,
+	);
+	if (!html.includes("/login") || !html.includes("/auth/open-login")) {
+		throw new Error("Missing login action");
+	}
+	if (html.includes("Recent sessions") || html.includes("/sessions/resume")) {
+		throw new Error("Recent sessions should be hidden without auth");
+	}
+});
+
 Deno.test("resume renderers share loading behavior and disable controls", () => {
 	const session = {
 		path: "/sessions/one.json",

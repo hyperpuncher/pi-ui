@@ -1,5 +1,6 @@
 import { DEFAULT_THEMES, getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
+import { authDialogAction } from "../commands/actions.ts";
 import type {
 	AppKeybindHint,
 	AppMessage,
@@ -20,6 +21,7 @@ export function renderMessages(
 	hasOlderMessages = false,
 	sessions: readonly AppSessionSummary[] = [],
 	sessionTransitionVisible = false,
+	authenticated = true,
 ): string {
 	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
 	return (
@@ -33,7 +35,7 @@ export function renderMessages(
 		>
 			<div class="messages-stack mx-auto w-full max-w-[52rem]">
 				{messages.length === 0
-					? renderEmptyMessages(emptyHint, sessions.slice(0, 3))
+					? renderEmptyMessages(emptyHint, sessions.slice(0, 3), authenticated)
 					: messages.map((message, index) => (
 							<>
 								{hasOlderMessages && index === olderMessagesTriggerIndex
@@ -50,6 +52,7 @@ export function renderMessages(
 function renderEmptyMessages(
 	emptyHint: AppKeybindHint,
 	sessions: readonly AppSessionSummary[],
+	authenticated: boolean,
 ) {
 	return (
 		<div class="text-muted-foreground grid min-h-[calc(100vh-18rem)] place-items-center text-center">
@@ -61,17 +64,31 @@ function renderEmptyMessages(
 					<ShortcutKbd shortcut={emptyHint.keys} />
 					<span safe>{emptyHint.description}</span>
 				</p>
-				{sessions.length > 0 && (
-					<div class="mt-8 text-left">
-						<p class="text-muted-foreground mb-2 px-2 text-xs font-medium tracking-wide uppercase">
-							Recent sessions
-						</p>
-						<div class="flex flex-col gap-1">
-							{sessions.map((session, index) =>
-								renderRecentSession(session, index),
-							)}
+				{!authenticated ? (
+					<p class="text-muted-foreground m-0 mt-8 text-sm">
+						<button
+							type="button"
+							class="btn h-auto p-0 font-mono"
+							data-variant="link"
+							data-on:click={authDialogAction("login")}
+						>
+							/login
+						</button>{" "}
+						to connect a provider and start chatting
+					</p>
+				) : (
+					sessions.length > 0 && (
+						<div class="mt-8 text-left">
+							<p class="text-muted-foreground mb-2 px-2 text-xs font-medium tracking-wide uppercase">
+								Recent sessions
+							</p>
+							<div class="flex flex-col gap-1">
+								{sessions.map((session, index) =>
+									renderRecentSession(session, index),
+								)}
+							</div>
 						</div>
-					</div>
+					)
 				)}
 			</div>
 		</div>
