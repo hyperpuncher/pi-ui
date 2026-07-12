@@ -1,6 +1,7 @@
 import { collectElementPatches } from "../perf/session-benchmark.ts";
 import { renderPage } from "../ui/page.tsx";
 import { type AppMessageInput, AppState } from "./app-state.ts";
+import { TranscriptState } from "./transcript-state.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
 
@@ -177,6 +178,58 @@ Deno.test("assistant completion immediately flushes newest streaming content", (
 	state.appendAssistantDelta(" **latest**");
 	state.finishAssistant();
 	assertIncludes(state.messages[0].renderedHtml ?? "", "<strong>latest</strong>");
+});
+
+Deno.test("running background transcript stays headless until activation", async () => {
+	let enhancementCount = 0;
+	const background = new TranscriptState({ keys: "N", description: "New" });
+	background.appendAssistantDelta("```ts\nconst partial = true");
+	background.appendMessage("tool", "still running", {
+		state: "running",
+		format: "code",
+	});
+	background.setQueuedMessages(["steer"], ["follow"]);
+	await settleMicrotasks();
+	assertEqual(enhancementCount, 0);
+
+	const foreground = new AppState({
+		renderMarkdownFinal: (text) => {
+			enhancementCount += 1;
+			return Promise.resolve(`<p>${text}</p>`);
+		},
+		renderCode: (text) => {
+			enhancementCount += 1;
+			return Promise.resolve(`<pre>${text}</pre>`);
+		},
+	});
+	foreground.restoreChat(background.snapshot());
+	await settleMicrotasks();
+
+	assertEqual(enhancementCount, 1);
+	assertEqual(foreground.messages[0].presentationState, "streaming");
+	assertIncludes(foreground.messages[0].renderedHtml ?? "", "partial");
+	assertEqual(foreground.messages[1].state, "running");
+	assertEqual(foreground.queuedSteeringMessages.join(","), "steer");
+	assertEqual(foreground.queuedFollowUpMessages.join(","), "follow");
+});
+
+Deno.test("completed background transcript enhances only after activation", async () => {
+	let enhancementCount = 0;
+	const background = new TranscriptState({ keys: "N", description: "New" });
+	background.appendAssistantDelta("completed **answer**");
+	background.finishAssistant();
+	await settleMicrotasks();
+	assertEqual(enhancementCount, 0);
+
+	const foreground = new AppState({
+		renderMarkdownFinal: () => {
+			enhancementCount += 1;
+			return Promise.resolve("<p>enhanced</p>");
+		},
+	});
+	foreground.restoreChat(background.snapshot());
+	await waitFor(() => foreground.messages[0]?.presentationState === "final");
+	assertEqual(enhancementCount, 1);
 });
 
 Deno.test("enhancement errors retain the safe fallback", async () => {

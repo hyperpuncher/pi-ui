@@ -25,6 +25,7 @@ import type {
 	AppUsage,
 	BackgroundSessionStatus,
 } from "../state/app-state.ts";
+import { TranscriptState } from "../state/transcript-state.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
@@ -59,7 +60,7 @@ const hiddenBashOutputCommands = new Set(["fd", "find", "grep", "ls", "rg", "tre
 
 type BackgroundSession = {
 	runtime: AgentSessionRuntime;
-	state: AppState;
+	state: TranscriptState;
 	status: BackgroundSessionStatus;
 	toolMessageIds: Map<string, string>;
 	toolCallArgs: Map<string, unknown>;
@@ -763,17 +764,13 @@ export class AgentHost {
 	}
 
 	private backgroundCurrentRuntime(): void {
+		const snapshot = this.state.snapshotChat();
 		this.unbindSession();
 		this.state.setQueuedMessages([], []);
 		const sessionFile = this.runtime.session.sessionManager.getSessionFile();
 		if (sessionFile) {
-			const backgroundState = new AppState();
-			backgroundState.restoreChat(this.state.snapshotChat());
-			backgroundState.setWorkspacePath(
-				this.runtime.session.sessionManager.getCwd(),
-			);
-			backgroundState.setCurrentSessionPath(sessionFile);
-			backgroundState.setTemporarySession(false);
+			const backgroundState = new TranscriptState(snapshot.emptyChatHint);
+			backgroundState.restore(snapshot);
 			const backgroundSession: BackgroundSession = {
 				runtime: this.runtime,
 				state: backgroundState,
@@ -797,24 +794,19 @@ export class AgentHost {
 		backgroundSession: BackgroundSession,
 		event: AgentSessionEvent,
 	): void {
-		const outcome = backgroundSession.state.update(
+		const outcome = this.reduceEvent(
+			event,
+			backgroundSession.state,
+			{
+				messageIds: backgroundSession.toolMessageIds,
+				callArgs: backgroundSession.toolCallArgs,
+				startedAt: backgroundSession.toolStartedAt,
+			},
 			() =>
-				this.reduceEvent(
-					event,
+				this.loadRuntimeMessages(
+					backgroundSession.runtime,
 					backgroundSession.state,
-					{
-						messageIds: backgroundSession.toolMessageIds,
-						callArgs: backgroundSession.toolCallArgs,
-						startedAt: backgroundSession.toolStartedAt,
-					},
-					() =>
-						this.loadRuntimeMessages(
-							backgroundSession.runtime,
-							backgroundSession.state,
-						),
 				),
-			// Streaming deltas use the documented targeted-message patch path.
-			{ commit: false },
 		);
 		if (outcome.agentCompleted) {
 			backgroundSession.unsubscribe();
@@ -874,11 +866,7 @@ export class AgentHost {
 		}
 		this.bindRuntimeCallbacks(this.runtime);
 		this.bindSessionState({ resetToolState: false, syncSessions: false });
-		if (this.runtime.session.isStreaming) {
-			this.state.restoreChat(backgroundSession.state.snapshotChat());
-		} else {
-			this.loadCurrentSessionMessages();
-		}
+		this.state.restoreChat(backgroundSession.state.snapshot());
 		this.syncBackgroundStatuses();
 	}
 
@@ -1274,7 +1262,10 @@ export class AgentHost {
 		this.syncUsage();
 	}
 
-	private loadRuntimeMessages(runtime: AgentSessionRuntime, state: AppState): void {
+	private loadRuntimeMessages(
+		runtime: AgentSessionRuntime,
+		state: AppState | TranscriptState,
+	): void {
 		const branch = runtime.session.sessionManager.getBranch();
 		const pendingToolCalls = new Map<string, { name: string; args: unknown }>();
 		const messages = branch.flatMap((entry: SessionEntry) =>

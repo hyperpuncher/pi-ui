@@ -34,45 +34,24 @@ import { defaultWorkspacePath } from "../utils/workspace.ts";
 import { shouldDeferEnhancement } from "./enhancement-policy.ts";
 import { EnhancementQueue } from "./enhancement-queue.ts";
 import { StreamingFrameScheduler } from "./streaming-frame-scheduler.ts";
+import {
+	TranscriptState,
+	type TranscriptMessage,
+	type TranscriptMessageInput,
+	type TranscriptMessageOptions,
+	type TranscriptMessageTitlePart,
+	type TranscriptSnapshot,
+} from "./transcript-state.ts";
 
-export type AppMessage = {
-	id: string;
-	role: "user" | "assistant" | "system" | "tool" | "thought" | "compaction" | "skill";
-	text: string;
-	timestamp: Date;
-	title?: string;
-	titleParts?: AppMessageTitlePart[];
-	meta?: string;
-	state?: "running" | "success" | "error";
-	format?: "pre" | "diff" | "code";
+export type AppMessage = TranscriptMessage & {
 	renderedHtml?: string;
 	presentationState: "plain" | "streaming" | "deferred" | "enhancing" | "final";
 	presentationVersion: number;
 };
 
-export type AppMessageTitlePart = {
-	text: string;
-	tone?: "default" | "accent" | "warning" | "muted";
-	mono?: boolean;
-	highlight?: "bash";
-};
-
-export type AppMessageOptions = Pick<
-	AppMessage,
-	"title" | "titleParts" | "meta" | "state" | "format"
->;
-
-export type AppChatSnapshot = {
-	messageSeq: number;
-	activeAssistantId: string | undefined;
-	activeThoughtId: string | undefined;
-	transcriptMessages: AppMessage[];
-	visibleMessageStart: number;
-	emptyChatHint: AppKeybindHint;
-	activityText: string | undefined;
-	queuedSteeringMessages: string[];
-	queuedFollowUpMessages: string[];
-};
+export type AppMessageTitlePart = TranscriptMessageTitlePart;
+export type AppMessageOptions = TranscriptMessageOptions;
+export type AppChatSnapshot = TranscriptSnapshot;
 
 export type AppModel = {
 	id: string;
@@ -156,12 +135,12 @@ export type AppKeybindHint = {
 	description: string;
 };
 
-export type AppMessageInput = Omit<
+export type AppMessageInput = TranscriptMessageInput & { renderedHtml?: string };
+
+type MessagePresentation = Pick<
 	AppMessage,
-	"id" | "renderedHtml" | "presentationState" | "presentationVersion"
-> & {
-	renderedHtml?: string;
-};
+	"renderedHtml" | "presentationState" | "presentationVersion"
+>;
 
 type EnhancementKind = "markdown" | "code" | "diff";
 
@@ -182,8 +161,6 @@ type StreamClient = {
 	stream: DatastarStream;
 };
 
-const restoredMessagePageSize = 50;
-const olderMessagePageSize = 50;
 const emptyChatHints: AppKeybindHint[] = [
 	...appCommands
 		.filter((command) => command.shortcut.display)
@@ -232,9 +209,8 @@ function uniqueStrings(values: string[]): string[] {
 
 export class AppState {
 	private clients = new Map<string, StreamClient>();
-	private messageSeq = 0;
-	private activeAssistantId: string | undefined;
-	private activeThoughtId: string | undefined;
+	private readonly transcript: TranscriptState;
+	private readonly messagePresentation = new Map<string, MessagePresentation>();
 	private readonly streamingScheduler: StreamingFrameScheduler<readonly string[]>;
 	private enhancementGeneration = 0;
 	private readonly enhancementQueue: EnhancementQueue;
@@ -251,8 +227,6 @@ export class AppState {
 	private pendingScripts = new Set<string>();
 	private pendingSignalOverrides: Record<string, unknown> = {};
 	private pendingEnhancementIds = new Set<string>();
-	private transcriptMessages: AppMessage[] = [];
-	private visibleMessageStart = 0;
 	readonly debugUi = debugUiEnabled();
 	messages: AppMessage[] = [];
 	models: AppModel[] = [];
@@ -266,7 +240,6 @@ export class AppState {
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usage: AppUsage = { text: "$0.000 • 0 tokens" };
-	emptyChatHint = randomEmptyChatHint();
 	activityText: string | undefined;
 	queuedSteeringMessages: string[] = [];
 	queuedFollowUpMessages: string[] = [];
@@ -275,6 +248,8 @@ export class AppState {
 	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };
 
 	constructor(options: AppStateOptions = {}) {
+		this.transcript = new TranscriptState(randomEmptyChatHint());
+		this.syncTranscriptMetadata();
 		this.streamingScheduler = new StreamingFrameScheduler((ids) => {
 			for (const id of ids) this.patchStreamingMessage(id);
 		});
@@ -289,7 +264,11 @@ export class AppState {
 	}
 
 	get hasOlderMessages(): boolean {
-		return this.visibleMessageStart > 0;
+		return this.transcript.hasOlderMessages;
+	}
+
+	get emptyChatHint(): AppKeybindHint {
+		return this.transcript.emptyChatHint;
 	}
 
 	async suppressMessagePatches<T>(callback: () => Promise<T>): Promise<T> {
@@ -372,110 +351,81 @@ export class AppState {
 		text: string,
 		options: AppMessageOptions = {},
 	): string {
-		this.messageSeq += 1;
-		const id = `m-${this.messageSeq}`;
-		const message: AppMessage = {
-			id,
-			role,
-			text,
-			timestamp: new Date(),
-			...options,
+		const id = this.transcript.appendMessage(role, text, options);
+		this.messagePresentation.set(id, {
 			renderedHtml:
 				rendersMarkdown(role) && text.trim()
 					? renderMarkdownStreaming(text, { cacheKey: id })
 					: undefined,
 			presentationState: rendersMarkdown(role) ? "streaming" : "plain",
 			presentationVersion: 0,
-		};
-		this.transcriptMessages.push(message);
+		});
 		this.refreshVisibleMessages();
-		if (role === "assistant") {
-			this.activeAssistantId = id;
-		}
-		if (role === "thought") {
-			this.activeThoughtId = id;
-		}
 		this.requestCommit();
 		if (role === "tool") this.scheduleMessageEnhancement(id);
 		return id;
 	}
 
 	updateMessage(id: string, patch: Partial<Omit<AppMessage, "id">>): void {
-		const message = this.transcriptMessages.find((item) => item.id === id);
-		if (!message) {
-			return;
-		}
-		Object.assign(message, patch);
+		const {
+			renderedHtml: _,
+			presentationState: __,
+			presentationVersion: ___,
+			...domain
+		} = patch;
+		if (!this.transcript.updateMessage(id, domain)) return;
+		const presentation = this.ensurePresentation(id);
 		if (patch.text !== undefined || patch.format !== undefined) {
 			releaseMarkdownStreamingState(id);
-			message.renderedHtml = undefined;
-			message.presentationState = "plain";
-			message.presentationVersion += 1;
+			presentation.renderedHtml = undefined;
+			presentation.presentationState = "plain";
+			presentation.presentationVersion += 1;
 		}
+		this.refreshVisibleMessages();
 		this.requestCommit();
 		this.scheduleMessageEnhancement(id);
 	}
 
 	appendThoughtDelta(delta: string): void {
-		if (!this.activeThoughtId) {
-			this.appendMessage("thought", delta);
+		const previousId = this.transcript.activeThoughtMessageId;
+		const id = this.transcript.appendThoughtDelta(delta);
+		if (!previousId) {
+			this.initializeStreamingPresentation(id);
+			this.refreshVisibleMessages();
+			this.requestCommit();
 			return;
 		}
-		const message = this.transcriptMessages.find(
-			(item) => item.id === this.activeThoughtId,
-		);
-		if (!message) {
-			this.appendMessage("thought", delta);
-			return;
-		}
-		message.text += delta;
-		message.presentationVersion += 1;
+		this.ensurePresentation(id).presentationVersion += 1;
+		this.refreshVisibleMessages();
 		this.scheduleStreamingPatch();
 	}
 
 	appendAssistantDelta(delta: string): void {
-		this.activeThoughtId = undefined;
-		if (!this.activeAssistantId) {
-			this.appendMessage("assistant", delta);
+		const previousId = this.transcript.activeAssistantMessageId;
+		const id = this.transcript.appendAssistantDelta(delta);
+		if (!previousId) {
+			this.initializeStreamingPresentation(id);
+			this.refreshVisibleMessages();
+			this.requestCommit();
 			return;
 		}
-		const message = this.transcriptMessages.find(
-			(item) => item.id === this.activeAssistantId,
-		);
-		if (!message) {
-			this.appendMessage("assistant", delta);
-			return;
-		}
-		message.text += delta;
-		message.presentationVersion += 1;
+		this.ensurePresentation(id).presentationVersion += 1;
+		this.refreshVisibleMessages();
 		this.scheduleStreamingPatch();
 	}
 
 	finishAssistant(): void {
 		this.flushStreamingPatch();
-		const id = this.activeAssistantId;
-		const thoughtId = this.activeThoughtId;
-		this.activeAssistantId = undefined;
-		this.activeThoughtId = undefined;
+		const { assistantId, thoughtId } = this.transcript.finishAssistant();
+		this.refreshVisibleMessages();
 		this.requestCommit();
 		if (thoughtId) this.scheduleMessageEnhancement(thoughtId);
-		if (id) this.scheduleMessageEnhancement(id);
+		if (assistantId) this.scheduleMessageEnhancement(assistantId);
 	}
 
 	snapshotChat(): AppChatSnapshot {
-		return {
-			messageSeq: this.messageSeq,
-			activeAssistantId: this.activeAssistantId,
-			activeThoughtId: this.activeThoughtId,
-			transcriptMessages: this.transcriptMessages.map((message) => ({
-				...message,
-			})),
-			visibleMessageStart: this.visibleMessageStart,
-			emptyChatHint: this.emptyChatHint,
-			activityText: this.activityText,
-			queuedSteeringMessages: [...this.queuedSteeringMessages],
-			queuedFollowUpMessages: [...this.queuedFollowUpMessages],
-		};
+		this.syncTranscriptMetadata();
+		return this.transcript.snapshot();
 	}
 
 	restoreChat(snapshot: AppChatSnapshot): void {
@@ -483,17 +433,12 @@ export class AppState {
 		this.clearStreamingPatchTimer();
 		this.cancelEnhancements();
 		this.releaseTranscriptMarkdownStreamingState();
-		this.messageSeq = snapshot.messageSeq;
-		this.activeAssistantId = snapshot.activeAssistantId;
-		this.activeThoughtId = snapshot.activeThoughtId;
-		this.transcriptMessages = snapshot.transcriptMessages.map((message) => ({
-			...message,
-		}));
-		this.visibleMessageStart = snapshot.visibleMessageStart;
-		this.emptyChatHint = snapshot.emptyChatHint;
-		this.activityText = snapshot.activityText;
-		this.queuedSteeringMessages = [...snapshot.queuedSteeringMessages];
-		this.queuedFollowUpMessages = [...snapshot.queuedFollowUpMessages];
+		this.messagePresentation.clear();
+		this.transcript.restore(snapshot);
+		this.syncAppMetadata();
+		for (const id of [snapshot.activeThoughtId, snapshot.activeAssistantId]) {
+			if (id) this.initializeStreamingPresentation(id);
+		}
 		this.refreshVisibleMessages();
 		endProjection();
 		sessionPerformance.markTranscriptProjected();
@@ -505,17 +450,12 @@ export class AppState {
 		this.clearStreamingPatchTimer();
 		this.cancelEnhancements();
 		this.releaseTranscriptMarkdownStreamingState();
-		this.transcriptMessages = [];
-		this.messages = [];
-		this.visibleMessageStart = 0;
-		this.activeAssistantId = undefined;
-		this.activeThoughtId = undefined;
-		if (!options.preserveEmptyHint) {
-			this.emptyChatHint = randomEmptyChatHint();
-		}
-		if (options.broadcast !== false) {
-			this.requestCommit();
-		}
+		this.messagePresentation.clear();
+		this.transcript.reset(
+			options.preserveEmptyHint ? undefined : randomEmptyChatHint(),
+		);
+		this.refreshVisibleMessages();
+		if (options.broadcast !== false) this.requestCommit();
 	}
 
 	replaceMessages(messages: AppMessageInput[]): void {
@@ -523,24 +463,10 @@ export class AppState {
 		this.clearStreamingPatchTimer();
 		this.cancelEnhancements();
 		this.releaseTranscriptMarkdownStreamingState();
-		this.activeAssistantId = undefined;
-		this.activeThoughtId = undefined;
-		if (messages.length === 0) {
-			this.emptyChatHint = randomEmptyChatHint();
-		}
-		this.transcriptMessages = messages.map((message) => {
-			this.messageSeq += 1;
-			return {
-				...message,
-				id: `m-${this.messageSeq}`,
-				renderedHtml: undefined,
-				presentationState: "plain",
-				presentationVersion: 0,
-			};
-		});
-		this.visibleMessageStart = Math.max(
-			0,
-			this.transcriptMessages.length - restoredMessagePageSize,
+		this.messagePresentation.clear();
+		this.transcript.replaceMessages(
+			messages.map(({ renderedHtml: _, ...message }) => message),
+			messages.length === 0 ? randomEmptyChatHint() : undefined,
 		);
 		this.refreshVisibleMessages();
 		endProjection();
@@ -550,19 +476,10 @@ export class AppState {
 	}
 
 	loadOlderMessages(options: { broadcast?: boolean } = {}): boolean {
-		if (!this.hasOlderMessages) return false;
-		const previousStart = this.visibleMessageStart;
-		this.visibleMessageStart = Math.max(
-			0,
-			this.visibleMessageStart - olderMessagePageSize,
-		);
-		const revealedIds = this.transcriptMessages
-			.slice(this.visibleMessageStart, previousStart)
-			.map((message) => message.id);
+		const revealedIds = this.transcript.loadOlderMessages();
+		if (revealedIds.length === 0) return false;
 		this.refreshVisibleMessages();
-		if (options.broadcast !== false) {
-			this.requestCommit();
-		}
+		if (options.broadcast !== false) this.requestCommit();
 		this.scheduleEnhancements(revealedIds);
 		return true;
 	}
@@ -578,7 +495,51 @@ export class AppState {
 	}
 
 	private refreshVisibleMessages(): void {
-		this.messages = this.transcriptMessages.slice(this.visibleMessageStart);
+		this.messages = this.transcript.messages.map((message) =>
+			this.projectMessage(message),
+		);
+	}
+
+	private projectMessage(message: TranscriptMessage): AppMessage {
+		return { ...message, ...this.ensurePresentation(message.id) };
+	}
+
+	private ensurePresentation(id: string): MessagePresentation {
+		let presentation = this.messagePresentation.get(id);
+		if (!presentation) {
+			presentation = {
+				presentationState: "plain",
+				presentationVersion: 0,
+			};
+			this.messagePresentation.set(id, presentation);
+		}
+		return presentation;
+	}
+
+	private initializeStreamingPresentation(id: string): void {
+		const message = this.transcript.getMessage(id);
+		if (!message) return;
+		this.messagePresentation.set(id, {
+			renderedHtml: message.text.trim()
+				? renderMarkdownStreaming(message.text, { cacheKey: id })
+				: undefined,
+			presentationState: "streaming",
+			presentationVersion: 0,
+		});
+	}
+
+	private syncTranscriptMetadata(): void {
+		this.transcript.setActivityText(this.activityText);
+		this.transcript.setQueuedMessages(
+			this.queuedSteeringMessages,
+			this.queuedFollowUpMessages,
+		);
+	}
+
+	private syncAppMetadata(): void {
+		this.activityText = this.transcript.activityText;
+		this.queuedSteeringMessages = [...this.transcript.queuedSteeringMessages];
+		this.queuedFollowUpMessages = [...this.transcript.queuedFollowUpMessages];
 	}
 
 	setModels(
@@ -662,12 +623,14 @@ export class AppState {
 
 	setActivityText(activityText: string | undefined): void {
 		this.activityText = activityText;
+		this.transcript.setActivityText(activityText);
 		this.requestCommit();
 	}
 
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void {
 		this.queuedSteeringMessages = [...steering];
 		this.queuedFollowUpMessages = [...followUp];
+		this.transcript.setQueuedMessages(steering, followUp);
 		this.requestCommit();
 	}
 
@@ -709,17 +672,20 @@ export class AppState {
 	}
 
 	enhanceMessage(id: string): boolean {
-		const message = this.transcriptMessages.find((item) => item.id === id);
-		if (!message || message.presentationState !== "deferred") return false;
+		const message = this.transcript.getMessage(id);
+		if (!message || this.ensurePresentation(id).presentationState !== "deferred") {
+			return false;
+		}
 		this.enqueueMessageEnhancement(id, true);
 		return true;
 	}
 
 	private streamingMessageIds(): readonly string[] {
 		return uniqueStrings(
-			[this.activeThoughtId, this.activeAssistantId].filter(
-				(id): id is string => id !== undefined,
-			),
+			[
+				this.transcript.activeThoughtMessageId,
+				this.transcript.activeAssistantMessageId,
+			].filter((id): id is string => id !== undefined),
 		);
 	}
 
@@ -736,15 +702,15 @@ export class AppState {
 	}
 
 	private patchStreamingMessage(id: string): void {
-		const message = this.transcriptMessages.find((item) => item.id === id);
-		if (!message || !rendersMarkdown(message.role) || !message.text.trim()) {
-			return;
-		}
-		message.renderedHtml = renderMarkdownStreaming(message.text, {
+		const message = this.transcript.getMessage(id);
+		if (!message || !rendersMarkdown(message.role) || !message.text.trim()) return;
+		const presentation = this.ensurePresentation(id);
+		presentation.renderedHtml = renderMarkdownStreaming(message.text, {
 			cacheKey: id,
 		});
-		message.presentationState = "streaming";
-		this.broadcastMessage(message);
+		presentation.presentationState = "streaming";
+		this.refreshVisibleMessages();
+		this.broadcastMessage(this.projectMessage(message));
 	}
 
 	private cancelEnhancements(): void {
@@ -763,64 +729,68 @@ export class AppState {
 	}
 
 	private enqueueMessageEnhancement(id: string, force = false): void {
-		const message = this.transcriptMessages.find((item) => item.id === id);
-		const kind = message ? enhancementKind(message) : undefined;
+		const message = this.transcript.getMessage(id);
+		const kind = message ? enhancementKind(this.projectMessage(message)) : undefined;
+		const presentation = message ? this.ensurePresentation(id) : undefined;
 		if (
 			!message ||
 			!kind ||
-			(kind === "markdown" &&
-				(id === this.activeAssistantId || id === this.activeThoughtId)) ||
+			!presentation ||
+			(kind === "markdown" && this.streamingMessageIds().includes(id)) ||
 			!message.text.trim() ||
-			message.presentationState === "enhancing" ||
-			message.presentationState === "final" ||
-			(message.presentationState === "deferred" && !force)
-		) {
+			presentation.presentationState === "enhancing" ||
+			presentation.presentationState === "final" ||
+			(presentation.presentationState === "deferred" && !force)
+		)
 			return;
-		}
 		if (!force && shouldDeferEnhancement(kind, message.text)) {
-			message.presentationState = "deferred";
-			this.broadcastMessage(message);
+			presentation.presentationState = "deferred";
+			this.refreshVisibleMessages();
+			this.broadcastMessage(this.projectMessage(message));
 			return;
 		}
 
 		const generation = this.enhancementGeneration;
 		const text = message.text;
 		const format = message.format;
-		const version = message.presentationVersion;
-		message.presentationState = "enhancing";
+		const version = presentation.presentationVersion;
+		presentation.presentationState = "enhancing";
 		this.enhancementQueue.enqueue({
 			key: `${generation}:${id}:${version}:${kind}`,
-			priority: this.transcriptMessages.indexOf(message),
+			priority: this.transcript.allMessages.indexOf(message),
 			run: async (signal) => {
 				const renderedHtml = await this.renderEnhancement(kind, text);
 				if (signal.aborted) return;
-				const current = this.transcriptMessages.find((item) => item.id === id);
+				const current = this.transcript.getMessage(id);
+				const currentPresentation = this.ensurePresentation(id);
 				if (
 					generation !== this.enhancementGeneration ||
 					!current ||
 					current.text !== text ||
 					current.format !== format ||
-					current.presentationVersion !== version
-				) {
+					currentPresentation.presentationVersion !== version
+				)
 					return;
-				}
-				current.renderedHtml = renderedHtml;
-				current.presentationState = "final";
+				currentPresentation.renderedHtml = renderedHtml;
+				currentPresentation.presentationState = "final";
 				releaseMarkdownStreamingState(id);
-				this.broadcastMessage(current);
+				this.refreshVisibleMessages();
+				this.broadcastMessage(this.projectMessage(current));
 			},
 			onCancel: () => releaseMarkdownStreamingState(id),
 			onError: (error) => {
-				const current = this.transcriptMessages.find((item) => item.id === id);
+				const current = this.transcript.getMessage(id);
+				const currentPresentation = this.ensurePresentation(id);
 				if (
 					generation === this.enhancementGeneration &&
 					current?.text === text &&
 					current.format === format &&
-					current.presentationVersion === version
+					currentPresentation.presentationVersion === version
 				) {
-					current.presentationState = "plain";
-					current.renderedHtml = undefined;
+					currentPresentation.presentationState = "plain";
+					currentPresentation.renderedHtml = undefined;
 					releaseMarkdownStreamingState(id);
+					this.refreshVisibleMessages();
 				}
 				console.warn(`Failed to enhance message ${id}`, error);
 			},
@@ -852,7 +822,7 @@ export class AppState {
 	}
 
 	private releaseTranscriptMarkdownStreamingState(): void {
-		for (const message of this.transcriptMessages) {
+		for (const message of this.transcript.allMessages) {
 			releaseMarkdownStreamingState(message.id);
 		}
 	}

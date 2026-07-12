@@ -1,10 +1,10 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 
 import type {
-	AppMessage,
-	AppMessageInput,
-	AppMessageOptions,
-} from "../state/app-state.ts";
+	TranscriptMessage,
+	TranscriptMessageInput,
+	TranscriptMessageOptions,
+} from "../state/transcript-state.ts";
 
 type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 	AgentSessionEvent,
@@ -13,11 +13,11 @@ type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 
 export type SessionEventStateSink = {
 	appendMessage(
-		role: AppMessage["role"],
+		role: TranscriptMessage["role"],
 		text: string,
-		options?: AppMessageOptions,
+		options?: TranscriptMessageOptions,
 	): string;
-	updateMessage(id: string, patch: Partial<Omit<AppMessage, "id">>): void;
+	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void;
 	appendThoughtDelta(delta: string): void;
 	appendAssistantDelta(delta: string): void;
 	finishAssistant(): void;
@@ -33,7 +33,7 @@ export type SessionEventToolState = {
 
 type ToolMessageView = {
 	text: string;
-	options: AppMessageOptions;
+	options: TranscriptMessageOptions;
 };
 
 export type SessionEventReducerContext = {
@@ -42,11 +42,11 @@ export type SessionEventReducerContext = {
 	convertMessage: (
 		message: EventOf<"message_start">["message"],
 		timestamp: Date,
-	) => readonly AppMessageInput[];
+	) => readonly TranscriptMessageInput[];
 	formatToolStart: (event: EventOf<"tool_execution_start">) => ToolMessageView;
 	formatToolUpdate: (
 		event: EventOf<"tool_execution_update">,
-	) => Partial<Omit<AppMessage, "id">>;
+	) => Partial<Omit<TranscriptMessage, "id">>;
 	formatToolEnd: (
 		event: EventOf<"tool_execution_end">,
 		args: unknown,
