@@ -130,8 +130,9 @@ class SessionPerformanceCollector {
 			!this.enabled ||
 			!this.transition?.transcriptProjected ||
 			this.transition.firstPatchAt
-		)
+		) {
 			return;
+		}
 		this.transition.firstPatchAt = performance.now();
 		this.recordSpan(
 			"firstTranscriptPatch",
@@ -166,7 +167,9 @@ class SessionPerformanceCollector {
 
 	private finishTransitionIfReady(): void {
 		const transition = this.transition;
-		if (!transition?.hostComplete || transition.firstPatchAt === undefined) return;
+		if (!transition?.hostComplete || transition.firstPatchAt === undefined) {
+			return;
+		}
 		this.recordSpan("sessionOpen", performance.now() - transition.startedAt);
 		this.transition = undefined;
 		console.log(

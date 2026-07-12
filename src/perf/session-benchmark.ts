@@ -1,10 +1,11 @@
-import { AppState, type AppMessageInput } from "../state/app-state.ts";
+import { type AppMessageInput, AppState } from "../state/app-state.ts";
 import { sessionPerformance } from "./session-performance.ts";
 
 export type PatchSummary = {
 	fullPatchCount: number;
 	targetedPatchCount: number;
 	patches: string[];
+	patchElapsedMs: number[];
 };
 
 export function generatedSessionFixture(count: number): AppMessageInput[] {
@@ -57,15 +58,27 @@ export function markdownMessageCount(messages: readonly AppMessageInput[]): numb
 	).length;
 }
 
+export function enhancementMessageCount(messages: readonly AppMessageInput[]): number {
+	return messages.filter(
+		(message) =>
+			message.text.trim() &&
+			(["assistant", "thought", "compaction", "skill"].includes(message.role) ||
+				(message.role === "tool" &&
+					["code", "diff"].includes(message.format ?? ""))),
+	).length;
+}
+
 export async function collectElementPatches(
 	response: Response,
 	count: number,
+	startedAt = performance.now(),
 ): Promise<PatchSummary> {
 	const reader = response.body?.getReader();
 	if (!reader) throw new Error("Datastar response has no body");
 	const decoder = new TextDecoder();
 	let buffer = "";
 	const patches: string[] = [];
+	const patchElapsedMs: number[] = [];
 	while (patches.length < count) {
 		const chunk = await reader.read();
 		if (chunk.done) break;
@@ -75,6 +88,7 @@ export async function collectElementPatches(
 		for (const frame of frames) {
 			if (frame.startsWith("event: datastar-patch-elements\n")) {
 				patches.push(frame);
+				patchElapsedMs.push(performance.now() - startedAt);
 				if (patches.length === count) break;
 			}
 		}
@@ -88,23 +102,25 @@ export async function collectElementPatches(
 		targetedPatchCount: patches.filter((patch) => patch.includes("\ndata: selector "))
 			.length,
 		patches,
+		patchElapsedMs,
 	};
 }
 
-async function runFixture(messages: AppMessageInput[]) {
+async function runFixture(messages: AppMessageInput[], concurrency: number) {
 	sessionPerformance.reset();
-	const state = new AppState();
+	const state = new AppState({ enhancementConcurrency: concurrency });
 	const controller = new AbortController();
 	const response = state.createStream(controller.signal);
-	const expectedPatches = 2 + markdownMessageCount(messages.slice(-50));
+	const expectedPatches = 2 + enhancementMessageCount(messages.slice(-50));
 	const startedAt = performance.now();
 	state.replaceMessages(messages);
-	const patches = await collectElementPatches(response, expectedPatches);
-	const elapsedMs = performance.now() - startedAt;
+	const patches = await collectElementPatches(response, expectedPatches, startedAt);
+	const enhancementCompleteMs = performance.now() - startedAt;
 	controller.abort();
 	const snapshot = sessionPerformance.snapshot();
 	return {
-		elapsedMs,
+		firstContentMs: patches.patchElapsedMs[1],
+		enhancementCompleteMs,
 		outputBytes: snapshot.bytesRendered,
 		fullPatchCount: patches.fullPatchCount,
 		targetedPatchCount: patches.targetedPatchCount,
@@ -126,27 +142,42 @@ async function fixtureSizes(): Promise<number[]> {
 if (import.meta.main) {
 	Deno.env.set("PI_UI_PERF", "1");
 	const fixtures = [];
-	for (const messageCount of await fixtureSizes()) {
-		const samples = [];
-		for (let sample = 0; sample < 3; sample += 1) {
-			samples.push(await runFixture(generatedSessionFixture(messageCount)));
+	for (const concurrency of [1, 2, 4]) {
+		for (const messageCount of await fixtureSizes()) {
+			const samples = [];
+			for (let sample = 0; sample < 3; sample += 1) {
+				samples.push(
+					await runFixture(generatedSessionFixture(messageCount), concurrency),
+				);
+			}
+			fixtures.push({
+				concurrency,
+				messageCount,
+				firstContentP50Ms: percentile(
+					samples.map((sample) => sample.firstContentMs),
+					0.5,
+				),
+				firstContentP95Ms: percentile(
+					samples.map((sample) => sample.firstContentMs),
+					0.95,
+				),
+				enhancementCompleteP50Ms: percentile(
+					samples.map((sample) => sample.enhancementCompleteMs),
+					0.5,
+				),
+				enhancementCompleteP95Ms: percentile(
+					samples.map((sample) => sample.enhancementCompleteMs),
+					0.95,
+				),
+				outputBytes: Math.max(...samples.map((sample) => sample.outputBytes)),
+				fullPatchCount: Math.max(
+					...samples.map((sample) => sample.fullPatchCount),
+				),
+				targetedPatchCount: Math.max(
+					...samples.map((sample) => sample.targetedPatchCount),
+				),
+			});
 		}
-		fixtures.push({
-			messageCount,
-			p50Ms: percentile(
-				samples.map((sample) => sample.elapsedMs),
-				0.5,
-			),
-			p95Ms: percentile(
-				samples.map((sample) => sample.elapsedMs),
-				0.95,
-			),
-			outputBytes: Math.max(...samples.map((sample) => sample.outputBytes)),
-			fullPatchCount: Math.max(...samples.map((sample) => sample.fullPatchCount)),
-			targetedPatchCount: Math.max(
-				...samples.map((sample) => sample.targetedPatchCount),
-			),
-		});
 	}
 	console.log(
 		JSON.stringify({

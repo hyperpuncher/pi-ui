@@ -1,6 +1,7 @@
 import { AppState } from "../state/app-state.ts";
 import {
 	collectElementPatches,
+	enhancementMessageCount,
 	generatedSessionFixture,
 	markdownMessageCount,
 } from "./session-benchmark.ts";
@@ -71,7 +72,7 @@ Deno.test("SSE parser handles event frames split across chunk boundaries", async
 	assertEqual(summary.targetedPatchCount, 1);
 });
 
-Deno.test("50-message restore characterizes enhancement-first patch amplification", async () => {
+Deno.test("50-message restore emits fallback once and targets enhancements", async () => {
 	const previous = Deno.env.get("PI_UI_PERF");
 	Deno.env.set("PI_UI_PERF", "1");
 	sessionPerformance.reset();
@@ -82,18 +83,20 @@ Deno.test("50-message restore characterizes enhancement-first patch amplificatio
 		const messages = generatedSessionFixture(50);
 		state.replaceMessages(messages);
 		const markdownPatches = markdownMessageCount(messages);
-		const summary = await collectElementPatches(response, 2 + markdownPatches);
+		const enhancementPatches = enhancementMessageCount(messages);
+		const summary = await collectElementPatches(response, 2 + enhancementPatches);
 
 		assertEqual(markdownPatches, 20);
-		assertEqual(summary.fullPatchCount, 22);
-		assertEqual(summary.targetedPatchCount, 0);
+		assertEqual(enhancementPatches, 40);
+		assertEqual(summary.fullPatchCount, 2);
+		assertEqual(summary.targetedPatchCount, 40);
 		assertIncludes(summary.patches[1], 'data-message-id="m-50"');
-		assertIncludes(summary.patches[1], "data-pierre-diff");
-		assertIncludes(summary.patches[1], "pierre-code");
+		assertNotIncludes(summary.patches[1], "data-pierre-diff");
+		assertNotIncludes(summary.patches[1], 'class="pierre-code"');
 
 		const snapshot = sessionPerformance.snapshot();
-		assertEqual(snapshot.fatMorphCount, 22);
-		assertEqual(snapshot.targetedMessagePatchCount, 0);
+		assertEqual(snapshot.fatMorphCount, 2);
+		assertEqual(snapshot.targetedMessagePatchCount, 40);
 		assertEqual(snapshot.spans.toolEnhancement.count, 20);
 		assertEqual(snapshot.spans.markdownEnhancement.count, 20);
 	} finally {

@@ -7,7 +7,9 @@ import {
 
 Deno.test("streaming cache keeps one entry per stable message key", () => {
 	const first = renderMarkdownStreaming("Hello", { cacheKey: "cache-test-1" });
-	const repeated = renderMarkdownStreaming("Hello", { cacheKey: "cache-test-1" });
+	const repeated = renderMarkdownStreaming("Hello", {
+		cacheKey: "cache-test-1",
+	});
 	assertEqual(repeated, first);
 	renderMarkdownStreaming("Hello, world", { cacheKey: "cache-test-1" });
 	assertEqual(markdownCacheStatsForTest().streamingEntries, 1);
@@ -23,6 +25,19 @@ Deno.test("streaming without a key does not retain output", () => {
 	const before = markdownCacheStatsForTest().streamingEntries;
 	renderMarkdownStreaming("uncached");
 	assertEqual(markdownCacheStatsForTest().streamingEntries, before);
+});
+
+Deno.test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
+	const markdown =
+		'<script>alert("xss")</script> [bad](javascript:alert(1)) ![bad](data:text/html,bad)';
+	for (const html of [
+		renderMarkdownStreaming(markdown),
+		await renderMarkdownFinal(markdown),
+	]) {
+		assertNotIncludes(html, "<script>");
+		assertNotIncludes(html, "javascript:");
+		assertNotIncludes(html, "data:text/html");
+	}
 });
 
 Deno.test("plain, fenced, and incomplete markdown preserve rendering structure", async () => {
@@ -49,5 +64,11 @@ function assertEqual(actual: unknown, expected: unknown): void {
 function assertIncludes(actual: string, expected: string): void {
 	if (!actual.includes(expected)) {
 		throw new Error(`Expected output to include ${JSON.stringify(expected)}`);
+	}
+}
+
+function assertNotIncludes(actual: string, expected: string): void {
+	if (actual.includes(expected)) {
+		throw new Error(`Expected output not to include ${JSON.stringify(expected)}`);
 	}
 }
