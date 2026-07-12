@@ -2,79 +2,47 @@ export type WorkspaceResource = {
 	dispose(): void | Promise<void>;
 };
 
-export type WorkspaceResources<
-	Host extends WorkspaceResource,
-	FileSearch extends WorkspaceResource,
-> = {
-	host: Host;
-	fileSearch: FileSearch;
-};
-
-type WorkspaceTransitionOptions<
-	Host extends WorkspaceResource,
-	FileSearch extends WorkspaceResource,
-> = {
-	current: {
-		host: Host | undefined;
-		fileSearch: FileSearch;
-	};
+type WorkspaceTransitionOptions<Host extends WorkspaceResource> = {
+	current: { host: Host | undefined };
 	prepareHost: () => Host | Promise<Host>;
-	prepareFileSearch: () => FileSearch | Promise<FileSearch>;
-	commit: (replacement: WorkspaceResources<Host, FileSearch>) => void;
+	commit: (replacement: Host) => void;
 	onCurrentDisposeError?: (error: AggregateError) => void;
 };
 
-async function disposeResources(
-	resources: Array<WorkspaceResource | undefined>,
+async function disposeResource(
+	resource: WorkspaceResource | undefined,
 	primaryError?: { value: unknown },
 ): Promise<void> {
-	const results = await Promise.allSettled(
-		resources
-			.filter((resource) => resource !== undefined)
-			.map((resource) => Promise.resolve().then(() => resource.dispose())),
-	);
+	let disposalError: unknown;
+	try {
+		await resource?.dispose();
+	} catch (error) {
+		disposalError = error;
+	}
 	if (primaryError !== undefined) throw primaryError.value;
-	const errors = results.flatMap((result) =>
-		result.status === "rejected" ? [result.reason] : [],
-	);
-	if (errors.length > 0) {
-		throw new AggregateError(errors, "Failed to dispose workspace resources");
+	if (disposalError !== undefined) {
+		throw new AggregateError([disposalError], "Failed to dispose workspace resource");
 	}
 }
 
-/** Prepares a complete replacement before committing and releasing current resources. */
-export async function transitionWorkspaceResources<
-	Host extends WorkspaceResource,
-	FileSearch extends WorkspaceResource,
->({
+/** Prepares a replacement before committing and releasing the current host. */
+export async function transitionWorkspaceResources<Host extends WorkspaceResource>({
 	current,
 	prepareHost,
-	prepareFileSearch,
 	commit,
 	onCurrentDisposeError,
-}: WorkspaceTransitionOptions<Host, FileSearch>): Promise<
-	WorkspaceResources<Host, FileSearch>
-> {
-	const previous = { ...current };
-	let host: Host | undefined;
-	let fileSearch: FileSearch | undefined;
-	try {
-		host = await prepareHost();
-		fileSearch = await prepareFileSearch();
-	} catch (error) {
-		await disposeResources([fileSearch, host], { value: error });
-		throw error;
-	}
+}: WorkspaceTransitionOptions<Host>): Promise<Host> {
+	const previous = current.host;
+	const replacement = await prepareHost();
 
-	const replacement = { host, fileSearch };
 	try {
 		commit(replacement);
 	} catch (error) {
-		await disposeResources([fileSearch, host], { value: error });
+		await disposeResource(replacement, { value: error });
 		throw error;
 	}
 	try {
-		await disposeResources([previous.host, previous.fileSearch]);
+		await disposeResource(previous);
 	} catch (error) {
 		if (!(error instanceof AggregateError) || !onCurrentDisposeError) throw error;
 		onCurrentDisposeError(error);

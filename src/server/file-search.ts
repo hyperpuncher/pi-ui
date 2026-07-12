@@ -13,27 +13,32 @@ const maxCollected = 30;
 const maxResults = 20;
 const fdMaxResults = 100;
 
-export class FileSearchHost {
-	private constructor(readonly workspacePath: string) {}
+export type FileSearchCommand = (
+	args: string[],
+	signal?: AbortSignal,
+) => Promise<Deno.CommandOutput>;
 
-	static create(workspacePath: string): FileSearchHost {
-		return new FileSearchHost(workspacePath);
-	}
+const runFd: FileSearchCommand = (args, signal) =>
+	new Deno.Command("fd", { args, signal }).output();
 
-	async search(query: string): Promise<FileSuggestion[]> {
-		const normalizedQuery = query.replaceAll("\\", "/").replace(/^@/, "");
-		return (
-			(await searchWithFd(this.workspacePath, normalizedQuery)) ??
-			searchManually(this.workspacePath, normalizedQuery)
-		);
-	}
-
-	dispose(): void {}
+export async function searchFiles(
+	workspacePath: string,
+	query: string,
+	signal?: AbortSignal,
+	command: FileSearchCommand = runFd,
+): Promise<FileSuggestion[]> {
+	const normalizedQuery = query.replaceAll("\\", "/").replace(/^@/, "");
+	const fdResults = await searchWithFd(workspacePath, normalizedQuery, signal, command);
+	if (fdResults !== undefined) return fdResults;
+	signal?.throwIfAborted();
+	return searchManually(workspacePath, normalizedQuery);
 }
 
 async function searchWithFd(
 	workspacePath: string,
 	query: string,
+	signal: AbortSignal | undefined,
+	command: FileSearchCommand,
 ): Promise<FileSuggestion[] | undefined> {
 	const scoped = resolveFileSearchScope(workspacePath, query);
 	const args = [
@@ -62,10 +67,12 @@ async function searchWithFd(
 
 	let output: Deno.CommandOutput;
 	try {
-		output = await new Deno.Command("fd", { args }).output();
-	} catch {
+		output = await command(args, signal);
+	} catch (error) {
+		if (signal?.aborted) throw signal.reason ?? error;
 		return undefined;
 	}
+	signal?.throwIfAborted();
 	if (!output.success) {
 		return undefined;
 	}

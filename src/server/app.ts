@@ -8,7 +8,6 @@ import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { expandHomePath } from "../utils/workspace.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
-import { FileSearchHost } from "./file-search.ts";
 import { ExactRouter } from "./router.ts";
 import { registerAssetRoutes } from "./routes/assets.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
@@ -44,10 +43,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	await preloadHighlighterPromise.catch((error: unknown) => {
 		console.error("Failed to preload highlighter", error);
 	});
-	const resources: RouteResources = {
-		host,
-		fileSearch: await FileSearchHost.create(store.workspacePath),
-	};
+	const resources: RouteResources = { host };
 	const transferredFiles = await TransferredFileStore.create();
 	addEventListener(
 		"unload",
@@ -108,7 +104,7 @@ async function openWorkspace(
 	transitions: SessionTransitionController,
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
-	let replacement: { host: AgentHost; fileSearch: FileSearchHost } | undefined;
+	let replacement: AgentHost | undefined;
 	const transition = await transitions.run(requestedPath, async () => {
 		const realPath = await Deno.realPath(expandHomePath(requestedPath));
 		if (!(await Deno.stat(realPath)).isDirectory) {
@@ -124,14 +120,13 @@ async function openWorkspace(
 						refreshWorkspaces: false,
 						transitionController: transitions,
 					}),
-				prepareFileSearch: () => FileSearchHost.create(realPath),
 				commit: (next) => {
 					store.resetChat({
 						preserveEmptyHint: true,
 						broadcast: patchMessages,
 					});
-					next.host.activate();
-					Object.assign(resources, next);
+					next.activate();
+					resources.host = next;
 					replacement = next;
 				},
 				onCurrentDisposeError: (error) => {

@@ -4,7 +4,6 @@ import type { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
 import type { UiRenderer } from "../../ui/ui-renderer.ts";
 import { createRouter } from "../app.ts";
-import { FileSearchHost } from "../file-search.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
@@ -50,35 +49,45 @@ Deno.test("all server endpoints are registered through domain route modules", as
 	assertEquals(Object.values(endpoints).length, expected.length);
 });
 
-Deno.test("file search validates signals and returns escaped Datastar fragments", async () => {
-	const context = fakeContext();
-	context.resources.fileSearch = {
-		search: async (query: string) => [
-			{
-				value: query,
-				label: `<${query}>`,
-				description: `src/<${query}>`,
-				isDirectory: false,
-			},
-		],
-		dispose: () => {},
-	} as unknown as FileSearchHost;
-	const router = createRouter(context);
-	const response = await router.fetch(
-		signalGet("/files/search", { fileQuery: "unsafe" }),
-	);
-	assertEquals(response.status, 200);
-	assertEquals(response.headers.get("content-type"), "text/event-stream");
-	const body = await response.text();
-	assertStringIncludes(body, 'id="file-picker-results"');
-	assertStringIncludes(body, "&lt;unsafe>");
-	assertStringIncludes(body, "datastar-patch-elements");
-	assertEquals((await router.fetch(signalGet("/files/search", {}))).status, 400);
-	assertEquals(
-		(await router.fetch(new Request("http://localhost/files/search?datastar=%7B")))
-			.status,
-		400,
-	);
+Deno.test("file search uses current workspace and escapes Datastar fragments", async () => {
+	const firstWorkspace = await Deno.makeTempDir();
+	const secondWorkspace = await Deno.makeTempDir();
+	try {
+		await Deno.writeTextFile(`${firstWorkspace}/first.txt`, "");
+		await Deno.writeTextFile(`${secondWorkspace}/<unsafe>.txt`, "");
+		const context = fakeContext();
+		context.store.setWorkspacePath(firstWorkspace);
+		const router = createRouter(context);
+		const first = await router.fetch(
+			signalGet("/files/search", { fileQuery: "first" }),
+		);
+		assertStringIncludes(await first.text(), "first.txt");
+
+		context.store.setWorkspacePath(secondWorkspace);
+		const response = await router.fetch(
+			signalGet("/files/search", { fileQuery: "unsafe" }),
+		);
+		assertEquals(response.status, 200);
+		assertEquals(response.headers.get("content-type"), "text/event-stream");
+		const body = await response.text();
+		assertStringIncludes(body, 'id="file-picker-results"');
+		assertStringIncludes(body, "&lt;unsafe>.txt");
+		assertStringIncludes(body, "datastar-patch-elements");
+		assertEquals((await router.fetch(signalGet("/files/search", {}))).status, 400);
+		assertEquals(
+			(
+				await router.fetch(
+					new Request("http://localhost/files/search?datastar=%7B"),
+				)
+			).status,
+			400,
+		);
+	} finally {
+		await Promise.all([
+			Deno.remove(firstWorkspace, { recursive: true }),
+			Deno.remove(secondWorkspace, { recursive: true }),
+		]);
+	}
 });
 
 Deno.test("malformed actions return 400 without mutating the transcript", async () => {
@@ -197,10 +206,7 @@ function fakeContext(
 				enhanceMessage: () => true,
 				setDisplayRefreshHz: () => true,
 			} as unknown as UiRenderer),
-		resources: {
-			host: overrides.host ?? fakeHost(),
-			fileSearch: FileSearchHost.create(Deno.cwd()),
-		},
+		resources: { host: overrides.host ?? fakeHost() },
 		transferredFiles: { importFiles: async () => [] } as never,
 		openWorkspace: async () => true,
 		readBasecoat: async () => new ArrayBuffer(0),

@@ -1,6 +1,7 @@
 import { renderFilePickerResults } from "../../ui/pickers.tsx";
 import { readActionSignals, stringField } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
+import { searchFiles } from "../file-search.ts";
 import type { ExactRouter } from "../router.ts";
 import {
 	getTransferredFiles,
@@ -15,7 +16,11 @@ export function registerFileRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("GET", endpoints.filesSearch, async (request, context) => {
 		const signals = await readActionSignals(request);
 		const query = stringField(signals, "fileQuery");
-		const items = await context.resources.fileSearch.search(query);
+		const items = await searchFiles(
+			context.store.workspacePath,
+			query,
+			request.signal,
+		);
 		return datastarResponse([
 			{ type: "elements", elements: renderFilePickerResults(items) },
 		]);

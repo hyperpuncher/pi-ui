@@ -1,7 +1,6 @@
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
 import { readActionSignals, requiredString } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
-import { FileSearchHost } from "../file-search.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
@@ -52,13 +51,7 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 			await readActionSignals(request),
 			"sessionPath",
 		).trim();
-		const host = requireHost(context);
-		const response = sessionTransitionResponse(await host.resumeSession(path));
-		if (response.status !== 204) return response;
-		const replacement = await FileSearchHost.create(host.getWorkspacePath());
-		context.resources.fileSearch.dispose();
-		context.resources.fileSearch = replacement;
-		return response;
+		return sessionTransitionResponse(await requireHost(context).resumeSession(path));
 	});
 }
 
