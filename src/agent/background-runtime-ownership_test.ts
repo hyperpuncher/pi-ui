@@ -1,5 +1,6 @@
 import {
 	BackgroundRuntimeOwnership,
+	ownsForegroundGeneration,
 	ownsForegroundRuntime,
 	RuntimeOwnershipInvariantError,
 	type OwnedBackgroundRuntime,
@@ -65,6 +66,35 @@ Deno.test("delayed disposal callback cannot unsubscribe a replacement runtime", 
 	await delayedDispose;
 
 	assertEquals(activeSubscription, "replacement");
+});
+
+Deno.test("delayed generation callbacks cannot rebind or mutate replacement state", async () => {
+	const runtime = { name: "shared runtime" };
+	let current = runtime;
+	let generation = 1;
+	const callbackOwner = runtime;
+	const callbackGeneration = generation;
+	const effects: string[] = [];
+	let release = () => {};
+	const delayed = new Promise<void>((resolve) => (release = resolve)).then(() => {
+		if (
+			!ownsForegroundGeneration(
+				current,
+				generation,
+				callbackOwner,
+				callbackGeneration,
+			)
+		)
+			return;
+		effects.push("unsubscribe", "rebind", "load-messages");
+	});
+
+	generation = 2;
+	current = runtime;
+	release();
+	await delayed;
+
+	assertEquals(effects, []);
 });
 
 Deno.test("current runtime shutdown still detaches its own subscription", () => {

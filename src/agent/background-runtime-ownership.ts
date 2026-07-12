@@ -17,6 +17,16 @@ export function ownsForegroundRuntime<T>(current: T, callbackOwner: T): boolean 
 	return current === callbackOwner;
 }
 
+/** Also rejects callbacks retained across an in-place session generation change. */
+export function ownsForegroundGeneration<T>(
+	current: T,
+	currentGeneration: number,
+	callbackOwner: T,
+	callbackGeneration: number,
+): boolean {
+	return current === callbackOwner && currentGeneration === callbackGeneration;
+}
+
 export class RuntimeOwnershipInvariantError extends Error {
 	constructor(message = "Runtime ownership invariant failed") {
 		super(message);

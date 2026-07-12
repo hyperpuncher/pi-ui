@@ -1,0 +1,203 @@
+import type {
+	AgentSessionRuntime,
+	SessionTreeNode,
+} from "@earendil-works/pi-coding-agent";
+import { assertEquals, assertStringIncludes } from "@std/assert";
+
+import {
+	modelMatchesPattern,
+	parseScopedModelPattern,
+	resolveScopedModels,
+} from "./model-controller.ts";
+import { formatSessionSummary, recentSessionWorkspaces } from "./session-catalog.ts";
+import {
+	contentToText,
+	formatShellCommandDisplay,
+	formatToolResult,
+	formatToolStart,
+	summarizeValue,
+	toolTitleParts,
+} from "./tool-presentation.ts";
+import {
+	assistantContentToMessages,
+	userContentToMessages,
+} from "./transcript-projector.ts";
+import { flattenTree, TreeProjector } from "./tree-projector.ts";
+import { formatStats, formatTokens } from "./usage-controller.ts";
+
+Deno.test("tool presentation preserves representative and malformed values", () => {
+	assertEquals(formatToolStart("edit", { edits: [{}, {}] }), {
+		text: "2 replacements",
+		format: "pre",
+	});
+	assertEquals(formatToolResult("edit", { details: { patch: "@@ -1 +1 @@" } }), {
+		text: "@@ -1 +1 @@",
+		format: "diff",
+	});
+	assertEquals(
+		formatToolResult(
+			"bash",
+			{ content: [{ type: "text", text: "a\nb\n" }] },
+			{
+				args: { command: "rg pattern" },
+			},
+		),
+		{ text: "2 results", format: "code" },
+	);
+	assertEquals(toolTitleParts("read", { path: "/tmp/file", offset: 3, limit: 2 }), [
+		{ text: "read" },
+		{ text: "/tmp/file", tone: "accent", mono: true },
+		{ text: ":3-4", tone: "warning", mono: true },
+	]);
+	assertStringIncludes(
+		formatShellCommandDisplay(`echo ${"x".repeat(90)} && done`),
+		"&&\n  done",
+	);
+	assertEquals(
+		contentToText([
+			{ type: "thinking", thinking: "hidden" },
+			{ type: "image", mimeType: "image/png" },
+		]),
+		"[image: image/png]",
+	);
+	const circular: Record<string, unknown> = {};
+	circular.self = circular;
+	assertEquals(summarizeValue(circular), "[object Object]");
+});
+
+Deno.test("transcript projection preserves user, skill, thought, and assistant roles", () => {
+	const timestamp = new Date(0);
+	assertEquals(userContentToMessages("hello", timestamp), [
+		{ role: "user", text: "hello", timestamp },
+	]);
+	const assistant = assistantContentToMessages(
+		[
+			{ type: "thinking", thinking: "reason" },
+			{ type: "text", text: "answer\u001b[31m" },
+		],
+		timestamp,
+	);
+	assertEquals(
+		assistant.map(({ role, text }) => ({ role, text })),
+		[
+			{ role: "thought", text: "reason" },
+			{ role: "assistant", text: "answer" },
+		],
+	);
+});
+
+Deno.test("model patterns preserve wildcards, thinking suffixes, and first-match ordering", () => {
+	const models = [
+		{ provider: "openai", id: "gpt-5", name: "GPT Five" },
+		{ provider: "anthropic", id: "claude-sonnet", name: "Sonnet" },
+	];
+	assertEquals(parseScopedModelPattern("openai/*:high"), {
+		modelPattern: "openai/*",
+		thinkingLevel: "high",
+	});
+	assertEquals(modelMatchesPattern(models[1], "*sonnet"), true);
+	assertEquals(resolveScopedModels(["*sonnet:medium", "openai/*", "*sonnet"], models), [
+		{ model: models[1], thinkingLevel: "medium" },
+		{ model: models[0], thinkingLevel: undefined },
+	]);
+});
+
+Deno.test("tree projection orders the active branch first", () => {
+	const entry = (id: string, parentId: string | null, text: string) => ({
+		id,
+		parentId,
+		timestamp: "2026-01-01T00:00:00.000Z",
+		type: "message",
+		message: { role: "user", content: text },
+	});
+	const roots = [
+		{
+			entry: entry("root", null, "root"),
+			children: [
+				{ entry: entry("inactive", "root", "inactive"), children: [] },
+				{ entry: entry("active", "root", "active"), children: [] },
+			],
+		},
+	] as unknown as SessionTreeNode[];
+	const rows = flattenTree(roots, "active", new Set(["root", "active"]));
+	assertEquals(
+		rows.map((row) => row.id),
+		["root", "active", "inactive"],
+	);
+	assertEquals(rows[1].active, true);
+	assertEquals(rows[1].prefix, "├─ ");
+});
+
+Deno.test("tree navigation rejects overlap and can cancel summarization", async () => {
+	let navigateCount = 0;
+	let abortCount = 0;
+	let finishNavigation = (_result: { cancelled: boolean }) => {};
+	const navigation = new Promise<{ cancelled: boolean }>((resolve) => {
+		finishNavigation = resolve;
+	});
+	const runtime = {
+		session: {
+			navigateTree: () => {
+				navigateCount += 1;
+				return navigation;
+			},
+			abortBranchSummary: () => {
+				abortCount += 1;
+				finishNavigation({ cancelled: true });
+			},
+		},
+	} as unknown as AgentSessionRuntime;
+	const projector = new TreeProjector(() => runtime, {
+		setTreeEntries: () => {},
+	});
+
+	const first = projector.navigate("one", { summarize: true });
+	assertEquals(await projector.navigate("two"), undefined);
+	projector.cancelNavigation();
+	assertEquals(await first, undefined);
+	assertEquals({ navigateCount, abortCount }, { navigateCount: 1, abortCount: 1 });
+});
+
+Deno.test("catalog and usage formatting remain stable", () => {
+	const sessions = [
+		{
+			path: "/one",
+			cwd: "/work/a",
+			name: "Named",
+			firstMessage: "first",
+			messageCount: 1,
+			modified: new Date(0),
+		},
+		{
+			path: "/two",
+			cwd: "/work/a",
+			name: "",
+			firstMessage: "second",
+			messageCount: 2,
+			modified: new Date(0),
+		},
+	] as Parameters<typeof recentSessionWorkspaces>[0];
+	assertEquals(recentSessionWorkspaces(sessions), ["/work/a"]);
+	const summary = formatSessionSummary(sessions[0]);
+	assertEquals(
+		{ title: summary.title, subtitle: summary.subtitle },
+		{
+			title: "Named",
+			subtitle: "1 message • /work/a",
+		},
+	);
+	assertEquals(formatTokens(1_250), "1.3k");
+	assertEquals(
+		formatStats({
+			cost: 0.125,
+			tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 1_250 },
+			contextUsage: null,
+		} as unknown as Parameters<typeof formatStats>[0]),
+		{
+			text: "$0.125 • 1.3k tokens",
+			codexText: undefined,
+			codexPrimaryPercent: undefined,
+			codexSecondaryPercent: undefined,
+		},
+	);
+});
