@@ -1,5 +1,4 @@
 import { type DatastarClientHub } from "../server/datastar-client-hub.ts";
-import { refreshBasecoatComponentsScript } from "../server/datastar.ts";
 import type {
 	AppRenderSnapshot,
 	AppStore,
@@ -213,11 +212,9 @@ export class UiRenderer implements AppStorePresentation {
 	private effectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts: string[] = [];
 		for (const effect of effects) {
-			if (effect.type === "refresh-components")
-				scripts.push(refreshBasecoatComponentsScript(...effect.selectors));
 			if (effect.type === "reopen-model-picker")
 				scripts.push(
-					`${refreshBasecoatComponentsScript("#model-select")};requestAnimationFrame(() => { document.getElementById('model-select-trigger')?.focus(); document.getElementById('model-select')?.toggle?.(); })`,
+					"window.piUi.basecoat.refresh(document.getElementById('model-select')); requestAnimationFrame(() => { document.getElementById('model-select-trigger')?.focus(); document.getElementById('model-select')?.toggle?.(); })",
 				);
 			if (effect.type === "auth-dialog")
 				scripts.push(

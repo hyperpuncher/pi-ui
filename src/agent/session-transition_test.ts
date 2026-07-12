@@ -186,7 +186,7 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	if (!recent.includes("evt.ctrlKey")) throw new Error("Missing keyboard resume");
 });
 
-Deno.test("session picker command state refreshes after a transition", async () => {
+Deno.test("session picker command state morphs after a transition", async () => {
 	const state = new AppStore();
 	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const controller = new AbortController();
@@ -200,14 +200,14 @@ Deno.test("session picker command state refreshes after a transition", async () 
 		state.setSessions([]);
 		state.setSessionTransition({ status: "idle", generation: 1 });
 
-		const output = await readUntil(response, (text) => {
-			const refreshes = text.match(/component\.refresh/g)?.length ?? 0;
-			return refreshes >= 2 && text.includes('"sessionTransitionLoading":false');
-		});
-		const idleSignal = output.lastIndexOf('"sessionTransitionLoading":false');
-		const enabledRefresh = output.lastIndexOf("component.refresh");
-		if (idleSignal === -1 || enabledRefresh < idleSignal) {
-			throw new Error("Session command refreshed before its idle signal");
+		const output = await readUntil(
+			response,
+			(text) =>
+				text.includes('id="session-menu"') &&
+				text.includes('"sessionTransitionLoading":false'),
+		);
+		if (output.includes("component.refresh")) {
+			throw new Error("Server emitted a legacy Basecoat refresh script");
 		}
 	} finally {
 		controller.abort();

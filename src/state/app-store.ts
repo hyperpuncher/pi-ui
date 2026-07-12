@@ -87,7 +87,6 @@ export type AppUsage = {
 export type AppKeybindHint = { keys: string; description: string };
 
 export type UiCommitEffect =
-	| { type: "refresh-components"; selectors: readonly string[] }
 	| { type: "reopen-model-picker" }
 	| { type: "auth-dialog"; open: boolean }
 	| { type: "signal-overrides"; values: Readonly<Record<string, unknown>> };
@@ -364,26 +363,19 @@ export class AppStore {
 	): void {
 		this.models = models;
 		this.currentModel = currentModel;
-		this.commit(
-			options.reopenPicker
-				? { type: "reopen-model-picker" }
-				: { type: "refresh-components", selectors: ["#model-select"] },
-		);
+		this.commit(options.reopenPicker ? { type: "reopen-model-picker" } : undefined);
 	}
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
-		this.commit({ type: "refresh-components", selectors: ["#thinking-select"] });
+		this.commit();
 	}
 	setSessions(
 		sessions: AppSessionSummary[],
 		_options: { patchMessages?: boolean } = {},
 	): void {
 		this.sessions = sessions;
-		this.commit({
-			type: "refresh-components",
-			selectors: ["#workspace-dialog .command", "#session-dialog .command"],
-		});
+		this.commit();
 	}
 	removeSession(path: string): void {
 		this.setSessions(this.sessions.filter((session) => session.path !== path));
@@ -394,10 +386,7 @@ export class AppStore {
 			...values,
 			...this.recentWorkspaces,
 		]).slice(0, 8);
-		this.commit({
-			type: "refresh-components",
-			selectors: ["#workspace-dialog .command"],
-		});
+		this.commit();
 	}
 	setSlashCommands(commands: AppSlashCommand[]): void {
 		this.slashCommands = commands;
@@ -417,11 +406,11 @@ export class AppStore {
 	}
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
-		this.commit({ type: "refresh-components", selectors: ["#tree-dialog .command"] });
+		this.commit();
 	}
 	setCurrentModel(value: string | undefined): void {
 		this.currentModel = value;
-		this.commit({ type: "refresh-components", selectors: ["#model-select"] });
+		this.commit();
 	}
 	setUsage(value: AppUsage): void {
 		this.usage = value;
@@ -448,20 +437,13 @@ export class AppStore {
 	}
 	setWorkspacePath(value: string): void {
 		this.workspacePath = value;
-		this.commit({
-			type: "refresh-components",
-			selectors: ["#workspace-dialog .command"],
-		});
+		this.commit();
 	}
 	setSessionTransition(value: SessionTransitionState): void {
 		if (this.sessionTransition.status === "loading" && value.status !== "loading")
 			this.flush();
 		this.sessionTransition = value;
-		this.commit(
-			value.status === "loading"
-				? undefined
-				: { type: "refresh-components", selectors: ["#session-dialog .command"] },
-		);
+		this.commit();
 		this.flush();
 	}
 	private syncTranscriptMetadata(): void {

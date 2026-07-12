@@ -1,3 +1,4 @@
+import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	AppRenderSnapshot,
 	AppThinkingLevel,
@@ -18,6 +19,7 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 				id="prompt-slash-popover"
 				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
 				style="display: none;"
+				data-show="$_slashPickerOpen"
 			>
 				{renderSlashPicker(state)}
 			</div>
@@ -25,11 +27,9 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 				id="prompt-file-popover"
 				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
 				style="display: none;"
+				data-show="$_filePickerOpen"
 			>
-				<ul
-					id="file-picker-list"
-					class="max-h-72 list-none overflow-y-auto p-1"
-				/>
+				<div id="file-picker-results" aria-live="polite" />
 			</div>
 			{renderPromptQueue(state)}
 			<textarea
@@ -39,14 +39,28 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 				aria-label="Message"
 				rows="1"
 				data-bind:prompt
+				data-on:input="
+					$_slashPickerOpen = $prompt.startsWith('/') &&
+					!$prompt.includes(' ')
+				"
+				data-on:pi-ui-picker-close="$_slashPickerOpen = false"
+				data-on:pi-ui-file-query={`
+					$fileQuery = evt.detail.query;
+					$_filePickerOpen = true;
+					@get('${endpoints.filesSearch}', {
+						filterSignals: { include: /^fileQuery$/ },
+						requestCancellation: 'cleanup',
+					});
+				`}
+				data-on:pi-ui-file-close="$_filePickerOpen = false"
 				data-effect={`if ($isSessionReady) {
 					el.focus({ preventScroll: true });
 					el.selectionStart = el.value.length;
 					el.selectionEnd = el.value.length;
 				}`}
-				data-on:paste={`if (window.piUiHasTransferredFiles?.(evt.clipboardData)) {
+				data-on:paste={`if (window.piUi.fileTransfer.hasFiles(evt.clipboardData)) {
 					evt.preventDefault();
-					window.piUiInsertTransferredFiles?.(evt.clipboardData);
+					window.piUi.fileTransfer.insert(evt.clipboardData);
 				}`}
 				data-on:keydown={`if (
 					evt.key === 'Escape' &&
@@ -67,11 +81,11 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 					evt.key === 'Enter' &&
 					!evt.shiftKey &&
 					$prompt.trim() !== '' &&
-					!window.piUiIsFilePickerOpen?.()
+					!window.piUi.pickers.isFileOpen()
 				) {
 					evt.preventDefault();
-					window.piUiScrollMessagesBottom?.();
-					if ($prompt.trim() === '/tree') window.piUiOpenTreeDialog?.();
+					window.piUi.messageScroll.scrollBottom();
+					if ($prompt.trim() === '/tree') window.piUi.dialogs.openTree();
 					evt.altKey
 						? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
 						: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
@@ -383,7 +397,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 			data-send-trigger
 			data-attr:disabled="$prompt.trim() === ''"
 			data-on:click="
-				window.piUiScrollMessagesBottom?.();
+				window.piUi.messageScroll.scrollBottom();
 				@post('/prompt', { filterSignals: { include: /^prompt$/ } });
 			"
 			data-tooltip="Send"

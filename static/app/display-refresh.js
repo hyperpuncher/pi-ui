@@ -102,7 +102,7 @@ export function bindDisplayRefreshMeasurement() {
 		setTimer: (callback, delay) => setTimeout(callback, delay),
 		clearTimer: (id) => clearTimeout(id),
 		send: (hz) => {
-			void fetch("/display-refresh", {
+			void fetch(document.body.dataset.displayRefreshEndpoint, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ hz }),

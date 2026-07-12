@@ -1,3 +1,6 @@
+import { renderFilePickerResults } from "../../ui/pickers.tsx";
+import { readActionSignals, stringField } from "../action-input.ts";
+import { datastarResponse } from "../datastar.ts";
 import type { ExactRouter } from "../router.ts";
 import {
 	getTransferredFiles,
@@ -9,11 +12,14 @@ import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 export function registerFileRoutes(router: ExactRouter<RouteContext>): void {
-	router.register("GET", endpoints.filesSearch, async (_request, context, url) =>
-		Response.json(
-			await context.resources.fileSearch.search(url.searchParams.get("q") ?? ""),
-		),
-	);
+	router.register("GET", endpoints.filesSearch, async (request, context) => {
+		const signals = await readActionSignals(request);
+		const query = stringField(signals, "fileQuery");
+		const items = await context.resources.fileSearch.search(query);
+		return datastarResponse([
+			{ type: "elements", elements: renderFilePickerResults(items) },
+		]);
+	});
 	router.register("POST", endpoints.filesImport, importTransferredFiles);
 }
 

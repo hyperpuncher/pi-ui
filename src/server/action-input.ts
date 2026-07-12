@@ -19,9 +19,17 @@ export async function readActionSignals(request: Request): Promise<ActionSignals
 	return result.signals;
 }
 
-export function requiredString(signals: ActionSignals, field: string): string {
+export function stringField(signals: ActionSignals, field: string): string {
 	const value = signals[field];
-	if (typeof value !== "string" || value.trim() === "") {
+	if (typeof value !== "string") {
+		throw new ActionInputError(`Missing or invalid ${field}.`);
+	}
+	return value;
+}
+
+export function requiredString(signals: ActionSignals, field: string): string {
+	const value = stringField(signals, field);
+	if (value.trim() === "") {
 		throw new ActionInputError(`Missing or invalid ${field}.`);
 	}
 	return value;

@@ -13,8 +13,11 @@ Deno.test("each browser action references its registered endpoint", async () => 
 			"../../ui/prompt-box.tsx",
 			"../../ui/session-transition.tsx",
 			"../../ui/tree-picker.tsx",
-			"../../../static/app.js",
-			"../../../static/display-refresh.js",
+			"./endpoints.ts",
+			"../../../static/app/main.js",
+			"../../../static/app/display-refresh.js",
+			"../../../static/app/file-transfer.js",
+			"../../../static/app/pickers.js",
 		].map((path) => Deno.readTextFile(new URL(path, import.meta.url))),
 	);
 	const source = browserActions.join("\n");
@@ -51,4 +54,11 @@ Deno.test("each browser action references its registered endpoint", async () => 
 		endpoints.filesImport,
 	];
 	for (const endpoint of browserEndpoints) assertStringIncludes(source, endpoint);
+
+	const promptBox = await Deno.readTextFile(
+		new URL("../../ui/prompt-box.tsx", import.meta.url),
+	);
+	assertStringIncludes(promptBox, "endpoints.filesSearch");
+	assertStringIncludes(promptBox, "filterSignals: { include: /^fileQuery$/ }");
+	assertStringIncludes(promptBox, "requestCancellation: 'cleanup'");
 });

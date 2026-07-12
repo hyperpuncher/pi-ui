@@ -50,6 +50,37 @@ Deno.test("all server endpoints are registered through domain route modules", as
 	assertEquals(Object.values(endpoints).length, expected.length);
 });
 
+Deno.test("file search validates signals and returns escaped Datastar fragments", async () => {
+	const context = fakeContext();
+	context.resources.fileSearch = {
+		search: async (query: string) => [
+			{
+				value: query,
+				label: `<${query}>`,
+				description: `src/<${query}>`,
+				isDirectory: false,
+			},
+		],
+		dispose: () => {},
+	} as unknown as FileSearchHost;
+	const router = createRouter(context);
+	const response = await router.fetch(
+		signalGet("/files/search", { fileQuery: "unsafe" }),
+	);
+	assertEquals(response.status, 200);
+	assertEquals(response.headers.get("content-type"), "text/event-stream");
+	const body = await response.text();
+	assertStringIncludes(body, 'id="file-picker-results"');
+	assertStringIncludes(body, "&lt;unsafe>");
+	assertStringIncludes(body, "datastar-patch-elements");
+	assertEquals((await router.fetch(signalGet("/files/search", {}))).status, 400);
+	assertEquals(
+		(await router.fetch(new Request("http://localhost/files/search?datastar=%7B")))
+			.status,
+		400,
+	);
+});
+
 Deno.test("malformed actions return 400 without mutating the transcript", async () => {
 	const context = fakeContext();
 	const response = await createRouter(context).fetch(
@@ -110,7 +141,7 @@ Deno.test("tree open remains repeatable and includes the fallback open effect", 
 	for (let index = 0; index < 2; index += 1) {
 		const response = await router.fetch(signalRequest("/tree/open", {}));
 		assertEquals(response.status, 200);
-		assertStringIncludes(await response.text(), "piUiOpenTreeDialog");
+		assertStringIncludes(await response.text(), "piUi.dialogs.openTree");
 	}
 	assertEquals(opens, 2);
 });
@@ -209,6 +240,11 @@ function fakeHost(overrides: Record<string, unknown> = {}): AgentHost {
 		toggleScopedModel: async () => true,
 		...overrides,
 	} as unknown as AgentHost;
+}
+
+function signalGet(path: string, signals: Record<string, unknown>): Request {
+	const datastar = encodeURIComponent(JSON.stringify(signals));
+	return new Request(`http://localhost${path}?datastar=${datastar}`);
 }
 
 function signalRequest(path: string, signals: Record<string, unknown>): Request {

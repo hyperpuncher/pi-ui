@@ -36,12 +36,6 @@ export type DatastarEvent =
 	| { type: "signals"; signals: Record<string, Jsonifiable> }
 	| { type: "effect"; effect: ClientEffect };
 
-export function refreshBasecoatComponentsScript(...selectors: string[]): string {
-	return `queueMicrotask(() => document.querySelectorAll(${JSON.stringify(
-		selectors.join(", "),
-	)}).forEach((component) => component.refresh?.()))`;
-}
-
 export function datastarStream(
 	onStart: (stream: DatastarStream) => Promise<void> | void,
 	options?: Parameters<typeof ds.stream>[1],
@@ -85,11 +79,11 @@ function clientEffectScript(effect: ClientEffect): string {
 		case "focus-prompt":
 			return "document.getElementById('prompt-input')?.focus({ preventScroll: true })";
 		case "open-tree":
-			return `${refreshBasecoatComponentsScript("#tree-dialog .command")}; window.piUiOpenTreeDialog?.(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });`;
+			return "window.piUi.basecoat.refresh(document.getElementById('tree-dialog')); window.piUi.dialogs.openTree(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });";
 		case "restore-messages-anchor":
-			return "window.piUiRestoreMessagesAnchor?.()";
+			return "window.piUi.messageScroll.restoreAnchor()";
 		case "session-deleted":
-			return `document.getElementById('session-delete-dialog')?.close(); ${refreshBasecoatComponentsScript("#session-dialog .command")}; document.getElementById('session-input')?.focus();`;
+			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.basecoat.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
 	}
 }
 

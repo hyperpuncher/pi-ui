@@ -115,7 +115,7 @@ function resumeSessionShortcutAction(path: string, index: number): string {
 function loadOlderMessagesAction(): string {
 	return `
 		el.scrollTop < el.clientHeight * 2 &&
-		window.piUiCaptureMessagesAnchor?.() &&
+		window.piUi.messageScroll.captureAnchor() &&
 		@post('/messages/older', { filterSignals: { include: /^$/ } })
 	`;
 }
@@ -126,10 +126,10 @@ function renderOlderMessagesTrigger() {
 			class="pointer-events-none -mb-[40vh] h-[40vh] opacity-0"
 			data-load-older-messages
 			data-on:click="
-				window.piUiCaptureMessagesAnchor?.() &&
+				window.piUi.messageScroll.captureAnchor() &&
 				@post('/messages/older', { filterSignals: { include: /^$/ } })
 			"
-			data-on-intersect="window.piUiCaptureMessagesAnchor?.() && @post('/messages/older', { filterSignals: { include: /^$/ } })"
+			data-on-intersect="window.piUi.messageScroll.captureAnchor() && @post('/messages/older', { filterSignals: { include: /^$/ } })"
 			aria-hidden="true"
 		/>
 	);

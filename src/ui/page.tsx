@@ -1,3 +1,4 @@
+import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { renderCommandMenu } from "./command-menu.tsx";
@@ -26,6 +27,9 @@ export function renderPage(state: AppRenderSnapshot): string {
 				: state.sessionTransition.targetPath,
 		_sessionLoading: false,
 		_sessionTarget: "",
+		_filePickerOpen: false,
+		_slashPickerOpen: false,
+		fileQuery: "",
 		isDraggingFile: false,
 		sessionPath: "",
 		sessionDeletePath: "",
@@ -51,7 +55,7 @@ export function renderPage(state: AppRenderSnapshot): string {
 				<link rel="stylesheet" href="/app.css" />
 				<script src="/basecoat.js" defer></script>
 				<script type="module" src="/vendor/datastar.js"></script>
-				<script type="module" src="/app.js"></script>
+				<script type="module" src="/app/main.js"></script>
 				{state.debugUi && (
 					<script
 						type="module"
@@ -63,23 +67,25 @@ export function renderPage(state: AppRenderSnapshot): string {
 				class="h-full overflow-hidden"
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
+				data-files-import-endpoint={endpoints.filesImport}
+				data-display-refresh-endpoint={endpoints.displayRefresh}
 				data-signals={initialSignals}
-				data-on:dragenter__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
+				data-on:dragenter__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 					evt.preventDefault();
-					$isDraggingFile = window.piUiEnterFileDrag?.() ?? true;
+					$isDraggingFile = window.piUi.fileTransfer.enterDrag();
 				}`}
-				data-on:dragleave__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
-					$isDraggingFile = window.piUiLeaveFileDrag?.() ?? false;
+				data-on:dragleave__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
+					$isDraggingFile = window.piUi.fileTransfer.leaveDrag();
 				}`}
-				data-on:dragover__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
+				data-on:dragover__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 					evt.preventDefault();
 					evt.dataTransfer.dropEffect = 'copy';
 				}`}
-				data-on:drop__window={`if (window.piUiHasTransferredFiles?.(evt.dataTransfer)) {
+				data-on:drop__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 					evt.preventDefault();
 					$isDraggingFile = false;
-					window.piUiResetFileDrag?.();
-					window.piUiInsertTransferredFiles?.(evt.dataTransfer);
+					window.piUi.fileTransfer.resetDrag();
+					window.piUi.fileTransfer.insert(evt.dataTransfer);
 				}`}
 			>
 				{state.debugUi && <datastar-inspector />}

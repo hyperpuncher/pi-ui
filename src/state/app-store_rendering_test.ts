@@ -327,7 +327,7 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 	assertEqual(state.activityText, "disconnected");
 });
 
-Deno.test("scripts from one commit execute in one script patch", async () => {
+Deno.test("component morphs need no server refresh script", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -343,9 +343,9 @@ Deno.test("scripts from one commit execute in one script patch", async () => {
 			{ flush: true },
 		);
 		const output = await readUntil(reader, (text) =>
-			text.includes('<script data-effect="el.remove()">'),
+			text.includes('"thinkingLevel":"high"'),
 		);
-		assertEqual(count(output, '<script data-effect="el.remove()">'), 1);
+		assertEqual(count(output, '<script data-effect="el.remove()">'), 0);
 	} finally {
 		controller.abort();
 	}

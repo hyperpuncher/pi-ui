@@ -1,23 +1,28 @@
+import type { FileSuggestion } from "../server/file-search.ts";
 import type {
 	AppRenderSnapshot,
 	AppSessionSummary,
 	AppSlashCommand,
 } from "../state/app-store.ts";
 import { formatHomePath } from "../utils/workspace.ts";
+import {
+	PickerEmpty,
+	PickerList,
+	PickerMetadata,
+	PickerRow,
+} from "./picker-components.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 
 export function renderSlashPicker(state: AppRenderSnapshot): string {
 	return (
 		<div id="slash-picker">
-			<ul class="max-h-72 list-none overflow-y-auto p-1">
+			<PickerList id="slash-picker-list">
 				{state.slashCommands.length === 0 ? (
-					<li class="text-muted-foreground px-3 py-4 text-center text-sm">
-						No prompts or skills found.
-					</li>
+					<PickerEmpty>No prompts or skills found.</PickerEmpty>
 				) : (
 					state.slashCommands.map(renderSlashRow)
 				)}
-			</ul>
+			</PickerList>
 		</div>
 	) as string;
 }
@@ -27,11 +32,22 @@ function renderSlashRow(item: AppSlashCommand): string {
 	const haystack = `${item.name} ${item.description} ${item.source}`.toLowerCase();
 	const commandText = `${label} `;
 	return (
-		<li data-slash-row data-slash-haystack={haystack}>
+		<li
+			role="option"
+			tabindex="-1"
+			aria-selected="false"
+			data-slash-row
+			data-show={`
+				$prompt.startsWith('/') &&
+				!$prompt.includes(' ') &&
+				(${JSON.stringify(haystack)}.includes($prompt.slice(1).toLowerCase()))
+			`}
+		>
 			<button
 				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
 				type="button"
-				data-slash-command={commandText}
+				data-picker-kind="slash"
+				data-picker-value={commandText}
 			>
 				<span class="min-w-0">
 					<span class="block truncate">
@@ -48,9 +64,7 @@ function renderSlashRow(item: AppSlashCommand): string {
 						{item.description || item.source}
 					</span>
 				</span>
-				<span class="badge" data-variant="secondary" safe>
-					{item.source}
-				</span>
+				<PickerMetadata text={item.source} />
 			</button>
 		</li>
 	) as string;
@@ -101,6 +115,30 @@ export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
 					),
 				)}
 			</div>
+		</div>
+	) as string;
+}
+
+export function renderFilePickerResults(items: readonly FileSuggestion[]): string {
+	return (
+		<div id="file-picker-results" aria-live="polite">
+			<PickerList id="file-picker-list">
+				{items.length === 0 ? (
+					<PickerEmpty>No files found.</PickerEmpty>
+				) : (
+					[...items]
+						.reverse()
+						.map((item) => (
+							<PickerRow
+								kind="file"
+								value={item.value}
+								label={item.label}
+								description={item.description}
+								metadata={item.isDirectory ? "dir" : "file"}
+							/>
+						))
+				)}
+			</PickerList>
 		</div>
 	) as string;
 }
