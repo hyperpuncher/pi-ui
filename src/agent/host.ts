@@ -1777,7 +1777,11 @@ function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] 
 			typeof record.timeout === "number" ? ` timeout ${record.timeout}s` : "";
 		return [
 			{ text: "$ ", tone: "accent", mono: true },
-			{ text: stringValue(record.command) || "...", mono: true, highlight: "bash" },
+			{
+				text: formatShellCommandDisplay(stringValue(record.command)) || "...",
+				mono: true,
+				highlight: "bash",
+			},
 			...(timeout ? [{ text: timeout, tone: "muted", mono: true } as const] : []),
 		];
 	}
@@ -1790,6 +1794,74 @@ function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] 
 			? [{ text: toolRange(args), tone: "warning", mono: true } as const]
 			: []),
 	];
+}
+
+function formatShellCommandDisplay(command: string): string {
+	if (command.length <= 90) return command;
+
+	let result = "";
+	let quote: "'" | '"' | "`" | undefined;
+	let escaped = false;
+	let blockDepth = 0;
+	const continuation = () => "\n  ";
+
+	for (let index = 0; index < command.length; index++) {
+		const char = command[index];
+		if (escaped) {
+			result += char;
+			escaped = false;
+			continue;
+		}
+		if (char === "\\" && quote !== "'") {
+			result += char;
+			escaped = true;
+			continue;
+		}
+		if (quote) {
+			result += char;
+			if (char === quote) quote = undefined;
+			continue;
+		}
+		if (char === "'" || char === '"' || char === "`") {
+			quote = char;
+			result += char;
+			continue;
+		}
+
+		const pair = command.slice(index, index + 2);
+		if (pair === "&&" || pair === "||") {
+			result = `${result.trimEnd()} ${pair}${continuation()}`;
+			index++;
+			while (command[index + 1] === " ") index++;
+			continue;
+		}
+		if (char === "|") {
+			result = `${result.trimEnd()} |${continuation()}`;
+			while (command[index + 1] === " ") index++;
+			continue;
+		}
+		if (char === "{" && command[index - 1] !== "$") {
+			result += `{`;
+			blockDepth++;
+			result += continuation();
+			while (command[index + 1] === " ") index++;
+			continue;
+		}
+		if (char === "}" && blockDepth > 0) {
+			blockDepth--;
+			result = `${result.trimEnd()}\n  }`;
+			while (command[index + 1] === " ") index++;
+			continue;
+		}
+		if (char === ";") {
+			result = result.trimEnd() + continuation();
+			while (command[index + 1] === " ") index++;
+			continue;
+		}
+		result += char;
+	}
+
+	return result.trimEnd();
 }
 
 function toolTitle(

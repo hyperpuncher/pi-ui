@@ -260,6 +260,7 @@ function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	const classes = [];
 	if (index === 0 && !part.mono) classes.push("mr-2");
 	if (part.mono) classes.push("font-mono");
+	if (part.highlight === "bash") classes.push("whitespace-pre-wrap");
 	if (part.tone === "accent") classes.push("text-primary");
 	if (part.tone === "warning") classes.push("text-amber-600 dark:text-yellow-300");
 	if (part.tone === "muted") classes.push("text-muted-foreground");
