@@ -46,11 +46,12 @@ import {
 	type SessionEventStateSink,
 	type SessionEventToolState,
 } from "./session-event-reducer.ts";
+import { executeSessionResume } from "./session-resume.ts";
 import {
 	SessionTransitionController,
 	type SessionTransitionResult,
 } from "./session-transition-controller.ts";
-import { classifySessionLeave, transitionRuntime } from "./session-transition.ts";
+import { transitionRuntime } from "./session-transition.ts";
 
 const bashPreviewLines = 4;
 const bashCompactThreshold = 7;
@@ -243,7 +244,7 @@ export class AgentHost {
 	}
 
 	activate(): void {
-		this.bindSessionState({ refreshSessions: false });
+		this.bindSessionState({ syncSessions: false });
 		if (!this.preparedSessions.ok) {
 			this.state.appendMessage(
 				"system",
@@ -383,7 +384,7 @@ export class AgentHost {
 			}
 		}
 		this.state.resetChat();
-		await this.bindSession();
+		await this.bindSession({ refreshSessions: true });
 		return true;
 	}
 
@@ -454,6 +455,7 @@ export class AgentHost {
 				this.backgroundSessions.delete(targetSessionFile);
 			}
 			this.state.removeSession(targetSessionFile);
+			await this.refreshSessions();
 			return true;
 		} catch (error) {
 			this.state.appendMessage(
@@ -484,57 +486,50 @@ export class AgentHost {
 	}
 
 	private async resumeSessionTransition(sessionPath: string): Promise<boolean> {
-		if (!sessionPath.trim()) {
-			return false;
-		}
-		const sessionManager = SessionManager.open(sessionPath);
-		const targetSessionFile = sessionManager.getSessionFile();
-		if (!targetSessionFile) {
-			return false;
-		}
-		const backgroundSession = this.backgroundSessions.get(targetSessionFile);
-		if (backgroundSession) {
-			this.backgroundSessions.delete(targetSessionFile);
-			await this.activateRuntime(backgroundSession);
-			return true;
-		}
-
-		if (
-			this.runtime.session.isStreaming ||
-			!this.runtime.session.sessionManager.isPersisted()
-		) {
-			if (this.runtime.session.isStreaming) {
-				const action = classifySessionLeave({
-					persisted: this.runtime.session.sessionManager.isPersisted(),
-					running: true,
-					requiresNewRuntime: true,
-				});
+		return await executeSessionResume(sessionPath, {
+			state: () => ({
+				streaming: this.runtime.session.isStreaming,
+				persisted: this.runtime.session.sessionManager.isPersisted(),
+			}),
+			findBackground: (path) => this.backgroundSessions.get(path),
+			removeBackground: (path) => this.backgroundSessions.delete(path),
+			activateBackground: (session) => this.activateRuntime(session),
+			openSession: (path) => {
+				const manager = SessionManager.open(path);
+				sessionPerformance.recordSessionOpen();
+				return manager;
+			},
+			replaceRuntime: async (sessionManager, action) => {
 				if (action === "background") {
 					this.backgroundCurrentRuntime();
-				} else {
+				} else if (action === "discard") {
 					await this.discardTemporaryRuntime();
+				} else {
+					this.unbindSession();
+					this.runtime.dispose();
 				}
-			} else {
-				this.unbindSession();
-				this.runtime.dispose();
-			}
-			this.runtime = await sessionPerformance.measure("runtimeSwitchCreate", () =>
-				createAgentSessionRuntime(this.runtimeFactory, {
-					cwd: sessionManager.getCwd(),
-					agentDir: getAgentDir(),
-					sessionManager,
-				}),
-			);
-			this.bindRuntimeCallbacks(this.runtime);
-			await this.bindSession();
-			this.loadCurrentSessionMessages();
-			return true;
-		}
-
-		const result = await sessionPerformance.measure("runtimeSwitchCreate", () =>
-			this.runtime.switchSession(sessionPath),
-		);
-		return !result.cancelled;
+				this.runtime = await sessionPerformance.measure(
+					"runtimeSwitchCreate",
+					() =>
+						createAgentSessionRuntime(this.runtimeFactory, {
+							cwd: sessionManager.getCwd(),
+							agentDir: getAgentDir(),
+							sessionManager,
+						}),
+				);
+				this.bindRuntimeCallbacks(this.runtime);
+				await this.bindSession();
+				this.loadCurrentSessionMessages();
+			},
+			switchSession: async (path) => {
+				const result = await sessionPerformance.measure(
+					"runtimeSwitchCreate",
+					() => this.runtime.switchSession(path),
+				);
+				if (!result.cancelled) sessionPerformance.recordSessionOpen();
+				return result;
+			},
+		});
 	}
 
 	openTree(): boolean {
@@ -833,7 +828,7 @@ export class AgentHost {
 			this.toolStartedAt.set(key, value);
 		}
 		this.bindRuntimeCallbacks(this.runtime);
-		this.bindSessionState({ resetToolState: false });
+		this.bindSessionState({ resetToolState: false, syncSessions: false });
 		if (this.runtime.session.isStreaming) {
 			this.state.restoreChat(backgroundSession.state.snapshotChat());
 		} else {
@@ -857,7 +852,11 @@ export class AgentHost {
 	}
 
 	private bindSessionState(
-		options: { resetToolState?: boolean; refreshSessions?: boolean } = {},
+		options: {
+			resetToolState?: boolean;
+			refreshSessions?: boolean;
+			syncSessions?: boolean;
+		} = {},
 	): void {
 		const session = this.runtime.session;
 		const resetToolState = options.resetToolState ?? true;
@@ -876,7 +875,10 @@ export class AgentHost {
 		this.syncSlashCommands();
 		this.syncUsage();
 		this.refreshCodexUsage(true);
-		if (options.refreshSessions !== false) {
+		if (options.syncSessions !== false) {
+			this.syncBackgroundStatuses();
+		}
+		if (options.refreshSessions === true) {
 			void this.refreshSessions();
 		}
 	}

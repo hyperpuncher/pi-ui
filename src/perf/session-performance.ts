@@ -1,5 +1,8 @@
 const utf8Encoder = new TextEncoder();
 
+// SDK 0.80.6 loads entries once for the header and again for manager state.
+export const sdkInternalReadsPerSessionOpenEstimate = 2;
+
 export const sessionPerformanceSpanNames = [
 	"sessionOpen",
 	"runtimeSwitchCreate",
@@ -18,6 +21,8 @@ export type SessionPerformanceSnapshot = {
 		SessionPerformanceSpanName,
 		{ count: number; totalMs: number; maxMs: number }
 	>;
+	logicalSessionOpenCount: number;
+	sdkInternalReadsPerSessionOpenEstimate: number;
 	fatMorphCount: number;
 	targetedMessagePatchCount: number;
 	bytesRendered: number;
@@ -41,6 +46,7 @@ function emptySpans(): SessionPerformanceSnapshot["spans"] {
 
 class SessionPerformanceCollector {
 	private spans = emptySpans();
+	private logicalSessionOpenCount = 0;
 	private fatMorphCount = 0;
 	private targetedMessagePatchCount = 0;
 	private bytesRendered = 0;
@@ -52,6 +58,7 @@ class SessionPerformanceCollector {
 
 	reset(): void {
 		this.spans = emptySpans();
+		this.logicalSessionOpenCount = 0;
 		this.fatMorphCount = 0;
 		this.targetedMessagePatchCount = 0;
 		this.bytesRendered = 0;
@@ -62,6 +69,8 @@ class SessionPerformanceCollector {
 		return {
 			enabled: this.enabled,
 			spans: structuredClone(this.spans),
+			logicalSessionOpenCount: this.logicalSessionOpenCount,
+			sdkInternalReadsPerSessionOpenEstimate,
 			fatMorphCount: this.fatMorphCount,
 			targetedMessagePatchCount: this.targetedMessagePatchCount,
 			bytesRendered: this.bytesRendered,
@@ -129,6 +138,11 @@ class SessionPerformanceCollector {
 			this.transition.firstPatchAt - this.transition.startedAt,
 		);
 		this.finishTransitionIfReady();
+	}
+
+	recordSessionOpen(): void {
+		if (!this.enabled) return;
+		this.logicalSessionOpenCount += 1;
 	}
 
 	recordFatMorph(html: string): void {

@@ -1,5 +1,5 @@
 import { sessionTransitionResponse } from "../server/app.ts";
-import type { AppState } from "../state/app-state.ts";
+import { AppState } from "../state/app-state.ts";
 import { renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker } from "../ui/pickers.tsx";
 import {
@@ -184,6 +184,33 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	if (!recent.includes("evt.ctrlKey")) throw new Error("Missing keyboard resume");
 });
 
+Deno.test("session picker command state refreshes after a transition", async () => {
+	const state = new AppState();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		state.setSessionTransition({
+			status: "loading",
+			generation: 1,
+			targetPath: "/sessions/one.jsonl",
+		});
+		state.setSessions([]);
+		state.setSessionTransition({ status: "idle", generation: 1 });
+
+		const output = await readUntil(response, (text) => {
+			const refreshes = text.match(/component\.refresh/g)?.length ?? 0;
+			return refreshes >= 2 && text.includes('"sessionTransitionLoading":false');
+		});
+		const idleSignal = output.lastIndexOf('"sessionTransitionLoading":false');
+		const enabledRefresh = output.lastIndexOf("component.refresh");
+		if (idleSignal === -1 || enabledRefresh < idleSignal) {
+			throw new Error("Session command refreshed before its idle signal");
+		}
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("session transition responses use meaningful statuses", () => {
 	const cases = [
 		["success", 204],
@@ -198,6 +225,23 @@ Deno.test("session transition responses use meaningful statuses", () => {
 		}
 	}
 });
+
+async function readUntil(
+	response: Response,
+	complete: (text: string) => boolean,
+): Promise<string> {
+	const reader = response.body?.getReader();
+	if (!reader) throw new Error("Missing response body");
+	const decoder = new TextDecoder();
+	let output = "";
+	for (let index = 0; index < 30; index++) {
+		const chunk = await reader.read();
+		if (chunk.done) break;
+		output += decoder.decode(chunk.value, { stream: true });
+		if (complete(output)) return output;
+	}
+	throw new Error("Expected transition stream output was not received");
+}
 
 function assertEvents(actual: string[], expected: string[]): void {
 	if (actual.join(",") !== expected.join(",")) {

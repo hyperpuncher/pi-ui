@@ -676,8 +676,14 @@ export class AppState {
 
 	setSessionTransition(sessionTransition: SessionTransitionState): void {
 		this.sessionTransition = sessionTransition;
-		this.broadcast();
+		// Session rows are refreshed while disabled during a transition. Re-enable
+		// their Basecoat command state only after the idle/error signal is applied.
 		this.broadcastSignals();
+		this.broadcast(
+			sessionTransition.status === "loading"
+				? undefined
+				: refreshBasecoatComponentsScript("#session-dialog .command"),
+		);
 	}
 
 	private scheduleStreamingPatch(): void {

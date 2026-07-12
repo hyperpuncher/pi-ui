@@ -32,10 +32,13 @@ Deno.test("performance snapshots contain durations and counts but no content", (
 		sessionPerformance.reset();
 		const end = sessionPerformance.startSpan("toolEnhancement");
 		end();
+		sessionPerformance.recordSessionOpen();
 		sessionPerformance.recordFatMorph("x".repeat(41));
 		sessionPerformance.recordTargetedMessagePatch("x");
 		const serialized = JSON.stringify(sessionPerformance.snapshot());
 		assertIncludes(serialized, '"toolEnhancement":{"count":1');
+		assertIncludes(serialized, '"logicalSessionOpenCount":1');
+		assertIncludes(serialized, '"sdkInternalReadsPerSessionOpenEstimate":2');
 		assertIncludes(serialized, '"bytesRendered":42');
 		for (const sensitive of ["secret prompt", "/home/user/session.jsonl", "<main>"]) {
 			assertNotIncludes(serialized, sensitive);

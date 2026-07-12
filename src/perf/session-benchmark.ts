@@ -149,6 +149,15 @@ if (import.meta.main) {
 		});
 	}
 	console.log(
-		JSON.stringify({ type: "pi-ui-session-benchmark", samples: 3, fixtures }),
+		JSON.stringify({
+			type: "pi-ui-session-benchmark",
+			samples: 3,
+			sessionLoading: {
+				logicalOpenCountInstrumented: true,
+				sdkInternalReadsPerSessionOpenEstimate:
+					sessionPerformance.snapshot().sdkInternalReadsPerSessionOpenEstimate,
+			},
+			fixtures,
+		}),
 	);
 }
