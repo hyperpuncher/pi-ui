@@ -1,4 +1,4 @@
-import type { AppSessionSummary, AppState } from "../state/app-state.ts";
+import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
 import { renderSessionPicker } from "../ui/pickers.tsx";
 import {
 	abortRunningBackgroundSession,
@@ -73,7 +73,7 @@ Deno.test("session picker escapes titles and renders background controls", () =>
 			{ ...completed, backgroundStatus: "completed" },
 		],
 		currentSessionPath: ordinary.path,
-	} as AppState);
+	} as AppStore);
 
 	assertIncludes(html, "&lt;script>alert(&#34;x&#34;)&lt;/script>");
 	assertIncludes(html, 'data-background-status="running"');

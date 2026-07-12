@@ -1,4 +1,4 @@
-import type { AppState } from "../state/app-state.ts";
+import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
@@ -8,7 +8,7 @@ import { renderPromptBox } from "./prompt-box.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 
-export function renderPage(state: AppState): string {
+export function renderPage(state: AppRenderSnapshot): string {
 	const initialSignals = JSON.stringify({
 		prompt: "",
 		model: state.currentModel ?? "",

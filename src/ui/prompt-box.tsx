@@ -1,9 +1,13 @@
-import type { AppState, AppThinkingLevel, AppUsage } from "../state/app-state.ts";
+import type {
+	AppRenderSnapshot,
+	AppThinkingLevel,
+	AppUsage,
+} from "../state/app-store.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { renderSlashPicker } from "./pickers.tsx";
 
-export function renderPromptBox(state: AppState): string {
+export function renderPromptBox(state: AppRenderSnapshot): string {
 	return (
 		<div
 			id="prompt-box"
@@ -97,11 +101,11 @@ export function renderPromptBox(state: AppState): string {
 	) as string;
 }
 
-export function renderPromptQueue(state: AppState): string {
+export function renderPromptQueue(state: AppRenderSnapshot): string {
 	return (<div id="prompt-queue">{renderQueuedMessages(state)}</div>) as string;
 }
 
-function renderQueuedMessages(state: AppState): string {
+function renderQueuedMessages(state: AppRenderSnapshot): string {
 	const items = [
 		...state.queuedSteeringMessages.map((text) => ["Steering", text] as const),
 		...state.queuedFollowUpMessages.map((text) => ["Follow-up", text] as const),
@@ -132,7 +136,7 @@ type PromptToolbarAction =
 	| "files"
 	| "sessions";
 
-export function renderPromptToolbar(state: AppState): string {
+export function renderPromptToolbar(state: AppRenderSnapshot): string {
 	return (
 		<div
 			id="prompt-toolbar"
@@ -340,7 +344,7 @@ function openSessionDialogAction(): string {
 	return "document.getElementById('session-dialog')?.showModal()";
 }
 
-export function renderPromptAction(state: AppState): string {
+export function renderPromptAction(state: AppRenderSnapshot): string {
 	if (state.activityText) {
 		return (
 			<button
@@ -391,7 +395,7 @@ export function renderPromptAction(state: AppState): string {
 	) as string;
 }
 
-export function renderPromptStatus(state: AppState): string {
+export function renderPromptStatus(state: AppRenderSnapshot): string {
 	return (
 		<span
 			id="prompt-status"
@@ -538,7 +542,7 @@ export function loaderIcon() {
 	);
 }
 
-export function renderWorkspacePicker(state: AppState): string {
+export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 	const label = workspaceLabel(state.workspacePath);
 	return (
 		<button
@@ -565,7 +569,7 @@ export function renderWorkspacePicker(state: AppState): string {
 	) as string;
 }
 
-export function renderThinkingPicker(state: AppState): string {
+export function renderThinkingPicker(state: AppRenderSnapshot): string {
 	const current = state.thinkingLevel;
 	return (
 		<div id="thinking-picker" class="hidden min-w-0 sm:block">
@@ -688,7 +692,7 @@ function workspaceLabel(path: string): string {
 		: `${parts.at(-2)}/${parts.at(-1)}`;
 }
 
-export function renderModelPicker(state: AppState): string {
+export function renderModelPicker(state: AppRenderSnapshot): string {
 	const current = state.models.find(
 		(model) => `${model.provider}/${model.id}` === state.currentModel,
 	);
@@ -833,6 +837,6 @@ export function renderModelPicker(state: AppState): string {
 	) as string;
 }
 
-function modelTriggerLabel(model: AppState["models"][number]): string {
+function modelTriggerLabel(model: AppRenderSnapshot["models"][number]): string {
 	return model.id;
 }

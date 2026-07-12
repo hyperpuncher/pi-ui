@@ -1,11 +1,13 @@
 import { sessionTransitionResponse } from "../server/app.ts";
-import { AppState } from "../state/app-state.ts";
+import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { AppStore } from "../state/app-store.ts";
 import { renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker } from "../ui/pickers.tsx";
 import {
 	renderSessionTransition,
 	resumeSessionAction,
 } from "../ui/session-transition.tsx";
+import { UiRenderer } from "../ui/ui-renderer.ts";
 import {
 	classifySessionLeave,
 	transitionRuntime,
@@ -126,7 +128,7 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 	const targetPath = '<session name="bad">';
 	const loading = renderSessionTransition({
 		sessionTransition: { status: "loading", generation: 1, targetPath },
-	} as AppState);
+	} as AppStore);
 	if (!loading.includes('role="status"')) throw new Error("Missing loading status");
 	if (!loading.includes("&lt;session name=&#34;bad&#34;>")) {
 		throw new Error("Target path was not escaped");
@@ -140,7 +142,7 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 			targetPath,
 			message: "Try another session.",
 		},
-	} as AppState);
+	} as AppStore);
 	if (!error.includes('role="alert"') || !error.includes("Try another session.")) {
 		throw new Error("Missing recoverable transition error");
 	}
@@ -173,7 +175,7 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	const picker = renderSessionPicker({
 		sessions: [session],
 		currentSessionPath: undefined,
-	} as AppState);
+	} as AppStore);
 	for (const html of [recent, picker]) {
 		if (!html.includes("/sessions/resume")) throw new Error("Missing resume action");
 		if (!html.includes("_sessionLoading")) throw new Error("Missing indicator");
@@ -185,10 +187,11 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 });
 
 Deno.test("session picker command state refreshes after a transition", async () => {
-	const state = new AppState();
+	const state = new AppStore();
+	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
+		const response = renderer.createStream(controller.signal);
 		state.setSessionTransition({
 			status: "loading",
 			generation: 1,

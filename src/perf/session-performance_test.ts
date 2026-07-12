@@ -1,4 +1,6 @@
-import { AppState } from "../state/app-state.ts";
+import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { AppStore } from "../state/app-store.ts";
+import { UiRenderer } from "../ui/ui-renderer.ts";
 import {
 	collectElementPatches,
 	enhancementMessageCount,
@@ -231,10 +233,11 @@ Deno.test("50-message restore emits fallback once and targets enhancements", asy
 	const previous = Deno.env.get("PI_UI_PERF");
 	Deno.env.set("PI_UI_PERF", "1");
 	sessionPerformance.reset();
-	const state = new AppState();
+	const state = new AppStore();
+	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
+		const response = renderer.createStream(controller.signal);
 		const messages = generatedSessionFixture(50);
 		state.replaceMessages(messages);
 		const markdownPatches = markdownMessageCount(messages);

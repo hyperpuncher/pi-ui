@@ -1,6 +1,6 @@
-import type { AppState } from "../state/app-state.ts";
+import type { AppRenderSnapshot } from "../state/app-store.ts";
 
-export function renderDebugOverlay(state: AppState): string {
+export function renderDebugOverlay(state: AppRenderSnapshot): string {
 	if (!state.debugUi) return "";
 
 	return (

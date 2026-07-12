@@ -1,4 +1,4 @@
-import type { AppSessionSummary, BackgroundSessionStatus } from "../state/app-state.ts";
+import type { AppSessionSummary, BackgroundSessionStatus } from "../state/app-store.ts";
 
 export function mergeBackgroundSessionStatuses(
 	sessions: readonly AppSessionSummary[],

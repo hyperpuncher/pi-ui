@@ -6,11 +6,13 @@ import {
 	SessionTransitionController,
 	type SessionTransitionResult,
 } from "../agent/session-transition-controller.ts";
-import { AppState } from "../state/app-state.ts";
+import { AppStore } from "../state/app-store.ts";
 import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { renderPage } from "../ui/page.tsx";
 import { renderTreePicker } from "../ui/tree-picker.tsx";
+import { UiRenderer } from "../ui/ui-renderer.ts";
 import { expandHomePath } from "../utils/workspace.ts";
+import { DatastarClientHub } from "./datastar-client-hub.ts";
 import {
 	elementsAndScriptResponse,
 	readSignals,
@@ -34,7 +36,8 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const preloadHighlighterPromise = preloadPierreHighlighter();
-	const state = new AppState();
+	const state = new AppStore();
+	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const sessionTransitions = new SessionTransitionController((transition) =>
 		state.setSessionTransition(transition),
 	);
@@ -75,11 +78,11 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			const url = new URL(request.url);
 			try {
 				if (request.method === "GET" && url.pathname === "/") {
-					return html(renderPage(state));
+					return html(renderPage(state.snapshot()));
 				}
 
 				if (request.method === "GET" && url.pathname === "/stream") {
-					return state.createStream(request.signal);
+					return renderer.createStream(request.signal);
 				}
 
 				if (request.method === "POST" && url.pathname === "/display-refresh") {
@@ -351,7 +354,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	};
 }
 
-function installUnhandledErrorReporter(state: AppState): void {
+function installUnhandledErrorReporter(state: AppStore): void {
 	addEventListener("unhandledrejection", (event) => {
 		event.preventDefault();
 		state.appendMessage("system", formatError(event.reason));
@@ -363,7 +366,7 @@ function installUnhandledErrorReporter(state: AppState): void {
 }
 
 async function switchWorkspace(
-	state: AppState,
+	state: AppStore,
 	host: AgentHost | undefined,
 	fileSearch: FileSearchHost,
 	workspacePath: string,
@@ -417,10 +420,14 @@ async function switchWorkspace(
 }
 
 function treeOpenResponse(
-	state: AppState,
+	state: AppStore,
 	signals: Record<string, string | boolean> = {},
 ): Response {
-	return elementsAndScriptResponse(renderTreePicker(state), openTreeScript(), signals);
+	return elementsAndScriptResponse(
+		renderTreePicker(state.snapshot()),
+		openTreeScript(),
+		signals,
+	);
 }
 
 function openTreeScript(): string {

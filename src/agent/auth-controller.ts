@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
-import type { AppAuthDialog, AppAuthProvider, AppState } from "../state/app-state.ts";
+import type { AppAuthDialog, AppAuthProvider, AppStore } from "../state/app-store.ts";
 
 type AuthInputResolver = (value: string | undefined) => void;
 
@@ -18,7 +18,7 @@ export class AuthController {
 
 	constructor(
 		private readonly getRuntime: () => AgentSessionRuntime,
-		private readonly state: AppState,
+		private readonly state: AppStore,
 		private readonly onAuthChanged: () => void,
 	) {}
 

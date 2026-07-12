@@ -5,7 +5,7 @@ import type {
 	AppMessage,
 	AppMessageTitlePart,
 	AppSessionSummary,
-} from "../state/app-state.ts";
+} from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { loaderIcon } from "./prompt-box.tsx";
@@ -15,10 +15,10 @@ const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
 
 export function renderMessages(
-	messages: AppMessage[],
+	messages: readonly AppMessage[],
 	emptyHint: AppKeybindHint,
 	hasOlderMessages = false,
-	sessions: AppSessionSummary[] = [],
+	sessions: readonly AppSessionSummary[] = [],
 	sessionTransitionVisible = false,
 ): string {
 	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
@@ -47,7 +47,10 @@ export function renderMessages(
 	) as string;
 }
 
-function renderEmptyMessages(emptyHint: AppKeybindHint, sessions: AppSessionSummary[]) {
+function renderEmptyMessages(
+	emptyHint: AppKeybindHint,
+	sessions: readonly AppSessionSummary[],
+) {
 	return (
 		<div class="text-muted-foreground grid min-h-[calc(100vh-18rem)] place-items-center text-center">
 			<div class="w-full max-w-xl">

@@ -15,7 +15,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { sessionPerformance } from "../perf/session-performance.ts";
-import { AppState } from "../state/app-state.ts";
+import { AppStore } from "../state/app-store.ts";
 import type {
 	AppMessageInput,
 	AppMessageTitlePart,
@@ -24,7 +24,7 @@ import type {
 	AppTreeEntry,
 	AppUsage,
 	BackgroundSessionStatus,
-} from "../state/app-state.ts";
+} from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { formatDateTime } from "../utils/locale.ts";
@@ -166,7 +166,7 @@ export class AgentHost {
 
 	private constructor(
 		private runtime: AgentSessionRuntime,
-		private readonly state: AppState,
+		private readonly state: AppStore,
 		private readonly runtimeFactory: CreateAgentSessionRuntimeFactory,
 		private readonly preparedSessions: PreparedSessionList,
 		private readonly activationOptions: AgentHostActivationOptions,
@@ -186,7 +186,7 @@ export class AgentHost {
 	}
 
 	static async create(
-		state: AppState,
+		state: AppStore,
 		cwd = defaultWorkspacePath(),
 		options: AgentHostActivationOptions = {},
 	): Promise<AgentHost> {
@@ -196,7 +196,7 @@ export class AgentHost {
 	}
 
 	static async prepare(
-		state: AppState,
+		state: AppStore,
 		cwd = defaultWorkspacePath(),
 		options: AgentHostActivationOptions = {},
 	): Promise<AgentHost> {
@@ -1410,7 +1410,7 @@ export class AgentHost {
 
 	private loadRuntimeMessages(
 		runtime: AgentSessionRuntime,
-		state: AppState | TranscriptState,
+		state: AppStore | TranscriptState,
 	): void {
 		const branch = runtime.session.sessionManager.getBranch();
 		const pendingToolCalls = new Map<string, { name: string; args: unknown }>();

@@ -1,6 +1,6 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 
-import type { AppMessage, AppMessageOptions } from "../state/app-state.ts";
+import type { AppMessage, AppMessageOptions } from "../state/app-store.ts";
 import {
 	reduceSessionEvent,
 	type SessionEventReducerContext,

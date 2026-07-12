@@ -1,6 +1,9 @@
 import { collectElementPatches } from "../perf/session-benchmark.ts";
+import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
 import { renderPage } from "../ui/page.tsx";
-import { type AppMessageInput, AppState } from "./app-state.ts";
+import { UiRenderer } from "../ui/ui-renderer.ts";
+import { type AppMessageInput, AppStore } from "./app-store.ts";
 import { TranscriptState } from "./transcript-state.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
@@ -23,7 +26,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 			}),
 		);
 	};
-	const state = new AppState({
+	const state = createState({
 		enhancementConcurrency: 2,
 		renderMarkdownFinal: () => render("markdown"),
 		renderCode: () => render("tool"),
@@ -69,7 +72,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 
 Deno.test("session loading clears after fallback and before enhancement", async () => {
 	let resolveEnhancement: ((html: string) => void) | undefined;
-	const state = new AppState({
+	const state = createState({
 		renderMarkdownFinal: () =>
 			new Promise<string>((resolve) => (resolveEnhancement = resolve)),
 	});
@@ -116,7 +119,7 @@ Deno.test("session loading clears after fallback and before enhancement", async 
 
 Deno.test("loading older pages enqueues only newly revealed messages", async () => {
 	let renderCount = 0;
-	const state = new AppState({
+	const state = createState({
 		renderMarkdownFinal: (text) => {
 			renderCount += 1;
 			return Promise.resolve(`<p>${text}</p>`);
@@ -134,7 +137,7 @@ Deno.test("loading older pages enqueues only newly revealed messages", async () 
 
 Deno.test("replacement discards stale enhancement completion", async () => {
 	const gates: Array<{ text: string; resolve: (html: string) => void }> = [];
-	const state = new AppState({
+	const state = createState({
 		enhancementConcurrency: 1,
 		renderMarkdownFinal: (text) =>
 			new Promise<string>((resolve) => gates.push({ text, resolve })),
@@ -155,7 +158,7 @@ Deno.test("replacement discards stale enhancement completion", async () => {
 
 Deno.test("oversized enhancement retains fallback until explicitly requested", async () => {
 	let renderCount = 0;
-	const state = new AppState({
+	const state = createState({
 		renderMarkdownFinal: (text) => {
 			renderCount += 1;
 			return Promise.resolve(`<p>${text.length}</p>`);
@@ -173,7 +176,7 @@ Deno.test("oversized enhancement retains fallback until explicitly requested", a
 });
 
 Deno.test("assistant completion immediately flushes newest streaming content", () => {
-	const state = new AppState();
+	const state = createState();
 	state.appendMessage("assistant", "first");
 	state.appendAssistantDelta(" **latest**");
 	state.finishAssistant();
@@ -192,7 +195,7 @@ Deno.test("running background transcript stays headless until activation", async
 	await settleMicrotasks();
 	assertEqual(enhancementCount, 0);
 
-	const foreground = new AppState({
+	const foreground = createState({
 		renderMarkdownFinal: (text) => {
 			enhancementCount += 1;
 			return Promise.resolve(`<p>${text}</p>`);
@@ -221,7 +224,7 @@ Deno.test("completed background transcript enhances only after activation", asyn
 	await settleMicrotasks();
 	assertEqual(enhancementCount, 0);
 
-	const foreground = new AppState({
+	const foreground = createState({
 		renderMarkdownFinal: () => {
 			enhancementCount += 1;
 			return Promise.resolve("<p>enhanced</p>");
@@ -233,7 +236,7 @@ Deno.test("completed background transcript enhances only after activation", asyn
 });
 
 Deno.test("enhancement errors retain the safe fallback", async () => {
-	const state = new AppState({
+	const state = createState({
 		renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
 	});
 	state.replaceMessages([markdownMessage("<b>fallback</b>")]);
@@ -244,7 +247,7 @@ Deno.test("enhancement errors retain the safe fallback", async () => {
 });
 
 Deno.test("nested state updates commit one fat morph and one signal patch", async () => {
-	const state = new AppState();
+	const state = createState();
 	const controller = new AbortController();
 	try {
 		const response = state.createStream(controller.signal);
@@ -280,7 +283,7 @@ Deno.test("nested state updates commit one fat morph and one signal patch", asyn
 });
 
 Deno.test("a thrown update still commits its completed mutations", async () => {
-	const state = new AppState();
+	const state = createState();
 	const controller = new AbortController();
 	try {
 		const response = state.createStream(controller.signal);
@@ -306,7 +309,7 @@ Deno.test("a thrown update still commits its completed mutations", async () => {
 });
 
 Deno.test("headless updates initialize one current view and tolerate disconnect", async () => {
-	const state = new AppState();
+	const state = createState();
 	state.setWorkspacePath("/tmp/headless");
 	const controller = new AbortController();
 	const response = state.createStream(controller.signal);
@@ -325,7 +328,7 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 });
 
 Deno.test("scripts from one commit execute in one script patch", async () => {
-	const state = new AppState();
+	const state = createState();
 	const controller = new AbortController();
 	try {
 		const response = state.createStream(controller.signal);
@@ -349,7 +352,7 @@ Deno.test("scripts from one commit execute in one script patch", async () => {
 });
 
 Deno.test("fat morphs refresh session picker current and background statuses", async () => {
-	const state = new AppState();
+	const state = createState();
 	const controller = new AbortController();
 	const first = {
 		path: "/sessions/first.jsonl",
@@ -404,8 +407,39 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 	}
 });
 
+Deno.test("complete fat view contains every server-owned dynamic root", () => {
+	const previous = Deno.env.get("PI_UI_DEBUG");
+	Deno.env.set("PI_UI_DEBUG", "1");
+	try {
+		const store = new AppStore();
+		const renderer = new UiRenderer(store, new DatastarClientHub());
+		const html = renderer.renderElements(store.snapshot());
+		for (const id of [
+			"messages",
+			"auth-dialog-content",
+			"prompt-action",
+			"prompt-queue",
+			"prompt-toolbar",
+			"prompt-status",
+			"workspace-picker",
+			"workspace-menu",
+			"session-menu",
+			"model-picker",
+			"thinking-picker",
+			"session-transition",
+			"debug-overlay",
+			"slash-picker",
+			"tree-picker",
+		])
+			assertIncludes(html, `id="${id}"`);
+	} finally {
+		if (previous === undefined) Deno.env.delete("PI_UI_DEBUG");
+		else Deno.env.set("PI_UI_DEBUG", previous);
+	}
+});
+
 Deno.test("fat morph markup preserves browser-owned interaction state", () => {
-	const state = new AppState();
+	const state = createState();
 	state.replaceMessages([
 		{
 			role: "compaction",
@@ -414,7 +448,7 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 		},
 	]);
 	state.flush();
-	const html = renderPage(state);
+	const html = renderPage(state.snapshot());
 
 	assertIncludes(html, 'id="prompt-input"');
 	assertIncludes(html, 'id="messages"');
@@ -423,6 +457,15 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'id="model-select"');
 	assertIncludes(html, 'data-preserve-attr="open"');
 });
+
+type TestStore = AppStore & { createStream(signal: AbortSignal): Response };
+
+function createState(options: MessageRenderServiceOptions = {}): TestStore {
+	const store = new AppStore() as TestStore;
+	const renderer = new UiRenderer(store, new DatastarClientHub(), options);
+	store.createStream = (signal) => renderer.createStream(signal);
+	return store;
+}
 
 function markdownMessage(text: string): AppMessageInput {
 	return { role: "assistant", text, timestamp };

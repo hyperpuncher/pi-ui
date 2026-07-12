@@ -1,8 +1,12 @@
-import type { AppSessionSummary, AppSlashCommand, AppState } from "../state/app-state.ts";
+import type {
+	AppRenderSnapshot,
+	AppSessionSummary,
+	AppSlashCommand,
+} from "../state/app-store.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 import { resumeSessionAction } from "./session-transition.tsx";
 
-export function renderSlashPicker(state: AppState): string {
+export function renderSlashPicker(state: AppRenderSnapshot): string {
 	return (
 		<div id="slash-picker">
 			<ul class="max-h-72 list-none overflow-y-auto p-1">
@@ -52,7 +56,7 @@ function renderSlashRow(item: AppSlashCommand): string {
 	) as string;
 }
 
-export function renderWorkspaceDialogMenu(state: AppState): string {
+export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
 	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
 	return (
 		<div
@@ -149,7 +153,7 @@ function uniqueWorkspaces(workspaces: string[]): string[] {
 	return unique;
 }
 
-export function renderSessionPicker(state: AppState): string {
+export function renderSessionPicker(state: AppRenderSnapshot): string {
 	return (
 		<div
 			role="menu"

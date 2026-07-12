@@ -1,4 +1,4 @@
-import type { AppState } from "../state/app-state.ts";
+import type { AppRenderSnapshot } from "../state/app-store.ts";
 
 export function resumeSessionAction(
 	path: string,
@@ -12,7 +12,7 @@ export function resumeSessionAction(
 	}`;
 }
 
-export function renderSessionTransition(state: AppState): string {
+export function renderSessionTransition(state: AppRenderSnapshot): string {
 	const transition = state.sessionTransition;
 	const targetPath = transition.status === "idle" ? "" : transition.targetPath;
 	return (

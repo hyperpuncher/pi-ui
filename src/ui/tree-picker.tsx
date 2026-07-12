@@ -1,6 +1,6 @@
-import type { AppState, AppTreeEntry } from "../state/app-state.ts";
+import type { AppRenderSnapshot, AppTreeEntry } from "../state/app-store.ts";
 
-export function renderTreePicker(state: AppState): string {
+export function renderTreePicker(state: AppRenderSnapshot): string {
 	return (
 		<div id="tree-picker">
 			<div class="border-border flex items-center gap-3 border-b px-3 py-2 text-xs">

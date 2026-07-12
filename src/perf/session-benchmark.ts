@@ -1,6 +1,8 @@
-import { type AppMessage, type AppMessageInput, AppState } from "../state/app-state.ts";
+import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { type AppMessage, type AppMessageInput, AppStore } from "../state/app-store.ts";
 import { renderMarkdownStreamingMeasured } from "../ui/markdown.tsx";
 import { renderMessage } from "../ui/messages.tsx";
+import { UiRenderer } from "../ui/ui-renderer.ts";
 import { sessionPerformance } from "./session-performance.ts";
 
 export type PatchSummary = {
@@ -110,9 +112,12 @@ export async function collectElementPatches(
 
 async function runFixture(messages: AppMessageInput[], concurrency: number) {
 	sessionPerformance.reset();
-	const state = new AppState({ enhancementConcurrency: concurrency });
+	const state = new AppStore();
+	const renderer = new UiRenderer(state, new DatastarClientHub(), {
+		enhancementConcurrency: concurrency,
+	});
 	const controller = new AbortController();
-	const response = state.createStream(controller.signal);
+	const response = renderer.createStream(controller.signal);
 	const expectedPatches = 2 + enhancementMessageCount(messages.slice(-50));
 	const startedAt = performance.now();
 	state.replaceMessages(messages);

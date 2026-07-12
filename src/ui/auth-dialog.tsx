@@ -1,4 +1,4 @@
-import type { AppAuthDialog, AppAuthProvider } from "../state/app-state.ts";
+import type { AppAuthDialog, AppAuthProvider } from "../state/app-store.ts";
 
 export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 	return (
