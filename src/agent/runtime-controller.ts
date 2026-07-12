@@ -74,7 +74,6 @@ const runtimeControllerDependencies: RuntimeControllerDependencies = {
 };
 
 export type RuntimeControllerActivationOptions = {
-	patchSessionMessages?: boolean;
 	refreshWorkspaces?: boolean;
 	transitionController?: SessionTransitionController;
 	dependencies?: RuntimeControllerDependencies;
@@ -217,7 +216,6 @@ export class RuntimeController {
 		this.bindSessionState({ syncSessions: false });
 		this.catalog.applyPrepared(this.preparedSessions, {
 			refreshWorkspaces: this.activationOptions.refreshWorkspaces,
-			patchMessages: this.activationOptions.patchSessionMessages,
 		});
 	}
 

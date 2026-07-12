@@ -116,7 +116,6 @@ async function openWorkspace(
 				current: resources,
 				prepareHost: () =>
 					AgentHost.prepare(store, realPath, {
-						patchSessionMessages: false,
 						refreshWorkspaces: false,
 						transitionController: transitions,
 					}),

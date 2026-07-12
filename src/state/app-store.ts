@@ -108,10 +108,7 @@ export interface AppStorePresentation {
 		enhancementIds: readonly string[],
 	): void;
 	scheduleEnhancements(ids: readonly string[]): void;
-	enhanceMessage(id: string): boolean;
-	setDisplayRefreshHz(hz: number): boolean;
 	projectMessages(messages: readonly TranscriptMessage[]): AppMessage[];
-	renderMessagesElement(): string;
 }
 
 export type AppRenderSnapshot = Readonly<{
@@ -180,9 +177,6 @@ export class AppStore {
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usage: AppUsage = { text: "$0.000 • 0 tokens" };
-	activityText: string | undefined;
-	queuedSteeringMessages: string[] = [];
-	queuedFollowUpMessages: string[] = [];
 	workspacePath = defaultWorkspacePath();
 	recentWorkspaces: string[] = [];
 	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };
@@ -206,6 +200,15 @@ export class AppStore {
 	}
 	get emptyChatHint(): AppKeybindHint {
 		return this.transcript.emptyChatHint;
+	}
+	get activityText(): string | undefined {
+		return this.transcript.activityText;
+	}
+	get queuedSteeringMessages(): readonly string[] {
+		return [...this.transcript.queuedSteeringMessages];
+	}
+	get queuedFollowUpMessages(): readonly string[] {
+		return [...this.transcript.queuedFollowUpMessages];
 	}
 
 	snapshot(): AppRenderSnapshot {
@@ -300,14 +303,12 @@ export class AppStore {
 		this.commit();
 	}
 	snapshotChat(): AppChatSnapshot {
-		this.syncTranscriptMetadata();
 		return this.transcript.snapshot();
 	}
 	restoreChat(snapshot: AppChatSnapshot): void {
 		const end = sessionPerformance.startSpan("transcriptProjection");
 		this.presentation?.transcriptReplacing();
 		this.transcript.restore(snapshot);
-		this.syncAppMetadata();
 		end();
 		sessionPerformance.markTranscriptProjected();
 		this.presentation?.transcriptReplaced(
@@ -346,16 +347,6 @@ export class AppStore {
 		this.presentation?.scheduleEnhancements(ids);
 		return true;
 	}
-	renderMessagesElement(): string {
-		return this.presentation?.renderMessagesElement() ?? "";
-	}
-	enhanceMessage(id: string): boolean {
-		return this.presentation?.enhanceMessage(id) ?? false;
-	}
-	setDisplayRefreshHz(hz: number): boolean {
-		return this.presentation?.setDisplayRefreshHz(hz) ?? false;
-	}
-
 	setModels(
 		models: AppModel[],
 		currentModel: string | undefined,
@@ -370,10 +361,7 @@ export class AppStore {
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
 		this.commit();
 	}
-	setSessions(
-		sessions: AppSessionSummary[],
-		_options: { patchMessages?: boolean } = {},
-	): void {
+	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
 		this.commit();
 	}
@@ -417,13 +405,10 @@ export class AppStore {
 		this.commit();
 	}
 	setActivityText(value: string | undefined): void {
-		this.activityText = value;
 		this.transcript.setActivityText(value);
 		this.commit();
 	}
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void {
-		this.queuedSteeringMessages = [...steering];
-		this.queuedFollowUpMessages = [...followUp];
 		this.transcript.setQueuedMessages(steering, followUp);
 		this.commit();
 	}
@@ -445,17 +430,5 @@ export class AppStore {
 		this.sessionTransition = value;
 		this.commit();
 		this.flush();
-	}
-	private syncTranscriptMetadata(): void {
-		this.transcript.setActivityText(this.activityText);
-		this.transcript.setQueuedMessages(
-			this.queuedSteeringMessages,
-			this.queuedFollowUpMessages,
-		);
-	}
-	private syncAppMetadata(): void {
-		this.activityText = this.transcript.activityText;
-		this.queuedSteeringMessages = [...this.transcript.queuedSteeringMessages];
-		this.queuedFollowUpMessages = [...this.transcript.queuedFollowUpMessages];
 	}
 }

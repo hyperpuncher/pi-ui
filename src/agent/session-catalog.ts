@@ -25,7 +25,7 @@ export class SessionCatalog {
 
 	applyPrepared(
 		prepared: PreparedSessionList,
-		options: { refreshWorkspaces?: boolean; patchMessages?: boolean } = {},
+		options: { refreshWorkspaces?: boolean } = {},
 	): void {
 		if (!prepared.ok) {
 			this.state.appendMessage(
@@ -54,14 +54,13 @@ export class SessionCatalog {
 
 	private apply(
 		sessions: SessionInfo[],
-		options: { refreshWorkspaces?: boolean; patchMessages?: boolean } = {},
+		options: { refreshWorkspaces?: boolean } = {},
 	): void {
 		if (options.refreshWorkspaces !== false) {
 			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
 		}
 		this.state.setSessions(
 			this.mergeStatuses(sessions.slice(0, 50).map(formatSessionSummary)),
-			{ patchMessages: options.patchMessages },
 		);
 	}
 }

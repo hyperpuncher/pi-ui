@@ -1,6 +1,7 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
+import { projectBackendSignals } from "./backend-signals.ts";
 import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderMessages } from "./messages.tsx";
@@ -12,19 +13,9 @@ import { renderTreePicker } from "./tree-picker.tsx";
 export function renderPage(state: AppRenderSnapshot): string {
 	const initialSignals = JSON.stringify({
 		prompt: "",
-		model: state.currentModel ?? "",
+		...projectBackendSignals(state),
 		modelCycleDirection: "forward",
 		thinkingCycleDirection: "forward",
-		thinkingLevel: state.thinkingLevel,
-		workspacePath: state.workspacePath,
-		isBusy: Boolean(state.activityText),
-		isSessionReady: state.sessionTransition.status !== "loading",
-		sessionTransitionLoading: state.sessionTransition.status === "loading",
-		sessionTransitionVisible: state.sessionTransition.status !== "idle",
-		sessionTransitionTarget:
-			state.sessionTransition.status === "idle"
-				? ""
-				: state.sessionTransition.targetPath,
 		_sessionLoading: false,
 		_sessionTarget: "",
 		_filePickerOpen: false,

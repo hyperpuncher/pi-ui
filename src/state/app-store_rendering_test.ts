@@ -1,5 +1,6 @@
 import { collectElementPatches } from "../perf/session-benchmark.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { projectBackendSignals } from "../ui/backend-signals.ts";
 import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
 import { renderPage } from "../ui/page.tsx";
 import { UiRenderer } from "../ui/ui-renderer.ts";
@@ -168,8 +169,8 @@ Deno.test("oversized enhancement retains fallback until explicitly requested", a
 	await settleMicrotasks();
 	assertEqual(renderCount, 0);
 	assertEqual(state.messages[0].presentationState, "deferred");
-	assertIncludes(state.renderMessagesElement(), "Enhance formatting");
-	assertEqual(state.enhanceMessage(state.messages[0].id), true);
+	assertIncludes(state.renderer.renderMessagesElement(), "Enhance formatting");
+	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), true);
 	await waitFor(() => renderCount === 1);
 	await settleMicrotasks();
 	assertEqual(state.messages[0].presentationState, "final");
@@ -216,6 +217,24 @@ Deno.test("running background transcript stays headless until activation", async
 	assertEqual(foreground.queuedFollowUpMessages.join(","), "follow");
 });
 
+Deno.test("AppStore transcript metadata has one owner and restores with chat", () => {
+	const state = createState();
+	state.setActivityText("Working...");
+	state.setQueuedMessages(["steer"], ["follow"]);
+	const snapshot = state.snapshotChat();
+
+	state.setActivityText(undefined);
+	state.setQueuedMessages([], []);
+	state.restoreChat(snapshot);
+
+	assertEqual(state.activityText, "Working...");
+	assertEqual(state.queuedSteeringMessages.join(","), "steer");
+	assertEqual(state.queuedFollowUpMessages.join(","), "follow");
+	const steering = state.queuedSteeringMessages as string[];
+	steering.push("external mutation");
+	assertEqual(state.queuedSteeringMessages.join(","), "steer");
+});
+
 Deno.test("completed background transcript enhances only after activation", async () => {
 	let enhancementCount = 0;
 	const background = new TranscriptState({ keys: "N", description: "New" });
@@ -243,7 +262,7 @@ Deno.test("enhancement errors retain the safe fallback", async () => {
 	await settleMicrotasks();
 	assertEqual(state.messages[0].renderedHtml, undefined);
 	assertEqual(state.messages[0].presentationState, "plain");
-	assertIncludes(state.renderMessagesElement(), "&lt;b>fallback&lt;/b>");
+	assertIncludes(state.renderer.renderMessagesElement(), "&lt;b>fallback&lt;/b>");
 });
 
 Deno.test("nested state updates commit one fat morph and one signal patch", async () => {
@@ -407,6 +426,35 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 	}
 });
 
+Deno.test("initial and live backend-owned signals share exact projections", () => {
+	const state = createState();
+	const cases = [
+		() => {},
+		() => state.setActivityText("Working..."),
+		() =>
+			state.setSessionTransition({
+				status: "loading",
+				generation: 1,
+				targetPath: "/session.jsonl",
+			}),
+		() => {
+			state.setCurrentModel("provider/model");
+			state.setThinking("high", ["off", "high"]);
+			state.setWorkspacePath("/tmp/workspace");
+			state.setActivityText(undefined);
+			state.setSessionTransition({ status: "idle", generation: 1 });
+		},
+	];
+	for (const mutate of cases) {
+		mutate();
+		const snapshot = state.snapshot();
+		assertEqual(
+			state.renderer.renderSignals(snapshot),
+			JSON.stringify(projectBackendSignals(snapshot)),
+		);
+	}
+});
+
 Deno.test("complete fat view contains every server-owned dynamic root", () => {
 	const previous = Deno.env.get("PI_UI_DEBUG");
 	Deno.env.set("PI_UI_DEBUG", "1");
@@ -459,13 +507,18 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(treeDialog, 'data-preserve-attr="open"');
 });
 
-type TestStore = AppStore & { createStream(signal: AbortSignal): Response };
+type TestStore = AppStore & {
+	readonly renderer: UiRenderer;
+	createStream(signal: AbortSignal): Response;
+};
 
 function createState(options: MessageRenderServiceOptions = {}): TestStore {
-	const store = new AppStore() as TestStore;
+	const store = new AppStore();
 	const renderer = new UiRenderer(store, new DatastarClientHub(), options);
-	store.createStream = (signal) => renderer.createStream(signal);
-	return store;
+	return Object.assign(store, {
+		renderer,
+		createStream: (signal: AbortSignal) => renderer.createStream(signal),
+	});
 }
 
 function markdownMessage(text: string): AppMessageInput {

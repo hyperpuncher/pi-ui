@@ -6,6 +6,7 @@ import type {
 	UiCommitEffect,
 } from "../state/app-store.ts";
 import { renderAuthDialogContent } from "./auth-dialog.tsx";
+import { projectBackendSignals } from "./backend-signals.ts";
 import { renderDebugOverlay } from "./debug.tsx";
 import {
 	MessageRenderService,
@@ -175,17 +176,7 @@ export class UiRenderer implements AppStorePresentation {
 		overrides: Record<string, unknown> = {},
 	): string {
 		return JSON.stringify({
-			model: snapshot.currentModel ?? "",
-			thinkingLevel: snapshot.thinkingLevel,
-			workspacePath: snapshot.workspacePath,
-			isSessionReady: snapshot.sessionTransition.status !== "loading",
-			sessionTransitionLoading: snapshot.sessionTransition.status === "loading",
-			sessionTransitionVisible: snapshot.sessionTransition.status !== "idle",
-			sessionTransitionTarget:
-				snapshot.sessionTransition.status === "idle"
-					? ""
-					: snapshot.sessionTransition.targetPath,
-			isBusy: Boolean(snapshot.activityText),
+			...projectBackendSignals(snapshot),
 			...overrides,
 		});
 	}
