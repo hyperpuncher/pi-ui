@@ -220,7 +220,9 @@ function renderInlineBash(command: string): string {
 			lang: "bash",
 			themes: DEFAULT_THEMES,
 		});
-		const highlighted = result.tokens.flat().map(renderInlineToken).join("");
+		const highlighted = result.tokens
+			.map((line) => line.map(renderInlineToken).join(""))
+			.join("\n");
 		cacheInlineBash(command, highlighted);
 		return highlighted;
 	} catch {
