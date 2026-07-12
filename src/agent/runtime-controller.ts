@@ -51,10 +51,33 @@ import { TranscriptProjector } from "./transcript-projector.ts";
 import { TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
 
+export type RuntimeControllerDependencies = Readonly<{
+	createRuntime: typeof createAgentSessionRuntime;
+	prepareSessions: typeof SessionCatalog.prepare;
+	refreshSessions: typeof SessionCatalog.prepare;
+	createSessionManager: typeof SessionManager.create;
+	createMemorySessionManager: typeof SessionManager.inMemory;
+	openSessionManager: typeof SessionManager.open;
+	moveToTrash: typeof moveToTrash;
+	getAgentDir: typeof getAgentDir;
+}>;
+
+const runtimeControllerDependencies: RuntimeControllerDependencies = {
+	createRuntime: createAgentSessionRuntime,
+	prepareSessions: SessionCatalog.prepare,
+	refreshSessions: SessionCatalog.prepare,
+	createSessionManager: SessionManager.create,
+	createMemorySessionManager: SessionManager.inMemory,
+	openSessionManager: SessionManager.open,
+	moveToTrash,
+	getAgentDir,
+};
+
 export type RuntimeControllerActivationOptions = {
 	patchSessionMessages?: boolean;
 	refreshWorkspaces?: boolean;
 	transitionController?: SessionTransitionController;
+	dependencies?: RuntimeControllerDependencies;
 };
 
 export class RuntimeController {
@@ -72,6 +95,7 @@ export class RuntimeController {
 	private readonly tree: TreeProjector;
 	private foregroundGeneration: number;
 	private foregroundObservedRunning: boolean;
+	private readonly dependencies: RuntimeControllerDependencies;
 
 	private constructor(
 		private runtime: AgentSessionRuntime,
@@ -80,6 +104,8 @@ export class RuntimeController {
 		private readonly preparedSessions: PreparedSessionList,
 		private readonly activationOptions: RuntimeControllerActivationOptions,
 	) {
+		this.dependencies =
+			activationOptions.dependencies ?? runtimeControllerDependencies;
 		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
 		this.foregroundObservedRunning = runtime.session.isStreaming;
 		this.models = new ModelController(
@@ -123,7 +149,8 @@ export class RuntimeController {
 		cwd = defaultWorkspacePath(),
 		options: RuntimeControllerActivationOptions = {},
 	): Promise<RuntimeController> {
-		const sessionsPromise = SessionCatalog.prepare();
+		const dependencies = options.dependencies ?? runtimeControllerDependencies;
+		const sessionsPromise = dependencies.prepareSessions();
 		const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 			cwd,
 			sessionManager,
@@ -162,10 +189,10 @@ export class RuntimeController {
 			};
 		};
 
-		const runtime = await createAgentSessionRuntime(createRuntime, {
+		const runtime = await dependencies.createRuntime(createRuntime, {
 			cwd,
-			agentDir: getAgentDir(),
-			sessionManager: SessionManager.create(cwd),
+			agentDir: dependencies.getAgentDir(),
+			sessionManager: dependencies.createSessionManager(cwd),
 		});
 		try {
 			const host = new RuntimeController(
@@ -299,10 +326,10 @@ export class RuntimeController {
 				this.unbindSession();
 				await this.runtime.dispose();
 			}
-			const runtime = await createAgentSessionRuntime(this.runtimeFactory, {
+			const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
 				cwd,
-				agentDir: getAgentDir(),
-				sessionManager: SessionManager.create(cwd),
+				agentDir: this.dependencies.getAgentDir(),
+				sessionManager: this.dependencies.createSessionManager(cwd),
 				sessionStartEvent: { type: "session_start", reason: "new" },
 			});
 			this.runtime = runtime;
@@ -342,10 +369,10 @@ export class RuntimeController {
 			await this.runtime.dispose();
 		}
 
-		const runtime = await createAgentSessionRuntime(this.runtimeFactory, {
+		const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
 			cwd,
-			agentDir: getAgentDir(),
-			sessionManager: SessionManager.inMemory(cwd),
+			agentDir: this.dependencies.getAgentDir(),
+			sessionManager: this.dependencies.createMemorySessionManager(cwd),
 			sessionStartEvent: {
 				type: "session_start",
 				reason: "new",
@@ -366,7 +393,9 @@ export class RuntimeController {
 	}
 
 	async deleteSession(sessionPath: string): Promise<boolean> {
-		const targetSessionFile = SessionManager.open(sessionPath).getSessionFile();
+		const targetSessionFile = this.dependencies
+			.openSessionManager(sessionPath)
+			.getSessionFile();
 		if (!targetSessionFile) {
 			return false;
 		}
@@ -382,7 +411,7 @@ export class RuntimeController {
 			return false;
 		}
 		try {
-			await moveToTrash(targetSessionFile);
+			await this.dependencies.moveToTrash(targetSessionFile);
 			const backgroundSession = this.backgroundSessions.get(targetSessionFile);
 			if (backgroundSession) {
 				this.unsubscribeBackgroundSession(backgroundSession);
@@ -498,7 +527,7 @@ export class RuntimeController {
 			openSession: (path) => {
 				const manager = sessionPerformance.measureSync(
 					"sessionManagerOpen",
-					() => SessionManager.open(path),
+					() => this.dependencies.openSessionManager(path),
 					transitionId,
 				);
 				sessionPerformance.recordSessionOpen(transitionId);
@@ -520,9 +549,9 @@ export class RuntimeController {
 				this.runtime = await sessionPerformance.measure(
 					"runtimeSwitchCreate",
 					() =>
-						createAgentSessionRuntime(this.runtimeFactory, {
+						this.dependencies.createRuntime(this.runtimeFactory, {
 							cwd: sessionManager.getCwd(),
-							agentDir: getAgentDir(),
+							agentDir: this.dependencies.getAgentDir(),
 							sessionManager,
 						}),
 					transitionId,
@@ -914,7 +943,7 @@ export class RuntimeController {
 	}
 
 	private async refreshSessions(): Promise<void> {
-		await this.catalog.refresh();
+		this.catalog.applyPrepared(await this.dependencies.refreshSessions());
 	}
 
 	private syncBackgroundStatuses(): void {
