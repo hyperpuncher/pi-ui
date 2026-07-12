@@ -32,8 +32,11 @@ export function completeFileValue(inputValue, match, value) {
 }
 
 export function isFileOpen() {
-	const popover = document.getElementById("prompt-file-popover");
-	return popover instanceof HTMLElement && popover.style.display !== "none";
+	return isPopoverVisible("prompt-file-popover");
+}
+
+export function isOpen() {
+	return isFileOpen() || isSlashOpen();
 }
 
 export function bindPickers() {
@@ -111,7 +114,7 @@ function handleOutsidePointer(event) {
 function handleKeydown(event) {
 	if (event.ctrlKey || event.metaKey || event.altKey) return;
 	if (event.key === "Escape") {
-		if (isFileOpen()) event.preventDefault();
+		if (isOpen()) event.preventDefault();
 		closePickers(true);
 		if (promptValue() === "/") setPromptValue("");
 		return;
@@ -209,7 +212,11 @@ function closeFilePicker(suppressUntilInput = false) {
 }
 
 function isSlashOpen() {
-	const popover = document.getElementById("prompt-slash-popover");
+	return isPopoverVisible("prompt-slash-popover");
+}
+
+function isPopoverVisible(id) {
+	const popover = document.getElementById(id);
 	return popover instanceof HTMLElement && popover.style.display !== "none";
 }
 

@@ -21,7 +21,9 @@ interface PiUiNamespace {
 	};
 	pickers: {
 		isFileOpen(): boolean;
+		isOpen(): boolean;
 	};
+	shouldAbortOnEscape(event: KeyboardEvent): boolean;
 }
 
 interface Window {

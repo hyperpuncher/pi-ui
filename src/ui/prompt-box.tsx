@@ -377,7 +377,8 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 					!evt.ctrlKey &&
 					!evt.metaKey &&
 					!evt.altKey &&
-					!evt.shiftKey
+					!evt.shiftKey &&
+					window.piUi.shouldAbortOnEscape(evt)
 				) {
 					evt.preventDefault();
 					@post('/abort', { filterSignals: { include: /^$/ } });
@@ -597,6 +598,7 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 			<div
 				id="thinking-select"
 				class="dropdown-menu"
+				data-on:keydown="if (evt.key === 'Escape') evt.stopPropagation()"
 				data-on:keydown__window={`if (evt.altKey && evt.key.toLowerCase() === 't') {
 				evt.preventDefault();
 				${cycleThinkingAction("event-shift")};
@@ -711,6 +713,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 			<div
 				id="model-select"
 				class="dropdown-menu"
+				data-on:keydown="if (evt.key === 'Escape') evt.stopPropagation()"
 				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
 				evt.preventDefault();
 				document.getElementById('model-select-trigger')?.focus();

@@ -9,7 +9,7 @@ import {
 	restoreAnchor,
 	scrollBottom,
 } from "./message-scroll.js";
-import { bindPickers, isFileOpen } from "./pickers.js";
+import { bindPickers, isFileOpen, isOpen as isPickerOpen } from "./pickers.js";
 import { bindPromptInteractions, focusPromptEnd } from "./prompt.js";
 import { bindVimScroll } from "./vim-scroll.js";
 
@@ -18,8 +18,17 @@ window.piUi = {
 	dialogs,
 	fileTransfer,
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
-	pickers: { isFileOpen },
+	pickers: { isFileOpen, isOpen: isPickerOpen },
+	shouldAbortOnEscape(event) {
+		return !event.defaultPrevented && !hasOpenDismissible();
+	},
 };
+
+function hasOpenDismissible() {
+	if (isPickerOpen() || document.querySelector("dialog[open]")) return true;
+	if (document.querySelector('[data-popover][aria-hidden="false"]')) return true;
+	return Boolean(document.querySelector('[aria-haspopup][aria-expanded="true"]'));
+}
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusPromptEnd();
