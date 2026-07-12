@@ -51,6 +51,117 @@ Deno.test("performance snapshots contain durations and counts but no content", (
 	}
 });
 
+Deno.test("transition records isolate overlapping spans and reset counters", () => {
+	const previous = Deno.env.get("PI_UI_PERF");
+	const originalLog = console.log;
+	const output: string[] = [];
+	try {
+		Deno.env.set("PI_UI_PERF", "1");
+		sessionPerformance.reset();
+		console.log = (value?: unknown) => output.push(String(value));
+
+		const first = sessionPerformance.startSessionTransition();
+		const endFirst = sessionPerformance.startSpan("runtimeServicesCreate", first);
+		const second = sessionPerformance.startSessionTransition();
+		const endSecond = sessionPerformance.startSpan("runtimeServicesCreate", second);
+		endSecond();
+		sessionPerformance.recordFatMorph("second", second);
+		completeTransition(second);
+		endFirst();
+		sessionPerformance.recordFatMorph("first", first);
+		completeTransition(first);
+
+		assertEqual(output.length, 2);
+		const secondRecord = JSON.parse(output[0]);
+		const firstRecord = JSON.parse(output[1]);
+		assertEqual(secondRecord.transition.id, second);
+		assertEqual(firstRecord.transition.id, first);
+		assertEqual(secondRecord.transition.spans.runtimeServicesCreate.count, 1);
+		assertEqual(firstRecord.transition.spans.runtimeServicesCreate.count, 1);
+		assertEqual(secondRecord.transition.fatMorphCount, 1);
+		assertEqual(firstRecord.transition.fatMorphCount, 1);
+		assertEqual(secondRecord.transition.bytesRendered, 6);
+		assertEqual(firstRecord.transition.bytesRendered, 5);
+		assertEqual(firstRecord.cumulative.fatMorphCount, 2);
+	} finally {
+		console.log = originalLog;
+		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
+		else Deno.env.set("PI_UI_PERF", previous);
+		sessionPerformance.reset();
+	}
+});
+
+Deno.test("async transition context keeps nested spans on their owner", async () => {
+	const previous = Deno.env.get("PI_UI_PERF");
+	const originalLog = console.log;
+	const output: string[] = [];
+	let releaseFirst = () => {};
+	const wait = new Promise<void>((resolve) => (releaseFirst = resolve));
+	try {
+		Deno.env.set("PI_UI_PERF", "1");
+		sessionPerformance.reset();
+		console.log = (value?: unknown) => output.push(String(value));
+		const first = sessionPerformance.startSessionTransition();
+		const firstWork = sessionPerformance.runInTransition(first, async () => {
+			await wait;
+			const end = sessionPerformance.startSpan("runtimeSessionCreate");
+			end();
+		});
+		const second = sessionPerformance.startSessionTransition();
+		const endSecond = sessionPerformance.startSpan("runtimeSessionCreate");
+		endSecond();
+		releaseFirst();
+		await firstWork;
+		completeTransition(second);
+		completeTransition(first);
+
+		const records = output.map((line) => JSON.parse(line));
+		const firstRecord = records.find((record) => record.transition.id === first);
+		const secondRecord = records.find((record) => record.transition.id === second);
+		assertEqual(firstRecord.transition.spans.runtimeSessionCreate.count, 1);
+		assertEqual(secondRecord.transition.spans.runtimeSessionCreate.count, 1);
+	} finally {
+		console.log = originalLog;
+		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
+		else Deno.env.set("PI_UI_PERF", previous);
+		sessionPerformance.reset();
+	}
+});
+
+Deno.test("cancelled transitions emit no record or sensitive fields", () => {
+	const previous = Deno.env.get("PI_UI_PERF");
+	const originalLog = console.log;
+	const output: string[] = [];
+	try {
+		Deno.env.set("PI_UI_PERF", "1");
+		sessionPerformance.reset();
+		console.log = (value?: unknown) => output.push(String(value));
+		const transition = sessionPerformance.startSessionTransition();
+		const end = sessionPerformance.startSpan("runtimeSwitchCreate", transition);
+		sessionPerformance.cancelSessionTransition(transition);
+		end();
+		assertEqual(output.length, 0);
+
+		const completed = sessionPerformance.startSessionTransition();
+		completeTransition(completed);
+		const serialized = output[0];
+		for (const sensitive of [
+			"sessionPath",
+			"prompt",
+			"credential",
+			"extensionArguments",
+			"/home/user/session.jsonl",
+		]) {
+			assertNotIncludes(serialized, sensitive);
+		}
+	} finally {
+		console.log = originalLog;
+		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
+		else Deno.env.set("PI_UI_PERF", previous);
+		sessionPerformance.reset();
+	}
+});
+
 Deno.test("SSE parser handles event frames split across chunk boundaries", async () => {
 	const encoder = new TextEncoder();
 	const chunks = [
@@ -106,6 +217,12 @@ Deno.test("50-message restore emits fallback once and targets enhancements", asy
 		sessionPerformance.reset();
 	}
 });
+
+function completeTransition(transitionId: number | undefined): void {
+	sessionPerformance.markTranscriptProjected(transitionId);
+	sessionPerformance.markFirstTranscriptPatch(transitionId);
+	sessionPerformance.markSessionTransitionComplete(transitionId);
+}
 
 function assertEqual(actual: unknown, expected: unknown): void {
 	if (!Object.is(actual, expected)) {

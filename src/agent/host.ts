@@ -200,22 +200,34 @@ export class AgentHost {
 			sessionManager,
 			sessionStartEvent,
 		}) => {
-			const services = await createAgentSessionServices({ cwd });
+			const services = await sessionPerformance.measure(
+				"runtimeServicesCreate",
+				() => createAgentSessionServices({ cwd }),
+			);
 			applyHttpProxySetting(services.settingsManager.getGlobalSettings().httpProxy);
 			configureHttpDispatcher(services.settingsManager.getHttpIdleTimeoutMs());
-			const scopedModels = resolveScopedModels(
-				services.settingsManager.getEnabledModels() ?? [],
-				services.modelRegistry
-					.getAll()
-					.filter((model) => services.modelRegistry.hasConfiguredAuth(model)),
+			const scopedModels = sessionPerformance.measureSync(
+				"scopedModelResolution",
+				() =>
+					resolveScopedModels(
+						services.settingsManager.getEnabledModels() ?? [],
+						services.modelRegistry
+							.getAll()
+							.filter((model) =>
+								services.modelRegistry.hasConfiguredAuth(model),
+							),
+					),
 			);
-			return {
-				...(await createAgentSessionFromServices({
+			const session = await sessionPerformance.measure("runtimeSessionCreate", () =>
+				createAgentSessionFromServices({
 					services,
 					sessionManager,
 					sessionStartEvent,
 					scopedModels,
-				})),
+				}),
+			);
+			return {
+				...session,
 				services,
 				diagnostics: services.diagnostics,
 			};
@@ -472,20 +484,29 @@ export class AgentHost {
 
 	async resumeSession(sessionPath: string): Promise<SessionTransitionResult> {
 		return await this.transitionController.run(sessionPath, async () => {
-			sessionPerformance.startSessionTransition();
+			const transitionId = sessionPerformance.startSessionTransition();
 			try {
-				const resumed = await this.resumeSessionTransition(sessionPath);
-				if (resumed) sessionPerformance.markSessionTransitionComplete();
-				else sessionPerformance.cancelSessionTransition();
+				const resumed = await sessionPerformance.runInTransition(
+					transitionId,
+					() => this.resumeSessionTransition(sessionPath, transitionId),
+				);
+				if (resumed) {
+					sessionPerformance.markSessionTransitionComplete(transitionId);
+				} else {
+					sessionPerformance.cancelSessionTransition(transitionId);
+				}
 				return resumed;
 			} catch (error) {
-				sessionPerformance.cancelSessionTransition();
+				sessionPerformance.cancelSessionTransition(transitionId);
 				throw error;
 			}
 		});
 	}
 
-	private async resumeSessionTransition(sessionPath: string): Promise<boolean> {
+	private async resumeSessionTransition(
+		sessionPath: string,
+		transitionId?: number,
+	): Promise<boolean> {
 		return await executeSessionResume(sessionPath, {
 			state: () => ({
 				streaming: this.runtime.session.isStreaming,
@@ -493,10 +514,19 @@ export class AgentHost {
 			}),
 			findBackground: (path) => this.backgroundSessions.get(path),
 			removeBackground: (path) => this.backgroundSessions.delete(path),
-			activateBackground: (session) => this.activateRuntime(session),
+			activateBackground: (session) =>
+				sessionPerformance.measure(
+					"backgroundActivation",
+					() => this.activateRuntime(session),
+					transitionId,
+				),
 			openSession: (path) => {
-				const manager = SessionManager.open(path);
-				sessionPerformance.recordSessionOpen();
+				const manager = sessionPerformance.measureSync(
+					"sessionManagerOpen",
+					() => SessionManager.open(path),
+					transitionId,
+				);
+				sessionPerformance.recordSessionOpen(transitionId);
 				return manager;
 			},
 			replaceRuntime: async (sessionManager, action) => {
@@ -516,17 +546,25 @@ export class AgentHost {
 							agentDir: getAgentDir(),
 							sessionManager,
 						}),
+					transitionId,
 				);
 				this.bindRuntimeCallbacks(this.runtime);
-				await this.bindSession();
+				await sessionPerformance.measure(
+					"runtimeRebind",
+					() => this.bindSession(),
+					transitionId,
+				);
 				this.loadCurrentSessionMessages();
 			},
 			switchSession: async (path) => {
 				const result = await sessionPerformance.measure(
 					"runtimeSwitchCreate",
 					() => this.runtime.switchSession(path),
+					transitionId,
 				);
-				if (!result.cancelled) sessionPerformance.recordSessionOpen();
+				if (!result.cancelled) {
+					sessionPerformance.recordSessionOpen(transitionId);
+				}
 				return result;
 			},
 		});
@@ -693,9 +731,11 @@ export class AgentHost {
 	private bindRuntimeCallbacks(runtime: AgentSessionRuntime): void {
 		runtime.setBeforeSessionInvalidate(() => this.unbindSession());
 		runtime.setRebindSession(async () => {
-			await this.bindSessionExtensions();
-			this.bindSessionState();
-			this.loadCurrentSessionMessages();
+			await sessionPerformance.measure("runtimeRebind", async () => {
+				await this.bindSessionExtensions();
+				this.bindSessionState();
+				this.loadCurrentSessionMessages();
+			});
 		});
 	}
 

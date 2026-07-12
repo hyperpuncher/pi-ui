@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 const utf8Encoder = new TextEncoder();
 
 // SDK 0.80.6 loads entries once for the header and again for manager state.
@@ -5,7 +7,14 @@ export const sdkInternalReadsPerSessionOpenEstimate = 2;
 
 export const sessionPerformanceSpanNames = [
 	"sessionOpen",
+	"sessionManagerOpen",
 	"runtimeSwitchCreate",
+	"runtimeLifecycleOverhead",
+	"runtimeServicesCreate",
+	"scopedModelResolution",
+	"runtimeSessionCreate",
+	"runtimeRebind",
+	"backgroundActivation",
 	"extensionBind",
 	"transcriptProjection",
 	"firstTranscriptPatch",
@@ -15,42 +24,68 @@ export const sessionPerformanceSpanNames = [
 
 export type SessionPerformanceSpanName = (typeof sessionPerformanceSpanNames)[number];
 
-export type SessionPerformanceSnapshot = {
-	enabled: boolean;
-	spans: Record<
-		SessionPerformanceSpanName,
-		{ count: number; totalMs: number; maxMs: number }
-	>;
+type SpanSummary = { count: number; totalMs: number; maxMs: number };
+type SpanSnapshot = Record<SessionPerformanceSpanName, SpanSummary>;
+
+type PerformanceCounters = {
 	logicalSessionOpenCount: number;
-	sdkInternalReadsPerSessionOpenEstimate: number;
 	fatMorphCount: number;
 	targetedMessagePatchCount: number;
 	bytesRendered: number;
 };
 
-type Transition = {
+export type SessionPerformanceSnapshot = PerformanceCounters & {
+	enabled: boolean;
+	spans: SpanSnapshot;
+	sdkInternalReadsPerSessionOpenEstimate: number;
+};
+
+export type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
+	id: number;
+	elapsedMs: number;
+	spans: SpanSnapshot;
+};
+
+export type SessionPerformanceRecord = {
+	type: "pi-ui-session-performance";
+	transition: SessionTransitionPerformanceSnapshot;
+	cumulative: SessionPerformanceSnapshot;
+};
+
+type Transition = PerformanceCounters & {
+	id: number;
 	startedAt: number;
 	hostComplete: boolean;
 	transcriptProjected: boolean;
 	firstPatchAt?: number;
+	spans: SpanSnapshot;
 };
 
-function emptySpans(): SessionPerformanceSnapshot["spans"] {
+function emptySpans(): SpanSnapshot {
 	return Object.fromEntries(
 		sessionPerformanceSpanNames.map((name) => [
 			name,
 			{ count: 0, totalMs: 0, maxMs: 0 },
 		]),
-	) as SessionPerformanceSnapshot["spans"];
+	) as SpanSnapshot;
+}
+
+function emptyCounters(): PerformanceCounters {
+	return {
+		logicalSessionOpenCount: 0,
+		fatMorphCount: 0,
+		targetedMessagePatchCount: 0,
+		bytesRendered: 0,
+	};
 }
 
 class SessionPerformanceCollector {
 	private spans = emptySpans();
-	private logicalSessionOpenCount = 0;
-	private fatMorphCount = 0;
-	private targetedMessagePatchCount = 0;
-	private bytesRendered = 0;
-	private transition: Transition | undefined;
+	private counters = emptyCounters();
+	private transitions = new Map<number, Transition>();
+	private activeTransitionId: number | undefined;
+	private nextTransitionId = 1;
+	private readonly transitionContext = new AsyncLocalStorage<number>();
 
 	get enabled(): boolean {
 		return Deno.env.get("PI_UI_PERF") === "1";
@@ -58,41 +93,61 @@ class SessionPerformanceCollector {
 
 	reset(): void {
 		this.spans = emptySpans();
-		this.logicalSessionOpenCount = 0;
-		this.fatMorphCount = 0;
-		this.targetedMessagePatchCount = 0;
-		this.bytesRendered = 0;
-		this.transition = undefined;
+		this.counters = emptyCounters();
+		this.transitions.clear();
+		this.activeTransitionId = undefined;
+		this.nextTransitionId = 1;
 	}
 
 	snapshot(): SessionPerformanceSnapshot {
 		return {
 			enabled: this.enabled,
 			spans: structuredClone(this.spans),
-			logicalSessionOpenCount: this.logicalSessionOpenCount,
+			...this.counters,
 			sdkInternalReadsPerSessionOpenEstimate,
-			fatMorphCount: this.fatMorphCount,
-			targetedMessagePatchCount: this.targetedMessagePatchCount,
-			bytesRendered: this.bytesRendered,
 		};
 	}
 
-	startSpan(name: SessionPerformanceSpanName): () => void {
+	runInTransition<T>(
+		transitionId: number | undefined,
+		operation: () => Promise<T>,
+	): Promise<T> {
+		return transitionId === undefined
+			? operation()
+			: this.transitionContext.run(transitionId, operation);
+	}
+
+	startSpan(name: SessionPerformanceSpanName, transitionId?: number): () => void {
 		if (!this.enabled) return () => {};
+		transitionId ??= this.currentTransitionId();
 		const startedAt = performance.now();
 		let ended = false;
 		return () => {
 			if (ended) return;
 			ended = true;
-			this.recordSpan(name, performance.now() - startedAt);
+			this.recordSpan(name, performance.now() - startedAt, transitionId);
 		};
+	}
+
+	measureSync<T>(
+		name: SessionPerformanceSpanName,
+		operation: () => T,
+		transitionId?: number,
+	): T {
+		const end = this.startSpan(name, transitionId);
+		try {
+			return operation();
+		} finally {
+			end();
+		}
 	}
 
 	async measure<T>(
 		name: SessionPerformanceSpanName,
 		operation: () => Promise<T>,
+		transitionId?: number,
 	): Promise<T> {
-		const end = this.startSpan(name);
+		const end = this.startSpan(name, transitionId);
 		try {
 			return await operation();
 		} finally {
@@ -100,82 +155,162 @@ class SessionPerformanceCollector {
 		}
 	}
 
-	startSessionTransition(): void {
-		if (!this.enabled) return;
-		this.transition = {
+	startSessionTransition(): number | undefined {
+		if (!this.enabled) return undefined;
+		const id = this.nextTransitionId++;
+		this.transitions.set(id, {
+			id,
 			startedAt: performance.now(),
 			hostComplete: false,
 			transcriptProjected: false,
-		};
+			spans: emptySpans(),
+			...emptyCounters(),
+		});
+		this.activeTransitionId = id;
+		return id;
 	}
 
-	markSessionTransitionComplete(): void {
-		if (!this.enabled || !this.transition) return;
-		this.transition.hostComplete = true;
-		this.finishTransitionIfReady();
+	markSessionTransitionComplete(transitionId?: number): void {
+		const transition = this.getTransition(transitionId ?? this.currentTransitionId());
+		if (!transition) return;
+		transition.hostComplete = true;
+		this.finishTransitionIfReady(transition);
 	}
 
-	cancelSessionTransition(): void {
-		if (!this.enabled) return;
-		this.transition = undefined;
-	}
-
-	markTranscriptProjected(): void {
-		if (!this.enabled || !this.transition) return;
-		this.transition.transcriptProjected = true;
-	}
-
-	markFirstTranscriptPatch(): void {
-		if (
-			!this.enabled ||
-			!this.transition?.transcriptProjected ||
-			this.transition.firstPatchAt
-		) {
-			return;
+	cancelSessionTransition(transitionId?: number): void {
+		transitionId ??= this.currentTransitionId();
+		if (!this.enabled || transitionId === undefined) return;
+		this.transitions.delete(transitionId);
+		if (this.activeTransitionId === transitionId) {
+			this.activeTransitionId = undefined;
 		}
-		this.transition.firstPatchAt = performance.now();
+	}
+
+	markTranscriptProjected(transitionId?: number): void {
+		const transition = this.getTransition(transitionId ?? this.currentTransitionId());
+		if (transition) transition.transcriptProjected = true;
+	}
+
+	markFirstTranscriptPatch(transitionId?: number): void {
+		transitionId ??= this.currentTransitionId();
+		const transition = this.getTransition(transitionId);
+		if (!transition?.transcriptProjected || transition.firstPatchAt) return;
+		transition.firstPatchAt = performance.now();
 		this.recordSpan(
 			"firstTranscriptPatch",
-			this.transition.firstPatchAt - this.transition.startedAt,
+			transition.firstPatchAt - transition.startedAt,
+			transition.id,
 		);
-		this.finishTransitionIfReady();
+		this.finishTransitionIfReady(transition);
 	}
 
-	recordSessionOpen(): void {
+	recordSessionOpen(transitionId?: number): void {
+		this.incrementCounter(
+			"logicalSessionOpenCount",
+			1,
+			transitionId ?? this.currentTransitionId(),
+		);
+	}
+
+	recordFatMorph(html: string, transitionId?: number): void {
 		if (!this.enabled) return;
-		this.logicalSessionOpenCount += 1;
+		transitionId ??= this.currentTransitionId();
+		this.incrementCounter("fatMorphCount", 1, transitionId);
+		this.incrementCounter(
+			"bytesRendered",
+			utf8Encoder.encode(html).byteLength,
+			transitionId,
+		);
 	}
 
-	recordFatMorph(html: string): void {
+	recordTargetedMessagePatch(html: string, transitionId?: number): void {
 		if (!this.enabled) return;
-		this.fatMorphCount += 1;
-		this.bytesRendered += utf8Encoder.encode(html).byteLength;
+		transitionId ??= this.currentTransitionId();
+		this.incrementCounter("targetedMessagePatchCount", 1, transitionId);
+		this.incrementCounter(
+			"bytesRendered",
+			utf8Encoder.encode(html).byteLength,
+			transitionId,
+		);
 	}
 
-	recordTargetedMessagePatch(html: string): void {
+	private currentTransitionId(): number | undefined {
+		return this.transitionContext.getStore() ?? this.activeTransitionId;
+	}
+
+	private getTransition(id: number | undefined): Transition | undefined {
+		return this.enabled && id !== undefined ? this.transitions.get(id) : undefined;
+	}
+
+	private incrementCounter(
+		name: keyof PerformanceCounters,
+		amount: number,
+		transitionId: number | undefined,
+	): void {
 		if (!this.enabled) return;
-		this.targetedMessagePatchCount += 1;
-		this.bytesRendered += utf8Encoder.encode(html).byteLength;
+		this.counters[name] += amount;
+		const transition = this.getTransition(transitionId);
+		if (transition) transition[name] += amount;
 	}
 
-	private recordSpan(name: SessionPerformanceSpanName, durationMs: number): void {
-		const span = this.spans[name];
-		span.count += 1;
-		span.totalMs += durationMs;
-		span.maxMs = Math.max(span.maxMs, durationMs);
+	private recordSpan(
+		name: SessionPerformanceSpanName,
+		durationMs: number,
+		transitionId?: number,
+	): void {
+		if (!this.enabled) return;
+		updateSpan(this.spans[name], durationMs);
+		const transition = this.getTransition(transitionId);
+		if (transition) updateSpan(transition.spans[name], durationMs);
 	}
 
-	private finishTransitionIfReady(): void {
-		const transition = this.transition;
-		if (!transition?.hostComplete || transition.firstPatchAt === undefined) {
-			return;
+	private finishTransitionIfReady(transition: Transition): void {
+		if (!transition.hostComplete || transition.firstPatchAt === undefined) return;
+		const elapsedMs = performance.now() - transition.startedAt;
+		this.recordSpan("sessionOpen", elapsedMs, transition.id);
+		setRuntimeLifecycleRemainder(transition.spans);
+		this.transitions.delete(transition.id);
+		if (this.activeTransitionId === transition.id) {
+			this.activeTransitionId = undefined;
 		}
-		this.recordSpan("sessionOpen", performance.now() - transition.startedAt);
-		this.transition = undefined;
-		console.log(
-			JSON.stringify({ type: "pi-ui-session-performance", ...this.snapshot() }),
-		);
+		const record: SessionPerformanceRecord = {
+			type: "pi-ui-session-performance",
+			transition: {
+				id: transition.id,
+				elapsedMs,
+				spans: structuredClone(transition.spans),
+				logicalSessionOpenCount: transition.logicalSessionOpenCount,
+				fatMorphCount: transition.fatMorphCount,
+				targetedMessagePatchCount: transition.targetedMessagePatchCount,
+				bytesRendered: transition.bytesRendered,
+			},
+			cumulative: this.snapshot(),
+		};
+		console.log(JSON.stringify(record));
 	}
+}
+
+function updateSpan(span: SpanSummary, durationMs: number): void {
+	span.count += 1;
+	span.totalMs += durationMs;
+	span.maxMs = Math.max(span.maxMs, durationMs);
+}
+
+function setRuntimeLifecycleRemainder(spans: SpanSnapshot): void {
+	const total = spans.runtimeSwitchCreate.totalMs;
+	if (total === 0) return;
+	const measured = [
+		spans.runtimeServicesCreate,
+		spans.scopedModelResolution,
+		spans.runtimeSessionCreate,
+		spans.runtimeRebind,
+	].reduce((sum, span) => sum + span.totalMs, 0);
+	const remainder = Math.max(0, total - measured);
+	spans.runtimeLifecycleOverhead = {
+		count: spans.runtimeSwitchCreate.count,
+		totalMs: remainder,
+		maxMs: remainder,
+	};
 }
 
 export const sessionPerformance = new SessionPerformanceCollector();
