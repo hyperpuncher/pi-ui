@@ -338,7 +338,7 @@ export function renderMessage(message: AppMessage): string {
 				]}
 				data-message-id={message.id}
 			>
-				<details>
+				<details data-preserve-attr="open">
 					<summary class="cursor-pointer list-none">
 						<span class="font-semibold" safe>
 							{message.title ?? label}

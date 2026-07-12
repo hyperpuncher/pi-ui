@@ -1,4 +1,5 @@
 import { collectElementPatches } from "../perf/session-benchmark.ts";
+import { renderPage } from "../ui/page.tsx";
 import { type AppMessageInput, AppState } from "./app-state.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
@@ -162,6 +163,187 @@ Deno.test("enhancement errors retain the safe fallback", async () => {
 	assertIncludes(state.renderMessagesElement(), "&lt;b>fallback&lt;/b>");
 });
 
+Deno.test("nested state updates commit one fat morph and one signal patch", async () => {
+	const state = new AppState();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		state.update(
+			() => {
+				state.setActivityText("Working...");
+				state.update(() => {
+					state.setWorkspacePath("/tmp/workspace");
+					state.setTemporarySession(true);
+				});
+				state.setThinking("high", ["off", "high"]);
+			},
+			{ flush: true },
+		);
+		const output = await readUntil(
+			reader,
+			(text) =>
+				count(text, "event: datastar-patch-elements") === 1 &&
+				count(text, "event: datastar-patch-signals") === 1,
+		);
+
+		assertEqual(count(output, "event: datastar-patch-elements"), 1);
+		assertEqual(count(output, "event: datastar-patch-signals"), 1);
+		assertIncludes(output, '"workspacePath":"/tmp/workspace"');
+		assertNotIncludes(output, '"treeEntryId"');
+		assertNotIncludes(output, '"modelCycleDirection"');
+	} finally {
+		controller.abort();
+	}
+});
+
+Deno.test("a thrown update still commits its completed mutations", async () => {
+	const state = new AppState();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		try {
+			state.update(() => {
+				state.workspacePath = "/tmp/committed-before-throw";
+				throw new Error("stop");
+			});
+		} catch {
+			// The mutator error is expected; already-applied state remains authoritative.
+		}
+		const output = await readUntil(reader, (text) =>
+			text.includes('"workspacePath":"/tmp/committed-before-throw"'),
+		);
+		assertEqual(count(output, "event: datastar-patch-elements"), 1);
+		assertEqual(count(output, "event: datastar-patch-signals"), 1);
+	} finally {
+		controller.abort();
+	}
+});
+
+Deno.test("headless updates initialize one current view and tolerate disconnect", async () => {
+	const state = new AppState();
+	state.setWorkspacePath("/tmp/headless");
+	const controller = new AbortController();
+	const response = state.createStream(controller.signal);
+	const reader = response.body?.getReader();
+	if (!reader) throw new Error("Missing response body");
+	const output = await readUntil(reader, (text) =>
+		text.includes('"workspacePath":"/tmp/headless"'),
+	);
+	assertEqual(count(output, "event: datastar-patch-elements"), 1);
+	assertEqual(count(output, "event: datastar-patch-signals"), 1);
+
+	controller.abort();
+	state.setActivityText("disconnected");
+	state.flush();
+	assertEqual(state.activityText, "disconnected");
+});
+
+Deno.test("scripts from one commit execute in one script patch", async () => {
+	const state = new AppState();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		state.update(
+			() => {
+				state.setThinking("high", ["off", "high"]);
+				state.setCurrentModel("provider/model");
+			},
+			{ flush: true },
+		);
+		const output = await readUntil(reader, (text) =>
+			text.includes('<script data-effect="el.remove()">'),
+		);
+		assertEqual(count(output, '<script data-effect="el.remove()">'), 1);
+	} finally {
+		controller.abort();
+	}
+});
+
+Deno.test("fat morphs refresh session picker current and background statuses", async () => {
+	const state = new AppState();
+	const controller = new AbortController();
+	const first = {
+		path: "/sessions/first.jsonl",
+		cwd: "/workspace",
+		title: "First session",
+		subtitle: "First subtitle",
+		modified: "now",
+		backgroundStatus: "running" as const,
+	};
+	const second = {
+		path: "/sessions/second.jsonl",
+		cwd: "/workspace",
+		title: "Second session",
+		subtitle: "Second subtitle",
+		modified: "earlier",
+	};
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+
+		state.update(
+			() => {
+				state.setCurrentSessionPath(first.path);
+				state.setSessions([first, second]);
+			},
+			{ flush: true },
+		);
+		const running = await readUntil(reader, (text) =>
+			text.includes('data-background-status="running"'),
+		);
+		assertIncludes(running, 'id="session-menu"');
+		assertIncludes(running, 'aria-current="true"');
+		assertIncludes(running, "First session");
+
+		state.update(
+			() => {
+				state.setCurrentSessionPath(second.path);
+				state.setSessions([{ ...first, backgroundStatus: "completed" }, second]);
+			},
+			{ flush: true },
+		);
+		const completed = await readUntil(reader, (text) =>
+			text.includes('data-background-status="completed"'),
+		);
+		assertIncludes(completed, 'id="session-menu"');
+		assertIncludes(completed, 'aria-current="true"');
+		assertNotIncludes(completed, 'data-background-status="running"');
+	} finally {
+		controller.abort();
+	}
+});
+
+Deno.test("fat morph markup preserves browser-owned interaction state", () => {
+	const state = new AppState();
+	state.replaceMessages([
+		{
+			role: "compaction",
+			text: "summary",
+			timestamp,
+		},
+	]);
+	state.flush();
+	const html = renderPage(state);
+
+	assertIncludes(html, 'id="prompt-input"');
+	assertIncludes(html, 'id="messages"');
+	assertIncludes(html, 'id="workspace-dialog"');
+	assertIncludes(html, 'id="session-dialog"');
+	assertIncludes(html, 'id="model-select"');
+	assertIncludes(html, 'data-preserve-attr="open"');
+});
+
 function markdownMessage(text: string): AppMessageInput {
 	return { role: "assistant", text, timestamp };
 }
@@ -209,4 +391,8 @@ function assertNotIncludes(actual: string, expected: string): void {
 	if (actual.includes(expected)) {
 		throw new Error(`Expected output not to include ${JSON.stringify(expected)}`);
 	}
+}
+
+function count(value: string, search: string): number {
+	return value.split(search).length - 1;
 }

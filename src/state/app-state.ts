@@ -170,6 +170,11 @@ type AppStateOptions = {
 	renderDiff?: (text: string) => Promise<string | undefined>;
 };
 
+type AppStateUpdateOptions = {
+	flush?: boolean;
+	commit?: boolean;
+};
+
 type StreamClient = {
 	id: string;
 	stream: DatastarStream;
@@ -238,6 +243,12 @@ export class AppState {
 	) => Promise<string>;
 	private readonly renderDiffEnhancement: (text: string) => Promise<string | undefined>;
 	private suppressMessagePatchesDepth = 0;
+	private updateDepth = 0;
+	private commitPending = false;
+	private commitScheduled = false;
+	private pendingScripts = new Set<string>();
+	private pendingSignalOverrides: Record<string, unknown> = {};
+	private pendingEnhancementIds = new Set<string>();
 	private transcriptMessages: AppMessage[] = [];
 	private visibleMessageStart = 0;
 	readonly debugUi = debugUiEnabled();
@@ -282,17 +293,58 @@ export class AppState {
 		try {
 			return await callback();
 		} finally {
+			// Flush while suppression is active so a deferred commit cannot restore the
+			// transcript that this boundary intentionally omitted.
+			this.flush();
 			this.suppressMessagePatchesDepth -= 1;
 		}
 	}
 
+	/** Mutates authoritative state and coalesces nested/synchronous work into one view. */
+	update<T>(mutator: () => T, options: AppStateUpdateOptions = {}): T {
+		this.updateDepth += 1;
+		try {
+			return mutator();
+		} finally {
+			this.updateDepth -= 1;
+			if (options.commit !== false) this.requestCommit();
+			if (this.updateDepth === 0 && this.commitPending) this.requestCommit();
+			if (options.flush) this.flush();
+		}
+	}
+
+	/** Commits pending state now. Use at observable ordering boundaries. */
+	flush(): void {
+		if (this.updateDepth > 0 || !this.commitPending) return;
+		this.commitPending = false;
+		this.commitScheduled = false;
+		const scripts = [...this.pendingScripts];
+		this.pendingScripts.clear();
+		const signalOverrides = this.pendingSignalOverrides;
+		this.pendingSignalOverrides = {};
+		const enhancementIds = [...this.pendingEnhancementIds];
+		this.pendingEnhancementIds.clear();
+
+		if (this.clients.size > 0) {
+			const elements = this.renderElements();
+			const signals = this.renderSignals(signalOverrides);
+			for (const client of this.clients.values()) {
+				this.commitClient(client.stream, elements, signals, scripts);
+			}
+		}
+		for (const id of enhancementIds) this.enqueueMessageEnhancement(id);
+	}
+
 	createStream(signal: AbortSignal): Response {
+		// Consume headless pending work before attaching; the initial stream render
+		// already reflects the latest authoritative state.
+		this.flush();
 		const id = crypto.randomUUID();
 		return datastarStream(
 			(stream) => {
 				this.clients.set(id, { id, stream });
-				this.patchClient(stream);
-				this.patchSignals(stream);
+				const elements = this.renderElements();
+				this.commitClient(stream, elements, this.renderSignals(), []);
 				signal.addEventListener(
 					"abort",
 					() => {
@@ -339,8 +391,8 @@ export class AppState {
 		if (role === "thought") {
 			this.activeThoughtId = id;
 		}
-		this.broadcast();
-		if (role === "tool") this.enqueueMessageEnhancement(id);
+		this.requestCommit();
+		if (role === "tool") this.scheduleMessageEnhancement(id);
 		return id;
 	}
 
@@ -356,8 +408,8 @@ export class AppState {
 			message.presentationState = "plain";
 			message.presentationVersion += 1;
 		}
-		this.broadcast();
-		this.enqueueMessageEnhancement(id);
+		this.requestCommit();
+		this.scheduleMessageEnhancement(id);
 	}
 
 	appendThoughtDelta(delta: string): void {
@@ -401,9 +453,9 @@ export class AppState {
 		const thoughtId = this.activeThoughtId;
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
-		this.broadcast();
-		if (thoughtId) this.enqueueMessageEnhancement(thoughtId);
-		if (id) this.enqueueMessageEnhancement(id);
+		this.requestCommit();
+		if (thoughtId) this.scheduleMessageEnhancement(thoughtId);
+		if (id) this.scheduleMessageEnhancement(id);
 	}
 
 	snapshotChat(): AppChatSnapshot {
@@ -441,8 +493,8 @@ export class AppState {
 		this.refreshVisibleMessages();
 		endProjection();
 		sessionPerformance.markTranscriptProjected();
-		this.broadcast();
-		this.enqueueEnhancements(this.messages.map((message) => message.id));
+		this.requestCommit();
+		this.scheduleEnhancements(this.messages.map((message) => message.id));
 	}
 
 	resetChat(options: { preserveEmptyHint?: boolean; broadcast?: boolean } = {}): void {
@@ -458,7 +510,7 @@ export class AppState {
 			this.emptyChatHint = randomEmptyChatHint();
 		}
 		if (options.broadcast !== false) {
-			this.broadcast();
+			this.requestCommit();
 		}
 	}
 
@@ -489,8 +541,8 @@ export class AppState {
 		this.refreshVisibleMessages();
 		endProjection();
 		sessionPerformance.markTranscriptProjected();
-		this.broadcast();
-		this.enqueueEnhancements(this.messages.map((message) => message.id));
+		this.requestCommit();
+		this.scheduleEnhancements(this.messages.map((message) => message.id));
 	}
 
 	loadOlderMessages(options: { broadcast?: boolean } = {}): boolean {
@@ -505,9 +557,9 @@ export class AppState {
 			.map((message) => message.id);
 		this.refreshVisibleMessages();
 		if (options.broadcast !== false) {
-			this.broadcast();
+			this.requestCommit();
 		}
-		this.enqueueEnhancements(revealedIds);
+		this.scheduleEnhancements(revealedIds);
 		return true;
 	}
 
@@ -535,43 +587,28 @@ export class AppState {
 		const reopenScript = options.reopenPicker
 			? ";requestAnimationFrame(() => { document.getElementById('model-select-trigger')?.focus(); document.getElementById('model-select')?.toggle?.(); })"
 			: "";
-		this.broadcast(
+		this.requestCommit(
 			`${refreshBasecoatComponentsScript("#model-select")}${reopenScript}`,
 		);
-		this.broadcastSignals();
 	}
 
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
-		this.broadcast(refreshBasecoatComponentsScript("#thinking-select"));
-		this.broadcastSignals();
+		this.requestCommit(refreshBasecoatComponentsScript("#thinking-select"));
 	}
 
 	setSessions(
 		sessions: AppSessionSummary[],
-		options: { patchMessages?: boolean } = {},
+		_options: { patchMessages?: boolean } = {},
 	): void {
 		this.sessions = sessions;
-		const patchMessages = options.patchMessages ?? true;
-		for (const client of this.clients.values()) {
-			try {
-				const elements =
-					(patchMessages ? this.renderMessagesElement() : "") +
-					renderWorkspaceDialogMenu(this) +
-					renderSessionPicker(this);
-				client.stream.patchElements(elements);
-				sessionPerformance.recordFatMorph(elements);
-				client.stream.executeScript(
-					refreshBasecoatComponentsScript(
-						"#workspace-dialog .command",
-						"#session-dialog .command",
-					),
-				);
-			} catch {
-				// Client already disconnected.
-			}
-		}
+		this.requestCommit(
+			refreshBasecoatComponentsScript(
+				"#workspace-dialog .command",
+				"#session-dialog .command",
+			),
+		);
 	}
 
 	removeSession(path: string): void {
@@ -584,23 +621,12 @@ export class AppState {
 			...recentWorkspaces,
 			...this.recentWorkspaces,
 		]).slice(0, 8);
-		for (const client of this.clients.values()) {
-			try {
-				const elements = renderWorkspaceDialogMenu(this);
-				client.stream.patchElements(elements);
-				sessionPerformance.recordFatMorph(elements);
-				client.stream.executeScript(
-					refreshBasecoatComponentsScript("#workspace-dialog .command"),
-				);
-			} catch {
-				// Client already disconnected.
-			}
-		}
+		this.requestCommit(refreshBasecoatComponentsScript("#workspace-dialog .command"));
 	}
 
 	setSlashCommands(commands: AppSlashCommand[]): void {
 		this.slashCommands = commands;
-		this.broadcast();
+		this.requestCommit();
 	}
 
 	setAuthDialog(
@@ -611,73 +637,67 @@ export class AppState {
 		const script = dialog
 			? "{ const dialog = document.getElementById('auth-dialog'); if (dialog && !dialog.open) dialog.showModal(); }"
 			: "document.getElementById('auth-dialog')?.close?.()";
-		this.broadcast(script);
-		if (options.resetInput) {
-			for (const client of this.clients.values()) {
-				try {
-					client.stream.patchSignals(JSON.stringify({ authInput: "" }));
-				} catch {
-					// Client already disconnected.
-				}
-			}
-		}
+		if (options.resetInput) this.pendingSignalOverrides.authInput = "";
+		this.requestCommit(script);
 	}
 
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
-		this.broadcast(refreshBasecoatComponentsScript("#tree-dialog .command"));
+		this.requestCommit(refreshBasecoatComponentsScript("#tree-dialog .command"));
 	}
 
 	setCurrentModel(currentModel: string | undefined): void {
 		this.currentModel = currentModel;
-		this.broadcast(refreshBasecoatComponentsScript("#model-select"));
-		this.broadcastSignals();
+		this.requestCommit(refreshBasecoatComponentsScript("#model-select"));
 	}
 
 	setUsage(usage: AppUsage): void {
 		this.usage = usage;
-		this.broadcast();
+		this.requestCommit();
 	}
 
 	setActivityText(activityText: string | undefined): void {
 		this.activityText = activityText;
-		this.broadcast();
-		this.broadcastSignals();
+		this.requestCommit();
 	}
 
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void {
 		this.queuedSteeringMessages = [...steering];
 		this.queuedFollowUpMessages = [...followUp];
-		this.broadcast();
+		this.requestCommit();
 	}
 
 	setCurrentSessionPath(currentSessionPath: string | undefined): void {
 		this.currentSessionPath = currentSessionPath;
-		this.broadcast();
+		this.requestCommit();
 	}
 
 	setTemporarySession(isTemporarySession: boolean): void {
 		this.isTemporarySession = isTemporarySession;
-		this.broadcast();
-		this.broadcastSignals();
+		this.requestCommit();
 	}
 
 	setWorkspacePath(workspacePath: string): void {
 		this.workspacePath = workspacePath;
-		this.broadcast(refreshBasecoatComponentsScript("#workspace-dialog .command"));
-		this.broadcastSignals();
+		this.requestCommit(refreshBasecoatComponentsScript("#workspace-dialog .command"));
 	}
 
 	setSessionTransition(sessionTransition: SessionTransitionState): void {
+		// Commit restored transcript content before removing its transition loader.
+		if (
+			this.sessionTransition.status === "loading" &&
+			sessionTransition.status !== "loading"
+		) {
+			this.flush();
+		}
 		this.sessionTransition = sessionTransition;
-		// Session rows are refreshed while disabled during a transition. Re-enable
-		// their Basecoat command state only after the idle/error signal is applied.
-		this.broadcastSignals();
-		this.broadcast(
+		this.requestCommit(
 			sessionTransition.status === "loading"
 				? undefined
 				: refreshBasecoatComponentsScript("#session-dialog .command"),
 		);
+		// Loading and loader-clear/error are observable ordering boundaries.
+		this.flush();
 	}
 
 	private scheduleStreamingPatch(): void {
@@ -721,8 +741,14 @@ export class AppState {
 		this.enhancementQueue.cancelAll();
 	}
 
-	private enqueueEnhancements(ids: readonly string[]): void {
-		for (const id of ids.toReversed()) this.enqueueMessageEnhancement(id);
+	private scheduleEnhancements(ids: readonly string[]): void {
+		for (const id of ids.toReversed()) this.pendingEnhancementIds.add(id);
+		this.requestCommit();
+	}
+
+	private scheduleMessageEnhancement(id: string): void {
+		this.pendingEnhancementIds.add(id);
+		this.requestCommit();
 	}
 
 	private enqueueMessageEnhancement(id: string): void {
@@ -826,6 +852,7 @@ export class AppState {
 			renderPromptStatus(this) +
 			renderWorkspacePicker(this) +
 			renderWorkspaceDialogMenu(this) +
+			renderSessionPicker(this) +
 			renderModelPicker(this) +
 			renderThinkingPicker(this) +
 			renderSessionTransition(this) +
@@ -835,53 +862,53 @@ export class AppState {
 		);
 	}
 
-	private patchClient(stream: DatastarStream, script?: string): void {
+	private renderSignals(overrides: Record<string, unknown> = {}): string {
+		return JSON.stringify({
+			model: this.currentModel ?? "",
+			thinkingLevel: this.thinkingLevel,
+			workspacePath: this.workspacePath,
+			isSessionReady: this.sessionTransition.status !== "loading",
+			sessionTransitionLoading: this.sessionTransition.status === "loading",
+			sessionTransitionVisible: this.sessionTransition.status !== "idle",
+			sessionTransitionTarget:
+				this.sessionTransition.status === "idle"
+					? ""
+					: this.sessionTransition.targetPath,
+			isBusy: Boolean(this.activityText),
+			...overrides,
+		});
+	}
+
+	private commitClient(
+		stream: DatastarStream,
+		elements: string,
+		signals: string,
+		scripts: readonly string[],
+	): void {
 		try {
-			const elements = this.renderElements();
 			stream.patchElements(elements);
 			sessionPerformance.recordFatMorph(elements);
 			sessionPerformance.markFirstTranscriptPatch();
-			if (script) {
-				stream.executeScript(script);
-			}
+			stream.patchSignals(signals);
+			if (scripts.length > 0) stream.executeScript(scripts.join(";"));
 		} catch {
 			// Client already disconnected.
 		}
 	}
 
-	private patchSignals(stream: DatastarStream): void {
-		try {
-			stream.patchSignals(
-				JSON.stringify({
-					model: this.currentModel ?? "",
-					modelCycleDirection: "forward",
-					thinkingCycleDirection: "forward",
-					thinkingLevel: this.thinkingLevel,
-					workspacePath: this.workspacePath,
-					isSessionReady: this.sessionTransition.status !== "loading",
-					sessionTransitionLoading: this.sessionTransition.status === "loading",
-					sessionTransitionVisible: this.sessionTransition.status !== "idle",
-					sessionTransitionTarget:
-						this.sessionTransition.status === "idle"
-							? ""
-							: this.sessionTransition.targetPath,
-					isBusy: Boolean(this.activityText),
-					treeEntryId: "",
-					treeSummarize: false,
-					treeSummaryInstructions: "",
-				}),
-			);
-		} catch {
-			// Client already disconnected.
-		}
+	private requestCommit(script?: string): void {
+		this.commitPending = true;
+		if (script) this.pendingScripts.add(script);
+		if (this.updateDepth > 0 || this.commitScheduled) return;
+		this.commitScheduled = true;
+		queueMicrotask(() => {
+			if (!this.commitScheduled) return;
+			this.commitScheduled = false;
+			this.flush();
+		});
 	}
 
-	private broadcast(script?: string): void {
-		for (const client of this.clients.values()) {
-			this.patchClient(client.stream, script);
-		}
-	}
-
+	/** Targeted exception: active streaming and completed enhancement messages only. */
 	private broadcastMessage(message: AppMessage): void {
 		for (const client of this.clients.values()) {
 			try {
@@ -893,12 +920,6 @@ export class AppState {
 			} catch {
 				// Client already disconnected.
 			}
-		}
-	}
-
-	private broadcastSignals(): void {
-		for (const client of this.clients.values()) {
-			this.patchSignals(client.stream);
 		}
 	}
 }

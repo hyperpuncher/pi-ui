@@ -797,19 +797,24 @@ export class AgentHost {
 		backgroundSession: BackgroundSession,
 		event: AgentSessionEvent,
 	): void {
-		const outcome = this.reduceEvent(
-			event,
-			backgroundSession.state,
-			{
-				messageIds: backgroundSession.toolMessageIds,
-				callArgs: backgroundSession.toolCallArgs,
-				startedAt: backgroundSession.toolStartedAt,
-			},
+		const outcome = backgroundSession.state.update(
 			() =>
-				this.loadRuntimeMessages(
-					backgroundSession.runtime,
+				this.reduceEvent(
+					event,
 					backgroundSession.state,
+					{
+						messageIds: backgroundSession.toolMessageIds,
+						callArgs: backgroundSession.toolCallArgs,
+						startedAt: backgroundSession.toolStartedAt,
+					},
+					() =>
+						this.loadRuntimeMessages(
+							backgroundSession.runtime,
+							backgroundSession.state,
+						),
 				),
+			// Streaming deltas use the documented targeted-message patch path.
+			{ commit: false },
 		);
 		if (outcome.agentCompleted) {
 			backgroundSession.unsubscribe();
@@ -898,29 +903,31 @@ export class AgentHost {
 			syncSessions?: boolean;
 		} = {},
 	): void {
-		const session = this.runtime.session;
-		const resetToolState = options.resetToolState ?? true;
-		this.state.setWorkspacePath(session.sessionManager.getCwd());
-		this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
-		this.state.setTemporarySession(!session.sessionManager.isPersisted());
-		if (resetToolState) {
-			this.toolMessageIds.clear();
-			this.toolCallArgs.clear();
-			this.toolStartedAt.clear();
-		}
-		this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
-		this.state.setActivityText(session.isStreaming ? "Working..." : undefined);
-		this.syncModels();
-		this.syncThinking();
-		this.syncSlashCommands();
-		this.syncUsage();
-		this.refreshCodexUsage(true);
-		if (options.syncSessions !== false) {
-			this.syncBackgroundStatuses();
-		}
-		if (options.refreshSessions === true) {
-			void this.refreshSessions();
-		}
+		this.state.update(() => {
+			const session = this.runtime.session;
+			const resetToolState = options.resetToolState ?? true;
+			this.state.setWorkspacePath(session.sessionManager.getCwd());
+			this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
+			this.state.setTemporarySession(!session.sessionManager.isPersisted());
+			if (resetToolState) {
+				this.toolMessageIds.clear();
+				this.toolCallArgs.clear();
+				this.toolStartedAt.clear();
+			}
+			this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
+			this.state.setActivityText(session.isStreaming ? "Working..." : undefined);
+			this.syncModels();
+			this.syncThinking();
+			this.syncSlashCommands();
+			this.syncUsage();
+			this.refreshCodexUsage(true);
+			if (options.syncSessions !== false) {
+				this.syncBackgroundStatuses();
+			}
+			if (options.refreshSessions === true) {
+				void this.refreshSessions();
+			}
+		});
 	}
 
 	private async bindSessionExtensions(): Promise<void> {
@@ -1016,21 +1023,27 @@ export class AgentHost {
 	}
 
 	private handleEvent(event: AgentSessionEvent): void {
-		const outcome = this.reduceEvent(
-			event,
-			this.state,
-			{
-				messageIds: this.toolMessageIds,
-				callArgs: this.toolCallArgs,
-				startedAt: this.toolStartedAt,
+		this.state.update(
+			() => {
+				const outcome = this.reduceEvent(
+					event,
+					this.state,
+					{
+						messageIds: this.toolMessageIds,
+						callArgs: this.toolCallArgs,
+						startedAt: this.toolStartedAt,
+					},
+					() => this.loadCurrentSessionMessages(),
+					() => this.syncUsage(),
+				);
+				if (outcome.agentCompleted) {
+					this.syncUsage();
+					this.refreshCodexUsage(true);
+				}
 			},
-			() => this.loadCurrentSessionMessages(),
-			() => this.syncUsage(),
+			// Streaming deltas use the documented targeted-message patch path.
+			{ commit: false },
 		);
-		if (outcome.agentCompleted) {
-			this.syncUsage();
-			this.refreshCodexUsage(true);
-		}
 	}
 
 	private reduceEvent(
