@@ -10,8 +10,8 @@ import {
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import {
 	classifySessionLeave,
-	transitionRuntime,
 	type SessionLeaveAction,
+	transitionRuntime,
 } from "./session-transition.ts";
 
 Deno.test("classify session leave policy", async (t) => {
@@ -86,7 +86,9 @@ function lifecycle(action: SessionLeaveAction, options: { rejectAbort?: boolean 
 						? Promise.reject(new Error("failed"))
 						: Promise.resolve();
 				},
-				dispose: () => events.push("dispose"),
+				dispose: () => {
+					events.push("dispose");
+				},
 				background: () => {
 					backgroundCount += 1;
 					events.push("background");
@@ -103,13 +105,71 @@ Deno.test("discard orders unsubscribe, abort, dispose, and replacement bind", as
 	const fake = lifecycle("discard");
 	await fake.run();
 	assertEvents(fake.events, ["unsubscribe", "abort", "dispose", "bind"]);
-	if (fake.backgroundCount !== 0) throw new Error("temporary runtime was backgrounded");
+	if (fake.backgroundCount !== 0) {
+		throw new Error("temporary runtime was backgrounded");
+	}
 });
 
 Deno.test("abort rejection still disposes and binds replacement", async () => {
 	const fake = lifecycle("discard", { rejectAbort: true });
 	await fake.run();
 	assertEvents(fake.events, ["unsubscribe", "abort", "abort-error", "dispose", "bind"]);
+});
+
+Deno.test("replacement bind waits for delayed disposal", async () => {
+	const events: string[] = [];
+	let releaseDispose!: () => void;
+	const disposal = new Promise<void>((resolve) => {
+		releaseDispose = resolve;
+	});
+	const transition = transitionRuntime({
+		action: "discard",
+		unsubscribe: () => events.push("unsubscribe"),
+		abort: () => {
+			events.push("abort");
+			return Promise.resolve();
+		},
+		dispose: () => {
+			events.push("dispose");
+			return disposal;
+		},
+		background: () => {},
+		bindReplacement: () => {
+			events.push("bind");
+		},
+	});
+	await Promise.resolve();
+	assertEvents(events, ["unsubscribe", "abort", "dispose"]);
+	releaseDispose();
+	await transition;
+	assertEvents(events, ["unsubscribe", "abort", "dispose", "bind"]);
+});
+
+Deno.test("disposal rejection prevents replacement binding", async () => {
+	const fake = lifecycle("dispose");
+	fake.run = () =>
+		transitionRuntime({
+			action: "dispose",
+			unsubscribe: () => fake.events.push("unsubscribe"),
+			abort: () => Promise.resolve(),
+			dispose: () => {
+				fake.events.push("dispose");
+				return Promise.reject(new Error("dispose failed"));
+			},
+			background: () => {},
+			bindReplacement: () => {
+				fake.events.push("bind");
+			},
+		});
+	try {
+		await fake.run();
+		throw new Error("Expected disposal rejection");
+	} catch (error) {
+		if (!(error instanceof Error) || error.message !== "dispose failed") {
+			throw error;
+		}
+	}
+	assertEvents(fake.events, ["unsubscribe", "dispose"]);
 });
 
 Deno.test("running persisted runtime is only backgrounded", async () => {
@@ -129,11 +189,15 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 	const loading = renderSessionTransition({
 		sessionTransition: { status: "loading", generation: 1, targetPath },
 	} as AppStore);
-	if (!loading.includes('role="status"')) throw new Error("Missing loading status");
+	if (!loading.includes('role="status"')) {
+		throw new Error("Missing loading status");
+	}
 	if (!loading.includes("&lt;session name=&#34;bad&#34;>")) {
 		throw new Error("Target path was not escaped");
 	}
-	if (loading.includes(targetPath)) throw new Error("Unsafe target path rendered");
+	if (loading.includes(targetPath)) {
+		throw new Error("Unsafe target path rendered");
+	}
 
 	const error = renderSessionTransition({
 		sessionTransition: {
@@ -149,7 +213,9 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 });
 
 Deno.test("shared resume action drives every immediate loading signal", () => {
-	const action = resumeSessionAction("/sessions/one.json", { closeDialog: true });
+	const action = resumeSessionAction("/sessions/one.json", {
+		closeDialog: true,
+	});
 	for (const expected of [
 		"$_sessionLoading",
 		"$sessionTransitionLoading",
@@ -177,13 +243,17 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 		currentSessionPath: undefined,
 	} as AppStore);
 	for (const html of [recent, picker]) {
-		if (!html.includes("/sessions/resume")) throw new Error("Missing resume action");
+		if (!html.includes("/sessions/resume")) {
+			throw new Error("Missing resume action");
+		}
 		if (!html.includes("_sessionLoading")) throw new Error("Missing indicator");
 		if (!html.includes("$sessionTransitionLoading")) {
 			throw new Error("Missing disabled transition guard");
 		}
 	}
-	if (!recent.includes("evt.ctrlKey")) throw new Error("Missing keyboard resume");
+	if (!recent.includes("evt.ctrlKey")) {
+		throw new Error("Missing keyboard resume");
+	}
 });
 
 Deno.test("session picker command state morphs after a transition", async () => {

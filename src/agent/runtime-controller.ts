@@ -1,16 +1,16 @@
 import {
+	type AgentSessionEvent,
+	type AgentSessionRuntime,
 	createAgentSessionFromServices,
 	createAgentSessionRuntime,
+	type CreateAgentSessionRuntimeFactory,
 	createAgentSessionServices,
 	getAgentDir,
 	SessionManager,
-	type AgentSessionEvent,
-	type AgentSessionRuntime,
-	type CreateAgentSessionRuntimeFactory,
 } from "@earendil-works/pi-coding-agent";
 
 import { sessionPerformance } from "../perf/session-performance.ts";
-import { AppStore, type AppSessionSummary } from "../state/app-store.ts";
+import { type AppSessionSummary, AppStore } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { moveToTrash } from "../utils/trash.ts";
@@ -21,12 +21,12 @@ import {
 	RuntimeOwnershipInvariantError,
 } from "./background-runtime-ownership.ts";
 import {
-	BackgroundSessionController,
 	type BackgroundSession,
+	BackgroundSessionController,
 } from "./background-session-controller.ts";
 import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import { ModelController, resolveScopedModels } from "./model-controller.ts";
-import { SessionCatalog, type PreparedSessionList } from "./session-catalog.ts";
+import { type PreparedSessionList, SessionCatalog } from "./session-catalog.ts";
 import {
 	reduceSessionEvent,
 	type SessionEventStateSink,
@@ -95,6 +95,7 @@ export class RuntimeController {
 	private readonly tree: TreeProjector;
 	private foregroundGeneration: number;
 	private foregroundObservedRunning: boolean;
+	private disposal: Promise<void> | undefined;
 	private readonly dependencies: RuntimeControllerDependencies;
 
 	private constructor(
@@ -675,16 +676,32 @@ export class RuntimeController {
 		return await this.models.toggleScoped(modelRef);
 	}
 
-	dispose(): void {
+	dispose(): Promise<void> {
+		this.disposal ??= this.disposeOwnedRuntimes();
+		return this.disposal;
+	}
+
+	private async disposeOwnedRuntimes(): Promise<void> {
 		this.unsubscribe?.();
+		this.unsubscribe = undefined;
 		this.auth.dispose();
 		this.usage.dispose();
-		this.runtime.dispose();
+		const runtimes = [this.runtime];
 		for (const session of this.backgroundSessions.values()) {
 			this.unsubscribeBackgroundSession(session);
-			session.runtime.dispose();
+			runtimes.push(session.runtime);
 		}
 		this.backgroundSessions.clear();
+
+		const results = await Promise.allSettled(
+			runtimes.map((runtime) => Promise.resolve().then(() => runtime.dispose())),
+		);
+		const errors = results.flatMap((result) =>
+			result.status === "rejected" ? [result.reason] : [],
+		);
+		if (errors.length > 0) {
+			throw new AggregateError(errors, "Failed to dispose owned runtimes");
+		}
 	}
 
 	private isCurrentRuntimeActive(): boolean {

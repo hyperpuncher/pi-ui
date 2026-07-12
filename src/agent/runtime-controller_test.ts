@@ -20,6 +20,8 @@ type RuntimeFake = {
 	events: Array<(event: AgentSessionEvent) => void>;
 	calls: string[];
 	disposeCount: number;
+	disposeResult: Promise<void>;
+	disposeError?: Error;
 	emit(event: AgentSessionEvent): void;
 	setStreaming(value: boolean): void;
 };
@@ -46,6 +48,7 @@ function fakeRuntime(path = "/sessions/a.jsonl", persisted = true): RuntimeFake 
 		events,
 		calls,
 		disposeCount: 0,
+		disposeResult: Promise.resolve(),
 		emit: (event) => {
 			for (const callback of activeSubscriptions) callback(event);
 		},
@@ -91,7 +94,8 @@ function fakeRuntime(path = "/sessions/a.jsonl", persisted = true): RuntimeFake 
 		dispose: () => {
 			fake.disposeCount += 1;
 			calls.push("dispose");
-			return Promise.resolve();
+			if (fake.disposeError) throw fake.disposeError;
+			return fake.disposeResult;
 		},
 		services: {},
 	} as unknown as AgentSessionRuntime;
@@ -132,7 +136,7 @@ Deno.test("RuntimeController production path binds callbacks before activation",
 	assertEquals(fake.rebind.length, 1);
 	controller.activate();
 	assertEquals(fake.calls.filter((call) => call === "subscribe").length, 1);
-	controller.dispose();
+	await controller.dispose();
 	assertEquals(fake.calls.filter((call) => call === "unsubscribe").length, 1);
 	assertEquals(fake.disposeCount, 1);
 });
@@ -152,7 +156,45 @@ Deno.test("RuntimeController ignores callbacks captured before in-place replacem
 	assertEquals(fake.calls.length, callsAfterReplacement);
 	assertEquals(fake.beforeInvalidate.length, 2);
 	assertEquals(fake.rebind.length, 2);
-	controller.dispose();
+	await controller.dispose();
+});
+
+Deno.test("RuntimeController disposal awaits and attempts foreground and background runtimes", async () => {
+	const foreground = fakeRuntime();
+	const replacement = fakeRuntime("/sessions/b.jsonl");
+	(foreground.runtime.session as unknown as { isStreaming: boolean }).isStreaming =
+		true;
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([foreground, replacement]),
+	});
+	controller.activate();
+	assertEquals((await controller.newSession()).status, "success");
+
+	let releaseForeground!: () => void;
+	foreground.disposeResult = new Promise((resolve) => {
+		releaseForeground = resolve;
+	});
+	replacement.disposeError = new Error("replacement failed");
+	const disposal = controller.dispose();
+	await Promise.resolve();
+	assertEquals(foreground.disposeCount, 1);
+	assertEquals(replacement.disposeCount, 1);
+	let settled = false;
+	disposal
+		.finally(() => {
+			settled = true;
+		})
+		.catch(() => {});
+	await Promise.resolve();
+	assertEquals(settled, false);
+	releaseForeground();
+	await assertRejects(
+		() => disposal,
+		AggregateError,
+		"Failed to dispose owned runtimes",
+	);
+	assertEquals(foreground.disposeCount, 1);
+	assertEquals(replacement.disposeCount, 1);
 });
 
 Deno.test("RuntimeController reuses streaming runtimes across repeated background activation", async () => {

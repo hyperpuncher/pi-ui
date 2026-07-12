@@ -57,6 +57,10 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			} catch {
 				// Best-effort only during process teardown.
 			}
+			// Unload cannot reliably await asynchronous runtime teardown.
+			resources.host?.dispose().catch((error: unknown) => {
+				console.error("Failed to dispose pi SDK runtime during teardown", error);
+			});
 		},
 		{ once: true },
 	);
@@ -107,10 +111,12 @@ async function openWorkspace(
 	let replacement: { host: AgentHost; fileSearch: FileSearchHost } | undefined;
 	const transition = await transitions.run(requestedPath, async () => {
 		const realPath = await Deno.realPath(expandHomePath(requestedPath));
-		if (!(await Deno.stat(realPath)).isDirectory) throw new Error("Not a directory");
+		if (!(await Deno.stat(realPath)).isDirectory) {
+			throw new Error("Not a directory");
+		}
 		const patchMessages = store.messages.length > 0;
 		const replace = async () => {
-			const next = await transitionWorkspaceResources({
+			await transitionWorkspaceResources({
 				current: resources,
 				prepareHost: () =>
 					AgentHost.prepare(store, realPath, {
@@ -119,25 +125,29 @@ async function openWorkspace(
 						transitionController: transitions,
 					}),
 				prepareFileSearch: () => FileSearchHost.create(realPath),
-				commit: ({ host }) => {
+				commit: (next) => {
 					store.resetChat({
 						preserveEmptyHint: true,
 						broadcast: patchMessages,
 					});
-					host.activate();
+					next.host.activate();
+					Object.assign(resources, next);
+					replacement = next;
+				},
+				onCurrentDisposeError: (error) => {
+					console.error(
+						"Failed to dispose previous workspace resources",
+						error,
+					);
 				},
 			});
-			replacement = next;
 			return true;
 		};
 		return patchMessages
 			? await replace()
 			: await store.suppressMessagePatches(replace);
 	});
-	if (transition.status !== "success" || !replacement) return false;
-	resources.host = replacement.host;
-	resources.fileSearch = replacement.fileSearch;
-	return true;
+	return transition.status === "success" && replacement !== undefined;
 }
 
 function installUnhandledErrorReporter(): void {

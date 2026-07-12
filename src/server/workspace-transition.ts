@@ -1,5 +1,5 @@
 export type WorkspaceResource = {
-	dispose(): void;
+	dispose(): void | Promise<void>;
 };
 
 export type WorkspaceResources<
@@ -21,7 +21,26 @@ type WorkspaceTransitionOptions<
 	prepareHost: () => Host | Promise<Host>;
 	prepareFileSearch: () => FileSearch | Promise<FileSearch>;
 	commit: (replacement: WorkspaceResources<Host, FileSearch>) => void;
+	onCurrentDisposeError?: (error: AggregateError) => void;
 };
+
+async function disposeResources(
+	resources: Array<WorkspaceResource | undefined>,
+	primaryError?: { value: unknown },
+): Promise<void> {
+	const results = await Promise.allSettled(
+		resources
+			.filter((resource) => resource !== undefined)
+			.map((resource) => Promise.resolve().then(() => resource.dispose())),
+	);
+	if (primaryError !== undefined) throw primaryError.value;
+	const errors = results.flatMap((result) =>
+		result.status === "rejected" ? [result.reason] : [],
+	);
+	if (errors.length > 0) {
+		throw new AggregateError(errors, "Failed to dispose workspace resources");
+	}
+}
 
 /** Prepares a complete replacement before committing and releasing current resources. */
 export async function transitionWorkspaceResources<
@@ -32,17 +51,18 @@ export async function transitionWorkspaceResources<
 	prepareHost,
 	prepareFileSearch,
 	commit,
+	onCurrentDisposeError,
 }: WorkspaceTransitionOptions<Host, FileSearch>): Promise<
 	WorkspaceResources<Host, FileSearch>
 > {
+	const previous = { ...current };
 	let host: Host | undefined;
 	let fileSearch: FileSearch | undefined;
 	try {
 		host = await prepareHost();
 		fileSearch = await prepareFileSearch();
 	} catch (error) {
-		fileSearch?.dispose();
-		host?.dispose();
+		await disposeResources([fileSearch, host], { value: error });
 		throw error;
 	}
 
@@ -50,11 +70,14 @@ export async function transitionWorkspaceResources<
 	try {
 		commit(replacement);
 	} catch (error) {
-		fileSearch.dispose();
-		host.dispose();
+		await disposeResources([fileSearch, host], { value: error });
 		throw error;
 	}
-	current.host?.dispose();
-	current.fileSearch.dispose();
+	try {
+		await disposeResources([previous.host, previous.fileSearch]);
+	} catch (error) {
+		if (!(error instanceof AggregateError) || !onCurrentDisposeError) throw error;
+		onCurrentDisposeError(error);
+	}
 	return replacement;
 }

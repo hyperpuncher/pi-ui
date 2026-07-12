@@ -21,7 +21,7 @@ export type RuntimeTransitionLifecycle = {
 	action: SessionLeaveAction;
 	unsubscribe: () => void;
 	abort: () => Promise<void>;
-	dispose: () => void;
+	dispose: () => Promise<void> | void;
 	background: () => void;
 	bindReplacement: () => void | Promise<void>;
 	onAbortError?: (error: unknown) => void;
@@ -45,12 +45,11 @@ export async function transitionRuntime({
 			await abort();
 		} catch (error) {
 			onAbortError?.(error);
-		} finally {
-			dispose();
 		}
+		await dispose();
 	} else if (action === "dispose") {
 		unsubscribe();
-		dispose();
+		await dispose();
 	}
 	await bindReplacement();
 }

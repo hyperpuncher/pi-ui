@@ -134,7 +134,7 @@ export class AgentHost {
 		return this.runtime.toggleScopedModel(modelRef);
 	}
 
-	dispose(): void {
-		this.runtime.dispose();
+	dispose(): Promise<void> {
+		return this.runtime.dispose();
 	}
 }
