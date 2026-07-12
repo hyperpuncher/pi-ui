@@ -89,6 +89,14 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(promptBox, "filterSignals: { include: /^fileQuery$/ }");
 	assertStringIncludes(promptBox, "requestCancellation: 'cleanup'");
 
+	for (const sessionAction of [commandRegistry, promptBox]) {
+		const open = sessionAction.indexOf("window.piUi.dialogs.openSession()");
+		const post = sessionAction.indexOf("@post('/sessions/list'", open);
+		if (open < 0 || post < open) {
+			throw new Error("Session actions must open and focus before refreshing");
+		}
+	}
+
 	for (const authAction of ["/auth/open-login", "/auth/open-logout"]) {
 		assertStringIncludes(
 			browserActionsFor(`${authDialog}\n${commandRegistry}`, authAction),

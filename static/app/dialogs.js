@@ -1,11 +1,19 @@
-export function openTree() {
-	const dialog = document.getElementById("tree-dialog");
+function openAndFocus(dialogId, inputId) {
+	const dialog = document.getElementById(dialogId);
 	if (!(dialog instanceof HTMLDialogElement)) return;
 	if (!dialog.open) dialog.showModal();
 	requestAnimationFrame(() => {
-		const input = document.getElementById("tree-input");
+		const input = document.getElementById(inputId);
 		if (input instanceof HTMLInputElement) input.focus({ preventScroll: true });
 	});
+}
+
+export function openSession() {
+	openAndFocus("session-dialog", "session-input");
+}
+
+export function openTree() {
+	openAndFocus("tree-dialog", "tree-input");
 }
 
 export function bindDialogs() {

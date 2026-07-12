@@ -48,7 +48,7 @@ export const appCommands: AppCommand[] = [
 		title: "Resume session",
 		description: "Browse recent pi sessions for this project.",
 		shortcut: { display: "ctrl R", native: "CmdOrCtrl+R", keys: ["r"] },
-		action: "document.getElementById('session-dialog')?.showModal(); @post('/sessions/list', { filterSignals: { include: /^$/ } }); requestAnimationFrame(() => document.getElementById('session-input')?.focus())",
+		action: "window.piUi.dialogs.openSession(); @post('/sessions/list', { filterSignals: { include: /^$/ } })",
 	},
 	{
 		id: "session-tree",

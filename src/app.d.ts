@@ -3,6 +3,7 @@ interface PiUiNamespace {
 		refresh(root?: unknown): void;
 	};
 	dialogs: {
+		openSession(): void;
 		openTree(): void;
 	};
 	fileTransfer: {

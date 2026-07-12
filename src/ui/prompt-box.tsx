@@ -356,7 +356,7 @@ function newTemporaryChatAction(): string {
 }
 
 function openSessionDialogAction(): string {
-	return "document.getElementById('session-dialog')?.showModal(); @post('/sessions/list', { filterSignals: { include: /^$/ } })";
+	return "window.piUi.dialogs.openSession(); @post('/sessions/list', { filterSignals: { include: /^$/ } })";
 }
 
 export function renderPromptAction(state: AppRenderSnapshot): string {
