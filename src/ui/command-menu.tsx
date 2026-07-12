@@ -1,4 +1,5 @@
-import { appCommands, type AppCommand } from "../commands/registry.ts";
+import { commandActions } from "../commands/actions.ts";
+import { appCommandCatalog, type AppCommandMetadata } from "../commands/catalog.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 
 export function renderCommandMenu(): string {
@@ -35,7 +36,7 @@ export function renderCommandMenu(): string {
 						<span role="heading" id="command-menu-heading">
 							Commands
 						</span>
-						{appCommands
+						{appCommandCatalog
 							.filter((command) => command.id !== "command-palette")
 							.map(renderCommandRow)}
 					</div>
@@ -45,7 +46,7 @@ export function renderCommandMenu(): string {
 	) as string;
 }
 
-function renderCommandRow(item: AppCommand): string {
+function renderCommandRow(item: AppCommandMetadata): string {
 	return (
 		<div
 			role="menuitem"
@@ -53,7 +54,7 @@ function renderCommandRow(item: AppCommand): string {
 			data-command-row
 			data-filter={item.title}
 			data-keywords={`${item.description} ${item.id}`}
-			data-on:click={item.action}
+			data-on:click={commandActions[item.id]}
 		>
 			<span class="min-w-0">
 				<span class="block truncate">{item.title}</span>

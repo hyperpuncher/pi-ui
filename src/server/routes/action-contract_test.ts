@@ -1,9 +1,11 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
+import { commandActions } from "../../commands/actions.ts";
+import { appCommandCatalog } from "../../commands/catalog.ts";
 import { endpoints } from "./endpoints.ts";
 
 const browserActionSources = [
-	"../../commands/registry.ts",
+	"../../commands/actions.ts",
 	"../../ui/auth-dialog.tsx",
 	"../../ui/messages.tsx",
 	"../../ui/page.tsx",
@@ -66,14 +68,17 @@ Deno.test("each literal browser action references a registered endpoint", async 
 });
 
 Deno.test("dynamic and rendered endpoint references remain explicit", async () => {
-	const [authDialog, commandRegistry, page, promptBox] = await Promise.all(
+	const [authDialog, page, promptBox, catalog, dialogs, main] = await Promise.all(
 		[
 			"../../ui/auth-dialog.tsx",
-			"../../commands/registry.ts",
 			"../../ui/page.tsx",
 			"../../ui/prompt-box.tsx",
+			"../../commands/catalog.ts",
+			"../../../static/app/dialogs.js",
+			"../../main.ts",
 		].map((path) => Deno.readTextFile(new URL(path, import.meta.url))),
 	);
+	const renderedCommandActions = Object.values(commandActions).join("\n");
 
 	assertStringIncludes(
 		authDialog,
@@ -89,9 +94,9 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(promptBox, "filterSignals: { include: /^fileQuery$/ }");
 	assertStringIncludes(promptBox, "requestCancellation: 'cleanup'");
 
-	for (const sessionAction of [commandRegistry, promptBox]) {
+	for (const sessionAction of [renderedCommandActions]) {
 		const open = sessionAction.indexOf("window.piUi.dialogs.openSession()");
-		const post = sessionAction.indexOf("@post('/sessions/list'", open);
+		const post = sessionAction.indexOf(`@post('${endpoints.sessionsList}'`, open);
 		if (open < 0 || post < open) {
 			throw new Error("Session actions must open and focus before refreshing");
 		}
@@ -99,10 +104,17 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 
 	for (const authAction of ["/auth/open-login", "/auth/open-logout"]) {
 		assertStringIncludes(
-			browserActionsFor(`${authDialog}\n${commandRegistry}`, authAction),
+			browserActionsFor(`${authDialog}\n${renderedCommandActions}`, authAction),
 			"filterSignals: { include: /^$/ }",
 		);
 	}
+
+	assertEquals(appCommandCatalog.length, Object.keys(commandActions).length);
+	assertEquals(/@post|document\.|window\./.test(catalog), false);
+	assertStringIncludes(dialogs, "export function openWorkspace()");
+	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.openWorkspace()");
+	assertStringIncludes(promptBox, "openWorkspaceDialogAction()");
+	assertStringIncludes(main, '"window.piUi.dialogs.openWorkspace()"');
 });
 
 function browserActionsFor(source: string, path: string): string {

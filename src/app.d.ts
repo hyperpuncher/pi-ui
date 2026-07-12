@@ -5,6 +5,7 @@ interface PiUiNamespace {
 	dialogs: {
 		openSession(): void;
 		openTree(): void;
+		openWorkspace(): void;
 	};
 	fileTransfer: {
 		hasFiles(data?: unknown): boolean;

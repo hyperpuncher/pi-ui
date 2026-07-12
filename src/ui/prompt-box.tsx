@@ -1,3 +1,10 @@
+import {
+	cycleModelAction,
+	cycleThinkingAction,
+	newSessionAction,
+	openSessionDialogAction,
+	openWorkspaceDialogAction,
+} from "../commands/actions.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	AppRenderSnapshot,
@@ -348,15 +355,11 @@ function openCommandPaletteAction(): string {
 }
 
 function newChatAction(): string {
-	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New session'; @post('/sessions/new', { filterSignals: { include: /^$/ } }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
+	return newSessionAction();
 }
 
 function newTemporaryChatAction(): string {
-	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New temporary session'; @post('/sessions/new-temporary', { filterSignals: { include: /^$/ } }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
-}
-
-function openSessionDialogAction(): string {
-	return "window.piUi.dialogs.openSession(); @post('/sessions/list', { filterSignals: { include: /^$/ } })";
+	return newSessionAction(true);
 }
 
 export function renderPromptAction(state: AppRenderSnapshot): string {
@@ -595,11 +598,8 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 				id="thinking-select"
 				class="dropdown-menu"
 				data-on:keydown__window={`if (evt.altKey && evt.key.toLowerCase() === 't') {
-					evt.preventDefault();
-					$thinkingCycleDirection = evt.shiftKey ? 'backward' : 'forward';
-					@post('/thinking/cycle', {
-						filterSignals: { include: /^thinkingCycleDirection$/ },
-					});
+				evt.preventDefault();
+				${cycleThinkingAction("event-shift")};
 				}`}
 			>
 				<button
@@ -690,15 +690,6 @@ function thinkingDescription(level: AppThinkingLevel): string {
 	}
 }
 
-function openWorkspaceDialogAction(): string {
-	return `
-		$workspacePath = '';
-		const dialog = document.getElementById('workspace-dialog');
-		if (!dialog?.open) dialog?.showModal();
-		requestAnimationFrame(() => document.getElementById('workspace-input')?.focus());
-	`;
-}
-
 function workspaceLabel(path: string): string {
 	const display = formatHomePath(path).replaceAll("\\", "/");
 	const parts = display.split("/").filter(Boolean);
@@ -721,15 +712,12 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 				id="model-select"
 				class="dropdown-menu"
 				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
-					evt.preventDefault();
-					document.getElementById('model-select-trigger')?.focus();
-					el.toggle?.();
+				evt.preventDefault();
+				document.getElementById('model-select-trigger')?.focus();
+				el.toggle?.();
 				} else if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'p') {
-					evt.preventDefault();
-					$modelCycleDirection = evt.shiftKey ? 'backward' : 'forward';
-					@post('/model/cycle', {
-						filterSignals: { include: /^modelCycleDirection$/ },
-					});
+				evt.preventDefault();
+				${cycleModelAction("event-shift")};
 				}`}
 			>
 				<button

@@ -1,5 +1,5 @@
 import type { SessionTransitionState } from "../agent/session-transition-controller.ts";
-import { appCommands } from "../commands/registry.ts";
+import { appCommandCatalog } from "../commands/catalog.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
@@ -141,7 +141,7 @@ export type AppRenderSnapshot = Readonly<{
 type AppStoreUpdateOptions = { flush?: boolean; commit?: boolean };
 
 const emptyChatHints: AppKeybindHint[] = [
-	...appCommands
+	...appCommandCatalog
 		.filter((command) => command.shortcut.display)
 		.map((command) => ({
 			keys: formatShortcut(command.shortcut.display),

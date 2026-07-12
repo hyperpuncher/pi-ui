@@ -1,18 +1,7 @@
 import { createApp } from "./server/app.ts";
 
 const openWorkspaceMenuId = "change-workspace";
-const openWorkspaceDialogScript = `(() => {
-	const input = document.getElementById("workspace-input");
-	if (input instanceof HTMLInputElement) {
-		input.value = "";
-		input.dispatchEvent(new Event("input", { bubbles: true }));
-	}
-	const dialog = document.getElementById("workspace-dialog");
-	if (dialog instanceof HTMLDialogElement && !dialog.open) {
-		dialog.showModal();
-	}
-	requestAnimationFrame(() => input?.focus());
-})()`;
+const openWorkspaceDialogScript = "window.piUi.dialogs.openWorkspace()";
 
 const app = await createApp();
 Deno.serve(app.fetch);
