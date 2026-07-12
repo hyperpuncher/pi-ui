@@ -1,4 +1,6 @@
+import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
 import { fileUriToPath } from "./file-uri.js";
+import { collectAddedElementRoots } from "./mutation-roots.js";
 
 const messagesScrollState = {
 	wasPinnedToBottom: true,
@@ -23,7 +25,8 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindPickerKeyboard();
 	bindVimControls();
 	bindDebugFps();
-	hydratePierreDiffs();
+	bindDisplayRefreshMeasurement();
+	hydratePierreDiffs([document]);
 	scrollMessagesBottomSoon();
 });
 
@@ -728,13 +731,21 @@ function startVimiumTargetScroll() {
 	vimScrollAnimation = requestAnimationFrame(tick);
 }
 
-function hydratePierreDiffs() {
-	for (const host of document.querySelectorAll("[data-pierre-diff]")) {
-		if (!(host instanceof HTMLElement) || host.shadowRoot) continue;
-		const template = host.querySelector('template[shadowrootmode="open"]');
-		if (!(template instanceof HTMLTemplateElement)) continue;
-		host.attachShadow({ mode: "open" }).append(template.content.cloneNode(true));
-		template.remove();
+function hydratePierreDiffs(roots) {
+	for (const root of roots) {
+		const hosts = [
+			...(root instanceof HTMLElement && root.matches("[data-pierre-diff]")
+				? [root]
+				: []),
+			...(root.querySelectorAll?.("[data-pierre-diff]") ?? []),
+		];
+		for (const host of hosts) {
+			if (!(host instanceof HTMLElement) || host.shadowRoot) continue;
+			const template = host.querySelector('template[shadowrootmode="open"]');
+			if (!(template instanceof HTMLTemplateElement)) continue;
+			host.attachShadow({ mode: "open" }).append(template.content.cloneNode(true));
+			template.remove();
+		}
 	}
 }
 
@@ -754,11 +765,14 @@ function bindMessagesAutoscroll() {
 	);
 
 	let autoscrollFrame;
-	const observer = new MutationObserver(() => {
-		hydratePierreDiffs();
+	const affectedRoots = new Set();
+	const observer = new MutationObserver((records) => {
+		for (const root of collectAddedElementRoots(records)) affectedRoots.add(root);
 		if (autoscrollFrame) return;
 		autoscrollFrame = requestAnimationFrame(() => {
 			autoscrollFrame = undefined;
+			hydratePierreDiffs(affectedRoots);
+			affectedRoots.clear();
 			const messages = document.getElementById("messages");
 			if (!messages || !messagesScrollState.wasPinnedToBottom) {
 				return;

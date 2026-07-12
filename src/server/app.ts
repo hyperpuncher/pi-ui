@@ -18,6 +18,7 @@ import {
 	scriptAndSignalsResponse,
 	signalsResponse,
 } from "./datastar.ts";
+import { readDisplayRefreshUpdate } from "./display-refresh.ts";
 import { FileSearchHost } from "./file-search.ts";
 import {
 	getTransferredFiles,
@@ -79,6 +80,16 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 
 				if (request.method === "GET" && url.pathname === "/stream") {
 					return state.createStream(request.signal);
+				}
+
+				if (request.method === "POST" && url.pathname === "/display-refresh") {
+					const update = await readDisplayRefreshUpdate(request);
+					if (!update)
+						return new Response("Invalid display refresh rate", {
+							status: 400,
+						});
+					state.setDisplayRefreshHz(update.hz);
+					return noContent();
 				}
 
 				if (request.method === "POST" && url.pathname === "/prompt") {
@@ -200,6 +211,12 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 						state.renderMessagesElement(),
 						"window.piUiRestoreMessagesAnchor?.()",
 					);
+				}
+
+				if (request.method === "POST" && url.pathname === "/messages/enhance") {
+					return state.enhanceMessage(url.searchParams.get("id") ?? "")
+						? noContent()
+						: new Response("Message is not deferred", { status: 409 });
 				}
 
 				if (request.method === "POST" && url.pathname === "/tree/open") {

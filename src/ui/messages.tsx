@@ -256,6 +256,21 @@ function styleObjectToAttribute(style: Record<string, string>): string {
 		.join(";");
 }
 
+function renderDeferredEnhancement(message: AppMessage) {
+	if (message.presentationState !== "deferred") return "";
+	return (
+		<button
+			type="button"
+			class="btn m-2"
+			data-variant="ghost"
+			data-size="sm"
+			data-on:click={`@post('/messages/enhance?id=${encodeURIComponent(message.id)}')`}
+		>
+			Enhance formatting
+		</button>
+	);
+}
+
 function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	const classes = [];
 	if (index === 0 && !part.mono) classes.push("mr-2");
@@ -294,6 +309,7 @@ export function renderMessage(message: AppMessage): string {
 						{message.text}
 					</p>
 				)}
+				{renderDeferredEnhancement(message)}
 			</article>
 		) as string;
 	}
@@ -311,6 +327,7 @@ export function renderMessage(message: AppMessage): string {
 						{message.text}
 					</p>
 				)}
+				{renderDeferredEnhancement(message)}
 			</article>
 		) as string;
 	}
@@ -360,6 +377,7 @@ export function renderMessage(message: AppMessage): string {
 						)}
 					</div>
 				</details>
+				{renderDeferredEnhancement(message)}
 			</article>
 		) as string;
 	}
@@ -415,6 +433,7 @@ export function renderMessage(message: AppMessage): string {
 						? renderCodeOutput(message)
 						: renderPreOutput(message.text)
 				: ""}
+			{renderDeferredEnhancement(message)}
 		</article>
 	) as string;
 }

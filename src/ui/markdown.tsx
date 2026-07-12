@@ -149,19 +149,39 @@ const compileOptions = {
 	mdastPlugins: [stripRawHtml],
 } satisfies CompileOptions;
 
+export type StreamingMarkdownMeasurement = {
+	html: string;
+	markdownParseMs: number;
+	codeBlockRenderMs: number;
+};
+
 export function renderMarkdownStreaming(
 	markdown: string,
 	options: { cacheKey?: string } = {},
 ): string {
+	return renderMarkdownStreamingMeasured(markdown, options).html;
+}
+
+export function renderMarkdownStreamingMeasured(
+	markdown: string,
+	options: { cacheKey?: string } = {},
+): StreamingMarkdownMeasurement {
 	const cacheKey = options.cacheKey;
 	if (cacheKey) {
 		const cached = streamingCache.get(cacheKey);
-		if (cached?.markdown === markdown) return cached.html;
+		if (cached?.markdown === markdown) {
+			return { html: cached.html, markdownParseMs: 0, codeBlockRenderMs: 0 };
+		}
 	}
 
-	const html = renderStreamingCodeBlocks(compileMarkdown(markdown), cacheKey ?? "");
+	const parseStartedAt = performance.now();
+	const compiled = compileMarkdown(markdown);
+	const markdownParseMs = performance.now() - parseStartedAt;
+	const codeStartedAt = performance.now();
+	const html = renderStreamingCodeBlocks(compiled, cacheKey ?? "");
+	const codeBlockRenderMs = performance.now() - codeStartedAt;
 	if (cacheKey) streamingCache.set(cacheKey, { markdown, html });
-	return html;
+	return { html, markdownParseMs, codeBlockRenderMs };
 }
 
 export function releaseMarkdownStreamingState(cacheKey: string): void {

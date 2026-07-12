@@ -1,4 +1,6 @@
-import { type AppMessageInput, AppState } from "../state/app-state.ts";
+import { type AppMessage, type AppMessageInput, AppState } from "../state/app-state.ts";
+import { renderMarkdownStreamingMeasured } from "../ui/markdown.tsx";
+import { renderMessage } from "../ui/messages.tsx";
 import { sessionPerformance } from "./session-performance.ts";
 
 export type PatchSummary = {
@@ -132,6 +134,110 @@ function percentile(values: number[], fraction: number): number {
 	return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * fraction) - 1)];
 }
 
+type StreamingFrameSample = {
+	markdownParseMs: number;
+	codeBlockRenderMs: number;
+	kitaRenderMs: number;
+	sseEncodeMs: number;
+	totalMs: number;
+};
+
+function streamingFixtures(): Array<{ name: string; markdown: string }> {
+	const prose = "Growing prose with **formatting**, links, and punctuation. ";
+	return [
+		{ name: "growing-prose-1kb", markdown: prose.repeat(20).slice(0, 1024) },
+		{ name: "growing-prose-10kb", markdown: prose.repeat(200).slice(0, 10 * 1024) },
+		{ name: "growing-prose-50kb", markdown: prose.repeat(1000).slice(0, 50 * 1024) },
+		{
+			name: "incomplete-markdown",
+			markdown: `${prose.repeat(40)}\n\n[unfinished](https://example`,
+		},
+		{
+			name: "fenced-code",
+			markdown: `\`\`\`ts\n${"const value = 1;\n".repeat(300)}\`\`\``,
+		},
+		{
+			name: "tables",
+			markdown: `| Name | Value |\n| --- | --- |\n${"| frame | measured |\n".repeat(300)}`,
+		},
+		{
+			name: "mixed-thought-assistant",
+			markdown: `## Thought\n${prose.repeat(80)}\n\n## Assistant\n${prose.repeat(80)}`,
+		},
+	];
+}
+
+function benchmarkStreamingFrames() {
+	return streamingFixtures().map((fixture) => {
+		const samples: StreamingFrameSample[] = [];
+		for (let frame = 1; frame <= 6; frame += 1) {
+			const markdown = fixture.markdown.slice(
+				0,
+				Math.max(1, Math.ceil((fixture.markdown.length * frame) / 6)),
+			);
+			const measured = renderMarkdownStreamingMeasured(markdown);
+			const message: AppMessage = {
+				id: `benchmark-${fixture.name}`,
+				role:
+					fixture.name === "mixed-thought-assistant" ? "thought" : "assistant",
+				text: markdown,
+				timestamp: new Date(0),
+				renderedHtml: measured.html,
+				presentationState: "streaming",
+				presentationVersion: frame,
+			};
+			const kitaStartedAt = performance.now();
+			const element = renderMessage(message);
+			const kitaRenderMs = performance.now() - kitaStartedAt;
+			const encodeStartedAt = performance.now();
+			new TextEncoder().encode(
+				`event: datastar-patch-elements\ndata: elements ${element}\n\n`,
+			);
+			const sseEncodeMs = performance.now() - encodeStartedAt;
+			const totalMs =
+				measured.markdownParseMs +
+				measured.codeBlockRenderMs +
+				kitaRenderMs +
+				sseEncodeMs;
+			samples.push({
+				markdownParseMs: measured.markdownParseMs,
+				codeBlockRenderMs: measured.codeBlockRenderMs,
+				kitaRenderMs,
+				sseEncodeMs,
+				totalMs,
+			});
+		}
+		const stage = (key: keyof StreamingFrameSample) => ({
+			p50Ms: percentile(
+				samples.map((sample) => sample[key]),
+				0.5,
+			),
+			p95Ms: percentile(
+				samples.map((sample) => sample[key]),
+				0.95,
+			),
+		});
+		return {
+			name: fixture.name,
+			bytes: new TextEncoder().encode(fixture.markdown).byteLength,
+			frameCount: samples.length,
+			stages: {
+				markdownParse: stage("markdownParseMs"),
+				codeBlockRender: stage("codeBlockRenderMs"),
+				kitaRender: stage("kitaRenderMs"),
+				sseEncode: stage("sseEncodeMs"),
+				browserMorph: null,
+				total: stage("totalMs"),
+			},
+			droppedAt60Hz: samples.filter((sample) => sample.totalMs > 1000 / 60).length,
+			droppedAt144Hz: samples.filter((sample) => sample.totalMs > 1000 / 144)
+				.length,
+			coalescedFrameCount: 0,
+			maximumQueuedFrames: 1,
+		};
+	});
+}
+
 async function fixtureSizes(): Promise<number[]> {
 	const sessionPath = Deno.env.get("PI_UI_BENCH_SESSION");
 	if (!sessionPath) return [10, 50, 200];
@@ -183,6 +289,7 @@ if (import.meta.main) {
 		JSON.stringify({
 			type: "pi-ui-session-benchmark",
 			samples: 3,
+			streamingFrames: benchmarkStreamingFrames(),
 			sessionLoading: {
 				logicalOpenCountInstrumented: true,
 				sdkInternalReadsPerSessionOpenEstimate:

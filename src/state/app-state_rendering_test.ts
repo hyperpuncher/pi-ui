@@ -152,6 +152,33 @@ Deno.test("replacement discards stale enhancement completion", async () => {
 	assertEqual(state.messages[0].presentationState, "final");
 });
 
+Deno.test("oversized enhancement retains fallback until explicitly requested", async () => {
+	let renderCount = 0;
+	const state = new AppState({
+		renderMarkdownFinal: (text) => {
+			renderCount += 1;
+			return Promise.resolve(`<p>${text.length}</p>`);
+		},
+	});
+	state.replaceMessages([markdownMessage("large fallback ".repeat(2_000))]);
+	await settleMicrotasks();
+	assertEqual(renderCount, 0);
+	assertEqual(state.messages[0].presentationState, "deferred");
+	assertIncludes(state.renderMessagesElement(), "Enhance formatting");
+	assertEqual(state.enhanceMessage(state.messages[0].id), true);
+	await waitFor(() => renderCount === 1);
+	await settleMicrotasks();
+	assertEqual(state.messages[0].presentationState, "final");
+});
+
+Deno.test("assistant completion immediately flushes newest streaming content", () => {
+	const state = new AppState();
+	state.appendMessage("assistant", "first");
+	state.appendAssistantDelta(" **latest**");
+	state.finishAssistant();
+	assertIncludes(state.messages[0].renderedHtml ?? "", "<strong>latest</strong>");
+});
+
 Deno.test("enhancement errors retain the safe fallback", async () => {
 	const state = new AppState({
 		renderMarkdownFinal: () => Promise.reject(new Error("render failed")),

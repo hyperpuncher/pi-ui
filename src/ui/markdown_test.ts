@@ -53,6 +53,21 @@ Deno.test("plain, fenced, and incomplete markdown preserve rendering structure",
 	const incomplete = renderMarkdownStreaming("```ts\nconst value = 1;");
 	assertIncludes(incomplete, "data-code-block");
 	assertIncludes(incomplete, "const value = 1;");
+
+	const table = "| Name | Value |\n| --- | --- |\n| cadence | measured |";
+	assertEqual(renderMarkdownStreaming(table), await renderMarkdownFinal(table));
+});
+
+Deno.test("growing streaming code fences preserve the latest complete source", () => {
+	const key = "continuity";
+	renderMarkdownStreaming("```ts\nconst first = 1;", { cacheKey: key });
+	const latest = renderMarkdownStreaming(
+		"```ts\nconst first = 1;\nconst latest = 2;\n```",
+		{ cacheKey: key },
+	);
+	assertIncludes(latest, "const first = 1;");
+	assertIncludes(latest, "const latest = 2;");
+	releaseMarkdownStreamingState(key);
 });
 
 function assertEqual(actual: unknown, expected: unknown): void {

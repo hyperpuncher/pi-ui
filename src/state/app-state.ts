@@ -31,7 +31,9 @@ import { renderSessionTransition } from "../ui/session-transition.tsx";
 import { renderTreePicker } from "../ui/tree-picker.tsx";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
+import { shouldDeferEnhancement } from "./enhancement-policy.ts";
 import { EnhancementQueue } from "./enhancement-queue.ts";
+import { StreamingFrameScheduler } from "./streaming-frame-scheduler.ts";
 
 export type AppMessage = {
 	id: string;
@@ -44,7 +46,7 @@ export type AppMessage = {
 	state?: "running" | "success" | "error";
 	format?: "pre" | "diff" | "code";
 	renderedHtml?: string;
-	presentationState: "plain" | "streaming" | "enhancing" | "final";
+	presentationState: "plain" | "streaming" | "deferred" | "enhancing" | "final";
 	presentationVersion: number;
 };
 
@@ -233,7 +235,7 @@ export class AppState {
 	private messageSeq = 0;
 	private activeAssistantId: string | undefined;
 	private activeThoughtId: string | undefined;
-	private streamingPatchTimer: ReturnType<typeof setTimeout> | undefined;
+	private readonly streamingScheduler: StreamingFrameScheduler<readonly string[]>;
 	private enhancementGeneration = 0;
 	private readonly enhancementQueue: EnhancementQueue;
 	private readonly renderMarkdownEnhancement: (text: string) => Promise<string>;
@@ -252,7 +254,6 @@ export class AppState {
 	private transcriptMessages: AppMessage[] = [];
 	private visibleMessageStart = 0;
 	readonly debugUi = debugUiEnabled();
-	streamingPatchIntervalMs = 7;
 	messages: AppMessage[] = [];
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
@@ -274,6 +275,9 @@ export class AppState {
 	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };
 
 	constructor(options: AppStateOptions = {}) {
+		this.streamingScheduler = new StreamingFrameScheduler((ids) => {
+			for (const id of ids) this.patchStreamingMessage(id);
+		});
 		this.enhancementQueue = new EnhancementQueue(options.enhancementConcurrency ?? 2);
 		this.renderMarkdownEnhancement =
 			options.renderMarkdownFinal ?? renderMarkdownFinal;
@@ -700,28 +704,35 @@ export class AppState {
 		this.flush();
 	}
 
+	setDisplayRefreshHz(hz: number): boolean {
+		return this.streamingScheduler.setDisplayHz(hz);
+	}
+
+	enhanceMessage(id: string): boolean {
+		const message = this.transcriptMessages.find((item) => item.id === id);
+		if (!message || message.presentationState !== "deferred") return false;
+		this.enqueueMessageEnhancement(id, true);
+		return true;
+	}
+
+	private streamingMessageIds(): readonly string[] {
+		return uniqueStrings(
+			[this.activeThoughtId, this.activeAssistantId].filter(
+				(id): id is string => id !== undefined,
+			),
+		);
+	}
+
 	private scheduleStreamingPatch(): void {
-		if (this.streamingPatchTimer !== undefined) return;
-		this.streamingPatchTimer = setTimeout(() => {
-			this.streamingPatchTimer = undefined;
-			this.flushStreamingPatch();
-		}, this.streamingPatchIntervalMs);
+		this.streamingScheduler.schedule(this.streamingMessageIds());
 	}
 
 	private clearStreamingPatchTimer(): void {
-		if (this.streamingPatchTimer === undefined) return;
-		clearTimeout(this.streamingPatchTimer);
-		this.streamingPatchTimer = undefined;
+		this.streamingScheduler.clear();
 	}
 
 	private flushStreamingPatch(): void {
-		this.clearStreamingPatchTimer();
-		if (this.activeThoughtId) {
-			this.patchStreamingMessage(this.activeThoughtId);
-		}
-		if (this.activeAssistantId) {
-			this.patchStreamingMessage(this.activeAssistantId);
-		}
+		this.streamingScheduler.flush(this.streamingMessageIds());
 	}
 
 	private patchStreamingMessage(id: string): void {
@@ -751,7 +762,7 @@ export class AppState {
 		this.requestCommit();
 	}
 
-	private enqueueMessageEnhancement(id: string): void {
+	private enqueueMessageEnhancement(id: string, force = false): void {
 		const message = this.transcriptMessages.find((item) => item.id === id);
 		const kind = message ? enhancementKind(message) : undefined;
 		if (
@@ -761,8 +772,14 @@ export class AppState {
 				(id === this.activeAssistantId || id === this.activeThoughtId)) ||
 			!message.text.trim() ||
 			message.presentationState === "enhancing" ||
-			message.presentationState === "final"
+			message.presentationState === "final" ||
+			(message.presentationState === "deferred" && !force)
 		) {
+			return;
+		}
+		if (!force && shouldDeferEnhancement(kind, message.text)) {
+			message.presentationState = "deferred";
+			this.broadcastMessage(message);
 			return;
 		}
 
