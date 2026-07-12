@@ -21,6 +21,21 @@ export class DatastarStream {
 	}
 }
 
+export type ClientEffect =
+	| { type: "focus-prompt" }
+	| { type: "open-tree" }
+	| { type: "restore-messages-anchor" }
+	| { type: "session-deleted" };
+
+export type DatastarEvent =
+	| {
+			type: "elements";
+			elements: string;
+			options?: Parameters<DatastarStream["patchElements"]>[1];
+	  }
+	| { type: "signals"; signals: Record<string, Jsonifiable> }
+	| { type: "effect"; effect: ClientEffect };
+
 export function refreshBasecoatComponentsScript(...selectors: string[]): string {
 	return `queueMicrotask(() => document.querySelectorAll(${JSON.stringify(
 		selectors.join(", "),
@@ -34,50 +49,50 @@ export function datastarStream(
 	return ds.stream((stream) => onStart(new DatastarStream(stream)), options);
 }
 
-export function signalsResponse(signals: Record<string, Jsonifiable>) {
-	return datastarStream((stream) => {
-		stream.patchSignals(JSON.stringify(signals));
-	});
+/** Builds a finite Datastar response and preserves the supplied event order. */
+export function datastarResponse(
+	events: readonly DatastarEvent[] = [],
+	init: ResponseInit = {},
+): Response {
+	if (events.length === 0)
+		return new Response(null, { ...init, status: init.status ?? 204 });
+	return datastarStream(
+		(stream) => {
+			for (const event of events) {
+				if (event.type === "elements") {
+					stream.patchElements(event.elements, event.options);
+				} else if (event.type === "signals") {
+					stream.patchSignals(JSON.stringify(event.signals));
+				} else {
+					stream.executeScript(clientEffectScript(event.effect));
+				}
+			}
+		},
+		{ responseInit: init as Record<string, unknown> },
+	);
 }
 
-export function scriptResponse(script: string) {
-	return datastarStream((stream) => {
-		stream.executeScript(script);
-	});
+export function errorResponse(status: number, message: string): Response {
+	return Response.json({ error: message }, { status });
 }
 
-export function scriptAndSignalsResponse(
-	script: string,
-	signals: Record<string, Jsonifiable>,
-) {
-	return datastarStream((stream) => {
-		stream.patchSignals(JSON.stringify(signals));
-		stream.executeScript(script);
-	});
+export function signalsResponse(signals: Record<string, Jsonifiable>): Response {
+	return datastarResponse([{ type: "signals", signals }]);
 }
 
-export function elementsAndScriptResponse(
-	elements: string,
-	script: string,
-	signals: Record<string, Jsonifiable> = {},
-) {
-	return datastarStream((stream) => {
-		stream.patchElements(elements);
-		if (Object.keys(signals).length > 0) {
-			stream.patchSignals(JSON.stringify(signals));
-		}
-		stream.executeScript(script);
-	});
+function clientEffectScript(effect: ClientEffect): string {
+	switch (effect.type) {
+		case "focus-prompt":
+			return "document.getElementById('prompt-input')?.focus({ preventScroll: true })";
+		case "open-tree":
+			return `${refreshBasecoatComponentsScript("#tree-dialog .command")}; window.piUiOpenTreeDialog?.(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });`;
+		case "restore-messages-anchor":
+			return "window.piUiRestoreMessagesAnchor?.()";
+		case "session-deleted":
+			return `document.getElementById('session-delete-dialog')?.close(); ${refreshBasecoatComponentsScript("#session-dialog .command")}; document.getElementById('session-input')?.focus();`;
+	}
 }
 
 function normalizeSseData(value: string): string {
 	return value.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
-}
-
-export async function readSignals(request: Request) {
-	const result = await ds.readSignals(request);
-	if (!result.success) {
-		return {};
-	}
-	return result.signals;
 }

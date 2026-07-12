@@ -7,7 +7,7 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 			class="dialog"
 			aria-labelledby="auth-dialog-title"
 			onclick="if (event.target === this) this.close()"
-			data-on:close="@post('/auth/close')"
+			data-on:close="@post('/auth/close', { filterSignals: { include: /^$/ } })"
 		>
 			{renderAuthDialogContent(dialog)}
 		</dialog>
@@ -150,7 +150,7 @@ function renderApiKeyPrompt(dialog: AppAuthDialog): string {
 					type="button"
 					class="btn"
 					data-variant="outline"
-					data-on:click="@post('/auth/open-login')"
+					data-on:click="@post('/auth/open-login', { filterSignals: { include: /^$/ } })"
 				>
 					Back
 				</button>

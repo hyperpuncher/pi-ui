@@ -116,7 +116,7 @@ function loadOlderMessagesAction(): string {
 	return `
 		el.scrollTop < el.clientHeight * 2 &&
 		window.piUiCaptureMessagesAnchor?.() &&
-		@post('/messages/older')
+		@post('/messages/older', { filterSignals: { include: /^$/ } })
 	`;
 }
 
@@ -125,8 +125,11 @@ function renderOlderMessagesTrigger() {
 		<div
 			class="pointer-events-none -mb-[40vh] h-[40vh] opacity-0"
 			data-load-older-messages
-			data-on:click="window.piUiCaptureMessagesAnchor?.() && @post('/messages/older')"
-			data-on-intersect="window.piUiCaptureMessagesAnchor?.() && @post('/messages/older')"
+			data-on:click="
+				window.piUiCaptureMessagesAnchor?.() &&
+				@post('/messages/older', { filterSignals: { include: /^$/ } })
+			"
+			data-on-intersect="window.piUiCaptureMessagesAnchor?.() && @post('/messages/older', { filterSignals: { include: /^$/ } })"
 			aria-hidden="true"
 		/>
 	);
@@ -267,7 +270,9 @@ function renderDeferredEnhancement(message: AppMessage) {
 			class="btn m-2"
 			data-variant="ghost"
 			data-size="sm"
-			data-on:click={`@post('/messages/enhance?id=${encodeURIComponent(message.id)}')`}
+			data-on:click={`@post('/messages/enhance?id=${encodeURIComponent(message.id)}', {
+				filterSignals: { include: /^$/ },
+			})`}
 		>
 			Enhance formatting
 		</button>

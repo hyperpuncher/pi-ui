@@ -1,5 +1,5 @@
-import { sessionTransitionResponse } from "../server/app.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { sessionTransitionResponse } from "../server/routes/sessions.ts";
 import { AppStore } from "../state/app-store.ts";
 import { renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker } from "../ui/pickers.tsx";

@@ -61,7 +61,7 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 				}
 				if (evt.altKey && evt.key === 'ArrowUp') {
 					evt.preventDefault();
-					@post('/prompt/dequeue');
+					@post('/prompt/dequeue', { filterSignals: { include: /^$/ } });
 				}
 				if (
 					evt.key === 'Enter' &&
@@ -334,15 +334,15 @@ function openCommandPaletteAction(): string {
 }
 
 function newChatAction(): string {
-	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New session'; @post('/sessions/new'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
+	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New session'; @post('/sessions/new', { filterSignals: { include: /^$/ } }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
 }
 
 function newTemporaryChatAction(): string {
-	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New temporary session'; @post('/sessions/new-temporary'); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
+	return "if (!$sessionTransitionLoading) { $_sessionTarget = 'New temporary session'; @post('/sessions/new-temporary', { filterSignals: { include: /^$/ } }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }";
 }
 
 function openSessionDialogAction(): string {
-	return "document.getElementById('session-dialog')?.showModal()";
+	return "document.getElementById('session-dialog')?.showModal(); @post('/sessions/list', { filterSignals: { include: /^$/ } })";
 }
 
 export function renderPromptAction(state: AppRenderSnapshot): string {
@@ -354,7 +354,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 				data-variant="destructive"
 				data-size="icon"
 				type="button"
-				data-on:click="@post('/abort')"
+				data-on:click="@post('/abort', { filterSignals: { include: /^$/ } })"
 				data-on:keydown__window="if (
 					evt.key === 'Escape' &&
 					!evt.ctrlKey &&
@@ -363,7 +363,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 					!evt.shiftKey
 				) {
 					evt.preventDefault();
-					@post('/abort');
+					@post('/abort', { filterSignals: { include: /^$/ } });
 				}"
 				data-tooltip="Abort"
 				aria-label="Abort"
