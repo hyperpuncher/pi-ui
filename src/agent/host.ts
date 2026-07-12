@@ -52,8 +52,9 @@ import {
 } from "./session-transition-controller.ts";
 import { classifySessionLeave, transitionRuntime } from "./session-transition.ts";
 
-const bashPreviewLines = 8;
-const bashCompactThreshold = 14;
+const bashPreviewLines = 4;
+const bashCompactThreshold = 7;
+const hiddenBashOutputCommands = new Set(["fd", "find", "grep", "ls", "rg", "tree"]);
 
 type BackgroundSession = {
 	runtime: AgentSessionRuntime;
@@ -1898,6 +1899,13 @@ function formatToolResult(
 		};
 	}
 	if (toolName === "bash") {
+		if (!options.isError && shouldHideBashOutput(options.args)) {
+			const count = countBashResults(text);
+			return {
+				text: `${count} result${count === 1 ? "" : "s"}`,
+				format: "code",
+			};
+		}
 		return { text: compactToolOutput(text), format: "code" };
 	}
 	return { text, format: "pre" };
@@ -1912,6 +1920,22 @@ function compactReadOutput(text: string): string {
 		.replace(/\n\n\[[^\]]*more lines in file[\s\S]*?\]$/i, "")
 		.replace(/\n\n\[Showing lines [^\]]+\]$/i, "")
 		.trimEnd();
+}
+
+function shouldHideBashOutput(args: unknown): boolean {
+	const command = stringValue(asRecord(args)?.command).trimStart();
+	const executable = command.match(
+		/^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*(?:\S+\/)?([^\s;|&]+)/,
+	)?.[1];
+	return executable !== undefined && hiddenBashOutputCommands.has(executable);
+}
+
+function countBashResults(text: string): number {
+	return text
+		.trim()
+		.split("\n")
+		.filter((line) => line.trim() && !/^\[(?:Showing|Output truncated)/.test(line))
+		.length;
 }
 
 function compactToolOutput(text: string): string {
