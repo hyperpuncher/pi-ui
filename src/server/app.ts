@@ -431,7 +431,7 @@ function treeOpenResponse(
 }
 
 function openTreeScript(): string {
-	return `${refreshBasecoatComponentsScript("#tree-dialog .command")}; const dialog = document.getElementById('tree-dialog'); if (!dialog?.open) dialog?.showModal(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });`;
+	return `${refreshBasecoatComponentsScript("#tree-dialog .command")}; window.piUiOpenTreeDialog?.(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });`;
 }
 
 async function importTransferredFiles(

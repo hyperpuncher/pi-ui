@@ -12,6 +12,8 @@ const MAX_TRANSFER_FILES = 10;
 const MAX_TRANSFER_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
 
+window.piUiOpenTreeDialog = openTreeDialog;
+
 window.addEventListener("DOMContentLoaded", () => {
 	focusPromptEnd();
 	bindPromptInteractions();
@@ -93,6 +95,16 @@ function visibleRows(selector) {
 	return [...document.querySelectorAll(selector)].filter(
 		(row) => row instanceof HTMLElement && getComputedStyle(row).display !== "none",
 	);
+}
+
+function openTreeDialog() {
+	const dialog = document.getElementById("tree-dialog");
+	if (!(dialog instanceof HTMLDialogElement)) return;
+	if (!dialog.open) dialog.showModal();
+	requestAnimationFrame(() => {
+		const input = document.getElementById("tree-input");
+		if (input instanceof HTMLInputElement) input.focus({ preventScroll: true });
+	});
 }
 
 function focusPromptEnd() {

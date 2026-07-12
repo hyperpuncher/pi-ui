@@ -55,7 +55,7 @@ export const appCommands: AppCommand[] = [
 		title: "Session tree",
 		description: "Navigate and branch within the current session.",
 		shortcut: { display: "", native: "", keys: [] },
-		action: "@post('/tree/open')",
+		action: "window.piUiOpenTreeDialog?.(); @post('/tree/open')",
 	},
 	{
 		id: "command-palette",

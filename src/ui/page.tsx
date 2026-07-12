@@ -164,6 +164,7 @@ export function renderPage(state: AppRenderSnapshot): string {
 					id="tree-dialog"
 					class="command-dialog"
 					aria-label="Session tree"
+					data-preserve-attr="open"
 					onclick="if (event.target === this) this.close()"
 				>
 					<div class="command sm:max-w-4xl">

@@ -455,7 +455,8 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'id="workspace-dialog"');
 	assertIncludes(html, 'id="session-dialog"');
 	assertIncludes(html, 'id="model-select"');
-	assertIncludes(html, 'data-preserve-attr="open"');
+	const treeDialog = html.match(/<dialog[^>]*id="tree-dialog"[^>]*>/)?.[0] ?? "";
+	assertIncludes(treeDialog, 'data-preserve-attr="open"');
 });
 
 type TestStore = AppStore & { createStream(signal: AbortSignal): Response };

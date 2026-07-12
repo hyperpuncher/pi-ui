@@ -71,6 +71,7 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 				) {
 					evt.preventDefault();
 					window.piUiScrollMessagesBottom?.();
+					if ($prompt.trim() === '/tree') window.piUiOpenTreeDialog?.();
 					evt.altKey
 						? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
 						: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
