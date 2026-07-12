@@ -9,13 +9,22 @@ import { isRecord } from "./tool-presentation.ts";
 
 type TreeState = Pick<AppStore, "setTreeEntries">;
 
+export type TreeNavigationResult =
+	| { status: "success"; editorText?: string }
+	| { status: "busy" }
+	| { status: "cancelled" };
+
 export class TreeProjector {
-	private navigating = false;
+	private readonly navigations = new Map<
+		unknown,
+		{ session: AgentSessionRuntime["session"] }
+	>();
 
 	constructor(
 		private readonly getRuntime: () => AgentSessionRuntime,
 		private readonly state: TreeState,
 		private readonly onNavigated: () => void = () => {},
+		private readonly getOwnerToken: () => unknown = () => getRuntime().session,
 	) {}
 
 	open(): void {
@@ -36,26 +45,33 @@ export class TreeProjector {
 	async navigate(
 		entryId: string,
 		options: { summarize?: boolean; customInstructions?: string } = {},
-	): Promise<string | undefined> {
-		if (!entryId.trim() || this.navigating) return undefined;
-		this.navigating = true;
+	): Promise<TreeNavigationResult> {
+		const session = this.getRuntime().session;
+		const ownerToken = this.getOwnerToken();
+		if (this.navigations.has(ownerToken)) return { status: "busy" };
+		if (!entryId.trim()) return { status: "cancelled" };
+		const navigation = { session };
+		this.navigations.set(ownerToken, navigation);
 		try {
-			const result = await this.getRuntime().session.navigateTree(entryId, {
+			const result = await session.navigateTree(entryId, {
 				summarize: options.summarize ?? false,
 				customInstructions: options.customInstructions,
 			});
-			if (result.cancelled) return undefined;
+			if (result.cancelled || this.getOwnerToken() !== ownerToken) {
+				return { status: "cancelled" };
+			}
 			this.onNavigated();
 			this.load();
-			return result.editorText;
+			return { status: "success", editorText: result.editorText };
 		} finally {
-			this.navigating = false;
+			if (this.navigations.get(ownerToken) === navigation) {
+				this.navigations.delete(ownerToken);
+			}
 		}
 	}
 
 	cancelNavigation(): void {
-		if (!this.navigating) return;
-		this.getRuntime().session.abortBranchSummary();
+		this.navigations.get(this.getOwnerToken())?.session.abortBranchSummary();
 	}
 }
 

@@ -5,6 +5,7 @@ import {
 	type RuntimeControllerActivationOptions,
 } from "./runtime-controller.ts";
 import type { SessionTransitionResult } from "./session-transition-controller.ts";
+import type { TreeNavigationResult } from "./tree-projector.ts";
 
 /** Route-facing facade. Runtime and domain ownership live in focused controllers. */
 export class AgentHost {
@@ -82,7 +83,7 @@ export class AgentHost {
 	navigateTree(
 		entryId: string,
 		options: { summarize?: boolean; customInstructions?: string } = {},
-	): Promise<string | undefined> {
+	): Promise<TreeNavigationResult> {
 		return this.runtime.navigateTree(entryId, options);
 	}
 

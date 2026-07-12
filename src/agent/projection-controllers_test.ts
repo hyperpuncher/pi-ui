@@ -145,6 +145,11 @@ Deno.test("tree navigation rejects overlap and can cancel summarization", async 
 				abortCount += 1;
 				finishNavigation({ cancelled: true });
 			},
+			sessionManager: {
+				getTree: () => [],
+				getLeafId: () => null,
+				getBranch: () => [],
+			},
 		},
 	} as unknown as AgentSessionRuntime;
 	const projector = new TreeProjector(() => runtime, {
@@ -152,10 +157,77 @@ Deno.test("tree navigation rejects overlap and can cancel summarization", async 
 	});
 
 	const first = projector.navigate("one", { summarize: true });
-	assertEquals(await projector.navigate("two"), undefined);
-	projector.cancelNavigation();
-	assertEquals(await first, undefined);
+	assertEquals(await projector.navigate("two"), { status: "busy" });
+	projector.open();
+	assertEquals(await first, { status: "cancelled" });
 	assertEquals({ navigateCount, abortCount }, { navigateCount: 1, abortCount: 1 });
+});
+
+Deno.test("stale tree navigation cannot mutate a reused session generation", async () => {
+	let finishOld = (_result: { cancelled: boolean; editorText: string }) => {};
+	const oldNavigation = new Promise<{ cancelled: boolean; editorText: string }>(
+		(resolve) => (finishOld = resolve),
+	);
+	let navigateCount = 0;
+	const session = {
+		navigateTree: () => {
+			navigateCount += 1;
+			return navigateCount === 1
+				? oldNavigation
+				: Promise.resolve({ cancelled: false, editorText: "new" });
+		},
+		abortBranchSummary: () => {},
+		sessionManager: {
+			getTree: () => [],
+			getLeafId: () => null,
+			getBranch: () => [],
+		},
+	};
+	const runtime = { session } as unknown as AgentSessionRuntime;
+	let generation = 1;
+	let navigated = 0;
+	let treeLoads = 0;
+	const projector = new TreeProjector(
+		() => runtime,
+		{ setTreeEntries: () => (treeLoads += 1) },
+		() => (navigated += 1),
+		() => generation,
+	);
+
+	const old = projector.navigate("old");
+	generation += 1;
+	assertEquals(await projector.navigate("new"), {
+		status: "success",
+		editorText: "new",
+	});
+	finishOld({ cancelled: false, editorText: "stale" });
+	assertEquals(await old, { status: "cancelled" });
+	assertEquals({ navigated, treeLoads }, { navigated: 1, treeLoads: 1 });
+});
+
+Deno.test("tree navigation reports successful empty editor text explicitly", async () => {
+	let navigated = 0;
+	const runtime = {
+		session: {
+			navigateTree: async () => ({ cancelled: false, editorText: undefined }),
+			sessionManager: {
+				getTree: () => [],
+				getLeafId: () => null,
+				getBranch: () => [],
+			},
+		},
+	} as unknown as AgentSessionRuntime;
+	const projector = new TreeProjector(
+		() => runtime,
+		{ setTreeEntries: () => {} },
+		() => (navigated += 1),
+	);
+
+	assertEquals(await projector.navigate("one"), {
+		status: "success",
+		editorText: undefined,
+	});
+	assertEquals(navigated, 1);
 });
 
 Deno.test("catalog and usage formatting remain stable", () => {

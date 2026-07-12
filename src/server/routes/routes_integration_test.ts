@@ -146,46 +146,41 @@ Deno.test("tree open remains repeatable and includes the fallback open effect", 
 	assertEquals(opens, 2);
 });
 
-Deno.test("tree navigation is single-flight and can be cancelled by reopening", async () => {
-	let resolveNavigation: (value: string | undefined) => void = () => {};
+Deno.test("tree navigation state follows mutable host ownership", async () => {
+	let resolveNavigation: (value: {
+		status: "success";
+		editorText: string;
+	}) => void = () => {};
 	let markStarted: () => void = () => {};
-	const navigation = new Promise<string | undefined>(
+	const navigation = new Promise<{ status: "success"; editorText: string }>(
 		(resolve) => (resolveNavigation = resolve),
 	);
 	const started = new Promise<void>((resolve) => (markStarted = resolve));
-	let opens = 0;
-	const host = fakeHost({
-		navigateTree: () => {
+	const oldHost = fakeHost({
+		navigateTree: (entryId: string) => {
+			if (entryId !== "entry") return Promise.resolve({ status: "busy" });
 			markStarted();
 			return navigation;
 		},
-		openTree: () => ((opens += 1), true),
 	});
-	const router = createRouter(fakeContext({ host }));
-	const first = router.fetch(
-		signalRequest("/tree/navigate", {
-			treeEntryId: "entry",
-			treeSummarize: true,
-			treeSummaryInstructions: "",
-		}),
-	);
+	const context = fakeContext({ host: oldHost });
+	const router = createRouter(context);
+	const first = router.fetch(treeNavigateRequest("entry"));
 	await started;
-	assertEquals(
-		(
-			await router.fetch(
-				signalRequest("/tree/navigate", {
-					treeEntryId: "other",
-					treeSummarize: false,
-					treeSummaryInstructions: "",
-				}),
-			)
-		).status,
-		409,
-	);
-	assertEquals((await router.fetch(signalRequest("/tree/open", {}))).status, 200);
-	assertEquals(opens, 1);
-	resolveNavigation(undefined);
-	assertEquals((await first).status, 200);
+	assertEquals((await router.fetch(treeNavigateRequest("other"))).status, 409);
+
+	context.resources.host = fakeHost({
+		navigateTree: async () => ({ status: "success", editorText: "replacement" }),
+	});
+	const replacement = await router.fetch(treeNavigateRequest("new"));
+	assertEquals(replacement.status, 200);
+	assertStringIncludes(await replacement.text(), "replacement");
+
+	resolveNavigation({ status: "success", editorText: "stale" });
+	const cancelled = await first;
+	assertEquals(cancelled.status, 204);
+	const cancelledBody = await cancelled.text();
+	assertEquals(cancelledBody.includes('"prompt"'), false);
 });
 
 function fakeContext(
@@ -224,7 +219,7 @@ function fakeHost(overrides: Record<string, unknown> = {}): AgentHost {
 		getWorkspacePath: () => Deno.cwd(),
 		listSessions: async () => {},
 		logout: () => true,
-		navigateTree: async () => "",
+		navigateTree: async () => ({ status: "success", editorText: "" }),
 		newSession: async () => ({ status: "success" }),
 		newTemporarySession: async () => ({ status: "success" }),
 		openLogin: () => {},
@@ -240,6 +235,14 @@ function fakeHost(overrides: Record<string, unknown> = {}): AgentHost {
 		toggleScopedModel: async () => true,
 		...overrides,
 	} as unknown as AgentHost;
+}
+
+function treeNavigateRequest(entryId: string): Request {
+	return signalRequest("/tree/navigate", {
+		treeEntryId: entryId,
+		treeSummarize: false,
+		treeSummaryInstructions: "",
+	});
 }
 
 function signalGet(path: string, signals: Record<string, unknown>): Request {

@@ -48,7 +48,7 @@ import {
 	toolTitleParts,
 } from "./tool-presentation.ts";
 import { TranscriptProjector } from "./transcript-projector.ts";
-import { TreeProjector } from "./tree-projector.ts";
+import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
 
 export type RuntimeControllerDependencies = Readonly<{
@@ -119,6 +119,7 @@ export class RuntimeController {
 			() => this.runtime,
 			state,
 			() => this.loadCurrentSessionMessages(),
+			() => this.foregroundGeneration,
 		);
 		this.catalog = new SessionCatalog(state, (sessions) =>
 			this.mergeBackgroundStatuses(sessions),
@@ -617,7 +618,7 @@ export class RuntimeController {
 	async navigateTree(
 		entryId: string,
 		options: { summarize?: boolean; customInstructions?: string } = {},
-	): Promise<string | undefined> {
+	): Promise<TreeNavigationResult> {
 		return await this.tree.navigate(entryId, options);
 	}
 
