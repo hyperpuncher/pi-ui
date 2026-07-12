@@ -37,11 +37,17 @@ export function formatShellCommandDisplay(command: string): string {
 	let result = "";
 	let quote: "'" | '"' | "`" | undefined;
 	let escaped = false;
+	let comment = false;
 	let blockDepth = 0;
-	const continuation = () => "\n  ";
+	const continuation = () => `\n${"  ".repeat(blockDepth + 1)}`;
 
 	for (let index = 0; index < command.length; index++) {
 		const char = command[index];
+		if (comment) {
+			result += char;
+			if (char === "\n") comment = false;
+			continue;
+		}
 		if (escaped) {
 			result += char;
 			escaped = false;
@@ -62,16 +68,21 @@ export function formatShellCommandDisplay(command: string): string {
 			result += char;
 			continue;
 		}
-
-		const pair = command.slice(index, index + 2);
-		if (pair === "&&" || pair === "||") {
-			result = `${result.trimEnd()} ${pair}${continuation()}`;
-			index++;
-			while (command[index + 1] === " ") index++;
+		if (char === "#" && (index === 0 || /[\s;|&{(]/.test(command[index - 1]))) {
+			comment = true;
+			result += char;
 			continue;
 		}
-		if (char === "|") {
-			result = `${result.trimEnd()} |${continuation()}`;
+
+		const operator = [";;&", "&&", "||", "|&", ";;", ";&", "|", ";"].find(
+			(candidate) => command.startsWith(candidate, index),
+		);
+		if (operator) {
+			const separator = ["&&", "||", "|", "|&"].includes(operator)
+				? ` ${operator}`
+				: operator;
+			result = `${result.trimEnd()}${separator}${continuation()}`;
+			index += operator.length - 1;
 			while (command[index + 1] === " ") index++;
 			continue;
 		}
@@ -84,12 +95,7 @@ export function formatShellCommandDisplay(command: string): string {
 		}
 		if (char === "}" && blockDepth > 0) {
 			blockDepth--;
-			result = `${result.trimEnd()}\n  }`;
-			while (command[index + 1] === " ") index++;
-			continue;
-		}
-		if (char === ";") {
-			result = result.trimEnd() + continuation();
+			result = `${result.trimEnd()}${continuation()}}`;
 			while (command[index + 1] === " ") index++;
 			continue;
 		}

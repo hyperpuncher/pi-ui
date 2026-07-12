@@ -53,6 +53,22 @@ Deno.test("tool presentation preserves representative and malformed values", () 
 		formatShellCommandDisplay(`echo ${"x".repeat(90)} && done`),
 		"&&\n  done",
 	);
+	assertStringIncludes(
+		formatShellCommandDisplay(`echo ${"x".repeat(90)}; done`),
+		";\n  done",
+	);
+	assertStringIncludes(
+		formatShellCommandDisplay(`echo ${"x".repeat(90)} |& tee out`),
+		" |&\n  tee out",
+	);
+	assertStringIncludes(
+		formatShellCommandDisplay(`case ${"x".repeat(90)} in x) one ;;& y) two ;& esac`),
+		"one;;&\n  y) two;&\n  esac",
+	);
+	assertStringIncludes(
+		formatShellCommandDisplay(`echo ${"x".repeat(90)} # keep ; | && unchanged`),
+		"# keep ; | && unchanged",
+	);
 	assertEquals(
 		contentToText([
 			{ type: "thinking", thinking: "hidden" },
