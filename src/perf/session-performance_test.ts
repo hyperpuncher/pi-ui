@@ -128,6 +128,50 @@ Deno.test("async transition context keeps nested spans on their owner", async ()
 	}
 });
 
+Deno.test("ownership diagnostics are transition-scoped and content-free", () => {
+	const previous = Deno.env.get("PI_UI_PERF");
+	const originalLog = console.log;
+	const output: string[] = [];
+	try {
+		Deno.env.set("PI_UI_PERF", "1");
+		sessionPerformance.reset();
+		console.log = (value?: unknown) => output.push(String(value));
+		const transition = sessionPerformance.startSessionTransition();
+		sessionPerformance.recordOwnershipDiagnostics(
+			{
+				sourceGeneration: 7,
+				sourceSdkStreaming: false,
+				sourceObservedRunning: true,
+				sourcePersisted: true,
+				leaveAction: "background",
+				targetBackgroundLookup: "hit",
+				sourceLocationBefore: "foreground",
+				sourceLocationAfter: "background-running",
+				targetLocationBefore: "background-running",
+				targetLocationAfter: "foreground",
+				ownedLiveRuntimeCount: 2,
+				duplicateKeyInvariantFailures: 0,
+			},
+			transition,
+		);
+		completeTransition(transition);
+
+		const record = JSON.parse(output[0]);
+		assertEqual(record.transition.ownership.sourceGeneration, 7);
+		assertEqual(record.transition.ownership.targetBackgroundLookup, "hit");
+		assertEqual(record.transition.backgroundLookupHitCount, 1);
+		const serialized = output[0];
+		for (const sensitive of ["/home/user/session.jsonl", "secret prompt"]) {
+			assertNotIncludes(serialized, sensitive);
+		}
+	} finally {
+		console.log = originalLog;
+		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
+		else Deno.env.set("PI_UI_PERF", previous);
+		sessionPerformance.reset();
+	}
+});
+
 Deno.test("cancelled transitions emit no record or sensitive fields", () => {
 	const previous = Deno.env.get("PI_UI_PERF");
 	const originalLog = console.log;

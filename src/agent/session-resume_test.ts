@@ -9,7 +9,8 @@ import {
 type Manager = { path: string; cwd: string };
 
 function resumeHarness(
-	state: SessionResumeRuntimeState,
+	state: Omit<SessionResumeRuntimeState, "observedRunning"> &
+		Partial<Pick<SessionResumeRuntimeState, "observedRunning">>,
 	options: {
 		backgroundPath?: string;
 		cancelSwitch?: boolean;
@@ -33,10 +34,9 @@ function resumeHarness(
 			return replacementManager;
 		},
 		operations: {
-			state: () => state,
+			state: () => ({ observedRunning: false, ...state }),
 			findBackground: (target: string) =>
 				background?.path === target ? background : undefined,
-			removeBackground: () => events.push("remove-background"),
 			activateBackground: async () => {
 				events.push("activate-background");
 			},
@@ -80,11 +80,22 @@ Deno.test("background activation performs no session open", async () => {
 	);
 	assertEqual(await executeSessionResume("./session.jsonl", fake.operations), true);
 	assertEqual(fake.logicalOpenCount, 0);
-	assertEvents(fake.events, ["remove-background", "activate-background"]);
+	assertEvents(fake.events, ["activate-background"]);
 });
 
 Deno.test("streaming foreground opens one manager and backgrounds the runtime", async () => {
 	const fake = resumeHarness({ streaming: true, persisted: true });
+	assertEqual(await executeSessionResume("session.jsonl", fake.operations), true);
+	assertEqual(fake.logicalOpenCount, 1);
+	assertEvents(fake.events, ["open", "background", "create"]);
+});
+
+Deno.test("observed lifecycle preserves a persisted runtime when SDK streaming is false", async () => {
+	const fake = resumeHarness({
+		streaming: false,
+		observedRunning: true,
+		persisted: true,
+	});
 	assertEqual(await executeSessionResume("session.jsonl", fake.operations), true);
 	assertEqual(fake.logicalOpenCount, 1);
 	assertEvents(fake.events, ["open", "background", "create"]);

@@ -32,6 +32,30 @@ type PerformanceCounters = {
 	fatMorphCount: number;
 	targetedMessagePatchCount: number;
 	bytesRendered: number;
+	backgroundLookupHitCount: number;
+	backgroundLookupMissCount: number;
+};
+
+export type RuntimeLeaveAction = "background" | "discard" | "dispose" | "keep";
+export type RuntimeOwnershipLocation =
+	| "foreground"
+	| "background-running"
+	| "background-completed"
+	| "disposed";
+
+export type SessionOwnershipDiagnostics = {
+	sourceGeneration?: number;
+	sourceSdkStreaming?: boolean;
+	sourceObservedRunning?: boolean;
+	sourcePersisted?: boolean;
+	leaveAction?: RuntimeLeaveAction;
+	targetBackgroundLookup?: "hit" | "miss";
+	sourceLocationBefore?: RuntimeOwnershipLocation;
+	sourceLocationAfter?: RuntimeOwnershipLocation;
+	targetLocationBefore?: RuntimeOwnershipLocation;
+	targetLocationAfter?: RuntimeOwnershipLocation;
+	ownedLiveRuntimeCount: number;
+	duplicateKeyInvariantFailures: number;
 };
 
 export type SessionPerformanceSnapshot = PerformanceCounters & {
@@ -44,6 +68,7 @@ export type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
 	id: number;
 	elapsedMs: number;
 	spans: SpanSnapshot;
+	ownership: SessionOwnershipDiagnostics;
 };
 
 export type SessionPerformanceRecord = {
@@ -59,6 +84,7 @@ type Transition = PerformanceCounters & {
 	transcriptProjected: boolean;
 	firstPatchAt?: number;
 	spans: SpanSnapshot;
+	ownership: SessionOwnershipDiagnostics;
 };
 
 function emptySpans(): SpanSnapshot {
@@ -76,6 +102,15 @@ function emptyCounters(): PerformanceCounters {
 		fatMorphCount: 0,
 		targetedMessagePatchCount: 0,
 		bytesRendered: 0,
+		backgroundLookupHitCount: 0,
+		backgroundLookupMissCount: 0,
+	};
+}
+
+function emptyOwnershipDiagnostics(): SessionOwnershipDiagnostics {
+	return {
+		ownedLiveRuntimeCount: 0,
+		duplicateKeyInvariantFailures: 0,
 	};
 }
 
@@ -164,6 +199,7 @@ class SessionPerformanceCollector {
 			hostComplete: false,
 			transcriptProjected: false,
 			spans: emptySpans(),
+			ownership: emptyOwnershipDiagnostics(),
 			...emptyCounters(),
 		});
 		this.activeTransitionId = id;
@@ -210,6 +246,28 @@ class SessionPerformanceCollector {
 			1,
 			transitionId ?? this.currentTransitionId(),
 		);
+	}
+
+	recordOwnershipDiagnostics(
+		diagnostics: Partial<SessionOwnershipDiagnostics>,
+		transitionId?: number,
+	): void {
+		if (!this.enabled) return;
+		const transition = this.getTransition(transitionId ?? this.currentTransitionId());
+		if (!transition) return;
+		if (
+			diagnostics.targetBackgroundLookup &&
+			transition.ownership.targetBackgroundLookup === undefined
+		) {
+			this.incrementCounter(
+				diagnostics.targetBackgroundLookup === "hit"
+					? "backgroundLookupHitCount"
+					: "backgroundLookupMissCount",
+				1,
+				transition.id,
+			);
+		}
+		Object.assign(transition.ownership, diagnostics);
 	}
 
 	recordFatMorph(html: string, transitionId?: number): void {
@@ -283,6 +341,9 @@ class SessionPerformanceCollector {
 				fatMorphCount: transition.fatMorphCount,
 				targetedMessagePatchCount: transition.targetedMessagePatchCount,
 				bytesRendered: transition.bytesRendered,
+				backgroundLookupHitCount: transition.backgroundLookupHitCount,
+				backgroundLookupMissCount: transition.backgroundLookupMissCount,
+				ownership: structuredClone(transition.ownership),
 			},
 			cumulative: this.snapshot(),
 		};

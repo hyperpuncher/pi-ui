@@ -31,9 +31,11 @@ import { formatDateTime } from "../utils/locale.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 import { AuthController } from "./auth-controller.ts";
 import {
-	abortRunningBackgroundSession,
-	mergeBackgroundSessionStatuses,
-} from "./background-session-status.ts";
+	BackgroundRuntimeOwnership,
+	ownsForegroundRuntime,
+	RuntimeOwnershipInvariantError,
+} from "./background-runtime-ownership.ts";
+import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import { CodexUsageRequestTracker } from "./codex-usage-request.ts";
 import {
 	codexUsageTtlMs,
@@ -62,6 +64,8 @@ type BackgroundSession = {
 	runtime: AgentSessionRuntime;
 	state: TranscriptState;
 	status: BackgroundSessionStatus;
+	generation: number;
+	observedRunning: boolean;
 	toolMessageIds: Map<string, string>;
 	toolCallArgs: Map<string, unknown>;
 	toolStartedAt: Map<string, number>;
@@ -155,7 +159,10 @@ export class AgentHost {
 	private readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
 
-	private readonly backgroundSessions = new Map<string, BackgroundSession>();
+	private readonly backgroundSessions =
+		new BackgroundRuntimeOwnership<BackgroundSession>();
+	private foregroundGeneration: number;
+	private foregroundObservedRunning: boolean;
 
 	private constructor(
 		private runtime: AgentSessionRuntime,
@@ -164,6 +171,8 @@ export class AgentHost {
 		private readonly preparedSessions: PreparedSessionList,
 		private readonly activationOptions: AgentHostActivationOptions,
 	) {
+		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
+		this.foregroundObservedRunning = runtime.session.isStreaming;
 		this.auth = new AuthController(
 			() => this.runtime,
 			state,
@@ -339,6 +348,7 @@ export class AgentHost {
 
 	async abort(): Promise<void> {
 		await this.runtime.session.abort();
+		this.foregroundObservedRunning = false;
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
 		this.loadCurrentSessionMessages();
@@ -346,12 +356,11 @@ export class AgentHost {
 	}
 
 	async abortBackgroundSession(sessionPath: string): Promise<boolean> {
-		const aborted = await abortRunningBackgroundSession(
-			this.backgroundSessions,
-			sessionPath,
-			(session) => session.runtime.session.abort(),
-		);
-		if (!aborted) return false;
+		const session = this.backgroundSessions.get(sessionPath);
+		if (session?.status !== "running") return false;
+		await session.runtime.session.abort();
+		session.status = "completed";
+		session.observedRunning = false;
 		this.syncBackgroundStatuses();
 		await this.refreshSessions();
 		return true;
@@ -372,15 +381,16 @@ export class AgentHost {
 	private async createNewSession(): Promise<boolean> {
 		const session = this.runtime.session;
 		const persisted = session.sessionManager.isPersisted();
-		if (session.isStreaming || !persisted) {
+		const active = this.isCurrentRuntimeActive();
+		if (active || !persisted) {
 			const cwd = session.sessionManager.getCwd();
-			if (session.isStreaming && persisted) {
+			if (active && persisted) {
 				this.backgroundCurrentRuntime();
-			} else if (session.isStreaming) {
+			} else if (active) {
 				await this.discardTemporaryRuntime();
 			} else {
 				this.unbindSession();
-				this.runtime.dispose();
+				await this.runtime.dispose();
 			}
 			const runtime = await createAgentSessionRuntime(this.runtimeFactory, {
 				cwd,
@@ -389,12 +399,14 @@ export class AgentHost {
 				sessionStartEvent: { type: "session_start", reason: "new" },
 			});
 			this.runtime = runtime;
+			this.assignNewForegroundGeneration();
 			this.bindRuntimeCallbacks(runtime);
 		} else {
 			const result = await this.runtime.newSession();
 			if (result.cancelled) {
 				return false;
 			}
+			this.assignNewForegroundGeneration();
 		}
 		this.state.resetChat();
 		await this.bindSession({ refreshSessions: true });
@@ -410,7 +422,7 @@ export class AgentHost {
 	private async createNewTemporarySession(): Promise<boolean> {
 		const previousSessionFile = this.runtime.session.sessionManager.getSessionFile();
 		const cwd = this.runtime.session.sessionManager.getCwd();
-		if (this.runtime.session.isStreaming) {
+		if (this.isCurrentRuntimeActive()) {
 			if (this.runtime.session.sessionManager.isPersisted()) {
 				this.backgroundCurrentRuntime();
 			} else {
@@ -418,7 +430,7 @@ export class AgentHost {
 			}
 		} else {
 			this.unbindSession();
-			this.runtime.dispose();
+			await this.runtime.dispose();
 		}
 
 		const runtime = await createAgentSessionRuntime(this.runtimeFactory, {
@@ -432,6 +444,7 @@ export class AgentHost {
 			},
 		});
 		this.runtime = runtime;
+		this.assignNewForegroundGeneration();
 		this.bindRuntimeCallbacks(runtime);
 		this.state.resetChat();
 		await this.bindSession();
@@ -463,8 +476,8 @@ export class AgentHost {
 			await moveToTrash(targetSessionFile);
 			const backgroundSession = this.backgroundSessions.get(targetSessionFile);
 			if (backgroundSession) {
-				backgroundSession.unsubscribe();
-				backgroundSession.runtime.dispose();
+				this.unsubscribeBackgroundSession(backgroundSession);
+				await backgroundSession.runtime.dispose();
 				this.backgroundSessions.delete(targetSessionFile);
 			}
 			this.state.removeSession(targetSessionFile);
@@ -508,19 +521,71 @@ export class AgentHost {
 		sessionPath: string,
 		transitionId?: number,
 	): Promise<boolean> {
-		return await executeSessionResume(sessionPath, {
+		const sourceStreaming = this.runtime.session.isStreaming;
+		const sourcePersisted = this.runtime.session.sessionManager.isPersisted();
+		sessionPerformance.recordOwnershipDiagnostics(
+			{
+				sourceGeneration: this.foregroundGeneration,
+				sourceSdkStreaming: sourceStreaming,
+				sourceObservedRunning: this.foregroundObservedRunning,
+				sourcePersisted,
+				sourceLocationBefore: "foreground",
+				ownedLiveRuntimeCount: this.ownedLiveRuntimeCount(),
+				duplicateKeyInvariantFailures:
+					this.backgroundSessions.invariantFailureCount,
+			},
+			transitionId,
+		);
+		const resumed = await executeSessionResume(sessionPath, {
 			state: () => ({
-				streaming: this.runtime.session.isStreaming,
-				persisted: this.runtime.session.sessionManager.isPersisted(),
+				streaming: sourceStreaming,
+				observedRunning: this.foregroundObservedRunning,
+				persisted: sourcePersisted,
 			}),
-			findBackground: (path) => this.backgroundSessions.get(path),
-			removeBackground: (path) => this.backgroundSessions.delete(path),
-			activateBackground: (session) =>
-				sessionPerformance.measure(
-					"backgroundActivation",
-					() => this.activateRuntime(session),
+			findBackground: (path) => {
+				const session = this.backgroundSessions.get(path);
+				sessionPerformance.recordOwnershipDiagnostics(
+					{
+						targetBackgroundLookup: session ? "hit" : "miss",
+						targetLocationBefore: session
+							? session.status === "running"
+								? "background-running"
+								: "background-completed"
+							: "disposed",
+					},
 					transitionId,
-				),
+				);
+				return session;
+			},
+			activateBackground: async (path, session) => {
+				const activation = this.backgroundSessions.beginActivation(path);
+				if (!activation || activation.runtime !== session) {
+					throw new RuntimeOwnershipInvariantError();
+				}
+				const action = this.currentRuntimeLeaveAction();
+				sessionPerformance.recordOwnershipDiagnostics(
+					{ leaveAction: action },
+					transitionId,
+				);
+				try {
+					await sessionPerformance.measure(
+						"backgroundActivation",
+						() => this.activateRuntime(session),
+						transitionId,
+					);
+					activation.commit();
+					sessionPerformance.recordOwnershipDiagnostics(
+						{
+							sourceLocationAfter: this.leaveActionLocation(action),
+							targetLocationAfter: "foreground",
+						},
+						transitionId,
+					);
+				} catch (error) {
+					activation.rollback();
+					throw error;
+				}
+			},
 			openSession: (path) => {
 				const manager = sessionPerformance.measureSync(
 					"sessionManagerOpen",
@@ -531,13 +596,17 @@ export class AgentHost {
 				return manager;
 			},
 			replaceRuntime: async (sessionManager, action) => {
+				sessionPerformance.recordOwnershipDiagnostics(
+					{ leaveAction: action },
+					transitionId,
+				);
 				if (action === "background") {
 					this.backgroundCurrentRuntime();
 				} else if (action === "discard") {
 					await this.discardTemporaryRuntime();
 				} else {
 					this.unbindSession();
-					this.runtime.dispose();
+					await this.runtime.dispose();
 				}
 				this.runtime = await sessionPerformance.measure(
 					"runtimeSwitchCreate",
@@ -549,6 +618,7 @@ export class AgentHost {
 						}),
 					transitionId,
 				);
+				this.assignNewForegroundGeneration();
 				this.bindRuntimeCallbacks(this.runtime);
 				await sessionPerformance.measure(
 					"runtimeRebind",
@@ -556,8 +626,19 @@ export class AgentHost {
 					transitionId,
 				);
 				this.loadCurrentSessionMessages();
+				sessionPerformance.recordOwnershipDiagnostics(
+					{
+						sourceLocationAfter: this.leaveActionLocation(action),
+						targetLocationAfter: "foreground",
+					},
+					transitionId,
+				);
 			},
 			switchSession: async (path) => {
+				sessionPerformance.recordOwnershipDiagnostics(
+					{ leaveAction: "dispose" },
+					transitionId,
+				);
 				const result = await sessionPerformance.measure(
 					"runtimeSwitchCreate",
 					() => this.runtime.switchSession(path),
@@ -565,10 +646,27 @@ export class AgentHost {
 				);
 				if (!result.cancelled) {
 					sessionPerformance.recordSessionOpen(transitionId);
+					this.assignNewForegroundGeneration();
+					sessionPerformance.recordOwnershipDiagnostics(
+						{
+							sourceLocationAfter: "disposed",
+							targetLocationAfter: "foreground",
+						},
+						transitionId,
+					);
 				}
 				return result;
 			},
 		});
+		sessionPerformance.recordOwnershipDiagnostics(
+			{
+				ownedLiveRuntimeCount: this.ownedLiveRuntimeCount(),
+				duplicateKeyInvariantFailures:
+					this.backgroundSessions.invariantFailureCount,
+			},
+			transitionId,
+		);
+		return resumed;
 	}
 
 	openTree(): boolean {
@@ -722,15 +820,52 @@ export class AgentHost {
 		this.auth.dispose();
 		this.invalidateCodexUsageRequest();
 		this.runtime.dispose();
-		for (const { runtime, unsubscribe } of this.backgroundSessions.values()) {
-			unsubscribe();
-			runtime.dispose();
+		for (const session of this.backgroundSessions.values()) {
+			this.unsubscribeBackgroundSession(session);
+			session.runtime.dispose();
 		}
 		this.backgroundSessions.clear();
 	}
 
+	private isCurrentRuntimeActive(): boolean {
+		return this.runtime.session.isStreaming || this.foregroundObservedRunning;
+	}
+
+	private currentRuntimeLeaveAction(): "background" | "discard" | "dispose" {
+		if (!this.isCurrentRuntimeActive()) return "dispose";
+		return this.runtime.session.sessionManager.isPersisted()
+			? "background"
+			: "discard";
+	}
+
+	private leaveActionLocation(
+		action: "background" | "discard" | "dispose" | "keep",
+	): "background-running" | "disposed" | "foreground" {
+		if (action === "background") return "background-running";
+		if (action === "keep") return "foreground";
+		return "disposed";
+	}
+
+	private assignNewForegroundGeneration(): void {
+		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
+		this.foregroundObservedRunning = this.runtime.session.isStreaming;
+	}
+
+	private ownedLiveRuntimeCount(): number {
+		return this.backgroundSessions.liveCount(this.isCurrentRuntimeActive());
+	}
+
+	private unsubscribeBackgroundSession(session: BackgroundSession): void {
+		const unsubscribe = session.unsubscribe;
+		session.unsubscribe = () => {};
+		unsubscribe();
+	}
+
 	private bindRuntimeCallbacks(runtime: AgentSessionRuntime): void {
-		runtime.setBeforeSessionInvalidate(() => this.unbindSession());
+		runtime.setBeforeSessionInvalidate(() => {
+			// A delayed shutdown from an old runtime must not detach the new runtime.
+			if (ownsForegroundRuntime(this.runtime, runtime)) this.unbindSession();
+		});
 		runtime.setRebindSession(async () => {
 			await sessionPerformance.measure("runtimeRebind", async () => {
 				await this.bindSessionExtensions();
@@ -764,36 +899,41 @@ export class AgentHost {
 	}
 
 	private backgroundCurrentRuntime(): void {
+		const sessionFile = this.runtime.session.sessionManager.getSessionFile();
+		if (!sessionFile) return;
+		if (this.backgroundSessions.has(sessionFile)) {
+			throw new RuntimeOwnershipInvariantError();
+		}
 		const snapshot = this.state.snapshotChat();
 		this.unbindSession();
 		this.state.setQueuedMessages([], []);
-		const sessionFile = this.runtime.session.sessionManager.getSessionFile();
-		if (sessionFile) {
-			const backgroundState = new TranscriptState(snapshot.emptyChatHint);
-			backgroundState.restore(snapshot);
-			const backgroundSession: BackgroundSession = {
-				runtime: this.runtime,
-				state: backgroundState,
-				status: "running",
-				toolMessageIds: new Map(this.toolMessageIds),
-				toolCallArgs: new Map(this.toolCallArgs),
-				toolStartedAt: new Map(this.toolStartedAt),
-				unsubscribe: () => {},
-			};
-			backgroundSession.unsubscribe = this.runtime.session.subscribe((event) =>
-				this.handleBackgroundEvent(sessionFile, backgroundSession, event),
-			);
-			this.backgroundSessions.set(sessionFile, backgroundSession);
-			this.state.setCurrentSessionPath(undefined);
-			this.syncBackgroundStatuses();
-		}
+		const backgroundState = new TranscriptState(snapshot.emptyChatHint);
+		backgroundState.restore(snapshot);
+		const backgroundSession: BackgroundSession = {
+			runtime: this.runtime,
+			state: backgroundState,
+			status: "running",
+			generation: this.foregroundGeneration,
+			observedRunning: this.foregroundObservedRunning,
+			toolMessageIds: new Map(this.toolMessageIds),
+			toolCallArgs: new Map(this.toolCallArgs),
+			toolStartedAt: new Map(this.toolStartedAt),
+			unsubscribe: () => {},
+		};
+		backgroundSession.unsubscribe = this.runtime.session.subscribe((event) =>
+			this.handleBackgroundEvent(backgroundSession, event),
+		);
+		this.backgroundSessions.register(sessionFile, backgroundSession);
+		this.state.setCurrentSessionPath(undefined);
+		this.syncBackgroundStatuses();
 	}
 
 	private handleBackgroundEvent(
-		sessionFile: string,
 		backgroundSession: BackgroundSession,
 		event: AgentSessionEvent,
 	): void {
+		if (event.type === "agent_start") backgroundSession.observedRunning = true;
+		if (event.type === "agent_end") backgroundSession.observedRunning = false;
 		const outcome = this.reduceEvent(
 			event,
 			backgroundSession.state,
@@ -809,15 +949,13 @@ export class AgentHost {
 				),
 		);
 		if (outcome.agentCompleted) {
-			backgroundSession.unsubscribe();
+			this.unsubscribeBackgroundSession(backgroundSession);
 			backgroundSession.status = "completed";
-			this.backgroundSessions.set(sessionFile, backgroundSession);
 			this.syncBackgroundStatuses();
 			this.notifyBackgroundSessionDone(backgroundSession.runtime);
 			void this.refreshSessions();
 			return;
 		}
-		this.backgroundSessions.set(sessionFile, backgroundSession);
 	}
 
 	private async notifyBackgroundSessionDone(
@@ -840,7 +978,7 @@ export class AgentHost {
 	}
 
 	private async activateRuntime(backgroundSession: BackgroundSession): Promise<void> {
-		if (this.runtime.session.isStreaming) {
+		if (this.isCurrentRuntimeActive()) {
 			if (this.runtime.session.sessionManager.isPersisted()) {
 				this.backgroundCurrentRuntime();
 			} else {
@@ -848,10 +986,12 @@ export class AgentHost {
 			}
 		} else {
 			this.unbindSession();
-			this.runtime.dispose();
+			await this.runtime.dispose();
 		}
-		backgroundSession.unsubscribe();
+		this.unsubscribeBackgroundSession(backgroundSession);
 		this.runtime = backgroundSession.runtime;
+		this.foregroundGeneration = backgroundSession.generation;
+		this.foregroundObservedRunning = backgroundSession.observedRunning;
 		this.toolMessageIds.clear();
 		this.toolCallArgs.clear();
 		this.toolStartedAt.clear();
@@ -903,7 +1043,11 @@ export class AgentHost {
 				this.toolStartedAt.clear();
 			}
 			this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
-			this.state.setActivityText(session.isStreaming ? "Working..." : undefined);
+			this.state.setActivityText(
+				session.isStreaming || this.foregroundObservedRunning
+					? "Working..."
+					: undefined,
+			);
 			this.syncModels();
 			this.syncThinking();
 			this.syncSlashCommands();
@@ -951,7 +1095,7 @@ export class AgentHost {
 		return mergeBackgroundSessionStatuses(
 			sessions,
 			new Map(
-				[...this.backgroundSessions].map(([path, session]) => [
+				[...this.backgroundSessions.entries()].map(([path, session]) => [
 					path,
 					session.status,
 				]),
@@ -1011,6 +1155,8 @@ export class AgentHost {
 	}
 
 	private handleEvent(event: AgentSessionEvent): void {
+		if (event.type === "agent_start") this.foregroundObservedRunning = true;
+		if (event.type === "agent_end") this.foregroundObservedRunning = false;
 		this.state.update(
 			() => {
 				const outcome = this.reduceEvent(
