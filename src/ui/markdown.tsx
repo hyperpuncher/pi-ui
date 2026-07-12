@@ -1,5 +1,6 @@
 import {
 	DEFAULT_THEMES,
+	getFiletypeFromFileName,
 	getHighlighterIfLoaded,
 	ShikiStreamTokenizer,
 	type SupportedLanguages,
@@ -455,7 +456,10 @@ const supportedCodeLanguages = new Set<string>([...pierreLanguages, "text"]);
 function codeFenceLanguage(language: string | undefined): string {
 	const normalized = language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
 	if (["plain", "plaintext", "txt"].includes(normalized)) return "text";
-	return supportedCodeLanguages.has(normalized) ? normalized : "text";
+	if (supportedCodeLanguages.has(normalized)) return normalized;
+
+	const mapped = getFiletypeFromFileName(`code.${normalized}`);
+	return supportedCodeLanguages.has(mapped) ? mapped : "text";
 }
 
 function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {
