@@ -44,23 +44,25 @@ brew install --cask hyperpuncher/tap/pi-ui
 
 ## keybinds
 
-| key              | action               |
-| ---------------- | -------------------- |
-| `ctrl/cmd+k`     | command menu         |
-| `ctrl/cmd+o`     | new session          |
-| `ctrl/cmd+alt+o` | temporary chat       |
-| `ctrl/cmd+r`     | session picker       |
-| `ctrl/cmd+/`     | workspace picker     |
-| `ctrl/cmd+l`     | model picker         |
-| `alt+t`          | cycle thinking level |
-| `alt+shift+t`    | cycle thinking back  |
-| `/`              | slash commands       |
-| `@`              | file picker          |
-| `alt+enter`      | queue follow-up      |
-| `alt+↑`          | restore queued text  |
-| `j` / `k`        | scroll messages      |
-| `gg` / `G`       | top / bottom         |
-| `gi`             | focus prompt         |
+| key                                             | action                    |
+| ----------------------------------------------- | ------------------------- |
+| <kbd>ctrl/⌘</kbd> <kbd>k</kbd>                  | command menu              |
+| <kbd>ctrl/⌘</kbd> <kbd>o</kbd>                  | new session               |
+| <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>o</kbd>   | temporary chat            |
+| <kbd>ctrl/⌘</kbd> <kbd>r</kbd>                  | session picker            |
+| <kbd>ctrl/⌘</kbd> <kbd>/</kbd>                  | workspace picker          |
+| <kbd>ctrl/⌘</kbd> <kbd>l</kbd>                  | model picker              |
+| <kbd>ctrl/⌘</kbd> <kbd>p</kbd>                  | cycle favorite model      |
+| <kbd>ctrl/⌘</kbd> <kbd>shift</kbd> <kbd>p</kbd> | cycle favorite model back |
+| <kbd>alt</kbd> <kbd>t</kbd>                     | cycle thinking level      |
+| <kbd>alt</kbd> <kbd>shift</kbd> <kbd>t</kbd>    | cycle thinking back       |
+| <kbd>/</kbd>                                    | slash commands            |
+| <kbd>@</kbd>                                    | file picker               |
+| <kbd>alt</kbd> <kbd>enter</kbd>                 | queue follow-up           |
+| <kbd>alt</kbd> <kbd>↑</kbd>                     | restore queued text       |
+| <kbd>j</kbd> / <kbd>k</kbd>                     | scroll messages           |
+| <kbd>gg</kbd> / <kbd>G</kbd>                    | top / bottom              |
+| <kbd>gi</kbd>                                   | focus prompt              |
 
 ## license
 
