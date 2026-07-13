@@ -1,6 +1,8 @@
 import { createApp } from "./server/app.ts";
 
+const hideApplicationMenuId = "hide-application";
 const openWorkspaceMenuId = "change-workspace";
+const quitApplicationMenuId = "quit-application";
 const openWorkspaceDialogScript = "window.piUi.dialogs.openWorkspace()";
 
 const app = await createApp();
@@ -17,6 +19,7 @@ function setupDesktopWindow(): void {
 		title: "pi-ui",
 		width: 1000,
 		height: 1400,
+		transparentTitlebar: true,
 	});
 
 	const openWorkspaceDialog = () => {
@@ -24,20 +27,39 @@ function setupDesktopWindow(): void {
 	};
 
 	win.addEventListener("keydown", (event) => {
-		if (
-			(event.ctrlKey || event.metaKey) &&
-			!event.altKey &&
-			!event.shiftKey &&
-			event.key === "/"
-		) {
+		if (event.altKey || event.shiftKey) {
+			return;
+		}
+
+		if ((event.ctrlKey || event.metaKey) && event.key === "/") {
 			event.preventDefault();
 			openWorkspaceDialog();
+			return;
+		}
+
+		if (Deno.build.os !== "darwin" || !event.metaKey || event.ctrlKey) {
+			return;
+		}
+
+		if (event.key.toLowerCase() === "h") {
+			event.preventDefault();
+			win.hide();
+		} else if (event.key.toLowerCase() === "q") {
+			event.preventDefault();
+			Deno.exit(0);
 		}
 	});
 
 	win.addEventListener("menuclick", (event) => {
-		if (event.detail.id === openWorkspaceMenuId) {
-			openWorkspaceDialog();
+		switch (event.detail.id) {
+			case hideApplicationMenuId:
+				win.hide();
+				break;
+			case openWorkspaceMenuId:
+				openWorkspaceDialog();
+				break;
+			case quitApplicationMenuId:
+				Deno.exit(0);
 		}
 	});
 
@@ -51,7 +73,24 @@ function macosApplicationMenu(): Deno.MenuItem[] {
 		{
 			submenu: {
 				label: "pi-ui",
-				items: [{ role: { role: "quit" } }],
+				items: [
+					{
+						item: {
+							label: "Hide pi-ui",
+							id: hideApplicationMenuId,
+							accelerator: "Cmd+H",
+							enabled: true,
+						},
+					},
+					{
+						item: {
+							label: "Quit pi-ui",
+							id: quitApplicationMenuId,
+							accelerator: "Cmd+Q",
+							enabled: true,
+						},
+					},
+				],
 			},
 		},
 		{
