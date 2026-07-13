@@ -222,20 +222,30 @@ function stripDiffMetadata(text: string): string {
 
 function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined) {
 	if (!parts?.length) return <span safe>{title}</span>;
-	return (
-		<>
-			{parts.map((part, index) =>
-				part.highlight === "bash" ? (
-					<span class={toolTitlePartClass(part, index)}>
-						{renderInlineBash(part.text)}
-					</span>
-				) : (
-					<span class={toolTitlePartClass(part, index)} safe>
-						{part.text}
-					</span>
-				),
-			)}
-		</>
+	if (parts[0]?.text === "$ " && parts[1]?.highlight === "bash") {
+		return (
+			<span class="inline-flex max-w-full min-w-0 items-start align-top">
+				<span class="shrink-0 pr-[1ch] font-mono" safe>
+					{parts[0].text.trimEnd()}
+				</span>
+				<span class="min-w-0">
+					{parts
+						.slice(1)
+						.map((part, index) => renderToolTitlePart(part, index + 1))}
+				</span>
+			</span>
+		);
+	}
+	return <>{parts.map(renderToolTitlePart)}</>;
+}
+
+function renderToolTitlePart(part: AppMessageTitlePart, index: number) {
+	return part.highlight === "bash" ? (
+		<span class={toolTitlePartClass(part, index)}>{renderInlineBash(part.text)}</span>
+	) : (
+		<span class={toolTitlePartClass(part, index)} safe>
+			{part.text}
+		</span>
 	);
 }
 

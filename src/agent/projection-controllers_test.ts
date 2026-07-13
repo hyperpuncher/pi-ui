@@ -55,19 +55,19 @@ Deno.test("tool presentation preserves representative and malformed values", () 
 	]);
 	assertStringIncludes(
 		formatShellCommandDisplay(`echo ${"x".repeat(90)} && done`),
-		"&&\n  done",
+		"&&\ndone",
 	);
 	assertStringIncludes(
 		formatShellCommandDisplay(`echo ${"x".repeat(90)}; done`),
-		";\n  done",
+		";\ndone",
 	);
 	assertStringIncludes(
 		formatShellCommandDisplay(`echo ${"x".repeat(90)} |& tee out`),
-		" |&\n  tee out",
+		" |&\ntee out",
 	);
 	assertStringIncludes(
 		formatShellCommandDisplay(`case ${"x".repeat(90)} in x) one ;;& y) two ;& esac`),
-		"one;;&\n  y) two;&\n  esac",
+		"one;;&\ny) two;&\nesac",
 	);
 	assertStringIncludes(
 		formatShellCommandDisplay(`echo ${"x".repeat(90)} # keep ; | && unchanged`),

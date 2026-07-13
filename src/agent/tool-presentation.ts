@@ -39,7 +39,7 @@ export function formatShellCommandDisplay(command: string): string {
 	let escaped = false;
 	let comment = false;
 	let blockDepth = 0;
-	const continuation = () => `\n${"  ".repeat(blockDepth + 1)}`;
+	const continuation = () => `\n${"  ".repeat(blockDepth)}`;
 
 	for (let index = 0; index < command.length; index++) {
 		const char = command[index];
