@@ -89,7 +89,7 @@ export class TranscriptProjector {
 								? "cancelled"
 								: `exit ${message.exitCode}`,
 						state: message.exitCode === 0 ? "success" : "error",
-						format: "code",
+						format: "output",
 					},
 				];
 			case "custom":

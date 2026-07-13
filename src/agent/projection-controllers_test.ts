@@ -28,11 +28,15 @@ import { formatStats, formatTokens } from "./usage-controller.ts";
 Deno.test("tool presentation preserves representative and malformed values", () => {
 	assertEquals(formatToolStart("edit", { edits: [{}, {}] }), {
 		text: "2 replacements",
-		format: "pre",
+		format: "output",
 	});
 	assertEquals(formatToolResult("edit", { details: { patch: "@@ -1 +1 @@" } }), {
 		text: "@@ -1 +1 @@",
 		format: "diff",
+	});
+	assertEquals(formatToolResult("edit", "oldText must be unique", { isError: true }), {
+		text: "oldText must be unique",
+		format: "output",
 	});
 	assertEquals(
 		formatToolResult(
@@ -42,7 +46,7 @@ Deno.test("tool presentation preserves representative and malformed values", () 
 				args: { command: "rg pattern" },
 			},
 		),
-		{ text: "2 results", format: "code" },
+		{ text: "2 results", format: "output" },
 	);
 	assertEquals(toolTitleParts("read", { path: "/tmp/file", offset: 3, limit: 2 }), [
 		{ text: "read" },

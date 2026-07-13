@@ -64,6 +64,10 @@ function fixture(options: { syncUsage?: () => void; reload?: () => void } = {}) 
 	const state = new FakeState();
 	const tools = {
 		messageIds: new Map<string, string>(),
+		previewMessages: new Map<
+			number,
+			{ id: string; argumentPrefix: string | undefined }
+		>(),
 		callArgs: new Map<string, unknown>(),
 		startedAt: new Map<string, number>(),
 	};
@@ -76,6 +80,14 @@ function fixture(options: { syncUsage?: () => void; reload?: () => void } = {}) 
 		formatToolStart: (event) => ({
 			text: `start:${event.toolName}`,
 			options: { title: "running", state: "running", format: "pre" },
+		}),
+		formatToolPreview: (toolName, args) => ({
+			text: `preview:${toolName}`,
+			options: {
+				title: JSON.stringify(args),
+				state: "running",
+				format: "pre",
+			},
 		}),
 		formatToolUpdate: (event) => ({
 			text: `update:${String(event.partialResult)}`,
@@ -189,6 +201,123 @@ Deno.test("skips tool-result message starts", () => {
 	assertEquals(state.appended, []);
 });
 
+Deno.test("shows tools without rendering each streamed argument delta", () => {
+	const { state, tools, context } = fixture();
+	const partial = {
+		role: "assistant",
+		content: [
+			{
+				type: "toolCall",
+				id: "call",
+				name: "write",
+				arguments: {},
+			},
+		],
+	};
+	reduceSessionEvent(
+		event({
+			type: "message_update",
+			message: partial,
+			assistantMessageEvent: {
+				type: "toolcall_start",
+				contentIndex: 0,
+				partial,
+			},
+		}),
+		context,
+	);
+	assertEquals(state.appended[0], {
+		id: "message-1",
+		role: "tool",
+		text: "preview:write",
+		options: {
+			title: "{}",
+			state: "running",
+			format: "pre",
+		},
+	});
+	assertEquals(tools.previewMessages.get(0)?.id, "message-1");
+
+	const updatedPartial = {
+		...partial,
+		content: [{ ...partial.content[0], arguments: { path: "file.ts" } }],
+	};
+	reduceSessionEvent(
+		event({
+			type: "message_update",
+			message: updatedPartial,
+			assistantMessageEvent: {
+				type: "toolcall_delta",
+				contentIndex: 0,
+				delta: '"path":"file.ts"',
+				partial: updatedPartial,
+			},
+		}),
+		context,
+	);
+	assertEquals(state.updates.at(-1), {
+		id: "message-1",
+		patch: {
+			text: "preview:write",
+			title: '{"path":"file.ts"}',
+			state: "running",
+			format: "pre",
+		},
+	});
+	assertEquals(tools.previewMessages.get(0)?.argumentPrefix, undefined);
+	reduceSessionEvent(
+		event({
+			type: "message_update",
+			message: updatedPartial,
+			assistantMessageEvent: {
+				type: "toolcall_delta",
+				contentIndex: 0,
+				delta: ',"content":"ignored payload',
+				partial: updatedPartial,
+			},
+		}),
+		context,
+	);
+	assertEquals(state.updates.length, 1);
+
+	reduceSessionEvent(
+		event({
+			type: "message_update",
+			message: updatedPartial,
+			assistantMessageEvent: {
+				type: "toolcall_end",
+				contentIndex: 0,
+				toolCall: updatedPartial.content[0],
+				partial: updatedPartial,
+			},
+		}),
+		context,
+	);
+	assertEquals(state.updates.length, 1);
+	reduceSessionEvent(
+		event({
+			type: "tool_execution_start",
+			toolCallId: "call",
+			toolName: "write",
+			args: { path: "file.ts" },
+		}),
+		context,
+	);
+
+	assertEquals(state.appended.length, 1);
+	assertEquals([...tools.messageIds], [["call", "message-1"]]);
+	assertEquals(tools.previewMessages.size, 0);
+	assertEquals(state.updates.at(-1), {
+		id: "message-1",
+		patch: {
+			text: "start:write",
+			title: "running",
+			state: "running",
+			format: "pre",
+		},
+	});
+});
+
 Deno.test("reduces one complete tool lifecycle and clears all tool maps", () => {
 	const { state, tools, context } = fixture();
 	reduceSessionEvent(
@@ -277,7 +406,13 @@ Deno.test("appends an orphan tool end and removes stale map entries", () => {
 			format: "code",
 		},
 	});
-	assertEquals(tools.messageIds.size + tools.callArgs.size + tools.startedAt.size, 0);
+	assertEquals(
+		tools.messageIds.size +
+			tools.previewMessages.size +
+			tools.callArgs.size +
+			tools.startedAt.size,
+		0,
+	);
 });
 
 Deno.test("reduces retry and compaction lifecycle events", async (t) => {

@@ -11,6 +11,7 @@ export type BackgroundSession = {
 	generation: number;
 	observedRunning: boolean;
 	toolMessageIds: Map<string, string>;
+	toolPreviewMessages: Map<number, { id: string; argumentPrefix: string | undefined }>;
 	toolCallArgs: Map<string, unknown>;
 	toolStartedAt: Map<string, number>;
 	unsubscribe: () => void;

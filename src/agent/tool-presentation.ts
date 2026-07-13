@@ -174,7 +174,7 @@ export function toolTarget(toolName: string, args: unknown): string {
 export function formatToolStart(
 	toolName: string,
 	args: unknown,
-): { text: string; format?: "pre" | "diff" | "code" } {
+): { text: string; format?: "pre" | "diff" | "code" | "output" } {
 	const record = asRecord(args);
 	if (!record) return { text: summarizeValue(args), format: "pre" };
 	if (toolName === "bash") return { text: "", format: "pre" };
@@ -182,7 +182,7 @@ export function formatToolStart(
 		const count = Array.isArray(record.edits) ? record.edits.length : 0;
 		return {
 			text: `${count} replacement${count === 1 ? "" : "s"}`,
-			format: "pre",
+			format: "output",
 		};
 	}
 	return { text: "", format: "pre" };
@@ -192,7 +192,11 @@ export function formatToolResult(
 	toolName: string,
 	result: unknown,
 	options: { args?: unknown; isError?: boolean } = {},
-): { text: string; format?: "pre" | "diff" | "code" } {
+): { text: string; format?: "pre" | "diff" | "code" | "output" } {
+	const text = extractToolText(result);
+	if (options.isError) {
+		return { text: compactToolOutput(text), format: "output" };
+	}
 	const record = asRecord(result);
 	const details = asRecord(record?.details);
 	if (toolName === "edit" && typeof details?.patch === "string") {
@@ -201,27 +205,23 @@ export function formatToolResult(
 	if (toolName === "edit" && typeof details?.diff === "string") {
 		return { text: details.diff, format: "diff" };
 	}
-	const text = extractToolText(result);
-	if (!options.isError && /^\(no output\)$/i.test(text.trim())) {
+	if (/^\(no output\)$/i.test(text.trim())) {
 		return { text: "", format: "pre" };
 	}
 	if (toolName === "read") {
-		return {
-			text: options.isError ? compactReadOutput(text) : "",
-			format: "pre",
-		};
+		return { text: "", format: "pre" };
 	}
 	if (toolName === "bash") {
 		if (!options.isError && shouldHideBashOutput(options.args)) {
 			const count = countBashResults(text);
 			return {
 				text: `${count} result${count === 1 ? "" : "s"}`,
-				format: "code",
+				format: "output",
 			};
 		}
-		return { text: compactToolOutput(text), format: "code" };
+		return { text: compactToolOutput(text), format: "output" };
 	}
-	return { text, format: "pre" };
+	return { text, format: "output" };
 }
 
 export function shortenPath(path: string): string {

@@ -23,7 +23,7 @@ export type TranscriptMessage = {
 	titleParts?: TranscriptMessageTitlePart[];
 	meta?: string;
 	state?: "running" | "success" | "error";
-	format?: "pre" | "diff" | "code";
+	format?: "pre" | "diff" | "code" | "output";
 };
 
 export type TranscriptMessageOptions = Pick<

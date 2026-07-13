@@ -82,6 +82,10 @@ export type RuntimeControllerActivationOptions = {
 export class RuntimeController {
 	private unsubscribe: (() => void) | undefined;
 	private readonly toolMessageIds = new Map<string, string>();
+	private readonly toolPreviewMessages = new Map<
+		number,
+		{ id: string; argumentPrefix: string | undefined }
+	>();
 	private readonly toolCallArgs = new Map<string, unknown>();
 	private readonly toolStartedAt = new Map<string, number>();
 	private readonly pendingPrompts = new Map<AgentSessionRuntime, number>();
@@ -811,6 +815,7 @@ export class RuntimeController {
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
 		this.toolMessageIds.clear();
+		this.toolPreviewMessages.clear();
 		this.toolCallArgs.clear();
 		this.toolStartedAt.clear();
 	}
@@ -838,6 +843,7 @@ export class RuntimeController {
 			generation: backgroundGeneration,
 			observedRunning: backgroundObservedRunning,
 			toolMessageIds: new Map(this.toolMessageIds),
+			toolPreviewMessages: new Map(this.toolPreviewMessages),
 			toolCallArgs: new Map(this.toolCallArgs),
 			toolStartedAt: new Map(this.toolStartedAt),
 			unsubscribe: () => {},
@@ -861,6 +867,7 @@ export class RuntimeController {
 			backgroundSession.state,
 			{
 				messageIds: backgroundSession.toolMessageIds,
+				previewMessages: backgroundSession.toolPreviewMessages,
 				callArgs: backgroundSession.toolCallArgs,
 				startedAt: backgroundSession.toolStartedAt,
 			},
@@ -915,10 +922,14 @@ export class RuntimeController {
 		this.foregroundGeneration = backgroundSession.generation;
 		this.foregroundObservedRunning = backgroundSession.observedRunning;
 		this.toolMessageIds.clear();
+		this.toolPreviewMessages.clear();
 		this.toolCallArgs.clear();
 		this.toolStartedAt.clear();
 		for (const [key, value] of backgroundSession.toolMessageIds) {
 			this.toolMessageIds.set(key, value);
+		}
+		for (const [key, value] of backgroundSession.toolPreviewMessages) {
+			this.toolPreviewMessages.set(key, value);
 		}
 		for (const [key, value] of backgroundSession.toolCallArgs) {
 			this.toolCallArgs.set(key, value);
@@ -961,6 +972,7 @@ export class RuntimeController {
 			this.state.setTemporarySession(!session.sessionManager.isPersisted());
 			if (resetToolState) {
 				this.toolMessageIds.clear();
+				this.toolPreviewMessages.clear();
 				this.toolCallArgs.clear();
 				this.toolStartedAt.clear();
 			}
@@ -1035,6 +1047,7 @@ export class RuntimeController {
 					this.state,
 					{
 						messageIds: this.toolMessageIds,
+						previewMessages: this.toolPreviewMessages,
 						callArgs: this.toolCallArgs,
 						startedAt: this.toolStartedAt,
 					},
@@ -1063,20 +1076,10 @@ export class RuntimeController {
 			tools,
 			convertMessage: (message, timestamp) =>
 				this.transcript.message(message, timestamp),
-			formatToolStart: (toolEvent) => {
-				const view = formatToolStart(toolEvent.toolName, toolEvent.args);
-				return {
-					text: view.text,
-					options: {
-						title: toolTitle("running", toolEvent.toolName, toolEvent.args),
-						titleParts: toolTitleParts(toolEvent.toolName, toolEvent.args),
-						meta:
-							toolMeta(toolEvent.toolName, toolEvent.args) ?? "Running...",
-						state: "running",
-						format: view.format,
-					},
-				};
-			},
+			formatToolStart: (toolEvent) =>
+				this.formatRunningTool(toolEvent.toolName, toolEvent.args),
+			formatToolPreview: (toolName, args) =>
+				this.formatRunningTool(toolName, args, false),
 			formatToolUpdate: (toolEvent) => {
 				const view = formatToolResult(
 					toolEvent.toolName,
@@ -1112,6 +1115,20 @@ export class RuntimeController {
 			syncUsage,
 			reloadMessages,
 		});
+	}
+
+	private formatRunningTool(toolName: string, args: unknown, showBody = true) {
+		const view = formatToolStart(toolName, args);
+		return {
+			text: showBody ? view.text : "",
+			options: {
+				title: toolTitle("running", toolName, args),
+				titleParts: toolTitleParts(toolName, args),
+				meta: toolMeta(toolName, args),
+				state: "running" as const,
+				format: view.format,
+			},
+		};
 	}
 
 	private syncThinking(): void {

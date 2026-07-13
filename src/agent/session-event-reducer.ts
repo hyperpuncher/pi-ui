@@ -27,6 +27,7 @@ export type SessionEventStateSink = {
 
 export type SessionEventToolState = {
 	messageIds: Map<string, string>;
+	previewMessages: Map<number, { id: string; argumentPrefix: string | undefined }>;
 	callArgs: Map<string, unknown>;
 	startedAt: Map<string, number>;
 };
@@ -44,6 +45,7 @@ export type SessionEventReducerContext = {
 		timestamp: Date,
 	) => readonly TranscriptMessageInput[];
 	formatToolStart: (event: EventOf<"tool_execution_start">) => ToolMessageView;
+	formatToolPreview: (toolName: string, args: unknown) => ToolMessageView;
 	formatToolUpdate: (
 		event: EventOf<"tool_execution_update">,
 	) => Partial<Omit<TranscriptMessage, "id">>;
@@ -63,6 +65,26 @@ export type SessionEventReducerOutcome = {
 };
 
 const noOutcome: SessionEventReducerOutcome = { agentCompleted: false };
+const previewArgumentPrefixLimit = 4096;
+const pathPreviewTools = new Set([
+	"edit",
+	"find",
+	"grep",
+	"ls",
+	"read",
+	"show_visualization",
+	"write",
+]);
+
+function completedPathArgument(prefix: string): Record<string, string> | undefined {
+	const match = prefix.match(/"(path|file_path)"\s*:\s*"((?:\\.|[^"\\])*)"/);
+	if (!match) return undefined;
+	try {
+		return { [match[1]]: JSON.parse(`"${match[2]}"`) as string };
+	} catch {
+		return undefined;
+	}
+}
 
 export function reduceSessionEvent(
 	event: AgentSessionEvent,
@@ -88,16 +110,84 @@ export function reduceSessionEvent(
 				});
 			}
 			break;
-		case "message_update":
-			if (event.assistantMessageEvent.type === "thinking_delta") {
-				state.appendThoughtDelta(event.assistantMessageEvent.delta);
+		case "message_update": {
+			const assistantEvent = event.assistantMessageEvent;
+			if (
+				assistantEvent.type === "toolcall_start" ||
+				assistantEvent.type === "toolcall_delta"
+			) {
+				const call = assistantEvent.partial.content[assistantEvent.contentIndex];
+				if (call?.type === "toolCall" && call.name) {
+					let preview = tools.previewMessages.get(assistantEvent.contentIndex);
+					if (!preview) {
+						state.finishAssistant();
+						const view = context.formatToolPreview(call.name, {});
+						preview = {
+							id: state.appendMessage("tool", view.text, view.options),
+							argumentPrefix: "",
+						};
+						tools.previewMessages.set(assistantEvent.contentIndex, preview);
+					}
+					if (
+						assistantEvent.type === "toolcall_delta" &&
+						preview.argumentPrefix !== undefined
+					) {
+						if (!pathPreviewTools.has(call.name)) {
+							preview.argumentPrefix = undefined;
+						} else {
+							const prefix = preview.argumentPrefix + assistantEvent.delta;
+							const pathArgs = completedPathArgument(prefix);
+							if (pathArgs) {
+								const view = context.formatToolPreview(
+									call.name,
+									pathArgs,
+								);
+								state.updateMessage(preview.id, {
+									text: view.text,
+									...view.options,
+								});
+								preview.argumentPrefix = undefined;
+							} else {
+								preview.argumentPrefix =
+									prefix.length <= previewArgumentPrefixLimit
+										? prefix
+										: undefined;
+							}
+						}
+					}
+				}
 			}
-			if (event.assistantMessageEvent.type === "text_delta") {
-				state.appendAssistantDelta(event.assistantMessageEvent.delta);
+			if (assistantEvent.type === "toolcall_end") {
+				const call = assistantEvent.toolCall;
+				const preview = tools.previewMessages.get(assistantEvent.contentIndex);
+				let id = preview?.id;
+				if (!id) {
+					const view = context.formatToolPreview(call.name, {});
+					id = state.appendMessage("tool", view.text, view.options);
+				}
+				tools.previewMessages.delete(assistantEvent.contentIndex);
+				tools.messageIds.set(call.id, id);
+				tools.callArgs.set(call.id, call.arguments);
+			}
+			if (assistantEvent.type === "thinking_delta") {
+				state.appendThoughtDelta(assistantEvent.delta);
+			}
+			if (assistantEvent.type === "text_delta") {
+				state.appendAssistantDelta(assistantEvent.delta);
 			}
 			break;
+		}
 		case "message_end":
-			if (event.message.role === "assistant") state.finishAssistant();
+			if (event.message.role === "assistant") {
+				state.finishAssistant();
+				for (const preview of tools.previewMessages.values()) {
+					state.updateMessage(preview.id, {
+						state: "error",
+						meta: "Cancelled",
+					});
+				}
+				tools.previewMessages.clear();
+			}
 			context.syncUsage?.();
 			break;
 		case "tool_execution_start": {
@@ -105,7 +195,9 @@ export function reduceSessionEvent(
 			tools.callArgs.set(event.toolCallId, event.args);
 			tools.startedAt.set(event.toolCallId, context.nowMs?.() ?? Date.now());
 			const view = context.formatToolStart(event);
-			const id = state.appendMessage("tool", view.text, view.options);
+			const existingId = tools.messageIds.get(event.toolCallId);
+			const id = existingId ?? state.appendMessage("tool", view.text, view.options);
+			if (existingId) state.updateMessage(id, { text: view.text, ...view.options });
 			tools.messageIds.set(event.toolCallId, id);
 			break;
 		}

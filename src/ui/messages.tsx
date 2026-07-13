@@ -179,6 +179,14 @@ function renderCodeOutput(message: AppMessage) {
 	);
 }
 
+function renderPlainOutput(text: string) {
+	return (
+		<div class="tool-output border-border/60 max-h-80 overflow-auto rounded-md border-t bg-[var(--code-background)]">
+			{renderPendingToolOutput(text, "pl-2")}
+		</div>
+	);
+}
+
 function renderPendingCodeOutput(text: string) {
 	return (
 		<pre class="text-muted-foreground m-0 bg-[var(--code-background)] pr-3 pl-2 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap">
@@ -427,22 +435,24 @@ export function renderMessage(message: AppMessage): string {
 		>
 			<header
 				class={[
-					"flex items-start gap-2 px-3 py-2 font-mono text-sm leading-tight",
+					"flex items-start gap-2 px-3 py-2 font-mono text-sm",
 					hasToolBody ? "" : "",
 				]}
 			>
-				<span class={["mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", dotClass]} />
-				<span class="min-w-0 flex-1 leading-tight font-medium wrap-anywhere">
+				<span class="flex h-[18px] shrink-0 items-center">
+					<span class={["size-1.5 rounded-full", dotClass]} />
+				</span>
+				<span class="min-w-0 flex-1 leading-[18px] font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
 				</span>
 				{message.state === "running" ? (
-					<span class="text-muted-foreground mt-0.5 ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs leading-tight font-normal">
+					<span class="text-muted-foreground ml-auto inline-flex h-[18px] shrink-0 items-center gap-1.5 text-xs font-normal">
 						{loaderIcon()}
 						{message.meta && <span safe>{message.meta}</span>}
 					</span>
 				) : message.meta ? (
 					<span
-						class="text-muted-foreground mt-0.5 ml-auto shrink-0 text-xs leading-tight font-normal"
+						class="text-muted-foreground ml-auto inline-flex h-[18px] shrink-0 items-center text-xs font-normal"
 						safe
 					>
 						{message.meta}
@@ -456,7 +466,9 @@ export function renderMessage(message: AppMessage): string {
 					? renderDiffOutput(message)
 					: message.format === "code"
 						? renderCodeOutput(message)
-						: renderPreOutput(message.text)
+						: message.format === "output"
+							? renderPlainOutput(message.text)
+							: renderPreOutput(message.text)
 				: ""}
 			{renderDeferredEnhancement(message)}
 		</article>
