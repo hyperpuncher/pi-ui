@@ -343,6 +343,7 @@ function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 			if (index < parts.length - 1) lines.push("");
 		}
 	}
+	if (lines.length > 1 && lines.at(-1) === "") lines.pop();
 	return `<pre class="plain-code" tabindex="0"><code class="streaming-code">${lines
 		.map(
 			(line, index) =>

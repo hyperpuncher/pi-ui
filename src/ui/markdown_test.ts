@@ -1,3 +1,4 @@
+import { preloadPierreHighlighter } from "./diffs.ts";
 import {
 	markdownCacheStatsForTest,
 	releaseMarkdownStreamingState,
@@ -76,6 +77,16 @@ Deno.test("growing streaming code fences preserve the latest complete source", (
 	);
 	assertIncludes(latest, "const first = 1;");
 	assertIncludes(latest, "const latest = 2;");
+	releaseMarkdownStreamingState(key);
+});
+
+Deno.test("streaming code blocks omit the terminal empty display line", async () => {
+	await preloadPierreHighlighter();
+	const key = "terminal-newline";
+	const html = renderMarkdownStreaming("```ts\none\n\nthree\n```", {
+		cacheKey: key,
+	});
+	assertEqual(html.match(/streaming-code-line-number/g)?.length, 3);
 	releaseMarkdownStreamingState(key);
 });
 

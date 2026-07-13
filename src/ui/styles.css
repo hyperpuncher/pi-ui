@@ -213,13 +213,20 @@
 		padding-block: 0 !important;
 	}
 
+	.code-block .plain-code:has(> .streaming-code) {
+		padding-inline: 0 !important;
+	}
+
 	.streaming-code {
 		display: grid;
-		grid-template-columns: minmax(2ch, max-content) minmax(0, 1fr);
-		column-gap: 1rem;
+		grid-template-columns: max-content minmax(0, 1fr);
+		background: var(--code-background);
 	}
 
 	.streaming-code-line-number {
+		box-sizing: content-box;
+		min-width: 1ch;
+		padding-inline: 2ch 1ch;
 		color: var(--muted-foreground);
 		text-align: right;
 		user-select: none;
@@ -227,6 +234,7 @@
 
 	.streaming-code-line {
 		min-width: 0;
+		padding-inline: 1ch;
 		white-space: pre-wrap;
 	}
 
