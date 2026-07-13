@@ -1,6 +1,6 @@
 # pi-ui
 
-keyboard-first desktop gui for [`pi`](https://pi.dev).
+keyboard-first minimal gui for [`pi`](https://pi.dev).
 
 <div>
 	<picture>
