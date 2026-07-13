@@ -84,6 +84,7 @@ export class RuntimeController {
 	private readonly toolMessageIds = new Map<string, string>();
 	private readonly toolCallArgs = new Map<string, unknown>();
 	private readonly toolStartedAt = new Map<string, number>();
+	private readonly pendingPrompts = new Map<AgentSessionRuntime, number>();
 	private readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
 	private readonly backgroundSessions = new BackgroundSessionController();
@@ -264,17 +265,20 @@ export class RuntimeController {
 			};
 		});
 
-		this.runtime.session
+		const runtime = this.runtime;
+		this.markPromptPending(runtime);
+		runtime.session
 			.prompt(trimmed, {
-				streamingBehavior: this.runtime.session.isStreaming
+				streamingBehavior: runtime.session.isStreaming
 					? (options.streamingBehavior ?? "steer")
 					: undefined,
 				preflightResult: resolveAccepted,
 			})
 			.catch((error: unknown) => {
 				resolveAccepted(false);
-				this.state.appendMessage("system", formatError(error));
-			});
+				this.reportPromptError(runtime, error);
+			})
+			.finally(() => this.markPromptSettled(runtime));
 
 		return await accepted;
 	}
@@ -704,7 +708,35 @@ export class RuntimeController {
 	}
 
 	private isCurrentRuntimeActive(): boolean {
-		return this.runtime.session.isStreaming || this.foregroundObservedRunning;
+		return (
+			this.runtime.session.isStreaming ||
+			this.foregroundObservedRunning ||
+			(this.pendingPrompts.get(this.runtime) ?? 0) > 0
+		);
+	}
+
+	private markPromptPending(runtime: AgentSessionRuntime): void {
+		this.pendingPrompts.set(runtime, (this.pendingPrompts.get(runtime) ?? 0) + 1);
+	}
+
+	private markPromptSettled(runtime: AgentSessionRuntime): void {
+		const pending = (this.pendingPrompts.get(runtime) ?? 1) - 1;
+		if (pending > 0) this.pendingPrompts.set(runtime, pending);
+		else this.pendingPrompts.delete(runtime);
+	}
+
+	private reportPromptError(runtime: AgentSessionRuntime, error: unknown): void {
+		const message = formatError(error);
+		if (runtime === this.runtime) {
+			this.state.appendMessage("system", message);
+			return;
+		}
+		for (const session of this.backgroundSessions.values()) {
+			if (session.runtime === runtime) {
+				session.state.appendMessage("system", message);
+				return;
+			}
+		}
 	}
 
 	private currentRuntimeLeaveAction(): "background" | "discard" | "dispose" {

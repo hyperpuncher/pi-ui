@@ -22,6 +22,7 @@ type RuntimeFake = {
 	disposeCount: number;
 	disposeResult: Promise<void>;
 	disposeError?: Error;
+	promptResult: Promise<void>;
 	emit(event: AgentSessionEvent): void;
 	setStreaming(value: boolean): void;
 };
@@ -49,6 +50,7 @@ function fakeRuntime(path = "/sessions/a.jsonl", persisted = true): RuntimeFake 
 		calls,
 		disposeCount: 0,
 		disposeResult: Promise.resolve(),
+		promptResult: Promise.resolve(),
 		emit: (event) => {
 			for (const callback of activeSubscriptions) callback(event);
 		},
@@ -74,6 +76,14 @@ function fakeRuntime(path = "/sessions/a.jsonl", persisted = true): RuntimeFake 
 		bindExtensions: () => {
 			calls.push("bindExtensions");
 			return Promise.resolve();
+		},
+		prompt: async (
+			_text: string,
+			options?: { preflightResult?: (accepted: boolean) => void },
+		) => {
+			calls.push("prompt");
+			options?.preflightResult?.(true);
+			await fake.promptResult;
 		},
 		subscribe: (callback: (event: AgentSessionEvent) => void) => {
 			calls.push("subscribe");
@@ -243,6 +253,31 @@ Deno.test("RuntimeController reuses streaming runtimes across repeated backgroun
 	await controller.dispose();
 	assertEquals(a.disposeCount, 1);
 	assertEquals(b.disposeCount, 1);
+});
+
+Deno.test("RuntimeController preserves a runtime while accepted prompt work is pending", async () => {
+	const source = fakeRuntime();
+	const replacement = fakeRuntime("/sessions/replacement.jsonl");
+	let finishPrompt!: () => void;
+	source.promptResult = new Promise((resolve) => {
+		finishPrompt = resolve;
+	});
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([source, replacement]),
+	});
+	controller.activate();
+
+	assertEquals(await controller.prompt("hello"), true);
+	assertEquals((await controller.newSession()).status, "success");
+	assertEquals(source.calls.filter((call) => call === "create").length, 1);
+	assertEquals(replacement.calls.filter((call) => call === "create").length, 1);
+	assertEquals(source.disposeCount, 0);
+
+	finishPrompt();
+	await source.promptResult;
+	await controller.dispose();
+	assertEquals(source.disposeCount, 1);
+	assertEquals(replacement.disposeCount, 1);
 });
 
 Deno.test("RuntimeController aborts and disposes an active temporary runtime", async () => {
