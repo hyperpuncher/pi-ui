@@ -5,6 +5,7 @@ env:
     DENO_VERSION: v2.9.2
 
 on:
+    workflow_dispatch:
     push:
         tags:
             - "v*"
@@ -91,10 +92,13 @@ jobs:
             - name: Build desktop app
               shell: bash
               run: |
+                  rm -rf node_modules
                   deno desktop -A \
                     --unstable-no-legacy-abort \
                     --conditions browser \
+                    --frozen \
                     --include static \
+                    --lock deno.release.lock \
                     --target "${{ matrix.target }}" \
                     src/main.ts
 
@@ -115,6 +119,7 @@ jobs:
 
     publish:
         name: Publish release and packages
+        if: github.event_name == 'push'
         needs: [build]
         runs-on: ubuntu-latest
         permissions:
@@ -141,10 +146,12 @@ jobs:
             - name: Compute checksums
               id: sha
               run: |
-                  echo "linux-x64=$(sha256sum dist/pi-ui-linux-x64.AppImage | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-                  echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.AppImage | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-                  echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-                  echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+                  {
+                    echo "linux-x64=$(sha256sum dist/pi-ui-linux-x64.AppImage | cut -d' ' -f1)"
+                    echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.AppImage | cut -d' ' -f1)"
+                    echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)"
+                    echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)"
+                  } >> "$GITHUB_OUTPUT"
 
             - name: Generate Homebrew cask
               run: |
