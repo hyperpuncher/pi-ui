@@ -42,6 +42,12 @@ paru -S pi-ui-bin
 brew install --cask hyperpuncher/tap/pi-ui
 ```
 
+### windows
+
+```powershell
+irm https://raw.githubusercontent.com/hyperpuncher/pi-ui/main/packaging/windows/install.ps1 | iex
+```
+
 ## keybinds
 
 | key                                             | action                    |
