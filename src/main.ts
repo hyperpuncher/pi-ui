@@ -65,6 +65,11 @@ function setupDesktopWindow(): void {
 
 	if (Deno.build.os === "darwin") {
 		win.setApplicationMenu(macosApplicationMenu());
+		Deno.dock.addEventListener("reopen", (event) => {
+			if (!event.detail.hasVisibleWindows) {
+				win.show();
+			}
+		});
 	}
 }
 
