@@ -488,6 +488,18 @@ Deno.test("complete fat view contains every server-owned dynamic root", () => {
 
 Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	const state = createState();
+	state.setModels(
+		[
+			{
+				id: "test-model",
+				provider: "test-provider",
+				name: "Test Model",
+				configured: true,
+				scoped: false,
+			},
+		],
+		"test-provider/test-model",
+	);
 	state.replaceMessages([
 		{
 			role: "compaction",
