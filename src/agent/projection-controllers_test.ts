@@ -1,3 +1,5 @@
+import os from "node:os";
+
 import type {
 	AgentSessionRuntime,
 	SessionTreeNode,
@@ -295,6 +297,13 @@ function sessionInfo(
 		modified: new Date(0),
 	};
 }
+
+Deno.test("session summaries collapse the home directory", () => {
+	const info = sessionInfo("/session", "Home session");
+	info.cwd = `${os.homedir()}/projects/pi-ui`;
+
+	assertEquals(formatSessionSummary(info).subtitle, "1 message • ~/projects/pi-ui");
+});
 
 Deno.test("catalog and usage formatting remain stable", () => {
 	const sessions = [

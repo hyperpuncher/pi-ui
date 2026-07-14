@@ -2,6 +2,7 @@ import { SessionManager, type SessionInfo } from "@earendil-works/pi-coding-agen
 
 import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
 import { formatDateTime } from "../utils/locale.ts";
+import { formatHomePath } from "../utils/workspace.ts";
 import { formatError } from "./tool-presentation.ts";
 
 export type PreparedSessionList =
@@ -87,7 +88,7 @@ export function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 		path: info.path,
 		cwd: info.cwd,
 		title: truncate(title, 96),
-		subtitle: `${messageLabel} • ${truncate(info.cwd, 64)}`,
+		subtitle: `${messageLabel} • ${truncate(formatHomePath(info.cwd), 64)}`,
 		modified: formatDateTime(info.modified),
 	};
 }

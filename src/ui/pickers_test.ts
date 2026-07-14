@@ -1,3 +1,5 @@
+import os from "node:os";
+
 import { assertFalse, assertStringIncludes } from "@std/assert";
 
 import type { AppRenderSnapshot } from "../state/app-store.ts";
@@ -5,6 +7,7 @@ import {
 	renderFilePickerResults,
 	renderSessionPicker,
 	renderSlashPicker,
+	renderWorkspaceDialogMenu,
 } from "./pickers.tsx";
 import { renderModelPicker } from "./prompt-box.tsx";
 
@@ -35,6 +38,20 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 		currentSessionPath: undefined,
 	} as unknown as AppRenderSnapshot);
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
+});
+
+Deno.test("workspace rows show each collapsed path once", () => {
+	const home = os.homedir();
+	const html = renderWorkspaceDialogMenu({
+		workspacePath: home,
+		recentWorkspaces: [`${home}/projects/pi-ui`],
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, ">~<");
+	assertStringIncludes(html, ">~/projects/pi-ui<");
+	assertFalse(
+		new RegExp(`>\\s*${escapeRegExp(home)}(?:/projects/pi-ui)?\\s*<`).test(html),
+	);
 });
 
 Deno.test("model picker distinguishes missing auth from an unselected model", () => {
@@ -79,3 +96,7 @@ Deno.test("file picker fragments escape dynamic values and expose list semantics
 	assertStringIncludes(html, "src/&lt;unsafe>.ts");
 	assertStringIncludes(html, "file");
 });
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

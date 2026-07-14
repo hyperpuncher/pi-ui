@@ -161,13 +161,8 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">
 				{current ? "•" : ""}
 			</span>
-			<span class="min-w-0">
-				<span class="block truncate font-mono text-sm" safe>
-					{label}
-				</span>
-				<span class="text-muted-foreground mt-1 block truncate text-xs" safe>
-					{workspacePath}
-				</span>
+			<span class="min-w-0 truncate font-mono text-sm" safe>
+				{label}
 			</span>
 		</div>
 	) as string;
