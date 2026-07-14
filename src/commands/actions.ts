@@ -10,7 +10,7 @@ export function newSessionAction(temporary = false): string {
 }
 
 export function openSessionDialogAction(): string {
-	return `window.piUi.dialogs.openSession(); @post('${endpoints.sessionsList}', { ${emptySignals} })`;
+	return `if (window.piUi.dialogs.toggleSession()) { @post('${endpoints.sessionsList}', { ${emptySignals} }); }`;
 }
 
 type CycleDirection = "forward" | "backward" | "event-shift";

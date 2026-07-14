@@ -298,7 +298,7 @@ Deno.test("session picker command state morphs after a transition", async () => 
 		const output = await readUntil(
 			response,
 			(text) =>
-				text.includes('id="session-menu"') &&
+				text.includes('id="session-menu-content"') &&
 				text.includes('"sessionTransitionLoading":false'),
 		);
 		if (output.includes("component.refresh")) {

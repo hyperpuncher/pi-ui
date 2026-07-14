@@ -9,6 +9,8 @@ export type PreparedSessionList =
 	| { ok: false; error: unknown };
 
 export class SessionCatalog {
+	private refreshGeneration = 0;
+
 	constructor(
 		private readonly state: AppStore,
 		private readonly mergeStatuses: (
@@ -37,15 +39,18 @@ export class SessionCatalog {
 		this.apply(prepared.sessions, options);
 	}
 
-	async refresh(): Promise<void> {
+	async refresh(
+		prepare: () => Promise<PreparedSessionList> = SessionCatalog.prepare,
+	): Promise<void> {
+		const generation = ++this.refreshGeneration;
+		let prepared: PreparedSessionList;
 		try {
-			this.apply(await SessionManager.listAll());
+			prepared = await prepare();
 		} catch (error) {
-			this.state.appendMessage(
-				"system",
-				`Failed to list sessions: ${formatError(error)}`,
-			);
+			prepared = { ok: false, error };
 		}
+		if (generation !== this.refreshGeneration) return;
+		this.applyPrepared(prepared);
 	}
 
 	mergeCurrentStatuses(): void {

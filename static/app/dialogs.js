@@ -8,8 +8,23 @@ function openAndFocus(dialogId, inputId) {
 	});
 }
 
-export function openSession() {
+export function toggleSession() {
+	const dialog = document.getElementById("session-dialog");
+	if (!(dialog instanceof HTMLDialogElement)) return false;
+	if (dialog.open) {
+		dialog.close();
+		return false;
+	}
 	openAndFocus("session-dialog", "session-input");
+	requestAnimationFrame(() => {
+		const input = document.getElementById("session-input");
+		if (input instanceof HTMLInputElement) {
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+		}
+		const menu = document.getElementById("session-menu");
+		if (menu instanceof HTMLElement) menu.scrollTop = 0;
+	});
+	return true;
 }
 
 export function openTree() {

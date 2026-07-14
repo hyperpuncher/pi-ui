@@ -404,7 +404,7 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 		const running = await readUntil(reader, (text) =>
 			text.includes('data-background-status="running"'),
 		);
-		assertIncludes(running, 'id="session-menu"');
+		assertIncludes(running, 'id="session-menu-content"');
 		assertIncludes(running, 'aria-current="true"');
 		assertIncludes(running, "First session");
 
@@ -418,7 +418,7 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 		const completed = await readUntil(reader, (text) =>
 			text.includes('data-background-status="completed"'),
 		);
-		assertIncludes(completed, 'id="session-menu"');
+		assertIncludes(completed, 'id="session-menu-content"');
 		assertIncludes(completed, 'aria-current="true"');
 		assertNotIncludes(completed, 'data-background-status="running"');
 	} finally {
@@ -471,7 +471,7 @@ Deno.test("complete fat view contains every server-owned dynamic root", () => {
 			"prompt-status",
 			"workspace-picker",
 			"workspace-menu",
-			"session-menu",
+			"session-menu-content",
 			"model-picker",
 			"thinking-picker",
 			"session-transition",

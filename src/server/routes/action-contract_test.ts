@@ -95,7 +95,7 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(promptBox, "requestCancellation: 'cleanup'");
 
 	for (const sessionAction of [renderedCommandActions]) {
-		const open = sessionAction.indexOf("window.piUi.dialogs.openSession()");
+		const open = sessionAction.indexOf("window.piUi.dialogs.toggleSession()");
 		const post = sessionAction.indexOf(`@post('${endpoints.sessionsList}'`, open);
 		if (open < 0 || post < open) {
 			throw new Error("Session actions must open and focus before refreshing");

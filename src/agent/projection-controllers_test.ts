@@ -4,12 +4,18 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
+import { AppStore } from "../state/app-store.ts";
 import {
 	modelMatchesPattern,
 	parseScopedModelPattern,
 	resolveScopedModels,
 } from "./model-controller.ts";
-import { formatSessionSummary, recentSessionWorkspaces } from "./session-catalog.ts";
+import {
+	formatSessionSummary,
+	type PreparedSessionList,
+	recentSessionWorkspaces,
+	SessionCatalog,
+} from "./session-catalog.ts";
 import {
 	contentToText,
 	formatShellCommandDisplay,
@@ -249,6 +255,46 @@ Deno.test("tree navigation reports successful empty editor text explicitly", asy
 	});
 	assertEquals(navigated, 1);
 });
+
+Deno.test("session catalog ignores an older refresh that finishes last", async () => {
+	const state = new AppStore();
+	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	let finishOlder = (_value: PreparedSessionList) => {};
+	const older = catalog.refresh(
+		() =>
+			new Promise<PreparedSessionList>((resolve) => {
+				finishOlder = resolve;
+			}),
+	);
+	const newer = catalog.refresh(() =>
+		Promise.resolve({ ok: true, sessions: [sessionInfo("/new", "New")] }),
+	);
+	await newer;
+	finishOlder({ ok: true, sessions: [sessionInfo("/old", "Old")] });
+	await older;
+
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/new"],
+	);
+});
+
+function sessionInfo(
+	path: string,
+	name: string,
+): Parameters<typeof formatSessionSummary>[0] {
+	return {
+		id: path,
+		path,
+		cwd: "/work",
+		name,
+		firstMessage: name,
+		allMessagesText: name,
+		messageCount: 1,
+		created: new Date(0),
+		modified: new Date(0),
+	};
+}
 
 Deno.test("catalog and usage formatting remain stable", () => {
 	const sessions = [

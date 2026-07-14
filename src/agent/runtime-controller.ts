@@ -396,8 +396,15 @@ export class RuntimeController {
 	}
 
 	async listSessions(): Promise<void> {
-		await this.refreshSessions();
-		this.syncUsage();
+		const refresh = async () => {
+			await this.refreshSessions();
+			this.syncUsage();
+		};
+		if (this.state.transcript.messages.length > 0) {
+			await this.state.suppressMessagePatches(refresh);
+		} else {
+			await refresh();
+		}
 	}
 
 	async deleteSession(sessionPath: string): Promise<boolean> {
@@ -1041,7 +1048,7 @@ export class RuntimeController {
 	}
 
 	private async refreshSessions(): Promise<void> {
-		this.catalog.applyPrepared(await this.dependencies.refreshSessions());
+		await this.catalog.refresh(this.dependencies.refreshSessions);
 	}
 
 	private syncBackgroundStatuses(): void {

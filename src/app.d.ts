@@ -3,7 +3,7 @@ interface PiUiNamespace {
 		refresh(root?: unknown): void;
 	};
 	dialogs: {
-		openSession(): void;
+		toggleSession(): boolean;
 		openTree(): void;
 		openWorkspace(): void;
 	};

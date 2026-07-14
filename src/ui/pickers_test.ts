@@ -1,7 +1,11 @@
 import { assertFalse, assertStringIncludes } from "@std/assert";
 
 import type { AppRenderSnapshot } from "../state/app-store.ts";
-import { renderFilePickerResults, renderSlashPicker } from "./pickers.tsx";
+import {
+	renderFilePickerResults,
+	renderSessionPicker,
+	renderSlashPicker,
+} from "./pickers.tsx";
 import { renderModelPicker } from "./prompt-box.tsx";
 
 Deno.test("slash picker anchors its selected result nearest the prompt", () => {
@@ -14,6 +18,24 @@ Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	assertStringIncludes(html, 'id="slash-picker-list"');
 	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'aria-selected="true"');
+});
+
+Deno.test("session rows expose stable ids for resilient active descendants", () => {
+	const path = `/sessions/a session.jsonl`;
+	const html = renderSessionPicker({
+		sessions: [
+			{
+				path,
+				cwd: "/workspace",
+				title: "Session",
+				subtitle: "1 message",
+				modified: "Today",
+			},
+		],
+		currentSessionPath: undefined,
+	} as unknown as AppRenderSnapshot);
+	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
+	assertStringIncludes(html, 'data-preserve-attr="class aria-hidden"');
 });
 
 Deno.test("model picker distinguishes missing auth from an unselected model", () => {

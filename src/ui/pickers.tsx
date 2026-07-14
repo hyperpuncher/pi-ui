@@ -202,25 +202,41 @@ export function renderSessionPicker(state: AppRenderSnapshot): string {
 			data-empty="No saved sessions for this project yet."
 			data-signals:background-session-path__ifmissing="''"
 		>
-			<div role="group" aria-labelledby="session-menu-heading">
-				<span role="heading" id="session-menu-heading">
-					Recent sessions
-				</span>
-				{state.sessions.map((session) =>
-					renderSessionRow(session, session.path === state.currentSessionPath),
-				)}
-			</div>
+			{renderSessionPickerContent(state)}
 		</div>
 	) as string;
+}
+
+export function renderSessionPickerContent(state: AppRenderSnapshot): string {
+	return (
+		<div
+			id="session-menu-content"
+			role="group"
+			aria-labelledby="session-menu-heading"
+		>
+			<span role="heading" id="session-menu-heading">
+				Recent sessions
+			</span>
+			{state.sessions.map((session) =>
+				renderSessionRow(session, session.path === state.currentSessionPath),
+			)}
+		</div>
+	) as string;
+}
+
+function sessionRowId(path: string): string {
+	return `session-row-${encodeURIComponent(path)}`;
 }
 
 function renderSessionRow(session: AppSessionSummary, current: boolean): string {
 	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
 	return (
 		<div
+			id={sessionRowId(session.path)}
 			role="menuitem"
 			tabindex="-1"
 			class="group items-start! gap-3"
+			data-preserve-attr="class aria-hidden"
 			aria-current={current ? "true" : undefined}
 			data-keep-command-open
 			data-session-row

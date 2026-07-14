@@ -14,7 +14,7 @@ import {
 } from "./message-render-service.ts";
 import { renderMessages } from "./messages.tsx";
 import {
-	renderSessionPicker,
+	renderSessionPickerContent,
 	renderSlashPicker,
 	renderWorkspaceDialogMenu,
 } from "./pickers.tsx";
@@ -163,7 +163,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderPromptStatus(snapshot) +
 			renderWorkspacePicker(snapshot) +
 			renderWorkspaceDialogMenu(snapshot) +
-			renderSessionPicker(snapshot) +
+			renderSessionPickerContent(snapshot) +
 			renderModelPicker(snapshot) +
 			renderThinkingPicker(snapshot) +
 			renderSessionTransition(snapshot) +
