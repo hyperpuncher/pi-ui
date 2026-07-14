@@ -24,27 +24,26 @@ export class UsageController {
 	) {}
 
 	sync(): void {
+		const session = this.getRuntime().session;
+		const showCodexUsage = isOpenAICodex(session.model);
 		this.state.setUsage(
 			formatStats(
-				this.getRuntime().session.getSessionStats(),
-				this.codexText,
-				this.codexUsage,
+				session.getSessionStats(),
+				showCodexUsage ? this.codexText : "",
+				showCodexUsage ? this.codexUsage : undefined,
 			),
 		);
 	}
 
-	reset(): void {
+	suspend(): void {
 		this.invalidate();
-		this.codexText = "";
-		this.codexUsage = undefined;
-		this.fetchedAt = 0;
 	}
 
 	refresh(force = false): void {
 		const runtime = this.getRuntime();
 		const session = runtime.session;
 		if (!isOpenAICodex(session.model)) {
-			this.reset();
+			this.suspend();
 			this.sync();
 			return;
 		}
@@ -90,7 +89,7 @@ export class UsageController {
 	}
 
 	dispose(): void {
-		this.invalidate();
+		this.suspend();
 	}
 
 	private owns(request: ReturnType<CodexUsageRequestTracker["begin"]>): boolean {

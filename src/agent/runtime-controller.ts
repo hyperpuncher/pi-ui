@@ -1064,7 +1064,7 @@ export class RuntimeController {
 	}
 
 	private afterModelChange(): void {
-		this.usage.reset();
+		this.usage.suspend();
 		this.models.sync();
 		this.models.syncThinking();
 		this.usage.sync();
@@ -1178,7 +1178,7 @@ export class RuntimeController {
 	}
 
 	private resetCodexUsage(): void {
-		this.usage.reset();
+		this.usage.suspend();
 	}
 
 	private refreshCodexUsage(force = false): void {

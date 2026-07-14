@@ -56,16 +56,24 @@ export async function fetchCodexUsage(
 export function formatCodexUsage(usage: CodexUsage): string {
 	const parts: string[] = [];
 	if (usage.primary) {
-		parts.push(
-			`5h ${formatRemainingPercent(usage.primary)} ${formatRemainingTime(usage.primary)}`,
-		);
+		parts.push(formatCodexWindow(usage.primary, "5h"));
 	}
 	if (usage.secondary) {
-		parts.push(
-			`1w ${formatRemainingPercent(usage.secondary)} ${formatRemainingTime(usage.secondary)}`,
-		);
+		parts.push(formatCodexWindow(usage.secondary, "1w"));
 	}
 	return parts.join("  ");
+}
+
+function formatCodexWindow(window: CodexWindow, fallbackLabel: string): string {
+	return `${formatWindowDuration(window.windowSeconds) ?? fallbackLabel} ${formatRemainingPercent(window)} ${formatRemainingTime(window)}`;
+}
+
+function formatWindowDuration(seconds: number | undefined): string | undefined {
+	if (!seconds || seconds <= 0) return undefined;
+	if (seconds < 3_600) return `${formatOneDecimal(seconds / 60)}m`;
+	if (seconds < 86_400) return `${formatOneDecimal(seconds / 3_600)}h`;
+	if (seconds < 604_800) return `${formatOneDecimal(seconds / 86_400)}d`;
+	return `${formatOneDecimal(seconds / 604_800)}w`;
 }
 
 function hasHeader(headers: Record<string, string>, name: string): boolean {
