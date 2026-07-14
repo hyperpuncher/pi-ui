@@ -20,12 +20,11 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 	return (
 		<div
 			id="prompt-box"
-			class="input-group bg-card text-card-foreground ring-foreground/10 focus-within:ring-foreground/10 fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible rounded-xl border-transparent p-3 text-sm shadow-lg ring-1 transition-none focus-within:border-transparent focus-within:ring-1"
-			data-orientation="vertical"
+			class="fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible text-sm"
 		>
 			<div
 				id="prompt-slash-popover"
-				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
+				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border p-1 shadow-md"
 				style="display: none;"
 				data-show="$_slashPickerOpen"
 			>
@@ -33,99 +32,112 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 			</div>
 			<div
 				id="prompt-file-popover"
-				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 mb-2 rounded-md border p-1 shadow-md"
+				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border p-1 shadow-md"
 				style="display: none;"
 				data-show="$_filePickerOpen"
 			>
 				<div id="file-picker-results" aria-live="polite" />
 			</div>
 			{renderPromptQueue(state)}
-			<textarea
-				id="prompt-input"
-				class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 text-[15px]"
-				placeholder="Ask pi anything..."
-				aria-label="Message"
-				rows="1"
-				data-bind:prompt
-				data-on:input="
-					$_slashPickerOpen = $prompt.startsWith('/') &&
-					!$prompt.includes(' ')
-				"
-				data-on:pi-ui-picker-close="$_slashPickerOpen = false"
-				data-on:pi-ui-file-query={`
-					$fileQuery = evt.detail.query;
-					$_filePickerOpen = true;
-					@get('${endpoints.filesSearch}', {
+			<div
+				class="input-group bg-card text-card-foreground ring-foreground/10 focus-within:ring-foreground/10 relative z-10 overflow-visible rounded-xl border-transparent p-3 text-sm shadow-lg ring-1 transition-none focus-within:border-transparent focus-within:ring-1"
+				data-orientation="vertical"
+			>
+				<textarea
+					id="prompt-input"
+					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 text-[15px]"
+					placeholder="Ask pi anything..."
+					aria-label="Message"
+					rows="1"
+					data-bind:prompt
+					data-on:input="
+						$_slashPickerOpen = $prompt.startsWith('/') &&
+						!$prompt.includes(' ')
+					"
+					data-on:pi-ui-picker-close="$_slashPickerOpen = false"
+					data-on:pi-ui-file-query={`
+						$fileQuery = evt.detail.query;
+						$_filePickerOpen = true;
+						@get('${endpoints.filesSearch}', {
 						filterSignals: { include: /^fileQuery$/ },
 						requestCancellation: 'cleanup',
 					});
-				`}
-				data-on:pi-ui-file-close="$_filePickerOpen = false"
-				data-effect={`if ($isSessionReady) {
-					el.focus({ preventScroll: true });
-					el.selectionStart = el.value.length;
-					el.selectionEnd = el.value.length;
-				}`}
-				data-on:paste={`if (window.piUi.fileTransfer.hasFiles(evt.clipboardData)) {
-					evt.preventDefault();
-					window.piUi.fileTransfer.insert(evt.clipboardData);
-				}`}
-				data-on:keydown={`if (
-					evt.key === 'Escape' &&
-					!evt.ctrlKey &&
-					!evt.metaKey &&
-					!evt.altKey &&
-					!evt.shiftKey &&
-					!$isBusy
-				) {
-					evt.preventDefault();
-					el.blur();
-				}
-				if (evt.altKey && evt.key === 'ArrowUp') {
-					evt.preventDefault();
-					@post('/prompt/dequeue', { filterSignals: { include: /^$/ } });
-				}
-				if (
-					evt.key === 'Enter' &&
-					!evt.shiftKey &&
-					$prompt.trim() !== '' &&
-					!window.piUi.pickers.isOpen()
-				) {
-					evt.preventDefault();
-					window.piUi.messageScroll.scrollBottom();
-					if ($prompt.trim() === '/tree') window.piUi.dialogs.openTree();
-					evt.altKey
-						? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
-						: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
-				}`}
-			></textarea>
-			<footer
-				class="flex flex-wrap items-center justify-between gap-2 p-0"
-				data-align="end"
-			>
-				{renderPromptToolbar(state)}
-				<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
-					{renderPromptStatus(state)}
-					{renderWorkspacePicker(state)}
-					<span
-						class="bg-border hidden h-4 w-px shrink-0 sm:block"
-						aria-hidden="true"
-					/>
-					{renderModelPicker(state)}
-					<span
-						class="bg-border hidden h-4 w-px shrink-0 sm:block"
-						aria-hidden="true"
-					/>
-					{renderThinkingPicker(state)}
-					{renderPromptAction(state)}
-				</div>
-			</footer>
+					`}
+					data-on:pi-ui-file-close="$_filePickerOpen = false"
+					data-effect={`if ($isSessionReady) {
+						el.focus({ preventScroll: true });
+						el.selectionStart = el.value.length;
+						el.selectionEnd = el.value.length;
+					}`}
+					data-on:paste={`if (window.piUi.fileTransfer.hasFiles(evt.clipboardData)) {
+						evt.preventDefault();
+						window.piUi.fileTransfer.insert(evt.clipboardData);
+					}`}
+					data-on:keydown={`if (
+						evt.key === 'Escape' &&
+						!evt.ctrlKey &&
+						!evt.metaKey &&
+						!evt.altKey &&
+						!evt.shiftKey &&
+						!$isBusy
+					) {
+						evt.preventDefault();
+						el.blur();
+					}
+					if (evt.altKey && evt.key === 'ArrowUp') {
+						evt.preventDefault();
+						@post('/prompt/dequeue', { filterSignals: { include: /^$/ } });
+					}
+					if (
+						evt.key === 'Enter' &&
+						!evt.shiftKey &&
+						$prompt.trim() !== '' &&
+						!window.piUi.pickers.isOpen()
+					) {
+						evt.preventDefault();
+						window.piUi.messageScroll.scrollBottom();
+						if ($prompt.trim() === '/tree') window.piUi.dialogs.openTree();
+						evt.altKey
+							? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
+							: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
+					}`}
+				></textarea>
+				<footer
+					class="flex flex-wrap items-center justify-between gap-2 p-0"
+					data-align="end"
+				>
+					{renderPromptToolbar(state)}
+					<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+						{renderPromptStatus(state)}
+						{renderWorkspacePicker(state)}
+						<span
+							class="bg-border hidden h-4 w-px shrink-0 sm:block"
+							aria-hidden="true"
+						/>
+						{renderModelPicker(state)}
+						<span
+							class="bg-border hidden h-4 w-px shrink-0 sm:block"
+							aria-hidden="true"
+						/>
+						{renderThinkingPicker(state)}
+						{renderPromptAction(state)}
+					</div>
+				</footer>
+			</div>
 		</div>
 	) as string;
 }
 
 export function renderPromptQueue(state: AppRenderSnapshot): string {
-	return (<div id="prompt-queue">{renderQueuedMessages(state)}</div>) as string;
+	return (
+		<div
+			id="prompt-queue"
+			class="pointer-events-none absolute bottom-[calc(100%-0.75rem)] left-1/2 z-0 flex w-[calc(100%-2rem)] -translate-x-1/2 sm:w-[calc(100%-4rem)]"
+			aria-live="polite"
+		>
+			{renderQueuedMessages(state)}
+		</div>
+	) as string;
 }
 
 function renderQueuedMessages(state: AppRenderSnapshot): string {
@@ -135,21 +147,59 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 	];
 	if (items.length === 0) return "";
 	return (
-		<div class="border-border/60 text-muted-foreground mb-2 border-b pb-2 text-xs">
-			<div class="flex items-center justify-between gap-2 px-1">
-				<span>Queued messages</span>
-				<ShortcutKbd shortcut="alt ↑" />
-			</div>
-			<div class="mt-1 flex max-h-24 flex-col gap-1 overflow-y-auto px-1">
+		<section class="bg-card text-card-foreground ring-foreground/10 pointer-events-auto w-full overflow-hidden rounded-xl border border-transparent shadow-md ring-1">
+			<header class="flex h-8 items-center justify-between gap-3 px-3">
+				<div class="flex min-w-0 items-center gap-2 text-xs font-medium">
+					<span class="text-muted-foreground">
+						<QueueIcon />
+					</span>
+					<span>
+						{items.length} queued{" "}
+						{items.length === 1 ? "message" : "messages"}
+					</span>
+				</div>
+				<button
+					type="button"
+					class="text-muted-foreground hover:bg-muted hover:text-foreground -mr-1 flex h-7 items-center gap-2 rounded-md px-2 text-xs transition-colors"
+					data-on:click="@post('/prompt/dequeue', { filterSignals: { include: /^$/ } })"
+					aria-label="Restore queued messages to the prompt"
+				>
+					<span>Restore</span>
+					<ShortcutKbd shortcut="alt ↑" />
+				</button>
+			</header>
+			<div class="flex max-h-32 flex-col overflow-y-auto px-1.5 pb-4">
 				{items.map(([label, text]) => (
-					<div class="truncate">
-						<span class="text-foreground">{label}:</span>{" "}
-						<span safe>{text}</span>
+					<div class="hover:bg-muted/60 flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs">
+						<span
+							class={[
+								"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+								label === "Steering"
+									? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+									: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+							]}
+						>
+							{label}
+						</span>
+						<span class="text-muted-foreground truncate" safe>
+							{text}
+						</span>
 					</div>
 				))}
 			</div>
-		</div>
+		</section>
 	) as string;
+}
+
+function QueueIcon() {
+	return (
+		<Icon>
+			<>
+				<path d="M8 6h13M8 12h13M8 18h13" />
+				<path d="M3 6h.01M3 12h.01M3 18h.01" />
+			</>
+		</Icon>
+	);
 }
 
 type PromptToolbarAction =
