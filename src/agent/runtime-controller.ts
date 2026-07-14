@@ -442,6 +442,44 @@ export class RuntimeController {
 		return this.runtime.session.sessionManager.getCwd();
 	}
 
+	async openWorkspace(cwd: string): Promise<boolean> {
+		if (cwd === this.getWorkspacePath()) return true;
+
+		const replacement = await this.dependencies.createRuntime(this.runtimeFactory, {
+			cwd,
+			agentDir: this.dependencies.getAgentDir(),
+			sessionManager: this.dependencies.createSessionManager(cwd),
+		});
+		try {
+			await replacement.session.bindExtensions({ mode: "rpc" });
+		} catch (error) {
+			await replacement.dispose();
+			throw error;
+		}
+
+		const previous = this.runtime;
+		const action = this.currentRuntimeLeaveAction();
+		if (action === "background") {
+			this.backgroundCurrentRuntime();
+		} else if (action === "discard") {
+			await this.discardTemporaryRuntime();
+		} else {
+			this.unbindSession();
+			try {
+				await previous.dispose();
+			} catch (error) {
+				console.error("Failed to dispose previous workspace runtime", error);
+			}
+		}
+
+		this.runtime = replacement;
+		this.assignNewForegroundGeneration();
+		this.bindRuntimeCallbacks(replacement);
+		this.state.resetChat({ preserveEmptyHint: true });
+		this.bindSessionState();
+		return true;
+	}
+
 	async resumeSession(sessionPath: string): Promise<SessionTransitionResult> {
 		return await this.transitionController.run(sessionPath, async () => {
 			const transitionId = sessionPerformance.startSessionTransition();

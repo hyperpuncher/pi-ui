@@ -72,6 +72,10 @@ export class AgentHost {
 		return this.runtime.getWorkspacePath();
 	}
 
+	openWorkspace(cwd: string): Promise<boolean> {
+		return this.runtime.openWorkspace(cwd);
+	}
+
 	resumeSession(sessionPath: string): Promise<SessionTransitionResult> {
 		return this.runtime.resumeSession(sessionPath);
 	}

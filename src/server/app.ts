@@ -21,7 +21,6 @@ import { registerStreamRoutes } from "./routes/stream.ts";
 import { registerTreeRoutes } from "./routes/tree.ts";
 import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
-import { transitionWorkspaceResources } from "./workspace-transition.ts";
 
 const basecoatJsPath = fromFileUrl(import.meta.resolve("basecoat-css/all.min"));
 const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
@@ -104,44 +103,21 @@ async function openWorkspace(
 	transitions: SessionTransitionController,
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
-	let replacement: AgentHost | undefined;
 	const transition = await transitions.run(requestedPath, async () => {
 		const realPath = await Deno.realPath(expandHomePath(requestedPath));
 		if (!(await Deno.stat(realPath)).isDirectory) {
 			throw new Error("Not a directory");
 		}
-		const patchMessages = store.messages.length > 0;
-		const replace = async () => {
-			await transitionWorkspaceResources({
-				current: resources,
-				prepareHost: () =>
-					AgentHost.prepare(store, realPath, {
-						refreshWorkspaces: false,
-						transitionController: transitions,
-					}),
-				commit: (next) => {
-					store.resetChat({
-						preserveEmptyHint: true,
-						broadcast: patchMessages,
-					});
-					next.activate();
-					resources.host = next;
-					replacement = next;
-				},
-				onCurrentDisposeError: (error) => {
-					console.error(
-						"Failed to dispose previous workspace resources",
-						error,
-					);
-				},
+		if (!resources.host) {
+			resources.host = await AgentHost.create(store, realPath, {
+				refreshWorkspaces: false,
+				transitionController: transitions,
 			});
 			return true;
-		};
-		return patchMessages
-			? await replace()
-			: await store.suppressMessagePatches(replace);
+		}
+		return await resources.host.openWorkspace(realPath);
 	});
-	return transition.status === "success" && replacement !== undefined;
+	return transition.status === "success";
 }
 
 function installUnhandledErrorReporter(): void {

@@ -27,16 +27,24 @@ type RuntimeFake = {
 	setStreaming(value: boolean): void;
 };
 
-function manager(path: string | undefined, persisted = true): SessionManager {
+function manager(
+	path: string | undefined,
+	persisted = true,
+	cwd = "/workspace",
+): SessionManager {
 	return {
-		getCwd: () => "/workspace",
+		getCwd: () => cwd,
 		getSessionFile: () => path,
 		isPersisted: () => persisted,
 		getBranch: () => [],
 	} as unknown as SessionManager;
 }
 
-function fakeRuntime(path = "/sessions/a.jsonl", persisted = true): RuntimeFake {
+function fakeRuntime(
+	path = "/sessions/a.jsonl",
+	persisted = true,
+	cwd = "/workspace",
+): RuntimeFake {
 	const beforeInvalidate: Callback[] = [];
 	const rebind: Callback[] = [];
 	const events: Array<(event: AgentSessionEvent) => void> = [];
@@ -60,7 +68,7 @@ function fakeRuntime(path = "/sessions/a.jsonl", persisted = true): RuntimeFake 
 	};
 	const session = {
 		isStreaming: false,
-		sessionManager: manager(path, persisted),
+		sessionManager: manager(path, persisted, cwd),
 		model: undefined,
 		scopedModels: [],
 		modelRegistry: { getAll: () => [], hasConfiguredAuth: () => false },
@@ -128,8 +136,8 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 		},
 		prepareSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		refreshSessions: () => Promise.resolve({ ok: true, sessions: [] }),
-		createSessionManager: () => manager(undefined),
-		createMemorySessionManager: () => manager(undefined, false),
+		createSessionManager: (cwd) => manager(undefined, true, cwd),
+		createMemorySessionManager: (cwd) => manager(undefined, false, cwd),
 		openSessionManager: (path) => manager(path),
 		moveToTrash: () => Promise.resolve(),
 		getAgentDir: () => "/agent",
@@ -253,6 +261,81 @@ Deno.test("RuntimeController reuses streaming runtimes across repeated backgroun
 	await controller.dispose();
 	assertEquals(a.disposeCount, 1);
 	assertEquals(b.disposeCount, 1);
+});
+
+Deno.test("RuntimeController preserves a streaming session across workspace changes", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
+	const replacement = fakeRuntime(
+		"/sessions/replacement.jsonl",
+		true,
+		"/work/replacement",
+	);
+	source.setStreaming(true);
+	const controller = await RuntimeController.prepare(state, "/work/source", {
+		dependencies: dependencies([source, replacement]),
+	});
+	controller.activate();
+
+	assertEquals(await controller.openWorkspace("/work/replacement"), true);
+	assertEquals(state.workspacePath, "/work/replacement");
+	assertEquals(source.disposeCount, 0);
+	assertEquals(source.calls.filter((call) => call === "unsubscribe").length, 1);
+
+	assertEquals(await controller.resumeSession("/sessions/source.jsonl"), {
+		status: "success",
+	});
+	assertEquals(state.workspacePath, "/work/source");
+	assertEquals(source.disposeCount, 0);
+	assertEquals(replacement.disposeCount, 1);
+
+	await controller.dispose();
+	assertEquals(source.disposeCount, 1);
+});
+
+Deno.test("RuntimeController preserves the current workspace when replacement preparation fails", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
+	const replacement = fakeRuntime(
+		"/sessions/replacement.jsonl",
+		true,
+		"/work/replacement",
+	);
+	replacement.runtime.session.bindExtensions = () =>
+		Promise.reject(new Error("bind failed"));
+	const controller = await RuntimeController.prepare(state, "/work/source", {
+		dependencies: dependencies([source, replacement]),
+	});
+	controller.activate();
+
+	await assertRejects(
+		() => controller.openWorkspace("/work/replacement"),
+		Error,
+		"bind failed",
+	);
+	assertEquals(state.workspacePath, "/work/source");
+	assertEquals(source.disposeCount, 0);
+	assertEquals(replacement.disposeCount, 1);
+	await controller.dispose();
+	assertEquals(source.disposeCount, 1);
+});
+
+Deno.test("RuntimeController disposes an idle session on workspace change", async () => {
+	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
+	const replacement = fakeRuntime(
+		"/sessions/replacement.jsonl",
+		true,
+		"/work/replacement",
+	);
+	const controller = await RuntimeController.prepare(new AppStore(), "/work/source", {
+		dependencies: dependencies([source, replacement]),
+	});
+	controller.activate();
+
+	assertEquals(await controller.openWorkspace("/work/replacement"), true);
+	assertEquals(source.disposeCount, 1);
+	await controller.dispose();
+	assertEquals(replacement.disposeCount, 1);
 });
 
 Deno.test("RuntimeController preserves a runtime while accepted prompt work is pending", async () => {
