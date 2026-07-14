@@ -35,7 +35,6 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 		currentSessionPath: undefined,
 	} as unknown as AppRenderSnapshot);
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
-	assertStringIncludes(html, 'data-preserve-attr="class aria-hidden"');
 });
 
 Deno.test("model picker distinguishes missing auth from an unselected model", () => {

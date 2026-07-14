@@ -236,7 +236,6 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 			role="menuitem"
 			tabindex="-1"
 			class="group items-start! gap-3"
-			data-preserve-attr="class aria-hidden"
 			aria-current={current ? "true" : undefined}
 			data-keep-command-open
 			data-session-row

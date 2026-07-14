@@ -396,15 +396,8 @@ export class RuntimeController {
 	}
 
 	async listSessions(): Promise<void> {
-		const refresh = async () => {
-			await this.refreshSessions();
-			this.syncUsage();
-		};
-		if (this.state.transcript.messages.length > 0) {
-			await this.state.suppressMessagePatches(refresh);
-		} else {
-			await refresh();
-		}
+		await this.refreshSessions();
+		this.syncUsage();
 	}
 
 	async deleteSession(sessionPath: string): Promise<boolean> {
