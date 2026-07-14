@@ -30,6 +30,48 @@ Deno.test("file search preserves scoped ranking and result cap", async () => {
 	);
 });
 
+Deno.test("file search suggests closest sibling entries for an incorrect name", async () => {
+	let calls = 0;
+	const results = await searchFiles(
+		"/workspace",
+		"auth.jsonasdfasdf",
+		undefined,
+		() => {
+			calls += 1;
+			return Promise.resolve(
+				output(calls === 1 ? "" : "auth.py\nauth.json\nbackend-oauth.md"),
+			);
+		},
+	);
+	assertEquals(
+		results.map((item) => item.value),
+		["auth.json", "auth.py", "backend-oauth.md"],
+	);
+});
+
+Deno.test("closest file suggestions stay within the selected directory", async () => {
+	const calls: string[][] = [];
+	const results = await searchFiles(
+		"/workspace",
+		"src/auth.jsonasdfasdf",
+		undefined,
+		(args) => {
+			calls.push(args);
+			return Promise.resolve(
+				output(calls.length === 1 ? "" : "auth.json\nauth.py"),
+			);
+		},
+	);
+	assertEquals(
+		calls.map((args) => args[args.indexOf("--base-directory") + 1]),
+		["/workspace/src", "/workspace/src"],
+	);
+	assertEquals(
+		results.map((item) => item.value),
+		["src/auth.json", "src/auth.py"],
+	);
+});
+
 Deno.test("file search resets traversal scopes to the workspace", async () => {
 	let baseDirectory = "";
 	await searchFiles("/workspace", "../secret", undefined, (args) => {

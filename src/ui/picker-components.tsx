@@ -29,9 +29,16 @@ export function PickerRow(props: {
 	label: string;
 	description: string;
 	metadata: string;
+	selected?: boolean;
 }): string {
 	return (
-		<li role="option" tabindex="-1" aria-selected="false" data-file-row>
+		<li
+			role="option"
+			tabindex="-1"
+			class="aria-selected:bg-muted rounded-md"
+			aria-selected={props.selected ? "true" : "false"}
+			data-file-row
+		>
 			<button
 				type="button"
 				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"

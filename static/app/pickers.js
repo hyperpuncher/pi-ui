@@ -9,7 +9,10 @@ import {
 
 let activeFilePrefix;
 let filePickerSuppressUntilInput = false;
+let filePickerObserver;
+let filePickerResetFrame;
 let searchTimer;
+let slashPickerResetFrame;
 
 export function extractFilePrefix(value, cursor) {
 	const before = value.slice(0, cursor);
@@ -45,6 +48,16 @@ export function bindPickers() {
 	document.addEventListener("click", handleClick);
 	document.addEventListener("pointerdown", handleOutsidePointer);
 	document.addEventListener("keydown", handleKeydown);
+	filePickerObserver?.disconnect();
+	const popover = document.getElementById("prompt-file-popover");
+	if (popover) {
+		filePickerObserver = new MutationObserver(queueFilePickerReset);
+		filePickerObserver.observe(popover, {
+			childList: true,
+			characterData: true,
+			subtree: true,
+		});
+	}
 }
 
 function syncFromPrompt(event) {
@@ -57,6 +70,7 @@ function syncFromPrompt(event) {
 	if (filePickerSuppressUntilInput && event.type === "keyup") return;
 	if (event.type === "input") filePickerSuppressUntilInput = false;
 	queueFileSearch(event.target);
+	queueSlashPickerSelectionReset();
 }
 
 function queueFileSearch(input) {
@@ -70,6 +84,7 @@ function queueFileSearch(input) {
 		return;
 	}
 	activeFilePrefix = match;
+	queueFilePickerReset();
 	clearTimeout(searchTimer);
 	searchTimer = setTimeout(() => {
 		if (activeFilePrefix !== match) return;
@@ -135,19 +150,24 @@ function handleKeydown(event) {
 	}
 	const active = document.activeElement;
 	if (active?.id === "prompt-input") {
-		if (event.key === "ArrowDown" && isSlashOpen()) {
+		if ((event.key === "ArrowDown" || event.key === "ArrowUp") && isSlashOpen()) {
 			event.preventDefault();
-			focusPickerRow("[data-slash-row]", 1, false);
+			focusPickerRow("[data-slash-row]", event.key === "ArrowDown" ? 1 : -1);
 			return;
 		}
 		if ((event.key === "ArrowDown" || event.key === "ArrowUp") && isFileOpen()) {
 			event.preventDefault();
-			focusPickerRow("[data-file-row]", event.key === "ArrowDown" ? 1 : -1, true);
+			focusPickerRow("[data-file-row]", event.key === "ArrowDown" ? 1 : -1);
 			return;
 		}
 		if (event.key === "Enter" && !event.shiftKey && isFileOpen()) {
 			event.preventDefault();
-			visibleRows("[data-file-row]").at(-1)?.querySelector("button")?.click();
+			selectedPickerRow("[data-file-row]")?.querySelector("button")?.click();
+			return;
+		}
+		if (event.key === "Enter" && !event.shiftKey && isSlashOpen()) {
+			event.preventDefault();
+			selectedPickerRow("[data-slash-row]")?.querySelector("button")?.click();
 			return;
 		}
 	}
@@ -155,11 +175,7 @@ function handleKeydown(event) {
 		if (!active?.closest?.(selector)) continue;
 		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 			event.preventDefault();
-			focusPickerRow(
-				selector,
-				event.key === "ArrowDown" ? 1 : -1,
-				selector.includes("file"),
-			);
+			focusPickerRow(selector, event.key === "ArrowDown" ? 1 : -1);
 		} else if (event.key === "Enter") {
 			event.preventDefault();
 			active.click();
@@ -226,20 +242,56 @@ function visibleRows(selector) {
 	);
 }
 
-function focusPickerRow(selector, direction, reverseDefault) {
+function selectedPickerRow(selector) {
+	const rows = visibleRows(selector);
+	return rows.find((row) => row.getAttribute("aria-selected") === "true") ?? rows[0];
+}
+
+function selectDefaultPickerRow(selector) {
+	const rows = visibleRows(selector);
+	for (const [index, row] of rows.entries()) {
+		row.setAttribute("aria-selected", index === 0 ? "true" : "false");
+	}
+}
+
+function resetPicker(listId, rowSelector) {
+	const list = document.getElementById(listId);
+	if (list instanceof HTMLElement) list.scrollTop = 0;
+	selectDefaultPickerRow(rowSelector);
+}
+
+function queueSlashPickerSelectionReset() {
+	if (!promptValue().startsWith("/")) return;
+	cancelAnimationFrame(slashPickerResetFrame);
+	slashPickerResetFrame = requestAnimationFrame(() => {
+		resetPicker("slash-picker-list", "[data-slash-row]");
+	});
+}
+
+function queueFilePickerReset() {
+	cancelAnimationFrame(filePickerResetFrame);
+	filePickerResetFrame = requestAnimationFrame(() => {
+		resetPicker("file-picker-list", "[data-file-row]");
+	});
+}
+
+export function nextPickerIndex(length, activeIndex, direction) {
+	if (length <= 0) return -1;
+	if (activeIndex === -1) return 0;
+	return Math.max(0, Math.min(length - 1, activeIndex - direction));
+}
+
+function focusPickerRow(selector, direction) {
 	const rows = visibleRows(selector);
 	if (rows.length === 0) return;
 	const activeRow = document.activeElement?.closest?.(selector);
-	const activeIndex = rows.findIndex((row) => row === activeRow);
-	const initial = reverseDefault
-		? rows.length - 1
-		: direction > 0
-			? 0
-			: rows.length - 1;
-	const nextIndex =
-		activeIndex === -1
-			? initial
-			: (activeIndex + direction + rows.length) % rows.length;
+	let activeIndex = rows.findIndex((row) => row === activeRow);
+	if (activeIndex === -1) {
+		activeIndex = rows.findIndex(
+			(row) => row.getAttribute("aria-selected") === "true",
+		);
+	}
+	const nextIndex = nextPickerIndex(rows.length, activeIndex, direction);
 	for (const row of rows) row.setAttribute("aria-selected", "false");
 	rows[nextIndex]?.setAttribute("aria-selected", "true");
 	rows[nextIndex]?.querySelector("button")?.focus();

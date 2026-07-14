@@ -88,7 +88,7 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 					evt.key === 'Enter' &&
 					!evt.shiftKey &&
 					$prompt.trim() !== '' &&
-					!window.piUi.pickers.isFileOpen()
+					!window.piUi.pickers.isOpen()
 				) {
 					evt.preventDefault();
 					window.piUi.messageScroll.scrollBottom();

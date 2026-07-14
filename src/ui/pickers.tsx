@@ -13,21 +13,26 @@ import {
 } from "./picker-components.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 
+const bottomAnchoredPickerClass =
+	"flex max-h-72 list-none flex-col-reverse overflow-y-auto p-1";
+
 export function renderSlashPicker(state: AppRenderSnapshot): string {
 	return (
 		<div id="slash-picker">
-			<PickerList id="slash-picker-list">
+			<PickerList id="slash-picker-list" class={bottomAnchoredPickerClass}>
 				{state.slashCommands.length === 0 ? (
 					<PickerEmpty>No prompts or skills found.</PickerEmpty>
 				) : (
-					state.slashCommands.map(renderSlashRow)
+					state.slashCommands.map((item, index) =>
+						renderSlashRow(item, index === 0),
+					)
 				)}
 			</PickerList>
 		</div>
 	) as string;
 }
 
-function renderSlashRow(item: AppSlashCommand): string {
+function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 	const label = `/${item.name}`;
 	const haystack = `${item.name} ${item.description} ${item.source}`.toLowerCase();
 	const commandText = `${label} `;
@@ -35,7 +40,8 @@ function renderSlashRow(item: AppSlashCommand): string {
 		<li
 			role="option"
 			tabindex="-1"
-			aria-selected="false"
+			class="aria-selected:bg-muted rounded-md"
+			aria-selected={selected ? "true" : "false"}
 			data-slash-row
 			data-show={`
 				$prompt.startsWith('/') &&
@@ -122,22 +128,17 @@ export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
 export function renderFilePickerResults(items: readonly FileSuggestion[]): string {
 	return (
 		<div id="file-picker-results" aria-live="polite">
-			<PickerList id="file-picker-list">
-				{items.length === 0 ? (
-					<PickerEmpty>No files found.</PickerEmpty>
-				) : (
-					[...items]
-						.reverse()
-						.map((item) => (
-							<PickerRow
-								kind="file"
-								value={item.value}
-								label={item.label}
-								description={item.description}
-								metadata={item.isDirectory ? "dir" : "file"}
-							/>
-						))
-				)}
+			<PickerList id="file-picker-list" class={bottomAnchoredPickerClass}>
+				{items.map((item, index) => (
+					<PickerRow
+						kind="file"
+						value={item.value}
+						label={item.label}
+						description={item.description}
+						metadata={item.isDirectory ? "dir" : "file"}
+						selected={index === 0}
+					/>
+				))}
 			</PickerList>
 		</div>
 	) as string;

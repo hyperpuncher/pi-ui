@@ -29,9 +29,31 @@ export async function searchFiles(
 ): Promise<FileSuggestion[]> {
 	const normalizedQuery = query.replaceAll("\\", "/").replace(/^@/, "");
 	const fdResults = await searchWithFd(workspacePath, normalizedQuery, signal, command);
-	if (fdResults !== undefined) return fdResults;
+	if (fdResults?.length || !normalizedQuery) return fdResults ?? [];
+	if (fdResults) {
+		return findClosestFiles(
+			(await searchWithFd(
+				workspacePath,
+				parentQuery(normalizedQuery),
+				signal,
+				command,
+				fdMaxResults,
+			)) ?? [],
+			normalizedQuery,
+		);
+	}
 	signal?.throwIfAborted();
-	return searchManually(workspacePath, normalizedQuery);
+	const manualResults = searchManually(workspacePath, normalizedQuery);
+	if (manualResults.length > 0) return manualResults;
+	return findClosestFiles(
+		searchManually(
+			workspacePath,
+			parentQuery(normalizedQuery),
+			fdMaxResults,
+			maxScanned,
+		),
+		normalizedQuery,
+	);
 }
 
 async function searchWithFd(
@@ -39,6 +61,7 @@ async function searchWithFd(
 	query: string,
 	signal: AbortSignal | undefined,
 	command: FileSearchCommand,
+	limit = maxResults,
 ): Promise<FileSuggestion[] | undefined> {
 	const scoped = resolveFileSearchScope(workspacePath, query);
 	const args = [
@@ -95,7 +118,51 @@ async function searchWithFd(
 			if (!a.isDirectory && b.isDirectory) return 1;
 			return a.description.localeCompare(b.description);
 		})
+		.slice(0, limit);
+}
+
+function parentQuery(query: string): string {
+	const slashIndex = query.lastIndexOf("/");
+	return slashIndex === -1 ? "" : query.slice(0, slashIndex + 1);
+}
+
+function findClosestFiles(
+	items: readonly FileSuggestion[],
+	query: string,
+): FileSuggestion[] {
+	const name = query.slice(query.lastIndexOf("/") + 1).toLowerCase();
+	if (!name) return [];
+	return [...items]
+		.sort((a, b) => {
+			const aName = path.basename(a.description).toLowerCase();
+			const bName = path.basename(b.description).toLowerCase();
+			const distanceDiff = editDistance(aName, name) - editDistance(bName, name);
+			if (distanceDiff !== 0) return distanceDiff;
+			const lengthDiff =
+				Math.abs(aName.length - name.length) -
+				Math.abs(bName.length - name.length);
+			return lengthDiff || a.description.localeCompare(b.description);
+		})
 		.slice(0, maxResults);
+}
+
+function editDistance(left: string, right: string): number {
+	let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+	for (let leftIndex = 0; leftIndex < left.length; leftIndex += 1) {
+		const current = [leftIndex + 1];
+		for (let rightIndex = 0; rightIndex < right.length; rightIndex += 1) {
+			current.push(
+				Math.min(
+					current[rightIndex] + 1,
+					previous[rightIndex + 1] + 1,
+					previous[rightIndex] +
+						(left[leftIndex] === right[rightIndex] ? 0 : 1),
+				),
+			);
+		}
+		previous = current;
+	}
+	return previous[right.length];
 }
 
 function toSuggestion(displayBase: string, line: string): FileSuggestion {
@@ -111,12 +178,17 @@ function toSuggestion(displayBase: string, line: string): FileSuggestion {
 	};
 }
 
-function searchManually(workspacePath: string, query: string): FileSuggestion[] {
+function searchManually(
+	workspacePath: string,
+	query: string,
+	limit = maxResults,
+	collectionLimit = maxCollected,
+): FileSuggestion[] {
 	const scoped = resolveFileSearchScope(workspacePath, query);
 	const results: FileSuggestion[] = [];
 	let scanned = 0;
 	walkFiles(scoped.baseDir, (entryPath, isDirectory) => {
-		if (scanned > maxScanned || results.length >= maxCollected) {
+		if (scanned > maxScanned || results.length >= collectionLimit) {
 			return false;
 		}
 		scanned += 1;
@@ -149,7 +221,7 @@ function searchManually(workspacePath: string, query: string): FileSuggestion[] 
 			if (!a.isDirectory && b.isDirectory) return 1;
 			return a.description.localeCompare(b.description);
 		})
-		.slice(0, maxResults);
+		.slice(0, limit);
 }
 
 function resolveFileSearchScope(
