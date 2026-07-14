@@ -103,6 +103,7 @@ jobs:
                     cd cef/build/Release
                     7z a "$GITHUB_WORKSPACE/laufey-cef-${{ matrix.target }}.zip" '*'
                   else
+                    strip --strip-unneeded cef/build/Release/libcef.so
                     tar czf "$GITHUB_WORKSPACE/laufey-cef-${{ matrix.target }}.tar.gz" \
                       -C cef/build/Release .
                   fi
