@@ -1,4 +1,5 @@
 import {
+	authDialogAction,
 	cycleModelAction,
 	cycleThinkingAction,
 	newSessionAction,
@@ -704,7 +705,25 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 	const current = state.models.find(
 		(model) => `${model.provider}/${model.id}` === state.currentModel,
 	);
-	const currentLabel = current ? modelTriggerLabel(current) : "Loading models…";
+	const hasModels = state.models.length > 0;
+	if (!hasModels) {
+		return (
+			<div id="model-picker" class="shrink-0">
+				<button
+					type="button"
+					class="btn text-muted-foreground hover:text-foreground w-fit font-mono"
+					data-variant="ghost"
+					data-size="sm"
+					data-tooltip="Log in to a provider"
+					data-tooltip-delay
+					data-on:click={authDialogAction("login")}
+				>
+					no provider
+				</button>
+			</div>
+		) as string;
+	}
+	const currentLabel = current ? modelTriggerLabel(current) : "choose model";
 	return (
 		<div id="model-picker" class="shrink-0">
 			<label class="sr-only" for="model-select-trigger">
@@ -734,7 +753,6 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 					aria-controls="model-select-menu"
 					data-tooltip="Model"
 					data-tooltip-delay
-					disabled={state.models.length === 0}
 				>
 					<span class="truncate" safe>
 						{currentLabel}
