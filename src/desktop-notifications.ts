@@ -7,6 +7,9 @@ const notificationIconBytesPromise = Deno.readFile(
 const notificationIconPromise = notificationIconBytesPromise.then((bytes) =>
 	bytes ? `data:image/png;base64,${bytes.toBase64()}` : undefined,
 );
+let linuxNotificationIconPathPromise: Promise<string | undefined> | undefined;
+let temporaryLinuxNotificationIconPath: string | undefined;
+
 export type SessionDoneNotification = Readonly<{
 	workspace: string;
 	sessionPath?: string;
@@ -49,15 +52,9 @@ export async function notifySessionDone(details: SessionDoneNotification): Promi
 }
 
 async function notifyLinux(details: SessionDoneNotification): Promise<boolean> {
-	let iconPath: string | undefined;
 	try {
-		const bytes = await notificationIconBytesPromise;
-		if (!bytes) return false;
-		iconPath = await Deno.makeTempFile({
-			prefix: "pi-ui-notification-",
-			suffix: ".png",
-		});
-		await Deno.writeFile(iconPath, bytes);
+		const iconPath = await linuxNotificationIconPath();
+		if (!iconPath) return false;
 		const status = await new Deno.Command("notify-send", {
 			args: [
 				"--app-name=pi-ui",
@@ -73,9 +70,50 @@ async function notifyLinux(details: SessionDoneNotification): Promise<boolean> {
 		return status.success;
 	} catch {
 		return false;
-	} finally {
-		if (iconPath) await Deno.remove(iconPath).catch(() => {});
 	}
+}
+
+function linuxNotificationIconPath(): Promise<string | undefined> {
+	linuxNotificationIconPathPromise ??= resolveLinuxNotificationIconPath();
+	return linuxNotificationIconPathPromise;
+}
+
+async function resolveLinuxNotificationIconPath(): Promise<string | undefined> {
+	const home = Deno.env.get("HOME");
+	const candidates = [
+		home && `${home}/.local/share/icons/hicolor/scalable/apps/pi-ui.svg`,
+		"/usr/local/share/icons/hicolor/scalable/apps/pi-ui.svg",
+		"/usr/share/icons/hicolor/scalable/apps/pi-ui.svg",
+	];
+	for (const path of candidates) {
+		if (!path) continue;
+		try {
+			if ((await Deno.stat(path)).isFile) return path;
+		} catch {
+			// Try the next standard icon location.
+		}
+	}
+
+	const bytes = await notificationIconBytesPromise;
+	if (!bytes) return undefined;
+	const path = await Deno.makeTempFile({
+		prefix: "pi-ui-notification-",
+		suffix: ".png",
+	});
+	await Deno.writeFile(path, bytes);
+	temporaryLinuxNotificationIconPath = path;
+	addEventListener("unload", removeTemporaryLinuxNotificationIcon, { once: true });
+	return path;
+}
+
+function removeTemporaryLinuxNotificationIcon(): void {
+	if (!temporaryLinuxNotificationIconPath) return;
+	try {
+		Deno.removeSync(temporaryLinuxNotificationIconPath);
+	} catch {
+		// Best-effort only during process teardown.
+	}
+	temporaryLinuxNotificationIconPath = undefined;
 }
 
 function notificationTitle(): string {
