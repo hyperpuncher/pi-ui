@@ -9,6 +9,11 @@ import {
 	SessionManager,
 } from "@earendil-works/pi-coding-agent";
 
+import {
+	isApplicationFocused,
+	notifySessionDone,
+	type SessionDoneNotification,
+} from "../desktop-notifications.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import { type AppSessionSummary, AppStore } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
@@ -77,6 +82,8 @@ export type RuntimeControllerActivationOptions = {
 	refreshWorkspaces?: boolean;
 	transitionController?: SessionTransitionController;
 	dependencies?: RuntimeControllerDependencies;
+	isApplicationFocused?: () => boolean | Promise<boolean>;
+	notifySessionDone?: (details: SessionDoneNotification) => Promise<void>;
 };
 
 export class RuntimeController {
@@ -919,29 +926,31 @@ export class RuntimeController {
 			this.unsubscribeBackgroundSession(backgroundSession);
 			backgroundSession.status = "completed";
 			this.syncBackgroundStatuses();
-			this.notifyBackgroundSessionDone(backgroundSession.runtime);
+			this.notifyRuntimeDone(backgroundSession.runtime, true);
 			void this.refreshSessions();
 			return;
 		}
 	}
 
-	private async notifyBackgroundSessionDone(
-		runtime: AgentSessionRuntime,
+	private notifyRuntimeDone(runtime: AgentSessionRuntime, background: boolean): void {
+		void this.notifyRuntimeDoneWhenAppropriate(
+			{
+				workspace: formatHomePath(runtime.session.sessionManager.getCwd()),
+				sessionPath: runtime.session.sessionManager.getSessionFile(),
+			},
+			background,
+		);
+	}
+
+	private async notifyRuntimeDoneWhenAppropriate(
+		details: SessionDoneNotification,
+		background: boolean,
 	): Promise<void> {
-		if (typeof Notification !== "function") return;
-		try {
-			if (Notification.permission !== "granted") {
-				const permission = await Notification.requestPermission();
-				if (permission !== "granted") return;
-			}
-			const workspace = formatHomePath(runtime.session.sessionManager.getCwd());
-			new Notification(`pi finished: ${workspace}`, {
-				body: "Background session completed.",
-				tag: runtime.session.sessionManager.getSessionFile() ?? workspace,
-			});
-		} catch {
-			// Notifications are best-effort.
-		}
+		const focused =
+			this.activationOptions.isApplicationFocused ?? isApplicationFocused;
+		if (!background && (await focused())) return;
+		const notify = this.activationOptions.notifySessionDone ?? notifySessionDone;
+		await notify(details);
 	}
 
 	private async activateRuntime(backgroundSession: BackgroundSession): Promise<void> {
@@ -1095,6 +1104,7 @@ export class RuntimeController {
 				if (outcome.agentCompleted) {
 					this.syncUsage();
 					this.refreshCodexUsage(true);
+					this.notifyRuntimeDone(this.runtime, false);
 				}
 			},
 			// Streaming deltas use the documented targeted-message patch path.

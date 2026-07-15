@@ -1,3 +1,7 @@
+import {
+	setApplicationFocused,
+	setApplicationFocusProbe,
+} from "./desktop-notifications.ts";
 import { createApp } from "./server/app.ts";
 
 const hideApplicationMenuId = "hide-application";
@@ -26,6 +30,13 @@ function setupDesktopWindow(): void {
 		void win.executeJs(openWorkspaceDialogScript).catch(() => {});
 	};
 
+	setApplicationFocusProbe(async () => {
+		if (win.isClosed() || !win.isVisible()) return false;
+		return (await win.executeJs("document.hasFocus()")) === true;
+	});
+	win.addEventListener("focus", () => setApplicationFocused(true));
+	win.addEventListener("blur", () => setApplicationFocused(false));
+
 	win.addEventListener("keydown", (event) => {
 		if (event.altKey || event.shiftKey) {
 			return;
@@ -43,6 +54,7 @@ function setupDesktopWindow(): void {
 
 		if (event.key.toLowerCase() === "h") {
 			event.preventDefault();
+			setApplicationFocused(false);
 			win.hide();
 		} else if (event.key.toLowerCase() === "q") {
 			event.preventDefault();
@@ -53,6 +65,7 @@ function setupDesktopWindow(): void {
 	win.addEventListener("menuclick", (event) => {
 		switch (event.detail.id) {
 			case hideApplicationMenuId:
+				setApplicationFocused(false);
 				win.hide();
 				break;
 			case openWorkspaceMenuId:

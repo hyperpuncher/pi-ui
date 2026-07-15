@@ -5,6 +5,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { assertEquals, assertRejects } from "@std/assert";
 
+import type { SessionDoneNotification } from "../desktop-notifications.ts";
 import { AppStore } from "../state/app-store.ts";
 import {
 	RuntimeController,
@@ -422,6 +423,74 @@ Deno.test("RuntimeController completes and aborts background runtimes exactly on
 	await second.dispose();
 	assertEquals(running.disposeCount, 1);
 	assertEquals(next.disposeCount, 1);
+});
+
+Deno.test("RuntimeController notifies for completed foreground work only while unfocused", async () => {
+	const notifications: SessionDoneNotification[] = [];
+	const notifySessionDone = (details: SessionDoneNotification) => {
+		notifications.push(details);
+		return Promise.resolve();
+	};
+	const focused = fakeRuntime("/sessions/focused.jsonl");
+	const focusedController = await RuntimeController.prepare(
+		new AppStore(),
+		"/workspace",
+		{
+			dependencies: dependencies([focused]),
+			isApplicationFocused: () => true,
+			notifySessionDone,
+		},
+	);
+	focusedController.activate();
+	focused.emit({ type: "agent_end" } as AgentSessionEvent);
+	assertEquals(notifications, []);
+	await focusedController.dispose();
+
+	const unfocused = fakeRuntime("/sessions/unfocused.jsonl");
+	const unfocusedController = await RuntimeController.prepare(
+		new AppStore(),
+		"/workspace",
+		{
+			dependencies: dependencies([unfocused]),
+			isApplicationFocused: () => false,
+			notifySessionDone,
+		},
+	);
+	unfocusedController.activate();
+	unfocused.emit({ type: "agent_end" } as AgentSessionEvent);
+	await Promise.resolve();
+	assertEquals(notifications, [
+		{
+			workspace: "/workspace",
+			sessionPath: "/sessions/unfocused.jsonl",
+		},
+	]);
+	await unfocusedController.dispose();
+});
+
+Deno.test("RuntimeController always notifies for completed background work", async () => {
+	const notifications: SessionDoneNotification[] = [];
+	const background = fakeRuntime("/sessions/background.jsonl");
+	const foreground = fakeRuntime("/sessions/foreground.jsonl");
+	background.setStreaming(true);
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([background, foreground]),
+		isApplicationFocused: () => true,
+		notifySessionDone: (details) => {
+			notifications.push(details);
+			return Promise.resolve();
+		},
+	});
+	controller.activate();
+	assertEquals((await controller.newSession()).status, "success");
+	background.emit({ type: "agent_end" } as AgentSessionEvent);
+	assertEquals(notifications, [
+		{
+			workspace: "/workspace",
+			sessionPath: "/sessions/background.jsonl",
+		},
+	]);
+	await controller.dispose();
 });
 
 Deno.test("RuntimeController disposes a prepared runtime when extension binding fails", async () => {
