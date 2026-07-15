@@ -14,7 +14,7 @@ import {
 } from "satteri";
 
 import { escapeHtml } from "../utils/html.ts";
-import { pierreLanguages, renderPierreCode } from "./diffs.ts";
+import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
 
 // Streaming entries track roughly two restored pages; final results can deduplicate
@@ -220,7 +220,7 @@ export async function renderCodeFinal(
 	language: string,
 	options: { chrome?: boolean } = {},
 ): Promise<string> {
-	return await highlightCode(code, codeFenceLanguage(language), options);
+	return await highlightCode(code, await codeFenceLanguageFinal(language), options);
 }
 
 function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
@@ -265,7 +265,7 @@ async function highlightCodeBlocksFinal(html: string): Promise<string> {
 	let highlighted = html;
 	for (const block of blocks) {
 		const [raw, rawLanguage, rawCode] = block;
-		const language = codeFenceLanguage(rawLanguage);
+		const language = await codeFenceLanguageFinal(rawLanguage);
 		const code = decodeHtml(rawCode);
 		const replacement = (
 			<CodeBlock
@@ -453,14 +453,42 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 }
 
 const supportedCodeLanguages = new Set<string>([...pierreLanguages, "text"]);
+const plainCodeLanguages = new Set(["plain", "plaintext", "text", "txt"]);
+
+async function codeFenceLanguageFinal(language: string | undefined): Promise<string> {
+	const normalized = normalizedCodeFenceLanguage(language);
+	if (plainCodeLanguages.has(normalized)) return "text";
+	await loadPierreLanguage(normalized);
+	return codeFenceLanguage(normalized);
+}
 
 function codeFenceLanguage(language: string | undefined): string {
-	const normalized = language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
-	if (["plain", "plaintext", "txt"].includes(normalized)) return "text";
+	const normalized = normalizedCodeFenceLanguage(language);
+	if (plainCodeLanguages.has(normalized)) return "text";
 	if (supportedCodeLanguages.has(normalized)) return normalized;
 
+	const loaded = loadedCodeLanguage(normalized);
+	if (loaded) return loaded;
+
 	const mapped = getFiletypeFromFileName(`code.${normalized}`);
-	return supportedCodeLanguages.has(mapped) ? mapped : "text";
+	if (supportedCodeLanguages.has(mapped)) return mapped;
+	const loadedMapped = loadedCodeLanguage(mapped);
+	if (loadedMapped) return loadedMapped;
+
+	void loadPierreLanguage(normalized);
+	return "text";
+}
+
+function normalizedCodeFenceLanguage(language: string | undefined): string {
+	return language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
+}
+
+function loadedCodeLanguage(language: string): string | undefined {
+	try {
+		return getHighlighterIfLoaded()?.getLanguage(language).name;
+	} catch {
+		return undefined;
+	}
 }
 
 function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {

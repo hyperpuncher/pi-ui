@@ -1,6 +1,7 @@
 import {
 	DEFAULT_THEMES,
 	DIFFS_TAG_NAME,
+	getHighlighterIfLoaded,
 	preloadHighlighter,
 	type SupportedLanguages,
 } from "@pierre/diffs";
@@ -50,11 +51,45 @@ export const pierreLanguages = [
 	"typst",
 ] as const satisfies SupportedLanguages[];
 
+// Bound request metadata only; Shiki retains successfully loaded grammars itself.
+const languageLoads = new Map<string, Promise<boolean>>();
+const maxLanguageLoadEntries = 256;
+
 export async function preloadPierreHighlighter(): Promise<void> {
 	await preloadHighlighter({
 		themes: [DEFAULT_THEMES.dark, DEFAULT_THEMES.light],
 		langs: [...pierreLanguages],
 	});
+}
+
+export function loadPierreLanguage(language: string): Promise<boolean> {
+	if (isPierreLanguageLoaded(language)) return Promise.resolve(true);
+
+	const cached = languageLoads.get(language);
+	if (cached) return cached;
+
+	const loading = preloadHighlighter({
+		themes: [DEFAULT_THEMES.dark, DEFAULT_THEMES.light],
+		langs: [language],
+	})
+		.then(() => isPierreLanguageLoaded(language))
+		.catch(() => false);
+	languageLoads.set(language, loading);
+	if (languageLoads.size > maxLanguageLoadEntries) {
+		languageLoads.delete(languageLoads.keys().next().value ?? "");
+	}
+	return loading;
+}
+
+function isPierreLanguageLoaded(language: string): boolean {
+	const highlighter = getHighlighterIfLoaded();
+	if (!highlighter) return false;
+	try {
+		highlighter.getLanguage(language);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 const hostStyle = [
