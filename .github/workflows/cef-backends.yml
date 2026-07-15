@@ -1,7 +1,7 @@
 name: Build CEF backends
 
 env:
-    CEF_BACKEND_TAG: cef-150.0.11-laufey-0.5.0-pi-ui.1
+    CEF_BACKEND_TAG: cef-150.0.11-laufey-0.5.0-pi-ui.2
     CEF_FULL_VERSION: 150.0.11+gb887805+chromium-150.0.7871.115
     CEF_VERSION: 150.0.11
     LAUFEY_VERSION: 0.5.0
@@ -103,7 +103,14 @@ jobs:
                     cd cef/build/Release
                     7z a "$GITHUB_WORKSPACE/laufey-cef-${{ matrix.target }}.zip" '*'
                   else
-                    strip --strip-unneeded cef/build/Release/libcef.so
+                    strip --strip-unneeded \
+                      cef/build/Release/laufey \
+                      cef/build/Release/chrome-sandbox \
+                      cef/build/Release/libcef.so \
+                      cef/build/Release/libEGL.so \
+                      cef/build/Release/libGLESv2.so \
+                      cef/build/Release/libvk_swiftshader.so \
+                      cef/build/Release/libvulkan.so.1
                     tar czf "$GITHUB_WORKSPACE/laufey-cef-${{ matrix.target }}.tar.gz" \
                       -C cef/build/Release .
                   fi
