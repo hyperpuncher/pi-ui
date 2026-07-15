@@ -1,7 +1,7 @@
 cask "pi-ui" do
   version "{{VERSION}}"
   name "pi-ui"
-  desc "Desktop GUI for pi"
+  desc "Minimal GUI for pi"
   homepage "https://github.com/hyperpuncher/pi-ui"
 
   on_arm do

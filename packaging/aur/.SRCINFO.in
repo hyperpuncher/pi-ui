@@ -1,5 +1,5 @@
 pkgbase = pi-ui-bin
-	pkgdesc = Desktop GUI for pi
+	pkgdesc = Minimal GUI for pi
 	pkgver = {{VERSION}}
 	pkgrel = 1
 	url = https://github.com/hyperpuncher/pi-ui
