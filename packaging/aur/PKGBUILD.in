@@ -43,9 +43,9 @@ conflicts=('pi-ui')
 
 source=("pi-logo.svg" "pi-ui.desktop" "LICENSE")
 sha256sums=(
-  'a5624bc3b8cac94de75f6f13701eca2ad3ef67bbeba286c4af3f398806f0858a'
-  'e22214365f6c7f8537be9dcc2b50c1af97cc197e5d159677b0408e29f80bd182'
-  '6b7faf66323093e92a63a7d6d0cd20ef3718b77a2192e06cb00466fe870f14cf'
+  '{{SHA_ICON}}'
+  '{{SHA_DESKTOP}}'
+  '{{SHA_LICENSE}}'
 )
 
 source_x86_64=("$pkgname-$pkgver-x86_64.tar.zst::https://github.com/hyperpuncher/pi-ui/releases/download/v$pkgver/pi-ui-linux-x64.tar.zst")

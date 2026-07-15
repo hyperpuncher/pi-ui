@@ -190,14 +190,23 @@ jobs:
             - name: Generate AUR package
               run: |
                   V="${GITHUB_REF_NAME#v}"
+                  ICON_SHA=$(sha256sum icons/pi-logo.svg | cut -d' ' -f1)
+                  DESKTOP_SHA=$(sha256sum packaging/aur/pi-ui.desktop | cut -d' ' -f1)
+                  LICENSE_SHA=$(sha256sum LICENSE | cut -d' ' -f1)
                   sed -e "s/{{VERSION}}/$V/g" \
+                      -e "s/{{SHA_ICON}}/$ICON_SHA/g" \
+                      -e "s/{{SHA_DESKTOP}}/$DESKTOP_SHA/g" \
+                      -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
                       -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
                       -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
                       packaging/aur/PKGBUILD.in > /tmp/PKGBUILD
-                  sed -e "s/{{VERSION}}/$V/g" \
-                      -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
-                      -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
-                      packaging/aur/.SRCINFO.in > /tmp/.SRCINFO
+                  docker run --rm --interactive archlinux:base-devel bash -c '
+                    useradd --create-home builder
+                    cat > /home/builder/PKGBUILD
+                    chown builder:builder /home/builder/PKGBUILD
+                    cd /home/builder
+                    runuser --user builder -- makepkg --printsrcinfo
+                  ' < /tmp/PKGBUILD > /tmp/.SRCINFO
 
             - name: Push AUR package
               env:
