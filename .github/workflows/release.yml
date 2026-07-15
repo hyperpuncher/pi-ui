@@ -139,6 +139,8 @@ jobs:
 
         steps:
             - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
             - uses: actions/download-artifact@v8
               with:
                   path: dist
@@ -149,11 +151,29 @@ jobs:
                   find dist -mindepth 1 -type d -empty -delete
                   ls -lh dist
 
+            - name: Generate release notes
+              shell: bash
+              run: |
+                  previous_tag=$(git describe --tags --match "v[0-9]*" --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+                  repository_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+
+                  {
+                    echo "### What's Changed"
+                    echo
+                    if [[ -n "$previous_tag" ]]; then
+                      git log --reverse --format="- %s [\`%h\`](${repository_url}/commit/%H)" "${previous_tag}..${GITHUB_REF_NAME}"
+                      echo
+                      echo "**Full Changelog:** [${previous_tag}...${GITHUB_REF_NAME}](${repository_url}/compare/${previous_tag}...${GITHUB_REF_NAME})"
+                    else
+                      git log --reverse --format="- %s [\`%h\`](${repository_url}/commit/%H)" "$GITHUB_REF_NAME"
+                    fi
+                  } > /tmp/release-notes.md
+
             - name: GitHub release
               uses: softprops/action-gh-release@v3
               with:
                   files: dist/*
-                  generate_release_notes: true
+                  body_path: /tmp/release-notes.md
 
             - name: Compute checksums
               id: sha
