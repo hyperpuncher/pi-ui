@@ -36,6 +36,23 @@ built with:
 paru -S pi-ui-bin
 ```
 
+### debian / ubuntu
+
+download the `.deb` for your architecture from the [latest release](https://github.com/hyperpuncher/pi-ui/releases/latest), then:
+
+```sh
+sudo apt install ./pi-ui-linux-*.deb
+```
+
+### other linux
+
+download the `.AppImage` for your architecture from the [latest release](https://github.com/hyperpuncher/pi-ui/releases/latest), then:
+
+```sh
+chmod +x pi-ui-linux-*.AppImage
+./pi-ui-linux-*.AppImage
+```
+
 ### mac
 
 ```sh

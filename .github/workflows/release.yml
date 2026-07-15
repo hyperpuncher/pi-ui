@@ -93,20 +93,32 @@ jobs:
               shell: bash
               run: |
                   rm -rf node_modules
-                  deno desktop -A \
-                    --unstable-no-legacy-abort \
-                    --conditions browser \
-                    --frozen \
-                    --include static \
-                    --lock deno.release.lock \
-                    --target "${{ matrix.target }}" \
-                    src/main.ts
+                  desktop_args=(
+                    -A
+                    --unstable-no-legacy-abort
+                    --conditions browser
+                    --frozen
+                    --include static
+                    --lock deno.release.lock
+                    --target "${{ matrix.target }}"
+                  )
+                  deno desktop "${desktop_args[@]}" src/main.ts
+                  case "${{ matrix.name }}" in
+                    linux-*)
+                      deno desktop "${desktop_args[@]}" --output dist/linux/pi-ui.AppImage src/main.ts
+                      deno desktop "${desktop_args[@]}" --output dist/linux/pi-ui.deb src/main.ts
+                      ;;
+                  esac
 
             - name: Package artifact
               shell: bash
               run: |
                   case "${{ matrix.name }}" in
-                    linux-*) mv dist/linux/pi-ui.AppImage "dist/pi-ui-${{ matrix.name }}.AppImage" ;;
+                    linux-*)
+                      tar --zstd -cf "dist/pi-ui-${{ matrix.name }}.tar.zst" -C dist/linux pi-ui
+                      mv dist/linux/pi-ui.AppImage "dist/pi-ui-${{ matrix.name }}.AppImage"
+                      mv dist/linux/pi-ui.deb "dist/pi-ui-${{ matrix.name }}.deb"
+                      ;;
                     windows-*) mv dist/windows/pi-ui.msi "dist/pi-ui-${{ matrix.name }}.msi" ;;
                     darwin-*) ditto -c -k --keepParent dist/macos/pi-ui.app "dist/pi-ui-${{ matrix.name }}.zip" ;;
                   esac
@@ -147,8 +159,8 @@ jobs:
               id: sha
               run: |
                   {
-                    echo "linux-x64=$(sha256sum dist/pi-ui-linux-x64.AppImage | cut -d' ' -f1)"
-                    echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.AppImage | cut -d' ' -f1)"
+                    echo "linux-x64=$(sha256sum dist/pi-ui-linux-x64.tar.zst | cut -d' ' -f1)"
+                    echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.tar.zst | cut -d' ' -f1)"
                     echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)"
                     echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)"
                   } >> "$GITHUB_OUTPUT"

@@ -8,7 +8,9 @@
 		"server": "deno run -A --unstable-no-legacy-abort --conditions browser --watch src/main.ts",
 		"build": "deno task build:linux",
 		"build:linux": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --include static src/main.ts",
-		"run:linux": "./dist/linux/pi-ui.AppImage --disable-spell-checking",
+		"build:linux:appimage": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --include static --output ./dist/linux/pi-ui.AppImage src/main.ts",
+		"build:linux:deb": "deno task css:build && deno desktop -A --unstable-no-legacy-abort --conditions browser --include static --output ./dist/linux/pi-ui.deb src/main.ts",
+		"run:linux": "./dist/linux/pi-ui/pi-ui --disable-spell-checking",
 		"css:build": "deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
@@ -38,7 +40,7 @@
 		"output": {
 			"macos": "./dist/macos/pi-ui.app",
 			"windows": "./dist/windows/pi-ui.msi",
-			"linux": "./dist/linux/pi-ui.AppImage"
+			"linux": "./dist/linux/pi-ui"
 		}
 	},
 	"nodeModulesDir": "auto",

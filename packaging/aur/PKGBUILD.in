@@ -7,7 +7,37 @@ pkgdesc="Desktop GUI for pi"
 arch=('x86_64' 'aarch64')
 url="https://github.com/hyperpuncher/pi-ui"
 license=('MIT')
-depends=('fuse2')
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'bash'
+  'cairo'
+  'dbus'
+  'expat'
+  'glib2'
+  'glibc'
+  'gtk3'
+  'hicolor-icon-theme'
+  'libcups'
+  'libgcc'
+  'libstdc++'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxi'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'systemd-libs'
+)
+makedepends=('patchelf')
+options=('!strip')
 provides=("pi-ui=$pkgver")
 conflicts=('pi-ui')
 
@@ -18,20 +48,21 @@ sha256sums=(
   '6b7faf66323093e92a63a7d6d0cd20ef3718b77a2192e06cb00466fe870f14cf'
 )
 
-source_x86_64=("$pkgname-$pkgver.AppImage::https://github.com/hyperpuncher/pi-ui/releases/download/v$pkgver/pi-ui-linux-x64.AppImage")
+source_x86_64=("$pkgname-$pkgver-x86_64.tar.zst::https://github.com/hyperpuncher/pi-ui/releases/download/v$pkgver/pi-ui-linux-x64.tar.zst")
 sha256sums_x86_64=('{{SHA_LINUX_X64}}')
 
-source_aarch64=("$pkgname-$pkgver.AppImage::https://github.com/hyperpuncher/pi-ui/releases/download/v$pkgver/pi-ui-linux-arm64.AppImage")
+source_aarch64=("$pkgname-$pkgver-aarch64.tar.zst::https://github.com/hyperpuncher/pi-ui/releases/download/v$pkgver/pi-ui-linux-arm64.tar.zst")
 sha256sums_aarch64=('{{SHA_LINUX_ARM64}}')
 
-noextract=("$pkgname-$pkgver.AppImage")
-
 package() {
-  install -Dm755 "$srcdir/$pkgname-$pkgver.AppImage" "$pkgdir/opt/pi-ui/pi-ui.AppImage"
-  install -dm755 "$pkgdir/usr/bin"
+  install -d "$pkgdir/usr/lib/pi-ui"
+  cp -a "$srcdir/pi-ui/." "$pkgdir/usr/lib/pi-ui/"
+  # shellcheck disable=SC2016
+  patchelf --set-rpath '$ORIGIN' "$pkgdir/usr/lib/pi-ui/pi-ui"
+  install -d "$pkgdir/usr/bin"
   cat > "$pkgdir/usr/bin/pi-ui" <<'EOF'
-#!/bin/sh
-exec /opt/pi-ui/pi-ui.AppImage \
+#!/usr/bin/bash
+exec /usr/lib/pi-ui/pi-ui \
   --disable-spell-checking \
   "$@"
 EOF
