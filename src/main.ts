@@ -1,7 +1,4 @@
-import {
-	setApplicationFocused,
-	setApplicationFocusProbe,
-} from "./desktop-notifications.ts";
+import { setApplicationFocused } from "./desktop-notifications.ts";
 import { createApp } from "./server/app.ts";
 
 const hideApplicationMenuId = "hide-application";
@@ -30,10 +27,6 @@ function setupDesktopWindow(): void {
 		void win.executeJs(openWorkspaceDialogScript).catch(() => {});
 	};
 
-	setApplicationFocusProbe(async () => {
-		if (win.isClosed() || !win.isVisible()) return false;
-		return (await win.executeJs("document.hasFocus()")) === true;
-	});
 	win.addEventListener("focus", () => setApplicationFocused(true));
 	win.addEventListener("blur", () => setApplicationFocused(false));
 

@@ -1,5 +1,4 @@
 let applicationFocused = true;
-let applicationFocusProbe: (() => Promise<boolean>) | undefined;
 
 const notificationIconBytesPromise = Deno.readFile(
 	new URL("../static/notification-icon.png", import.meta.url),
@@ -19,17 +18,8 @@ export function setApplicationFocused(focused: boolean): void {
 	applicationFocused = focused;
 }
 
-export function setApplicationFocusProbe(probe: () => Promise<boolean>): void {
-	applicationFocusProbe = probe;
-}
-
-export async function isApplicationFocused(): Promise<boolean> {
-	if (!applicationFocusProbe) return applicationFocused;
-	try {
-		return await applicationFocusProbe();
-	} catch {
-		return applicationFocused;
-	}
+export function isApplicationFocused(): boolean {
+	return applicationFocused;
 }
 
 export async function notifySessionDone(details: SessionDoneNotification): Promise<void> {
