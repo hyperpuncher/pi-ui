@@ -46,7 +46,7 @@
 	"nodeModulesDir": "auto",
 	"imports": {
 		"@bruits/satteri-wasm32-wasi": "npm:@bruits/satteri-wasm32-wasi@^0.9.5",
-		"@earendil-works/pi-coding-agent": "npm:@earendil-works/pi-coding-agent@^0.80.7",
+		"@earendil-works/pi-coding-agent": "npm:@earendil-works/pi-coding-agent@^0.80.8",
 		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
 		"@pierre/diffs": "npm:@pierre/diffs@^1.2.12",
 		"@starfederation/datastar-sdk": "npm:@starfederation/datastar-sdk@1.0.0",
@@ -55,7 +55,7 @@
 		"@std/path": "jsr:@std/path@^1.1.6",
 		"basecoat-css": "npm:basecoat-css@^1.0.2",
 		"satteri": "npm:satteri@^0.9.5",
-		"tailwindcss": "npm:tailwindcss@^4.3.2",
+		"tailwindcss": "npm:tailwindcss@^4.3.3",
 		"undici": "npm:undici@^8.7.0"
 	},
 	"allowScripts": [
