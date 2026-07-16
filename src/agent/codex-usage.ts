@@ -27,16 +27,19 @@ export async function fetchCodexUsage(
 	const model = session.model;
 	if (!model) return undefined;
 
-	const auth = await session.modelRegistry.getApiKeyAndHeaders(model);
-	if (!auth.ok) throw new Error(auth.error);
+	const resolution = await session.modelRuntime.getAuth(model);
+	if (!resolution) return undefined;
 
-	const headers = { ...auth.headers };
-	if (!hasHeader(headers, "authorization")) {
-		if (!auth.apiKey) return undefined;
-		headers.Authorization = `Bearer ${auth.apiKey}`;
+	const headers = new Headers();
+	for (const [name, value] of Object.entries(resolution.auth.headers ?? {})) {
+		if (value !== null) headers.set(name, value);
 	}
-	if (!hasHeader(headers, "user-agent")) {
-		headers["User-Agent"] = "pi-ui";
+	if (!headers.has("authorization")) {
+		if (!resolution.auth.apiKey) return undefined;
+		headers.set("Authorization", `Bearer ${resolution.auth.apiKey}`);
+	}
+	if (!headers.has("user-agent")) {
+		headers.set("User-Agent", "pi-ui");
 	}
 
 	const controller = new AbortController();
@@ -74,10 +77,6 @@ function formatWindowDuration(seconds: number | undefined): string | undefined {
 	if (seconds < 86_400) return `${formatOneDecimal(seconds / 3_600)}h`;
 	if (seconds < 604_800) return `${formatOneDecimal(seconds / 86_400)}d`;
 	return `${formatOneDecimal(seconds / 604_800)}w`;
-}
-
-function hasHeader(headers: Record<string, string>, name: string): boolean {
-	return Object.keys(headers).some((key) => key.toLowerCase() === name);
 }
 
 function parseCodexUsage(payload: unknown): CodexUsage | undefined {

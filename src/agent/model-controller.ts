@@ -41,9 +41,10 @@ export class ModelController {
 			(item) => `${item.model.provider}/${item.model.id}` !== key,
 		);
 		if (scoped.length === session.scopedModels.length) scoped.push({ model });
-		const configuredCount = session.modelRegistry
-			.getAll()
-			.filter((item) => session.modelRegistry.hasConfiguredAuth(item)).length;
+		const modelRuntime = runtime.services.modelRuntime;
+		const configuredCount = modelRuntime
+			.getModels()
+			.filter((item) => modelRuntime.hasConfiguredAuth(item.provider)).length;
 		const enabled =
 			scoped.length === 0 || scoped.length === configuredCount
 				? undefined
@@ -56,20 +57,22 @@ export class ModelController {
 	}
 
 	sync(options: { reopenPicker?: boolean } = {}): void {
-		const session = this.getRuntime().session;
+		const runtime = this.getRuntime();
+		const session = runtime.session;
+		const modelRuntime = runtime.services.modelRuntime;
 		const current = session.model
 			? `${session.model.provider}/${session.model.id}`
 			: undefined;
 		const scoped = new Set(
 			session.scopedModels.map((item) => `${item.model.provider}/${item.model.id}`),
 		);
-		const models = session.modelRegistry
-			.getAll()
+		const models = modelRuntime
+			.getModels()
 			.map((model) => ({
 				id: model.id,
 				provider: model.provider,
 				name: model.name ?? model.id,
-				configured: session.modelRegistry.hasConfiguredAuth(model),
+				configured: modelRuntime.hasConfiguredAuth(model.provider),
 				scoped: scoped.has(`${model.provider}/${model.id}`),
 			}))
 			.filter(
@@ -86,6 +89,12 @@ export class ModelController {
 						: 1;
 			});
 		this.state.setModels(models, current, options);
+	}
+
+	async refresh(): Promise<void> {
+		const runtime = this.getRuntime();
+		await runtime.services.modelRuntime.refresh();
+		if (runtime === this.getRuntime()) this.sync();
 	}
 
 	setThinking(level: string): boolean {
@@ -122,14 +131,14 @@ export class ModelController {
 		const [provider, ...parts] = modelRef.split("/");
 		const id = parts.join("/");
 		return provider && id
-			? this.getRuntime().session.modelRegistry.find(provider, id)
+			? this.getRuntime().services.modelRuntime.getModel(provider, id)
 			: undefined;
 	}
 }
 
 export function resolveScopedModels<T extends ScopedModelCandidate>(
 	patterns: string[],
-	models: T[],
+	models: readonly T[],
 ): Array<{ model: T; thinkingLevel?: AppThinkingLevel }> {
 	const scoped: Array<{ model: T; thinkingLevel?: AppThinkingLevel }> = [];
 	const seen = new Set<string>();

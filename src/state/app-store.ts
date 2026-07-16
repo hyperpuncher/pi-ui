@@ -39,7 +39,7 @@ export type AppAuthProvider = { id: string; name: string; authType: "oauth" | "a
 export type AppAuthPrompt = {
 	message: string;
 	placeholder?: string;
-	allowEmpty?: boolean;
+	secret?: boolean;
 	options?: Array<{ id: string; label: string }>;
 };
 export type AppAuthDialog = {

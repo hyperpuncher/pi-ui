@@ -175,16 +175,13 @@ export class RuntimeController {
 			);
 			applyHttpProxySetting(services.settingsManager.getGlobalSettings().httpProxy);
 			configureHttpDispatcher(services.settingsManager.getHttpIdleTimeoutMs());
+			const availableModels = await services.modelRuntime.getAvailable();
 			const scopedModels = sessionPerformance.measureSync(
 				"scopedModelResolution",
 				() =>
 					resolveScopedModels(
 						services.settingsManager.getEnabledModels() ?? [],
-						services.modelRegistry
-							.getAll()
-							.filter((model) =>
-								services.modelRegistry.hasConfiguredAuth(model),
-							),
+						availableModels,
 					),
 			);
 			const session = await sessionPerformance.measure("runtimeSessionCreate", () =>
@@ -1030,6 +1027,11 @@ export class RuntimeController {
 					: undefined,
 			);
 			this.syncModels();
+			void this.models
+				.refresh()
+				.catch((error: unknown) =>
+					console.warn("Failed to refresh model catalogs", error),
+				);
 			this.syncThinking();
 			this.syncSlashCommands();
 			this.syncUsage();

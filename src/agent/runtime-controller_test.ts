@@ -67,12 +67,19 @@ function fakeRuntime(
 			(session as { isStreaming: boolean }).isStreaming = value;
 		},
 	};
+	const modelRuntime = {
+		getModels: () => [],
+		getModel: () => undefined,
+		getProviders: () => [],
+		hasConfiguredAuth: () => false,
+		refresh: () => Promise.resolve({ aborted: false, errors: new Map() }),
+	};
 	const session = {
 		isStreaming: false,
 		sessionManager: manager(path, persisted, cwd),
 		model: undefined,
 		scopedModels: [],
-		modelRegistry: { getAll: () => [], hasConfiguredAuth: () => false },
+		modelRuntime,
 		promptTemplates: [],
 		resourceLoader: { getSkills: () => ({ skills: [] }) },
 		thinkingLevel: "off",
@@ -116,7 +123,7 @@ function fakeRuntime(
 			if (fake.disposeError) throw fake.disposeError;
 			return fake.disposeResult;
 		},
-		services: {},
+		services: { modelRuntime },
 	} as unknown as AgentSessionRuntime;
 	(session as { abort?: () => Promise<void> }).abort = () => {
 		calls.push("abort");

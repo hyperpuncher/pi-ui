@@ -26,11 +26,8 @@ function renderDialogContent(dialog: AppAuthDialog): string {
 	if (dialog.phase === "providers") {
 		return renderProviderPicker(dialog);
 	}
-	if (dialog.phase === "api-key") {
-		return renderApiKeyPrompt(dialog);
-	}
-	if (dialog.phase === "oauth") {
-		return renderOAuthFlow(dialog);
+	if (dialog.phase === "api-key" || dialog.phase === "oauth") {
+		return renderAuthenticationFlow(dialog);
 	}
 	return renderResult(dialog);
 }
@@ -53,6 +50,7 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 				{dialog.providers.length === 0 ? (
 					<p class="text-muted-foreground py-6 text-center text-sm" safe>
 						{dialog.error ??
+							dialog.status ??
 							(dialog.mode === "login"
 								? "No authentication providers are available."
 								: "No stored credentials to remove.")}
@@ -108,72 +106,15 @@ function renderProviderButton(
 	) as string;
 }
 
-function renderApiKeyPrompt(dialog: AppAuthDialog): string {
+function renderAuthenticationFlow(dialog: AppAuthDialog): string {
+	const hasTextPrompt = Boolean(dialog.prompt && !dialog.prompt.options);
 	return (
 		<>
 			<header>
 				<h2 id="auth-dialog-title" safe>
 					Log in to {dialog.providerName}
 				</h2>
-				<p>
-					The key is stored in ~/.pi/agent/auth.json with user-only permissions.
-				</p>
-			</header>
-			<div
-				role="group"
-				class="field"
-				data-invalid={dialog.error ? "true" : undefined}
-			>
-				<label for="auth-input">API key</label>
-				<input
-					id="auth-input"
-					type="password"
-					autocomplete="off"
-					spellcheck="false"
-					placeholder="Enter API key"
-					aria-invalid={dialog.error ? "true" : undefined}
-					aria-describedby={dialog.error ? "auth-input-error" : undefined}
-					data-bind:auth-input
-					data-on:keydown={`if (evt.key === 'Enter') {
-						evt.preventDefault();
-						@post('/auth/input', { filterSignals: { include: /^authInput$/ } });
-					}`}
-				/>
-				{dialog.error && (
-					<p id="auth-input-error" role="alert" safe>
-						{dialog.error}
-					</p>
-				)}
-			</div>
-			<footer>
-				<button
-					type="button"
-					class="btn"
-					data-variant="outline"
-					data-on:click="@post('/auth/open-login', { filterSignals: { include: /^$/ } })"
-				>
-					Back
-				</button>
-				<button
-					type="button"
-					class="btn"
-					data-on:click="@post('/auth/input', { filterSignals: { include: /^authInput$/ } })"
-				>
-					Save API key
-				</button>
-			</footer>
-		</>
-	) as string;
-}
-
-function renderOAuthFlow(dialog: AppAuthDialog): string {
-	return (
-		<>
-			<header>
-				<h2 id="auth-dialog-title" safe>
-					Log in to {dialog.providerName}
-				</h2>
-				<p safe>{dialog.status || "Starting authentication…"}</p>
+				{dialog.status && <p safe>{dialog.status}</p>}
 			</header>
 			<div class="space-y-4">
 				{dialog.url && (
@@ -204,7 +145,7 @@ function renderOAuthFlow(dialog: AppAuthDialog): string {
 						</code>
 					</div>
 				)}
-				{dialog.prompt && renderOAuthPrompt(dialog)}
+				{dialog.prompt && renderAuthenticationPrompt(dialog)}
 				{dialog.progress.length > 0 && (
 					<div class="text-muted-foreground space-y-1 text-sm">
 						{dialog.progress.map((message) => (
@@ -227,12 +168,21 @@ function renderOAuthFlow(dialog: AppAuthDialog): string {
 				>
 					Cancel
 				</button>
+				{hasTextPrompt && (
+					<button
+						type="button"
+						class="btn"
+						data-on:click="@post('/auth/input', { filterSignals: { include: /^authInput$/ } })"
+					>
+						Continue
+					</button>
+				)}
 			</footer>
 		</>
 	) as string;
 }
 
-function renderOAuthPrompt(dialog: AppAuthDialog): string {
+function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 	const prompt = dialog.prompt!;
 	if (prompt.options) {
 		return (
@@ -244,7 +194,7 @@ function renderOAuthPrompt(dialog: AppAuthDialog): string {
 					<button
 						type="button"
 						class="btn h-auto w-full justify-start px-3 py-2 text-left"
-						data-variant="ghost"
+						data-variant="outline"
 						data-on:click={`
 							$authInput = ${JSON.stringify(option.id)};
 							@post('/auth/input', { filterSignals: { include: /^authInput$/ } });
@@ -258,31 +208,24 @@ function renderOAuthPrompt(dialog: AppAuthDialog): string {
 		) as string;
 	}
 	return (
-		<div class="space-y-3">
-			<div role="group" class="field">
-				<label for="auth-input" safe>
-					{prompt.message}
-				</label>
-				<input
-					id="auth-input"
-					type="text"
-					autocomplete="off"
-					spellcheck="false"
-					placeholder={prompt.placeholder}
-					data-bind:auth-input
-					data-on:keydown={`if (evt.key === 'Enter') {
-						evt.preventDefault();
-						@post('/auth/input', { filterSignals: { include: /^authInput$/ } });
-					}`}
-				/>
-			</div>
-			<button
-				type="button"
-				class="btn"
-				data-on:click="@post('/auth/input', { filterSignals: { include: /^authInput$/ } })"
-			>
-				Continue
-			</button>
+		<div role="group" class="field" data-invalid={dialog.error ? "true" : undefined}>
+			<label for="auth-input" safe>
+				{prompt.message}
+			</label>
+			<input
+				id="auth-input"
+				type={prompt.secret ? "password" : "text"}
+				autocomplete="off"
+				spellcheck="false"
+				placeholder={prompt.placeholder}
+				aria-invalid={dialog.error ? "true" : undefined}
+				data-bind:auth-input
+				autofocus
+				data-on:keydown={`if (evt.key === 'Enter') {
+					evt.preventDefault();
+					@post('/auth/input', { filterSignals: { include: /^authInput$/ } });
+				}`}
+			/>
 		</div>
 	) as string;
 }
