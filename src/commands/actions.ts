@@ -50,7 +50,7 @@ export const commandActions = {
 	"session-tree": openTreeAction(),
 	"command-palette": "document.getElementById('command-input')?.focus()",
 	"switch-model":
-		"setTimeout(() => { document.getElementById('model-select-trigger')?.focus(); document.getElementById('model-select')?.toggle?.(); }, 0)",
+		"setTimeout(() => document.getElementById('model-select-trigger')?.click(), 0)",
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),

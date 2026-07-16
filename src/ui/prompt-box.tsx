@@ -781,12 +781,10 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 			</label>
 			<div
 				id="model-select"
-				class="dropdown-menu"
-				data-on:keydown="if (evt.key === 'Escape') evt.stopPropagation()"
+				class="popover"
 				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
 				evt.preventDefault();
-				document.getElementById('model-select-trigger')?.focus();
-				el.toggle?.();
+				document.getElementById('model-select-trigger')?.click();
 				} else if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'p') {
 				evt.preventDefault();
 				${cycleModelAction("event-shift")};
@@ -804,7 +802,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 					data-tooltip="Model"
 					data-tooltip-delay
 				>
-					<span class="truncate" safe>
+					<span class="max-w-40 truncate sm:max-w-48" safe>
 						{currentLabel}
 					</span>
 					<ShortcutTooltip label="Model" shortcut="ctrl L" />
@@ -814,95 +812,130 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 					data-popover
 					data-side="top"
 					aria-hidden="true"
-					class="min-w-72"
+					class="w-80 max-w-[calc(100vw-2rem)] p-0"
 				>
-					<div
-						role="menu"
-						id="model-select-menu"
-						class="max-h-70 overflow-y-auto"
-						aria-labelledby="model-select-trigger"
-					>
-						<div role="group" aria-labelledby="model-select-heading">
-							<div
-								role="heading"
-								id="model-select-heading"
-								class="flex items-center justify-between gap-4"
-							>
-								<span>Models</span>
-								<ShortcutKbd shortcut="ctrl L" />
-							</div>
-							{state.models.map((model) => {
-								const value = `${model.provider}/${model.id}`;
-								const configured = model.configured ? "" : " • no auth";
-								return (
-									<div
-										role="menuitemradio"
-										aria-checked={
-											value === state.currentModel
-												? "true"
-												: "false"
-										}
-										data-on:click={`
-											$model = ${JSON.stringify(value)};
-											@post('/model', { filterSignals: { include: /^model$/ } });
-											requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
-										`}
-									>
-										<span data-ignore data-indicator>
-											•
-										</span>
-										<span class="min-w-0 flex-1">
-											<span class="block truncate font-medium" safe>
-												{model.id}
-											</span>
-											<span
-												class="text-muted-foreground block truncate text-xs"
-												safe
-											>
-												{model.provider}
-												{configured}
-											</span>
-										</span>
-										<button
-											type="button"
-											class="btn size-7 shrink-0"
-											data-variant={
-												model.scoped ? "secondary" : "ghost"
+					<div class="command" aria-label="Models">
+						<header>
+							<input
+								id="model-select-input"
+								type="text"
+								placeholder="Search models..."
+								autocomplete="off"
+								autocorrect="off"
+								spellcheck="false"
+								aria-autocomplete="list"
+								role="combobox"
+								aria-expanded="true"
+								aria-controls="model-select-menu"
+								autofocus
+							/>
+						</header>
+						<div
+							role="menu"
+							id="model-select-menu"
+							class="mt-1 max-h-70"
+							aria-labelledby="model-select-trigger"
+							data-empty="No models found."
+						>
+							<div role="group" aria-labelledby="model-select-heading">
+								<div
+									role="heading"
+									id="model-select-heading"
+									class="flex items-center justify-between gap-4"
+								>
+									<span>Models</span>
+									<ShortcutKbd shortcut="ctrl L" />
+								</div>
+								{state.models.map((model) => {
+									const value = `${model.provider}/${model.id}`;
+									const configured = model.configured
+										? ""
+										: " • no auth";
+									return (
+										<div
+											role="menuitem"
+											aria-current={
+												value === state.currentModel
+													? "true"
+													: "false"
 											}
-											data-size="icon-sm"
-											aria-pressed={model.scoped ? "true" : "false"}
-											aria-label="Toggle scoped model"
+											data-filter={model.id}
+											data-keywords={`${model.provider} ${model.name}`}
 											data-on:click={`
-												evt.stopPropagation();
 												$model = ${JSON.stringify(value)};
-												@post('/models/scope/toggle', { filterSignals: { include: /^model$/ } });
+												document.getElementById('model-select-trigger')?.click();
+												@post('/model', { filterSignals: { include: /^model$/ } });
+												requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
 											`}
 										>
-											<svg
-												class="size-4"
-												xmlns="http://www.w3.org/2000/svg"
-												width="32"
-												height="32"
-												viewBox="0 0 24 24"
+											<span class="min-w-0 flex-1">
+												<span
+													class="block max-w-56 truncate font-medium"
+													safe
+												>
+													{model.id}
+												</span>
+												<span
+													class="text-muted-foreground block truncate text-xs"
+													safe
+												>
+													{model.provider}
+													{configured}
+												</span>
+											</span>
+											<span
+												class={
+													value === state.currentModel
+														? ""
+														: "invisible"
+												}
 												aria-hidden="true"
 											>
-												<path
-													fill={
-														model.scoped
-															? "currentColor"
-															: "none"
-													}
-													stroke="currentColor"
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"
-												/>
-											</svg>
-										</button>
-									</div>
-								);
-							})}
+												•
+											</span>
+											<button
+												type="button"
+												class="btn size-7 shrink-0"
+												data-variant={
+													model.scoped ? "secondary" : "ghost"
+												}
+												data-size="icon-sm"
+												aria-pressed={
+													model.scoped ? "true" : "false"
+												}
+												aria-label="Toggle scoped model"
+												data-on:click={`
+													evt.stopPropagation();
+													$model = ${JSON.stringify(value)};
+													@post('/models/scope/toggle', { filterSignals: { include: /^model$/ } });
+												`}
+											>
+												<svg
+													class="size-4"
+													xmlns="http://www.w3.org/2000/svg"
+													width="32"
+													height="32"
+													viewBox="0 0 24 24"
+													aria-hidden="true"
+												>
+													<path
+														fill={
+															model.scoped
+																? "currentColor"
+																: "none"
+														}
+														stroke="currentColor"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"
+													/>
+												</svg>
+											</button>
+										</div>
+									);
+								})}
+							</div>
 						</div>
 					</div>
 				</div>

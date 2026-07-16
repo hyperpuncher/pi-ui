@@ -77,6 +77,13 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 		currentModel: undefined,
 	} as unknown as AppRenderSnapshot);
 	assertStringIncludes(withoutSelection, "choose model");
+	assertStringIncludes(withoutSelection, 'class="popover"');
+	assertStringIncludes(withoutSelection, 'class="command"');
+	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
+	assertStringIncludes(withoutSelection, "autofocus");
+	assertStringIncludes(withoutSelection, 'class="mt-1 max-h-70"');
+	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet"');
+	assertStringIncludes(withoutSelection, "max-w-40");
 });
 
 Deno.test("file picker fragments escape dynamic values and expose list semantics", () => {
