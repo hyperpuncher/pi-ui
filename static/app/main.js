@@ -10,8 +10,11 @@ import {
 	scrollBottom,
 } from "./message-scroll.js";
 import { bindPickers, isFileOpen, isOpen as isPickerOpen } from "./pickers.js";
+import { createPromptHistory } from "./prompt-history.js";
 import { bindPromptInteractions, focusPromptEnd } from "./prompt.js";
 import { bindVimScroll } from "./vim-scroll.js";
+
+const promptHistory = createPromptHistory();
 
 window.piUi = {
 	basecoat: { refresh },
@@ -19,6 +22,7 @@ window.piUi = {
 	fileTransfer,
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
 	pickers: { isFileOpen, isOpen: isPickerOpen },
+	promptHistory,
 	shouldAbortOnEscape(event) {
 		return !event.defaultPrevented && !hasOpenDismissible();
 	},

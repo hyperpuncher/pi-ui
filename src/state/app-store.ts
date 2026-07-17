@@ -132,6 +132,7 @@ export type AppRenderSnapshot = Readonly<{
 	sessionTransition: SessionTransitionState;
 	debugUi: boolean;
 	hasOlderMessages: boolean;
+	promptHistory: readonly string[];
 	emptyChatHint: Readonly<AppKeybindHint>;
 }>;
 
@@ -198,6 +199,17 @@ export class AppStore {
 	get hasOlderMessages(): boolean {
 		return this.transcript.hasOlderMessages;
 	}
+	get promptHistory(): readonly string[] {
+		const history: string[] = [];
+		for (const message of this.transcript.allMessages) {
+			if (message.role !== "user") continue;
+			const text = message.text.trim();
+			if (!text || history[0] === text) continue;
+			history.unshift(text);
+			if (history.length > 100) history.pop();
+		}
+		return history;
+	}
 	get emptyChatHint(): AppKeybindHint {
 		return this.transcript.emptyChatHint;
 	}
@@ -233,6 +245,7 @@ export class AppStore {
 			sessionTransition: { ...this.sessionTransition },
 			debugUi: this.debugUi,
 			hasOlderMessages: this.hasOlderMessages,
+			promptHistory: [...this.promptHistory],
 			emptyChatHint: { ...this.emptyChatHint },
 		});
 	}

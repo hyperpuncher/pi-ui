@@ -51,8 +51,9 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 					rows="1"
 					data-bind:prompt
 					data-on:input="
+						window.piUi.promptHistory.handleInput();
 						$_slashPickerOpen = $prompt.startsWith('/') &&
-						!$prompt.includes(' ')
+						!$prompt.includes(' ');
 					"
 					data-on:pi-ui-picker-close="$_slashPickerOpen = false"
 					data-on:pi-ui-file-query={`
@@ -73,34 +74,37 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 						evt.preventDefault();
 						window.piUi.fileTransfer.insert(evt.clipboardData);
 					}`}
-					data-on:keydown={`if (
-						evt.key === 'Escape' &&
-						!evt.ctrlKey &&
-						!evt.metaKey &&
-						!evt.altKey &&
-						!evt.shiftKey &&
-						!$isBusy
-					) {
-						evt.preventDefault();
-						el.blur();
-					}
-					if (evt.altKey && evt.key === 'ArrowUp') {
-						evt.preventDefault();
-						@post('/prompt/dequeue', { filterSignals: { include: /^$/ } });
-					}
-					if (
-						evt.key === 'Enter' &&
-						!evt.shiftKey &&
-						$prompt.trim() !== '' &&
-						!window.piUi.pickers.isOpen()
-					) {
-						evt.preventDefault();
-						window.piUi.messageScroll.scrollBottom();
-						if ($prompt.trim() === '/tree') window.piUi.dialogs.openTree();
-						evt.altKey
-							? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
-							: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
-					}`}
+					data-on:keydown={`
+						window.piUi.promptHistory.handleKeydown(evt, $promptHistory);
+						if (
+							evt.key === 'Escape' &&
+							!evt.ctrlKey &&
+							!evt.metaKey &&
+							!evt.altKey &&
+							!evt.shiftKey &&
+							!$isBusy
+						) {
+							evt.preventDefault();
+							el.blur();
+						}
+						if (evt.altKey && evt.key === 'ArrowUp') {
+							evt.preventDefault();
+							@post('/prompt/dequeue', { filterSignals: { include: /^$/ } });
+						}
+						if (
+							evt.key === 'Enter' &&
+							!evt.shiftKey &&
+							$prompt.trim() !== '' &&
+							!window.piUi.pickers.isOpen()
+						) {
+							evt.preventDefault();
+							window.piUi.messageScroll.scrollBottom();
+							if ($prompt.trim() === '/tree') window.piUi.dialogs.openTree();
+							evt.altKey
+								? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
+								: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
+						};
+					`}
 				></textarea>
 				<footer
 					class="flex flex-wrap items-center justify-between gap-2 p-0"

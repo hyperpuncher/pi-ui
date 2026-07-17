@@ -7,6 +7,7 @@ export function projectBackendSignals(
 		model: state.currentModel ?? "",
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
+		promptHistory: state.promptHistory,
 		isBusy: Boolean(state.activityText),
 		isSessionReady: state.sessionTransition.status !== "loading",
 		sessionTransitionLoading: state.sessionTransition.status === "loading",

@@ -24,6 +24,10 @@ interface PiUiNamespace {
 		isFileOpen(): boolean;
 		isOpen(): boolean;
 	};
+	promptHistory: {
+		handleInput(): void;
+		handleKeydown(event: KeyboardEvent, entries: readonly string[]): boolean;
+	};
 	shouldAbortOnEscape(event: KeyboardEvent): boolean;
 }
 
