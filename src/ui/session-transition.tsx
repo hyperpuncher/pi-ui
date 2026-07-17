@@ -7,8 +7,9 @@ export function resumeSessionAction(
 	return `if (!$_sessionLoading && !$sessionTransitionLoading) {
 		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
 		$_sessionTarget = ${JSON.stringify(path)};
-		$sessionPath = ${JSON.stringify(path)};
-		@post('/sessions/resume', { filterSignals: { include: /^sessionPath$/ } });
+		@post('/sessions/resume', {
+			payload: { sessionPath: ${JSON.stringify(path)} },
+		});
 	}`;
 }
 

@@ -299,6 +299,7 @@ export class RuntimeController {
 		this.state.setQueuedMessages([], []);
 		this.loadCurrentSessionMessages();
 		this.syncUsage();
+		await this.refreshSessions();
 	}
 
 	async abortBackgroundSession(sessionPath: string): Promise<boolean> {
@@ -411,8 +412,13 @@ export class RuntimeController {
 		if (!targetSessionFile) {
 			return false;
 		}
-		if (targetSessionFile === this.runtime.session.sessionManager.getSessionFile()) {
-			this.state.appendMessage("system", "Cannot delete the current session.");
+		const deletingCurrent =
+			targetSessionFile === this.runtime.session.sessionManager.getSessionFile();
+		if (deletingCurrent && this.isCurrentRuntimeActive()) {
+			this.state.appendMessage(
+				"system",
+				"Cannot delete the current session while it is running.",
+			);
 			return false;
 		}
 		if (this.backgroundSessions.get(targetSessionFile)?.status === "running") {
@@ -423,6 +429,13 @@ export class RuntimeController {
 			return false;
 		}
 		try {
+			if (deletingCurrent) {
+				const replacement = await this.transitionController.run(
+					"Delete current session",
+					() => this.createNewSession(),
+				);
+				if (replacement.status !== "success") return false;
+			}
 			await this.dependencies.moveToTrash(targetSessionFile);
 			const backgroundSession = this.backgroundSessions.get(targetSessionFile);
 			if (backgroundSession) {
@@ -485,6 +498,9 @@ export class RuntimeController {
 	}
 
 	async resumeSession(sessionPath: string): Promise<SessionTransitionResult> {
+		if (sessionPath === this.runtime.session.sessionManager.getSessionFile()) {
+			return { status: "success" };
+		}
 		return await this.transitionController.run(sessionPath, async () => {
 			const transitionId = sessionPerformance.startSessionTransition();
 			try {
@@ -896,6 +912,7 @@ export class RuntimeController {
 		this.backgroundSessions.register(sessionFile, backgroundSession);
 		this.state.setCurrentSessionPath(undefined);
 		this.syncBackgroundStatuses();
+		void this.refreshSessions();
 	}
 
 	private handleBackgroundEvent(
@@ -1107,6 +1124,7 @@ export class RuntimeController {
 					this.syncUsage();
 					this.refreshCodexUsage(true);
 					this.notifyRuntimeDone(this.runtime, false);
+					void this.refreshSessions();
 				}
 			},
 			// Streaming deltas use the documented targeted-message patch path.

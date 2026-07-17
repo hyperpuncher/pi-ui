@@ -10,6 +10,7 @@ import type {
 import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { loaderIcon } from "./prompt-box.tsx";
+import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 
 const inlineBashCache = new Map<string, string>();
@@ -110,12 +111,15 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 				<span class="text-foreground block truncate text-sm" safe>
 					{session.title}
 				</span>
-				<span class="text-muted-foreground mt-1 line-clamp-2 text-xs" safe>
-					{session.subtitle}
-				</span>
+				<SessionSubtitle
+					session={session}
+					class="text-muted-foreground mt-1 line-clamp-2 text-xs"
+				/>
 			</span>
 			<span class="text-muted-foreground flex shrink-0 items-center gap-2 text-xs whitespace-nowrap">
-				<span safe>{session.modified}</span>
+				<span class="font-mono" safe>
+					{session.modified}
+				</span>
 				<ShortcutKbd shortcut={shortcut} />
 			</span>
 		</button>

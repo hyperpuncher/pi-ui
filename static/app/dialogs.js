@@ -15,15 +15,14 @@ export function toggleSession() {
 		dialog.close();
 		return false;
 	}
+	const input = document.getElementById("session-input");
+	if (input instanceof HTMLInputElement) {
+		input.value = "";
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	}
+	const menu = document.getElementById("session-menu");
+	if (menu instanceof HTMLElement) menu.scrollTop = 0;
 	openAndFocus("session-dialog", "session-input");
-	requestAnimationFrame(() => {
-		const input = document.getElementById("session-input");
-		if (input instanceof HTMLInputElement) {
-			input.dispatchEvent(new Event("input", { bubbles: true }));
-		}
-		const menu = document.getElementById("session-menu");
-		if (menu instanceof HTMLElement) menu.scrollTop = 0;
-	});
 	return true;
 }
 

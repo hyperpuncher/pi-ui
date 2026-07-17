@@ -219,7 +219,7 @@ Deno.test("shared resume action drives every immediate loading signal", () => {
 	for (const expected of [
 		"$_sessionLoading",
 		"$sessionTransitionLoading",
-		"$sessionPath",
+		'payload: { sessionPath: "/sessions/one.json" }',
 		"/sessions/resume",
 		"session-dialog",
 	]) {
@@ -281,25 +281,30 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	}
 });
 
-Deno.test("session picker command state morphs after a transition", async () => {
+Deno.test("session picker command state morphs on its dedicated stream", async () => {
 	const state = new AppStore();
 	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const controller = new AbortController();
 	try {
-		const response = renderer.createStream(controller.signal);
+		const response = renderer.createSessionStream(controller.signal);
 		state.setSessionTransition({
 			status: "loading",
 			generation: 1,
 			targetPath: "/sessions/one.jsonl",
 		});
-		state.setSessions([]);
+		state.setSessions([
+			{
+				path: "/sessions/one.jsonl",
+				cwd: "/workspace",
+				title: "Fresh session",
+				subtitle: "1 message",
+				modified: "now",
+			},
+		]);
 		state.setSessionTransition({ status: "idle", generation: 1 });
 
-		const output = await readUntil(
-			response,
-			(text) =>
-				text.includes('id="session-menu-content"') &&
-				text.includes('"sessionTransitionLoading":false'),
+		const output = await readUntil(response, (text) =>
+			text.includes("Fresh session"),
 		);
 		if (output.includes("component.refresh")) {
 			throw new Error("Server emitted a legacy Basecoat refresh script");

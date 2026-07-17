@@ -88,7 +88,7 @@ function summary(path: string, title: string): AppSessionSummary {
 		path,
 		cwd: "/workspace",
 		title,
-		subtitle: "1 message • /workspace",
+		subtitle: "1 message",
 		modified: "Today",
 	};
 }

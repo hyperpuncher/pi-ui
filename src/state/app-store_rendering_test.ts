@@ -379,7 +379,7 @@ Deno.test("component morphs need no server refresh script", async () => {
 	}
 });
 
-Deno.test("fat morphs refresh session picker current and background statuses", async () => {
+Deno.test("dedicated session stream refreshes current and background statuses", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	const first = {
@@ -388,7 +388,6 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 		title: "First session",
 		subtitle: "First subtitle",
 		modified: "now",
-		backgroundStatus: "running" as const,
 	};
 	const second = {
 		path: "/sessions/second.jsonl",
@@ -398,7 +397,7 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 		modified: "earlier",
 	};
 	try {
-		const response = state.createStream(controller.signal);
+		const response = state.renderer.createSessionStream(controller.signal);
 		const reader = response.body?.getReader();
 		if (!reader) throw new Error("Missing response body");
 		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
@@ -406,6 +405,7 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 		state.update(
 			() => {
 				state.setCurrentSessionPath(first.path);
+				state.setActivityText("Working...");
 				state.setSessions([first, second]);
 			},
 			{ flush: true },
@@ -420,6 +420,7 @@ Deno.test("fat morphs refresh session picker current and background statuses", a
 		state.update(
 			() => {
 				state.setCurrentSessionPath(second.path);
+				state.setActivityText(undefined);
 				state.setSessions([{ ...first, backgroundStatus: "completed" }, second]);
 			},
 			{ flush: true },
@@ -471,6 +472,7 @@ Deno.test("complete fat view contains every server-owned dynamic root", () => {
 		const store = new AppStore();
 		const renderer = new UiRenderer(store, new DatastarClientHub());
 		const html = renderer.renderElements(store.snapshot());
+		assertNotIncludes(html, 'id="session-menu-content"');
 		for (const id of [
 			"messages",
 			"auth-dialog-content",
@@ -480,7 +482,6 @@ Deno.test("complete fat view contains every server-owned dynamic root", () => {
 			"prompt-status",
 			"workspace-picker",
 			"workspace-menu",
-			"session-menu-content",
 			"model-picker",
 			"thinking-picker",
 			"session-transition",

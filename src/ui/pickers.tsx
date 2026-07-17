@@ -11,6 +11,7 @@ import {
 	PickerMetadata,
 	PickerRow,
 } from "./picker-components.tsx";
+import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 
 const bottomAnchoredPickerClass =
@@ -212,9 +213,14 @@ export function renderSessionPickerContent(state: AppRenderSnapshot): string {
 			<span role="heading" id="session-menu-heading">
 				Recent sessions
 			</span>
-			{state.sessions.map((session) =>
-				renderSessionRow(session, session.path === state.currentSessionPath),
-			)}
+			{state.sessions.map((session) => {
+				const current = session.path === state.currentSessionPath;
+				return renderSessionRow(
+					session,
+					current,
+					current && Boolean(state.activityText),
+				);
+			})}
 		</div>
 	) as string;
 }
@@ -223,14 +229,19 @@ function sessionRowId(path: string): string {
 	return `session-row-${encodeURIComponent(path)}`;
 }
 
-function renderSessionRow(session: AppSessionSummary, current: boolean): string {
+function renderSessionRow(
+	session: AppSessionSummary,
+	current: boolean,
+	foregroundRunning: boolean,
+): string {
 	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
+	const displayStatus = foregroundRunning ? "running" : session.backgroundStatus;
 	return (
 		<div
 			id={sessionRowId(session.path)}
 			role="menuitem"
 			tabindex="-1"
-			class="group items-start! gap-3"
+			class="group items-start! gap-2"
 			aria-current={current ? "true" : undefined}
 			data-keep-command-open
 			data-session-row
@@ -238,37 +249,48 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 			data-keywords={haystack}
 			data-indicator:_session-loading
 			data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
-			data-on:click={resumeSessionAction(session.path, { closeDialog: true })}
+			data-on:click={
+				current
+					? "document.getElementById('session-dialog')?.close()"
+					: resumeSessionAction(session.path, { closeDialog: true })
+			}
 		>
-			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">
-				{current ? "•" : ""}
-			</span>
 			<span class="min-w-0 flex-1">
-				<span class="block truncate" safe>
-					{session.title}
+				<span class="flex min-w-0 items-center gap-2">
+					{current && (
+						<span
+							class="bg-primary size-1.5 shrink-0 rounded-full"
+							data-current-session-indicator
+							aria-hidden="true"
+						></span>
+					)}
+					<span class="block min-w-0 truncate" safe>
+						{session.title}
+					</span>
 				</span>
-				<span class="text-muted-foreground mt-1 line-clamp-2 text-xs" safe>
-					{session.subtitle}
-				</span>
+				<SessionSubtitle
+					session={session}
+					class="text-muted-foreground mt-1 line-clamp-2 text-xs"
+				/>
 			</span>
-			<span class="mt-0.5 flex w-32 shrink-0 flex-col items-end gap-1 whitespace-nowrap">
+			<span class="mt-0.5 flex w-32 shrink-0 flex-col items-end gap-1 font-mono whitespace-nowrap">
 				<span data-shortcut safe>
 					{session.modified}
 				</span>
-				{session.backgroundStatus === "running" && (
+				{displayStatus === "running" && (
 					<span
-						class="text-foreground flex items-center gap-1.5 text-[0.6875rem] font-medium"
-						aria-label="Background session running"
+						class="text-foreground text-[0.6875rem] font-medium"
+						aria-label={
+							current
+								? "Current session running"
+								: "Background session running"
+						}
 						data-background-status="running"
 					>
-						<span
-							class="bg-primary size-1.5 rounded-full"
-							aria-hidden="true"
-						></span>
 						Running
 					</span>
 				)}
-				{session.backgroundStatus === "completed" && (
+				{displayStatus === "completed" && (
 					<span
 						class="text-muted-foreground flex items-center gap-1 text-[0.6875rem]"
 						aria-label="Background session completed"
@@ -290,20 +312,27 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 					</span>
 				)}
 			</span>
-			{session.backgroundStatus === "running" && (
+			{displayStatus === "running" && (
 				<button
 					type="button"
 					class="btn shrink-0 leading-none"
 					data-variant="destructive"
 					data-size="icon-xs"
-					aria-label={`Abort background session ${session.title}`}
-					data-on:click={`
-						evt.stopPropagation();
-						$backgroundSessionPath = ${JSON.stringify(session.path)};
-						@post('/sessions/background/abort', {
-							filterSignals: { include: /^backgroundSessionPath$/ },
-						});
-					`}
+					aria-label={`Abort ${current ? "current" : "background"} session ${session.title}`}
+					data-on:click={
+						current
+							? `
+					evt.stopPropagation();
+					@post('/abort', { filterSignals: { include: /^$/ } });
+					`
+							: `
+					evt.stopPropagation();
+					$backgroundSessionPath = ${JSON.stringify(session.path)};
+					@post('/sessions/background/abort', {
+					filterSignals: { include: /^backgroundSessionPath$/ },
+					});
+					`
+					}
 				>
 					<svg
 						class="text-destructive! fill-destructive! size-3"
@@ -314,7 +343,7 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 					</svg>
 				</button>
 			)}
-			{session.backgroundStatus !== "running" && (
+			{displayStatus !== "running" && (
 				<button
 					type="button"
 					class="btn shrink-0 opacity-35 group-[.active]:opacity-100 hover:opacity-100 focus-visible:opacity-100 disabled:invisible"
@@ -322,7 +351,6 @@ function renderSessionRow(session: AppSessionSummary, current: boolean): string 
 					data-attr:data-variant={`$sessionDeleteHover === ${JSON.stringify(session.path)} ? 'destructive' : 'ghost'`}
 					data-size="icon-xs"
 					aria-label="Delete session"
-					disabled={current ? true : undefined}
 					data-on:mouseenter={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}
 					data-on:mouseleave="$sessionDeleteHover = ''"
 					data-on:focus={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}

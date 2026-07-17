@@ -1,4 +1,4 @@
-import { type DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import type {
 	AppRenderSnapshot,
 	AppStore,
@@ -39,6 +39,8 @@ export class UiRenderer implements AppStorePresentation {
 	private suppressMessagesDepth = 0;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
+	private readonly sessionHub = new DatastarClientHub(undefined, false);
+	private sessionPickerHtml: string | undefined;
 
 	constructor(
 		private readonly store: AppStore,
@@ -57,6 +59,14 @@ export class UiRenderer implements AppStorePresentation {
 	createStream(signal: AbortSignal): Response {
 		this.flush();
 		return this.hub.createStream(signal, () => this.renderView());
+	}
+	createSessionStream(signal: AbortSignal): Response {
+		this.flush();
+		return this.sessionHub.createStream(signal, () => {
+			const elements = renderSessionPickerContent(this.store.snapshot());
+			this.sessionPickerHtml = elements;
+			return { elements, signals: "{}" };
+		});
 	}
 	beginUpdate(): void {
 		this.updateDepth += 1;
@@ -89,6 +99,13 @@ export class UiRenderer implements AppStorePresentation {
 		if (this.hub.clientCount > 0) {
 			const view = this.renderView(this.effectSignalOverrides(effects));
 			this.hub.patchView(view.elements, view.signals, this.effectScripts(effects));
+		}
+		if (this.sessionHub.clientCount > 0) {
+			const elements = renderSessionPickerContent(this.store.snapshot());
+			if (elements !== this.sessionPickerHtml) {
+				this.sessionPickerHtml = elements;
+				this.sessionHub.patchElement(elements, "#session-menu-content");
+			}
 		}
 		for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
@@ -164,7 +181,6 @@ export class UiRenderer implements AppStorePresentation {
 			renderPromptStatus(snapshot) +
 			renderWorkspacePicker(snapshot) +
 			renderWorkspaceDialogMenu(snapshot) +
-			renderSessionPickerContent(snapshot) +
 			renderModelPicker(snapshot) +
 			renderThinkingPicker(snapshot) +
 			renderSessionTransition(snapshot) +

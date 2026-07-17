@@ -11,7 +11,10 @@ export type DatastarStreamFactory = typeof datastarStream;
 export class DatastarClientHub {
 	private readonly clients = new Map<string, DatastarClient>();
 
-	constructor(private readonly streamFactory: DatastarStreamFactory = datastarStream) {}
+	constructor(
+		private readonly streamFactory: DatastarStreamFactory = datastarStream,
+		private readonly recordPerformance = true,
+	) {}
 
 	get clientCount(): number {
 		return this.clients.size;
@@ -59,7 +62,9 @@ export class DatastarClientHub {
 		for (const [id, client] of this.clients) {
 			try {
 				client.patchElements(elements, { selector });
-				sessionPerformance.recordTargetedMessagePatch(elements);
+				if (this.recordPerformance) {
+					sessionPerformance.recordTargetedMessagePatch(elements);
+				}
 			} catch {
 				this.disconnect(id, client);
 			}
@@ -83,8 +88,10 @@ export class DatastarClientHub {
 		scripts: readonly string[],
 	): void {
 		client.patchElements(elements);
-		sessionPerformance.recordFatMorph(elements);
-		sessionPerformance.markFirstTranscriptPatch();
+		if (this.recordPerformance) {
+			sessionPerformance.recordFatMorph(elements);
+			sessionPerformance.markFirstTranscriptPatch();
+		}
 		client.patchSignals(signals);
 		if (scripts.length > 0) client.executeScript(scripts.join(";"));
 	}

@@ -12,9 +12,9 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("POST", endpoints.sessionsNewTemporary, async (_request, context) =>
 		sessionTransitionResponse(await requireHost(context).newTemporarySession()),
 	);
-	router.register("POST", endpoints.sessionsList, async (_request, context) => {
+	router.register("GET", endpoints.sessionsStream, async (request, context) => {
 		await requireHost(context).listSessions();
-		return datastarResponse();
+		return context.renderer.createSessionStream(request.signal);
 	});
 	router.register(
 		"POST",

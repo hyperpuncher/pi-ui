@@ -10,7 +10,7 @@ export const endpoints = {
 	messagesEnhance: "/messages/enhance",
 	sessionsNew: "/sessions/new",
 	sessionsNewTemporary: "/sessions/new-temporary",
-	sessionsList: "/sessions/list",
+	sessionsStream: "/sessions/stream",
 	sessionsBackgroundAbort: "/sessions/background/abort",
 	sessionsDelete: "/sessions/delete",
 	sessionsResume: "/sessions/resume",

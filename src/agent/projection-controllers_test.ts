@@ -298,11 +298,13 @@ function sessionInfo(
 	};
 }
 
-Deno.test("session summaries collapse the home directory", () => {
+Deno.test("session summaries keep workspace and message metadata separate", () => {
 	const info = sessionInfo("/session", "Home session");
 	info.cwd = `${os.homedir()}/projects/pi-ui`;
 
-	assertEquals(formatSessionSummary(info).subtitle, "1 message • ~/projects/pi-ui");
+	const summary = formatSessionSummary(info);
+	assertEquals(summary.cwd, info.cwd);
+	assertEquals(summary.subtitle, "1 message");
 });
 
 Deno.test("catalog and usage formatting remain stable", () => {
@@ -330,7 +332,7 @@ Deno.test("catalog and usage formatting remain stable", () => {
 		{ title: summary.title, subtitle: summary.subtitle },
 		{
 			title: "Named",
-			subtitle: "1 message • /work/a",
+			subtitle: "1 message",
 		},
 	);
 	assertEquals(formatTokens(1_250), "1.3k");

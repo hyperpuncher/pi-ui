@@ -22,7 +22,6 @@ export function renderPage(state: AppRenderSnapshot): string {
 		_slashPickerOpen: false,
 		fileQuery: "",
 		isDraggingFile: false,
-		sessionPath: "",
 		sessionDeletePath: "",
 		sessionDeleteTitle: "",
 		sessionDeleteHover: "",
@@ -189,6 +188,11 @@ export function renderPage(state: AppRenderSnapshot): string {
 					id="session-dialog"
 					class="command-dialog"
 					aria-label="Resume session"
+					data-init={`@get('${endpoints.sessionsStream}', {
+						filterSignals: { include: /^$/ },
+						openWhenHidden: true,
+						requestCancellation: 'cleanup',
+					})`}
 					onclick="if (event.target === this) this.close()"
 				>
 					<div class="command sm:max-w-2xl">

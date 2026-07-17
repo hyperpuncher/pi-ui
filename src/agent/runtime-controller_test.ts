@@ -167,6 +167,56 @@ Deno.test("RuntimeController production path binds callbacks before activation",
 	assertEquals(fake.disposeCount, 1);
 });
 
+Deno.test("RuntimeController treats the current session as an immediate no-op", async () => {
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+	const calls = [...fake.calls];
+
+	assertEquals(await controller.resumeSession("/sessions/a.jsonl"), {
+		status: "success",
+	});
+	assertEquals(fake.calls, calls);
+	await controller.dispose();
+});
+
+Deno.test("RuntimeController replaces and trashes the current idle session", async () => {
+	const fake = fakeRuntime("/sessions/current.jsonl");
+	let currentPath = "/sessions/current.jsonl";
+	(
+		fake.runtime.session.sessionManager as unknown as {
+			getSessionFile: () => string;
+		}
+	).getSessionFile = () => currentPath;
+	(
+		fake.runtime as unknown as {
+			newSession: () => Promise<{ cancelled: boolean }>;
+		}
+	).newSession = async () => {
+		currentPath = "/sessions/replacement.jsonl";
+		return { cancelled: false };
+	};
+	const trashed: string[] = [];
+	const store = new AppStore();
+	const controller = await RuntimeController.prepare(store, "/workspace", {
+		dependencies: {
+			...dependencies([fake]),
+			moveToTrash: (path) => {
+				trashed.push(path);
+				return Promise.resolve();
+			},
+		},
+	});
+	controller.activate();
+
+	assertEquals(await controller.deleteSession("/sessions/current.jsonl"), true);
+	assertEquals(trashed, ["/sessions/current.jsonl"]);
+	assertEquals(store.currentSessionPath, "/sessions/replacement.jsonl");
+	await controller.dispose();
+});
+
 Deno.test("RuntimeController ignores callbacks captured before in-place replacement", async () => {
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {

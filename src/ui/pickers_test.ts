@@ -40,6 +40,56 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
 });
 
+Deno.test("current running session is live but does not resume itself", () => {
+	const path = "/sessions/current.jsonl";
+	const html = renderSessionPicker({
+		sessions: [
+			{
+				path,
+				cwd: "/workspace",
+				title: "Current session",
+				subtitle: "1 message",
+				modified: "Now",
+			},
+		],
+		currentSessionPath: path,
+		activityText: "Working...",
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, 'aria-current="true"');
+	assertStringIncludes(html, "data-current-session-indicator");
+	assertStringIncludes(html, 'data-background-status="running"');
+	assertStringIncludes(html, 'class="font-mono">/workspace</span>');
+	assertStringIncludes(html, "bg-border mx-2 inline-block size-1 rounded-full");
+	assertStringIncludes(html, 'class="font-mono">1 message</span>');
+	const renderedPath = html.indexOf('class="font-mono">/workspace</span>');
+	assertFalse(html.indexOf(">1 message</span>", renderedPath) < renderedPath);
+	assertFalse(html.includes("tabular-nums"));
+	assertStringIncludes(html, "@post('/abort'");
+	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
+	assertFalse(html.includes('disabled=""'));
+	assertFalse(html.includes("/sessions/resume"));
+});
+
+Deno.test("current idle session exposes deletion", () => {
+	const path = "/sessions/current.jsonl";
+	const html = renderSessionPicker({
+		sessions: [
+			{
+				path,
+				cwd: "/workspace",
+				title: "Current session",
+				subtitle: "1 message",
+				modified: "Now",
+			},
+		],
+		currentSessionPath: path,
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, "$sessionDeletePath");
+	assertFalse(html.includes('disabled=""'));
+});
+
 Deno.test("workspace rows show each collapsed path once", () => {
 	const home = os.homedir();
 	const html = renderWorkspaceDialogMenu({
