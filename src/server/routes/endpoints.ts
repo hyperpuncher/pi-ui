@@ -29,6 +29,7 @@ export const endpoints = {
 	treeOpen: "/tree/open",
 	treeNavigate: "/tree/navigate",
 	filesSearch: "/files/search",
+	filesPick: "/files/pick",
 	filesImport: "/files/import",
 	basecoat: "/basecoat.js",
 	inspector: "/vendor/datastar-inspector.min.js",

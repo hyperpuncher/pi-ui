@@ -57,6 +57,7 @@ export function renderPage(state: AppRenderSnapshot): string {
 				class="h-full overflow-hidden"
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
+				data-files-pick-endpoint={endpoints.filesPick}
 				data-files-import-endpoint={endpoints.filesImport}
 				data-display-refresh-endpoint={endpoints.displayRefresh}
 				data-signals={initialSignals}

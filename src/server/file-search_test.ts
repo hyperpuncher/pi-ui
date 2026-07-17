@@ -72,13 +72,15 @@ Deno.test("closest file suggestions stay within the selected directory", async (
 	);
 });
 
-Deno.test("file search resets traversal scopes to the workspace", async () => {
-	let baseDirectory = "";
-	await searchFiles("/workspace", "../secret", undefined, (args) => {
-		baseDirectory = args[args.indexOf("--base-directory") + 1];
-		return Promise.resolve(output(""));
-	});
-	assertEquals(baseDirectory, "/workspace");
+Deno.test("file search supports absolute and parent paths", async () => {
+	const baseDirectories: string[] = [];
+	for (const query of ["/tmp/file", "../secret/file"]) {
+		await searchFiles("/workspace", query, undefined, (args) => {
+			baseDirectories.push(args[args.indexOf("--base-directory") + 1]);
+			return Promise.resolve(output("match.txt"));
+		});
+	}
+	assertEquals(baseDirectories, ["/tmp", "/secret"]);
 });
 
 Deno.test("aborted fd search rethrows without manual fallback", async () => {
@@ -129,17 +131,19 @@ Deno.test("aborted unsuccessful fd output does not enter manual fallback", async
 	}
 });
 
-Deno.test("unavailable fd falls back to manual search", async () => {
+Deno.test("unavailable fd falls back to manual search including empty queries", async () => {
 	const workspace = await Deno.makeTempDir();
 	try {
 		await Deno.writeTextFile(`${workspace}/fallback.txt`, "");
-		const results = await searchFiles(workspace, "fallback", undefined, () =>
-			Promise.reject(new Deno.errors.NotFound("fd")),
-		);
-		assertEquals(
-			results.map((item) => item.value),
-			["fallback.txt"],
-		);
+		for (const query of ["fallback", ""]) {
+			const results = await searchFiles(workspace, query, undefined, () =>
+				Promise.reject(new Deno.errors.NotFound("fd")),
+			);
+			assertEquals(
+				results.map((item) => item.value),
+				["fallback.txt"],
+			);
+		}
 	} finally {
 		await Deno.remove(workspace, { recursive: true });
 	}

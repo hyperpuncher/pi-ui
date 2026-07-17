@@ -41,6 +41,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /tree/open",
 		"POST /tree/navigate",
 		"GET /files/search",
+		"POST /files/pick",
 		"POST /files/import",
 		"GET /basecoat.js",
 		"GET /vendor/datastar-inspector.min.js",

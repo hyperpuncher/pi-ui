@@ -1,3 +1,4 @@
+import { pickNativeFilePaths } from "../../native-file-picker.ts";
 import { renderFilePickerResults } from "../../ui/pickers.tsx";
 import { readActionSignals, stringField } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
@@ -25,6 +26,9 @@ export function registerFileRoutes(router: ExactRouter<RouteContext>): void {
 			{ type: "elements", elements: renderFilePickerResults(items) },
 		]);
 	});
+	router.register("POST", endpoints.filesPick, async () =>
+		Response.json({ paths: await pickNativeFilePaths() }),
+	);
 	router.register("POST", endpoints.filesImport, importTransferredFiles);
 }
 

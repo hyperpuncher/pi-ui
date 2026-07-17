@@ -8,6 +8,7 @@ interface PiUiNamespace {
 		openWorkspace(): void;
 	};
 	fileTransfer: {
+		pick(): Promise<void>;
 		hasFiles(data?: unknown): boolean;
 		insert(data?: unknown): Promise<void>;
 		enterDrag(): boolean;

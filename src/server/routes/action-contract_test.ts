@@ -85,6 +85,7 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 		'const action = mode === "login" ? "/auth/login/start" : "/auth/logout"',
 	);
 	assertStringIncludes(authDialog, "@post('${action}'");
+	assertStringIncludes(page, "data-files-pick-endpoint={endpoints.filesPick}");
 	assertStringIncludes(page, "data-files-import-endpoint={endpoints.filesImport}");
 	assertStringIncludes(
 		page,

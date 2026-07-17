@@ -1,5 +1,7 @@
 import * as path from "node:path";
 
+import { expandHomePath } from "../utils/workspace.ts";
+
 export type FileSuggestion = {
 	value: string;
 	label: string;
@@ -29,8 +31,8 @@ export async function searchFiles(
 ): Promise<FileSuggestion[]> {
 	const normalizedQuery = query.replaceAll("\\", "/").replace(/^@/, "");
 	const fdResults = await searchWithFd(workspacePath, normalizedQuery, signal, command);
-	if (fdResults?.length || !normalizedQuery) return fdResults ?? [];
-	if (fdResults) {
+	if (fdResults !== undefined) {
+		if (fdResults.length > 0 || !normalizedQuery) return fdResults;
 		return findClosestFiles(
 			(await searchWithFd(
 				workspacePath,
@@ -233,11 +235,12 @@ function resolveFileSearchScope(
 		return { baseDir: workspacePath, displayBase: "", query };
 	}
 	const displayBase = query.slice(0, slashIndex + 1);
-	const scopedBase = path.resolve(workspacePath, displayBase);
-	if (!isInside(workspacePath, scopedBase)) {
-		return { baseDir: workspacePath, displayBase: "", query: "" };
-	}
-	return { baseDir: scopedBase, displayBase, query: query.slice(slashIndex + 1) };
+	const expandedBase = expandHomePath(displayBase);
+	return {
+		baseDir: path.resolve(workspacePath, expandedBase),
+		displayBase,
+		query: query.slice(slashIndex + 1),
+	};
 }
 
 function buildFdPathQuery(query: string): string {
@@ -315,9 +318,4 @@ function fuzzyIncludes(haystack: string, needle: string): boolean {
 		index += 1;
 	}
 	return true;
-}
-
-function isInside(parent: string, child: string): boolean {
-	const relative = path.relative(parent, child);
-	return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }

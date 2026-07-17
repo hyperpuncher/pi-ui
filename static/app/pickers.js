@@ -94,7 +94,7 @@ function queueFileSearch(input) {
 				detail: { query: match.query },
 			}),
 		);
-	}, 120);
+	}, 50);
 }
 
 function handleClick(event) {

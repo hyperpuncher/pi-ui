@@ -260,7 +260,6 @@ function PromptToolbarButton(props: {
 			aria-pressed={props.pressed ? "true" : undefined}
 			data-size="icon-sm"
 			type="button"
-			data-file-trigger={props.action === "files" ? "" : undefined}
 			data-indicator:_session-loading={
 				isSessionChangingAction(props.action) ? "" : undefined
 			}
@@ -370,6 +369,7 @@ function promptToolbarClickAction(action: PromptToolbarAction): string | undefin
 	if (action === "new-chat") return newChatAction();
 	if (action === "new-temporary-chat") return newTemporaryChatAction();
 	if (action === "sessions") return openSessionDialogAction();
+	if (action === "files") return "window.piUi.fileTransfer.pick()";
 	return undefined;
 }
 

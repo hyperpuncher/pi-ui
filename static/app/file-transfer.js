@@ -2,6 +2,11 @@ import { fileUriToPath } from "../file-uri.js";
 import { closePickers } from "./pickers.js";
 import { promptInput } from "./prompt.js";
 
+const FILE_REFERENCE_TYPES = [
+	"text/uri-list",
+	"x-special/gnome-copied-files",
+	"text/plain",
+];
 const MAX_TRANSFER_FILES = 10;
 const MAX_TRANSFER_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
@@ -11,6 +16,22 @@ export function hasFiles(data) {
 	if (!data) return false;
 	if (data.files?.length) return true;
 	return [...data.types].some((type) => type === "Files" || type === "text/uri-list");
+}
+
+export async function pick() {
+	showTransferError("");
+	try {
+		const endpoint = document.body.dataset.filesPickEndpoint;
+		const response = await fetch(endpoint, { method: "POST" });
+		if (!response.ok) throw new Error(`Native picker failed: ${response.status}`);
+		const result = await response.json();
+		if (Array.isArray(result.paths) && result.paths.length > 0) {
+			insertFileReferences(result.paths);
+		}
+	} catch (error) {
+		console.error(error);
+		showTransferError(error?.message || "Could not open the native file picker.");
+	}
 }
 
 export function enterDrag() {
@@ -31,11 +52,11 @@ export async function insert(data) {
 	if (!data) return;
 	showTransferError("");
 	const paths = extractTransferredFilePaths(data);
-	const files = [...(data.files ?? [])];
 	if (paths.length > 0) {
 		insertFileReferences(paths);
 		return;
 	}
+	const files = transferredFiles(data);
 	if (files.length === 0) return;
 	const validationError = validateTransferredFiles(files);
 	if (validationError) {
@@ -46,14 +67,36 @@ export async function insert(data) {
 	if (uploaded.length > 0) insertFileReferences(uploaded);
 }
 
-function extractTransferredFilePaths(data) {
-	return data
-		.getData("text/uri-list")
-		.split(/\r?\n/)
-		.map((line) => line.trim())
-		.filter((line) => line && !line.startsWith("#"))
-		.map(fileUriToPath)
-		.filter(Boolean);
+export function extractTransferredFilePaths(data) {
+	const references =
+		typeof data.getData === "function"
+			? FILE_REFERENCE_TYPES.flatMap((type) => data.getData(type).split(/\r?\n/))
+			: [];
+	for (const file of transferredFiles(data)) {
+		references.push(file.path ?? "", file.webkitRelativePath ?? "");
+	}
+	return [...new Set(references.map(fileReferenceToPath).filter(Boolean))];
+}
+
+function transferredFiles(data) {
+	if (data.files) return [...data.files];
+	return typeof data[Symbol.iterator] === "function" ? [...data] : [];
+}
+
+function fileReferenceToPath(value) {
+	const reference = value.trim();
+	if (
+		!reference ||
+		reference.startsWith("#") ||
+		reference === "copy" ||
+		reference === "cut"
+	) {
+		return undefined;
+	}
+	const uriPath = fileUriToPath(reference);
+	if (uriPath) return uriPath;
+	if (reference.startsWith("/") || /^[A-Za-z]:[\\/]/.test(reference)) return reference;
+	return undefined;
 }
 
 function validateTransferredFiles(files) {
@@ -61,11 +104,11 @@ function validateTransferredFiles(files) {
 		return `Attach at most ${MAX_TRANSFER_FILES} files at a time.`;
 	}
 	if (files.some((file) => file.size > MAX_TRANSFER_FILE_BYTES)) {
-		return "Each transferred file must be 20 MiB or smaller.";
+		return "Dropped or pasted files must be 20 MiB or smaller; use the Files button for larger files.";
 	}
 	const totalBytes = files.reduce((total, file) => total + file.size, 0);
 	if (totalBytes > MAX_TRANSFER_TOTAL_BYTES) {
-		return "Transferred files must total 50 MiB or less.";
+		return "Dropped or pasted files must total 50 MiB or less.";
 	}
 }
 
@@ -108,15 +151,17 @@ function showTransferError(message) {
 	error.hidden = !message;
 }
 
+export function formatFileReferences(paths) {
+	return `${paths.map((path) => `@${path}`).join("\n")}\n`;
+}
+
 function insertFileReferences(paths) {
 	const input = promptInput();
 	if (!input) return;
 	const start = input.selectionStart ?? input.value.length;
 	const end = input.selectionEnd ?? start;
 	const prefix = start > 0 && !/\s/.test(input.value[start - 1] ?? "") ? " " : "";
-	const suffix =
-		end < input.value.length && !/\s/.test(input.value[end] ?? "") ? " " : "";
-	const text = `${prefix}${paths.map((path) => `@${path}`).join(" ")}${suffix}`;
+	const text = `${prefix}${formatFileReferences(paths)}`;
 	input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
 	const cursor = start + text.length;
 	input.selectionStart = cursor;
