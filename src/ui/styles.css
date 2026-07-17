@@ -47,18 +47,6 @@
 }
 
 @layer components {
-	[data-copied-icon] {
-		display: none;
-	}
-
-	[data-copy-code][data-copy-state="copied"] [data-copy-icon] {
-		display: none;
-	}
-
-	[data-copy-code][data-copy-state="copied"] [data-copied-icon] {
-		display: block;
-	}
-
 	.diff-output {
 		background: var(--code-background);
 	}

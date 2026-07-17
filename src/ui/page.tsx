@@ -83,12 +83,16 @@ export function renderPage(state: AppRenderSnapshot): string {
 				{renderDebugOverlay(state)}
 				<div
 					id="file-drop-overlay"
-					class="bg-background/55 pointer-events-none fixed inset-0 z-50 items-center justify-center backdrop-blur-sm"
+					class="bg-background/55 pointer-events-none fixed inset-0 z-50 items-center justify-center opacity-0 backdrop-blur-sm transition-[opacity,display] transition-discrete duration-100 ease-out motion-reduce:duration-100 [&.file-drop-active]:opacity-100 starting:[&.file-drop-active]:opacity-0"
 					style="display: none;"
+					data-class:file-drop-active="$isDraggingFile"
 					data-style:display="$isDraggingFile ? 'flex' : 'none'"
 					aria-hidden="true"
 				>
-					<div class="border-border bg-card/95 text-card-foreground flex items-center gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm shadow-lg">
+					<div
+						class="border-border bg-card/95 text-card-foreground flex scale-95 items-center gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm shadow-lg transition-[scale] duration-100 ease-out motion-reduce:scale-100 motion-reduce:transition-none [&.file-drop-card-active]:scale-100 starting:[&.file-drop-card-active]:scale-95"
+						data-class:file-drop-card-active="$isDraggingFile"
+					>
 						<svg
 							class="text-muted-foreground size-8"
 							xmlns="http://www.w3.org/2000/svg"

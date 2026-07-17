@@ -400,7 +400,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 			<div class="text-muted-foreground flex items-center justify-between gap-3 px-3 py-0.5 font-mono text-xs">
 				<span safe>{props.language}</span>
 				<button
-					class="btn"
+					class="btn group relative"
 					data-variant="ghost"
 					data-size="icon-xs"
 					type="button"
@@ -409,6 +409,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 				>
 					<svg
 						data-copy-icon
+						class="transition-[opacity,scale] duration-100 ease-out group-data-[copy-state=copied]:scale-95 group-data-[copy-state=copied]:opacity-0 motion-reduce:transform-none motion-reduce:transition-opacity"
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
 						height="24"
@@ -428,6 +429,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					</svg>
 					<svg
 						data-copied-icon
+						class="absolute scale-95 opacity-0 transition-[opacity,scale] duration-100 ease-out group-data-[copy-state=copied]:scale-100 group-data-[copy-state=copied]:opacity-100 motion-reduce:transform-none motion-reduce:transition-opacity"
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
 						height="24"

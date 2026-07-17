@@ -151,9 +151,9 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 	];
 	if (items.length === 0) return "";
 	return (
-		<section class="bg-card text-card-foreground ring-foreground/10 pointer-events-auto w-full overflow-hidden rounded-xl border border-transparent shadow-md ring-1">
+		<section class="prompt-queue-surface bg-card text-card-foreground ring-foreground/10 pointer-events-auto w-full translate-y-0 overflow-hidden rounded-xl border border-transparent opacity-100 shadow-md ring-1 transition-[opacity,translate] duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity motion-reduce:duration-100 starting:translate-y-full starting:opacity-0">
 			<header class="flex h-8 items-center justify-between gap-3 px-3">
-				<div class="flex min-w-0 items-center gap-2 text-xs font-medium">
+				<div class="text-muted-foreground flex min-w-0 items-center gap-2 text-xs font-medium">
 					<span class="text-muted-foreground">
 						<QueueIcon />
 					</span>
@@ -174,7 +174,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 			</header>
 			<div class="flex max-h-32 flex-col overflow-y-auto px-1.5 pb-4">
 				{items.map(([label, text]) => (
-					<div class="hover:bg-muted/60 flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs">
+					<div class="prompt-queue-item hover:bg-muted/60 flex min-w-0 translate-y-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs opacity-100 transition-[opacity,translate] duration-100 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
 						<span
 							class={[
 								"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
