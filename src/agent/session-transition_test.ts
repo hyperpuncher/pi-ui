@@ -314,6 +314,27 @@ Deno.test("session picker command state morphs on its dedicated stream", async (
 	}
 });
 
+Deno.test("completed session transition scrolls the transcript to bottom", async () => {
+	const state = new AppStore();
+	const renderer = new UiRenderer(state, new DatastarClientHub());
+	const controller = new AbortController();
+	try {
+		const response = renderer.createStream(controller.signal);
+		state.setSessionTransition({
+			status: "loading",
+			generation: 1,
+			targetPath: "/sessions/one.jsonl",
+		});
+		state.setSessionTransition({ status: "idle", generation: 1 });
+
+		await readUntil(response, (text) =>
+			text.includes("messageScroll.scrollBottom()"),
+		);
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("session transition responses use meaningful statuses", () => {
 	const cases = [
 		["success", 204],

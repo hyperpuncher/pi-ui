@@ -89,6 +89,7 @@ export type AppKeybindHint = { keys: string; description: string };
 export type UiCommitEffect =
 	| { type: "reopen-model-picker" }
 	| { type: "auth-dialog"; open: boolean }
+	| { type: "scroll-messages-to-bottom" }
 	| { type: "signal-overrides"; values: Readonly<Record<string, unknown>> };
 
 export interface AppStorePresentation {
@@ -438,10 +439,12 @@ export class AppStore {
 		this.commit();
 	}
 	setSessionTransition(value: SessionTransitionState): void {
+		const loaded =
+			this.sessionTransition.status === "loading" && value.status === "idle";
 		if (this.sessionTransition.status === "loading" && value.status !== "loading")
 			this.flush();
 		this.sessionTransition = value;
-		this.commit();
+		this.commit(loaded ? { type: "scroll-messages-to-bottom" } : undefined);
 		this.flush();
 	}
 }

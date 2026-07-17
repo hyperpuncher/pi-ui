@@ -221,6 +221,8 @@ export class UiRenderer implements AppStorePresentation {
 	private effectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts: string[] = [];
 		for (const effect of effects) {
+			if (effect.type === "scroll-messages-to-bottom")
+				scripts.push("window.piUi.messageScroll.scrollBottom()");
 			if (effect.type === "reopen-model-picker")
 				scripts.push(
 					"window.piUi.basecoat.refresh(document.getElementById('model-select')); requestAnimationFrame(() => document.getElementById('model-select-trigger')?.click())",

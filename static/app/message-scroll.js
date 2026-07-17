@@ -1,18 +1,21 @@
 import { collectAddedElementRoots } from "../mutation-roots.js";
 
-const state = { wasPinnedToBottom: true };
+const bottomThresholdPx = 120;
+const state = { pinnedToBottom: true };
 let anchor;
 let historyLoading = false;
 
 export function bindMessageScroll() {
 	document.addEventListener(
 		"scroll",
-		() => {
+		(event) => {
 			const messages = document.getElementById("messages");
-			if (!messages) return;
+			// Ignore captured scroll events from nested tool and code outputs.
+			if (!(messages instanceof HTMLElement) || event.target !== messages) return;
 			const distance =
 				messages.scrollHeight - messages.scrollTop - messages.clientHeight;
-			state.wasPinnedToBottom = distance < 120;
+			state.pinnedToBottom = distance < bottomThresholdPx;
+			updateScrollControl();
 		},
 		true,
 	);
@@ -28,12 +31,18 @@ export function bindMessageScroll() {
 			pinToolOutputs(affectedRoots);
 			affectedRoots.clear();
 			const messages = document.getElementById("messages");
-			if (messages && state.wasPinnedToBottom)
+			if (messages instanceof HTMLElement && state.pinnedToBottom)
 				messages.scrollTop = messages.scrollHeight;
+			updateScrollControl();
 		});
 	});
 	const messages = document.getElementById("messages");
-	if (messages) observer.observe(messages, { childList: true, subtree: true });
+	if (messages)
+		observer.observe(messages, {
+			characterData: true,
+			childList: true,
+			subtree: true,
+		});
 	hydratePierreDiffs([document]);
 	pinToolOutputs([document]);
 	scrollBottom();
@@ -44,8 +53,9 @@ export function captureAnchor() {
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return false;
 	historyLoading = true;
-	state.wasPinnedToBottom = false;
+	state.pinnedToBottom = false;
 	anchor = { scrollHeight: messages.scrollHeight, scrollTop: messages.scrollTop };
+	updateScrollControl();
 	return true;
 }
 
@@ -60,22 +70,41 @@ export function restoreAnchor() {
 			messages.scrollTop =
 				saved.scrollTop + messages.scrollHeight - saved.scrollHeight;
 		}
+		updateScrollControl();
 	});
 }
 
-export function scrollBottom() {
-	state.wasPinnedToBottom = true;
-	for (const delay of [0, 16, 80, 180]) {
-		setTimeout(() => {
-			const messages = document.getElementById("messages");
-			if (messages instanceof HTMLElement)
-				messages.scrollTop = messages.scrollHeight;
-		}, delay);
+export function scrollBottom(behavior = "auto") {
+	anchor = undefined;
+	historyLoading = false;
+	state.pinnedToBottom = true;
+	const scroll = () => {
+		const messages = document.getElementById("messages");
+		if (!(messages instanceof HTMLElement)) return;
+		messages.scrollTo({ top: messages.scrollHeight, behavior });
+		updateScrollControl();
+	};
+	scroll();
+	if (behavior === "auto") {
+		for (const delay of [16, 80, 180]) setTimeout(scroll, delay);
 	}
 }
 
 export function markUnpinned() {
-	state.wasPinnedToBottom = false;
+	state.pinnedToBottom = false;
+	updateScrollControl();
+}
+
+function updateScrollControl() {
+	const messages = document.getElementById("messages");
+	const button = document.getElementById("messages-latest");
+	if (!(messages instanceof HTMLElement) || !(button instanceof HTMLButtonElement))
+		return;
+	const distance = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+	const active = !state.pinnedToBottom && distance >= bottomThresholdPx;
+	button.hidden = !active;
+	button.inert = !active;
+	button.tabIndex = active ? 0 : -1;
 }
 
 function pinToolOutputs(roots) {

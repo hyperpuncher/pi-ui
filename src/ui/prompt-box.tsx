@@ -136,12 +136,48 @@ export function renderPromptQueue(state: AppRenderSnapshot): string {
 	return (
 		<div
 			id="prompt-queue"
-			class="pointer-events-none absolute bottom-[calc(100%-0.75rem)] left-1/2 z-0 flex w-[calc(100%-2rem)] -translate-x-1/2 sm:w-[calc(100%-4rem)]"
+			class="pointer-events-none absolute bottom-full left-1/2 flex w-[calc(100%-2rem)] -translate-x-1/2 flex-col items-center sm:w-[calc(100%-4rem)]"
 			aria-live="polite"
 		>
+			{renderLatestButton()}
 			{renderQueuedMessages(state)}
 		</div>
 	) as string;
+}
+
+function renderLatestButton() {
+	return (
+		<button
+			id="messages-latest"
+			type="button"
+			class="btn pointer-events-auto z-20 mb-4 rounded-full"
+			data-variant="secondary"
+			data-size="icon"
+			data-preserve-attr="hidden inert tabindex"
+			data-on:click="window.piUi.messageScroll.scrollBottom('smooth')"
+			aria-label="Jump to latest message"
+			hidden
+			inert
+			tabindex="-1"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="32"
+				height="32"
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+			>
+				<path
+					fill="none"
+					stroke="currentColor"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M12 5v14m7-7l-7 7l-7-7"
+				/>
+			</svg>
+		</button>
+	);
 }
 
 function renderQueuedMessages(state: AppRenderSnapshot): string {
@@ -151,7 +187,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 	];
 	if (items.length === 0) return "";
 	return (
-		<section class="prompt-queue-surface bg-card text-card-foreground ring-foreground/10 pointer-events-auto w-full translate-y-0 overflow-hidden rounded-xl border border-transparent opacity-100 shadow-md ring-1 transition-[opacity,translate] duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity motion-reduce:duration-100 starting:translate-y-full starting:opacity-0">
+		<section class="prompt-queue-surface bg-card text-card-foreground ring-foreground/10 pointer-events-auto -mb-3 w-full translate-y-0 overflow-hidden rounded-xl border border-transparent opacity-100 shadow-md ring-1 transition-[opacity,translate] duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity motion-reduce:duration-100 starting:translate-y-full starting:opacity-0">
 			<header class="flex h-8 items-center justify-between gap-3 px-3">
 				<div class="text-muted-foreground flex min-w-0 items-center gap-2 text-xs font-medium">
 					<span class="text-muted-foreground">

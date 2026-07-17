@@ -18,7 +18,7 @@ interface PiUiNamespace {
 	messageScroll: {
 		captureAnchor(): boolean;
 		restoreAnchor(): void;
-		scrollBottom(): void;
+		scrollBottom(behavior?: "auto" | "smooth"): void;
 	};
 	pickers: {
 		isFileOpen(): boolean;
