@@ -20,7 +20,7 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 	return (
 		<div
 			id="prompt-box"
-			class="fixed bottom-6 left-1/2 z-10 w-[min(54rem,calc(100vw-2rem))] -translate-x-1/2 overflow-visible text-sm"
+			class="fixed inset-x-4 bottom-6 z-10 mx-auto max-w-[54rem] overflow-visible text-sm"
 		>
 			<div
 				id="prompt-slash-popover"
@@ -111,12 +111,12 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 						{renderPromptStatus(state)}
 						{renderWorkspacePicker(state)}
 						<span
-							class="bg-border hidden h-4 w-px shrink-0 sm:block"
+							class="border-border hidden h-4 w-0 shrink-0 border-l sm:block"
 							aria-hidden="true"
 						/>
 						{renderModelPicker(state)}
 						<span
-							class="bg-border hidden h-4 w-px shrink-0 sm:block"
+							class="border-border hidden h-4 w-0 shrink-0 border-l sm:block"
 							aria-hidden="true"
 						/>
 						{renderThinkingPicker(state)}
