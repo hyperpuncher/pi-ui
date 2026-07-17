@@ -25,6 +25,7 @@ export function bindMessageScroll() {
 		frame = requestAnimationFrame(() => {
 			frame = undefined;
 			hydratePierreDiffs(affectedRoots);
+			pinToolOutputs(affectedRoots);
 			affectedRoots.clear();
 			const messages = document.getElementById("messages");
 			if (messages && state.wasPinnedToBottom)
@@ -34,6 +35,7 @@ export function bindMessageScroll() {
 	const messages = document.getElementById("messages");
 	if (messages) observer.observe(messages, { childList: true, subtree: true });
 	hydratePierreDiffs([document]);
+	pinToolOutputs([document]);
 	scrollBottom();
 }
 
@@ -74,6 +76,19 @@ export function scrollBottom() {
 
 export function markUnpinned() {
 	state.wasPinnedToBottom = false;
+}
+
+function pinToolOutputs(roots) {
+	const outputs = new Set();
+	for (const root of roots) {
+		if (root instanceof HTMLElement) {
+			const output = root.closest(".tool-output");
+			if (output) outputs.add(output);
+		}
+		for (const output of root.querySelectorAll?.(".tool-output") ?? [])
+			outputs.add(output);
+	}
+	for (const output of outputs) output.scrollTop = output.scrollHeight;
 }
 
 function hydratePierreDiffs(roots) {

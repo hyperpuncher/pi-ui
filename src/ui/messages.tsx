@@ -185,7 +185,7 @@ function renderCodeOutput(message: AppMessage) {
 
 function renderPlainOutput(text: string) {
 	return (
-		<div class="tool-output border-border/60 max-h-80 overflow-auto rounded-md border-t bg-[var(--code-background)]">
+		<div class="tool-output border-border/60 max-h-[calc(5lh+1px)] overflow-hidden rounded-md border-t bg-[var(--code-background)] leading-[22px]">
 			{renderPendingToolOutput(text, "pl-2")}
 		</div>
 	);
