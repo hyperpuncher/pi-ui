@@ -345,7 +345,7 @@ export function renderMessage(message: AppMessage): string {
 				class="message message-narrative message-assistant markdown-content w-full self-start"
 				data-message-id={message.id}
 			>
-				{message.renderedHtml ? (
+				{message.renderedHtml !== undefined ? (
 					<div>{message.renderedHtml}</div>
 				) : (
 					<p class="m-0 whitespace-pre-wrap" safe>
@@ -363,7 +363,7 @@ export function renderMessage(message: AppMessage): string {
 				class="message message-narrative message-thought markdown-content text-muted-foreground w-full self-start text-sm italic"
 				data-message-id={message.id}
 			>
-				{message.renderedHtml ? (
+				{message.renderedHtml !== undefined ? (
 					<div>{message.renderedHtml}</div>
 				) : (
 					<p class="m-0 whitespace-pre-wrap" safe>
@@ -411,7 +411,7 @@ export function renderMessage(message: AppMessage): string {
 						<span class="ml-2 text-xs">click to expand</span>
 					</summary>
 					<div class="markdown-content mt-3">
-						{message.renderedHtml ? (
+						{message.renderedHtml !== undefined ? (
 							<div>{message.renderedHtml}</div>
 						) : (
 							<p class="m-0 whitespace-pre-wrap" safe>

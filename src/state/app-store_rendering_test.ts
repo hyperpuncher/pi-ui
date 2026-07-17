@@ -59,7 +59,8 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 		assertEqual(order.join(","), "tool,markdown");
 		assertEqual(summary.fullPatchCount, 2);
 		assertEqual(summary.targetedPatchCount, 2);
-		assertIncludes(summary.patches[1], "&lt;img src=x onerror=&#34;alert(1)&#34;>");
+		assertIncludes(summary.patches[1], "<strong>answer</strong>");
+		assertNotIncludes(summary.patches[1], "<img");
 		assertIncludes(
 			summary.patches[1],
 			"&lt;script&gt;alert(&quot;tool&quot;)&lt;/script&gt;",
@@ -127,10 +128,15 @@ Deno.test("loading older pages enqueues only newly revealed messages", async () 
 		},
 	});
 	state.replaceMessages(
-		Array.from({ length: 100 }, (_, index) => markdownMessage(`message ${index}`)),
+		Array.from({ length: 100 }, (_, index) =>
+			markdownMessage(`**message ${index}**`),
+		),
 	);
 	await waitFor(() => renderCount === 50);
 	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
+	const immediatePage = state.renderer.renderMessagesElement();
+	assertIncludes(immediatePage, "<strong>message 0</strong>");
+	assertNotIncludes(immediatePage, "**message 0**");
 	await waitFor(() => renderCount === 100);
 	assertEqual(state.loadOlderMessages({ broadcast: false }), false);
 	assertEqual(renderCount, 100);
@@ -254,15 +260,18 @@ Deno.test("completed background transcript enhances only after activation", asyn
 	assertEqual(enhancementCount, 1);
 });
 
-Deno.test("enhancement errors retain the safe fallback", async () => {
+Deno.test("enhancement errors retain the rendered Markdown fallback", async () => {
 	const state = createState({
 		renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
 	});
-	state.replaceMessages([markdownMessage("<b>fallback</b>")]);
+	state.replaceMessages([markdownMessage("<b>**fallback**</b>")]);
 	await settleMicrotasks();
-	assertEqual(state.messages[0].renderedHtml, undefined);
+	assertEqual(state.messages[0].renderedHtml, "<p><strong>fallback</strong></p>\n");
 	assertEqual(state.messages[0].presentationState, "plain");
-	assertIncludes(state.renderer.renderMessagesElement(), "&lt;b>fallback&lt;/b>");
+	assertIncludes(
+		state.renderer.renderMessagesElement(),
+		"<p><strong>fallback</strong></p>",
+	);
 });
 
 Deno.test("nested state updates commit one fat morph and one signal patch", async () => {

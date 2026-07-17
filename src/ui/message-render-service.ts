@@ -77,7 +77,7 @@ export class MessageRenderService {
 	}
 
 	projectMessages(messages: readonly TranscriptMessage[]): AppMessage[] {
-		return messages.map((message) => ({ ...message, ...this.ensure(message.id) }));
+		return messages.map((message) => this.project(message));
 	}
 	renderMessagesElement(): string {
 		return renderMessages(
@@ -204,7 +204,6 @@ export class MessageRenderService {
 					currentValue.presentationVersion === version
 				) {
 					currentValue.presentationState = "plain";
-					currentValue.renderedHtml = undefined;
 					releaseMarkdownStreamingState(id);
 				}
 				console.warn(`Failed to enhance message ${id}`, error);
@@ -237,7 +236,17 @@ export class MessageRenderService {
 		this.broadcast(message);
 	}
 	private project(message: TranscriptMessage): AppMessage {
-		return { ...message, ...this.ensure(message.id) };
+		const presentation = this.ensure(message.id);
+		if (
+			rendersMarkdown(message.role) &&
+			message.text.trim() &&
+			presentation.renderedHtml === undefined
+		) {
+			// Static messages need Markdown structure immediately. Final syntax
+			// highlighting may remain queued, but plain source must never flash.
+			presentation.renderedHtml = renderMarkdownStreaming(message.text);
+		}
+		return { ...message, ...presentation };
 	}
 	private broadcast(message: TranscriptMessage): void {
 		const projected = this.project(message);

@@ -126,7 +126,8 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.transcriptReplaced(activeIds, enhancementIds);
 	}
 	scheduleEnhancements(ids: readonly string[]): void {
-		for (const id of ids) this.pendingEnhancements.add(id);
+		// Newly revealed messages nearest the retained scroll anchor finish first.
+		for (const id of ids.toReversed()) this.pendingEnhancements.add(id);
 		this.requestCommit();
 	}
 	enhanceMessage(id: string): boolean {
