@@ -111,6 +111,7 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 		{ display: "ctrl D", native: "CmdOrCtrl+D", keys: ["d"] },
 	);
 	assertStringIncludes(promptBox, "!evt.shiftKey && !evt.altKey");
+	assertEquals(promptBox.match(/\$prompt = '';/g)?.length, 2);
 	assertEquals(/@post|document\.|window\./.test(catalog), false);
 	assertStringIncludes(dialogs, "export function openWorkspace()");
 	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.openWorkspace()");

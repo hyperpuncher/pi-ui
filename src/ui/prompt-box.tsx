@@ -106,6 +106,7 @@ export function renderPromptBox(
 							evt.altKey
 								? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
 								: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
+							$prompt = '';
 						};
 					`}
 				></textarea>
@@ -534,6 +535,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 			data-on:click="
 				window.piUi.messageScroll.scrollBottom();
 				@post('/prompt', { filterSignals: { include: /^prompt$/ } });
+				$prompt = '';
 			"
 			data-tooltip="Send"
 			data-tooltip-delay

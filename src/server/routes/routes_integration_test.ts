@@ -135,6 +135,15 @@ Deno.test("host-dependent actions return 503 when runtime is absent", async () =
 	assertEquals(response.status, 503);
 });
 
+Deno.test("accepted prompts do not clear a newer frontend draft", async () => {
+	const router = createRouter(fakeContext());
+	for (const path of ["/prompt", "/prompt/follow-up"]) {
+		const response = await router.fetch(signalRequest(path, { prompt: "hello" }));
+		assertEquals(response.status, 204);
+		assertEquals(await response.text(), "");
+	}
+});
+
 Deno.test("display refresh updates presentation owner directly", async () => {
 	let measured = 0;
 	const context = fakeContext({

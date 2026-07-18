@@ -12,11 +12,11 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 		const host = requireHost(context);
 		if (prompt.trim() === "/tree") {
 			host.openTree();
-			return datastarResponse(treeOpenEvents(context, { prompt: "" }));
+			return datastarResponse(treeOpenEvents(context));
 		}
 		if (!(await host.prompt(prompt)))
 			throw new RouteError(409, "Prompt was not accepted.");
-		return signalsResponse({ prompt: "" });
+		return datastarResponse();
 	});
 
 	router.register("POST", endpoints.promptFollowUp, async (request, context) => {
@@ -28,7 +28,7 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 		) {
 			throw new RouteError(409, "Prompt was not accepted.");
 		}
-		return signalsResponse({ prompt: "" });
+		return datastarResponse();
 	});
 
 	router.register("POST", endpoints.promptDequeue, (_request, context) => {
