@@ -3,6 +3,7 @@
 		".agents/**",
 		"node_modules/**",
 		"static/app.css",
+		"static/build/**",
 		"static/vendor/**"
 	]
 }

@@ -88,6 +88,9 @@ jobs:
 
                   echo "LAUFEY_DEV_DIR=$RUNNER_TEMP/laufey" >> "$GITHUB_ENV"
 
+            - name: Build client
+              run: deno task client:build
+
             - name: Build CSS
               run: deno task css:build
 

@@ -9,6 +9,7 @@
 		"node_modules/**",
 		"public/**",
 		"static/app.css",
+		"static/build/**",
 		"static/vendor/**",
 	],
 }

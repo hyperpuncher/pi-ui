@@ -28,6 +28,11 @@ interface PiUiNamespace {
 		handleInput(): void;
 		handleKeydown(event: KeyboardEvent, entries: readonly string[]): boolean;
 	};
+	workspaceReview: {
+		isOpen(): boolean;
+		setOpen(open: boolean): void;
+		toggle(): void;
+	};
 	shouldAbortOnEscape(event: KeyboardEvent): boolean;
 }
 

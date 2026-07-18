@@ -16,11 +16,14 @@ import { formatHomePath } from "../utils/workspace.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { renderSlashPicker } from "./pickers.tsx";
 
-export function renderPromptBox(state: AppRenderSnapshot): string {
+export function renderPromptBox(
+	state: AppRenderSnapshot,
+	reviewAvailable = false,
+): string {
 	return (
 		<div
 			id="prompt-box"
-			class="fixed inset-x-4 bottom-6 z-10 mx-auto max-w-[54rem] overflow-visible text-sm"
+			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-[54rem] overflow-visible text-sm"
 		>
 			<div
 				id="prompt-slash-popover"
@@ -110,7 +113,7 @@ export function renderPromptBox(state: AppRenderSnapshot): string {
 					class="flex flex-wrap items-center justify-between gap-2 p-0"
 					data-align="end"
 				>
-					{renderPromptToolbar(state)}
+					{renderPromptToolbar(state, reviewAvailable)}
 					<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
 						{renderPromptStatus(state)}
 						{renderWorkspacePicker(state)}
@@ -244,12 +247,16 @@ function QueueIcon() {
 
 type PromptToolbarAction =
 	| "commands"
+	| "review"
 	| "new-chat"
 	| "new-temporary-chat"
 	| "files"
 	| "sessions";
 
-export function renderPromptToolbar(state: AppRenderSnapshot): string {
+export function renderPromptToolbar(
+	state: AppRenderSnapshot,
+	reviewAvailable = false,
+): string {
 	return (
 		<div
 			id="prompt-toolbar"
@@ -281,6 +288,15 @@ export function renderPromptToolbar(state: AppRenderSnapshot): string {
 			>
 				<TemporaryChatIcon />
 			</PromptToolbarButton>
+			<PromptToolbarButton
+				label="Changes"
+				action="review"
+				shortcut="ctrl D"
+				variant="ghost"
+				unavailable={!reviewAvailable}
+			>
+				<DiffIcon />
+			</PromptToolbarButton>
 		</div>
 	) as string;
 }
@@ -290,6 +306,7 @@ function PromptToolbarButton(props: {
 	action: PromptToolbarAction;
 	shortcut?: string;
 	variant?: "primary" | "secondary" | "ghost";
+	unavailable?: boolean;
 	pressed?: boolean;
 	children: JSX.Element;
 }) {
@@ -297,7 +314,15 @@ function PromptToolbarButton(props: {
 		<button
 			class="btn leading-none"
 			data-variant={props.variant ?? "ghost"}
+			data-pi-ui-action={props.action}
 			aria-pressed={props.pressed ? "true" : undefined}
+			inert={props.unavailable}
+			style={props.unavailable ? "visibility: hidden" : undefined}
+			data-preserve-attr={
+				props.action === "review"
+					? "aria-pressed data-variant inert style"
+					: undefined
+			}
 			data-size="icon-sm"
 			type="button"
 			data-indicator:_session-loading={
@@ -342,6 +367,14 @@ function CommandIcon() {
 	return (
 		<Icon>
 			<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+		</Icon>
+	);
+}
+
+function DiffIcon() {
+	return (
+		<Icon>
+			<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2zm3-12h6m-3 3V7M9 17h6" />
 		</Icon>
 	);
 }
@@ -406,6 +439,7 @@ function isSessionChangingAction(action: PromptToolbarAction): boolean {
 
 function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
 	if (action === "commands") return openCommandPaletteAction();
+	if (action === "review") return "window.piUi.workspaceReview.toggle()";
 	if (action === "new-chat") return newChatAction();
 	if (action === "new-temporary-chat") return newTemporaryChatAction();
 	if (action === "sessions") return openSessionDialogAction();
@@ -418,6 +452,12 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 		return `if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'k') {
 			evt.preventDefault();
 			${openCommandPaletteAction()}
+		}`;
+	}
+	if (action === "review") {
+		return `if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && !evt.altKey && evt.key.toLowerCase() === 'd') {
+			evt.preventDefault();
+			window.piUi.workspaceReview.toggle();
 		}`;
 	}
 	if (action === "new-chat") {

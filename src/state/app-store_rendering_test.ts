@@ -108,7 +108,6 @@ Deno.test("session loading clears after fallback and before enhancement", async 
 		if (!(loading >= 0 && fallback > loading && idle > fallback)) {
 			throw new Error("Expected loading → fallback → idle ordering");
 		}
-
 		resolveEnhancement?.("<p>enhancement ready</p>");
 		const enhanced = await readUntil(reader, (text) =>
 			text.includes("enhancement ready"),

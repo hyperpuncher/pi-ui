@@ -1,0 +1,12 @@
+{
+	"extends": "./deno.json",
+	"lock": false,
+	"compilerOptions": {
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"types": ["./src/app.d.ts"]
+	},
+	"imports": {
+		"@pierre/diffs": "npm:@pierre/diffs@^1.2.12",
+		"@pierre/trees": "npm:@pierre/trees@1.0.0-beta.5"
+	}
+}

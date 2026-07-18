@@ -28,7 +28,7 @@ export function renderMessages(
 	return (
 		<main
 			id="messages"
-			class="min-h-0 overflow-y-auto mask-b-from-95% px-[max(1rem,calc((100vw-52rem)/2))] pt-24 pb-48"
+			class="min-h-0 overflow-y-auto mask-b-from-95% px-4 pt-24 pb-48 sm:px-6 xl:px-8"
 			style={sessionTransitionVisible ? "display: none" : undefined}
 			data-show="!($_sessionLoading || $sessionTransitionVisible)"
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}

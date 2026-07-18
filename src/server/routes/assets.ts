@@ -1,5 +1,6 @@
 import { renderPage } from "../../ui/page.tsx";
 import { RouteError, type ExactRouter } from "../router.ts";
+import { readWorkspaceReviewAvailability } from "../workspace-review.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
@@ -7,10 +8,17 @@ export function registerAssetRoutes(router: ExactRouter<RouteContext>): void {
 	router.register(
 		"GET",
 		endpoints.root,
-		(_request, context) =>
-			new Response(renderPage(context.store.snapshot()), {
-				headers: { "content-type": "text/html; charset=utf-8" },
-			}),
+		async (_request, context) =>
+			new Response(
+				renderPage(
+					context.store.snapshot(),
+					await readWorkspaceReviewAvailability(
+						context.resources.host?.getWorkspacePath() ??
+							context.store.workspacePath,
+					),
+				),
+				{ headers: { "content-type": "text/html; charset=utf-8" } },
+			),
 	);
 	router.register(
 		"GET",

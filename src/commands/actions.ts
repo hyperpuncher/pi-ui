@@ -55,6 +55,7 @@ export const commandActions = {
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),
 	"change-workspace": openWorkspaceDialogAction(true),
+	"toggle-review": "window.piUi.workspaceReview.toggle()",
 	login: authDialogAction("login"),
 	logout: authDialogAction("logout"),
 } satisfies Record<AppCommandId, string>;

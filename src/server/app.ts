@@ -19,6 +19,7 @@ import { registerPromptRoutes } from "./routes/prompt.ts";
 import { registerSessionRoutes } from "./routes/sessions.ts";
 import { registerStreamRoutes } from "./routes/stream.ts";
 import { registerTreeRoutes } from "./routes/tree.ts";
+import { registerWorkspaceReviewRoutes } from "./routes/workspace-review.ts";
 import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 
@@ -89,6 +90,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerPromptRoutes(router);
 	registerSessionRoutes(router);
 	registerWorkspaceRoutes(router);
+	registerWorkspaceReviewRoutes(router);
 	registerModelRoutes(router);
 	registerAuthRoutes(router);
 	registerTreeRoutes(router);

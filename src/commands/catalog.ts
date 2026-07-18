@@ -9,6 +9,7 @@ export type AppCommandId =
 	| "cycle-thinking"
 	| "cycle-thinking-backward"
 	| "change-workspace"
+	| "toggle-review"
 	| "login"
 	| "logout";
 
@@ -77,6 +78,16 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Cycle thinking backward",
 		description: "Cycle backward through available thinking levels.",
 		shortcut: { display: "alt shift T", native: "Alt+Shift+T", keys: [] },
+	},
+	{
+		id: "toggle-review",
+		title: "Toggle changes",
+		description: "Show or hide the repository diff viewer.",
+		shortcut: {
+			display: "ctrl D",
+			native: "CmdOrCtrl+D",
+			keys: ["d"],
+		},
 	},
 	{
 		id: "login",

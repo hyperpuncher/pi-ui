@@ -36,9 +36,9 @@ export function bindMessageScroll() {
 			updateScrollControl();
 		});
 	});
-	const messages = document.getElementById("messages");
-	if (messages)
-		observer.observe(messages, {
+	const app = document.getElementById("app");
+	if (app)
+		observer.observe(app, {
 			characterData: true,
 			childList: true,
 			subtree: true,
@@ -129,10 +129,12 @@ function hydratePierreDiffs(roots) {
 			...(root.querySelectorAll?.("[data-pierre-diff]") ?? []),
 		];
 		for (const host of hosts) {
-			if (!(host instanceof HTMLElement) || host.shadowRoot) continue;
+			if (!(host instanceof HTMLElement)) continue;
 			const template = host.querySelector('template[shadowrootmode="open"]');
 			if (!(template instanceof HTMLTemplateElement)) continue;
-			host.attachShadow({ mode: "open" }).append(template.content.cloneNode(true));
+			// Pierre may create the shadow root before Datastar inserts its template.
+			const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+			shadow.append(template.content.cloneNode(true));
 			template.remove();
 		}
 	}

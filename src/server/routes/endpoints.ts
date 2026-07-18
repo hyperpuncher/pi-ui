@@ -15,6 +15,7 @@ export const endpoints = {
 	sessionsDelete: "/sessions/delete",
 	sessionsResume: "/sessions/resume",
 	workspaceOpen: "/workspace/open",
+	workspaceReview: "/workspace/review",
 	model: "/model",
 	modelCycle: "/model/cycle",
 	modelsScopeToggle: "/models/scope/toggle",

@@ -23,6 +23,11 @@ window.piUi = {
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
 	pickers: { isFileOpen, isOpen: isPickerOpen },
 	promptHistory,
+	workspaceReview: {
+		isOpen: () => false,
+		setOpen: () => {},
+		toggle: () => {},
+	},
 	shouldAbortOnEscape(event) {
 		return !event.defaultPrevented && !hasOpenDismissible();
 	},

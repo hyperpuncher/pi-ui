@@ -1,4 +1,5 @@
 import { endpoints } from "../server/routes/endpoints.ts";
+import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
@@ -9,8 +10,12 @@ import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
+import { renderWorkspaceReview } from "./workspace-review.tsx";
 
-export function renderPage(state: AppRenderSnapshot): string {
+export function renderPage(
+	state: AppRenderSnapshot,
+	workspaceReview: WorkspaceReviewSnapshot = emptyWorkspaceReview(),
+): string {
 	const initialSignals = JSON.stringify({
 		prompt: "",
 		...projectBackendSignals(state),
@@ -46,6 +51,7 @@ export function renderPage(state: AppRenderSnapshot): string {
 				<script src="/basecoat.js" defer></script>
 				<script type="module" src="/vendor/datastar.js"></script>
 				<script type="module" src="/app/main.js"></script>
+				<script type="module" src="/build/workspace-review.js"></script>
 				{state.debugUi && (
 					<script
 						type="module"
@@ -60,6 +66,7 @@ export function renderPage(state: AppRenderSnapshot): string {
 				data-files-pick-endpoint={endpoints.filesPick}
 				data-files-import-endpoint={endpoints.filesImport}
 				data-display-refresh-endpoint={endpoints.displayRefresh}
+				data-workspace-review-endpoint={endpoints.workspaceReview}
 				data-signals={initialSignals}
 				data-on:dragenter__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 					evt.preventDefault();
@@ -117,20 +124,26 @@ export function renderPage(state: AppRenderSnapshot): string {
 				</div>
 				<div
 					id="app"
-					class="fixed inset-0 grid grid-rows-[minmax(0,1fr)] overflow-hidden"
+					class="fixed inset-0 grid grid-cols-1 overflow-hidden"
 					data-init="@get('/stream')"
 				>
-					{renderMessages(
-						state.messages,
-						state.emptyChatHint,
-						state.hasOlderMessages,
-						state.sessions,
-						state.sessionTransition.status !== "idle",
-						state.models.some((model) => model.configured),
-					)}
-					{renderSessionTransition(state)}
-
-					{renderPromptBox(state)}
+					<section
+						id="chat-pane"
+						class="relative grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+						aria-label="Chat"
+					>
+						{renderMessages(
+							state.messages,
+							state.emptyChatHint,
+							state.hasOlderMessages,
+							state.sessions,
+							state.sessionTransition.status !== "idle",
+							state.models.some((model) => model.configured),
+						)}
+						{renderSessionTransition(state)}
+						{renderPromptBox(state, workspaceReview.isGitRepository)}
+					</section>
+					{renderWorkspaceReview(workspaceReview)}
 				</div>
 
 				{renderCommandMenu()}
@@ -267,4 +280,13 @@ export function renderPage(state: AppRenderSnapshot): string {
 			</body>
 		</html>
 	)) as string;
+}
+
+function emptyWorkspaceReview(): WorkspaceReviewSnapshot {
+	return {
+		changes: [],
+		isGitRepository: false,
+		patch: "",
+		revision: "non-git",
+	};
 }
