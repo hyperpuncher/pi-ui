@@ -10,7 +10,7 @@ import type {
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
-import { loaderIcon } from "./prompt-box.tsx";
+import { loaderIcon } from "./prompt-status.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 

@@ -18,15 +18,15 @@ import {
 	renderSlashPicker,
 	renderWorkspaceDialogMenu,
 } from "./pickers.tsx";
+import { renderPromptAction } from "./prompt-action.tsx";
+import { renderPromptQueue } from "./prompt-box.tsx";
 import {
 	renderModelPicker,
-	renderPromptAction,
-	renderPromptQueue,
-	renderPromptStatus,
-	renderPromptToolbar,
 	renderThinkingPicker,
 	renderWorkspacePicker,
-} from "./prompt-box.tsx";
+} from "./prompt-pickers.tsx";
+import { renderPromptStatus } from "./prompt-status.tsx";
+import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 

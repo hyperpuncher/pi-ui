@@ -10,7 +10,11 @@ const typescriptActionSources = [
 	"../../ui/messages.tsx",
 	"../../ui/page.tsx",
 	"../../ui/pickers.tsx",
+	"../../ui/prompt-action.tsx",
 	"../../ui/prompt-box.tsx",
+	"../../ui/prompt-pickers.tsx",
+	"../../ui/prompt-status.tsx",
+	"../../ui/prompt-toolbar.tsx",
 	"../../ui/session-transition.tsx",
 	"../../ui/tree-picker.tsx",
 ];
@@ -73,11 +77,24 @@ Deno.test("each literal browser action references a registered endpoint", async 
 });
 
 Deno.test("dynamic and rendered endpoint references remain explicit", async () => {
-	const [authDialog, page, promptBox, catalog, dialogs, main] = await Promise.all(
+	const [
+		authDialog,
+		page,
+		promptAction,
+		promptBox,
+		promptPickers,
+		promptToolbar,
+		catalog,
+		dialogs,
+		main,
+	] = await Promise.all(
 		[
 			"../../ui/auth-dialog.tsx",
 			"../../ui/page.tsx",
+			"../../ui/prompt-action.tsx",
 			"../../ui/prompt-box.tsx",
+			"../../ui/prompt-pickers.tsx",
+			"../../ui/prompt-toolbar.tsx",
 			"../../commands/catalog.ts",
 			"../../../static/app/dialogs.js",
 			"../../main.ts",
@@ -113,12 +130,12 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 		appCommandCatalog.find((command) => command.id === "toggle-review")?.shortcut,
 		{ display: "ctrl D", native: "CmdOrCtrl+D", keys: ["d"] },
 	);
-	assertStringIncludes(promptBox, "!evt.shiftKey && !evt.altKey");
-	assertEquals(promptBox.match(/\$prompt = '';/g)?.length, 2);
+	assertStringIncludes(promptToolbar, "!evt.shiftKey && !evt.altKey");
+	assertEquals(`${promptAction}\n${promptBox}`.match(/\$prompt = '';/g)?.length, 2);
 	assertEquals(/@post|document\.|window\./.test(catalog), false);
 	assertStringIncludes(dialogs, "export function openWorkspace()");
 	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.openWorkspace()");
-	assertStringIncludes(promptBox, "openWorkspaceDialogAction()");
+	assertStringIncludes(promptPickers, "openWorkspaceDialogAction()");
 	assertStringIncludes(main, '"window.piUi.dialogs.openWorkspace()"');
 });
 

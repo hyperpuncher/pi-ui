@@ -9,7 +9,7 @@ import {
 	renderSlashPicker,
 	renderWorkspaceDialogMenu,
 } from "./pickers.tsx";
-import { renderModelPicker, renderThinkingPicker } from "./prompt-box.tsx";
+import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
 
 Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	const html = renderSlashPicker({
