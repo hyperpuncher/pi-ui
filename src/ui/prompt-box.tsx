@@ -18,7 +18,7 @@ export function renderPromptBox(
 	return (
 		<div
 			id="prompt-box"
-			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-[54rem] overflow-visible text-sm"
+			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-[var(--pi-prompt-max-width)] overflow-visible text-sm"
 		>
 			<div
 				id="prompt-slash-popover"
@@ -38,7 +38,7 @@ export function renderPromptBox(
 			</div>
 			{renderPromptQueue(state)}
 			<div
-				class="input-group bg-card text-card-foreground ring-foreground/10 focus-within:ring-foreground/10 relative z-10 overflow-visible rounded-xl border-transparent p-3 text-sm shadow-lg ring-1 transition-none focus-within:border-transparent focus-within:ring-1"
+				class="input-group pi-raised-surface pi-prompt-surface relative z-10 overflow-visible p-3 text-sm transition-none"
 				data-orientation="vertical"
 			>
 				<textarea
@@ -186,7 +186,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 	];
 	if (items.length === 0) return "";
 	return (
-		<section class="prompt-queue-surface bg-card text-card-foreground ring-foreground/10 pointer-events-auto -mb-3 w-full translate-y-0 overflow-hidden rounded-xl border border-transparent opacity-100 shadow-md ring-1 transition-[opacity,translate] duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity motion-reduce:duration-100 starting:translate-y-full starting:opacity-0">
+		<section class="prompt-queue-surface pi-raised-surface pi-prompt-surface pointer-events-auto -mb-3 w-full translate-y-0 overflow-hidden border border-transparent opacity-100 transition-[opacity,translate] duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity motion-reduce:duration-100 starting:translate-y-full starting:opacity-0">
 			<header class="flex h-8 items-center justify-between gap-3 px-3">
 				<div class="text-muted-foreground flex min-w-0 items-center gap-2 text-xs font-medium">
 					<span class="text-muted-foreground">

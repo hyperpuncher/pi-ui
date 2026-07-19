@@ -47,7 +47,7 @@ export function renderWorkspaceReviewHistory({
 		const button = document.createElement("button");
 		button.type = "button";
 		button.className =
-			"hover:bg-muted/60 aria-pressed:bg-muted flex w-full min-w-0 flex-col rounded-md px-2 py-1.5 text-left";
+			"pi-selected-surface hover:bg-muted/60 flex w-full min-w-0 flex-col rounded-md px-2 py-1.5 text-left";
 		button.setAttribute("aria-pressed", String(selected));
 		button.title = commit.subject;
 		button.addEventListener("click", () => onSelectCommit(commit.hash));
@@ -154,7 +154,7 @@ function renderCommitFiles(
 		const button = document.createElement("button");
 		button.type = "button";
 		button.className =
-			"hover:bg-muted/60 aria-pressed:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-[11px]";
+			"pi-selected-surface hover:bg-muted/60 flex w-full min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-[11px]";
 		button.setAttribute("aria-pressed", String(selectedPath === change.path));
 		button.title = change.path;
 		button.addEventListener("click", () => onSelect(hash, change.path));

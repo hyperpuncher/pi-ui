@@ -10,8 +10,27 @@ import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
 const pierreUnsafeCSS = `
 	:host {
 		--diffs-bg: var(--code-background) !important;
+		--diffs-gap-style: 0 solid transparent;
 		--diffs-light-bg: var(--code-background) !important;
 		--diffs-dark-bg: var(--code-background) !important;
+	}
+
+	:host-context(.pi-tool-output-surface) {
+		--diffs-bg: transparent !important;
+		--diffs-light-bg: transparent !important;
+		--diffs-dark-bg: transparent !important;
+	}
+
+	[data-additions-count] {
+		order: 1;
+	}
+
+	[data-deletions-count] {
+		order: 2;
+	}
+
+	[data-metadata] slot {
+		order: 3;
 	}
 
 	[data-code] {
@@ -117,7 +136,7 @@ export async function renderPierreDiff(patch: string): Promise<string | undefine
 			themeType: "system",
 			disableFileHeader: true,
 			diffStyle: "unified",
-			diffIndicators: "bars",
+			diffIndicators: "none",
 			overflow: "wrap",
 			hunkSeparators: "simple",
 			lineHoverHighlight: "both",

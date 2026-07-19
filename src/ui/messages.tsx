@@ -36,7 +36,7 @@ export function renderMessages(
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
-			<div class="messages-stack mx-auto w-full max-w-[52rem]">
+			<div class="messages-stack mx-auto w-[calc(100%-2rem)] max-w-[var(--pi-messages-max-width)]">
 				{messages.length === 0
 					? renderEmptyMessages(emptyHint, sessions.slice(0, 3), authenticated)
 					: messages.map((message, index) => (
@@ -160,7 +160,7 @@ function renderOlderMessagesTrigger() {
 
 function renderPreOutput(text: string) {
 	return (
-		<div class="border-border/60 rounded-t-md border-t bg-[var(--code-background)] p-3">
+		<div class="pi-tool-output-surface p-3">
 			<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-md bg-transparent text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
 				<code safe>{text}</code>
 			</pre>
@@ -170,7 +170,7 @@ function renderPreOutput(text: string) {
 
 function renderDiffOutput(message: AppMessage) {
 	return (
-		<div class="diff-output border-border/60 max-h-96 overflow-auto rounded-md border-t bg-[var(--code-background)] [&_.pierre-diff]:block [&_.pierre-diff]:min-w-0 [&_.pierre-diff]:overflow-hidden [&_.pierre-diff]:rounded-md [&_.pierre-diff+_.pierre-diff]:mt-3 [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+		<div class="diff-output pi-tool-output-surface max-h-96 overflow-auto [&_.pierre-diff]:block [&_.pierre-diff]:min-w-0 [&_.pierre-diff]:overflow-hidden [&_.pierre-diff]:rounded-md [&_.pierre-diff+_.pierre-diff]:mt-3 [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
 			{message.renderedHtml ??
 				renderPendingToolOutput(stripDiffMetadata(message.text), "pl-13")}
 		</div>
@@ -179,7 +179,7 @@ function renderDiffOutput(message: AppMessage) {
 
 function renderCodeOutput(message: AppMessage) {
 	return (
-		<div class="code-output border-border/60 max-h-80 overflow-auto rounded-md border-t bg-[var(--code-background)] [&_.pierre-code]:block [&_.pierre-code]:min-w-0 [&_.pierre-code]:overflow-hidden [&_.pierre-code]:rounded-md [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+		<div class="code-output pi-tool-output-surface max-h-80 overflow-auto [&_.pierre-code]:block [&_.pierre-code]:min-w-0 [&_.pierre-code]:overflow-hidden [&_.pierre-code]:rounded-md [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
 			{message.renderedHtml ?? renderPendingCodeOutput(message.text)}
 		</div>
 	);
@@ -187,7 +187,7 @@ function renderCodeOutput(message: AppMessage) {
 
 function renderPlainOutput(text: string) {
 	return (
-		<div class="tool-output border-border/60 max-h-[calc(5lh+1px)] overflow-hidden rounded-md border-t bg-[var(--code-background)] leading-[22px]">
+		<div class="tool-output pi-tool-output-surface max-h-[calc(5lh+1px)] overflow-hidden leading-[22px]">
 			{renderPendingToolOutput(text, "pl-2")}
 		</div>
 	);
@@ -195,7 +195,7 @@ function renderPlainOutput(text: string) {
 
 function renderPendingCodeOutput(text: string) {
 	return (
-		<pre class="text-muted-foreground m-0 bg-[var(--code-background)] pr-3 pl-2 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap">
+		<pre class="text-muted-foreground m-0 bg-transparent pr-3 pl-2 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap">
 			<code>{renderInlineBash(text)}</code>
 		</pre>
 	);
@@ -205,7 +205,7 @@ function renderPendingToolOutput(text: string, paddingClass: string) {
 	return (
 		<pre
 			class={[
-				"text-muted-foreground m-0 bg-[var(--code-background)] pr-3 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap",
+				"text-muted-foreground m-0 bg-transparent pr-3 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap",
 				paddingClass,
 			]}
 		>
@@ -420,40 +420,27 @@ export function renderMessage(message: AppMessage): string {
 
 	const title = message.title ?? "Tool";
 	const hasToolBody = message.text.trim().length > 0;
-	const stateClass =
-		message.state === "error" ? "border-destructive/40" : "border-border/60";
-	const dotClass =
-		message.state === "running"
-			? "bg-muted-foreground animate-pulse"
-			: message.state === "error"
-				? "bg-destructive"
-				: "bg-emerald-500";
+	const statusClass =
+		message.state === "error" ? "pi-tool-status-error" : "pi-tool-status-success";
 	return (
 		<article
-			class={[
-				"message message-tool bg-muted/40 dark:bg-muted/55 w-full self-start overflow-hidden rounded-md border",
-				stateClass,
-			]}
+			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
 		>
-			<header
-				class={[
-					"flex items-start gap-2 px-3 py-2 font-mono text-sm",
-					hasToolBody ? "" : "",
-				]}
-			>
-				<span class="flex h-[18px] shrink-0 items-center">
-					<span class={["size-1.5 rounded-full", dotClass]} />
-				</span>
+			<header class="flex min-h-[18px] items-start gap-2 font-mono text-sm">
+				{message.state === "running" ? (
+					<span class="pi-tool-state-dot pi-tool-running-indicator">
+						{loaderIcon()}
+					</span>
+				) : (
+					<span
+						class={["pi-tool-state-dot pi-tool-status-ball", statusClass]}
+					/>
+				)}
 				<span class="min-w-0 flex-1 leading-[18px] font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
 				</span>
-				{message.state === "running" ? (
-					<span class="text-muted-foreground ml-auto inline-flex h-[18px] shrink-0 items-center gap-1.5 text-xs font-normal">
-						{loaderIcon()}
-						{message.meta && <span safe>{message.meta}</span>}
-					</span>
-				) : message.meta ? (
+				{message.meta ? (
 					<span
 						class="text-muted-foreground ml-auto inline-flex h-[18px] shrink-0 items-center text-xs font-normal"
 						safe

@@ -124,12 +124,12 @@ export function renderPage(
 				</div>
 				<div
 					id="app"
-					class="fixed inset-0 grid grid-cols-1 overflow-hidden"
+					class="pi-workspace-canvas fixed inset-0 grid grid-cols-1 overflow-hidden"
 					data-init="@get('/stream')"
 				>
 					<section
 						id="chat-pane"
-						class="relative grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+						class="pi-raised-surface absolute grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
 						aria-label="Chat"
 					>
 						{renderMessages(

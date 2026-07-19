@@ -18,6 +18,37 @@
 		--message-tool-gap: 1.25rem;
 		--message-tool-narrative-gap: 1rem;
 		--message-thought-assistant-gap: 0.25rem;
+
+		/* Shared workspace geometry */
+		--pi-workspace-gap: 0.75rem;
+		--pi-workspace-inset: 0.4375rem;
+		--pi-workspace-structural-gap: calc(var(--pi-workspace-gap) / 2);
+		--pi-review-toolbar-height: 2.125rem;
+		--pi-resize-handle-thickness: 0.1875rem;
+		--pi-resize-handle-length: 1.75rem;
+
+		/* Width hierarchy */
+		--pi-messages-max-width: 50rem;
+		--pi-prompt-max-width: 54rem;
+
+		/* Materials derived from Basecoat */
+		--pi-prompt-surface: var(--card);
+		--pi-surface-raised: var(--background);
+		--pi-workspace-canvas-background: var(--muted);
+		--pi-surface-raised-foreground: var(--foreground);
+		--pi-surface-subtle: color-mix(in oklab, var(--muted) 35%, transparent);
+		--pi-control-well: color-mix(in oklab, var(--muted) 72%, var(--border));
+		--pi-surface-edge: color-mix(in oklab, var(--foreground) 9%, transparent);
+		--pi-divider-handle: color-mix(
+			in oklab,
+			var(--muted-foreground) 55%,
+			transparent
+		);
+		--pi-success: var(--color-emerald-600);
+		--pi-success-soft: color-mix(in oklab, var(--pi-success) 12%, transparent);
+		--pi-status-error: oklch(71% 0.194 13.428);
+		--pi-status-success: oklch(76% 0.177 163.223);
+		--pi-timeline-rail-x: 0.625rem;
 	}
 }
 
@@ -34,6 +65,11 @@
 
 	html.dark {
 		--code-background: color-mix(in oklab, var(--muted) 55%, transparent);
+		--pi-control-well: color-mix(in oklab, var(--muted) 45%, var(--background));
+		--pi-prompt-surface: color-mix(in oklab, var(--card) 96%, var(--foreground));
+		--pi-success: var(--color-emerald-400);
+		--pi-surface-raised: var(--card);
+		--pi-workspace-canvas-background: var(--background);
 	}
 
 	html.dark .shiki span,
@@ -47,7 +83,212 @@
 }
 
 @layer components {
-	.diff-output {
+	.pi-workspace-canvas {
+		background: var(--pi-workspace-canvas-background);
+	}
+
+	.pi-raised-surface {
+		@apply shadow-md;
+
+		border: 1px solid var(--pi-surface-edge);
+		border-radius: var(--radius-lg);
+		background: var(--pi-surface-raised);
+		color: var(--pi-surface-raised-foreground);
+	}
+
+	.pi-selected-surface[aria-pressed="true"] {
+		background: var(--muted);
+		box-shadow: none;
+	}
+
+	#chat-pane {
+		inset-block: var(--pi-workspace-inset);
+	}
+
+	#prompt-box .pi-prompt-surface {
+		@apply shadow-lg;
+
+		background: var(--pi-prompt-surface);
+	}
+
+	#prompt-box .input-group:is(:focus, :focus-within) {
+		@apply shadow-lg ring-0;
+
+		border-color: var(--pi-surface-edge);
+		outline: none;
+	}
+
+	#workspace-review {
+		padding: var(--pi-workspace-inset) 0 var(--pi-workspace-inset)
+			var(--pi-workspace-inset);
+	}
+
+	.pi-review-body {
+		grid-template-columns:
+			var(--pi-review-sidebar-width, 17rem) var(--pi-workspace-structural-gap)
+			minmax(0, 1fr);
+	}
+
+	.pi-review-sidebar {
+		padding-block: 0;
+	}
+
+	.pi-review-toolbar {
+		height: var(--pi-review-toolbar-height);
+		margin-inline: var(--pi-workspace-structural-gap);
+	}
+
+	.pi-review-diff-canvas {
+		overflow: hidden;
+		margin-block-end: calc(-1 * var(--pi-workspace-inset));
+		border-radius: var(--radius-lg);
+		background: var(--pi-workspace-canvas-background);
+		clip-path: inset(0 round var(--radius-lg));
+	}
+
+	#review-diff-view {
+		box-sizing: border-box;
+		border-radius: inherit;
+		padding-inline: var(--pi-workspace-structural-gap);
+
+		/* Keep top clearance fixed while widening below the corners for side shadows. */
+		clip-path: shape(
+			from 0 calc(var(--pi-workspace-structural-gap) + var(--radius-lg)),
+			line to var(--pi-workspace-structural-gap)
+				calc(var(--pi-workspace-structural-gap) + var(--radius-lg)),
+			curve to calc(var(--pi-workspace-structural-gap) + var(--radius-lg))
+				var(--pi-workspace-structural-gap) with var(--pi-workspace-structural-gap)
+				var(--pi-workspace-structural-gap),
+			line to calc(100% - var(--pi-workspace-structural-gap) - var(--radius-lg))
+				var(--pi-workspace-structural-gap),
+			curve to calc(100% - var(--pi-workspace-structural-gap))
+				calc(var(--pi-workspace-structural-gap) + var(--radius-lg)) with
+				calc(100% - var(--pi-workspace-structural-gap))
+				var(--pi-workspace-structural-gap),
+			line to 100% calc(var(--pi-workspace-structural-gap) + var(--radius-lg)),
+			line to 100% 100%,
+			line to 0 100%,
+			close
+		);
+	}
+
+	.pi-resize-handle {
+		position: relative;
+		z-index: 2;
+		display: block;
+		width: var(--pi-workspace-gap);
+		height: 100%;
+		cursor: col-resize;
+		touch-action: none;
+		outline: none;
+	}
+
+	#review-git-separator {
+		translate: calc(-1 * var(--pi-workspace-structural-gap)) 0;
+	}
+
+	.pi-resize-handle[data-orientation="horizontal"] {
+		width: 100%;
+		height: var(--pi-workspace-gap);
+		cursor: row-resize;
+	}
+
+	.pi-resize-handle::after {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: var(--pi-resize-handle-thickness);
+		height: var(--pi-resize-handle-length);
+		border-radius: 999px;
+		background: var(--pi-divider-handle);
+		content: "";
+		translate: -50% -50%;
+		transition: background-color 100ms ease-out;
+	}
+
+	.pi-resize-handle[data-orientation="horizontal"]::after {
+		width: var(--pi-resize-handle-length);
+		height: var(--pi-resize-handle-thickness);
+	}
+
+	.pi-resize-handle:is(:hover, :focus-visible, :active)::after,
+	.pi-resizing .pi-resize-handle::after {
+		background: var(--foreground);
+	}
+
+	.pi-resizing :is(#chat-pane, #workspace-review) {
+		transition: none !important;
+	}
+
+	#review-diff-view :is(diffs-container, .pierre-diff, .pierre-code) {
+		@apply shadow-md;
+
+		display: block;
+		overflow: hidden;
+		border: 1px solid var(--pi-surface-edge);
+		border-radius: var(--radius-lg);
+		background: var(--pi-surface-raised);
+	}
+
+	.pi-tool-timeline-item {
+		position: relative;
+		padding-left: 1.75rem;
+	}
+
+	.pi-tool-state-dot {
+		position: absolute;
+		top: 0.5625rem;
+		left: var(--pi-timeline-rail-x);
+		z-index: 1;
+		translate: -50% -50%;
+	}
+
+	.pi-tool-status-ball {
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 999px;
+		background-color: currentColor;
+		background-image: radial-gradient(
+			circle at 35% 30%,
+			oklch(1 0 0 / 0.5),
+			transparent
+		);
+		box-shadow: 0 2px 3px -1px currentColor;
+	}
+
+	.pi-tool-status-success {
+		color: var(--pi-status-success);
+	}
+
+	.pi-tool-status-error {
+		color: var(--pi-status-error);
+	}
+
+	.pi-tool-running-indicator {
+		display: grid;
+		width: 1rem;
+		height: 1rem;
+		place-items: center;
+		border-radius: 999px;
+		background: var(--pi-surface-raised);
+		color: var(--muted-foreground);
+		box-shadow: 0 0 0 0.1875rem var(--pi-surface-raised);
+	}
+
+	.messages-stack > .message-tool:has(+ .message-tool)::after {
+		position: absolute;
+		top: 0.5625rem;
+		bottom: calc(-1 * (var(--message-tool-gap) + 0.5625rem));
+		left: var(--pi-timeline-rail-x);
+		width: 3px;
+		background: var(--code-background);
+		content: "";
+		translate: -50% 0;
+	}
+
+	.pi-tool-output-surface {
+		margin-top: 0.5rem;
+		border-radius: var(--radius-lg);
 		background: var(--code-background);
 	}
 
@@ -287,5 +528,47 @@
 		white-space: pre;
 		text-align: right;
 		text-overflow: clip;
+	}
+
+	@media (max-width: 80rem) {
+		#workspace-review {
+			grid-template-columns: minmax(0, 1fr);
+			padding-right: var(--pi-workspace-inset);
+			background: var(--pi-workspace-canvas-background);
+		}
+
+		#review-git-separator {
+			display: none;
+		}
+
+		.pi-review-body {
+			grid-template-columns:
+				var(--pi-review-sidebar-width, 17rem) var(--pi-workspace-structural-gap)
+				minmax(0, 1fr);
+		}
+
+		.pi-review-toolbar {
+			justify-content: flex-start;
+		}
+
+		.pi-review-controls {
+			margin-left: 1rem;
+		}
+	}
+
+	@media (max-width: 48rem) {
+		#review-branch {
+			display: none !important;
+		}
+
+		.pi-review-controls {
+			margin-left: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.pi-resize-handle::after {
+			transition: none;
+		}
 	}
 }

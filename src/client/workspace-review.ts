@@ -30,6 +30,11 @@ import {
 	showWorkspaceReviewDetailHeader,
 } from "./workspace-review-history.ts";
 import {
+	bindWorkspaceReviewLayout,
+	workspaceGap,
+	workspaceStructuralGap,
+} from "./workspace-review-layout.ts";
+import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
 	reconcileSelection,
@@ -41,15 +46,21 @@ type ReviewItem = CodeViewItem<undefined> & { type: "diff" };
 type DiffLayout = NonNullable<WorkspaceReviewPreferences["layout"]>;
 type CommitView = { detail: WorkspaceCommitDetail; items: ReviewItem[] };
 
+const diffListEndPadding = 10;
 const endpoint = document.body.dataset.workspaceReviewEndpoint ?? "";
 const api = createWorkspaceReviewApi(endpoint);
 const preferences = await api.readPreferences();
 
 const root = requiredElement("workspace-review");
 const app = requiredElement("app");
+const chat = requiredElement("chat-pane");
+const reviewBody = requiredElement("review-body");
 const treeHost = requiredElement("review-file-tree");
 const treeEmpty = requiredElement("review-tree-empty");
 const changesSection = requiredElement("review-changes-section");
+const changesSeparator = requiredElement("review-changes-separator");
+const gitSeparator = requiredElement("review-git-separator");
+const sidebarSeparator = requiredElement("review-sidebar-separator");
 const history = requiredElement("review-history");
 const detailHeader = requiredElement("review-detail-header");
 const diffRoot = requiredElement("review-diff-view");
@@ -85,7 +96,22 @@ const commitCache = new Map<string, CommitView>();
 const commitRequests = new Map<string, Promise<CommitView | undefined>>();
 let workspaceVersion = 0;
 
+const reviewLayout = bindWorkspaceReviewLayout({
+	app,
+	changesSection,
+	changesSeparator,
+	chat,
+	gitSeparator,
+	hasChanges: () => snapshot.changes.length > 0,
+	onCommit: (values) => api.writePreferences({ layout, mode, wrap, ...values }),
+	preferences,
+	reviewBody,
+	root,
+	sidebarSeparator,
+});
+
 const visibility = createVisibility(root, snapshot.isGitRepository, (open) => {
+	reviewLayout.setOpen(open);
 	if (open) {
 		cancelSnapshotPrefetch();
 		connectUpdates("live");
@@ -180,6 +206,7 @@ window.addEventListener(
 		workspace.disconnect();
 		resize.disconnect();
 		theme.disconnect();
+		reviewLayout.cleanUp();
 		tree.cleanUp();
 		viewer?.cleanUp();
 		terminateWorkerPoolSingleton();
@@ -276,7 +303,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 
 function syncChangesSection(): void {
 	const hasChanges = snapshot.changes.length > 0;
-	changesSection.classList.toggle("h-[45%]", hasChanges);
+	reviewLayout.sync();
 	treeHost.style.display = hasChanges ? "block" : "none";
 	treeEmpty.style.display = hasChanges ? "none" : "block";
 }
@@ -513,15 +540,67 @@ function hideDetailHeader(): void {
 
 function viewerOptions(): CodeViewOptions<undefined> {
 	return {
-		diffIndicators: "bars",
-		diffStyle: layout ?? (diffRoot.clientWidth >= 720 ? "split" : "unified"),
+		diffIndicators: "none",
+		diffStyle: effectiveLayout(),
 		hunkSeparators: "simple",
-		layout: { gap: 2, paddingBottom: 8, paddingTop: 0 },
+		itemMetrics: { diffHeaderHeight: 36, paddingBottom: 0, spacing: 0 },
+		layout: {
+			gap: workspaceGap,
+			paddingBottom: diffListEndPadding,
+			paddingTop: workspaceStructuralGap,
+		},
 		lineHoverHighlight: "both",
 		overflow: wrap ? "wrap" : "scroll",
 		stickyHeaders: true,
 		theme: DEFAULT_THEMES,
 		themeType: document.documentElement.classList.contains("dark") ? "dark" : "light",
+		unsafeCSS: `
+			:host {
+				--diffs-bg: var(--pi-surface-raised);
+				--diffs-dark-bg: var(--pi-surface-raised);
+				--diffs-font-family: var(--font-mono);
+				--diffs-gap-block: 0px;
+				--diffs-gap-style: 0 solid transparent;
+				--diffs-header-font-family: var(--font-sans);
+				--diffs-light-bg: var(--pi-surface-raised);
+				--diffs-scrollbar-gutter-override: 0px;
+			}
+
+			[data-diffs-header="default"] {
+				min-height: 36px;
+				padding-inline: 12px;
+			}
+
+			[data-diffs-header="default"] :is([data-title], [data-prev-name]) {
+				font-family: var(--font-mono);
+				font-weight: 500;
+			}
+
+			[data-diffs-header="default"] [data-metadata],
+			[data-diffs-header="default"] [data-additions-count],
+			[data-diffs-header="default"] [data-deletions-count] {
+				font-family: var(--font-mono);
+				font-size: 10px;
+				font-variant-numeric: tabular-nums;
+				font-weight: 500;
+			}
+
+			[data-diffs-header="default"] [data-additions-count] {
+				order: 1;
+			}
+
+			[data-diffs-header="default"] [data-deletions-count] {
+				order: 2;
+			}
+
+			[data-diffs-header="default"] [data-metadata] slot {
+				order: 3;
+			}
+
+			[data-code] {
+				padding-bottom: 0 !important;
+			}
+		`,
 	};
 }
 
@@ -546,9 +625,13 @@ function createVisibility(
 	initiallyAvailable: boolean,
 	onChange: (open: boolean) => void,
 ) {
-	const narrow = matchMedia("(max-width: 80rem)");
 	let available = initiallyAvailable;
+	let hideTimer: ReturnType<typeof setTimeout> | undefined;
 	let open = false;
+	const hide = () => {
+		hideTimer = undefined;
+		if (!open) pane.style.display = "none";
+	};
 	const sync = () => {
 		const button = document.querySelector<HTMLElement>(
 			'[data-pi-ui-action="review"]',
@@ -559,17 +642,22 @@ function createVisibility(
 			button.dataset.variant = open ? "secondary" : "ghost";
 			button.setAttribute("aria-pressed", String(open));
 		}
-		pane.style.display = "grid";
+		if (hideTimer !== undefined) clearTimeout(hideTimer);
+		hideTimer = undefined;
+		if (open) {
+			pane.style.display = "grid";
+			pane.getBoundingClientRect();
+		}
 		pane.style.transform = open ? "translateX(0)" : "translateX(-100%)";
 		pane.style.opacity = open ? "1" : "0";
+		if (!open && pane.style.display !== "none") {
+			hideTimer = setTimeout(
+				hide,
+				matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 160,
+			);
+		}
 		pane.inert = !open;
 		pane.setAttribute("aria-hidden", String(!open));
-		const chat = document.getElementById("chat-pane");
-		if (chat) {
-			const split = open && !narrow.matches;
-			chat.style.width = split ? "50%" : "100%";
-			chat.style.marginLeft = split ? "50%" : "0";
-		}
 	};
 	const setOpen = (next: boolean) => {
 		const wasOpen = open;
@@ -578,11 +666,10 @@ function createVisibility(
 		if (open !== wasOpen) onChange(open);
 	};
 	pane.addEventListener("transitionend", (event) => {
-		if (event.propertyName === "transform" && open) {
-			pane.style.removeProperty("transform");
-		}
+		if (event.propertyName !== "transform") return;
+		if (open) pane.style.removeProperty("transform");
+		else hide();
 	});
-	narrow.addEventListener("change", sync);
 	sync();
 	return {
 		isOpen: () => open,
@@ -601,9 +688,13 @@ function syncModeButtons(): void {
 	selectedButton.setAttribute("aria-pressed", String(mode === "selected"));
 }
 
+function effectiveLayout(): DiffLayout {
+	if (diffRoot.clientWidth < 720) return "unified";
+	return layout ?? "split";
+}
+
 function syncLayoutButtons(): void {
-	const split =
-		(layout ?? (diffRoot.clientWidth >= 720 ? "split" : "unified")) === "split";
+	const split = effectiveLayout() === "split";
 	splitButton.setAttribute("aria-pressed", String(split));
 	stackedButton.setAttribute("aria-pressed", String(!split));
 }
@@ -625,7 +716,7 @@ function showEmpty(message?: string): void {
 }
 
 function writePreferences(): void {
-	api.writePreferences({ layout, mode, wrap });
+	api.writePreferences({ layout, mode, wrap, ...reviewLayout.values() });
 }
 
 function requiredElement(id: string): HTMLElement {
