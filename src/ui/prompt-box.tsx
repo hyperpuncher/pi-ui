@@ -822,6 +822,8 @@ function thinkingDescription(level: AppThinkingLevel): string {
 		case "high":
 			return "Deep reasoning";
 		case "xhigh":
+			return "Extra-high reasoning";
+		case "max":
 			return "Maximum reasoning";
 	}
 }

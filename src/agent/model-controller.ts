@@ -187,5 +187,5 @@ export function modelMatchesPattern(
 }
 
 export function isThinkingLevel(level: string): level is AppThinkingLevel {
-	return ["off", "minimal", "low", "medium", "high", "xhigh"].includes(level);
+	return ["off", "minimal", "low", "medium", "high", "xhigh", "max"].includes(level);
 }

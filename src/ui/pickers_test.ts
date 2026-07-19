@@ -9,7 +9,7 @@ import {
 	renderSlashPicker,
 	renderWorkspaceDialogMenu,
 } from "./pickers.tsx";
-import { renderModelPicker } from "./prompt-box.tsx";
+import { renderModelPicker, renderThinkingPicker } from "./prompt-box.tsx";
 
 Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	const html = renderSlashPicker({
@@ -134,6 +134,16 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	assertStringIncludes(withoutSelection, 'class="mt-1 max-h-70"');
 	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet"');
 	assertStringIncludes(withoutSelection, "max-w-40");
+});
+
+Deno.test("thinking picker describes every supported maximum level", () => {
+	const html = renderThinkingPicker({
+		thinkingLevel: "max",
+		thinkingLevels: ["xhigh", "max"],
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, "Extra-high reasoning");
+	assertStringIncludes(html, "Maximum reasoning");
 });
 
 Deno.test("file picker fragments escape dynamic values and expose list semantics", () => {

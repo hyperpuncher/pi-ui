@@ -28,7 +28,14 @@ export type AppModel = {
 	configured: boolean;
 	scoped: boolean;
 };
-export type AppThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type AppThinkingLevel =
+	| "off"
+	| "minimal"
+	| "low"
+	| "medium"
+	| "high"
+	| "xhigh"
+	| "max";
 export type AppSlashCommand = {
 	name: string;
 	description: string;
