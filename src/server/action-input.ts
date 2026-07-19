@@ -1,5 +1,7 @@
 import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web";
 
+import { isRecord } from "../utils/type-guards.ts";
+
 export class ActionInputError extends Error {
 	readonly status = 400;
 
@@ -70,8 +72,4 @@ export function enumField<const T extends readonly string[]>(
 		throw new ActionInputError(`Invalid ${field}.`);
 	}
 	return value as T[number];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

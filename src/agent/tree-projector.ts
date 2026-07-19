@@ -5,7 +5,7 @@ import type {
 
 import type { AppStore, AppTreeEntry } from "../state/app-store.ts";
 import { formatDateTime } from "../utils/locale.ts";
-import { isRecord } from "./tool-presentation.ts";
+import { isRecord } from "../utils/type-guards.ts";
 
 type TreeState = Pick<AppStore, "setTreeEntries">;
 

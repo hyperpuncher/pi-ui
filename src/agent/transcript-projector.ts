@@ -7,11 +7,11 @@ import {
 
 import type { AppMessageInput } from "../state/app-store.ts";
 import type { TranscriptState } from "../state/transcript-state.ts";
+import { isRecord } from "../utils/type-guards.ts";
 import {
 	compactToolOutput,
 	contentToText,
 	formatToolResult,
-	isRecord,
 	stripAnsi,
 	toolTitle,
 	toolTitleParts,

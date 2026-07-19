@@ -2,6 +2,7 @@ import {
 	maximumDisplayHz,
 	minimumDisplayHz,
 } from "../state/streaming-frame-scheduler.ts";
+import { isRecord } from "../utils/type-guards.ts";
 
 export type DisplayRefreshUpdate = {
 	hz: number;
@@ -19,8 +20,4 @@ export async function readDisplayRefreshUpdate(
 	}
 	if (body.hz < minimumDisplayHz || body.hz > maximumDisplayHz) return undefined;
 	return { hz: body.hz };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
 }

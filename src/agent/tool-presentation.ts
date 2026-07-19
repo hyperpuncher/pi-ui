@@ -1,4 +1,5 @@
 import type { AppMessageTitlePart } from "../state/app-store.ts";
+import { isRecord } from "../utils/type-guards.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 
 const bashPreviewLines = 4;
@@ -337,8 +338,4 @@ export function summarizeValue(value: unknown): string {
 
 export function formatError(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
 }
