@@ -92,7 +92,7 @@ export function renderPromptBox(
 						}
 						if (evt.altKey && evt.key === 'ArrowUp') {
 							evt.preventDefault();
-							@post('/prompt/dequeue', { filterSignals: { include: /^$/ } });
+							@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } });
 						}
 						if (
 							evt.key === 'Enter' &&
@@ -104,8 +104,8 @@ export function renderPromptBox(
 							window.piUi.messageScroll.scrollBottom();
 							if ($prompt.trim() === '/tree') window.piUi.dialogs.openTree();
 							evt.altKey
-								? @post('/prompt/follow-up', { filterSignals: { include: /^prompt$/ } })
-								: @post('/prompt', { filterSignals: { include: /^prompt$/ } });
+								? @post('${endpoints.promptFollowUp}', { filterSignals: { include: /^prompt$/ } })
+								: @post('${endpoints.prompt}', { filterSignals: { include: /^prompt$/ } });
 							$prompt = '';
 						};
 					`}
@@ -205,7 +205,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 				<button
 					type="button"
 					class="text-muted-foreground hover:bg-muted hover:text-foreground -mr-1 flex h-7 items-center gap-2 rounded-md px-2 text-xs transition-colors"
-					data-on:click="@post('/prompt/dequeue', { filterSignals: { include: /^$/ } })"
+					data-on:click={`@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } })`}
 					aria-label="Restore queued messages to the prompt"
 				>
 					<span>Restore</span>
@@ -503,8 +503,8 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 				data-variant="destructive"
 				data-size="icon"
 				type="button"
-				data-on:click="@post('/abort', { filterSignals: { include: /^$/ } })"
-				data-on:keydown__window="if (
+				data-on:click={`@post('${endpoints.abort}', { filterSignals: { include: /^$/ } })`}
+				data-on:keydown__window={`if (
 					evt.key === 'Escape' &&
 					!evt.ctrlKey &&
 					!evt.metaKey &&
@@ -513,8 +513,8 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 					window.piUi.shouldAbortOnEscape(evt)
 				) {
 					evt.preventDefault();
-					@post('/abort', { filterSignals: { include: /^$/ } });
-				}"
+					@post('${endpoints.abort}', { filterSignals: { include: /^$/ } });
+				}`}
 				data-tooltip="Abort"
 				aria-label="Abort"
 			>
@@ -532,11 +532,11 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 			type="button"
 			data-send-trigger
 			data-attr:disabled="$prompt.trim() === ''"
-			data-on:click="
+			data-on:click={`
 				window.piUi.messageScroll.scrollBottom();
-				@post('/prompt', { filterSignals: { include: /^prompt$/ } });
+				@post('${endpoints.prompt}', { filterSignals: { include: /^prompt$/ } });
 				$prompt = '';
-			"
+			`}
 			data-tooltip="Send"
 			data-tooltip-delay
 			aria-label="Send"
@@ -781,7 +781,7 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 									aria-checked={level === current ? "true" : "false"}
 									data-on:click={`
 										$thinkingLevel = ${JSON.stringify(level)};
-										@post('/thinking', { filterSignals: { include: /^thinkingLevel$/ } });
+										@post('${endpoints.thinking}', { filterSignals: { include: /^thinkingLevel$/ } });
 									`}
 								>
 									<span data-ignore data-indicator>
@@ -950,7 +950,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 											data-on:click={`
 												$model = ${JSON.stringify(value)};
 												document.getElementById('model-select-trigger')?.click();
-												@post('/model', { filterSignals: { include: /^model$/ } });
+												@post('${endpoints.model}', { filterSignals: { include: /^model$/ } });
 												requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
 											`}
 										>
@@ -993,7 +993,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 												data-on:click={`
 													evt.stopPropagation();
 													$model = ${JSON.stringify(value)};
-													@post('/models/scope/toggle', { filterSignals: { include: /^model$/ } });
+													@post('${endpoints.modelsScopeToggle}', { filterSignals: { include: /^model$/ } });
 												`}
 											>
 												<svg

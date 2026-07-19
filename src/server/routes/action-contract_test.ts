@@ -4,7 +4,7 @@ import { commandActions } from "../../commands/actions.ts";
 import { appCommandCatalog } from "../../commands/catalog.ts";
 import { endpoints } from "./endpoints.ts";
 
-const browserActionSources = [
+const typescriptActionSources = [
 	"../../commands/actions.ts",
 	"../../ui/auth-dialog.tsx",
 	"../../ui/messages.tsx",
@@ -13,6 +13,10 @@ const browserActionSources = [
 	"../../ui/prompt-box.tsx",
 	"../../ui/session-transition.tsx",
 	"../../ui/tree-picker.tsx",
+];
+
+const browserActionSources = [
+	...typescriptActionSources,
 	"../../../static/app/main.js",
 	"../../../static/app/display-refresh.js",
 	"../../../static/app/file-transfer.js",
@@ -55,12 +59,13 @@ Deno.test("literal action path extraction and validation", () => {
 	assertEquals(unknownActionPaths("@post('/unknown')", registered), ["/unknown"]);
 });
 
+Deno.test("TypeScript write actions use endpoint constants", async () => {
+	const sources = await readActionSources(typescriptActionSources);
+	assertEquals(extractLiteralWriteActionPaths(sources.join("\n")), []);
+});
+
 Deno.test("each literal browser action references a registered endpoint", async () => {
-	const browserActions = await Promise.all(
-		browserActionSources.map((path) =>
-			Deno.readTextFile(new URL(path, import.meta.url)),
-		),
-	);
+	const browserActions = await readActionSources(browserActionSources);
 	assertEquals(
 		unknownActionPaths(browserActions.join("\n"), Object.values(endpoints)),
 		[],
@@ -80,10 +85,8 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	);
 	const renderedCommandActions = Object.values(commandActions).join("\n");
 
-	assertStringIncludes(
-		authDialog,
-		'const action = mode === "login" ? "/auth/login/start" : "/auth/logout"',
-	);
+	assertStringIncludes(authDialog, "endpoints.authLoginStart");
+	assertStringIncludes(authDialog, "endpoints.authLogout");
 	assertStringIncludes(authDialog, "@post('${action}'");
 	assertStringIncludes(page, "data-files-pick-endpoint={endpoints.filesPick}");
 	assertStringIncludes(page, "data-files-import-endpoint={endpoints.filesImport}");
@@ -98,7 +101,7 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(page, "data-init={`@get('${endpoints.sessionsStream}', {");
 	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.toggleSession()");
 
-	for (const authAction of ["/auth/open-login", "/auth/open-logout"]) {
+	for (const authAction of [endpoints.authOpenLogin, endpoints.authOpenLogout]) {
 		assertStringIncludes(
 			browserActionsFor(`${authDialog}\n${renderedCommandActions}`, authAction),
 			"filterSignals: { include: /^$/ }",
@@ -118,6 +121,17 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(promptBox, "openWorkspaceDialogAction()");
 	assertStringIncludes(main, '"window.piUi.dialogs.openWorkspace()"');
 });
+
+function extractLiteralWriteActionPaths(source: string): string[] {
+	const paths = source.matchAll(/@(?:post|put|patch|delete)\(\s*(["'])(\/[^"']*)\1/g);
+	return [...paths].map((match) => match[2].split("?", 1)[0]);
+}
+
+async function readActionSources(paths: readonly string[]): Promise<string[]> {
+	return await Promise.all(
+		paths.map((path) => Deno.readTextFile(new URL(path, import.meta.url))),
+	);
+}
 
 function browserActionsFor(source: string, path: string): string {
 	const index = source.indexOf(`@post('${path}'`);

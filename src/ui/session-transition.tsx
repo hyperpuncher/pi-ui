@@ -1,3 +1,4 @@
+import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 
 export function resumeSessionAction(
@@ -7,7 +8,7 @@ export function resumeSessionAction(
 	return `if (!$_sessionLoading && !$sessionTransitionLoading) {
 		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
 		$_sessionTarget = ${JSON.stringify(path)};
-		@post('/sessions/resume', {
+		@post('${endpoints.sessionsResume}', {
 			payload: { sessionPath: ${JSON.stringify(path)} },
 		});
 	}`;

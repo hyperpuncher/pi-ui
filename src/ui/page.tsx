@@ -265,12 +265,12 @@ export function renderPage(
 								class="btn"
 								data-variant="destructive"
 								data-attr:disabled="$sessionDeletePath === ''"
-								data-on:click="
+								data-on:click={`
 									evt.target.closest('dialog').close();
-									@post('/sessions/delete', {
+									@post('${endpoints.sessionsDelete}', {
 									filterSignals: { include: /^sessionDeletePath$/ },
 								});
-								"
+								`}
 							>
 								Delete session
 							</button>

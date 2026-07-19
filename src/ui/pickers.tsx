@@ -1,4 +1,5 @@
 import type { FileSuggestion } from "../server/file-search.ts";
+import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	AppRenderSnapshot,
 	AppSessionSummary,
@@ -173,7 +174,7 @@ function openWorkspaceAction(valueExpression: string): string {
 	return `if (!$sessionTransitionLoading) {
 		$workspacePath = ${valueExpression};
 		$_sessionTarget = $workspacePath;
-		@post('/workspace/open', { filterSignals: { include: /^workspacePath$/ } });
+		@post('${endpoints.workspaceOpen}', { filterSignals: { include: /^workspacePath$/ } });
 	}`;
 }
 
@@ -323,12 +324,12 @@ function renderSessionRow(
 						current
 							? `
 					evt.stopPropagation();
-					@post('/abort', { filterSignals: { include: /^$/ } });
+					@post('${endpoints.abort}', { filterSignals: { include: /^$/ } });
 					`
 							: `
 					evt.stopPropagation();
 					$backgroundSessionPath = ${JSON.stringify(session.path)};
-					@post('/sessions/background/abort', {
+					@post('${endpoints.sessionsBackgroundAbort}', {
 					filterSignals: { include: /^backgroundSessionPath$/ },
 					});
 					`

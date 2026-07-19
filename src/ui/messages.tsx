@@ -1,6 +1,7 @@
 import { DEFAULT_THEMES, getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
 import { authDialogAction } from "../commands/actions.ts";
+import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	AppKeybindHint,
 	AppMessage,
@@ -137,7 +138,7 @@ function loadOlderMessagesAction(): string {
 	return `
 		el.scrollTop < el.clientHeight * 2 &&
 		window.piUi.messageScroll.captureAnchor() &&
-		@post('/messages/older', { filterSignals: { include: /^$/ } })
+		@post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })
 	`;
 }
 
@@ -146,11 +147,11 @@ function renderOlderMessagesTrigger() {
 		<div
 			class="pointer-events-none -mb-[40vh] h-[40vh] opacity-0"
 			data-load-older-messages
-			data-on:click="
+			data-on:click={`
 				window.piUi.messageScroll.captureAnchor() &&
-				@post('/messages/older', { filterSignals: { include: /^$/ } })
-			"
-			data-on-intersect="window.piUi.messageScroll.captureAnchor() && @post('/messages/older', { filterSignals: { include: /^$/ } })"
+				@post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })
+			`}
+			data-on-intersect={`window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })`}
 			aria-hidden="true"
 		/>
 	);
@@ -309,7 +310,7 @@ function renderDeferredEnhancement(message: AppMessage) {
 			class="btn m-2"
 			data-variant="ghost"
 			data-size="sm"
-			data-on:click={`@post('/messages/enhance?id=${encodeURIComponent(message.id)}', {
+			data-on:click={`@post('${endpoints.messagesEnhance}?id=${encodeURIComponent(message.id)}', {
 				filterSignals: { include: /^$/ },
 			})`}
 		>

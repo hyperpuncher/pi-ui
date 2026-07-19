@@ -1,3 +1,4 @@
+import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot, AppTreeEntry } from "../state/app-store.ts";
 
 export function renderTreePicker(state: AppRenderSnapshot): string {
@@ -52,7 +53,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			data-active-tree-row={entry.active ? "true" : undefined}
 			data-on:click={`
 				$treeEntryId = ${JSON.stringify(entry.id)};
-				@post('/tree/navigate', { filterSignals: { include: /^tree(EntryId|Summarize|SummaryInstructions)$/ } });
+				@post('${endpoints.treeNavigate}', { filterSignals: { include: /^tree(EntryId|Summarize|SummaryInstructions)$/ } });
 			`}
 		>
 			<span

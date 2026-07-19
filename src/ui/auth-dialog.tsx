@@ -1,3 +1,4 @@
+import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppAuthDialog, AppAuthProvider } from "../state/app-store.ts";
 
 export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
@@ -7,7 +8,7 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 			class="dialog"
 			aria-labelledby="auth-dialog-title"
 			onclick="if (event.target === this) this.close()"
-			data-on:close="@post('/auth/close', { filterSignals: { include: /^$/ } })"
+			data-on:close={`@post('${endpoints.authClose}', { filterSignals: { include: /^$/ } })`}
 		>
 			{renderAuthDialogContent(dialog)}
 		</dialog>
@@ -79,7 +80,7 @@ function renderProviderButton(
 	provider: AppAuthProvider,
 	mode: AppAuthDialog["mode"],
 ): string {
-	const action = mode === "login" ? "/auth/login/start" : "/auth/logout";
+	const action = mode === "login" ? endpoints.authLoginStart : endpoints.authLogout;
 	return (
 		<button
 			type="button"
@@ -172,7 +173,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					<button
 						type="button"
 						class="btn"
-						data-on:click="@post('/auth/input', { filterSignals: { include: /^authInput$/ } })"
+						data-on:click={`@post('${endpoints.authInput}', { filterSignals: { include: /^authInput$/ } })`}
 					>
 						Continue
 					</button>
@@ -197,7 +198,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 						data-variant="outline"
 						data-on:click={`
 							$authInput = ${JSON.stringify(option.id)};
-							@post('/auth/input', { filterSignals: { include: /^authInput$/ } });
+							@post('${endpoints.authInput}', { filterSignals: { include: /^authInput$/ } });
 						`}
 						safe
 					>
@@ -223,7 +224,9 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 				autofocus
 				data-on:keydown={`if (evt.key === 'Enter') {
 					evt.preventDefault();
-					@post('/auth/input', { filterSignals: { include: /^authInput$/ } });
+					@post('${endpoints.authInput}', {
+						filterSignals: { include: /^authInput$/ },
+					});
 				}`}
 			/>
 		</div>
