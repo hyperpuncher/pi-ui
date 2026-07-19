@@ -1,5 +1,5 @@
 import type { AppMessageTitlePart } from "../state/app-store.ts";
-import { isRecord } from "../utils/type-guards.ts";
+import { asRecord, isRecord } from "../utils/type-guards.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 
 const bashPreviewLines = 4;
@@ -144,18 +144,18 @@ export function toolEndMeta(startedAt: number | undefined): string | undefined {
 	return duration === "0.0s" ? undefined : duration;
 }
 
-export function formatDuration(ms: number): string {
+function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
-export function toolRange(args: unknown): string {
+function toolRange(args: unknown): string {
 	const record = asRecord(args);
 	if (!record || typeof record.offset !== "number") return "";
 	if (typeof record.limit !== "number") return `:${record.offset}`;
 	return `:${record.offset}-${record.offset + record.limit - 1}`;
 }
 
-export function toolTarget(toolName: string, args: unknown): string {
+function toolTarget(toolName: string, args: unknown): string {
 	const record = asRecord(args);
 	if (!record) return "";
 	if (toolName === "bash") return stringValue(record.command);
@@ -225,18 +225,19 @@ export function formatToolResult(
 	return { text, format: "output" };
 }
 
-export function shortenPath(path: string): string {
+function shortenPath(path: string): string {
 	return formatHomePath(path);
 }
 
-export function compactReadOutput(text: string): string {
+// oxlint-disable-next-line no-unused-vars -- Retained while narrowing the accidental API.
+function compactReadOutput(text: string): string {
 	return text
 		.replace(/\n\n\[[^\]]*more lines in file[\s\S]*?\]$/i, "")
 		.replace(/\n\n\[Showing lines [^\]]+\]$/i, "")
 		.trimEnd();
 }
 
-export function shouldHideBashOutput(args: unknown): boolean {
+function shouldHideBashOutput(args: unknown): boolean {
 	const command = stringValue(asRecord(args)?.command).trimStart();
 	const executable = command.match(
 		/^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*(?:\S+\/)?([^\s;|&]+)/,
@@ -244,7 +245,7 @@ export function shouldHideBashOutput(args: unknown): boolean {
 	return executable !== undefined && hiddenBashOutputCommands.has(executable);
 }
 
-export function countBashResults(text: string): number {
+function countBashResults(text: string): number {
 	return text
 		.trim()
 		.split("\n")
@@ -262,7 +263,7 @@ export function compactToolOutput(text: string): string {
 	return `... (${skipped} earlier lines)\n${lines.slice(-bashPreviewLines).join("\n")}`;
 }
 
-export function extractToolText(result: unknown): string {
+function extractToolText(result: unknown): string {
 	const record = asRecord(result);
 	if (record?.content !== undefined) {
 		const text = contentToText(record.content);
@@ -281,12 +282,8 @@ export function extractToolText(result: unknown): string {
 	return summarizeValue(result);
 }
 
-export function stringValue(value: unknown): string {
+function stringValue(value: unknown): string {
 	return typeof value === "string" ? value : "";
-}
-
-export function asRecord(value: unknown): Record<string, unknown> | undefined {
-	return isRecord(value) ? value : undefined;
 }
 
 export function contentToText(content: unknown): string {
@@ -334,8 +331,4 @@ export function summarizeValue(value: unknown): string {
 	} catch {
 		return String(value);
 	}
-}
-
-export function formatError(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }

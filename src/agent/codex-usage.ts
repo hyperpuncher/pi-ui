@@ -1,5 +1,7 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
+import { asRecord } from "../utils/type-guards.ts";
+
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";
 const codexUsageTimeoutMs = 15_000;
@@ -80,8 +82,8 @@ function formatWindowDuration(seconds: number | undefined): string | undefined {
 }
 
 function parseCodexUsage(payload: unknown): CodexUsage | undefined {
-	const root = asObject(payload);
-	const rateLimit = asObject(root?.rate_limit);
+	const root = asRecord(payload);
+	const rateLimit = asRecord(root?.rate_limit);
 	if (!rateLimit) return undefined;
 
 	const usage = {
@@ -93,7 +95,7 @@ function parseCodexUsage(payload: unknown): CodexUsage | undefined {
 }
 
 function parseCodexWindow(value: unknown): CodexWindow | undefined {
-	const window = asObject(value);
+	const window = asRecord(value);
 	if (!window) return undefined;
 
 	const usedPercent = asNumber(window.used_percent);
@@ -104,12 +106,6 @@ function parseCodexWindow(value: unknown): CodexWindow | undefined {
 		windowSeconds: asNumber(window.limit_window_seconds),
 		resetsAt: asNumber(window.reset_at),
 	};
-}
-
-function asObject(value: unknown): Record<string, unknown> | undefined {
-	return value && typeof value === "object" && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: undefined;
 }
 
 function asNumber(value: unknown): number | undefined {

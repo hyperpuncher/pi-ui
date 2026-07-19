@@ -1,3 +1,5 @@
+import { errorMessage } from "../utils/errors.ts";
+
 export type SessionTransitionState =
 	| { status: "idle"; generation: number }
 	| { status: "loading"; generation: number; targetPath: string }
@@ -52,6 +54,6 @@ export class SessionTransitionController {
 }
 
 function formatTransitionError(error: unknown): string {
-	const message = error instanceof Error ? error.message : String(error);
+	const message = errorMessage(error);
 	return message.trim() || "Session transition failed.";
 }

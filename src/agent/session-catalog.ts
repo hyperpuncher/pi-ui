@@ -1,8 +1,8 @@
 import { SessionManager, type SessionInfo } from "@earendil-works/pi-coding-agent";
 
 import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
+import { errorMessage } from "../utils/errors.ts";
 import { formatDateTime } from "../utils/locale.ts";
-import { formatError } from "./tool-presentation.ts";
 
 export type PreparedSessionList =
 	| { ok: true; sessions: SessionInfo[] }
@@ -32,7 +32,7 @@ export class SessionCatalog {
 		if (!prepared.ok) {
 			this.state.appendMessage(
 				"system",
-				`Failed to list sessions: ${formatError(prepared.error)}`,
+				`Failed to list sessions: ${errorMessage(prepared.error)}`,
 			);
 			return;
 		}

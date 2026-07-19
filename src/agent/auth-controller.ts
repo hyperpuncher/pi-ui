@@ -4,6 +4,7 @@ import type { AuthEvent, AuthPrompt, AuthType } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
 import type { AppAuthDialog, AppAuthProvider, AppStore } from "../state/app-store.ts";
+import { errorMessage } from "../utils/errors.ts";
 
 type AuthInputResolver = (value: string | undefined) => void;
 
@@ -89,7 +90,7 @@ export class AuthController {
 				this.state.setAuthDialog({
 					...dialog,
 					status: undefined,
-					error: formatError(error),
+					error: errorMessage(error),
 				});
 			});
 	}
@@ -184,7 +185,7 @@ export class AuthController {
 				this.state.setAuthDialog({
 					...current,
 					phase: "result",
-					error: formatError(error),
+					error: errorMessage(error),
 				});
 			});
 		return true;
@@ -259,7 +260,7 @@ export class AuthController {
 				this.loginRun = undefined;
 				this.patchAuthenticationDialog({
 					phase: "result",
-					error: `Login failed: ${formatError(error)}`,
+					error: `Login failed: ${errorMessage(error)}`,
 					prompt: undefined,
 				});
 			});
@@ -391,8 +392,4 @@ function openExternalUrl(url: string): void {
 	spawn(command, args, { stdio: "ignore", detached: true })
 		.on("error", () => {})
 		.unref();
-}
-
-function formatError(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }

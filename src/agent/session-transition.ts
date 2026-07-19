@@ -1,6 +1,6 @@
 export type SessionLeaveAction = "background" | "discard" | "dispose" | "keep";
 
-export type SessionTransitionState = {
+export type SessionLeaveState = {
 	persisted: boolean;
 	running: boolean;
 	requiresNewRuntime: boolean;
@@ -10,7 +10,7 @@ export function classifySessionLeave({
 	persisted,
 	running,
 	requiresNewRuntime,
-}: SessionTransitionState): SessionLeaveAction {
+}: SessionLeaveState): SessionLeaveAction {
 	if (running) {
 		return persisted ? "background" : "discard";
 	}

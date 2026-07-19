@@ -13,6 +13,7 @@ import { ShortcutKbd } from "./keyboard.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
+import { shikiTokenStyle } from "./shiki-token-style.ts";
 
 const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
@@ -284,22 +285,9 @@ function cacheInlineBash(command: string, html: string): void {
 }
 
 function renderInlineToken(token: ThemedToken): string {
-	const style = styleObjectToAttribute(token.htmlStyle ?? tokenStyle(token));
+	const style = shikiTokenStyle(token);
 	const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
 	return `<span class="streaming-token"${styleAttribute}>${escapeHtml(token.content)}</span>`;
-}
-
-function tokenStyle(token: ThemedToken): Record<string, string> {
-	const style: Record<string, string> = {};
-	if (token.color) style.color = token.color;
-	if (token.bgColor) style["background-color"] = token.bgColor;
-	return style;
-}
-
-function styleObjectToAttribute(style: Record<string, string>): string {
-	return Object.entries(style)
-		.map(([key, value]) => `${key}:${value}`)
-		.join(";");
 }
 
 function renderDeferredEnhancement(message: AppMessage) {

@@ -152,7 +152,7 @@ export function flattenTree(
 	return rows;
 }
 
-export function orderActiveFirst(
+function orderActiveFirst(
 	nodes: SessionTreeNode[],
 	containsActive: Map<SessionTreeNode, boolean>,
 ): SessionTreeNode[] {
@@ -161,7 +161,7 @@ export function orderActiveFirst(
 	);
 }
 
-export function buildTreePrefix(
+function buildTreePrefix(
 	indent: number,
 	showConnector: boolean,
 	isLast: boolean,
@@ -179,7 +179,7 @@ export function buildTreePrefix(
 	return parts.join("");
 }
 
-export function buildTreeContinuationPrefix(
+function buildTreeContinuationPrefix(
 	indent: number,
 	showConnector: boolean,
 	isLast: boolean,
@@ -197,7 +197,7 @@ export function buildTreeContinuationPrefix(
 	return parts.join("");
 }
 
-export function formatTreeEntry(
+function formatTreeEntry(
 	node: SessionTreeNode,
 ): Pick<AppTreeEntry, "role" | "text" | "meta"> {
 	const entry = node.entry;
@@ -255,7 +255,7 @@ export function formatTreeEntry(
 	return { role: "title: ", text: entry.name ?? "(empty)", meta };
 }
 
-export function extractTreeText(content: unknown): string {
+function extractTreeText(content: unknown): string {
 	if (typeof content === "string") return content;
 	if (!Array.isArray(content)) return "";
 	return content
@@ -267,7 +267,7 @@ export function extractTreeText(content: unknown): string {
 		.join(" ");
 }
 
-export function normalizeTreeText(text: string): string {
+function normalizeTreeText(text: string): string {
 	return text
 		.replace(/[\n\t]+/g, " ")
 		.replace(/\s+/g, " ")

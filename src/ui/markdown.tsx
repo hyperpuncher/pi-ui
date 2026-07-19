@@ -16,6 +16,7 @@ import {
 import { escapeHtml } from "../utils/html.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
+import { shikiTokenStyle } from "./shiki-token-style.ts";
 
 // Streaming entries track roughly two restored pages; final results can deduplicate
 // repeated content across a much longer desktop session.
@@ -331,7 +332,7 @@ function highlightStreamingCodeBlock(
 function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 	const lines = [""];
 	for (const token of tokens) {
-		const style = styleObjectToAttribute(token.htmlStyle ?? tokenStyle(token));
+		const style = shikiTokenStyle(token);
 		const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
 		const classAttribute = style ? ` class="streaming-token"` : "";
 		const parts = token.content.split("\n");
@@ -350,19 +351,6 @@ function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 				`<span class="streaming-code-line-number">${index + 1}</span><span class="streaming-code-line">${line || "&nbsp;"}</span>`,
 		)
 		.join("")}</code></pre>`;
-}
-
-function tokenStyle(token: ThemedToken): Record<string, string> {
-	const style: Record<string, string> = {};
-	if (token.color) style.color = token.color;
-	if (token.bgColor) style["background-color"] = token.bgColor;
-	return style;
-}
-
-function styleObjectToAttribute(style: Record<string, string>): string {
-	return Object.entries(style)
-		.map(([key, value]) => `${key}:${value}`)
-		.join(";");
 }
 
 function renderPlainCodeBlock(code: string, language: string): string {

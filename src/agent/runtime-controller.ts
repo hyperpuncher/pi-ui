@@ -17,6 +17,7 @@ import {
 import { sessionPerformance } from "../perf/session-performance.ts";
 import { type AppSessionSummary, AppStore } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
+import { errorMessage } from "../utils/errors.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { moveToTrash } from "../utils/trash.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
@@ -44,7 +45,6 @@ import {
 } from "./session-transition-controller.ts";
 import { transitionRuntime } from "./session-transition.ts";
 import {
-	formatError,
 	formatToolResult,
 	formatToolStart,
 	toolEndMeta,
@@ -449,7 +449,7 @@ export class RuntimeController {
 		} catch (error) {
 			this.state.appendMessage(
 				"system",
-				`Failed to delete session: ${formatError(error)}`,
+				`Failed to delete session: ${errorMessage(error)}`,
 			);
 			return false;
 		}
@@ -700,7 +700,7 @@ export class RuntimeController {
 			this.loadCurrentSessionMessages();
 			return true;
 		} catch (error) {
-			this.state.appendMessage("system", formatError(error));
+			this.state.appendMessage("system", errorMessage(error));
 			return false;
 		}
 	}
@@ -788,7 +788,7 @@ export class RuntimeController {
 	}
 
 	private reportPromptError(runtime: AgentSessionRuntime, error: unknown): void {
-		const message = formatError(error);
+		const message = errorMessage(error);
 		if (runtime === this.runtime) {
 			this.state.appendMessage("system", message);
 			return;
@@ -866,7 +866,7 @@ export class RuntimeController {
 			onAbortError: (error) => {
 				this.state.appendMessage(
 					"system",
-					`Failed to abort temporary session: ${formatError(error)}`,
+					`Failed to abort temporary session: ${errorMessage(error)}`,
 				);
 			},
 		});

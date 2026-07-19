@@ -111,15 +111,7 @@ async function searchWithFd(
 		.filter(Boolean)
 		.map((line) => toSuggestion(scoped.displayBase, line))
 		.filter((item) => !item.description.startsWith(".git/"))
-		.sort((a, b) => {
-			const scoreDiff =
-				scoreFile(b.description, scoped.query, b.isDirectory) -
-				scoreFile(a.description, scoped.query, a.isDirectory);
-			if (scoreDiff !== 0) return scoreDiff;
-			if (a.isDirectory && !b.isDirectory) return -1;
-			if (!a.isDirectory && b.isDirectory) return 1;
-			return a.description.localeCompare(b.description);
-		})
+		.sort(fileSuggestionComparator(scoped.query))
 		.slice(0, limit);
 }
 
@@ -213,17 +205,21 @@ function searchManually(
 		});
 		return true;
 	});
-	return results
-		.sort((a, b) => {
-			const scoreDiff =
-				scoreFile(b.description, scoped.query, b.isDirectory) -
-				scoreFile(a.description, scoped.query, a.isDirectory);
-			if (scoreDiff !== 0) return scoreDiff;
-			if (a.isDirectory && !b.isDirectory) return -1;
-			if (!a.isDirectory && b.isDirectory) return 1;
-			return a.description.localeCompare(b.description);
-		})
-		.slice(0, limit);
+	return results.sort(fileSuggestionComparator(scoped.query)).slice(0, limit);
+}
+
+function fileSuggestionComparator(
+	query: string,
+): (a: FileSuggestion, b: FileSuggestion) => number {
+	return (a, b) => {
+		const scoreDiff =
+			scoreFile(b.description, query, b.isDirectory) -
+			scoreFile(a.description, query, a.isDirectory);
+		if (scoreDiff !== 0) return scoreDiff;
+		if (a.isDirectory && !b.isDirectory) return -1;
+		if (!a.isDirectory && b.isDirectory) return 1;
+		return a.description.localeCompare(b.description);
+	};
 }
 
 function resolveFileSearchScope(
