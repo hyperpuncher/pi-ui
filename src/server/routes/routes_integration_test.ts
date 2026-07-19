@@ -28,6 +28,10 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /sessions/resume",
 		"POST /workspace/open",
 		"GET /workspace/review",
+		"GET /workspace/review/commit",
+		"GET /workspace/review/history",
+		"GET /workspace/review/preferences",
+		"POST /workspace/review/preferences",
 		"POST /model",
 		"POST /model/cycle",
 		"POST /models/scope/toggle",
@@ -48,7 +52,10 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"GET /vendor/datastar-inspector.min.js",
 	].sort();
 	assertEquals([...router.registeredRoutes()].sort(), expected);
-	assertEquals(Object.values(endpoints).length, expected.length);
+	assertEquals(
+		new Set(Object.values(endpoints)),
+		new Set(expected.map((route) => route.slice(route.indexOf(" ") + 1))),
+	);
 });
 
 Deno.test("file search uses current workspace and escapes Datastar fragments", async () => {

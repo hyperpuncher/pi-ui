@@ -284,7 +284,9 @@ export function renderPage(
 
 function emptyWorkspaceReview(): WorkspaceReviewSnapshot {
 	return {
+		branch: null,
 		changes: [],
+		commits: [],
 		isGitRepository: false,
 		patch: "",
 		revision: "non-git",

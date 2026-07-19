@@ -81,8 +81,8 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 	},
 	{
 		id: "toggle-review",
-		title: "Toggle changes",
-		description: "Show or hide the repository diff viewer.",
+		title: "Toggle Git",
+		description: "Show or hide repository changes and history.",
 		shortcut: {
 			display: "ctrl D",
 			native: "CmdOrCtrl+D",

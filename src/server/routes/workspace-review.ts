@@ -1,6 +1,13 @@
-import type { ExactRouter } from "../router.ts";
+import { normalizeWorkspaceReviewPreferences } from "../../workspace-review-types.ts";
+import { RouteError, type ExactRouter } from "../router.ts";
 import {
-	findGitRoot,
+	readWorkspaceReviewPreferences,
+	writeWorkspaceReviewPreferences,
+} from "../workspace-review-preferences.ts";
+import {
+	findGitWatchPaths,
+	readWorkspaceCommit,
+	readWorkspaceHistory,
 	readWorkspaceReview,
 	readWorkspaceReviewAvailability,
 } from "../workspace-review.ts";
@@ -11,6 +18,40 @@ const debounceMs = 200;
 const encoder = new TextEncoder();
 
 export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>): void {
+	router.register("GET", endpoints.workspaceReviewPreferences, async () =>
+		Response.json(await readWorkspaceReviewPreferences(), {
+			headers: { "cache-control": "no-cache" },
+		}),
+	);
+	router.register("POST", endpoints.workspaceReviewPreferences, async (request) => {
+		let value: unknown;
+		try {
+			value = await request.json();
+		} catch {
+			throw new RouteError(400, "Malformed Git view preferences.");
+		}
+		const preferences = normalizeWorkspaceReviewPreferences(value);
+		await writeWorkspaceReviewPreferences(preferences);
+		return new Response(null, { status: 204 });
+	});
+	router.register("GET", endpoints.workspaceReviewCommit, async (request, context) => {
+		const hash = new URL(request.url).searchParams.get("hash") ?? "";
+		const detail = await readWorkspaceCommit(context.store.workspacePath, hash);
+		return detail
+			? Response.json(detail, { headers: { "cache-control": "no-cache" } })
+			: new Response("Commit not found", { status: 404 });
+	});
+	router.register("GET", endpoints.workspaceReviewHistory, async (request, context) => {
+		const value = new URL(request.url).searchParams.get("offset") ?? "0";
+		const offset = Number(value);
+		if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100_000) {
+			return new Response("Invalid history offset", { status: 400 });
+		}
+		return Response.json(
+			await readWorkspaceHistory(context.store.workspacePath, offset),
+			{ headers: { "cache-control": "no-cache" } },
+		);
+	});
 	router.register("GET", endpoints.workspaceReview, (request, context) => {
 		const params = new URL(request.url).searchParams;
 		const availabilityOnly = params.has("availability");
@@ -62,9 +103,9 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 					await refresh();
 					if (availabilityOnly || snapshotOnly || !isGitRepository || stopped())
 						return;
-					const gitRoot = await findGitRoot(workspacePath);
-					if (!gitRoot || stopped()) return;
-					watcher = Deno.watchFs(gitRoot, { recursive: true });
+					const gitPaths = await findGitWatchPaths(workspacePath);
+					if (!gitPaths || stopped()) return;
+					watcher = Deno.watchFs(gitPaths, { recursive: true });
 					request.signal.addEventListener("abort", stop, { once: true });
 					try {
 						for await (const _event of watcher) {

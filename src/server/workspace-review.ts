@@ -1,17 +1,23 @@
 import { parsePatchFiles } from "@pierre/diffs";
 
-import type {
-	WorkspaceFileChange,
-	WorkspaceFileStatus,
-	WorkspaceReviewSnapshot,
+import {
+	type WorkspaceCommit,
+	type WorkspaceCommitDetail,
+	type WorkspaceFileChange,
+	type WorkspaceFileStatus,
+	workspaceReviewHistoryPageSize,
+	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
 export type {
+	WorkspaceCommit,
+	WorkspaceCommitDetail,
 	WorkspaceFileChange,
 	WorkspaceFileStatus,
 	WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
 
 type GitResult = Readonly<{ code: number; stderr: string; stdout: string }>;
+const commitLogFormat = "--format=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1e";
 const decoder = new TextDecoder();
 const untrackedDiffConcurrency = 4;
 
@@ -20,12 +26,38 @@ export async function findGitRoot(workspacePath: string): Promise<string | undef
 	return result.code === 0 ? result.stdout.trim() : undefined;
 }
 
+export async function findGitWatchPaths(
+	workspacePath: string,
+): Promise<string[] | undefined> {
+	const root = await findGitRoot(workspacePath);
+	if (!root) return undefined;
+	const [gitDirResult, commonDirResult] = await Promise.all([
+		git(root, "rev-parse", "--absolute-git-dir"),
+		git(root, "rev-parse", "--path-format=absolute", "--git-common-dir"),
+	]);
+	const paths = [root];
+	for (const result of [gitDirResult, commonDirResult]) {
+		const path = result.code === 0 ? result.stdout.trim() : "";
+		if (
+			path &&
+			path !== root &&
+			!path.startsWith(`${root}/`) &&
+			!paths.includes(path)
+		) {
+			paths.push(path);
+		}
+	}
+	return paths;
+}
+
 export async function readWorkspaceReviewAvailability(
 	workspacePath: string,
 ): Promise<WorkspaceReviewSnapshot> {
 	return (await findGitRoot(workspacePath))
 		? {
+				branch: null,
 				changes: [],
+				commits: [],
 				isGitRepository: true,
 				patch: "",
 				revision: "git-unloaded",
@@ -38,10 +70,25 @@ export async function readWorkspaceReview(
 ): Promise<WorkspaceReviewSnapshot> {
 	const root = await findGitRoot(workspacePath);
 	if (!root) return emptySnapshot;
-	const [statusResult, headResult] = await Promise.all([
-		git(root, "status", "--porcelain=v1", "--untracked-files=all", "-z"),
-		git(root, "rev-parse", "--verify", "HEAD"),
-	]);
+	const [statusResult, headResult, logResult, upstreamResult, branchResult] =
+		await Promise.all([
+			git(root, "status", "--porcelain=v1", "--untracked-files=all", "-z"),
+			git(root, "rev-parse", "--verify", "HEAD"),
+			git(
+				root,
+				"log",
+				"-n",
+				String(workspaceReviewHistoryPageSize),
+				commitLogFormat,
+			),
+			git(
+				root,
+				"rev-list",
+				`--max-count=${workspaceReviewHistoryPageSize}`,
+				"@{upstream}..HEAD",
+			),
+			git(root, "symbolic-ref", "--quiet", "--short", "HEAD"),
+		]);
 	assertGit(statusResult, "read repository status");
 
 	let changes = parsePorcelainStatus(statusResult.stdout).sort((a, b) =>
@@ -90,11 +137,136 @@ export async function readWorkspaceReview(
 		.join("\n");
 	changes = addStats(changes, patch);
 	return {
+		branch:
+			branchResult.code === 0
+				? branchResult.stdout.trim()
+				: headResult.code === 0
+					? `detached@${headResult.stdout.trim().slice(0, 7)}`
+					: null,
 		changes,
+		commits:
+			logResult.code === 0
+				? parseCommitLog(logResult.stdout, unpushedHashes(upstreamResult))
+				: [],
 		isGitRepository: true,
 		patch,
-		revision: await hash(JSON.stringify([statusResult.stdout, patch])),
+		revision: await hash(
+			JSON.stringify([
+				statusResult.stdout,
+				patch,
+				headResult.stdout,
+				upstreamResult.code,
+				upstreamResult.stdout,
+				branchResult.stdout,
+			]),
+		),
 	};
+}
+
+export async function readWorkspaceCommit(
+	workspacePath: string,
+	hash: string,
+): Promise<WorkspaceCommitDetail | undefined> {
+	if (!/^[0-9a-f]{40}$/i.test(hash)) return undefined;
+	const root = await findGitRoot(workspacePath);
+	if (!root) return undefined;
+	const [metadataResult, statusResult, patchResult, upstreamResult] = await Promise.all(
+		[
+			git(root, "show", "-s", commitLogFormat, hash),
+			git(
+				root,
+				"diff-tree",
+				"--root",
+				"--no-commit-id",
+				"--name-status",
+				"-r",
+				"-z",
+				"--find-renames",
+				"--diff-merges=first-parent",
+				hash,
+			),
+			git(
+				root,
+				"show",
+				"--format=",
+				"--no-color",
+				"--no-ext-diff",
+				"--find-renames",
+				"--diff-merges=first-parent",
+				"--root",
+				"--unified=3",
+				hash,
+				"--",
+			),
+			git(root, "merge-base", "--is-ancestor", hash, "@{upstream}"),
+		],
+	);
+	if (metadataResult.code !== 0 || statusResult.code !== 0 || patchResult.code !== 0)
+		return undefined;
+	const commit = parseCommitLog(
+		metadataResult.stdout,
+		commitPushSet(upstreamResult, hash),
+	)[0];
+	if (!commit) return undefined;
+	return {
+		changes: addStats(parseNameStatus(statusResult.stdout), patchResult.stdout),
+		commit,
+		patch: patchResult.stdout.trimEnd(),
+	};
+}
+
+export async function readWorkspaceHistory(
+	workspacePath: string,
+	offset: number,
+): Promise<WorkspaceCommit[]> {
+	if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100_000) return [];
+	const root = await findGitRoot(workspacePath);
+	if (!root) return [];
+	const [logResult, upstreamResult] = await Promise.all([
+		git(
+			root,
+			"log",
+			"-n",
+			String(workspaceReviewHistoryPageSize),
+			`--skip=${offset}`,
+			commitLogFormat,
+		),
+		git(
+			root,
+			"rev-list",
+			`--max-count=${workspaceReviewHistoryPageSize}`,
+			`--skip=${offset}`,
+			"@{upstream}..HEAD",
+		),
+	]);
+	return logResult.code === 0
+		? parseCommitLog(logResult.stdout, unpushedHashes(upstreamResult))
+		: [];
+}
+
+export function parseCommitLog(
+	output: string,
+	unpushed?: ReadonlySet<string>,
+): WorkspaceCommit[] {
+	return output
+		.split("\x1e")
+		.map((record) => record.replace(/^\n+|\n+$/g, ""))
+		.filter(Boolean)
+		.flatMap((record) => {
+			const [hash, shortHash, author, authoredAt, subject] = record.split("\x1f");
+			return hash && shortHash && authoredAt
+				? [
+						{
+							author,
+							authoredAt,
+							hash,
+							pushed: unpushed ? !unpushed.has(hash) : null,
+							shortHash,
+							subject,
+						},
+					]
+				: [];
+		});
 }
 
 export function parsePorcelainStatus(output: string): WorkspaceFileChange[] {
@@ -111,6 +283,26 @@ export function parsePorcelainStatus(output: string): WorkspaceFileChange[] {
 			status: statusFromCode(code),
 		});
 		if (code.includes("R") || code.includes("C")) index++;
+	}
+	return changes;
+}
+
+export function parseNameStatus(output: string): WorkspaceFileChange[] {
+	const records = output.split("\0");
+	const changes: WorkspaceFileChange[] = [];
+	for (let index = 0; index < records.length; index++) {
+		const code = records[index];
+		if (!code) continue;
+		const renamed = code.startsWith("R") || code.startsWith("C");
+		const firstPath = records[++index];
+		const path = renamed ? records[++index] : firstPath;
+		if (!path) continue;
+		changes.push({
+			additions: 0,
+			deletions: 0,
+			path,
+			status: statusFromCode(code),
+		});
 	}
 	return changes;
 }
@@ -146,6 +338,18 @@ async function hash(value: string): Promise<string> {
 	).join("");
 }
 
+function commitPushSet(result: GitResult, hash: string): ReadonlySet<string> | undefined {
+	if (result.code === 0) return new Set();
+	if (result.code === 1) return new Set([hash]);
+	return undefined;
+}
+
+function unpushedHashes(result: GitResult): ReadonlySet<string> | undefined {
+	return result.code === 0
+		? new Set(result.stdout.split("\n").filter(Boolean))
+		: undefined;
+}
+
 function assertGit(result: GitResult, action: string): void {
 	if (result.code !== 0)
 		throw new Error(`Unable to ${action}: ${result.stderr.trim()}`);
@@ -165,7 +369,9 @@ async function git(cwd: string, ...args: string[]): Promise<GitResult> {
 }
 
 const emptySnapshot: WorkspaceReviewSnapshot = {
+	branch: null,
 	changes: [],
+	commits: [],
 	isGitRepository: false,
 	patch: "",
 	revision: "non-git",

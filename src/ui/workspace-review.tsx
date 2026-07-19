@@ -1,21 +1,11 @@
 import { preloadFileTree, serializeFileTreeSsrPayload } from "@pierre/trees";
 
 import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
-
-const treeOptions = {
-	flattenEmptyDirectories: true,
-	id: "review-file-tree",
-	initialExpansion: "open" as const,
-	initialVisibleRowCount: 20,
-	search: false,
-	stickyFolders: true,
-	unsafeCSS:
-		":host { --trees-padding-inline-override: 0px; } [data-item-git-status] > [data-item-section='content'] { color: var(--trees-fg); }",
-};
+import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 
 export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string {
 	const tree = preloadFileTree({
-		...treeOptions,
+		...workspaceReviewTreeOptions,
 		gitStatus: snapshot.changes,
 		paths: snapshot.changes.map((change) => change.path),
 	});
@@ -34,28 +24,19 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 			id="workspace-review"
 			class="border-border bg-background absolute inset-y-0 left-0 z-30 hidden min-h-0 w-1/2 min-w-0 grid-rows-[2.5rem_minmax(0,1fr)] border-r transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none max-[80rem]:w-full max-[80rem]:shadow-xl"
 			style="display: none;"
-			aria-label="Repository changes"
+			aria-label="Git"
 			aria-hidden="true"
 		>
 			<header class="border-border flex min-w-0 items-center justify-between gap-3 border-b px-3">
 				<div class="flex min-w-0 items-center gap-2">
-					<span class="text-sm font-medium">Changes</span>
+					<span class="text-sm font-medium">Git</span>
 					<span
-						id="review-change-count"
-						class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] tabular-nums"
+						id="review-branch"
+						class="text-muted-foreground truncate font-mono text-[11px]"
+						style={snapshot.branch ? undefined : "display: none"}
+						safe
 					>
-						{snapshot.changes.length}
-					</span>
-					<span class="flex gap-1 font-mono text-[11px] tabular-nums">
-						<span
-							id="review-total-additions"
-							class="text-emerald-600 dark:text-emerald-400"
-						>
-							+{additions}
-						</span>
-						<span id="review-total-deletions" class="text-destructive">
-							-{deletions}
-						</span>
+						{snapshot.branch ?? ""}
 					</span>
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
@@ -133,7 +114,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 						data-variant="ghost"
 						data-size="icon-xs"
 						data-on:click="window.piUi.workspaceReview.setOpen(false)"
-						aria-label="Hide changes"
+						aria-label="Hide Git"
 					>
 						<svg
 							class="size-3.5"
@@ -153,30 +134,93 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 
 			<div class="grid min-h-0 min-w-0 grid-cols-[20rem_minmax(0,1fr)] max-[80rem]:grid-cols-[18rem_minmax(0,1fr)]">
 				<aside class="border-border flex min-h-0 min-w-0 flex-col border-r">
-					<div
-						id="review-tree"
-						class="min-h-0 flex-1 overflow-hidden [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
-						style="--trees-bg-override: transparent; --trees-border-color-override: var(--border); --trees-fg-override: var(--foreground); --trees-selected-bg-override: var(--muted);"
+					<section
+						id="review-changes-section"
+						class={[
+							"border-border flex min-h-0 shrink-0 flex-col border-b",
+							snapshot.changes.length > 0 ? "h-[45%]" : "",
+						]}
 					>
-						{serializeFileTreeSsrPayload(tree)}
-					</div>
+						<button
+							id="review-working-tree"
+							type="button"
+							class="flex h-8 shrink-0 items-center gap-2 px-3 text-left text-xs font-medium"
+							aria-pressed="true"
+						>
+							<span>Changes</span>
+							<span
+								id="review-change-count"
+								class="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] tabular-nums"
+							>
+								{snapshot.changes.length}
+							</span>
+							<span class="flex gap-1 font-mono text-[10px] tabular-nums">
+								<span
+									id="review-total-additions"
+									class="text-emerald-600 dark:text-emerald-400"
+								>
+									+{additions}
+								</span>
+								<span
+									id="review-total-deletions"
+									class="text-destructive"
+								>
+									-{deletions}
+								</span>
+							</span>
+						</button>
+						<div
+							id="review-tree"
+							class="min-h-0 flex-1 overflow-hidden [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+							style="--trees-bg-override: transparent; --trees-border-color-override: var(--border); --trees-fg-override: var(--foreground); --trees-padding-inline-override: 8px; --trees-scrollbar-gutter-override: 4px; --trees-selected-bg-override: var(--muted);"
+						>
+							{serializeFileTreeSsrPayload(tree)}
+						</div>
+						<div
+							id="review-tree-empty"
+							class="text-muted-foreground px-3 pb-2 text-xs"
+							style={
+								snapshot.changes.length > 0 ? "display: none" : undefined
+							}
+						>
+							Working tree clean
+						</div>
+					</section>
+					<section class="flex min-h-0 flex-1 flex-col">
+						<header class="flex h-8 shrink-0 items-center px-3 text-xs font-medium">
+							History
+						</header>
+						<div
+							id="review-history"
+							class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-1"
+							aria-label="Commit history"
+						>
+							<p class="text-muted-foreground px-2 py-1 text-xs">
+								Loading history…
+							</p>
+						</div>
+					</section>
 				</aside>
 
-				<div class="relative min-h-0 min-w-0">
-					<div
-						id="review-diff-view"
-						class="absolute inset-0 overflow-x-clip overflow-y-auto overscroll-contain"
-						aria-label="Code changes"
+				<div class="flex min-h-0 min-w-0 flex-col">
+					<header
+						id="review-detail-header"
+						class="border-border hidden shrink-0 border-b px-3 py-2"
 					/>
-					<div
-						id="review-empty"
-						class="text-muted-foreground pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm"
-					>
-						{snapshot.isGitRepository
-							? snapshot.changes.length === 0
-								? "Working tree clean"
-								: "Loading changes…"
-							: "Open a Git repository to review changes"}
+					<div class="relative min-h-0 min-w-0 flex-1">
+						<div
+							id="review-diff-view"
+							class="absolute inset-0 overflow-x-clip overflow-y-auto overscroll-contain"
+							aria-label="Code changes"
+						/>
+						<div
+							id="review-empty"
+							class="text-muted-foreground pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm"
+						>
+							{snapshot.isGitRepository
+								? "Loading Git data…"
+								: "Open a Git repository"}
+						</div>
 					</div>
 				</div>
 			</div>

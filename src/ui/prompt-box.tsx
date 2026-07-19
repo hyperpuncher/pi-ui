@@ -290,7 +290,7 @@ export function renderPromptToolbar(
 				<TemporaryChatIcon />
 			</PromptToolbarButton>
 			<PromptToolbarButton
-				label="Changes"
+				label="Git"
 				action="review"
 				shortcut="ctrl D"
 				variant="ghost"
