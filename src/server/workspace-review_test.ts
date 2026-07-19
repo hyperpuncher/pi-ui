@@ -128,6 +128,29 @@ Deno.test("workspace review reports non-repositories without throwing", async ()
 	}
 });
 
+Deno.test("workspace review is unavailable when Git is not installed", async () => {
+	const moduleUrl = new URL("./workspace-review.ts", import.meta.url).href;
+	const script = `
+		const { readWorkspaceReview } = await import(${JSON.stringify(moduleUrl)});
+		console.log(JSON.stringify(await readWorkspaceReview(Deno.cwd())));
+	`;
+	const output = await new Deno.Command(Deno.execPath(), {
+		args: ["eval", "--conditions=browser", script],
+		env: { ...Deno.env.toObject(), PATH: "" },
+		stderr: "piped",
+		stdout: "piped",
+	}).output();
+	assertEquals(output.success, true, new TextDecoder().decode(output.stderr));
+	assertEquals(JSON.parse(new TextDecoder().decode(output.stdout)), {
+		branch: null,
+		changes: [],
+		commits: [],
+		isGitRepository: false,
+		patch: "",
+		revision: "non-git",
+	});
+});
+
 async function git(cwd: string, ...args: string[]): Promise<void> {
 	const output = await new Deno.Command("git", {
 		args: ["-C", cwd, ...args],

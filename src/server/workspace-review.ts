@@ -356,16 +356,21 @@ function assertGit(result: GitResult, action: string): void {
 }
 
 async function git(cwd: string, ...args: string[]): Promise<GitResult> {
-	const output = await new Deno.Command("git", {
-		args: ["-C", cwd, "-c", "core.quotePath=false", ...args],
-		stderr: "piped",
-		stdout: "piped",
-	}).output();
-	return {
-		code: output.code,
-		stderr: decoder.decode(output.stderr),
-		stdout: decoder.decode(output.stdout),
-	};
+	try {
+		const output = await new Deno.Command("git", {
+			args: ["-C", cwd, "-c", "core.quotePath=false", ...args],
+			stderr: "piped",
+			stdout: "piped",
+		}).output();
+		return {
+			code: output.code,
+			stderr: decoder.decode(output.stderr),
+			stdout: decoder.decode(output.stdout),
+		};
+	} catch (error) {
+		if (!(error instanceof Deno.errors.NotFound)) throw error;
+		return { code: 127, stderr: "Git executable not found.", stdout: "" };
+	}
 }
 
 const emptySnapshot: WorkspaceReviewSnapshot = {
