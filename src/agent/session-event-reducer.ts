@@ -237,7 +237,7 @@ export function reduceSessionEvent(
 			state.setActivityText(
 				event.reason === "manual"
 					? "Compacting context..."
-					: `${event.reason === "overflow" ? "Context overflow detected, " : ""}Auto-compacting...`,
+					: "Auto compaction...",
 			);
 			break;
 		case "compaction_end":

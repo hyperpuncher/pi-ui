@@ -437,11 +437,11 @@ Deno.test("reduces retry and compaction lifecycle events", async (t) => {
 		},
 		{
 			input: event({ type: "compaction_start", reason: "threshold" }),
-			expected: "Auto-compacting...",
+			expected: "Auto compaction...",
 		},
 		{
 			input: event({ type: "compaction_start", reason: "overflow" }),
-			expected: "Context overflow detected, Auto-compacting...",
+			expected: "Auto compaction...",
 		},
 	];
 	for (const testCase of cases) {
