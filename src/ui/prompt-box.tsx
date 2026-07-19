@@ -757,6 +757,7 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 					id="thinking-select-popover"
 					data-popover
 					data-side="top"
+					data-align="center"
 					aria-hidden="true"
 					class="min-w-48"
 				>
@@ -893,6 +894,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 					id="model-select-popover"
 					data-popover
 					data-side="top"
+					data-align="center"
 					aria-hidden="true"
 					class="w-80 max-w-[calc(100vw-2rem)] p-0"
 				>
