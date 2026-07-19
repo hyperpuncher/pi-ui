@@ -74,6 +74,7 @@ irm https://raw.githubusercontent.com/hyperpuncher/pi-ui/main/packaging/windows/
 | <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>o</kbd>   | temporary chat            |
 | <kbd>ctrl/⌘</kbd> <kbd>r</kbd>                  | session picker            |
 | <kbd>ctrl/⌘</kbd> <kbd>/</kbd>                  | workspace picker          |
+| <kbd>ctrl/⌘</kbd> <kbd>g</kbd>                  | toggle git review         |
 | <kbd>ctrl/⌘</kbd> <kbd>l</kbd>                  | model picker              |
 | <kbd>ctrl/⌘</kbd> <kbd>p</kbd>                  | cycle favorite model      |
 | <kbd>ctrl/⌘</kbd> <kbd>shift</kbd> <kbd>p</kbd> | cycle favorite model back |

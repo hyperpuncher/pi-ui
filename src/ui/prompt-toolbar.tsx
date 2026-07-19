@@ -48,7 +48,7 @@ export function renderPromptToolbar(
 			<PromptToolbarButton
 				label="Git"
 				action="review"
-				shortcut="ctrl D"
+				shortcut="ctrl G"
 				variant="ghost"
 				unavailable={!reviewAvailable}
 			>
@@ -196,7 +196,7 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 		}`;
 	}
 	if (action === "review") {
-		return `if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && !evt.altKey && evt.key.toLowerCase() === 'd') {
+		return `if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && !evt.altKey && evt.key.toLowerCase() === 'g') {
 			evt.preventDefault();
 			window.piUi.workspaceReview.toggle();
 		}`;

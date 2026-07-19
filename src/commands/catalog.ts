@@ -84,9 +84,9 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Toggle Git",
 		description: "Show or hide repository changes and history.",
 		shortcut: {
-			display: "ctrl D",
-			native: "CmdOrCtrl+D",
-			keys: ["d"],
+			display: "ctrl G",
+			native: "CmdOrCtrl+G",
+			keys: ["g"],
 		},
 	},
 	{

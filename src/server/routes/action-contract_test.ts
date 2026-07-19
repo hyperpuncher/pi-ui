@@ -128,9 +128,10 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertEquals(appCommandCatalog.length, Object.keys(commandActions).length);
 	assertEquals(
 		appCommandCatalog.find((command) => command.id === "toggle-review")?.shortcut,
-		{ display: "ctrl D", native: "CmdOrCtrl+D", keys: ["d"] },
+		{ display: "ctrl G", native: "CmdOrCtrl+G", keys: ["g"] },
 	);
 	assertStringIncludes(promptToolbar, "!evt.shiftKey && !evt.altKey");
+	assertStringIncludes(promptToolbar, "evt.key.toLowerCase() === 'g'");
 	assertEquals(`${promptAction}\n${promptBox}`.match(/\$prompt = '';/g)?.length, 2);
 	assertEquals(/@post|document\.|window\./.test(catalog), false);
 	assertStringIncludes(dialogs, "export function openWorkspace()");
