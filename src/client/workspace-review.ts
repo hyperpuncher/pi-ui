@@ -14,27 +14,36 @@ import { FileTree } from "@pierre/trees";
 
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
-	normalizeWorkspaceReviewPreferences,
-	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
 	type WorkspaceFileChange,
 	workspaceReviewHistoryPageSize,
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
+import {
+	createWorkspaceReviewApi,
+	type WorkspaceReviewUpdateMode,
+} from "./workspace-review-api.ts";
+import {
+	hideWorkspaceReviewDetailHeader,
+	renderWorkspaceReviewHistory,
+	showWorkspaceReviewDetailHeader,
+} from "./workspace-review-history.ts";
+import {
+	appendHistoryPage,
+	reconcileFirstHistoryPage,
+	reconcileSelection,
+	type Selection,
+} from "./workspace-review-state.ts";
 
 type ReviewMode = NonNullable<WorkspaceReviewPreferences["mode"]>;
 type ReviewItem = CodeViewItem<undefined> & { type: "diff" };
 type DiffLayout = NonNullable<WorkspaceReviewPreferences["layout"]>;
-type UpdateMode = "availability" | "live" | "snapshot";
-type Selection =
-	| { kind: "working"; path?: string }
-	| { hash: string; kind: "commit"; path?: string };
 type CommitView = { detail: WorkspaceCommitDetail; items: ReviewItem[] };
 
 const endpoint = document.body.dataset.workspaceReviewEndpoint ?? "";
-const preferencesEndpoint = `${endpoint}/preferences`;
-const preferences = await readPreferences();
+const api = createWorkspaceReviewApi(endpoint);
+const preferences = await api.readPreferences();
 
 const root = requiredElement("workspace-review");
 const app = requiredElement("app");
@@ -75,7 +84,6 @@ let initializedSelection = snapshot.revision !== "git-unloaded";
 const commitCache = new Map<string, CommitView>();
 const commitRequests = new Map<string, Promise<CommitView | undefined>>();
 let workspaceVersion = 0;
-let preferenceWrites = Promise.resolve();
 
 const visibility = createVisibility(root, snapshot.isGitRepository, (open) => {
 	if (open) {
@@ -131,8 +139,6 @@ resize.observe(diffRoot);
 const theme = new MutationObserver(() => viewer?.setOptions(viewerOptions()));
 theme.observe(document.documentElement, { attributeFilter: ["class"], attributes: true });
 
-const commitEndpoint = `${endpoint}/commit`;
-const historyEndpoint = `${endpoint}/history`;
 let prefetchIdle: number | undefined;
 let prefetchTimer: ReturnType<typeof setTimeout> | undefined;
 let updates: EventSource | undefined;
@@ -181,13 +187,10 @@ window.addEventListener(
 	{ once: true },
 );
 
-function connectUpdates(mode: UpdateMode): void {
+function connectUpdates(mode: WorkspaceReviewUpdateMode): void {
 	disconnectUpdates();
-	const suffix = mode === "live" ? "" : `?${mode}`;
-	const source = new EventSource(`${endpoint}${suffix}`);
-	updates = source;
-	source.addEventListener("message", (event) => {
-		applySnapshot(JSON.parse(event.data) as WorkspaceReviewSnapshot);
+	updates = api.subscribe(mode, (next) => {
+		applySnapshot(next);
 		if (mode !== "live") {
 			disconnectUpdates();
 			if (mode === "availability") scheduleSnapshotPrefetch();
@@ -234,20 +237,16 @@ function currentWorkspaceLabel(): string {
 function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	if (next.revision === snapshot.revision) return;
 	const wasUnloaded = snapshot.revision === "git-unloaded" || !initializedSelection;
-	const sameHead = historyCommits[0]?.hash === next.commits[0]?.hash;
+	const historyState = reconcileFirstHistoryPage(
+		historyCommits,
+		historyHasMore,
+		next.commits,
+	);
 	snapshot = next;
-	if (sameHead) {
-		const firstPageHashes = new Set(next.commits.map(({ hash }) => hash));
-		historyCommits = [
-			...next.commits,
-			...historyCommits
-				.slice(workspaceReviewHistoryPageSize)
-				.filter(({ hash }) => !firstPageHashes.has(hash)),
-		];
-	} else {
+	historyCommits = historyState.commits;
+	historyHasMore = historyState.hasMore;
+	if (historyState.reset) {
 		historyGeneration++;
-		historyCommits = [...next.commits];
-		historyHasMore = next.commits.length === workspaceReviewHistoryPageSize;
 		historyLoading = false;
 	}
 	visibility.setAvailable(snapshot.isGitRepository);
@@ -261,19 +260,13 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	deletions.textContent = `-${sum("deletions")}`;
 	syncChangesSection();
 
-	if (wasUnloaded) {
-		initializedSelection = true;
-		selection =
-			snapshot.changes.length > 0
-				? { kind: "working", path: snapshot.changes[0]?.path }
-				: snapshot.commits[0]
-					? { hash: snapshot.commits[0].hash, kind: "commit" }
-					: { kind: "working" };
-	} else if (selection.kind === "working") {
-		selection.path = snapshot.changes.some(({ path }) => path === selection.path)
-			? selection.path
-			: snapshot.changes[0]?.path;
-	}
+	selection = reconcileSelection(
+		selection,
+		wasUnloaded,
+		snapshot.changes,
+		snapshot.commits,
+	);
+	if (wasUnloaded) initializedSelection = true;
 
 	renderHistory();
 	if (visibility.isOpen()) requestAnimationFrame(maybeLoadOlderHistory);
@@ -363,12 +356,10 @@ function loadCommit(hash: string): Promise<CommitView | undefined> {
 	const existing = commitRequests.get(hash);
 	if (existing) return existing;
 	const requestedWorkspaceVersion = workspaceVersion;
-	const request = fetch(`${commitEndpoint}?hash=${encodeURIComponent(hash)}`, {
-		headers: { accept: "application/json" },
-	})
-		.then(async (response) => {
-			if (!response.ok) return undefined;
-			const detail = (await response.json()) as WorkspaceCommitDetail;
+	const request = api
+		.loadCommit(hash)
+		.then((detail) => {
+			if (!detail) return undefined;
 			const view = {
 				detail,
 				items: createItems(detail.changes, detail.patch, detail.commit.hash),
@@ -377,7 +368,6 @@ function loadCommit(hash: string): Promise<CommitView | undefined> {
 			commitCache.set(hash, view);
 			return view;
 		})
-		.catch(() => undefined)
 		.finally(() => commitRequests.delete(hash));
 	commitRequests.set(hash, request);
 	return request;
@@ -471,78 +461,16 @@ function emptyDiff(change: WorkspaceFileChange): FileDiffMetadata {
 }
 
 function renderHistory(): void {
-	const scrollTop = history.scrollTop;
-	history.replaceChildren();
-	if (historyCommits.length === 0) {
-		const message = document.createElement("p");
-		message.className = "text-muted-foreground px-2 py-1 text-xs";
-		message.textContent =
-			snapshot.revision === "git-unloaded" ? "Loading history…" : "No commits yet";
-		history.append(message);
-		return;
-	}
-	let previousPushState: boolean | null | undefined;
-	for (const commit of historyCommits) {
-		if (commit.pushed !== previousPushState) {
-			history.append(renderPushGroup(commit.pushed));
-			previousPushState = commit.pushed;
-		}
-		const selected = selection.kind === "commit" && selection.hash === commit.hash;
-		const row = document.createElement("div");
-		const button = document.createElement("button");
-		button.type = "button";
-		button.className =
-			"hover:bg-muted/60 aria-pressed:bg-muted flex w-full min-w-0 flex-col rounded-md px-2 py-1.5 text-left";
-		button.setAttribute("aria-pressed", String(selected));
-		button.title = commit.subject;
-		button.addEventListener("click", () => void activateCommit(commit.hash));
-
-		const subject = document.createElement("span");
-		subject.className = "w-full truncate text-xs";
-		subject.textContent = commit.subject || "Untitled commit";
-		const metadata = document.createElement("span");
-		metadata.className =
-			"text-muted-foreground flex w-full min-w-0 items-center gap-1.5 font-mono text-[10px]";
-		const shortHash = document.createElement("span");
-		shortHash.className = "shrink-0";
-		shortHash.textContent = commit.shortHash;
-		const author = document.createElement("span");
-		author.className = "truncate";
-		author.textContent = commit.author;
-		const date = document.createElement("time");
-		date.className = "ml-auto shrink-0";
-		date.dateTime = commit.authoredAt;
-		date.textContent = formatCommitDate(commit.authoredAt);
-		metadata.append(shortHash, author, date);
-		button.append(subject, metadata);
-		row.append(button);
-
-		if (selected) {
-			const view = commitCache.get(commit.hash);
-			if (view) row.append(renderCommitFiles(commit.hash, view.detail.changes));
-		}
-		history.append(row);
-	}
-	if (historyLoading) {
-		const loading = document.createElement("p");
-		loading.className = "text-muted-foreground px-2 py-2 text-center text-[10px]";
-		loading.textContent = "Loading older commits…";
-		history.append(loading);
-	}
-	history.scrollTop = scrollTop;
-}
-
-function renderPushGroup(pushed: boolean | null): HTMLElement {
-	const group = document.createElement("div");
-	group.className =
-		"text-muted-foreground flex items-center gap-2 px-2 py-1 text-[10px] font-medium";
-	const label = document.createElement("span");
-	label.textContent =
-		pushed === null ? "No upstream" : pushed ? "Pushed" : "Not pushed";
-	const line = document.createElement("span");
-	line.className = "border-border flex-1 border-t";
-	group.append(label, line);
-	return group;
+	renderWorkspaceReviewHistory({
+		commits: historyCommits,
+		getCommitDetail: (hash) => commitCache.get(hash)?.detail,
+		history,
+		loading: historyLoading,
+		onSelectCommit: (hash) => void activateCommit(hash),
+		onSelectCommitPath: selectCommitPath,
+		revision: snapshot.revision,
+		selection,
+	});
 }
 
 function maybeLoadOlderHistory(): void {
@@ -561,104 +489,26 @@ async function loadOlderHistory(): Promise<void> {
 	historyLoading = true;
 	const generation = historyGeneration;
 	renderHistory();
-	try {
-		const response = await fetch(
-			`${historyEndpoint}?offset=${historyCommits.length}`,
-			{ headers: { accept: "application/json" } },
-		);
-		if (!response.ok) throw new Error("Unable to load Git history");
-		const commits = (await response.json()) as WorkspaceCommit[];
-		if (generation !== historyGeneration) return;
-		const known = new Set(historyCommits.map(({ hash }) => hash));
-		const additions = commits.filter(({ hash }) => !known.has(hash));
-		historyCommits.push(...additions);
-		historyHasMore =
-			commits.length === workspaceReviewHistoryPageSize && additions.length > 0;
-	} catch {
-		if (generation === historyGeneration) historyHasMore = false;
-	} finally {
-		if (generation === historyGeneration) {
-			historyLoading = false;
-			renderHistory();
-			requestAnimationFrame(maybeLoadOlderHistory);
-		}
+	const commits = await api.loadHistory(historyCommits.length);
+	if (generation !== historyGeneration) return;
+	if (commits) {
+		const next = appendHistoryPage(historyCommits, commits);
+		historyCommits = next.commits;
+		historyHasMore = next.hasMore;
+	} else {
+		historyHasMore = false;
 	}
+	historyLoading = false;
+	renderHistory();
+	requestAnimationFrame(maybeLoadOlderHistory);
 }
 
-function renderCommitFiles(
-	hash: string,
-	changes: readonly WorkspaceFileChange[],
-): HTMLElement {
-	const files = document.createElement("div");
-	files.className = "border-border ml-3 border-l py-0.5 pl-1";
-	for (const change of changes) {
-		const button = document.createElement("button");
-		button.type = "button";
-		button.className =
-			"hover:bg-muted/60 aria-pressed:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-[11px]";
-		button.setAttribute("aria-pressed", String(selection.path === change.path));
-		button.title = change.path;
-		button.addEventListener("click", () => selectCommitPath(hash, change.path));
-		const status = document.createElement("span");
-		status.className = "text-muted-foreground w-3 shrink-0 font-mono";
-		status.textContent = statusLetter(change.status);
-		const path = document.createElement("span");
-		path.className = "truncate";
-		path.textContent = change.path;
-		button.append(status, path);
-		files.append(button);
-	}
-	return files;
-}
-
-function renderDetailHeader(commit: WorkspaceCommit): void {
-	detailHeader.replaceChildren();
-	detailHeader.classList.remove("hidden");
-	const subject = document.createElement("div");
-	subject.className = "truncate text-xs font-medium";
-	subject.textContent = commit.subject || "Untitled commit";
-	const metadata = document.createElement("div");
-	metadata.className =
-		"text-muted-foreground mt-0.5 flex min-w-0 items-center gap-2 font-mono text-[10px]";
-	const hash = document.createElement("span");
-	hash.textContent = commit.shortHash;
-	const author = document.createElement("span");
-	author.className = "truncate";
-	author.textContent = commit.author;
-	const date = document.createElement("time");
-	date.className = "ml-auto shrink-0";
-	date.dateTime = commit.authoredAt;
-	date.textContent = new Intl.DateTimeFormat(undefined, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(new Date(commit.authoredAt));
-	metadata.append(hash, author, date);
-	detailHeader.append(subject, metadata);
+function renderDetailHeader(commit: CommitView["detail"]["commit"]): void {
+	showWorkspaceReviewDetailHeader(detailHeader, commit);
 }
 
 function hideDetailHeader(): void {
-	detailHeader.classList.add("hidden");
-	detailHeader.replaceChildren();
-}
-
-function formatCommitDate(value: string): string {
-	const date = new Date(value);
-	const elapsedDays = Math.floor((Date.now() - date.getTime()) / 86_400_000);
-	if (elapsedDays <= 0) return "today";
-	if (elapsedDays === 1) return "1d";
-	if (elapsedDays < 30) return `${elapsedDays}d`;
-	return new Intl.DateTimeFormat(undefined, {
-		month: "short",
-		year: "2-digit",
-	}).format(date);
-}
-
-function statusLetter(status: WorkspaceFileChange["status"]): string {
-	if (status === "added") return "A";
-	if (status === "deleted") return "D";
-	if (status === "renamed") return "R";
-	if (status === "untracked") return "U";
-	return "M";
+	hideWorkspaceReviewDetailHeader(detailHeader);
 }
 
 function viewerOptions(): CodeViewOptions<undefined> {
@@ -774,33 +624,8 @@ function showEmpty(message?: string): void {
 	if (message) empty.textContent = message;
 }
 
-async function readPreferences(): Promise<WorkspaceReviewPreferences> {
-	try {
-		const response = await fetch(preferencesEndpoint, {
-			cache: "no-store",
-			headers: { accept: "application/json" },
-			signal: AbortSignal.timeout(2_000),
-		});
-		if (!response.ok) return {};
-		return normalizeWorkspaceReviewPreferences(await response.json());
-	} catch {
-		return {};
-	}
-}
-
 function writePreferences(): void {
-	const body = JSON.stringify({ layout, mode, wrap });
-	preferenceWrites = preferenceWrites
-		.then(async () => {
-			const response = await fetch(preferencesEndpoint, {
-				body,
-				headers: { "content-type": "application/json" },
-				keepalive: true,
-				method: "POST",
-			});
-			if (!response.ok) throw new Error("Unable to save Git view preferences");
-		})
-		.catch(() => {});
+	api.writePreferences({ layout, mode, wrap });
 }
 
 function requiredElement(id: string): HTMLElement {
