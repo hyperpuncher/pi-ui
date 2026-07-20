@@ -33,10 +33,15 @@
 
 		/* Materials derived from Basecoat */
 		--pi-prompt-surface: var(--card);
-		--pi-surface-raised: var(--background);
+		--pi-surface-raised: color-mix(in oklab, var(--background) 55%, var(--muted));
 		--pi-workspace-canvas-background: var(--muted);
 		--pi-surface-raised-foreground: var(--foreground);
 		--pi-surface-subtle: color-mix(in oklab, var(--muted) 35%, transparent);
+		--pi-tool-output-background: color-mix(
+			in oklab,
+			var(--muted) 97%,
+			var(--foreground)
+		);
 		--pi-control-well: color-mix(in oklab, var(--muted) 72%, var(--border));
 		--pi-surface-edge: color-mix(in oklab, var(--foreground) 9%, transparent);
 		--pi-divider-handle: color-mix(
@@ -289,7 +294,7 @@
 	.pi-tool-output-surface {
 		margin-top: 0.5rem;
 		border-radius: var(--radius-lg);
-		background: var(--code-background);
+		background: var(--pi-tool-output-background);
 	}
 
 	.messages-stack {
