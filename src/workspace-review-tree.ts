@@ -9,5 +9,5 @@ export const workspaceReviewTreeOptions = {
 	searchBlurBehavior: "retain" as const,
 	stickyFolders: false,
 	unsafeCSS:
-		"svg[data-icon-sprite] { position: absolute; } [data-item-git-status] > [data-item-section='content'] { color: var(--trees-fg); }",
+		"svg[data-icon-sprite] { position: absolute; } [data-item-git-status] > [data-item-section='content'] { color: var(--trees-fg); } [data-file-tree-virtualized-sticky='true'] { will-change: auto; }",
 };
