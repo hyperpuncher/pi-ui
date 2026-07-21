@@ -1,7 +1,8 @@
 import { collectAddedElementRoots } from "../mutation-roots.js";
 
 const bottomThresholdPx = 120;
-const state = { pinnedToBottom: true };
+const scrollDirectionTolerancePx = 1;
+const state = { pinnedToBottom: true, scrollTop: 0 };
 let anchor;
 let historyLoading = false;
 
@@ -14,7 +15,13 @@ export function bindMessageScroll() {
 			if (!(messages instanceof HTMLElement) || event.target !== messages) return;
 			const distance =
 				messages.scrollHeight - messages.scrollTop - messages.clientHeight;
-			state.pinnedToBottom = distance < bottomThresholdPx;
+			state.pinnedToBottom = pinnedAfterScroll(
+				state.pinnedToBottom,
+				state.scrollTop,
+				messages.scrollTop,
+				distance,
+			);
+			state.scrollTop = messages.scrollTop;
 			updateScrollControl();
 		},
 		true,
@@ -31,8 +38,10 @@ export function bindMessageScroll() {
 			pinToolOutputs(affectedRoots);
 			affectedRoots.clear();
 			const messages = document.getElementById("messages");
-			if (messages instanceof HTMLElement && state.pinnedToBottom)
+			if (messages instanceof HTMLElement && state.pinnedToBottom) {
 				messages.scrollTop = messages.scrollHeight;
+				state.scrollTop = messages.scrollTop;
+			}
 			updateScrollControl();
 		});
 	});
@@ -52,9 +61,20 @@ export function captureAnchor() {
 	if (historyLoading) return false;
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return false;
+	const viewportTop = messages.getBoundingClientRect().top;
+	const visibleMessage = [...messages.querySelectorAll("[data-message-id]")].find(
+		(message) => message.getBoundingClientRect().bottom > viewportTop,
+	);
 	historyLoading = true;
 	state.pinnedToBottom = false;
-	anchor = { scrollHeight: messages.scrollHeight, scrollTop: messages.scrollTop };
+	anchor = {
+		messageId: visibleMessage?.getAttribute("data-message-id"),
+		offset: visibleMessage
+			? visibleMessage.getBoundingClientRect().top - viewportTop
+			: undefined,
+		scrollHeight: messages.scrollHeight,
+		scrollTop: messages.scrollTop,
+	};
 	updateScrollControl();
 	return true;
 }
@@ -64,14 +84,49 @@ export function restoreAnchor() {
 	anchor = undefined;
 	historyLoading = false;
 	if (!saved) return;
-	requestAnimationFrame(() => {
+
+	// Restore against a retained DOM node rather than estimating from scrollHeight.
+	// Datastar morphs and deferred message rendering can both change unrelated heights.
+	const restore = () => {
 		const messages = document.getElementById("messages");
-		if (messages instanceof HTMLElement) {
+		if (!(messages instanceof HTMLElement)) return;
+		const retainedMessage = [...messages.querySelectorAll("[data-message-id]")].find(
+			(message) => message.getAttribute("data-message-id") === saved.messageId,
+		);
+		if (retainedMessage && saved.offset !== undefined) {
+			const currentOffset =
+				retainedMessage.getBoundingClientRect().top -
+				messages.getBoundingClientRect().top;
+			messages.scrollTop = retainedAnchorScrollTop(
+				messages.scrollTop,
+				currentOffset,
+				saved.offset,
+			);
+		} else {
 			messages.scrollTop =
 				saved.scrollTop + messages.scrollHeight - saved.scrollHeight;
 		}
 		updateScrollControl();
+	};
+
+	// The immediate correction prevents a paint at the morphed position. Follow-up
+	// frames absorb layout produced by custom-element hydration and style resolution.
+	restore();
+	requestAnimationFrame(() => {
+		restore();
+		requestAnimationFrame(restore);
 	});
+}
+
+export function retainedAnchorScrollTop(scrollTop, currentOffset, savedOffset) {
+	return scrollTop + currentOffset - savedOffset;
+}
+
+export function pinnedAfterScroll(wasPinned, previousTop, scrollTop, distance) {
+	if (distance < bottomThresholdPx) return true;
+	// A queued programmatic scroll event can run after streaming content has made
+	// scrollHeight grow. Only upward movement is evidence that the user unpinned.
+	return wasPinned && scrollTop >= previousTop - scrollDirectionTolerancePx;
 }
 
 export function scrollBottom(behavior = "auto") {
@@ -82,6 +137,7 @@ export function scrollBottom(behavior = "auto") {
 		const messages = document.getElementById("messages");
 		if (!(messages instanceof HTMLElement)) return;
 		messages.scrollTo({ top: messages.scrollHeight, behavior });
+		state.scrollTop = messages.scrollTop;
 		updateScrollControl();
 	};
 	scroll();

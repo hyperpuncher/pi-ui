@@ -66,16 +66,16 @@ Deno.test("transcript snapshots restore independent domain state and queue metad
 Deno.test("transcript paging and reset have no presentation state", () => {
 	const state = new TranscriptState(hint);
 	state.replaceMessages(
-		Array.from({ length: 100 }, (_, index) => ({
+		Array.from({ length: 200 }, (_, index) => ({
 			role: "assistant" as const,
 			text: `message ${index}`,
 			timestamp,
 		})),
 	);
-	assertEquals(state.messages.length, 50);
-	assertEquals(state.hasOlderMessages, true);
-	assertEquals(state.loadOlderMessages().length, 50);
 	assertEquals(state.messages.length, 100);
+	assertEquals(state.hasOlderMessages, true);
+	assertEquals(state.loadOlderMessages().length, 100);
+	assertEquals(state.messages.length, 200);
 	assertEquals(state.loadOlderMessages(), []);
 
 	state.reset({ keys: "new", description: "Different hint" });

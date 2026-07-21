@@ -127,18 +127,18 @@ Deno.test("loading older pages enqueues only newly revealed messages", async () 
 		},
 	});
 	state.replaceMessages(
-		Array.from({ length: 100 }, (_, index) =>
+		Array.from({ length: 200 }, (_, index) =>
 			markdownMessage(`**message ${index}**`),
 		),
 	);
-	await waitFor(() => renderCount === 50);
+	await waitFor(() => renderCount === 100);
 	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
 	const immediatePage = state.renderer.renderMessagesElement();
 	assertIncludes(immediatePage, "<strong>message 0</strong>");
 	assertNotIncludes(immediatePage, "**message 0**");
-	await waitFor(() => renderCount === 100);
+	await waitFor(() => renderCount === 200);
 	assertEqual(state.loadOlderMessages({ broadcast: false }), false);
-	assertEqual(renderCount, 100);
+	assertEqual(renderCount, 200);
 });
 
 Deno.test("replacement discards stale enhancement completion", async () => {
@@ -551,7 +551,7 @@ async function settleMicrotasks(): Promise<void> {
 }
 
 async function waitFor(complete: () => boolean): Promise<void> {
-	for (let index = 0; index < 200; index += 1) {
+	for (let index = 0; index < 500; index += 1) {
 		if (complete()) return;
 		await Promise.resolve();
 	}
