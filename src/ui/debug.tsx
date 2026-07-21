@@ -12,7 +12,9 @@ export function renderDebugOverlay(state: AppRenderSnapshot): string {
 			<div class="mb-1 text-muted-foreground uppercase">debug</div>
 			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
 				<dt class="text-muted-foreground">fps</dt>
-				<dd id="debug-fps">—</dd>
+				<dd id="debug-fps" data-ignore-morph>
+					—
+				</dd>
 				<dt class="text-muted-foreground">messages</dt>
 				<dd>{state.messages.length}</dd>
 				<dt class="text-muted-foreground">activity</dt>

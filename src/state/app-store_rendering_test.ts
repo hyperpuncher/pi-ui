@@ -472,6 +472,7 @@ Deno.test("complete fat view contains every server-owned dynamic root", () => {
 		const renderer = new UiRenderer(store, new DatastarClientHub());
 		const html = renderer.renderElements(store.snapshot());
 		assertNotIncludes(html, 'id="session-menu-content"');
+		assertIncludes(html, 'id="debug-fps" data-ignore-morph');
 		for (const id of [
 			"messages",
 			"auth-dialog-content",
