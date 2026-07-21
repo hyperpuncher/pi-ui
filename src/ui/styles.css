@@ -286,7 +286,7 @@
 		bottom: calc(-1 * (var(--message-tool-gap) + 0.5625rem));
 		left: var(--pi-timeline-rail-x);
 		width: 3px;
-		background: var(--code-background);
+		background: var(--pi-tool-output-background);
 		content: "";
 		translate: -50% 0;
 	}

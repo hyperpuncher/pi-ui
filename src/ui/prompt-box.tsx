@@ -149,8 +149,8 @@ function renderLatestButton() {
 		<button
 			id="messages-latest"
 			type="button"
-			class="btn pointer-events-auto z-20 mb-4 rounded-full"
-			data-variant="secondary"
+			class="btn bg-background/40! hover:bg-muted/70! dark:bg-input/30! dark:hover:bg-input/50! pointer-events-auto z-20 mb-4 rounded-full backdrop-blur-xs"
+			data-variant="outline"
 			data-size="icon"
 			data-preserve-attr="hidden inert tabindex"
 			data-on:click="window.piUi.messageScroll.scrollBottom('smooth')"
