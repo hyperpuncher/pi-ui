@@ -250,7 +250,13 @@ export class MessageRenderService {
 	}
 	private broadcast(message: TranscriptMessage): void {
 		const projected = this.project(message);
-		this.patchMessage(renderMessage(projected), `[data-message-id="${message.id}"]`);
+		const messages = this.store.transcript.allMessages;
+		const index = messages.indexOf(message);
+		const toolContinues = messages[index + 1]?.role === "tool";
+		this.patchMessage(
+			renderMessage(projected, toolContinues),
+			`[data-message-id="${message.id}"]`,
+		);
 	}
 	private ensure(id: string): MessagePresentation {
 		let value = this.presentation.get(id);

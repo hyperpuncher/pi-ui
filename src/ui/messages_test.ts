@@ -36,6 +36,14 @@ Deno.test("bodyless tools use timeline markup without an output surface", () => 
 	assertEquals(html.includes("pi-tool-output-surface"), false);
 });
 
+Deno.test("consecutive tools mark every continuing timeline segment", () => {
+	const html = renderMessages(
+		[tool(), tool({ id: "tool-2" }), tool({ id: "tool-3" })],
+		{ description: "Send", keys: "enter" },
+	);
+	assertEquals(html.match(/data-tool-continues/g)?.length, 2);
+});
+
 Deno.test("shell tools preserve wrapped title, metadata, and escaped output", () => {
 	const html = renderMessage(
 		tool({

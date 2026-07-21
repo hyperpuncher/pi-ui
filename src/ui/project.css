@@ -254,15 +254,24 @@
 		color: var(--pi-status-error);
 	}
 
+	.messages-stack > .message-tool[data-tool-continues]::after,
 	.messages-stack > .message-tool + .message-tool::before {
 		position: absolute;
-		top: calc(-1 * var(--message-tool-gap) + 0.5625rem);
 		left: var(--pi-timeline-rail-x);
 		width: 3px;
-		height: var(--message-tool-gap);
 		background: var(--pi-tool-output-background);
 		content: "";
 		translate: -50% 0;
+	}
+
+	.messages-stack > .message-tool[data-tool-continues]::after {
+		top: 0.5625rem;
+		bottom: 0;
+	}
+
+	.messages-stack > .message-tool + .message-tool::before {
+		top: calc(-1 * var(--message-tool-gap));
+		height: calc(var(--message-tool-gap) + 0.5625rem);
 	}
 
 	.pi-tool-output-surface {

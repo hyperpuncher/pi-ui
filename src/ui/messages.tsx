@@ -43,7 +43,10 @@ export function renderMessages(
 								{hasOlderMessages && index === olderMessagesTriggerIndex
 									? renderOlderMessagesTrigger()
 									: ""}
-								{renderMessage(message)}
+								{renderMessage(
+									message,
+									messages[index + 1]?.role === "tool",
+								)}
 							</>
 						))}
 			</div>
@@ -317,7 +320,7 @@ function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	return classes.join(" ");
 }
 
-export function renderMessage(message: AppMessage): string {
+export function renderMessage(message: AppMessage, toolContinues = false): string {
 	if (message.role === "user") {
 		return (
 			<article
@@ -431,6 +434,7 @@ export function renderMessage(message: AppMessage): string {
 		<article
 			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
+			data-tool-continues={toolContinues ? "" : undefined}
 		>
 			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
 				<span
