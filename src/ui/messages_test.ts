@@ -70,12 +70,20 @@ Deno.test("tool formats retain specific hooks inside the shared output surface",
 Deno.test("running and error tools preserve state semantics", () => {
 	const running = renderMessage(tool({ state: "running", meta: "working" }));
 	assertStringIncludes(running, "animate-ping");
+	assertStringIncludes(running, "transition-opacity");
+	assertStringIncludes(running, "text-muted-foreground");
+	assertStringIncludes(running, 'aria-label="Running"');
 	assertStringIncludes(running, 'role="status"');
+	assertEquals(running.match(/pi-tool-status-ball/g)?.length, 3);
 	assertEquals(running.includes("animate-spin"), false);
 	assertStringIncludes(running, "working");
 	const error = renderMessage(tool({ state: "error" }));
 	assertStringIncludes(error, "pi-tool-status-ball");
 	assertStringIncludes(error, "pi-tool-status-error");
+	assertStringIncludes(error, "opacity-100");
+	assertStringIncludes(error, 'aria-label="Failed"');
+	assertEquals(error.match(/pi-tool-status-ball/g)?.length, 3);
+	assertEquals(error.includes("animate-ping"), false);
 });
 
 Deno.test("plain tool titles remain escaped", () => {

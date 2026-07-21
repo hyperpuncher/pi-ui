@@ -421,26 +421,43 @@ export function renderMessage(message: AppMessage): string {
 	const hasToolBody = message.text.trim().length > 0;
 	const statusClass =
 		message.state === "error" ? "pi-tool-status-error" : "pi-tool-status-success";
+	const statusLabel =
+		message.state === "running"
+			? "Running"
+			: message.state === "error"
+				? "Failed"
+				: "Completed";
 	return (
 		<article
 			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
 		>
 			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
-				{message.state === "running" ? (
+				<span
+					class="pi-tool-state-dot inline-grid size-2 *:[grid-area:1/1]"
+					aria-label={statusLabel}
+					role="status"
+				>
 					<span
-						class="pi-tool-state-dot inline-grid size-2 text-muted-foreground *:[grid-area:1/1]"
-						aria-label="Running"
-						role="status"
-					>
-						<span class="pi-tool-status-ball animate-ping motion-reduce:animate-none" />
-						<span class="pi-tool-status-ball" />
-					</span>
-				) : (
-					<span
-						class={["pi-tool-state-dot pi-tool-status-ball", statusClass]}
+						class={[
+							"pi-tool-status-ball text-muted-foreground transition-opacity duration-500 ease-out motion-reduce:transition-none",
+							message.state === "running" ? "opacity-100" : "opacity-0",
+						]}
 					/>
-				)}
+					<span
+						class={[
+							"pi-tool-status-ball transition-opacity duration-500 ease-out motion-reduce:transition-none",
+							statusClass,
+							message.state === "running" ? "opacity-0" : "opacity-100",
+						]}
+					/>
+					<span
+						class={[
+							"pi-tool-status-ball transition-opacity duration-500 ease-out motion-reduce:animate-none motion-reduce:transition-none",
+							message.state === "running" ? "animate-ping" : "opacity-0",
+						]}
+					/>
+				</span>
 				<span class="min-w-0 flex-1 leading-4.5 font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
 				</span>
