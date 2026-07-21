@@ -42,14 +42,14 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 							<span>Changes</span>
 							<span
 								id="review-change-count"
-								class="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] tabular-nums"
+								class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground tabular-nums"
 							>
 								{snapshot.changes.length}
 							</span>
 							<span class="ml-auto flex gap-1 font-mono text-[10px] tabular-nums">
 								<span
 									id="review-total-additions"
-									class="text-[var(--pi-success)]"
+									class="text-(--pi-success)"
 								>
 									+{additions}
 								</span>
@@ -70,7 +70,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 						</div>
 						<div
 							id="review-tree-empty"
-							class="text-muted-foreground px-3 pb-2 text-xs"
+							class="px-3 pb-2 text-xs text-muted-foreground"
 							style={
 								snapshot.changes.length > 0 ? "display: none" : undefined
 							}
@@ -96,7 +96,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 							class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-1"
 							aria-label="Commit history"
 						>
-							<p class="text-muted-foreground px-2 py-1 text-xs">
+							<p class="px-2 py-1 text-xs text-muted-foreground">
 								Loading history…
 							</p>
 						</div>
@@ -116,7 +116,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center justify-between gap-2 px-1">
 						<span
 							id="review-branch"
-							class="text-muted-foreground min-w-0 truncate font-mono text-[11px]"
+							class="min-w-0 truncate font-mono text-[11px] text-muted-foreground"
 							style={snapshot.branch ? undefined : "display: none"}
 							safe
 						>
@@ -124,13 +124,13 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 						</span>
 						<div class="pi-review-controls flex shrink-0 items-center gap-1">
 							<div
-								class="flex rounded-md bg-[var(--pi-control-well)] p-0.5"
+								class="flex rounded-md bg-(--pi-control-well) p-0.5"
 								aria-label="Diff scope"
 							>
 								<button
 									id="review-mode-all"
 									type="button"
-									class="text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground rounded-sm px-2 py-1 text-xs font-medium aria-pressed:shadow-sm"
+									class="rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 									aria-pressed="true"
 								>
 									All
@@ -138,20 +138,20 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 								<button
 									id="review-mode-selected"
 									type="button"
-									class="text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground rounded-sm px-2 py-1 text-xs font-medium aria-pressed:shadow-sm"
+									class="rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 									aria-pressed="false"
 								>
 									Selected
 								</button>
 							</div>
 							<div
-								class="flex rounded-md bg-[var(--pi-control-well)] p-0.5"
+								class="flex rounded-md bg-(--pi-control-well) p-0.5"
 								aria-label="Diff layout"
 							>
 								<button
 									id="review-layout-split"
 									type="button"
-									class="text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground rounded-sm p-1 text-xs font-medium aria-pressed:shadow-sm"
+									class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 									aria-pressed="true"
 									aria-label="Split diff layout"
 								>
@@ -171,7 +171,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 								<button
 									id="review-layout-stacked"
 									type="button"
-									class="text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground rounded-sm p-1 text-xs font-medium aria-pressed:shadow-sm"
+									class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 									aria-pressed="false"
 									aria-label="Stacked diff layout"
 								>
@@ -192,7 +192,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 							<button
 								id="review-wrap"
 								type="button"
-								class="text-muted-foreground aria-pressed:text-foreground rounded-sm px-2 py-1 text-xs font-medium aria-pressed:bg-[var(--pi-control-well)]"
+								class="rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-(--pi-control-well) aria-pressed:text-foreground"
 								aria-pressed="true"
 							>
 								Wrap
@@ -229,7 +229,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 						/>
 						<div
 							id="review-empty"
-							class="text-muted-foreground pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm"
+							class="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground"
 						>
 							{snapshot.isGitRepository
 								? "Loading Git data…"

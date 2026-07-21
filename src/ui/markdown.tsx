@@ -377,7 +377,7 @@ function renderPlainCode(
 function CodeBlock(props: { pre: string; language: string; source?: string }) {
 	return (
 		<div
-			class="code-block [&_pre]:tab-size-4! bg-muted/40 dark:bg-muted/55 border-border/60 my-4 overflow-hidden rounded-md border [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-[var(--code-background)]! [&_pre]:p-4! [&_pre]:text-[13px]! [&_pre]:leading-[22px]!"
+			class="code-block [&_pre]:tab-size-4! my-4 overflow-hidden rounded-md border border-border/60 bg-muted/40 dark:bg-muted/55 [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-(--code-background)! [&_pre]:p-4! [&_pre]:text-[13px]! [&_pre]:leading-5.5!"
 			data-code-block
 		>
 			{props.source !== undefined && (
@@ -385,7 +385,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					{props.source}
 				</script>
 			)}
-			<div class="text-muted-foreground flex items-center justify-between gap-3 px-3 py-0.5 font-mono text-xs">
+			<div class="flex items-center justify-between gap-3 px-3 py-0.5 font-mono text-xs text-muted-foreground">
 				<span safe>{props.language}</span>
 				<button
 					class="btn group relative"
@@ -435,7 +435,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					</svg>
 				</button>
 			</div>
-			<div class="border-border/60 overflow-hidden rounded-t-md border-t bg-[var(--code-background)]">
+			<div class="overflow-hidden rounded-t-md border-t border-border/60 bg-(--code-background)">
 				{props.pre}
 			</div>
 		</div>

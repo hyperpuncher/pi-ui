@@ -49,7 +49,7 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 			</header>
 			<div class="max-h-[60vh] overflow-y-auto py-1">
 				{dialog.providers.length === 0 ? (
-					<p class="text-muted-foreground py-6 text-center text-sm" safe>
+					<p class="py-6 text-center text-sm text-muted-foreground" safe>
 						{dialog.error ??
 							dialog.status ??
 							(dialog.mode === "login"
@@ -96,7 +96,7 @@ function renderProviderButton(
 				<span class="block truncate" safe>
 					{provider.name}
 				</span>
-				<span class="text-muted-foreground block truncate font-mono text-xs" safe>
+				<span class="block truncate font-mono text-xs text-muted-foreground" safe>
 					{provider.id}
 				</span>
 			</span>
@@ -121,7 +121,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 				{dialog.url && (
 					<div class="space-y-2">
 						<a
-							class="text-primary block break-all underline"
+							class="block break-all text-primary underline"
 							href={dialog.url}
 							target="_blank"
 							rel="noreferrer"
@@ -130,7 +130,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 							{dialog.url}
 						</a>
 						{dialog.instructions && (
-							<p class="text-muted-foreground text-sm" safe>
+							<p class="text-sm text-muted-foreground" safe>
 								{dialog.instructions}
 							</p>
 						)}
@@ -138,7 +138,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 				)}
 				{dialog.deviceCode && (
 					<div class="rounded-lg border p-3">
-						<p class="text-muted-foreground text-sm">
+						<p class="text-sm text-muted-foreground">
 							Enter this code in the browser:
 						</p>
 						<code class="mt-1 block text-lg font-semibold" safe>
@@ -148,14 +148,14 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 				)}
 				{dialog.prompt && renderAuthenticationPrompt(dialog)}
 				{dialog.progress.length > 0 && (
-					<div class="text-muted-foreground space-y-1 text-sm">
+					<div class="space-y-1 text-sm text-muted-foreground">
 						{dialog.progress.map((message) => (
 							<p safe>{message}</p>
 						))}
 					</div>
 				)}
 				{dialog.error && (
-					<p class="text-destructive text-sm" safe>
+					<p class="text-sm text-destructive" safe>
 						{dialog.error}
 					</p>
 				)}

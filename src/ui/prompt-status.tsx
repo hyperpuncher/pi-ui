@@ -7,7 +7,7 @@ export function renderPromptStatus(state: AppRenderSnapshot): string {
 			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
 		>
 			{state.activityText && (
-				<span class="text-muted-foreground inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none">
+				<span class="inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none text-muted-foreground">
 					<span class="inline-flex items-center gap-1.5">
 						{loaderIcon()}
 						<span safe>{state.activityText}</span>

@@ -4,7 +4,9 @@
 	"tabWidth": 4,
 	"useTabs": true,
 	"sortImports": true,
-	"sortTailwindcss": true,
+	"sortTailwindcss": {
+		"stylesheet": "./src/ui/styles.css",
+	},
 	"ignorePatterns": [
 		"node_modules/**",
 		"public/**",

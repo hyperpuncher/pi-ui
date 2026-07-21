@@ -12,7 +12,7 @@ export function SessionSubtitle(props: {
 				{workspace}
 			</span>
 			<span
-				class="bg-border mx-2 inline-block size-1 rounded-full align-[0.125em]"
+				class="mx-2 inline-block size-1 rounded-full bg-border align-[0.125em]"
 				aria-hidden="true"
 			></span>
 			<span class="font-mono" safe>

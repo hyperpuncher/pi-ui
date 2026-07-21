@@ -17,7 +17,7 @@ export function PickerList(props: {
 
 export function PickerEmpty(props: { children: JSX.Element }): string {
 	return (
-		<li role="status" class="text-muted-foreground px-3 py-4 text-center text-sm">
+		<li role="status" class="px-3 py-4 text-center text-sm text-muted-foreground">
 			{props.children}
 		</li>
 	) as string;
@@ -35,13 +35,13 @@ export function PickerRow(props: {
 		<li
 			role="option"
 			tabindex="-1"
-			class="aria-selected:bg-muted rounded-md"
+			class="rounded-md aria-selected:bg-muted"
 			aria-selected={props.selected ? "true" : "false"}
 			data-file-row
 		>
 			<button
 				type="button"
-				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
+				class="flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
 				data-picker-kind={props.kind}
 				data-picker-value={props.value}
 			>
@@ -49,7 +49,7 @@ export function PickerRow(props: {
 					<span class="block truncate font-medium" safe>
 						{props.label}
 					</span>
-					<span class="text-muted-foreground block truncate text-xs" safe>
+					<span class="block truncate text-xs text-muted-foreground" safe>
 						{props.description}
 					</span>
 				</span>

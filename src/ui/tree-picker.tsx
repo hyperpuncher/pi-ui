@@ -4,7 +4,7 @@ import type { AppRenderSnapshot, AppTreeEntry } from "../state/app-store.ts";
 export function renderTreePicker(state: AppRenderSnapshot): string {
 	return (
 		<div id="tree-picker">
-			<div class="border-border flex items-center gap-3 border-b px-3 py-2 text-xs">
+			<div class="flex items-center gap-3 border-b border-border px-3 py-2 text-xs">
 				<label class="flex items-center gap-2">
 					<input type="checkbox" data-bind:tree-summarize />
 					<span>Summarize abandoned branch</span>
@@ -57,7 +57,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			`}
 		>
 			<span
-				class="text-muted-foreground col-start-1 row-start-1 whitespace-pre"
+				class="col-start-1 row-start-1 whitespace-pre text-muted-foreground"
 				safe
 			>
 				{entry.prefix}
@@ -71,7 +71,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			</span>
 			<span class="col-start-3 row-start-1 min-w-0 truncate">
 				{entry.label && (
-					<span class="text-warning mr-1" safe>
+					<span class="mr-1 text-amber-500" safe>
 						[{entry.label}]
 					</span>
 				)}
@@ -81,7 +81,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 				<span safe>{entry.text}</span>
 			</span>
 			<span
-				class="text-muted-foreground col-start-1 row-start-2 whitespace-pre"
+				class="col-start-1 row-start-2 whitespace-pre text-muted-foreground"
 				safe
 			>
 				{entry.continuationPrefix}
@@ -91,7 +91,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			</span>
 			{entry.meta && (
 				<span
-					class="text-muted-foreground col-start-3 row-start-2 mt-0.5 min-w-0 truncate"
+					class="col-start-3 row-start-2 mt-0.5 min-w-0 truncate text-muted-foreground"
 					safe
 				>
 					{entry.meta}

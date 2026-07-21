@@ -36,7 +36,7 @@ export function renderMessages(
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
-			<div class="messages-stack mx-auto w-[calc(100%-2rem)] max-w-[var(--pi-messages-max-width)]">
+			<div class="messages-stack mx-auto w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
 				{messages.length === 0
 					? renderEmptyMessages(emptyHint, sessions.slice(0, 3), authenticated)
 					: messages.map((message, index) => (
@@ -58,9 +58,9 @@ function renderEmptyMessages(
 	authenticated: boolean,
 ) {
 	return (
-		<div class="text-muted-foreground grid min-h-[calc(100vh-18rem)] place-items-center text-center">
+		<div class="grid min-h-[calc(100vh-18rem)] place-items-center text-center text-muted-foreground">
 			<div class="w-full max-w-xl">
-				<p class="text-foreground m-0 text-lg font-medium">
+				<p class="m-0 text-lg font-medium text-foreground">
 					What can I help with?
 				</p>
 				<p class="m-0 mt-3 flex items-center justify-center gap-2 text-sm">
@@ -68,7 +68,7 @@ function renderEmptyMessages(
 					<span safe>{emptyHint.description}</span>
 				</p>
 				{!authenticated ? (
-					<p class="text-muted-foreground m-0 mt-8 text-sm">
+					<p class="m-0 mt-8 text-sm text-muted-foreground">
 						<button
 							type="button"
 							class="btn h-auto p-0 font-mono"
@@ -82,7 +82,7 @@ function renderEmptyMessages(
 				) : (
 					sessions.length > 0 && (
 						<div class="mt-8 text-left">
-							<p class="text-muted-foreground mb-2 px-2 text-xs font-medium tracking-wide uppercase">
+							<p class="mb-2 px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
 								Recent sessions
 							</p>
 							<div class="flex flex-col gap-1">
@@ -103,22 +103,22 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 	return (
 		<button
 			type="button"
-			class="hover:bg-muted focus:bg-muted flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none"
+			class="flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
 			data-indicator:_session-loading
 			data-attr:disabled="$sessionTransitionLoading"
 			data-on:click={resumeSessionAction(session.path)}
 			data-on:keydown__window={resumeSessionShortcutAction(session.path, index)}
 		>
 			<span class="min-w-0">
-				<span class="text-foreground block truncate text-sm" safe>
+				<span class="block truncate text-sm text-foreground" safe>
 					{session.title}
 				</span>
 				<SessionSubtitle
 					session={session}
-					class="text-muted-foreground mt-1 line-clamp-2 text-xs"
+					class="mt-1 line-clamp-2 text-xs text-muted-foreground"
 				/>
 			</span>
-			<span class="text-muted-foreground flex shrink-0 items-center gap-2 text-xs whitespace-nowrap">
+			<span class="flex shrink-0 items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
 				<span class="font-mono" safe>
 					{session.modified}
 				</span>
@@ -146,7 +146,7 @@ function loadOlderMessagesAction(): string {
 function renderOlderMessagesTrigger() {
 	return (
 		<div
-			class="pointer-events-none -mb-[40vh] h-[40vh] opacity-0"
+			class="pointer-events-none mb-[-40vh] h-[40vh] opacity-0"
 			data-load-older-messages
 			data-on:click={`
 				window.piUi.messageScroll.captureAnchor() &&
@@ -161,7 +161,7 @@ function renderOlderMessagesTrigger() {
 function renderPreOutput(text: string) {
 	return (
 		<div class="pi-tool-output-surface p-3">
-			<pre class="text-muted-foreground m-0 max-h-80 overflow-auto rounded-md bg-transparent text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
+			<pre class="m-0 max-h-80 overflow-auto rounded-md bg-transparent text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap text-muted-foreground">
 				<code safe>{text}</code>
 			</pre>
 		</div>
@@ -187,7 +187,7 @@ function renderCodeOutput(message: AppMessage) {
 
 function renderPlainOutput(text: string) {
 	return (
-		<div class="tool-output pi-tool-output-surface max-h-[calc(5lh+1px)] overflow-hidden leading-[22px]">
+		<div class="tool-output pi-tool-output-surface max-h-[calc(5lh+1px)] overflow-hidden leading-5.5">
 			{renderPendingToolOutput(text, "pl-2")}
 		</div>
 	);
@@ -195,7 +195,7 @@ function renderPlainOutput(text: string) {
 
 function renderPendingCodeOutput(text: string) {
 	return (
-		<pre class="text-muted-foreground m-0 bg-transparent pr-3 pl-2 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap">
+		<pre class="m-0 bg-transparent pr-3 pl-2 font-mono text-[13px] leading-5.5 wrap-anywhere whitespace-pre-wrap text-muted-foreground">
 			<code>{renderInlineBash(text)}</code>
 		</pre>
 	);
@@ -205,7 +205,7 @@ function renderPendingToolOutput(text: string, paddingClass: string) {
 	return (
 		<pre
 			class={[
-				"text-muted-foreground m-0 bg-transparent pr-3 font-mono text-[13px] leading-[22px] wrap-anywhere whitespace-pre-wrap",
+				"m-0 bg-transparent pr-3 font-mono text-[13px] leading-5.5 wrap-anywhere whitespace-pre-wrap text-muted-foreground",
 				paddingClass,
 			]}
 		>
@@ -322,7 +322,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "user") {
 		return (
 			<article
-				class="message message-user bg-primary text-primary-foreground max-w-[min(32rem,72%)] self-end rounded-xl px-3.5 py-2.5"
+				class="message message-user max-w-[min(32rem,72%)] self-end rounded-xl bg-primary px-3.5 py-2.5 text-primary-foreground"
 				data-message-id={message.id}
 			>
 				<p class="m-0 whitespace-pre-wrap" safe>
@@ -353,7 +353,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "thought") {
 		return (
 			<article
-				class="message message-narrative message-thought markdown-content text-muted-foreground w-full self-start text-sm italic"
+				class="message message-narrative message-thought markdown-content w-full self-start text-sm text-muted-foreground italic"
 				data-message-id={message.id}
 			>
 				{message.renderedHtml !== undefined ? (
@@ -371,7 +371,7 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "system") {
 		return (
 			<article
-				class="message message-narrative message-system text-muted-foreground max-w-3xl self-start"
+				class="message message-narrative message-system max-w-3xl self-start text-muted-foreground"
 				data-message-id={message.id}
 			>
 				<p class="m-0 whitespace-pre-wrap" safe>
@@ -386,7 +386,7 @@ export function renderMessage(message: AppMessage): string {
 		return (
 			<article
 				class={[
-					"message message-narrative bg-muted/40 text-muted-foreground w-full self-start rounded-md p-3 text-sm",
+					"message message-narrative w-full self-start rounded-md bg-muted/40 p-3 text-sm text-muted-foreground",
 					message.role === "skill" ? "message-skill" : "message-compaction",
 				]}
 				data-message-id={message.id}
@@ -427,7 +427,7 @@ export function renderMessage(message: AppMessage): string {
 			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
 		>
-			<header class="flex min-h-[18px] items-start gap-2 font-mono text-sm">
+			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
 				{message.state === "running" ? (
 					<span class="pi-tool-state-dot pi-tool-running-indicator">
 						{loaderIcon()}
@@ -437,12 +437,12 @@ export function renderMessage(message: AppMessage): string {
 						class={["pi-tool-state-dot pi-tool-status-ball", statusClass]}
 					/>
 				)}
-				<span class="min-w-0 flex-1 leading-[18px] font-medium wrap-anywhere">
+				<span class="min-w-0 flex-1 leading-4.5 font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
 				</span>
 				{message.meta ? (
 					<span
-						class="text-muted-foreground ml-auto inline-flex h-[18px] shrink-0 items-center text-xs font-normal"
+						class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs font-normal text-muted-foreground"
 						safe
 					>
 						{message.meta}

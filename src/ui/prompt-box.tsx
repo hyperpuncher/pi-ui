@@ -18,11 +18,11 @@ export function renderPromptBox(
 	return (
 		<div
 			id="prompt-box"
-			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-[var(--pi-prompt-max-width)] overflow-visible text-sm"
+			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-(--pi-prompt-max-width) overflow-visible text-sm"
 		>
 			<div
 				id="prompt-slash-popover"
-				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border p-1 shadow-md"
+				class="absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
 				style="display: none;"
 				data-show="$_slashPickerOpen"
 			>
@@ -30,7 +30,7 @@ export function renderPromptBox(
 			</div>
 			<div
 				id="prompt-file-popover"
-				class="bg-popover text-popover-foreground absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border p-1 shadow-md"
+				class="absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
 				style="display: none;"
 				data-show="$_filePickerOpen"
 			>
@@ -114,12 +114,12 @@ export function renderPromptBox(
 						{renderPromptStatus(state)}
 						{renderWorkspacePicker(state)}
 						<span
-							class="border-border hidden h-4 w-0 shrink-0 border-l sm:block"
+							class="hidden h-4 w-0 shrink-0 border-l border-border sm:block"
 							aria-hidden="true"
 						/>
 						{renderModelPicker(state)}
 						<span
-							class="border-border hidden h-4 w-0 shrink-0 border-l sm:block"
+							class="hidden h-4 w-0 shrink-0 border-l border-border sm:block"
 							aria-hidden="true"
 						/>
 						{renderThinkingPicker(state)}
@@ -149,7 +149,7 @@ function renderLatestButton() {
 		<button
 			id="messages-latest"
 			type="button"
-			class="btn bg-background/40! hover:bg-muted/70! dark:bg-input/30! dark:hover:bg-input/50! pointer-events-auto z-20 mb-4 rounded-full backdrop-blur-xs"
+			class="btn pointer-events-auto z-20 mb-4 rounded-full bg-background/40! backdrop-blur-xs hover:bg-muted/70! dark:bg-input/30! hover:dark:bg-input/50!"
 			data-variant="outline"
 			data-size="icon"
 			data-preserve-attr="hidden inert tabindex"
@@ -188,7 +188,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 	return (
 		<section class="prompt-queue-surface pi-raised-surface pi-prompt-surface pointer-events-auto -mb-3 w-full translate-y-0 overflow-hidden border border-transparent opacity-100 transition-[opacity,translate] duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity motion-reduce:duration-100 starting:translate-y-full starting:opacity-0">
 			<header class="flex h-8 items-center justify-between gap-3 px-3">
-				<div class="text-muted-foreground flex min-w-0 items-center gap-2 text-xs font-medium">
+				<div class="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground">
 					<span class="text-muted-foreground">
 						<QueueIcon />
 					</span>
@@ -199,7 +199,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 				</div>
 				<button
 					type="button"
-					class="text-muted-foreground hover:bg-muted hover:text-foreground -mr-1 flex h-7 items-center gap-2 rounded-md px-2 text-xs transition-colors"
+					class="-mr-1 flex h-7 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 					data-on:click={`@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } })`}
 					aria-label="Restore queued messages to the prompt"
 				>
@@ -209,7 +209,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 			</header>
 			<div class="flex max-h-32 flex-col overflow-y-auto px-1.5 pb-4">
 				{items.map(([label, text]) => (
-					<div class="prompt-queue-item hover:bg-muted/60 flex min-w-0 translate-y-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs opacity-100 transition-[opacity,translate] duration-100 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
+					<div class="prompt-queue-item flex min-w-0 translate-y-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs opacity-100 transition-[opacity,translate] duration-100 ease-out hover:bg-muted/60 motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
 						<span
 							class={[
 								"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
@@ -220,7 +220,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 						>
 							{label}
 						</span>
-						<span class="text-muted-foreground truncate" safe>
+						<span class="truncate text-muted-foreground" safe>
 							{text}
 						</span>
 					</div>

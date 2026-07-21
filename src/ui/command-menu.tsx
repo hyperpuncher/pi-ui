@@ -58,7 +58,7 @@ function renderCommandRow(item: AppCommandMetadata): string {
 		>
 			<span class="min-w-0">
 				<span class="block truncate">{item.title}</span>
-				<span class="text-muted-foreground block truncate text-xs">
+				<span class="block truncate text-xs text-muted-foreground">
 					{item.description}
 				</span>
 			</span>

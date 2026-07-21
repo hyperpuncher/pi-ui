@@ -1,4 +1,50 @@
 {
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"jsPlugins": ["oxlint-tailwindcss"],
+	"settings": {
+		"tailwindcss": {
+			"entryPoint": "src/ui/styles.css"
+		}
+	},
+	"rules": {
+		"tailwindcss/consistent-variant-order": "warn",
+		"tailwindcss/enforce-canonical": "warn",
+		"tailwindcss/enforce-consistent-important-position": "warn",
+		"tailwindcss/enforce-sort-order": "warn",
+		"tailwindcss/no-conflicting-classes": "error",
+		"tailwindcss/no-deprecated-classes": "error",
+		"tailwindcss/no-duplicate-classes": "warn",
+		"tailwindcss/no-unknown-classes": [
+			"error",
+			{
+				"allowlist": [
+					"[&_pre]:tab-size-4!",
+					"badge",
+					"btn",
+					"code-output",
+					"command",
+					"command-dialog",
+					"dialog",
+					"diff-output",
+					"dropdown-menu",
+					"field",
+					"input",
+					"kbd",
+					"lucide",
+					"lucide-loader",
+					"message-compaction",
+					"message-skill",
+					"message-system",
+					"popover",
+					"prompt-queue-item",
+					"prompt-queue-surface",
+					"tool-output"
+				]
+			}
+		],
+		"tailwindcss/no-unnecessary-arbitrary-value": "warn",
+		"tailwindcss/no-unnecessary-whitespace": "warn"
+	},
 	"ignorePatterns": [
 		".agents/**",
 		"node_modules/**",

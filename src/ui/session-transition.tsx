@@ -29,15 +29,15 @@ export function renderSessionTransition(state: AppRenderSnapshot): string {
 		>
 			{transition.status === "error" ? (
 				<div class="max-w-lg">
-					<p class="text-destructive m-0 font-medium">
+					<p class="m-0 font-medium text-destructive">
 						Session transition failed
 					</p>
-					<p class="text-muted-foreground mt-2 mb-0 text-sm" safe>
+					<p class="mt-2 mb-0 text-sm text-muted-foreground" safe>
 						{transition.message}
 					</p>
 				</div>
 			) : (
-				<div class="text-muted-foreground flex flex-col items-center">
+				<div class="flex flex-col items-center text-muted-foreground">
 					<svg
 						class="size-5 animate-spin"
 						viewBox="0 0 24 24"

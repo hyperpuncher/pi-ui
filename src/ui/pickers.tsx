@@ -42,7 +42,7 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 		<li
 			role="option"
 			tabindex="-1"
-			class="aria-selected:bg-muted rounded-md"
+			class="rounded-md aria-selected:bg-muted"
 			aria-selected={selected ? "true" : "false"}
 			data-slash-row
 			data-show={`
@@ -52,7 +52,7 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 			`}
 		>
 			<button
-				class="hover:bg-muted focus:bg-muted flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none"
+				class="flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
 				type="button"
 				data-picker-kind="slash"
 				data-picker-value={commandText}
@@ -63,12 +63,12 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 							{label}
 						</span>
 						{item.argumentHint && (
-							<span class="text-muted-foreground ml-2" safe>
+							<span class="ml-2 text-muted-foreground" safe>
 								{item.argumentHint}
 							</span>
 						)}
 					</span>
-					<span class="text-muted-foreground block truncate text-xs" safe>
+					<span class="block truncate text-xs text-muted-foreground" safe>
 						{item.description || item.source}
 					</span>
 				</span>
@@ -102,7 +102,7 @@ export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
 				>
 					<span>Open typed path</span>
 					<span
-						class="text-muted-foreground text-xs"
+						class="text-xs text-muted-foreground"
 						data-show="$_workspaceOpening"
 						style="display: none"
 					>
@@ -160,7 +160,7 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
-			<span class="text-primary mt-0.5 w-4 shrink-0 text-center" aria-hidden="true">
+			<span class="mt-0.5 w-4 shrink-0 text-center text-primary" aria-hidden="true">
 				{current ? "•" : ""}
 			</span>
 			<span class="min-w-0 truncate font-mono text-sm" safe>
@@ -260,7 +260,7 @@ function renderSessionRow(
 				<span class="flex min-w-0 items-center gap-2">
 					{current && (
 						<span
-							class="bg-primary size-1.5 shrink-0 rounded-full"
+							class="size-1.5 shrink-0 rounded-full bg-primary"
 							data-current-session-indicator
 							aria-hidden="true"
 						></span>
@@ -271,7 +271,7 @@ function renderSessionRow(
 				</span>
 				<SessionSubtitle
 					session={session}
-					class="text-muted-foreground mt-1 line-clamp-2 text-xs"
+					class="mt-1 line-clamp-2 text-xs text-muted-foreground"
 				/>
 			</span>
 			<span class="mt-0.5 flex w-32 shrink-0 flex-col items-end gap-1 font-mono whitespace-nowrap">
@@ -280,7 +280,7 @@ function renderSessionRow(
 				</span>
 				{displayStatus === "running" && (
 					<span
-						class="text-foreground text-[0.6875rem] font-medium"
+						class="text-[0.6875rem] font-medium text-foreground"
 						aria-label={
 							current
 								? "Current session running"
@@ -293,7 +293,7 @@ function renderSessionRow(
 				)}
 				{displayStatus === "completed" && (
 					<span
-						class="text-muted-foreground flex items-center gap-1 text-[0.6875rem]"
+						class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"
 						aria-label="Background session completed"
 						data-background-status="completed"
 					>
@@ -336,7 +336,7 @@ function renderSessionRow(
 					}
 				>
 					<svg
-						class="text-destructive! fill-destructive! size-3"
+						class="size-3 fill-destructive! text-destructive!"
 						viewBox="0 0 24 24"
 						aria-hidden="true"
 					>

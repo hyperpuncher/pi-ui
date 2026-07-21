@@ -90,18 +90,18 @@ export function renderPage(
 				{renderDebugOverlay(state)}
 				<div
 					id="file-drop-overlay"
-					class="bg-background/55 pointer-events-none fixed inset-0 z-50 items-center justify-center opacity-0 backdrop-blur-sm transition-[opacity,display] transition-discrete duration-100 ease-out motion-reduce:duration-100 [&.file-drop-active]:opacity-100 starting:[&.file-drop-active]:opacity-0"
+					class="pointer-events-none fixed inset-0 z-50 items-center justify-center bg-background/55 opacity-0 backdrop-blur-sm transition-[opacity,display] transition-discrete duration-100 ease-out motion-reduce:duration-100 [&.file-drop-active]:opacity-100 starting:[&.file-drop-active]:opacity-0"
 					style="display: none;"
 					data-class:file-drop-active="$isDraggingFile"
 					data-style:display="$isDraggingFile ? 'flex' : 'none'"
 					aria-hidden="true"
 				>
 					<div
-						class="border-border bg-card/95 text-card-foreground flex scale-95 items-center gap-3 rounded-2xl border-2 border-dashed px-5 py-4 text-sm shadow-lg transition-[scale] duration-100 ease-out motion-reduce:scale-100 motion-reduce:transition-none [&.file-drop-card-active]:scale-100 starting:[&.file-drop-card-active]:scale-95"
+						class="flex scale-95 items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card/95 px-5 py-4 text-sm text-card-foreground shadow-lg transition-[scale] duration-100 ease-out motion-reduce:scale-100 motion-reduce:transition-none [&.file-drop-card-active]:scale-100 starting:[&.file-drop-card-active]:scale-95"
 						data-class:file-drop-card-active="$isDraggingFile"
 					>
 						<svg
-							class="text-muted-foreground size-8"
+							class="size-8 text-muted-foreground"
 							xmlns="http://www.w3.org/2000/svg"
 							width="32"
 							height="32"

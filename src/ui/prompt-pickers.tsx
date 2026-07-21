@@ -14,7 +14,7 @@ export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 	return (
 		<button
 			id="workspace-picker"
-			class="btn text-muted-foreground hover:text-foreground hidden max-w-[12rem] min-w-0 font-mono sm:inline-flex"
+			class="btn hidden max-w-48 min-w-0 font-mono text-muted-foreground hover:text-foreground sm:inline-flex"
 			data-variant="ghost"
 			data-size="sm"
 			type="button"
@@ -54,7 +54,7 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn text-muted-foreground hover:text-foreground w-fit max-w-[10rem] font-mono"
+					class="btn w-fit max-w-40 font-mono text-muted-foreground hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="thinking-select-trigger"
@@ -106,7 +106,7 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 										<span class="block truncate">
 											{thinkingLabel(level)}
 										</span>
-										<span class="text-muted-foreground block truncate text-xs">
+										<span class="block truncate text-xs text-muted-foreground">
 											{thinkingDescription(level)}
 										</span>
 									</span>
@@ -161,7 +161,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 			<div id="model-picker" class="shrink-0">
 				<button
 					type="button"
-					class="btn text-muted-foreground hover:text-foreground w-fit font-mono"
+					class="btn w-fit font-mono text-muted-foreground hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					data-tooltip="Log in to a provider"
@@ -192,7 +192,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn text-muted-foreground hover:text-foreground w-fit font-mono"
+					class="btn w-fit font-mono text-muted-foreground hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
@@ -277,7 +277,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 													{model.id}
 												</span>
 												<span
-													class="text-muted-foreground block truncate text-xs"
+													class="block truncate text-xs text-muted-foreground"
 													safe
 												>
 													{model.provider}
