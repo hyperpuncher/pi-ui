@@ -44,32 +44,6 @@ function restoreOpenSessionCommand(component, state) {
 	if (menu instanceof HTMLElement) menu.scrollTop = state.scrollTop;
 }
 
-export function bindBasecoatMorphs() {
-	const observer = new MutationObserver((records) => {
-		for (const record of records) {
-			if (record.target instanceof Element) {
-				const command = record.target.closest(".command");
-				if (record.attributeName === "class") {
-					if (command && !command.querySelector('[role="menuitem"].active')) {
-						refresh(command);
-					}
-				} else {
-					refresh(command ?? record.target);
-				}
-			}
-			for (const node of record.addedNodes) {
-				if (node instanceof Element) refresh(node);
-			}
-		}
-	});
-	observer.observe(document.body, {
-		childList: true,
-		subtree: true,
-		attributes: true,
-		attributeFilter: ["class", "aria-disabled", "data-disabled", "disabled"],
-	});
-}
-
 function componentsIn(root) {
 	const components = [];
 	if (root instanceof Element && isRefreshable(root)) components.push(root);
