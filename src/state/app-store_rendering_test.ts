@@ -464,32 +464,37 @@ Deno.test("initial and live backend-owned signals share exact projections", () =
 	}
 });
 
-Deno.test("complete fat view contains every server-owned dynamic root", () => {
+Deno.test("primary and picker fat views contain every server-owned dynamic root", () => {
 	const previous = Deno.env.get("PI_UI_DEBUG");
 	Deno.env.set("PI_UI_DEBUG", "1");
 	try {
 		const store = new AppStore();
 		const renderer = new UiRenderer(store, new DatastarClientHub());
-		const html = renderer.renderElements(store.snapshot());
-		assertNotIncludes(html, 'id="session-menu-content"');
-		assertIncludes(html, 'id="debug-fps" data-ignore-morph');
+		const snapshot = store.snapshot();
+		const primary = renderer.renderElements(snapshot);
+		const pickers = renderer.renderPickerElements(snapshot);
+		assertNotIncludes(primary + pickers, 'id="session-menu-content"');
+		assertIncludes(primary, 'id="debug-fps" data-ignore-morph');
 		for (const id of [
 			"messages",
-			"auth-dialog-content",
 			"prompt-action",
 			"prompt-queue",
 			"prompt-toolbar",
 			"prompt-status",
 			"workspace-picker",
+			"session-transition",
+			"debug-overlay",
+		])
+			assertIncludes(primary, `id="${id}"`);
+		for (const id of [
+			"auth-dialog-content",
 			"workspace-menu",
 			"model-picker",
 			"thinking-picker",
-			"session-transition",
-			"debug-overlay",
 			"slash-picker",
 			"tree-picker",
 		])
-			assertIncludes(html, `id="${id}"`);
+			assertIncludes(pickers, `id="${id}"`);
 	} finally {
 		if (previous === undefined) Deno.env.delete("PI_UI_DEBUG");
 		else Deno.env.set("PI_UI_DEBUG", previous);

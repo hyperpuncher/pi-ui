@@ -39,6 +39,8 @@ export class UiRenderer implements AppStorePresentation {
 	private suppressMessagesDepth = 0;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
+	private readonly pickersHub = new DatastarClientHub(undefined, false);
+	private pickerHtml: string | undefined;
 	private readonly sessionHub = new DatastarClientHub(undefined, false);
 	private sessionPickerHtml: string | undefined;
 
@@ -59,6 +61,14 @@ export class UiRenderer implements AppStorePresentation {
 	createStream(signal: AbortSignal): Response {
 		this.flush();
 		return this.hub.createStream(signal, () => this.renderView());
+	}
+	createPickersStream(signal: AbortSignal): Response {
+		this.flush();
+		return this.pickersHub.createStream(signal, () => {
+			const elements = this.renderPickerElements(this.store.snapshot());
+			this.pickerHtml = elements;
+			return { elements, signals: "{}" };
+		});
 	}
 	createSessionStream(signal: AbortSignal): Response {
 		this.flush();
@@ -96,9 +106,22 @@ export class UiRenderer implements AppStorePresentation {
 		this.pendingEffects = [];
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
+		const snapshot = this.store.snapshot();
+		const pickerScripts = this.pickerEffectScripts(effects);
+		if (this.pickersHub.clientCount > 0) {
+			const elements = this.renderPickerElements(snapshot);
+			if (elements !== this.pickerHtml || pickerScripts.length > 0) {
+				this.pickerHtml = elements;
+				this.pickersHub.patchView(elements, "{}", pickerScripts);
+			}
+		}
 		if (this.hub.clientCount > 0) {
-			const view = this.renderView(this.effectSignalOverrides(effects));
-			this.hub.patchView(view.elements, view.signals, this.effectScripts(effects));
+			const view = this.renderView(this.effectSignalOverrides(effects), snapshot);
+			this.hub.patchView(
+				view.elements,
+				view.signals,
+				this.mainEffectScripts(effects),
+			);
 		}
 		if (this.sessionHub.clientCount > 0) {
 			const elements = renderSessionPickerContent(this.store.snapshot());
@@ -174,17 +197,21 @@ export class UiRenderer implements AppStorePresentation {
 					);
 		return (
 			messages +
-			renderAuthDialogContent(snapshot.authDialog) +
 			renderPromptAction(snapshot) +
 			renderPromptQueue(snapshot) +
 			renderPromptToolbar(snapshot) +
 			renderPromptStatus(snapshot) +
 			renderWorkspacePicker(snapshot) +
+			renderSessionTransition(snapshot) +
+			renderDebugOverlay(snapshot)
+		);
+	}
+	renderPickerElements(snapshot: AppRenderSnapshot): string {
+		return (
+			renderAuthDialogContent(snapshot.authDialog) +
 			renderWorkspaceDialogMenu(snapshot) +
 			renderModelPicker(snapshot) +
 			renderThinkingPicker(snapshot) +
-			renderSessionTransition(snapshot) +
-			renderDebugOverlay(snapshot) +
 			renderSlashPicker(snapshot) +
 			renderTreePicker(snapshot)
 		);
@@ -198,11 +225,13 @@ export class UiRenderer implements AppStorePresentation {
 			...overrides,
 		});
 	}
-	private renderView(overrides: Record<string, unknown> = {}): {
+	private renderView(
+		overrides: Record<string, unknown> = {},
+		snapshot = this.store.snapshot(),
+	): {
 		elements: string;
 		signals: string;
 	} {
-		const snapshot = this.store.snapshot();
 		return {
 			elements: this.renderElements(snapshot),
 			signals: this.renderSignals(snapshot, overrides),
@@ -218,11 +247,14 @@ export class UiRenderer implements AppStorePresentation {
 				.map((effect) => effect.values),
 		);
 	}
-	private effectScripts(effects: readonly UiCommitEffect[]): string[] {
+	private mainEffectScripts(effects: readonly UiCommitEffect[]): string[] {
+		return effects.some((effect) => effect.type === "scroll-messages-to-bottom")
+			? ["window.piUi.messageScroll.scrollBottom()"]
+			: [];
+	}
+	private pickerEffectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts: string[] = [];
 		for (const effect of effects) {
-			if (effect.type === "scroll-messages-to-bottom")
-				scripts.push("window.piUi.messageScroll.scrollBottom()");
 			if (effect.type === "reopen-model-picker")
 				scripts.push(
 					"window.piUi.basecoat.refresh(document.getElementById('model-select')); requestAnimationFrame(() => document.getElementById('model-select-trigger')?.click())",

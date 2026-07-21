@@ -1,6 +1,7 @@
 export const endpoints = {
 	root: "/",
 	stream: "/stream",
+	pickersStream: "/pickers/stream",
 	displayRefresh: "/display-refresh",
 	prompt: "/prompt",
 	promptFollowUp: "/prompt/follow-up",

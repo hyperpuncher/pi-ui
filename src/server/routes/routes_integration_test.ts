@@ -13,6 +13,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 	const expected = [
 		"GET /",
 		"GET /stream",
+		"GET /pickers/stream",
 		"POST /display-refresh",
 		"POST /prompt",
 		"POST /prompt/follow-up",

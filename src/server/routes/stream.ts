@@ -6,4 +6,7 @@ export function registerStreamRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("GET", endpoints.stream, (request, context) =>
 		context.renderer.createStream(request.signal),
 	);
+	router.register("GET", endpoints.pickersStream, (request, context) =>
+		context.renderer.createPickersStream(request.signal),
+	);
 }

@@ -146,6 +146,16 @@ export function renderPage(
 					{renderWorkspaceReview(workspaceReview)}
 				</div>
 
+				<div
+					id="pickers-stream"
+					class="hidden"
+					data-init={`@get('${endpoints.pickersStream}', {
+						filterSignals: { include: /^$/ },
+						openWhenHidden: true,
+						requestCancellation: 'cleanup',
+					})`}
+				/>
+
 				{renderCommandMenu()}
 				{renderAuthDialog(state.authDialog)}
 
