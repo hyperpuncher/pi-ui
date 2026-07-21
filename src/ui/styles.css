@@ -269,17 +269,6 @@
 		color: var(--pi-status-error);
 	}
 
-	.pi-tool-running-indicator {
-		display: grid;
-		width: 1rem;
-		height: 1rem;
-		place-items: center;
-		border-radius: 999px;
-		background: var(--pi-surface-raised);
-		color: var(--muted-foreground);
-		box-shadow: 0 0 0 0.1875rem var(--pi-surface-raised);
-	}
-
 	.messages-stack > .message-tool:has(+ .message-tool)::after {
 		position: absolute;
 		top: 0.5625rem;

@@ -10,7 +10,6 @@ import type {
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
-import { loaderIcon } from "./prompt-status.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 import { shikiTokenStyle } from "./shiki-token-style.ts";
@@ -429,8 +428,13 @@ export function renderMessage(message: AppMessage): string {
 		>
 			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
 				{message.state === "running" ? (
-					<span class="pi-tool-state-dot pi-tool-running-indicator">
-						{loaderIcon()}
+					<span
+						class="pi-tool-state-dot inline-grid size-2 text-muted-foreground *:[grid-area:1/1]"
+						aria-label="Running"
+						role="status"
+					>
+						<span class="pi-tool-status-ball animate-ping motion-reduce:animate-none" />
+						<span class="pi-tool-status-ball" />
 					</span>
 				) : (
 					<span

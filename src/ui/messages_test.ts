@@ -69,9 +69,9 @@ Deno.test("tool formats retain specific hooks inside the shared output surface",
 
 Deno.test("running and error tools preserve state semantics", () => {
 	const running = renderMessage(tool({ state: "running", meta: "working" }));
-	assertStringIncludes(running, "pi-tool-running-indicator");
-	assertStringIncludes(running, "animate-spin");
-	assertEquals(running.includes("animate-pulse"), false);
+	assertStringIncludes(running, "animate-ping");
+	assertStringIncludes(running, 'role="status"');
+	assertEquals(running.includes("animate-spin"), false);
 	assertStringIncludes(running, "working");
 	const error = renderMessage(tool({ state: "error" }));
 	assertStringIncludes(error, "pi-tool-status-ball");
