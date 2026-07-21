@@ -52,7 +52,7 @@ export function renderPage(
 				<script type="module" src="/vendor/datastar.js"></script>
 				<script type="module" src="/app/main.js"></script>
 				<script type="module" src="/build/workspace-review.js"></script>
-				{state.debugUi && (
+				{state.datastarInspector && (
 					<script
 						type="module"
 						src="/vendor/datastar-inspector.min.js"
@@ -86,7 +86,7 @@ export function renderPage(
 					window.piUi.fileTransfer.insert(evt.dataTransfer);
 				}`}
 			>
-				{state.debugUi && <datastar-inspector />}
+				{state.datastarInspector && <datastar-inspector />}
 				{renderDebugOverlay(state)}
 				<div
 					id="file-drop-overlay"

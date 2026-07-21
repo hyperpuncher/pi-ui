@@ -139,6 +139,7 @@ export type AppRenderSnapshot = Readonly<{
 	recentWorkspaces: readonly string[];
 	sessionTransition: SessionTransitionState;
 	debugUi: boolean;
+	datastarInspector: boolean;
 	hasOlderMessages: boolean;
 	promptHistory: readonly string[];
 	emptyChatHint: Readonly<AppKeybindHint>;
@@ -164,6 +165,9 @@ function randomEmptyChatHint(): AppKeybindHint {
 function debugUiEnabled(): boolean {
 	return Deno.env.get("PI_UI_DEBUG") === "1";
 }
+function datastarInspectorEnabled(): boolean {
+	return Deno.env.get("PI_UI_INSPECTOR") === "1";
+}
 function uniqueStrings(values: string[]): string[] {
 	const unique: string[] = [];
 	for (const value of values) if (value && !unique.includes(value)) unique.push(value);
@@ -175,6 +179,7 @@ export class AppStore {
 	readonly transcript = new TranscriptState(randomEmptyChatHint());
 	private presentation: AppStorePresentation | undefined;
 	readonly debugUi = debugUiEnabled();
+	readonly datastarInspector = datastarInspectorEnabled();
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
 	treeEntries: AppTreeEntry[] = [];
@@ -252,6 +257,7 @@ export class AppStore {
 			recentWorkspaces: [...this.recentWorkspaces],
 			sessionTransition: { ...this.sessionTransition },
 			debugUi: this.debugUi,
+			datastarInspector: this.datastarInspector,
 			hasOlderMessages: this.hasOlderMessages,
 			promptHistory: [...this.promptHistory],
 			emptyChatHint: { ...this.emptyChatHint },
