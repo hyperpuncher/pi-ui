@@ -8,4 +8,5 @@ static/vendor/datastar-inspector.min.js
 
 static/app.css
 static/build/
+src/ui/basecoat.generated.css
 /plans

@@ -1,4 +1,4 @@
-import { bindBasecoatMorphs, refresh } from "./basecoat.js";
+import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
 import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
@@ -46,7 +46,6 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindMessageScroll();
 	bindCodeCopy();
 	bindVimScroll();
-	bindBasecoatMorphs();
 	bindDisplayRefreshMeasurement();
 	bindDebugFps();
 });
