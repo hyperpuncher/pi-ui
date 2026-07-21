@@ -325,7 +325,7 @@ export function renderMessage(message: AppMessage): string {
 				class="message message-user max-w-[min(32rem,72%)] self-end rounded-xl bg-primary px-3.5 py-2.5 text-primary-foreground"
 				data-message-id={message.id}
 			>
-				<p class="m-0 whitespace-pre-wrap" safe>
+				<p class="m-0 wrap-anywhere whitespace-pre-wrap" safe>
 					{message.text}
 				</p>
 			</article>

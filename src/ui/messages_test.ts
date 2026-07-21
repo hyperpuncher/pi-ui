@@ -17,6 +17,18 @@ function tool(overrides: Partial<AppMessage> = {}): AppMessage {
 	};
 }
 
+Deno.test("user messages wrap uninterrupted content", () => {
+	const html = renderMessage({
+		id: "user-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "user",
+		text: "x".repeat(200),
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "wrap-anywhere");
+});
+
 Deno.test("bodyless tools use timeline markup without an output surface", () => {
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "pi-tool-timeline-item");
