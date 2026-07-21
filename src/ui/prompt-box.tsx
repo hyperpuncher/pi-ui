@@ -149,7 +149,7 @@ function renderLatestButton() {
 		<button
 			id="messages-latest"
 			type="button"
-			class="btn pointer-events-auto z-20 mb-4 rounded-full bg-background/40! backdrop-blur-xs hover:bg-muted/70! dark:bg-input/30! hover:dark:bg-input/50!"
+			class="btn pointer-events-auto z-20 mb-4 rounded-full border-foreground/10! bg-background/40! backdrop-blur-[2px] hover:bg-muted/70! dark:bg-input/30! hover:dark:bg-input/50!"
 			data-variant="outline"
 			data-size="icon"
 			data-preserve-attr="hidden inert tabindex"
