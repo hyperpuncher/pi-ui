@@ -1063,8 +1063,36 @@ export class RuntimeController {
 	}
 
 	private async bindSessionExtensions(): Promise<void> {
+		const runtime = this.runtime;
+		const session = runtime.session;
 		await sessionPerformance.measure("extensionBind", () =>
-			this.runtime.session.bindExtensions({ mode: "rpc" }),
+			session.bindExtensions({
+				mode: "rpc",
+				commandContextActions: {
+					waitForIdle: () => session.waitForIdle(),
+					newSession: (options) => runtime.newSession(options),
+					fork: async (entryId, options) => {
+						const result = await runtime.fork(entryId, options);
+						return { cancelled: result.cancelled };
+					},
+					navigateTree: async (targetId, options) => {
+						const result = await session.navigateTree(targetId, options);
+						if (!result.cancelled && runtime === this.runtime) {
+							this.loadCurrentSessionMessages();
+						}
+						return { cancelled: result.cancelled };
+					},
+					switchSession: (sessionPath, options) =>
+						runtime.switchSession(sessionPath, options),
+					reload: async () => {
+						await session.reload();
+						if (runtime !== this.runtime) return;
+						this.unbindSession();
+						this.bindSessionState();
+						this.loadCurrentSessionMessages();
+					},
+				},
+			}),
 		);
 	}
 

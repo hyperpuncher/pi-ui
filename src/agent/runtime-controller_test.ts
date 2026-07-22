@@ -13,12 +13,14 @@ import {
 } from "./runtime-controller.ts";
 
 type Callback = () => void | Promise<void>;
+type ExtensionBindings = Parameters<AgentSessionRuntime["session"]["bindExtensions"]>[0];
 
 type RuntimeFake = {
 	runtime: AgentSessionRuntime;
 	beforeInvalidate: Callback[];
 	rebind: Callback[];
 	events: Array<(event: AgentSessionEvent) => void>;
+	extensionBindings: ExtensionBindings[];
 	calls: string[];
 	disposeCount: number;
 	disposeResult: Promise<void>;
@@ -56,6 +58,7 @@ function fakeRuntime(
 		beforeInvalidate,
 		rebind,
 		events,
+		extensionBindings: [],
 		calls,
 		disposeCount: 0,
 		disposeResult: Promise.resolve(),
@@ -89,10 +92,12 @@ function fakeRuntime(
 			tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 			contextUsage: null,
 		}),
-		bindExtensions: () => {
+		bindExtensions: (bindings: ExtensionBindings) => {
 			calls.push("bindExtensions");
+			fake.extensionBindings.push(bindings);
 			return Promise.resolve();
 		},
+		waitForIdle: () => Promise.resolve(),
 		prompt: async (
 			_text: string,
 			options?: { preflightResult?: (accepted: boolean) => void },
@@ -165,6 +170,32 @@ Deno.test("RuntimeController production path binds callbacks before activation",
 	await controller.dispose();
 	assertEquals(fake.calls.filter((call) => call === "unsubscribe").length, 1);
 	assertEquals(fake.disposeCount, 1);
+});
+
+Deno.test("RuntimeController binds extension session controls to the active runtime", async () => {
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+
+	const actions = fake.extensionBindings[0]?.commandContextActions;
+	if (!actions) throw new Error("missing extension command context actions");
+	const options = { parentSession: "/sessions/parent.jsonl" };
+	let received: unknown;
+	(
+		fake.runtime as unknown as {
+			newSession: (value: unknown) => Promise<{ cancelled: boolean }>;
+		}
+	).newSession = (value) => {
+		received = value;
+		return Promise.resolve({ cancelled: false });
+	};
+
+	assertEquals(await actions.newSession(options), { cancelled: false });
+	assertEquals(received, options);
+	await actions.waitForIdle();
+	await controller.dispose();
 });
 
 Deno.test("RuntimeController treats the current session as an immediate no-op", async () => {
