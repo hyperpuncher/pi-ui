@@ -182,16 +182,20 @@ function renderCommitFiles(
 	return files;
 }
 
-function formatCommitDate(value: string): string {
+export function formatCommitDate(value: string, now = new Date()): string {
 	const date = new Date(value);
-	const elapsedDays = Math.floor((Date.now() - date.getTime()) / 86_400_000);
-	if (elapsedDays <= 0) return "today";
-	if (elapsedDays === 1) return "1d";
-	if (elapsedDays < 30) return `${elapsedDays}d`;
+	const calendarDays = calendarDayNumber(now) - calendarDayNumber(date);
+	if (calendarDays <= 0) return "today";
+	if (calendarDays === 1) return "1d";
+	if (calendarDays < 30) return `${calendarDays}d`;
 	return new Intl.DateTimeFormat(undefined, {
 		month: "short",
 		year: "2-digit",
 	}).format(date);
+}
+
+function calendarDayNumber(date: Date): number {
+	return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
 }
 
 function sumChanges(
