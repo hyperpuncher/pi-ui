@@ -10,7 +10,11 @@ import {
 	renderWorkspaceDialogMenu,
 	slashPickerOpenExpression,
 } from "./pickers.tsx";
-import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
+import {
+	renderModelPicker,
+	renderThinkingPicker,
+	renderWorkspacePicker,
+} from "./prompt-pickers.tsx";
 
 Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	const html = renderSlashPicker({
@@ -108,6 +112,19 @@ Deno.test("current idle session exposes deletion", () => {
 
 	assertStringIncludes(html, "$sessionDeletePath");
 	assertFalse(html.includes('disabled=""'));
+});
+
+Deno.test("workspace picker shows only the workspace folder name", () => {
+	const nested = renderWorkspacePicker({
+		workspacePath: "/home/user/Documents/Blenderanimation",
+	} as unknown as AppRenderSnapshot);
+	assertStringIncludes(nested, 'class="truncate">Blenderanimation</span>');
+	assertStringIncludes(nested, 'aria-label="/home/user/Documents/Blenderanimation"');
+
+	const home = renderWorkspacePicker({
+		workspacePath: os.homedir(),
+	} as unknown as AppRenderSnapshot);
+	assertStringIncludes(home, 'class="truncate">~</span>');
 });
 
 Deno.test("workspace rows show each collapsed path once", () => {

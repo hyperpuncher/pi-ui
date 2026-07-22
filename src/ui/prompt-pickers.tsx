@@ -147,10 +147,8 @@ function thinkingDescription(level: AppThinkingLevel): string {
 
 function workspaceLabel(path: string): string {
 	const display = formatHomePath(path).replaceAll("\\", "/");
-	const parts = display.split("/").filter(Boolean);
-	return display === "~" || parts.length <= 2
-		? display
-		: `${parts.at(-2)}/${parts.at(-1)}`;
+	if (display === "~") return display;
+	return display.split("/").filter(Boolean).at(-1) ?? display;
 }
 
 export function renderModelPicker(state: AppRenderSnapshot): string {
