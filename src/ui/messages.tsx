@@ -465,16 +465,13 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 				<span class="min-w-0 flex-1 leading-4.5 font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
 				</span>
-				{message.meta ? (
-					<span
-						class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs font-normal text-muted-foreground"
-						safe
-					>
-						{message.meta}
-					</span>
-				) : (
-					""
-				)}
+				<span
+					class="ml-auto inline-flex h-4.5 min-w-[5ch] shrink-0 items-center justify-end text-xs font-normal text-muted-foreground tabular-nums"
+					aria-hidden={message.meta ? undefined : "true"}
+					safe
+				>
+					{message.meta ?? ""}
+				</span>
 			</header>
 			{hasToolBody
 				? message.format === "diff"
