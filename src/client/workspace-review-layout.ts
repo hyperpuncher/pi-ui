@@ -147,10 +147,12 @@ export function bindWorkspaceReviewLayout(options: LayoutOptions) {
 			options.reviewBody.clientHeight + workspaceInset * 2,
 			values.changesRatio,
 		);
-		options.changesSection.style.height = options.hasChanges()
+		const hasChanges = options.hasChanges();
+		options.changesSection.style.display = hasChanges ? "flex" : "none";
+		options.changesSection.style.height = hasChanges
 			? `${sections.changes}px`
 			: "0px";
-		options.changesSeparator.style.display = options.hasChanges() ? "block" : "none";
+		options.changesSeparator.style.display = hasChanges ? "block" : "none";
 		updateAria(
 			splitAria(
 				options.gitSeparator,

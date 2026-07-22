@@ -32,6 +32,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 					<section
 						id="review-changes-section"
 						class="pi-raised-surface flex min-h-0 shrink-0 flex-col overflow-hidden"
+						style={snapshot.changes.length > 0 ? undefined : "display: none"}
 					>
 						<button
 							id="review-working-tree"
