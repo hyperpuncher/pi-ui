@@ -98,30 +98,42 @@ export function renderWorkspaceReviewHistory({
 
 export function showWorkspaceReviewDetailHeader(
 	detailHeader: HTMLElement,
-	commit: WorkspaceCommit,
+	detail: WorkspaceCommitDetail,
 ): void {
 	detailHeader.replaceChildren();
 	detailHeader.classList.remove("hidden");
+	const heading = document.createElement("div");
+	heading.className = "flex min-w-0 items-center gap-2";
 	const subject = document.createElement("div");
-	subject.className = "truncate text-xs font-medium";
-	subject.textContent = commit.subject || "Untitled commit";
+	subject.className = "min-w-0 flex-1 truncate text-xs font-medium";
+	subject.textContent = detail.commit.subject || "Untitled commit";
+	const totals = document.createElement("span");
+	totals.className = "flex shrink-0 gap-1 font-mono text-[10px] tabular-nums";
+	const additions = document.createElement("span");
+	additions.className = "text-(--pi-success)";
+	additions.textContent = `+${sumChanges(detail.changes, "additions")}`;
+	const deletions = document.createElement("span");
+	deletions.className = "text-destructive";
+	deletions.textContent = `-${sumChanges(detail.changes, "deletions")}`;
+	totals.append(additions, deletions);
+	heading.append(subject, totals);
 	const metadata = document.createElement("div");
 	metadata.className =
 		"text-muted-foreground mt-0.5 flex min-w-0 items-center gap-2 font-mono text-[10px]";
 	const hash = document.createElement("span");
-	hash.textContent = commit.shortHash;
+	hash.textContent = detail.commit.shortHash;
 	const author = document.createElement("span");
 	author.className = "truncate";
-	author.textContent = commit.author;
+	author.textContent = detail.commit.author;
 	const date = document.createElement("time");
 	date.className = "ml-auto shrink-0";
-	date.dateTime = commit.authoredAt;
+	date.dateTime = detail.commit.authoredAt;
 	date.textContent = new Intl.DateTimeFormat(undefined, {
 		dateStyle: "medium",
 		timeStyle: "short",
-	}).format(new Date(commit.authoredAt));
+	}).format(new Date(detail.commit.authoredAt));
 	metadata.append(hash, author, date);
-	detailHeader.append(subject, metadata);
+	detailHeader.append(heading, metadata);
 }
 
 export function hideWorkspaceReviewDetailHeader(detailHeader: HTMLElement): void {
@@ -180,6 +192,13 @@ function formatCommitDate(value: string): string {
 		month: "short",
 		year: "2-digit",
 	}).format(date);
+}
+
+function sumChanges(
+	changes: readonly WorkspaceFileChange[],
+	key: "additions" | "deletions",
+): number {
+	return changes.reduce((total, change) => total + change[key], 0);
 }
 
 function statusLetter(status: WorkspaceFileChange["status"]): string {

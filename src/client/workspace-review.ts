@@ -374,7 +374,7 @@ function applyCommitView(view: CommitView, path?: string): void {
 		kind: "commit",
 		path: path && itemsByPath.has(path) ? path : items[0]?.fileDiff.name,
 	};
-	renderDetailHeader(view.detail.commit);
+	renderDetailHeader(view.detail);
 	renderHistory();
 	publish();
 }
@@ -530,8 +530,8 @@ async function loadOlderHistory(): Promise<void> {
 	requestAnimationFrame(maybeLoadOlderHistory);
 }
 
-function renderDetailHeader(commit: CommitView["detail"]["commit"]): void {
-	showWorkspaceReviewDetailHeader(detailHeader, commit);
+function renderDetailHeader(detail: CommitView["detail"]): void {
+	showWorkspaceReviewDetailHeader(detailHeader, detail);
 }
 
 function hideDetailHeader(): void {
