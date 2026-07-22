@@ -181,6 +181,28 @@ Deno.test("oversized enhancement retains fallback until explicitly requested", a
 	assertEqual(state.messages[0].presentationState, "final");
 });
 
+Deno.test("skill and compaction instructions render Markdown without enhancement work", async () => {
+	let renderCount = 0;
+	const state = createState({
+		renderMarkdownFinal: () => {
+			renderCount += 1;
+			return Promise.resolve("<p>enhanced</p>");
+		},
+	});
+	state.replaceMessages([
+		{ role: "skill", text: "**Skill instructions**", timestamp },
+		{ role: "compaction", text: "**Compaction summary**", timestamp },
+	]);
+	await settleMicrotasks();
+
+	assertEqual(renderCount, 0);
+	assertIncludes(state.messages[0].renderedHtml ?? "", "<strong>");
+	assertIncludes(state.messages[1].renderedHtml ?? "", "<strong>");
+	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), false);
+	assertEqual(state.renderer.enhanceMessage(state.messages[1].id), false);
+	assertNotIncludes(state.renderer.renderMessagesElement(), "Enhance formatting");
+});
+
 Deno.test("assistant completion immediately flushes newest streaming content", () => {
 	const state = createState();
 	state.appendMessage("assistant", "first");

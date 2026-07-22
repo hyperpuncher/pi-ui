@@ -35,7 +35,12 @@ function rendersMarkdown(role: AppMessage["role"]): boolean {
 	return markdownRoles.has(role);
 }
 function enhancementKind(message: AppMessage): EnhancementKind | undefined {
-	if (rendersMarkdown(message.role)) return "markdown";
+	if (
+		rendersMarkdown(message.role) &&
+		message.role !== "skill" &&
+		message.role !== "compaction"
+	)
+		return "markdown";
 	if (message.role !== "tool") return undefined;
 	if (message.format === "diff") return "diff";
 	if (message.format === "code") return "code";

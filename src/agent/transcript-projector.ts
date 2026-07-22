@@ -58,7 +58,7 @@ export class TranscriptProjector {
 					text: entry.summary,
 					timestamp,
 					title: "[compaction]",
-					meta: `Compacted from ${entry.tokensBefore.toLocaleString()} tokens`,
+					meta: `compacted from ${entry.tokensBefore.toLocaleString()} tokens`,
 				},
 			];
 		}
@@ -111,7 +111,7 @@ export class TranscriptProjector {
 						text: message.summary,
 						timestamp,
 						title: "[compaction]",
-						meta: `Compacted from ${message.tokensBefore.toLocaleString()} tokens`,
+						meta: `compacted from ${message.tokensBefore.toLocaleString()} tokens`,
 					},
 				];
 		}

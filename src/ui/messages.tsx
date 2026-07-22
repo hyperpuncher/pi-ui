@@ -384,38 +384,60 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 	}
 
 	if (message.role === "compaction" || message.role === "skill") {
-		const label = message.role === "skill" ? "[skill]" : "[compaction]";
+		const label = message.role === "compaction" ? "compaction" : "skill";
 		return (
 			<article
 				class={[
-					"message message-narrative w-full self-start rounded-md bg-muted/40 p-3 text-sm text-muted-foreground",
-					message.role === "skill" ? "message-skill" : "message-compaction",
+					"message pi-tool-timeline-item w-full self-start",
+					message.role === "compaction"
+						? "message-compaction"
+						: "message-skill",
 				]}
 				data-message-id={message.id}
 			>
-				<details data-preserve-attr="open">
-					<summary class="cursor-pointer list-none">
-						<span class="font-semibold" safe>
-							{message.title ?? label}
+				<details class="group" data-preserve-attr="open">
+					<summary class="flex min-h-4.5 cursor-pointer list-none items-start gap-2 font-mono text-sm outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+						<span
+							class="pi-tool-state-dot inline-grid size-2"
+							aria-hidden="true"
+						>
+							<span class="pi-tool-status-ball pi-tool-status-success" />
 						</span>
-						{message.meta && (
-							<span class="ml-2" safe>
-								{message.meta}
-							</span>
-						)}
-						<span class="ml-2 text-xs">click to expand</span>
+						<span class="min-w-0 flex-1 leading-4.5 font-medium">
+							<span safe>{label}</span>
+							{message.meta && (
+								<span class="ml-2 font-normal text-muted-foreground" safe>
+									{message.meta}
+								</span>
+							)}
+						</span>
+						<span class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs text-muted-foreground">
+							<svg
+								class="size-3.5 rotate-180 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-open:rotate-90 motion-reduce:transition-none"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								aria-hidden="true"
+							>
+								<path d="m9 18 6-6-6-6" />
+							</svg>
+						</span>
 					</summary>
-					<div class="markdown-content mt-3">
-						{message.renderedHtml !== undefined ? (
-							<div>{message.renderedHtml}</div>
-						) : (
-							<p class="m-0 whitespace-pre-wrap" safe>
-								{message.text}
-							</p>
-						)}
+					<div class="pi-tool-output-surface p-3 text-sm text-muted-foreground">
+						<div class="markdown-content">
+							{message.renderedHtml !== undefined ? (
+								<div>{message.renderedHtml}</div>
+							) : (
+								<p class="m-0 whitespace-pre-wrap" safe>
+									{message.text}
+								</p>
+							)}
+						</div>
 					</div>
 				</details>
-				{renderDeferredEnhancement(message)}
 			</article>
 		) as string;
 	}

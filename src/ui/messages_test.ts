@@ -29,6 +29,42 @@ Deno.test("user messages wrap uninterrupted content", () => {
 	assertStringIncludes(html, "wrap-anywhere");
 });
 
+Deno.test("skills use the tool timeline without enhancement controls", () => {
+	const html = renderMessage({
+		id: "skill-1",
+		presentationState: "deferred",
+		presentationVersion: 1,
+		role: "skill",
+		text: "Follow these instructions",
+		timestamp: new Date(0),
+		meta: "kita-html",
+	});
+	assertStringIncludes(html, "pi-tool-timeline-item");
+	assertStringIncludes(html, "pi-tool-output-surface");
+	assertStringIncludes(html, ">skill</span>");
+	assertStringIncludes(html, "kita-html");
+	assert(html.indexOf("skill") < html.indexOf("kita-html"));
+	assertEquals(html.includes("Enhance formatting"), false);
+});
+
+Deno.test("compactions use the tool timeline without enhancement controls", () => {
+	const html = renderMessage({
+		id: "compaction-1",
+		presentationState: "deferred",
+		presentationVersion: 1,
+		role: "compaction",
+		text: "Conversation summary",
+		timestamp: new Date(0),
+		meta: "compacted from 57,053 tokens",
+	});
+	assertStringIncludes(html, "pi-tool-timeline-item");
+	assertStringIncludes(html, "pi-tool-output-surface");
+	assertStringIncludes(html, ">compaction</span>");
+	assertStringIncludes(html, "compacted from 57,053 tokens");
+	assertEquals(html.includes("click to expand"), false);
+	assertEquals(html.includes("Enhance formatting"), false);
+});
+
 Deno.test("bodyless tools use timeline markup without an output surface", () => {
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "pi-tool-timeline-item");
