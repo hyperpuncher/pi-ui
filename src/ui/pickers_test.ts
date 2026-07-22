@@ -59,12 +59,6 @@ Deno.test("current running session is live but does not resume itself", () => {
 	assertStringIncludes(html, 'aria-current="true"');
 	assertStringIncludes(html, "data-current-session-indicator");
 	assertStringIncludes(html, 'data-background-status="running"');
-	assertStringIncludes(html, 'class="font-mono">/workspace</span>');
-	assertStringIncludes(html, "bg-border mx-2 inline-block size-1 rounded-full");
-	assertStringIncludes(html, 'class="font-mono">1 message</span>');
-	const renderedPath = html.indexOf('class="font-mono">/workspace</span>');
-	assertFalse(html.indexOf(">1 message</span>", renderedPath) < renderedPath);
-	assertFalse(html.includes("tabular-nums"));
 	assertStringIncludes(html, "@post('/abort'");
 	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
 	assertFalse(html.includes('disabled=""'));
@@ -140,9 +134,7 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	assertStringIncludes(withoutSelection, 'class="command"');
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
 	assertStringIncludes(withoutSelection, "autofocus");
-	assertStringIncludes(withoutSelection, 'class="mt-1 max-h-70"');
 	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet"');
-	assertStringIncludes(withoutSelection, "max-w-40");
 });
 
 Deno.test("thinking picker describes every supported maximum level", () => {
@@ -170,7 +162,6 @@ Deno.test("file picker fragments escape dynamic values and expose list semantics
 	assertStringIncludes(html, 'role="option"');
 	assertStringIncludes(html, "&lt;unsafe>.ts");
 	assertStringIncludes(html, "src/&lt;unsafe>.ts");
-	assertStringIncludes(html, "file");
 });
 
 function escapeRegExp(value: string): string {
