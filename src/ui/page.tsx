@@ -23,6 +23,7 @@ export function renderPage(
 		thinkingCycleDirection: "forward",
 		_sessionLoading: false,
 		_sessionTarget: "",
+		_workspaceDraft: "",
 		_filePickerOpen: false,
 		_slashPickerOpen: false,
 		fileQuery: "",
@@ -178,7 +179,7 @@ export function renderPage(
 								role="combobox"
 								aria-expanded="true"
 								aria-controls="workspace-menu"
-								data-bind:workspace-path
+								data-bind:_workspace-draft
 							/>
 						</header>
 						{renderWorkspaceDialogMenu(state)}

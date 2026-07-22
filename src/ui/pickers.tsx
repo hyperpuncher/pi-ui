@@ -98,7 +98,7 @@ export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
 					data-indicator:_workspaceOpening
 					data-indicator:_session-loading
 					data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
-					data-on:click={openWorkspaceAction("$workspacePath")}
+					data-on:click={openWorkspaceAction("$_workspaceDraft")}
 				>
 					<span>Open typed path</span>
 					<span

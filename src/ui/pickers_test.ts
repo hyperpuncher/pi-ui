@@ -104,6 +104,15 @@ Deno.test("workspace rows show each collapsed path once", () => {
 	);
 });
 
+Deno.test("typed workspace submissions use the local draft signal", () => {
+	const html = renderWorkspaceDialogMenu({
+		workspacePath: "/workspace",
+		recentWorkspaces: [],
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, "$workspacePath = $_workspaceDraft");
+});
+
 Deno.test("model picker distinguishes missing auth from an unselected model", () => {
 	const withoutProvider = renderModelPicker({
 		models: [],
