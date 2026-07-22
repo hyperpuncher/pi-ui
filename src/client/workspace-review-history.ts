@@ -128,10 +128,7 @@ export function showWorkspaceReviewDetailHeader(
 	const date = document.createElement("time");
 	date.className = "ml-auto shrink-0";
 	date.dateTime = detail.commit.authoredAt;
-	date.textContent = new Intl.DateTimeFormat(undefined, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(new Date(detail.commit.authoredAt));
+	date.textContent = formatCommitDetailDate(detail.commit.authoredAt);
 	metadata.append(hash, author, date);
 	detailHeader.append(heading, metadata);
 }
@@ -182,16 +179,36 @@ function renderCommitFiles(
 	return files;
 }
 
-export function formatCommitDate(value: string, now = new Date()): string {
+export function formatCommitDetailDate(
+	value: string,
+	locale = configuredTimeLocale(),
+): string {
+	return new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(value));
+}
+
+export function formatCommitDate(
+	value: string,
+	now = new Date(),
+	locale = configuredTimeLocale(),
+): string {
 	const date = new Date(value);
 	const calendarDays = calendarDayNumber(now) - calendarDayNumber(date);
 	if (calendarDays <= 0) return "today";
 	if (calendarDays === 1) return "1d";
 	if (calendarDays < 30) return `${calendarDays}d`;
-	return new Intl.DateTimeFormat(undefined, {
+	return new Intl.DateTimeFormat(locale, {
 		month: "short",
 		year: "2-digit",
 	}).format(date);
+}
+
+function configuredTimeLocale(): string | undefined {
+	return typeof document === "undefined"
+		? undefined
+		: document.body.dataset.timeLocale || undefined;
 }
 
 function calendarDayNumber(date: Date): number {

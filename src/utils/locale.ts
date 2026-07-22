@@ -1,4 +1,4 @@
-const systemTimeLocale = posixLocaleToBcp47(
+export const systemTimeLocale = posixLocaleToBcp47(
 	Deno.env.get("LC_ALL") || Deno.env.get("LC_TIME") || Deno.env.get("LANG"),
 );
 

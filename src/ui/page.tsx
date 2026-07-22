@@ -1,6 +1,7 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
+import { systemTimeLocale } from "../utils/locale.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderCommandMenu } from "./command-menu.tsx";
@@ -64,6 +65,7 @@ export function renderPage(
 				class="h-full overflow-hidden"
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
+				data-time-locale={systemTimeLocale}
 				data-files-pick-endpoint={endpoints.filesPick}
 				data-files-import-endpoint={endpoints.filesImport}
 				data-display-refresh-endpoint={endpoints.displayRefresh}
