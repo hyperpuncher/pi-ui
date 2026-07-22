@@ -1,10 +1,10 @@
 import {
 	CodeView,
-	DEFAULT_THEMES,
-	parsePatchFiles,
 	type CodeViewItem,
 	type CodeViewOptions,
+	DEFAULT_THEMES,
 	type FileDiffMetadata,
+	parsePatchFiles,
 } from "@pierre/diffs";
 import {
 	getOrCreateWorkerPoolSingleton,
@@ -25,6 +25,10 @@ import {
 	type WorkspaceReviewUpdateMode,
 } from "./workspace-review-api.ts";
 import {
+	createWorkspaceReviewComments,
+	type ReviewCommentMetadata,
+} from "./workspace-review-comments.ts";
+import {
 	hideWorkspaceReviewDetailHeader,
 	renderWorkspaceReviewHistory,
 	showWorkspaceReviewDetailHeader,
@@ -42,7 +46,7 @@ import {
 } from "./workspace-review-state.ts";
 
 type ReviewMode = NonNullable<WorkspaceReviewPreferences["mode"]>;
-type ReviewItem = CodeViewItem<undefined> & { type: "diff" };
+type ReviewItem = CodeViewItem<ReviewCommentMetadata> & { type: "diff" };
 type DiffLayout = NonNullable<WorkspaceReviewPreferences["layout"]>;
 type CommitView = { detail: WorkspaceCommitDetail; items: ReviewItem[] };
 
@@ -75,6 +79,8 @@ const selectedButton = requiredButton("review-mode-selected");
 const splitButton = requiredButton("review-layout-split");
 const stackedButton = requiredButton("review-layout-stacked");
 const wrapButton = requiredButton("review-wrap");
+const submitCommentsButton = requiredButton("review-submit-comments");
+const commentStatus = requiredElement("review-comment-status");
 const data = requiredElement("workspace-review-data");
 
 let snapshot = JSON.parse(data.textContent ?? "") as WorkspaceReviewSnapshot;
@@ -87,10 +93,29 @@ let selection: Selection = { kind: "working", path: snapshot.changes[0]?.path };
 let layout: DiffLayout | undefined = preferences.layout;
 let wrap = preferences.wrap ?? true;
 let version = 0;
-let workingItems = createItems(snapshot.changes, snapshot.patch, "working");
+let viewer: CodeView<ReviewCommentMetadata> | undefined;
+const comments = createWorkspaceReviewComments({
+	clearSelection: () => viewer?.clearSelectedLines(),
+	onAnnotationsChange: updateWorkingAnnotations,
+	onSubmitted() {
+		workingItems = createItems(snapshot.changes, snapshot.patch, "working");
+		if (selection.kind === "working") {
+			items = workingItems;
+			itemsByPath = itemMap(items);
+			viewer?.clearSelectedLines();
+			publish();
+		}
+		window.piUi.messageScroll.scrollBottom();
+	},
+	status: commentStatus,
+	submit: api.submitComments,
+	submitButton: submitCommentsButton,
+});
+let workingItems = withWorkingAnnotations(
+	createItems(snapshot.changes, snapshot.patch, "working"),
+);
 let items = workingItems;
 let itemsByPath = itemMap(items);
-let viewer: CodeView | undefined;
 let initializedSelection = snapshot.revision !== "git-unloaded";
 const commitCache = new Map<string, CommitView>();
 const commitRequests = new Map<string, Promise<CommitView | undefined>>();
@@ -116,11 +141,12 @@ const visibility = createVisibility(root, snapshot.isGitRepository, (open) => {
 		cancelSnapshotPrefetch();
 		connectUpdates("live");
 		if (snapshot.revision === "git-unloaded") showEmpty("Loading Git data…");
-		else
+		else {
 			requestAnimationFrame(() => {
 				publish();
 				maybeLoadOlderHistory();
 			});
+		}
 	} else {
 		disconnectUpdates();
 		scheduleSnapshotPrefetch();
@@ -155,7 +181,6 @@ wrapButton.addEventListener("click", () => {
 	writePreferences();
 	viewer?.setOptions(viewerOptions());
 });
-
 const resize = new ResizeObserver(() => {
 	syncLayoutButtons();
 	viewer?.setOptions(viewerOptions());
@@ -163,7 +188,10 @@ const resize = new ResizeObserver(() => {
 resize.observe(diffRoot);
 
 const theme = new MutationObserver(() => viewer?.setOptions(viewerOptions()));
-theme.observe(document.documentElement, { attributeFilter: ["class"], attributes: true });
+theme.observe(document.documentElement, {
+	attributeFilter: ["class"],
+	attributes: true,
+});
 
 let prefetchIdle: number | undefined;
 let prefetchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -180,6 +208,7 @@ const workspace = new MutationObserver(() => {
 	historyLoading = false;
 	commitCache.clear();
 	commitRequests.clear();
+	comments.reset();
 	initializedSelection = false;
 	selection = { kind: "working" };
 	connectUpdates(visibility.isOpen() ? "live" : "availability");
@@ -236,8 +265,9 @@ function scheduleSnapshotPrefetch(): void {
 		visibility.isOpen() ||
 		!snapshot.isGitRepository ||
 		snapshot.revision !== "git-unloaded"
-	)
+	) {
 		return;
+	}
 	prefetchTimer = setTimeout(() => {
 		prefetchTimer = undefined;
 		prefetchIdle = requestIdleCallback(
@@ -277,7 +307,9 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		historyLoading = false;
 	}
 	visibility.setAvailable(snapshot.isGitRepository);
-	workingItems = createItems(snapshot.changes, snapshot.patch, "working");
+	const nextWorkingItems = createItems(snapshot.changes, snapshot.patch, "working");
+	comments.reconcileItems(nextWorkingItems);
+	workingItems = withWorkingAnnotations(nextWorkingItems);
 	tree.resetPaths(snapshot.changes.map(({ path }) => path));
 	tree.setGitStatus(snapshot.changes);
 	branch.textContent = snapshot.branch ?? "";
@@ -297,8 +329,9 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 
 	renderHistory();
 	if (visibility.isOpen()) requestAnimationFrame(maybeLoadOlderHistory);
-	if (selection.kind === "commit") void activateCommit(selection.hash, selection.path);
-	else activateWorking(selection.path);
+	if (selection.kind === "commit") {
+		void activateCommit(selection.hash, selection.path);
+	} else activateWorking(selection.path);
 }
 
 function syncChangesSection(): void {
@@ -312,7 +345,9 @@ function setMode(next: ReviewMode): void {
 	mode = next;
 	syncModeButtons();
 	writePreferences();
-	if (mode === "selected" && !selection.path) selection.path = items[0]?.fileDiff.name;
+	if (mode === "selected" && !selection.path) {
+		selection.path = items[0]?.fileDiff.name;
+	}
 	renderHistory();
 	publish();
 }
@@ -441,6 +476,8 @@ function publish(): void {
 	if (!viewer) {
 		viewer = new CodeView(viewerOptions(), createWorkerPool());
 		viewer.setup(diffRoot);
+	} else {
+		viewer.setOptions(viewerOptions());
 	}
 	viewer.setItems(visible);
 }
@@ -460,6 +497,13 @@ function createItems(
 		id: `diff:${source}:${change.path}`,
 		type: "diff",
 		version,
+	}));
+}
+
+function withWorkingAnnotations(value: readonly ReviewItem[]): ReviewItem[] {
+	return value.map((item) => ({
+		...item,
+		annotations: comments.annotations.get(item.fileDiff.name),
 	}));
 }
 
@@ -538,9 +582,17 @@ function hideDetailHeader(): void {
 	hideWorkspaceReviewDetailHeader(detailHeader);
 }
 
-function viewerOptions(): CodeViewOptions<undefined> {
+function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
+	const commentsEnabled = selection.kind === "working" && comments.canAdd();
 	return {
 		diffIndicators: "none",
+		enableGutterUtility: commentsEnabled,
+		enableLineSelection: commentsEnabled,
+		onGutterUtilityClick(range, context) {
+			if (context.item.type === "diff") comments.add(context.item, range);
+		},
+		pointerEventsOnScroll: true,
+		renderAnnotation: comments.render,
 		diffStyle: effectiveLayout(),
 		hunkSeparators: "simple",
 		itemMetrics: { diffHeaderHeight: 36, paddingBottom: 0, spacing: 0 },
@@ -599,6 +651,20 @@ function viewerOptions(): CodeViewOptions<undefined> {
 
 			[data-code] {
 				padding-bottom: 0 !important;
+			}
+
+			[data-annotation-content] {
+				min-width: 0;
+			}
+
+			[data-gutter-utility-slot] {
+				right: auto;
+				left: 4px;
+				justify-content: flex-start;
+			}
+
+			[data-utility-button] {
+				margin-right: 0;
 			}
 		`,
 	};
@@ -719,6 +785,23 @@ function writePreferences(): void {
 	api.writePreferences({ layout, mode, wrap, ...reviewLayout.values() });
 }
 
+function updateWorkingAnnotations(path: string): void {
+	const index = workingItems.findIndex((item) => item.fileDiff.name === path);
+	if (index < 0) return;
+	const next = [...workingItems];
+	next[index] = {
+		...next[index],
+		annotations: comments.annotations.get(path),
+		version: ++version,
+	};
+	workingItems = next;
+	if (selection.kind === "working") {
+		items = workingItems;
+		itemsByPath = itemMap(items);
+		publish();
+	}
+}
+
 function requiredElement(id: string): HTMLElement {
 	const element = document.getElementById(id);
 	if (!(element instanceof HTMLElement)) throw new Error(`Missing #${id}`);
@@ -727,6 +810,8 @@ function requiredElement(id: string): HTMLElement {
 
 function requiredButton(id: string): HTMLButtonElement {
 	const element = document.getElementById(id);
-	if (!(element instanceof HTMLButtonElement)) throw new Error(`Missing #${id}`);
+	if (!(element instanceof HTMLButtonElement)) {
+		throw new Error(`Missing #${id}`);
+	}
 	return element;
 }

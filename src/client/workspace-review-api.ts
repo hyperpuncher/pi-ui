@@ -1,3 +1,4 @@
+import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import {
 	normalizeWorkspaceReviewPreferences,
 	type WorkspaceCommit,
@@ -49,6 +50,21 @@ export function createWorkspaceReviewApi(endpoint: string) {
 				return normalizeWorkspaceReviewPreferences(await response.json());
 			} catch {
 				return {};
+			}
+		},
+
+		async submitComments(
+			comments: readonly WorkspaceReviewComment[],
+		): Promise<boolean> {
+			try {
+				const response = await fetch(`${endpoint}/submit`, {
+					body: JSON.stringify({ comments }),
+					headers: { "content-type": "application/json" },
+					method: "POST",
+				});
+				return response.ok;
+			} catch {
+				return false;
 			}
 		},
 

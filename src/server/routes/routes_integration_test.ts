@@ -34,6 +34,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"GET /workspace/review/history",
 		"GET /workspace/review/preferences",
 		"POST /workspace/review/preferences",
+		"POST /workspace/review/submit",
 		"POST /model",
 		"POST /model/cycle",
 		"POST /models/scope/toggle",
@@ -108,7 +109,9 @@ Deno.test("workspace review streams isolated snapshot events", async () => {
 		const context = fakeContext();
 		context.store.setWorkspacePath(workspace);
 		const response = await createRouter(context).fetch(
-			new Request("http://localhost/workspace/review", { signal: abort.signal }),
+			new Request("http://localhost/workspace/review", {
+				signal: abort.signal,
+			}),
 		);
 		assertEquals(response.status, 200);
 		assertEquals(response.headers.get("content-type"), "text/event-stream");
@@ -120,6 +123,53 @@ Deno.test("workspace review streams isolated snapshot events", async () => {
 		abort.abort();
 		await Deno.remove(workspace, { recursive: true });
 	}
+});
+
+Deno.test("workspace review comments are sent to the current agent session", async () => {
+	let prompt = "";
+	const context = fakeContext({
+		host: fakeHost({
+			prompt: (value: string) => {
+				prompt = value;
+				return Promise.resolve(true);
+			},
+		}),
+	});
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/workspace/review/submit", {
+			body: JSON.stringify({
+				comments: [
+					{
+						body: "handle this case",
+						endLine: 14,
+						endSide: "additions",
+						path: "src/example.ts",
+						startLine: 12,
+						startSide: "additions",
+					},
+				],
+			}),
+			headers: { "content-type": "application/json" },
+			method: "POST",
+		}),
+	);
+	assertEquals(response.status, 204);
+	assertEquals(
+		prompt,
+		"address the following review comments:\n\n" +
+			"1. src/example.ts:12–14\nhandle this case",
+	);
+});
+
+Deno.test("workspace review comments reject malformed input", async () => {
+	const response = await createRouter(fakeContext()).fetch(
+		new Request("http://localhost/workspace/review/submit", {
+			body: JSON.stringify({ comments: [] }),
+			headers: { "content-type": "application/json" },
+			method: "POST",
+		}),
+	);
+	assertEquals(response.status, 400);
 });
 
 Deno.test("malformed actions return 400 without mutating the transcript", async () => {
@@ -220,7 +270,10 @@ Deno.test("tree navigation state follows mutable host ownership", async () => {
 	assertEquals((await router.fetch(treeNavigateRequest("other"))).status, 409);
 
 	context.resources.host = fakeHost({
-		navigateTree: async () => ({ status: "success", editorText: "replacement" }),
+		navigateTree: async () => ({
+			status: "success",
+			editorText: "replacement",
+		}),
 	});
 	const replacement = await router.fetch(treeNavigateRequest("new"));
 	assertEquals(replacement.status, 200);

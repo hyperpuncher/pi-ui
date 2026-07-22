@@ -198,6 +198,19 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 							>
 								Wrap
 							</button>
+							<span
+								id="review-comment-status"
+								class="hidden text-xs text-destructive"
+								aria-live="polite"
+							/>
+							<button
+								id="review-submit-comments"
+								type="button"
+								class="btn hidden"
+								data-size="xs"
+							>
+								Submit review
+							</button>
 							<button
 								type="button"
 								class="btn text-muted-foreground hover:text-foreground"

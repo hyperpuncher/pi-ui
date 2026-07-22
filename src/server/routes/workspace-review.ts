@@ -1,3 +1,7 @@
+import {
+	formatWorkspaceReviewPrompt,
+	parseWorkspaceReviewComments,
+} from "../../workspace-review-comments.ts";
 import { normalizeWorkspaceReviewPreferences } from "../../workspace-review-types.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import {
@@ -11,7 +15,7 @@ import {
 	readWorkspaceReview,
 	readWorkspaceReviewAvailability,
 } from "../workspace-review.ts";
-import type { RouteContext } from "./context.ts";
+import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 const debounceMs = 200;
@@ -32,6 +36,27 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 		}
 		const preferences = normalizeWorkspaceReviewPreferences(value);
 		await writeWorkspaceReviewPreferences(preferences);
+		return new Response(null, { status: 204 });
+	});
+	router.register("POST", endpoints.workspaceReviewSubmit, async (request, context) => {
+		let value: unknown;
+		try {
+			value = await request.json();
+		} catch {
+			throw new RouteError(400, "Malformed review comments.");
+		}
+		let comments;
+		try {
+			comments = parseWorkspaceReviewComments(value);
+		} catch (error) {
+			throw new RouteError(
+				400,
+				error instanceof Error ? error.message : "Invalid review comments.",
+			);
+		}
+		if (!(await requireHost(context).prompt(formatWorkspaceReviewPrompt(comments)))) {
+			throw new RouteError(409, "Review comments were not accepted.");
+		}
 		return new Response(null, { status: 204 });
 	});
 	router.register("GET", endpoints.workspaceReviewCommit, async (request, context) => {

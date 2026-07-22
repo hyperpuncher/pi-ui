@@ -21,6 +21,7 @@ export const endpoints = {
 	workspaceReviewCommit: "/workspace/review/commit",
 	workspaceReviewHistory: "/workspace/review/history",
 	workspaceReviewPreferences: "/workspace/review/preferences",
+	workspaceReviewSubmit: "/workspace/review/submit",
 	model: "/model",
 	modelCycle: "/model/cycle",
 	modelsScopeToggle: "/models/scope/toggle",
