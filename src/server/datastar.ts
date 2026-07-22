@@ -25,6 +25,7 @@ export type ClientEffect =
 	| { type: "focus-prompt" }
 	| { type: "open-tree" }
 	| { type: "restore-messages-anchor" }
+	| { type: "refresh-session-picker" }
 	| { type: "session-deleted" };
 
 export type DatastarEvent =
@@ -82,6 +83,8 @@ function clientEffectScript(effect: ClientEffect): string {
 			return "window.piUi.basecoat.refresh(document.getElementById('tree-dialog')); window.piUi.dialogs.openTree(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });";
 		case "restore-messages-anchor":
 			return "window.piUi.messageScroll.restoreAnchor()";
+		case "refresh-session-picker":
+			return "window.piUi.basecoat.refresh(document.getElementById('session-dialog'))";
 		case "session-deleted":
 			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.basecoat.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
 	}

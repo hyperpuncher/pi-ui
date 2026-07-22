@@ -147,6 +147,8 @@ export type AppRenderSnapshot = Readonly<{
 
 type AppStoreUpdateOptions = { flush?: boolean; commit?: boolean };
 
+const SESSION_PICKER_RECENT_LIMIT = 50;
+
 const emptyChatHints: AppKeybindHint[] = [
 	...appCommandCatalog
 		.filter((command) => command.shortcut.display)
@@ -182,6 +184,7 @@ export class AppStore {
 	readonly datastarInspector = datastarInspectorEnabled();
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
+	private sessionIndex: AppSessionSummary[] | undefined;
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	authDialog: AppAuthDialog | undefined;
@@ -392,8 +395,27 @@ export class AppStore {
 		this.sessions = sessions;
 		this.commit();
 	}
+	setSessionCatalog(sessions: AppSessionSummary[]): void {
+		this.sessionIndex = sessions;
+		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.commit();
+	}
+	getSessionCatalog(): readonly AppSessionSummary[] {
+		return this.sessionIndex ?? this.sessions;
+	}
+	searchSessions(query: string): AppSessionSummary[] {
+		const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+		if (terms.length === 0) return [...this.sessions];
+		return this.getSessionCatalog().filter((session) => {
+			const haystack =
+				`${session.title} ${session.subtitle} ${session.cwd} ${session.path}`.toLowerCase();
+			return terms.every((term) => haystack.includes(term));
+		});
+	}
 	removeSession(path: string): void {
-		this.setSessions(this.sessions.filter((session) => session.path !== path));
+		this.setSessionCatalog(
+			this.getSessionCatalog().filter((session) => session.path !== path),
+		);
 	}
 	setRecentWorkspaces(values: string[]): void {
 		this.recentWorkspaces = uniqueStrings([

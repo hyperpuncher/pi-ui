@@ -54,7 +54,7 @@ export class SessionCatalog {
 	}
 
 	mergeCurrentStatuses(): void {
-		this.state.setSessions(this.mergeStatuses(this.state.sessions));
+		this.state.setSessionCatalog(this.mergeStatuses(this.state.getSessionCatalog()));
 	}
 
 	private apply(
@@ -64,8 +64,8 @@ export class SessionCatalog {
 		if (options.refreshWorkspaces !== false) {
 			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
 		}
-		this.state.setSessions(
-			this.mergeStatuses(sessions.slice(0, 50).map(formatSessionSummary)),
+		this.state.setSessionCatalog(
+			this.mergeStatuses(sessions.map(formatSessionSummary)),
 		);
 	}
 }

@@ -226,7 +226,7 @@ export function renderPage(
 					})`}
 					onclick="if (event.target === this) this.close()"
 				>
-					<div class="command sm:max-w-2xl">
+					<div class="command sm:max-w-2xl" data-filter="manual">
 						<header>
 							<input
 								id="session-input"
@@ -239,6 +239,10 @@ export function renderPage(
 								role="combobox"
 								aria-expanded="true"
 								aria-controls="session-menu"
+								data-bind:session-search=""
+								attrs={{
+									"data-on:input__debounce.150ms": `@get('${endpoints.sessionsSearch}', { filterSignals: { include: /^sessionSearch$/ } })`,
+								}}
 								autofocus
 							/>
 						</header>

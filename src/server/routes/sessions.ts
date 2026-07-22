@@ -1,5 +1,6 @@
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
-import { readActionSignals, requiredString } from "../action-input.ts";
+import { renderSessionPickerContent } from "../../ui/pickers.tsx";
+import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import { requireHost, type RouteContext } from "./context.ts";
@@ -15,6 +16,20 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("GET", endpoints.sessionsStream, async (request, context) => {
 		await requireHost(context).listSessions();
 		return context.renderer.createSessionStream(request.signal);
+	});
+	router.register("GET", endpoints.sessionsSearch, async (request, context) => {
+		const query = stringField(await readActionSignals(request), "sessionSearch");
+		return datastarResponse([
+			{
+				type: "elements",
+				elements: renderSessionPickerContent({
+					activityText: context.store.activityText,
+					currentSessionPath: context.store.currentSessionPath,
+					sessions: context.store.searchSessions(query),
+				}),
+			},
+			{ type: "effect", effect: { type: "refresh-session-picker" } },
+		]);
 	});
 	router.register(
 		"POST",

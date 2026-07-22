@@ -204,7 +204,12 @@ export function renderSessionPicker(state: AppRenderSnapshot): string {
 	) as string;
 }
 
-export function renderSessionPickerContent(state: AppRenderSnapshot): string {
+type SessionPickerState = Pick<
+	AppRenderSnapshot,
+	"activityText" | "currentSessionPath" | "sessions"
+>;
+
+export function renderSessionPickerContent(state: SessionPickerState): string {
 	return (
 		<div
 			id="session-menu-content"

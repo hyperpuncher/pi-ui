@@ -12,6 +12,7 @@ export const endpoints = {
 	sessionsNew: "/sessions/new",
 	sessionsNewTemporary: "/sessions/new-temporary",
 	sessionsStream: "/sessions/stream",
+	sessionsSearch: "/sessions/search",
 	sessionsBackgroundAbort: "/sessions/background/abort",
 	sessionsDelete: "/sessions/delete",
 	sessionsResume: "/sessions/resume",

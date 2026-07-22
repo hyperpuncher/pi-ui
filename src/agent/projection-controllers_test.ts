@@ -298,6 +298,22 @@ function sessionInfo(
 	};
 }
 
+Deno.test("session catalog keeps recent rows small while searching every session", () => {
+	const state = new AppStore();
+	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const sessions = Array.from({ length: 51 }, (_, index) =>
+		sessionInfo(`/session-${index}`, `Session ${index}`),
+	);
+
+	catalog.applyPrepared({ ok: true, sessions });
+
+	assertEquals(state.sessions.length, 50);
+	assertEquals(
+		state.searchSessions("Session 50").map((session) => session.path),
+		["/session-50"],
+	);
+});
+
 Deno.test("session summaries keep workspace and message metadata separate", () => {
 	const info = sessionInfo("/session", "Home session");
 	info.cwd = `${os.homedir()}/projects/pi-ui`;
