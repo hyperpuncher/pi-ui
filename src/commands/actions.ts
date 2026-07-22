@@ -43,6 +43,10 @@ export function openWorkspaceDialogAction(closeCommandDialog = false): string {
 	return `${closeCommandDialog ? "document.getElementById('command-dialog')?.close(); " : ""}window.piUi.dialogs.openWorkspace()`;
 }
 
+export function toggleWorkspaceDialogAction(): string {
+	return "window.piUi.dialogs.toggleWorkspace()";
+}
+
 export const commandActions = {
 	"new-chat": newSessionAction(),
 	"new-temporary-chat": newSessionAction(true),

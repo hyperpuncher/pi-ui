@@ -6,6 +6,7 @@ interface PiUiNamespace {
 		toggleSession(): boolean;
 		openTree(): void;
 		openWorkspace(): void;
+		toggleWorkspace(): boolean;
 	};
 	fileTransfer: {
 		pick(): Promise<void>;

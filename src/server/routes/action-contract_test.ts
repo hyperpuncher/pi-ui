@@ -135,9 +135,11 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertEquals(`${promptAction}\n${promptBox}`.match(/\$prompt = '';/g)?.length, 2);
 	assertEquals(/@post|document\.|window\./.test(catalog), false);
 	assertStringIncludes(dialogs, "export function openWorkspace()");
+	assertStringIncludes(dialogs, "export function toggleWorkspace()");
 	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.openWorkspace()");
 	assertStringIncludes(promptPickers, "openWorkspaceDialogAction()");
-	assertStringIncludes(main, '"window.piUi.dialogs.openWorkspace()"');
+	assertStringIncludes(promptPickers, "toggleWorkspaceDialogAction()");
+	assertStringIncludes(main, '"window.piUi.dialogs.toggleWorkspace()"');
 });
 
 function extractLiteralWriteActionPaths(source: string): string[] {

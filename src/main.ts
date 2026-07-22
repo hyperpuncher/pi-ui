@@ -4,7 +4,7 @@ import { createApp } from "./server/app.ts";
 const hideApplicationMenuId = "hide-application";
 const openWorkspaceMenuId = "change-workspace";
 const quitApplicationMenuId = "quit-application";
-const openWorkspaceDialogScript = "window.piUi.dialogs.openWorkspace()";
+const toggleWorkspaceDialogScript = "window.piUi.dialogs.toggleWorkspace()";
 
 const app = await createApp();
 Deno.serve(app.fetch);
@@ -24,7 +24,10 @@ function setupDesktopWindow(): void {
 	});
 
 	const openWorkspaceDialog = () => {
-		void win.executeJs(openWorkspaceDialogScript).catch(() => {});
+		void win.executeJs("window.piUi.dialogs.openWorkspace()").catch(() => {});
+	};
+	const toggleWorkspaceDialog = () => {
+		void win.executeJs(toggleWorkspaceDialogScript).catch(() => {});
 	};
 
 	win.addEventListener("focus", () => setApplicationFocused(true));
@@ -37,7 +40,7 @@ function setupDesktopWindow(): void {
 
 		if ((event.ctrlKey || event.metaKey) && event.key === "/") {
 			event.preventDefault();
-			openWorkspaceDialog();
+			toggleWorkspaceDialog();
 			return;
 		}
 

@@ -3,6 +3,7 @@ import {
 	cycleModelAction,
 	cycleThinkingAction,
 	openWorkspaceDialogAction,
+	toggleWorkspaceDialogAction,
 } from "../commands/actions.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot, AppThinkingLevel } from "../state/app-store.ts";
@@ -23,7 +24,7 @@ export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 			data-on:click={openWorkspaceDialogAction()}
 			data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key === '/') {
 			evt.preventDefault();
-			${openWorkspaceDialogAction()}
+			${toggleWorkspaceDialogAction()}
 			}`}
 			data-tooltip="Workspace"
 			data-tooltip-delay

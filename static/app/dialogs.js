@@ -31,12 +31,26 @@ export function openTree() {
 }
 
 export function openWorkspace() {
-	const input = document.getElementById("workspace-input");
-	if (input instanceof HTMLInputElement) {
-		input.value = "";
-		input.dispatchEvent(new Event("input", { bubbles: true }));
-	}
+	resetWorkspaceInput();
 	openAndFocus("workspace-dialog", "workspace-input");
+}
+
+export function toggleWorkspace() {
+	const dialog = document.getElementById("workspace-dialog");
+	if (!(dialog instanceof HTMLDialogElement)) return false;
+	if (dialog.open) {
+		dialog.close();
+		return false;
+	}
+	openWorkspace();
+	return true;
+}
+
+function resetWorkspaceInput() {
+	const input = document.getElementById("workspace-input");
+	if (!(input instanceof HTMLInputElement)) return;
+	input.value = "";
+	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 export function bindDialogs() {
