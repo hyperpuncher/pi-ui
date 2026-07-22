@@ -24,6 +24,7 @@ import {
 	formatToolResult,
 	formatToolStart,
 	summarizeValue,
+	toolEndMeta,
 	toolTitleParts,
 } from "./tool-presentation.ts";
 import {
@@ -34,6 +35,7 @@ import { flattenTree, TreeProjector } from "./tree-projector.ts";
 import { formatStats, formatTokens } from "./usage-controller.ts";
 
 Deno.test("tool presentation preserves representative and malformed values", () => {
+	assertEquals(toolEndMeta(Date.now() - 90_000), "1m 30s");
 	assertEquals(formatToolStart("edit", { edits: [{}, {}] }), {
 		text: "2 replacements",
 		format: "output",

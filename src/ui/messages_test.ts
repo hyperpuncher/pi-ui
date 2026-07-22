@@ -33,7 +33,7 @@ Deno.test("bodyless tools use timeline markup without an output surface", () => 
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "pi-tool-timeline-item");
 	assertStringIncludes(html, "pi-tool-state-dot");
-	assertStringIncludes(html, "min-w-[5ch]");
+	assertStringIncludes(html, "min-w-[6ch]");
 	assertStringIncludes(html, 'aria-hidden="true"');
 	assertEquals(html.includes("pi-tool-output-surface"), false);
 });

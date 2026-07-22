@@ -145,7 +145,12 @@ export function toolEndMeta(startedAt: number | undefined): string | undefined {
 }
 
 function formatDuration(ms: number): string {
-	return `${(ms / 1000).toFixed(1)}s`;
+	if (ms <= 60_000) return `${(ms / 1000).toFixed(1)}s`;
+
+	const totalSeconds = Math.round(ms / 1000);
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${minutes}m ${seconds}s`;
 }
 
 function toolRange(args: unknown): string {

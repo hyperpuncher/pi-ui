@@ -466,7 +466,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 					{renderToolTitle(title, message.titleParts)}
 				</span>
 				<span
-					class="ml-auto inline-flex h-4.5 min-w-[5ch] shrink-0 items-center justify-end text-xs font-normal text-muted-foreground tabular-nums"
+					class="ml-auto inline-flex h-4.5 min-w-[6ch] shrink-0 items-center justify-end text-xs font-normal text-muted-foreground tabular-nums"
 					aria-hidden={message.meta ? undefined : "true"}
 					safe
 				>
