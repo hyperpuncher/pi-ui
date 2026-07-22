@@ -5,8 +5,11 @@ interface PiUiNamespace {
 	dialogs: {
 		toggleSession(): boolean;
 		openTree(): void;
+		openCommand(): void;
+		toggleCommand(): boolean;
 		openWorkspace(): void;
 		toggleWorkspace(): boolean;
+		togglePopover(triggerId: string): boolean;
 	};
 	fileTransfer: {
 		pick(): Promise<void>;

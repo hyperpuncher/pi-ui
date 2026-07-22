@@ -3,6 +3,7 @@ import {
 	cycleModelAction,
 	cycleThinkingAction,
 	openWorkspaceDialogAction,
+	togglePopoverAction,
 	toggleWorkspaceDialogAction,
 } from "../commands/actions.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
@@ -185,7 +186,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 				class="popover"
 				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
 				evt.preventDefault();
-				document.getElementById('model-select-trigger')?.click();
+				${togglePopoverAction("model-select-trigger")};
 				} else if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'p') {
 				evt.preventDefault();
 				${cycleModelAction("event-shift")};

@@ -47,14 +47,17 @@ export function toggleWorkspaceDialogAction(): string {
 	return "window.piUi.dialogs.toggleWorkspace()";
 }
 
+export function togglePopoverAction(triggerId: string): string {
+	return `window.piUi.dialogs.togglePopover(${JSON.stringify(triggerId)})`;
+}
+
 export const commandActions = {
 	"new-chat": newSessionAction(),
 	"new-temporary-chat": newSessionAction(true),
 	"resume-session": openSessionDialogAction(),
 	"session-tree": openTreeAction(),
 	"command-palette": "document.getElementById('command-input')?.focus()",
-	"switch-model":
-		"setTimeout(() => document.getElementById('model-select-trigger')?.click(), 0)",
+	"switch-model": `setTimeout(() => ${togglePopoverAction("model-select-trigger")}, 0)`,
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),

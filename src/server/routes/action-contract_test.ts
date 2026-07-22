@@ -132,12 +132,18 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	);
 	assertStringIncludes(promptToolbar, "!evt.shiftKey && !evt.altKey");
 	assertStringIncludes(promptToolbar, "evt.key.toLowerCase() === 'g'");
+	assertStringIncludes(promptToolbar, "window.piUi.dialogs.toggleCommand()");
 	assertEquals(`${promptAction}\n${promptBox}`.match(/\$prompt = '';/g)?.length, 2);
 	assertEquals(/@post|document\.|window\./.test(catalog), false);
+	assertStringIncludes(dialogs, "export function openCommand()");
+	assertStringIncludes(dialogs, "export function toggleCommand()");
 	assertStringIncludes(dialogs, "export function openWorkspace()");
 	assertStringIncludes(dialogs, "export function toggleWorkspace()");
+	assertStringIncludes(dialogs, "export function togglePopover(triggerId)");
 	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.openWorkspace()");
+	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.togglePopover(");
 	assertStringIncludes(promptPickers, "openWorkspaceDialogAction()");
+	assertStringIncludes(promptPickers, "togglePopoverAction(");
 	assertStringIncludes(promptPickers, "toggleWorkspaceDialogAction()");
 	assertStringIncludes(main, '"window.piUi.dialogs.toggleWorkspace()"');
 });

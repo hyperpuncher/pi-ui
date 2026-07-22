@@ -192,7 +192,7 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 	if (action === "commands") {
 		return `if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'k') {
 			evt.preventDefault();
-			${openCommandPaletteAction()}
+			${toggleCommandPaletteAction()}
 		}`;
 	}
 	if (action === "review") {
@@ -223,7 +223,11 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 }
 
 function openCommandPaletteAction(): string {
-	return "document.getElementById('command-dialog')?.showModal(); requestAnimationFrame(() => document.getElementById('command-input')?.focus())";
+	return "window.piUi.dialogs.openCommand()";
+}
+
+function toggleCommandPaletteAction(): string {
+	return "window.piUi.dialogs.toggleCommand()";
 }
 
 function newChatAction(): string {
