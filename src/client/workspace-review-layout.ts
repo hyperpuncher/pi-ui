@@ -81,10 +81,10 @@ export function calculateChangesSplit(
 	};
 }
 
-export function keyboardDelta(key: string, shiftKey = false): number {
+export function keyboardDelta(code: string, shiftKey = false): number {
 	const magnitude = shiftKey ? resizeKeyboardLargeStep : resizeKeyboardStep;
-	if (key === "ArrowLeft" || key === "ArrowUp") return -magnitude;
-	if (key === "ArrowRight" || key === "ArrowDown") return magnitude;
+	if (code === "ArrowLeft" || code === "ArrowUp") return -magnitude;
+	if (code === "ArrowRight" || code === "ArrowDown") return magnitude;
 	return 0;
 }
 
@@ -331,7 +331,7 @@ function bindSeparator(
 	element.addEventListener(
 		"keydown",
 		(event) => {
-			const delta = keyboardDelta(event.key, event.shiftKey);
+			const delta = keyboardDelta(event.code, event.shiftKey);
 			if (!delta) return;
 			event.preventDefault();
 			binding.fromPixels(binding.current() + delta);

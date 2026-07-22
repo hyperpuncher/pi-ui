@@ -131,7 +131,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 }
 
 function resumeSessionShortcutAction(path: string, index: number): string {
-	return `if ((evt.ctrlKey || evt.metaKey) && evt.key === '${index + 1}') {
+	return `if ((evt.ctrlKey || evt.metaKey) && evt.code === 'Digit${index + 1}') {
 		evt.preventDefault();
 		${resumeSessionAction(path)}
 	}`;

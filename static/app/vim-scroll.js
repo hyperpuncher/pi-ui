@@ -21,30 +21,30 @@ export function bindVimScroll() {
 		if (document.querySelector("dialog[open]")) return;
 		if (pendingG) {
 			pendingG = false;
-			if (event.key === "g") {
+			if (event.code === "KeyG" && !event.shiftKey) {
 				event.preventDefault();
 				scrollTo("top");
 				return;
 			}
-			if (event.key === "i") {
+			if (event.code === "KeyI" && !event.shiftKey) {
 				event.preventDefault();
 				focusPromptEnd();
 				return;
 			}
 		}
-		if (event.key === "g") {
+		if (event.code === "KeyG" && !event.shiftKey) {
 			event.preventDefault();
 			pendingG = true;
-		} else if (event.key === "G") {
+		} else if (event.code === "KeyG" && event.shiftKey) {
 			event.preventDefault();
 			scrollTo("bottom");
-		} else if (event.key === "j" || event.key === "k") {
+		} else if (event.code === "KeyJ" || event.code === "KeyK") {
 			event.preventDefault();
-			scrollBy(event.key === "j" ? 100 : -100);
+			scrollBy(event.code === "KeyJ" ? 100 : -100);
 		}
 	});
 	document.addEventListener("keyup", (event) => {
-		if (event.key === "j" || event.key === "k") keyHeld = false;
+		if (event.code === "KeyJ" || event.code === "KeyK") keyHeld = false;
 	});
 }
 

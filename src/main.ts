@@ -38,7 +38,7 @@ function setupDesktopWindow(): void {
 			return;
 		}
 
-		if ((event.ctrlKey || event.metaKey) && event.key === "/") {
+		if ((event.ctrlKey || event.metaKey) && event.code === "Slash") {
 			event.preventDefault();
 			toggleWorkspaceDialog();
 			return;
@@ -48,11 +48,11 @@ function setupDesktopWindow(): void {
 			return;
 		}
 
-		if (event.key.toLowerCase() === "h") {
+		if (event.code === "KeyH") {
 			event.preventDefault();
 			setApplicationFocused(false);
 			win.hide();
-		} else if (event.key.toLowerCase() === "q") {
+		} else if (event.code === "KeyQ") {
 			event.preventDefault();
 			Deno.exit(0);
 		}

@@ -222,7 +222,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 				aria-invalid={dialog.error ? "true" : undefined}
 				data-bind:auth-input
 				autofocus
-				data-on:keydown={`if (evt.key === 'Enter') {
+				data-on:keydown={`if (evt.code === 'Enter') {
 					evt.preventDefault();
 					@post('${endpoints.authInput}', {
 						filterSignals: { include: /^authInput$/ },

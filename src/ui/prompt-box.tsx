@@ -75,7 +75,7 @@ export function renderPromptBox(
 					data-on:keydown={`
 						window.piUi.promptHistory.handleKeydown(evt, $promptHistory);
 						if (
-							evt.key === 'Escape' &&
+							evt.code === 'Escape' &&
 							!evt.ctrlKey &&
 							!evt.metaKey &&
 							!evt.altKey &&
@@ -85,12 +85,12 @@ export function renderPromptBox(
 							evt.preventDefault();
 							el.blur();
 						}
-						if (evt.altKey && evt.key === 'ArrowUp') {
+						if (evt.altKey && evt.code === 'ArrowUp') {
 							evt.preventDefault();
 							@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } });
 						}
 						if (
-							evt.key === 'Enter' &&
+							evt.code === 'Enter' &&
 							!evt.shiftKey &&
 							$prompt.trim() !== '' &&
 							!window.piUi.pickers.isOpen()

@@ -131,7 +131,7 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 		{ display: "ctrl G", native: "CmdOrCtrl+G", keys: ["g"] },
 	);
 	assertStringIncludes(promptToolbar, "!evt.shiftKey && !evt.altKey");
-	assertStringIncludes(promptToolbar, "evt.key.toLowerCase() === 'g'");
+	assertStringIncludes(promptToolbar, "evt.code === 'KeyG'");
 	assertStringIncludes(promptToolbar, "window.piUi.dialogs.toggleCommand()");
 	assertEquals(`${promptAction}\n${promptBox}`.match(/\$prompt = '';/g)?.length, 2);
 	assertEquals(/@post|document\.|window\./.test(catalog), false);

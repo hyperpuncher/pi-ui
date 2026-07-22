@@ -128,14 +128,14 @@ function handleOutsidePointer(event) {
 
 function handleKeydown(event) {
 	if (event.ctrlKey || event.metaKey || event.altKey) return;
-	if (event.key === "Escape") {
+	if (event.code === "Escape") {
 		if (isOpen()) event.preventDefault();
 		closePickers(true);
 		if (promptValue() === "/") setPromptValue("");
 		return;
 	}
 	if (document.activeElement?.closest?.("[data-file-row]")) {
-		if (event.key === "Backspace") {
+		if (event.code === "Backspace") {
 			event.preventDefault();
 			focusPromptEnd();
 			deletePromptCharBeforeCursor();
@@ -150,22 +150,22 @@ function handleKeydown(event) {
 	}
 	const active = document.activeElement;
 	if (active?.id === "prompt-input") {
-		if ((event.key === "ArrowDown" || event.key === "ArrowUp") && isSlashOpen()) {
+		if ((event.code === "ArrowDown" || event.code === "ArrowUp") && isSlashOpen()) {
 			event.preventDefault();
-			focusPickerRow("[data-slash-row]", event.key === "ArrowDown" ? 1 : -1);
+			focusPickerRow("[data-slash-row]", event.code === "ArrowDown" ? 1 : -1);
 			return;
 		}
-		if ((event.key === "ArrowDown" || event.key === "ArrowUp") && isFileOpen()) {
+		if ((event.code === "ArrowDown" || event.code === "ArrowUp") && isFileOpen()) {
 			event.preventDefault();
-			focusPickerRow("[data-file-row]", event.key === "ArrowDown" ? 1 : -1);
+			focusPickerRow("[data-file-row]", event.code === "ArrowDown" ? 1 : -1);
 			return;
 		}
-		if (event.key === "Enter" && !event.shiftKey && isFileOpen()) {
+		if (event.code === "Enter" && !event.shiftKey && isFileOpen()) {
 			event.preventDefault();
 			selectedPickerRow("[data-file-row]")?.querySelector("button")?.click();
 			return;
 		}
-		if (event.key === "Enter" && !event.shiftKey && isSlashOpen()) {
+		if (event.code === "Enter" && !event.shiftKey && isSlashOpen()) {
 			event.preventDefault();
 			selectedPickerRow("[data-slash-row]")?.querySelector("button")?.click();
 			return;
@@ -173,10 +173,10 @@ function handleKeydown(event) {
 	}
 	for (const selector of ["[data-slash-row]", "[data-file-row]"]) {
 		if (!active?.closest?.(selector)) continue;
-		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+		if (event.code === "ArrowDown" || event.code === "ArrowUp") {
 			event.preventDefault();
-			focusPickerRow(selector, event.key === "ArrowDown" ? 1 : -1);
-		} else if (event.key === "Enter") {
+			focusPickerRow(selector, event.code === "ArrowDown" ? 1 : -1);
+		} else if (event.code === "Enter") {
 			event.preventDefault();
 			active.click();
 		}

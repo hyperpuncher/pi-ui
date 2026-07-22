@@ -46,7 +46,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 				type="button"
 				data-on:click={`@post('${endpoints.abort}', { filterSignals: { include: /^$/ } })`}
 				data-on:keydown__window={`if (
-					evt.key === 'Escape' &&
+					evt.code === 'Escape' &&
 					!evt.ctrlKey &&
 					!evt.metaKey &&
 					!evt.altKey &&

@@ -57,17 +57,17 @@ export function createPromptHistory() {
 			event.ctrlKey ||
 			event.metaKey ||
 			event.shiftKey ||
-			(event.key !== "ArrowUp" && event.key !== "ArrowDown")
+			(event.code !== "ArrowUp" && event.code !== "ArrowDown")
 		)
 			return false;
 		const input = promptInput();
 		if (event.target !== input || window.piUi.pickers.isOpen()) return false;
 
 		navigator.sync(Array.isArray(entries) ? entries : []);
-		if (navigator.browsing && !isAtHistoryBoundary(input, event.key)) return false;
+		if (navigator.browsing && !isAtHistoryBoundary(input, event.code)) return false;
 		const result = navigator.navigate(
 			input.value,
-			event.key === "ArrowUp" ? "up" : "down",
+			event.code === "ArrowUp" ? "up" : "down",
 		);
 		if (!result) return false;
 
@@ -88,9 +88,9 @@ export function createPromptHistory() {
 	return { handleInput, handleKeydown };
 }
 
-function isAtHistoryBoundary(input, key) {
+function isAtHistoryBoundary(input, code) {
 	if (input.selectionStart !== input.selectionEnd) return false;
-	if (key === "ArrowUp") {
+	if (code === "ArrowUp") {
 		const firstLineEnd = input.value.indexOf("\n");
 		return firstLineEnd < 0 || input.selectionStart <= firstLineEnd;
 	}

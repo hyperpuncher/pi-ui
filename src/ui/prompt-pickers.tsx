@@ -23,7 +23,7 @@ export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 			aria-label={state.workspacePath}
 			data-attr:disabled="$sessionTransitionLoading"
 			data-on:click={openWorkspaceDialogAction()}
-			data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.key === '/') {
+			data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.code === 'Slash') {
 			evt.preventDefault();
 			${toggleWorkspaceDialogAction()}
 			}`}
@@ -48,8 +48,8 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 			<div
 				id="thinking-select"
 				class="dropdown-menu"
-				data-on:keydown="if (evt.key === 'Escape') evt.stopPropagation()"
-				data-on:keydown__window={`if (evt.altKey && evt.key.toLowerCase() === 't') {
+				data-on:keydown="if (evt.code === 'Escape') evt.stopPropagation()"
+				data-on:keydown__window={`if (evt.altKey && evt.code === 'KeyT') {
 				evt.preventDefault();
 				${cycleThinkingAction("event-shift")};
 				}`}
@@ -184,10 +184,10 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 			<div
 				id="model-select"
 				class="popover"
-				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'l') {
+				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyL') {
 				evt.preventDefault();
 				${togglePopoverAction("model-select-trigger")};
-				} else if ((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'p') {
+				} else if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyP') {
 				evt.preventDefault();
 				${cycleModelAction("event-shift")};
 				}`}
