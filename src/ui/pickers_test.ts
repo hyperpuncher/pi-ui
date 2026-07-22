@@ -8,6 +8,7 @@ import {
 	renderSessionPicker,
 	renderSlashPicker,
 	renderWorkspaceDialogMenu,
+	slashPickerOpenExpression,
 } from "./pickers.tsx";
 import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
 
@@ -21,6 +22,31 @@ Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	assertStringIncludes(html, 'id="slash-picker-list"');
 	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'aria-selected="true"');
+});
+
+Deno.test("slash picker only opens while a command or skill matches", () => {
+	const expression = slashPickerOpenExpression({
+		slashCommands: [
+			{ name: "login", description: "Log in", source: "system" },
+			{ name: "skill:review", description: "Review code", source: "skill" },
+		],
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(expression, "$prompt.startsWith('/')");
+	assertStringIncludes(expression, "!$prompt.includes(' ')");
+	assertStringIncludes(
+		expression,
+		'["login log in system","skill:review review code skill"].some',
+	);
+	assertStringIncludes(
+		expression,
+		"candidate.includes($prompt.slice(1).toLowerCase())",
+	);
+
+	const emptyExpression = slashPickerOpenExpression({
+		slashCommands: [],
+	} as unknown as AppRenderSnapshot);
+	assertStringIncludes(emptyExpression, "[].some");
 });
 
 Deno.test("session rows expose stable ids for resilient active descendants", () => {

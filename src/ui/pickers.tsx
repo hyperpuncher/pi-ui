@@ -18,6 +18,15 @@ import { resumeSessionAction } from "./session-transition.tsx";
 const bottomAnchoredPickerClass =
 	"flex max-h-72 list-none flex-col-reverse overflow-y-auto p-1";
 
+export function slashPickerOpenExpression(state: AppRenderSnapshot): string {
+	const haystacks = state.slashCommands.map(slashCommandHaystack);
+	return `$prompt.startsWith('/') &&
+		!$prompt.includes(' ') &&
+		${JSON.stringify(haystacks)}.some((candidate) =>
+			candidate.includes($prompt.slice(1).toLowerCase())
+		)`;
+}
+
 export function renderSlashPicker(state: AppRenderSnapshot): string {
 	return (
 		<div id="slash-picker">
@@ -34,9 +43,13 @@ export function renderSlashPicker(state: AppRenderSnapshot): string {
 	) as string;
 }
 
+function slashCommandHaystack(item: AppSlashCommand): string {
+	return `${item.name} ${item.description} ${item.source}`.toLowerCase();
+}
+
 function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 	const label = `/${item.name}`;
-	const haystack = `${item.name} ${item.description} ${item.source}`.toLowerCase();
+	const haystack = slashCommandHaystack(item);
 	const commandText = `${label} `;
 	return (
 		<li

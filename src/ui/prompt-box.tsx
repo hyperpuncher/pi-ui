@@ -1,7 +1,7 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
-import { renderSlashPicker } from "./pickers.tsx";
+import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
 import {
 	renderModelPicker,
@@ -24,7 +24,7 @@ export function renderPromptBox(
 				id="prompt-slash-popover"
 				class="absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
 				style="display: none;"
-				data-show="$_slashPickerOpen"
+				data-show={`$_slashPickerOpen && (${slashPickerOpenExpression(state)})`}
 			>
 				{renderSlashPicker(state)}
 			</div>
