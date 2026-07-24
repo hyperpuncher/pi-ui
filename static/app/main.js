@@ -13,6 +13,7 @@ import { bindPickers, isFileOpen, isOpen as isPickerOpen } from "./pickers.js";
 import { createPromptHistory } from "./prompt-history.js";
 import { bindPromptInteractions, focusPromptEnd } from "./prompt.js";
 import { bindVimScroll } from "./vim-scroll.js";
+import { windowFocus } from "./window-focus.js";
 import * as workspaces from "./workspaces.js";
 
 const promptHistory = createPromptHistory();
@@ -24,6 +25,7 @@ window.piUi = {
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
 	pickers: { isFileOpen, isOpen: isPickerOpen },
 	promptHistory,
+	windowFocus,
 	workspaces,
 	workspaceReview: {
 		isOpen: () => false,

@@ -5,6 +5,8 @@ const hideApplicationMenuId = "hide-application";
 const openWorkspaceMenuId = "change-workspace";
 const quitApplicationMenuId = "quit-application";
 const toggleWorkspaceDialogScript = "window.piUi.dialogs.toggleWorkspace()";
+const suspendWindowFocusScript = "window.piUi.windowFocus.suspend()";
+const restoreWindowFocusScript = "window.piUi.windowFocus.restore()";
 
 const app = await createApp();
 Deno.serve(app.fetch);
@@ -30,8 +32,16 @@ function setupDesktopWindow(): void {
 		void win.executeJs(toggleWorkspaceDialogScript).catch(() => {});
 	};
 
-	win.addEventListener("focus", () => setApplicationFocused(true));
-	win.addEventListener("blur", () => setApplicationFocused(false));
+	win.addEventListener("focus", () => {
+		setApplicationFocused(true);
+		void win.executeJs(restoreWindowFocusScript).catch(() => {});
+	});
+	win.addEventListener("blur", () => {
+		setApplicationFocused(false);
+		// CEF can keep sending text input to a focused control while a fullscreen
+		// macOS window is on another Space. Remove web focus until activation.
+		void win.executeJs(suspendWindowFocusScript).catch(() => {});
+	});
 
 	win.addEventListener("keydown", (event) => {
 		if (event.altKey || event.shiftKey) {

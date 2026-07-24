@@ -32,6 +32,10 @@ interface PiUiNamespace {
 		handleInput(): void;
 		handleKeydown(event: KeyboardEvent, entries: readonly string[]): boolean;
 	};
+	windowFocus: {
+		restore(): void;
+		suspend(): void;
+	};
 	workspaces: {
 		pickDirectory(): Promise<void>;
 	};
