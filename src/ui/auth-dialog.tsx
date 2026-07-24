@@ -35,19 +35,38 @@ function renderDialogContent(dialog: AppAuthDialog): string {
 
 function renderProviderPicker(dialog: AppAuthDialog): string {
 	const title = dialog.mode === "login" ? "Log in" : "Log out";
+	const providerHaystacks = dialog.providers.map(providerSearchHaystack);
 	return (
 		<>
 			<header>
-				<h2 id="auth-dialog-title" class="outline-none" tabindex="-1" autofocus>
-					{title}
-				</h2>
+				<h2 id="auth-dialog-title">{title}</h2>
 				<p>
 					{dialog.mode === "login"
 						? "Choose a provider and authentication method."
 						: "Remove credentials stored in ~/.pi/agent/auth.json."}
 				</p>
 			</header>
-			<div class="max-h-[60vh] overflow-y-auto py-1">
+			{dialog.providers.length > 0 && (
+				<div>
+					<label class="sr-only" for="auth-provider-search">
+						Search providers
+					</label>
+					<input
+						id="auth-provider-search"
+						type="search"
+						class="input w-full"
+						placeholder="Search providers..."
+						autocomplete="off"
+						autocorrect="off"
+						spellcheck="false"
+						aria-controls="auth-provider-list"
+						data-bind:_auth-search
+						data-init="$_authSearch = ''"
+						autofocus
+					/>
+				</div>
+			)}
+			<div id="auth-provider-list" class="max-h-[60vh] overflow-y-auto py-1">
 				{dialog.providers.length === 0 ? (
 					<p class="py-6 text-center text-sm text-muted-foreground" safe>
 						{dialog.error ??
@@ -57,9 +76,19 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 								: "No stored credentials to remove.")}
 					</p>
 				) : (
-					dialog.providers.map((provider) =>
-						renderProviderButton(provider, dialog.mode),
-					)
+					<>
+						{dialog.providers.map((provider) =>
+							renderProviderButton(provider, dialog.mode),
+						)}
+						<p
+							class="py-6 text-center text-sm text-muted-foreground"
+							role="status"
+							style="display: none"
+							data-show={`!${JSON.stringify(providerHaystacks)}.some((provider) => provider.includes($_authSearch.trim().toLowerCase()))`}
+						>
+							No providers found.
+						</p>
+					</>
 				)}
 			</div>
 			<footer>
@@ -86,6 +115,7 @@ function renderProviderButton(
 			type="button"
 			class="btn h-auto w-full justify-between gap-4 px-3 py-2 text-left"
 			data-variant="ghost"
+			data-show={`${JSON.stringify(providerSearchHaystack(provider))}.includes($_authSearch.trim().toLowerCase())`}
 			data-on:click={`
 				$authProvider = ${JSON.stringify(provider.id)};
 				$authType = ${JSON.stringify(provider.authType)};
@@ -105,6 +135,10 @@ function renderProviderButton(
 			</span>
 		</button>
 	) as string;
+}
+
+function providerSearchHaystack(provider: AppAuthProvider): string {
+	return `${provider.name} ${provider.id} ${provider.authType === "oauth" ? "subscription oauth" : "api key"}`.toLowerCase();
 }
 
 function renderAuthenticationFlow(dialog: AppAuthDialog): string {
