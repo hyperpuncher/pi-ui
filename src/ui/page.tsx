@@ -66,6 +66,7 @@ export function renderPage(
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
 				data-time-locale={systemTimeLocale}
+				data-workspace-pick-endpoint={endpoints.workspacePick}
 				data-files-pick-endpoint={endpoints.filesPick}
 				data-files-import-endpoint={endpoints.filesImport}
 				data-display-refresh-endpoint={endpoints.displayRefresh}
@@ -88,6 +89,12 @@ export function renderPage(
 					window.piUi.fileTransfer.resetDrag();
 					window.piUi.fileTransfer.insert(evt.dataTransfer);
 				}`}
+				data-on:pi-ui-workspace-picked__window={`
+					$workspacePath = evt.detail.path;
+					$_sessionTarget = $workspacePath;
+					document.getElementById('workspace-dialog')?.close();
+					@post('${endpoints.workspaceOpen}', { filterSignals: { include: /^workspacePath$/ } });
+				`}
 			>
 				{state.datastarInspector && <datastar-inspector />}
 				{renderDebugOverlay(state)}
@@ -169,7 +176,7 @@ export function renderPage(
 					onclick="if (event.target === this) this.close()"
 				>
 					<div class="command sm:max-w-2xl">
-						<header>
+						<header class="pr-1">
 							<input
 								id="workspace-input"
 								type="text"
@@ -189,7 +196,37 @@ export function renderPage(
 									})`,
 								}}
 							/>
+							<button
+								type="button"
+								class="btn size-6 shrink-0 p-0"
+								data-variant="outline"
+								data-attr:disabled="$sessionTransitionLoading"
+								data-on:click="window.piUi.workspaces.pickDirectory()"
+								aria-label="Browse for workspace folder"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="size-3.5"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path
+										fill="none"
+										stroke="currentColor"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"
+									/>
+								</svg>
+							</button>
 						</header>
+						<p
+							id="workspace-picker-error"
+							class="px-3 pt-2 text-xs text-destructive"
+							role="alert"
+							hidden
+						></p>
 						{renderWorkspaceDialogMenu(state)}
 					</div>
 				</dialog>

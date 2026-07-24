@@ -38,8 +38,59 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 	}
 }
 
+export async function pickNativeDirectoryPath(): Promise<string | undefined> {
+	let paths: string[];
+	switch (Deno.build.os) {
+		case "linux":
+			paths = await pickLinuxDirectory();
+			break;
+		case "darwin":
+			paths = await runPicker({
+				command: "osascript",
+				args: [
+					"-e",
+					`POSIX path of (choose folder with prompt "Select workspace")`,
+				],
+			});
+			break;
+		case "windows":
+			paths = await runPicker({
+				command: "powershell.exe",
+				args: [
+					"-NoProfile",
+					"-STA",
+					"-Command",
+					`Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = "Select workspace"
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+	[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+	[Console]::Write($dialog.SelectedPath)
+}`,
+				],
+			});
+			break;
+		default:
+			throw new Error(
+				`Native directory picker is not supported on ${Deno.build.os}.`,
+			);
+	}
+	return paths[0];
+}
+
 async function pickLinuxFiles(): Promise<string[]> {
-	const commands = linuxPickerCommands(Deno.env.get("XDG_CURRENT_DESKTOP") ?? "");
+	return await runLinuxPicker(linuxPickerCommands, "file");
+}
+
+async function pickLinuxDirectory(): Promise<string[]> {
+	return await runLinuxPicker(linuxDirectoryPickerCommands, "directory");
+}
+
+async function runLinuxPicker(
+	commandsForDesktop: (desktop: string) => PickerCommand[],
+	kind: "file" | "directory",
+): Promise<string[]> {
+	const commands = commandsForDesktop(Deno.env.get("XDG_CURRENT_DESKTOP") ?? "");
 	for (const command of commands) {
 		try {
 			return await runPicker(command);
@@ -48,7 +99,7 @@ async function pickLinuxFiles(): Promise<string[]> {
 			throw error;
 		}
 	}
-	throw new Error("No native file picker found. Install zenity or kdialog.");
+	throw new Error(`No native ${kind} picker found. Install zenity or kdialog.`);
 }
 
 export function linuxPickerCommands(desktop: string): PickerCommand[] {
@@ -64,6 +115,18 @@ export function linuxPickerCommands(desktop: string): PickerCommand[] {
 	const kdialog = {
 		command: "kdialog",
 		args: ["--getopenfilename", Deno.cwd(), "--multiple", "--separate-output"],
+	};
+	return /KDE/i.test(desktop) ? [kdialog, zenity] : [zenity, kdialog];
+}
+
+export function linuxDirectoryPickerCommands(desktop: string): PickerCommand[] {
+	const zenity = {
+		command: "zenity",
+		args: ["--file-selection", "--directory", "--title=Select workspace"],
+	};
+	const kdialog = {
+		command: "kdialog",
+		args: ["--getexistingdirectory", Deno.cwd(), "--title", "Select workspace"],
 	};
 	return /KDE/i.test(desktop) ? [kdialog, zenity] : [zenity, kdialog];
 }

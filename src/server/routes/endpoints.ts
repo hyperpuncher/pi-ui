@@ -17,6 +17,7 @@ export const endpoints = {
 	sessionsDelete: "/sessions/delete",
 	sessionsResume: "/sessions/resume",
 	workspaceOpen: "/workspace/open",
+	workspacePick: "/workspace/pick",
 	workspaceSearch: "/workspace/search",
 	workspaceReview: "/workspace/review",
 	workspaceReviewCommit: "/workspace/review/commit",

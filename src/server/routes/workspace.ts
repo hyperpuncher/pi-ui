@@ -1,3 +1,4 @@
+import { pickNativeDirectoryPath } from "../../native-file-picker.ts";
 import { renderWorkspaceSearchResults } from "../../ui/pickers.tsx";
 import { formatHomePath } from "../../utils/workspace.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
@@ -8,6 +9,10 @@ import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 export function registerWorkspaceRoutes(router: ExactRouter<RouteContext>): void {
+	router.register("POST", endpoints.workspacePick, async () =>
+		Response.json({ path: await pickNativeDirectoryPath() }),
+	);
+
 	router.register("GET", endpoints.workspaceSearch, async (request, context) => {
 		const query = stringField(await readActionSignals(request), "workspaceDraft");
 		const recent = filterWorkspaces(

@@ -29,6 +29,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /sessions/delete",
 		"POST /sessions/resume",
 		"POST /workspace/open",
+		"POST /workspace/pick",
 		"GET /workspace/search",
 		"GET /workspace/review",
 		"GET /workspace/review/commit",
