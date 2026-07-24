@@ -53,6 +53,16 @@
 }
 
 @layer base {
+	::selection {
+		background: color-mix(in oklab, var(--foreground) 85%, transparent);
+		color: var(--background);
+	}
+
+	.message-user ::selection {
+		background: color-mix(in oklab, var(--primary-foreground) 85%, transparent);
+		color: var(--primary);
+	}
+
 	html.dark {
 		--code-background: color-mix(in oklab, var(--muted) 55%, transparent);
 		--pi-control-well: color-mix(in oklab, var(--muted) 45%, var(--background));
