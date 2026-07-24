@@ -141,13 +141,15 @@ Deno.test("workspace rows show each collapsed path once", () => {
 	);
 });
 
-Deno.test("typed workspace submissions use the local draft signal", () => {
+Deno.test("workspace picker only opens existing workspace suggestions", () => {
 	const html = renderWorkspaceDialogMenu({
 		workspacePath: "/workspace",
 		recentWorkspaces: [],
 	} as unknown as AppRenderSnapshot);
 
-	assertStringIncludes(html, "$workspacePath = $_workspaceDraft");
+	assertFalse(html.includes("Open typed path"));
+	assertFalse(html.includes("data-empty"));
+	assertStringIncludes(html, "Recent workspaces");
 });
 
 Deno.test("model picker distinguishes missing auth from an unselected model", () => {

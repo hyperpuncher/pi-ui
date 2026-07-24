@@ -1,5 +1,6 @@
 import type { FileSuggestion } from "../server/file-search.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
+import type { WorkspaceSuggestion } from "../server/workspace-search.ts";
 import type {
 	AppRenderSnapshot,
 	AppSessionSummary,
@@ -94,48 +95,8 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
 	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
 	return (
-		<div
-			role="menu"
-			id="workspace-menu"
-			aria-orientation="vertical"
-			data-empty="No matching workspaces."
-		>
-			<div role="group" aria-labelledby="workspace-open-heading">
-				<span role="heading" id="workspace-open-heading">
-					Open
-				</span>
-				<div
-					role="menuitem"
-					data-force
-					data-workspace-submit
-					data-indicator:_workspaceOpening
-					data-indicator:_session-loading
-					data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
-					data-on:click={openWorkspaceAction("$_workspaceDraft")}
-				>
-					<span>Open typed path</span>
-					<span
-						class="text-xs text-muted-foreground"
-						data-show="$_workspaceOpening"
-						style="display: none"
-					>
-						Opening…
-					</span>
-					<span data-shortcut>Enter</span>
-				</div>
-			</div>
-			<hr role="separator" />
-			<div role="group" aria-labelledby="workspace-recent-heading">
-				<span role="heading" id="workspace-recent-heading">
-					Recent workspaces
-				</span>
-				{workspaces.map((workspacePath) =>
-					renderWorkspaceRow(
-						workspacePath,
-						workspacePath === state.workspacePath,
-					),
-				)}
-			</div>
+		<div role="menu" id="workspace-menu" aria-orientation="vertical">
+			{renderWorkspaceSearchResults(workspaces, [], state.workspacePath)}
 		</div>
 	) as string;
 }
@@ -159,12 +120,53 @@ export function renderFilePickerResults(items: readonly FileSuggestion[]): strin
 	) as string;
 }
 
+export function renderWorkspaceSearchResults(
+	recentWorkspaces: readonly string[],
+	searchWorkspaces: readonly WorkspaceSuggestion[],
+	currentWorkspacePath: string,
+): string {
+	const recent = uniqueWorkspaces(recentWorkspaces);
+	const search = uniqueWorkspaces(
+		searchWorkspaces.map((workspace) => workspace.path),
+	).filter((workspacePath) => !recent.includes(workspacePath));
+	return (
+		<div id="workspace-search-results">
+			{recent.length > 0 &&
+				renderWorkspaceGroup("Recent workspaces", recent, currentWorkspacePath)}
+			{search.length > 0 &&
+				renderWorkspaceGroup("Search results", search, currentWorkspacePath)}
+		</div>
+	) as string;
+}
+
+function renderWorkspaceGroup(
+	heading: string,
+	workspaces: readonly string[],
+	currentWorkspacePath: string,
+): string {
+	const id =
+		heading === "Recent workspaces"
+			? "workspace-recent-heading"
+			: "workspace-search-heading";
+	return (
+		<div role="group" aria-labelledby={id}>
+			<span role="heading" id={id}>
+				{heading}
+			</span>
+			{workspaces.map((workspacePath) =>
+				renderWorkspaceRow(workspacePath, workspacePath === currentWorkspacePath),
+			)}
+		</div>
+	) as string;
+}
+
 function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	const label = formatHomePath(workspacePath);
 	return (
 		<div
 			role="menuitem"
 			class="items-start gap-3"
+			tabindex="-1"
 			aria-current={current ? "true" : undefined}
 			data-filter={`${label} ${workspacePath}`}
 			data-keywords={`${label} ${workspacePath}`}
@@ -191,7 +193,7 @@ function openWorkspaceAction(valueExpression: string): string {
 	}`;
 }
 
-function uniqueWorkspaces(workspaces: string[]): string[] {
+function uniqueWorkspaces(workspaces: readonly string[]): string[] {
 	const unique: string[] = [];
 	for (const workspacePath of workspaces) {
 		if (!workspacePath || unique.includes(workspacePath)) {

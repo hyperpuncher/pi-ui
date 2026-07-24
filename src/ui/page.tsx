@@ -24,7 +24,7 @@ export function renderPage(
 		thinkingCycleDirection: "forward",
 		_sessionLoading: false,
 		_sessionTarget: "",
-		_workspaceDraft: "",
+		workspaceDraft: "",
 		_filePickerOpen: false,
 		_slashPickerOpen: false,
 		fileQuery: "",
@@ -181,7 +181,13 @@ export function renderPage(
 								role="combobox"
 								aria-expanded="true"
 								aria-controls="workspace-menu"
-								data-bind:_workspace-draft
+								data-bind:workspace-draft
+								attrs={{
+									"data-on:input__debounce.50ms": `@get('${endpoints.workspaceSearch}', {
+										filterSignals: { include: /^workspaceDraft$/ },
+										requestCancellation: 'cleanup',
+									})`,
+								}}
 							/>
 						</header>
 						{renderWorkspaceDialogMenu(state)}

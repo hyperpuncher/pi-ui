@@ -29,6 +29,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /sessions/delete",
 		"POST /sessions/resume",
 		"POST /workspace/open",
+		"GET /workspace/search",
 		"GET /workspace/review",
 		"GET /workspace/review/commit",
 		"GET /workspace/review/history",
@@ -99,6 +100,22 @@ Deno.test("file search uses current workspace and escapes Datastar fragments", a
 			Deno.remove(firstWorkspace, { recursive: true }),
 			Deno.remove(secondWorkspace, { recursive: true }),
 		]);
+	}
+});
+
+Deno.test("workspace search returns matching directories", async () => {
+	const workspace = await Deno.makeTempDir();
+	try {
+		await Deno.mkdir(`${workspace}/alpha`);
+		const context = fakeContext();
+		context.store.setWorkspacePath(workspace);
+		const response = await createRouter(context).fetch(
+			signalGet("/workspace/search", { workspaceDraft: `${workspace}/alp` }),
+		);
+		assertEquals(response.status, 200);
+		assertStringIncludes(await response.text(), "alpha");
+	} finally {
+		await Deno.remove(workspace, { recursive: true });
 	}
 });
 
