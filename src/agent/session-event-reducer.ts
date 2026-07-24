@@ -10,6 +10,10 @@ type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 	AgentSessionEvent,
 	{ type: Type }
 >;
+type AssistantEventMessage = Extract<
+	EventOf<"message_end">["message"],
+	{ role: "assistant" }
+>;
 
 export type SessionEventStateSink = {
 	appendMessage(
@@ -55,6 +59,7 @@ export type SessionEventReducerContext = {
 		startedAt: number | undefined,
 	) => ToolMessageView;
 	syncUsage?: () => void;
+	cacheMissNotice?: (message: AssistantEventMessage) => string | undefined;
 	reloadMessages: () => void;
 	now?: () => Date;
 	nowMs?: () => number;
@@ -180,6 +185,8 @@ export function reduceSessionEvent(
 		case "message_end":
 			if (event.message.role === "assistant") {
 				state.finishAssistant();
+				const cacheMissNotice = context.cacheMissNotice?.(event.message);
+				if (cacheMissNotice) state.appendMessage("notice", cacheMissNotice);
 				for (const preview of tools.previewMessages.values()) {
 					state.updateMessage(preview.id, {
 						state: "error",

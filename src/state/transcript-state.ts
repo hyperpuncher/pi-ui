@@ -2,6 +2,7 @@ export type TranscriptMessageRole =
 	| "user"
 	| "assistant"
 	| "system"
+	| "notice"
 	| "tool"
 	| "thought"
 	| "compaction"

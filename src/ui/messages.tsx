@@ -370,11 +370,17 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 		) as string;
 	}
 
-	if (message.role === "system") {
+	if (message.role === "system" || message.role === "notice") {
 		return (
 			<article
-				class="message message-narrative message-system max-w-3xl self-start text-muted-foreground"
+				class={[
+					"message message-narrative max-w-3xl self-start",
+					message.role === "notice"
+						? "text-amber-700 dark:text-yellow-300"
+						: "message-system text-muted-foreground",
+				]}
 				data-message-id={message.id}
+				role={message.role === "notice" ? "status" : undefined}
 			>
 				<p class="m-0 whitespace-pre-wrap" safe>
 					{message.text}

@@ -8,6 +8,7 @@ import {
 import type { AppMessageInput } from "../state/app-store.ts";
 import type { TranscriptState } from "../state/transcript-state.ts";
 import { isRecord } from "../utils/type-guards.ts";
+import { collectCacheMisses, formatCacheMissNotice } from "./cache-miss.ts";
 import {
 	compactToolOutput,
 	contentToText,
@@ -23,16 +24,29 @@ type AgentMessage = Extract<AgentSessionEvent, { type: "message_start" }>["messa
 export class TranscriptProjector {
 	load(runtime: AgentSessionRuntime, state: ProjectedTranscript): void {
 		const pending = new Map<string, { name: string; args: unknown }>();
+		const entries = runtime.session.sessionManager.getBranch();
+		const misses = runtime.session.settingsManager?.getShowCacheMissNotices()
+			? collectCacheMisses(entries, runtime.session.modelRuntime)
+			: undefined;
 		state.replaceMessages(
-			runtime.session.sessionManager
-				.getBranch()
-				.flatMap((entry: SessionEntry) => this.entry(entry, pending)),
+			entries.flatMap((entry: SessionEntry) => {
+				const miss =
+					entry.type === "message" && entry.message.role === "assistant"
+						? misses?.get(entry.message)
+						: undefined;
+				return this.entry(
+					entry,
+					pending,
+					miss ? formatCacheMissNotice(miss) : undefined,
+				);
+			}),
 		);
 	}
 
 	entry(
 		entry: SessionEntry,
 		pending: Map<string, { name: string; args: unknown }>,
+		cacheMissNotice?: string,
 	): AppMessageInput[] {
 		const timestamp = new Date(entry.timestamp);
 		if (entry.type === "message") {
@@ -46,7 +60,11 @@ export class TranscriptProjector {
 				pending.delete(entry.message.toolCallId);
 				return [toolResultToAppMessage(entry.message, timestamp, call)];
 			}
-			return this.message(entry.message, timestamp);
+			const messages = this.message(entry.message, timestamp);
+			if (cacheMissNotice) {
+				messages.push({ role: "notice", text: cacheMissNotice, timestamp });
+			}
+			return messages;
 		}
 		if (entry.type === "custom_message" && entry.display) {
 			return [{ role: "system", text: contentToText(entry.content), timestamp }];

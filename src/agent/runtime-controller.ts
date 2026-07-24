@@ -31,6 +31,7 @@ import {
 	BackgroundSessionController,
 } from "./background-session-controller.ts";
 import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
+import { detectCacheMiss, formatCacheMissNotice } from "./cache-miss.ts";
 import { ModelController, resolveScopedModels } from "./model-controller.ts";
 import { type PreparedSessionList, SessionCatalog } from "./session-catalog.ts";
 import {
@@ -1207,6 +1208,17 @@ export class RuntimeController {
 						format: view.format,
 					},
 				};
+			},
+			cacheMissNotice: (message) => {
+				if (!this.runtime.session.settingsManager?.getShowCacheMissNotices()) {
+					return undefined;
+				}
+				const miss = detectCacheMiss(
+					this.runtime.session.sessionManager.getEntries(),
+					message,
+					this.runtime.session.modelRuntime,
+				);
+				return miss ? formatCacheMissNotice(miss) : undefined;
 			},
 			syncUsage,
 			reloadMessages,
