@@ -15,8 +15,8 @@
     "jsr:@std/path@^1.1.6": "1.1.6",
     "jsr:@std/streams@^1.1.1": "1.1.1",
     "npm:@bruits/satteri-wasm32-wasi@~0.9.5": "0.9.5",
-    "npm:@earendil-works/pi-ai@~0.81.1": "0.81.1_zod@4.4.3",
-    "npm:@earendil-works/pi-coding-agent@~0.81.1": "0.81.1_zod@4.4.3",
+    "npm:@earendil-works/pi-ai@0.82": "0.82.0_zod@4.4.3",
+    "npm:@earendil-works/pi-coding-agent@0.82": "0.82.0_zod@4.4.3",
     "npm:@kitajs/html@5.0.0-next.1": "5.0.0-next.1",
     "npm:@pierre/diffs@^1.2.12": "1.2.12_react@19.2.7_react-dom@19.2.7__react@19.2.7",
     "npm:@pierre/trees@1.0.0-beta.5": "1.0.0-beta.5_react@19.2.7_react-dom@19.2.7__react@19.2.7",
@@ -147,7 +147,7 @@
         "@aws-sdk/types",
         "@smithy/core",
         "@smithy/fetch-http-handler",
-        "@smithy/node-http-handler@4.9.9",
+        "@smithy/node-http-handler@4.9.10",
         "@smithy/types",
         "tslib"
       ]
@@ -182,7 +182,7 @@
         "@aws-sdk/types",
         "@smithy/core",
         "@smithy/fetch-http-handler",
-        "@smithy/node-http-handler@4.9.9",
+        "@smithy/node-http-handler@4.9.10",
         "@smithy/types",
         "tslib"
       ]
@@ -303,7 +303,7 @@
         "@aws-sdk/types",
         "@smithy/core",
         "@smithy/fetch-http-handler",
-        "@smithy/node-http-handler@4.9.9",
+        "@smithy/node-http-handler@4.9.10",
         "@smithy/types",
         "tslib"
       ]
@@ -414,17 +414,18 @@
       "os": ["win32"],
       "cpu": ["x64"]
     },
-    "@earendil-works/pi-agent-core@0.81.1_zod@4.4.3": {
-      "integrity": "sha512-yqbh68CyhqxMov/jUogFJfMqlu2Gd37GAki+tr59YCmAPHfomiCA5ESzusXtpGzABeiZFC/OrRdQ4GwCCOMIHA==",
+    "@earendil-works/pi-agent-core@0.82.0_zod@4.4.3": {
+      "integrity": "sha512-bnS9DpOKK5T/F/gQkaOnYdMsuuciWiScfAHHWC+k5OQ0HxjSqMFQvp8keurULLoT4+v8NHv4V14pNvd4hsfC0Q==",
       "dependencies": [
         "@earendil-works/pi-ai",
+        "diff@8.0.4",
         "ignore",
         "typebox",
         "yaml"
       ]
     },
-    "@earendil-works/pi-ai@0.81.1_zod@4.4.3": {
-      "integrity": "sha512-hzHE7Z8l5mgJk+ke67Lge0rwS2+wbKJrFKl9o5M1R1rh33+cCT7D1AHz1OAtX5wFs90E1/BTGhyJRTUHaMxGvQ==",
+    "@earendil-works/pi-ai@0.82.0_zod@4.4.3": {
+      "integrity": "sha512-8MvW9+zno13sXDuT2kFMnWeTNUufUhPeZDRVO+igGoBRCDWgn7Xh2FkRQI1mRuet6QhF4ENQuLYdIAOyG6BhNw==",
       "dependencies": [
         "@anthropic-ai/sdk",
         "@aws-sdk/client-bedrock-runtime",
@@ -440,8 +441,8 @@
       ],
       "bin": true
     },
-    "@earendil-works/pi-coding-agent@0.81.1_zod@4.4.3": {
-      "integrity": "sha512-r6ovAsZOgAqbC/aU6s+/dPnv/sGZBuWyZNvi3pXjpbuX5wvp3XvGkQI7/VLvX2o9XpmpFaPUxKNym1WfkN/P8A==",
+    "@earendil-works/pi-coding-agent@0.82.0_zod@4.4.3": {
+      "integrity": "sha512-Qnqgn9zhJFQ2HZ8R4iNuGhyCk93XX6+eUw9i+TjTuo47amzCy93ft3bB6yaUCleCrNO58dJDHYSGNHv/GAPWKg==",
       "dependencies": [
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-ai",
@@ -467,8 +468,8 @@
       ],
       "bin": true
     },
-    "@earendil-works/pi-tui@0.81.1": {
-      "integrity": "sha512-OMEe+Zt8oQYi/rCq3upxsTlIScWL0FPhXwQus34TbQb3EmTx88S7Uzx32JxvQiEeWOw8eDCdJf2PBUBE9r6wIg==",
+    "@earendil-works/pi-tui@0.82.0": {
+      "integrity": "sha512-9IDjQOXne7t9l2s2YcjnIBxsVNVPE7qScVSB3YmFlXsBW4pfo2gOElTxggV84KrRiGqABnlFPBWbf0k54hszHQ==",
       "dependencies": [
         "get-east-asian-width",
         "marked"
@@ -1150,23 +1151,23 @@
     "@silvia-odwyer/photon-node@0.3.4": {
       "integrity": "sha512-bnly4BKB3KDTFxrUIcgCLbaeVVS8lrAkri1pEzskpmxu9MdfGQTy8b8EgcD83ywD3RPMsIulY8xJH5Awa+t9fA=="
     },
-    "@smithy/core@3.29.7": {
-      "integrity": "sha512-BiEE2bnnGoPKdlGe3L+gOYORDHFGPuYVRLP7iUow/Sflm0B4hC4XY3FC1MRuc7ltzpW2xNnXopKi34TTkULlKQ==",
+    "@smithy/core@3.29.8": {
+      "integrity": "sha512-rpCbCV+TimOBi3VLNBMmtTvgfOWcFIEAru3+TFlG87SL2F+te4jOnnNR+cf3uR4eJ5Qf4LnT80fqnBKgPRS6zA==",
       "dependencies": [
         "@smithy/types",
         "tslib"
       ]
     },
-    "@smithy/credential-provider-imds@4.4.12": {
-      "integrity": "sha512-ZZPDbl/aRp77aycuoMlo3BTayT4CE2a3uoqETYZU5ySnVbhpl5IJiY7dCZedn+ZusyDLqVv44IvKBiXd2/nK0Q==",
+    "@smithy/credential-provider-imds@4.4.13": {
+      "integrity": "sha512-X+2HNZhWi5i3rJsCas0LPf6fTQUaKyJ40zd8aTO/bwpRfpU3biYaqLr7C1WMibL7PVKJalpi1PyybjGPNoHC8Q==",
       "dependencies": [
         "@smithy/core",
         "@smithy/types",
         "tslib"
       ]
     },
-    "@smithy/fetch-http-handler@5.6.9": {
-      "integrity": "sha512-EJktha5m5MXCwzdXrlWyqb9UCNHNFKlg+PmTpRsdX3dncJPTiqYleM9OKj2mLgdVJHR01d2tU4alG+z2NdH5rQ==",
+    "@smithy/fetch-http-handler@5.6.10": {
+      "integrity": "sha512-5/Yj9mS2JjTsB3B8ZX7euh77mrY9aXW23ag1yAmFykSRmA6vldqBrgqmSeQ50EjY+5SB8+aE4w14B6LKbBVEhQ==",
       "dependencies": [
         "@smithy/core",
         "@smithy/types",
@@ -1187,16 +1188,16 @@
         "tslib"
       ]
     },
-    "@smithy/node-http-handler@4.9.9": {
-      "integrity": "sha512-xVBZ3hptB99iNO9XyWqEhC7KD9bP9UPXhuy3h5Y2ItCfBv160D9IIC/Fmmp3EbnWwit4C+KVqlSE+E29Nk/pPg==",
+    "@smithy/node-http-handler@4.9.10": {
+      "integrity": "sha512-ETQz9v/Z+nTQc6fRWTXxUpxJqwpmzB3Tn3WKAdHwWkeT+m+HE5czs6GNG8vW+4vyxXSls65RVcvOZwk7Q/PS/Q==",
       "dependencies": [
         "@smithy/core",
         "@smithy/types",
         "tslib"
       ]
     },
-    "@smithy/signature-v4@5.6.8": {
-      "integrity": "sha512-iGBm6hIwD2MGvVRSgrjVWa4FXtXDq3akxu0DCpnkmBo0xtEHZ/siMRt7ycfZAefYr2UdywUgmGtoRLaq5u56pg==",
+    "@smithy/signature-v4@5.6.9": {
+      "integrity": "sha512-g5rnEii/mkT0mjVJmlsaOfyNBtHNTecD9Lo4NP8D5HzMUEnZNpz7/FbvBCjNcV4vteHFAxOGiLUYNxPkDZZAPw==",
       "dependencies": [
         "@smithy/core",
         "@smithy/types",
@@ -1393,8 +1394,8 @@
     "bowser@2.14.1": {
       "integrity": "sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg=="
     },
-    "brace-expansion@5.0.7": {
-      "integrity": "sha512-7oFy703dxfY3/NLxC1fh2SUCQ0H9rmAY+5EpDVfXjUTTs+HEwR2nYaqLv+GWcTsumwxPfiz6CzCNkwXwBUwqCA==",
+    "brace-expansion@5.0.8": {
+      "integrity": "sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg==",
       "dependencies": [
         "balanced-match"
       ]
@@ -1526,8 +1527,8 @@
         "fetch-blob"
       ]
     },
-    "gaxios@7.2.0": {
-      "integrity": "sha512-CUVb4wcYe+771XevyH6HtGmXFAGGKkIC3kswAP8Z1JCe0j80JMaTPZH930DWFrvo0atjh18Arc0pEyUCWa5bfg==",
+    "gaxios@7.3.0": {
+      "integrity": "sha512-RB5vLV+vvQeoFPCX4QMK6/hjVkbIamPp1QSUD0CiZcnj12qbpiL+pLbYtgD+oZkWl0tl9z+o2Utp+MpM3QRhBA==",
       "dependencies": [
         "extend",
         "https-proxy-agent",
@@ -1556,8 +1557,8 @@
         "path-scurry"
       ]
     },
-    "google-auth-library@10.9.0": {
-      "integrity": "sha512-xtvUqvINPhTaBm7nXqlYPcrMHJPm1lCNdSovxnKKhTm+4JsvQ+KGVYJViLoH9Yxu8w+T0Qv5HubzYT9BLrppJg==",
+    "google-auth-library@10.9.1": {
+      "integrity": "sha512-i1ydyHrqcIxXkWh/uBmVkzCvIuq5yiK2ATndIe5XxKholrG/MTYP9xGYka4sQhrbIAgGjL2B6NOE7rFaiF3fXw==",
       "dependencies": [
         "base64-js",
         "ecdsa-sig-formatter",
@@ -2284,8 +2285,8 @@
       "jsr:@std/http@^1.1.2",
       "jsr:@std/path@^1.1.6",
       "npm:@bruits/satteri-wasm32-wasi@~0.9.5",
-      "npm:@earendil-works/pi-ai@~0.81.1",
-      "npm:@earendil-works/pi-coding-agent@~0.81.1",
+      "npm:@earendil-works/pi-ai@0.82",
+      "npm:@earendil-works/pi-coding-agent@0.82",
       "npm:@kitajs/html@5.0.0-next.1",
       "npm:@pierre/diffs@^1.2.12",
       "npm:@pierre/trees@1.0.0-beta.5",

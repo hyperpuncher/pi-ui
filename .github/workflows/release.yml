@@ -3,7 +3,7 @@ name: Release
 env:
     CEF_BACKEND_REPOSITORY: hyperpuncher/laufey
     CEF_BACKEND_TAG: cef-150.0.11-pi-ui.1
-    DENO_VERSION: v2.9.2
+    DENO_VERSION: v2.9.4
 
 on:
     workflow_dispatch:
