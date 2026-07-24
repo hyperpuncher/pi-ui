@@ -12,6 +12,11 @@ const app = await createApp();
 Deno.serve(app.fetch);
 setupDesktopWindow();
 
+// Deno Desktop forces every later HTTP listener onto its UI server address
+// while this variable is present. Release it after startup so OAuth providers
+// can bind their fixed localhost callback ports.
+Deno.env.delete("DENO_SERVE_ADDRESS");
+
 function setupDesktopWindow(): void {
 	const BrowserWindow = Deno.BrowserWindow;
 	if (!BrowserWindow) {
