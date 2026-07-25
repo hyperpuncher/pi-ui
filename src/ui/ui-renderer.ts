@@ -1,5 +1,6 @@
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import type {
+	AppMessage,
 	AppRenderSnapshot,
 	AppStore,
 	AppStorePresentation,
@@ -116,7 +117,11 @@ export class UiRenderer implements AppStorePresentation {
 			}
 		}
 		if (this.hub.clientCount > 0) {
-			const view = this.renderView(this.effectSignalOverrides(effects), snapshot);
+			const view = this.renderView(
+				this.effectSignalOverrides(effects),
+				snapshot,
+				false,
+			);
 			this.hub.patchView(
 				view.elements,
 				view.signals,
@@ -183,12 +188,14 @@ export class UiRenderer implements AppStorePresentation {
 		return this.messages.renderMessagesElement();
 	}
 
-	renderElements(snapshot: AppRenderSnapshot): string {
+	renderElements(snapshot: AppRenderSnapshot, includeFinalMessageHtml = true): string {
 		const messages =
 			this.suppressMessagesDepth > 0
 				? ""
 				: renderMessages(
-						snapshot.messages,
+						includeFinalMessageHtml
+							? snapshot.messages
+							: snapshot.messages.map(lightweightFinalMessage),
 						snapshot.emptyChatHint,
 						snapshot.hasOlderMessages,
 						snapshot.sessions,
@@ -229,12 +236,13 @@ export class UiRenderer implements AppStorePresentation {
 	private renderView(
 		overrides: Record<string, unknown> = {},
 		snapshot = this.store.snapshot(),
+		includeFinalMessageHtml = true,
 	): {
 		elements: string;
 		signals: string;
 	} {
 		return {
-			elements: this.renderElements(snapshot),
+			elements: this.renderElements(snapshot, includeFinalMessageHtml),
 			signals: this.renderSignals(snapshot, overrides),
 		};
 	}
@@ -269,4 +277,10 @@ export class UiRenderer implements AppStorePresentation {
 		}
 		return [...new Set(scripts)];
 	}
+}
+
+function lightweightFinalMessage(message: AppMessage): AppMessage {
+	return message.presentationState === "final"
+		? { ...message, renderedHtml: undefined }
+		: message;
 }

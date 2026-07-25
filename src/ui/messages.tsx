@@ -368,6 +368,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			<article
 				class="message message-narrative message-assistant markdown-content w-full self-start"
 				data-message-id={message.id}
+				data-ignore-morph={message.presentationState === "final" ? "" : undefined}
 			>
 				{message.renderedHtml !== undefined ? (
 					<div>{message.renderedHtml}</div>
@@ -386,6 +387,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			<article
 				class="message message-narrative message-thought markdown-content w-full self-start text-sm text-muted-foreground italic"
 				data-message-id={message.id}
+				data-ignore-morph={message.presentationState === "final" ? "" : undefined}
 			>
 				{message.renderedHtml !== undefined ? (
 					<div>{message.renderedHtml}</div>

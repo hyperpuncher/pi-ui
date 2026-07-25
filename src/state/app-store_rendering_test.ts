@@ -72,6 +72,32 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 	}
 });
 
+Deno.test("fat patches preserve finalized message DOM without resending its HTML", async () => {
+	let resolveEnhancement: ((html: string) => void) | undefined;
+	const state = createState({
+		renderMarkdownFinal: () =>
+			new Promise<string>((resolve) => (resolveEnhancement = resolve)),
+	});
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		state.replaceMessages([markdownMessage("lightweight source")]);
+		while (!resolveEnhancement) await Promise.resolve();
+		resolveEnhancement("<p>large finalized HTML</p>");
+		await waitFor(() => state.messages[0].presentationState === "final");
+		state.setUsage({ text: "$1.000 • 1 token" });
+		const patches = await collectElementPatches(response, 4);
+
+		assertIncludes(patches.patches[2], "large finalized HTML");
+		assertIncludes(patches.patches[2], "data-ignore-morph");
+		assertNotIncludes(patches.patches[3], "large finalized HTML");
+		assertIncludes(patches.patches[3], "lightweight source");
+		assertIncludes(patches.patches[3], "data-ignore-morph");
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("session loading clears after fallback and before enhancement", async () => {
 	let resolveEnhancement: ((html: string) => void) | undefined;
 	const state = createState({
