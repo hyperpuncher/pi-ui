@@ -35,7 +35,7 @@ function setupDesktopWindow(): DesktopWindow | undefined {
 	const win = new BrowserWindow<DesktopBindings>({
 		title: "pi-ui",
 		width: 1000,
-		height: 1400,
+		height: 1200,
 		transparentTitlebar: true,
 	});
 	win.hide();
