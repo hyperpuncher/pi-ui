@@ -53,6 +53,10 @@
 }
 
 @layer base {
+	button:not(:disabled) {
+		cursor: pointer;
+	}
+
 	::selection {
 		background: color-mix(in oklab, var(--foreground) 85%, transparent);
 		color: var(--background);
