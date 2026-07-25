@@ -75,8 +75,9 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 			data-attr:disabled="$prompt.trim() === ''"
 			data-on:click={`
 				window.piUi.messageScroll.scrollBottom();
-				@post('${endpoints.prompt}', { filterSignals: { include: /^prompt$/ } });
+				const submittedPrompt = $prompt;
 				$prompt = '';
+				@post('${endpoints.prompt}', { payload: { prompt: submittedPrompt } });
 			`}
 			data-tooltip="Send"
 			data-tooltip-delay

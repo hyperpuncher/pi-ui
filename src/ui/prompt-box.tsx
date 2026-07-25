@@ -97,11 +97,12 @@ export function renderPromptBox(
 						) {
 							evt.preventDefault();
 							window.piUi.messageScroll.scrollBottom();
-							if ($prompt.trim() === '/tree') window.piUi.dialogs.openTree();
-							evt.altKey
-								? @post('${endpoints.promptFollowUp}', { filterSignals: { include: /^prompt$/ } })
-								: @post('${endpoints.prompt}', { filterSignals: { include: /^prompt$/ } });
+							const submittedPrompt = $prompt;
 							$prompt = '';
+							if (submittedPrompt.trim() === '/tree') window.piUi.dialogs.openTree();
+							evt.altKey
+								? @post('${endpoints.promptFollowUp}', { payload: { prompt: submittedPrompt } })
+								: @post('${endpoints.prompt}', { payload: { prompt: submittedPrompt } });
 						};
 					`}
 				></textarea>

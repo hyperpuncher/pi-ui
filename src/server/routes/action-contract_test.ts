@@ -133,7 +133,13 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(promptToolbar, "!evt.shiftKey && !evt.altKey");
 	assertStringIncludes(promptToolbar, "evt.code === 'KeyG'");
 	assertStringIncludes(promptToolbar, "window.piUi.dialogs.toggleCommand()");
-	assertEquals(`${promptAction}\n${promptBox}`.match(/\$prompt = '';/g)?.length, 2);
+	const promptActions = `${promptAction}\n${promptBox}`;
+	assertEquals(promptActions.match(/const submittedPrompt = \$prompt;/g)?.length, 2);
+	assertEquals(promptActions.match(/\$prompt = '';/g)?.length, 2);
+	assertEquals(
+		promptActions.match(/payload: \{ prompt: submittedPrompt \}/g)?.length,
+		3,
+	);
 	assertEquals(/@post|document\.|window\./.test(catalog), false);
 	assertStringIncludes(dialogs, "export function openCommand()");
 	assertStringIncludes(dialogs, "export function toggleCommand()");
