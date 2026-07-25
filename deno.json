@@ -13,6 +13,7 @@
 		"run:linux": "./dist/linux/pi-ui/pi-ui --disable-spell-checking",
 		"client:build": "deno run -A npm:rolldown@latest -c rolldown.config.ts --configLoader native",
 		"client:watch": "deno run -A npm:rolldown@latest -c rolldown.config.ts --configLoader native --watch",
+		"patch:satteri": "deno run --allow-read --allow-write scripts/patch-satteri.ts",
 		"css:build": "deno run -A scripts/generate-basecoat-css.ts && deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "deno run -A scripts/generate-basecoat-css.ts && deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --watch --silent",
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",

@@ -98,6 +98,19 @@ jobs:
               shell: bash
               run: |
                   rm -rf node_modules
+                  # Temporary Sätteri 0.9.5 workaround; remove with scripts/patch-satteri.ts.
+                  deno install \
+                    --entrypoint src/main.ts \
+                    --frozen \
+                    --lock deno.release.lock \
+                    --node-modules-dir=auto
+                  deno run \
+                    --allow-read \
+                    --allow-write \
+                    --frozen \
+                    --lock deno.release.lock \
+                    --node-modules-dir=auto \
+                    scripts/patch-satteri.ts
                   desktop_args=(
                     -A
                     --unstable-no-legacy-abort
