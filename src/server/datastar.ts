@@ -27,6 +27,7 @@ export type ClientEffect =
 	| { type: "restore-messages-anchor" }
 	| { type: "refresh-session-picker" }
 	| { type: "refresh-workspace-picker" }
+	| { type: "close-workspace-picker" }
 	| { type: "session-deleted" };
 
 export type DatastarEvent =
@@ -88,6 +89,8 @@ function clientEffectScript(effect: ClientEffect): string {
 			return "window.piUi.basecoat.refresh(document.getElementById('session-dialog'))";
 		case "refresh-workspace-picker":
 			return "window.piUi.basecoat.refresh(document.getElementById('workspace-dialog'))";
+		case "close-workspace-picker":
+			return "document.getElementById('workspace-dialog')?.close()";
 		case "session-deleted":
 			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.basecoat.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
 	}

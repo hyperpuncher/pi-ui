@@ -105,6 +105,8 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(authDialog, "endpoints.authLoginStart");
 	assertStringIncludes(authDialog, "endpoints.authLogout");
 	assertStringIncludes(authDialog, "@post('${action}'");
+	assertStringIncludes(page, "@post('${endpoints.workspacePick}'");
+	assertStringIncludes(page, "data-indicator:_workspace-picking");
 	assertStringIncludes(page, "data-files-pick-endpoint={endpoints.filesPick}");
 	assertStringIncludes(page, "data-files-import-endpoint={endpoints.filesImport}");
 	assertStringIncludes(

@@ -36,9 +36,6 @@ interface PiUiNamespace {
 		restore(): void;
 		suspend(): void;
 	};
-	workspaces: {
-		pickDirectory(): Promise<void>;
-	};
 	workspaceReview: {
 		applyOpen(open: boolean): void;
 	};

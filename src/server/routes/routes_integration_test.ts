@@ -6,6 +6,7 @@ import type { UiRenderer } from "../../ui/ui-renderer.ts";
 import { createRouter } from "../app.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
+import { pickWorkspace } from "./workspace.ts";
 
 Deno.test("all server endpoints are registered through domain route modules", async () => {
 	const context = fakeContext();
@@ -61,6 +62,36 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		new Set(Object.values(endpoints)),
 		new Set(expected.map((route) => route.slice(route.indexOf(" ") + 1))),
 	);
+});
+
+Deno.test("native workspace picking opens directly through Datastar", async () => {
+	const opened: string[] = [];
+	const context = {
+		openWorkspace(path: string) {
+			opened.push(path);
+			return Promise.resolve(path !== "/failed");
+		},
+	};
+
+	const cancelled = await pickWorkspace(context, () => Promise.resolve(undefined));
+	assertEquals(cancelled.status, 204);
+	assertEquals(opened, []);
+
+	const success = await pickWorkspace(context, () => Promise.resolve("/selected"));
+	assertEquals(success.status, 200);
+	const successBody = await success.text();
+	assertStringIncludes(successBody, '"_workspacePickerError":""');
+	assertStringIncludes(successBody, "workspace-dialog");
+	assertStringIncludes(successBody, ".close()");
+	assertEquals(opened, ["/selected"]);
+
+	const failed = await pickWorkspace(context, () => Promise.resolve("/failed"));
+	assertEquals(failed.status, 200);
+	assertStringIncludes(
+		await failed.text(),
+		'"_workspacePickerError":"Workspace transition failed."',
+	);
+	assertEquals(opened, ["/selected", "/failed"]);
 });
 
 Deno.test("file search uses current workspace and escapes Datastar fragments", async () => {

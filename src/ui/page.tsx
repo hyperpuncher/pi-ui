@@ -66,6 +66,7 @@ export function renderPage(
 		sessionDeletePath: "",
 		sessionDeleteTitle: "",
 		sessionDeleteHover: "",
+		_workspacePickerError: "",
 		treeEntryId: "",
 		treeSummarize: false,
 		treeSummaryInstructions: "",
@@ -102,7 +103,6 @@ export function renderPage(
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
 				data-time-locale={systemTimeLocale}
-				data-workspace-pick-endpoint={endpoints.workspacePick}
 				data-files-pick-endpoint={endpoints.filesPick}
 				data-files-import-endpoint={endpoints.filesImport}
 				data-display-refresh-endpoint={endpoints.displayRefresh}
@@ -125,12 +125,6 @@ export function renderPage(
 					window.piUi.fileTransfer.resetDrag();
 					window.piUi.fileTransfer.insert(evt.dataTransfer);
 				}`}
-				data-on:pi-ui-workspace-picked__window={`
-					$workspacePath = evt.detail.path;
-					$_sessionTarget = $workspacePath;
-					document.getElementById('workspace-dialog')?.close();
-					@post('${endpoints.workspaceOpen}', { filterSignals: { include: /^workspacePath$/ } });
-				`}
 			>
 				{gateStartupLayout && (
 					<div
@@ -248,8 +242,17 @@ export function renderPage(
 								type="button"
 								class="btn size-6 shrink-0 p-0"
 								data-variant="outline"
-								data-attr:disabled="$sessionTransitionLoading"
-								data-on:click="window.piUi.workspaces.pickDirectory()"
+								data-indicator:_workspace-picking
+								data-attr:disabled="
+									$sessionTransitionLoading ||
+									$_workspacePicking
+								"
+								data-on:click={`
+									$_workspacePickerError = '';
+									@post('${endpoints.workspacePick}', {
+										filterSignals: { include: /^$/ },
+									});
+								`}
 								aria-label="Browse for workspace folder"
 							>
 								<svg
@@ -273,7 +276,9 @@ export function renderPage(
 							id="workspace-picker-error"
 							class="px-3 pt-2 text-xs text-destructive"
 							role="alert"
-							hidden
+							style="display: none"
+							data-show="$_workspacePickerError"
+							data-text="$_workspacePickerError"
 						></p>
 						{renderWorkspaceDialogMenu(state)}
 					</div>
