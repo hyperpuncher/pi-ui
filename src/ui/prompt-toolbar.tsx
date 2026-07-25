@@ -1,4 +1,8 @@
-import { newSessionAction, openSessionDialogAction } from "../commands/actions.ts";
+import {
+	newSessionAction,
+	openSessionDialogAction,
+	toggleWorkspaceReviewAction,
+} from "../commands/actions.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { ShortcutTooltip } from "./keyboard.tsx";
 
@@ -73,6 +77,16 @@ function PromptToolbarButton(props: {
 			data-variant={props.variant ?? "ghost"}
 			data-pi-ui-action={props.action}
 			aria-pressed={props.pressed ? "true" : undefined}
+			data-attr:aria-pressed={
+				props.action === "review"
+					? "$_workspaceReviewOpen ? 'true' : 'false'"
+					: undefined
+			}
+			data-attr:data-variant={
+				props.action === "review"
+					? "$_workspaceReviewOpen ? 'secondary' : 'ghost'"
+					: undefined
+			}
 			inert={props.unavailable}
 			style={props.unavailable ? "visibility: hidden" : undefined}
 			data-preserve-attr={
@@ -180,7 +194,7 @@ function isSessionChangingAction(action: PromptToolbarAction): boolean {
 
 function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
 	if (action === "commands") return openCommandPaletteAction();
-	if (action === "review") return "window.piUi.workspaceReview.toggle()";
+	if (action === "review") return toggleWorkspaceReviewAction();
 	if (action === "new-chat") return newChatAction();
 	if (action === "new-temporary-chat") return newTemporaryChatAction();
 	if (action === "sessions") return openSessionDialogAction();
@@ -198,7 +212,7 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 	if (action === "review") {
 		return `if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && !evt.altKey && evt.code === 'KeyG') {
 			evt.preventDefault();
-			window.piUi.workspaceReview.toggle();
+			${toggleWorkspaceReviewAction()};
 		}`;
 	}
 	if (action === "new-chat") {

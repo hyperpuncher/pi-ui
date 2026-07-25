@@ -47,6 +47,10 @@ export function toggleWorkspaceDialogAction(): string {
 	return "window.piUi.dialogs.toggleWorkspace()";
 }
 
+export function toggleWorkspaceReviewAction(): string {
+	return "$_workspaceReviewOpen = !$_workspaceReviewOpen";
+}
+
 export function togglePopoverAction(triggerId: string): string {
 	return `window.piUi.dialogs.togglePopover(${JSON.stringify(triggerId)})`;
 }
@@ -62,7 +66,7 @@ export const commandActions = {
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),
 	"change-workspace": openWorkspaceDialogAction(true),
-	"toggle-review": "window.piUi.workspaceReview.toggle()",
+	"toggle-review": toggleWorkspaceReviewAction(),
 	login: authDialogAction("login"),
 	logout: authDialogAction("logout"),
 } satisfies Record<AppCommandId, string>;

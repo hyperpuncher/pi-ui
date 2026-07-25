@@ -552,6 +552,17 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'id="workspace-dialog"');
 	assertIncludes(html, 'id="session-dialog"');
 	assertIncludes(html, 'id="model-select"');
+	if (html.indexOf("/app/main.js") > html.indexOf("/vendor/datastar.js")) {
+		throw new Error("window.piUi must initialize before Datastar");
+	}
+	const app = html.match(/<div[^>]*id="app"[^>]*>/)?.[0] ?? "";
+	assertIncludes(app, 'data-class:pi-review-open="$_workspaceReviewOpen"');
+	assertIncludes(app, "window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)");
+	const chat = html.match(/<section[^>]*id="chat-pane"[^>]*>/)?.[0] ?? "";
+	assertIncludes(chat, " absolute ");
+	const review = html.match(/<section[^>]*id="workspace-review"[^>]*>/)?.[0] ?? "";
+	assertIncludes(review, 'data-attr:aria-hidden="$_workspaceReviewOpen');
+	assertIncludes(review, 'data-attr:inert="!$_workspaceReviewOpen"');
 	const treeDialog = html.match(/<dialog[^>]*id="tree-dialog"[^>]*>/)?.[0] ?? "";
 	assertIncludes(treeDialog, 'data-preserve-attr="open"');
 });

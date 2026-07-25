@@ -20,7 +20,8 @@ const desktopStartupReadyScript = `addEventListener("load", () => {
 
 // Hyprland can expose CEF's previous child viewport during its animated tile
 // configure. A resize must remain unchanged across three compositor paints
-// before CEF content is allowed to appear.
+// before CEF content is allowed to appear. The nearly opaque cover forces CEF
+// to rasterize the application beneath it instead of occlusion-culling it.
 const startupLayoutGateScript = `(() => {
 	let armed = false;
 	let generation = 0;
@@ -28,7 +29,7 @@ const startupLayoutGateScript = `(() => {
 	const reveal = (candidate) => {
 		if (revealed || candidate !== generation) return;
 		revealed = true;
-		document.body.classList.remove("invisible");
+		document.getElementById("startup-layout-cover")?.remove();
 	};
 	const resized = () => {
 		if (!armed || revealed) return;
@@ -59,6 +60,7 @@ export function renderPage(
 		workspaceDraft: "",
 		_filePickerOpen: false,
 		_slashPickerOpen: false,
+		_workspaceReviewOpen: false,
 		fileQuery: "",
 		isDraggingFile: false,
 		sessionDeletePath: "",
@@ -85,8 +87,8 @@ export function renderPage(
 				{gateStartupLayout && <script>{startupLayoutGateScript}</script>}
 				{desktop && <script>{desktopStartupReadyScript}</script>}
 				<script src="/basecoat.js" defer></script>
-				<script type="module" src="/vendor/datastar.js"></script>
 				<script type="module" src="/app/main.js"></script>
+				<script type="module" src="/vendor/datastar.js"></script>
 				<script type="module" src="/build/workspace-review.js"></script>
 				{state.datastarInspector && (
 					<script
@@ -96,7 +98,7 @@ export function renderPage(
 				)}
 			</head>
 			<body
-				class={["h-full overflow-hidden", gateStartupLayout ? "invisible" : ""]}
+				class="h-full overflow-hidden"
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
 				data-time-locale={systemTimeLocale}
@@ -130,6 +132,14 @@ export function renderPage(
 					@post('${endpoints.workspaceOpen}', { filterSignals: { include: /^workspacePath$/ } });
 				`}
 			>
+				{gateStartupLayout && (
+					<div
+						id="startup-layout-cover"
+						class="fixed inset-0 bg-background"
+						style="z-index: 2147483647; opacity: 0.9999;"
+						aria-hidden="true"
+					/>
+				)}
 				{state.datastarInspector && <datastar-inspector />}
 				{renderDebugOverlay(state)}
 				<div
@@ -169,6 +179,9 @@ export function renderPage(
 				<div
 					id="app"
 					class="pi-workspace-canvas fixed inset-0 grid grid-cols-1 overflow-hidden"
+					data-class:pi-review-open="$_workspaceReviewOpen"
+					data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
+					data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 					data-init="@get('/stream')"
 				>
 					<section

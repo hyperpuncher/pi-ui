@@ -22,10 +22,12 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 	return (
 		<section
 			id="workspace-review"
-			class="absolute inset-y-0 left-0 z-30 hidden min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_var(--pi-workspace-structural-gap)] transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none max-[80rem]:w-full max-[80rem]:shadow-xl"
-			style="display: none; width: 50%;"
+			class="absolute inset-y-0 left-0 z-30 min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_var(--pi-workspace-structural-gap)] max-[80rem]:w-full"
 			aria-label="Git"
 			aria-hidden="true"
+			inert
+			data-attr:aria-hidden="$_workspaceReviewOpen ? 'false' : 'true'"
+			data-attr:inert="!$_workspaceReviewOpen"
 		>
 			<div id="review-body" class="pi-review-body grid min-h-0 min-w-0">
 				<aside class="pi-review-sidebar flex min-h-0 min-w-0 flex-col">
@@ -216,7 +218,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 								class="btn text-muted-foreground hover:text-foreground"
 								data-variant="ghost"
 								data-size="icon-xs"
-								data-on:click="window.piUi.workspaceReview.setOpen(false)"
+								data-on:click="$_workspaceReviewOpen = false"
 								aria-label="Hide Git"
 							>
 								<svg

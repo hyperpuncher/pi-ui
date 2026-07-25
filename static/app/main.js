@@ -27,11 +27,7 @@ window.piUi = {
 	promptHistory,
 	windowFocus,
 	workspaces,
-	workspaceReview: {
-		isOpen: () => false,
-		setOpen: () => {},
-		toggle: () => {},
-	},
+	workspaceReview: { applyOpen: () => {} },
 	shouldAbortOnEscape(event) {
 		return !event.defaultPrevented && !hasOpenDismissible();
 	},

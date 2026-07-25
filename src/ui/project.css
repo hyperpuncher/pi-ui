@@ -109,6 +109,34 @@
 		inset-block: var(--pi-workspace-inset);
 	}
 
+	#workspace-review {
+		display: none;
+		width: 50%;
+		padding: var(--pi-workspace-inset) 0 var(--pi-workspace-inset)
+			var(--pi-workspace-inset);
+		opacity: 0;
+		transform: translateX(-100%);
+		box-shadow: var(--shadow-xl);
+		transition:
+			transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
+			opacity 150ms cubic-bezier(0.23, 1, 0.32, 1),
+			display 150ms;
+		transition-behavior: allow-discrete;
+	}
+
+	#app.pi-review-open #workspace-review {
+		display: grid;
+		opacity: 1;
+		transform: translateX(0);
+	}
+
+	@starting-style {
+		#app.pi-review-open #workspace-review {
+			opacity: 0;
+			transform: translateX(-100%);
+		}
+	}
+
 	#prompt-box .pi-prompt-surface {
 		@apply shadow-lg;
 
@@ -122,9 +150,16 @@
 		outline: none;
 	}
 
-	#workspace-review {
-		padding: var(--pi-workspace-inset) 0 var(--pi-workspace-inset)
-			var(--pi-workspace-inset);
+	@media (width > 80rem) {
+		#workspace-review {
+			box-shadow: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#workspace-review {
+			transition: none;
+		}
 	}
 
 	.pi-review-body {

@@ -135,7 +135,7 @@ const reviewLayout = bindWorkspaceReviewLayout({
 	sidebarSeparator,
 });
 
-const visibility = createVisibility(root, snapshot.isGitRepository, (open) => {
+const visibility = createVisibility(app, snapshot.isGitRepository, (open) => {
 	reviewLayout.setOpen(open);
 	if (open) {
 		cancelSnapshotPrefetch();
@@ -181,8 +181,12 @@ wrapButton.addEventListener("click", () => {
 	writePreferences();
 	viewer?.setOptions(viewerOptions());
 });
+let observedDiffLayout = effectiveLayout();
 const resize = new ResizeObserver(() => {
-	syncLayoutButtons();
+	const nextLayout = effectiveLayout();
+	syncLayoutButtons(nextLayout);
+	if (nextLayout === observedDiffLayout) return;
+	observedDiffLayout = nextLayout;
 	viewer?.setOptions(viewerOptions());
 });
 resize.observe(diffRoot);
@@ -354,7 +358,8 @@ function setMode(next: ReviewMode): void {
 
 function setLayout(next: DiffLayout): void {
 	layout = next;
-	syncLayoutButtons();
+	observedDiffLayout = effectiveLayout();
+	syncLayoutButtons(observedDiffLayout);
 	writePreferences();
 	viewer?.setOptions(viewerOptions());
 }
@@ -474,6 +479,7 @@ function publish(): void {
 	showEmpty();
 	if (!visibility.isOpen()) return;
 	if (!viewer) {
+		observedDiffLayout = effectiveLayout();
 		viewer = new CodeView(viewerOptions(), createWorkerPool());
 		viewer.setup(diffRoot);
 	} else {
@@ -687,65 +693,46 @@ function createWorkerPool() {
 }
 
 function createVisibility(
-	pane: HTMLElement,
+	app: HTMLElement,
 	initiallyAvailable: boolean,
 	onChange: (open: boolean) => void,
 ) {
 	let available = initiallyAvailable;
-	let hideTimer: ReturnType<typeof setTimeout> | undefined;
 	let open = false;
-	const hide = () => {
-		hideTimer = undefined;
-		if (!open) pane.style.display = "none";
-	};
-	const sync = () => {
+	const syncAvailability = () => {
 		const button = document.querySelector<HTMLElement>(
 			'[data-pi-ui-action="review"]',
 		);
-		if (button) {
-			button.inert = !available;
-			button.style.visibility = available ? "visible" : "hidden";
-			button.dataset.variant = open ? "secondary" : "ghost";
-			button.setAttribute("aria-pressed", String(open));
-		}
-		if (hideTimer !== undefined) clearTimeout(hideTimer);
-		hideTimer = undefined;
-		if (open) {
-			pane.style.display = "grid";
-			pane.getBoundingClientRect();
-		}
-		pane.style.transform = open ? "translateX(0)" : "translateX(-100%)";
-		pane.style.opacity = open ? "1" : "0";
-		if (!open && pane.style.display !== "none") {
-			hideTimer = setTimeout(
-				hide,
-				matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 160,
-			);
-		}
-		pane.inert = !open;
-		pane.setAttribute("aria-hidden", String(!open));
+		if (!button) return;
+		button.inert = !available;
+		button.style.visibility = available ? "visible" : "hidden";
 	};
-	const setOpen = (next: boolean) => {
+	const requestOpen = (next: boolean) => {
+		app.dispatchEvent(
+			new CustomEvent("pi-ui-workspace-review-open", {
+				detail: { open: available && next },
+			}),
+		);
+	};
+	const applyOpen = (next: boolean) => {
+		if (next && !available) {
+			requestOpen(false);
+			return;
+		}
 		const wasOpen = open;
-		open = available && next;
-		sync();
+		open = next;
 		if (open !== wasOpen) onChange(open);
 	};
-	pane.addEventListener("transitionend", (event) => {
-		if (event.propertyName !== "transform") return;
-		if (open) pane.style.removeProperty("transform");
-		else hide();
-	});
-	sync();
+	syncAvailability();
+	applyOpen(app.classList.contains("pi-review-open"));
 	return {
+		applyOpen,
 		isOpen: () => open,
 		setAvailable(next: boolean) {
 			available = next;
-			if (!available && open) setOpen(false);
-			else sync();
+			syncAvailability();
+			if (!available) requestOpen(false);
 		},
-		setOpen,
-		toggle: () => setOpen(!open),
 	};
 }
 
@@ -759,8 +746,8 @@ function effectiveLayout(): DiffLayout {
 	return layout ?? "split";
 }
 
-function syncLayoutButtons(): void {
-	const split = effectiveLayout() === "split";
+function syncLayoutButtons(currentLayout = effectiveLayout()): void {
+	const split = currentLayout === "split";
 	splitButton.setAttribute("aria-pressed", String(split));
 	stackedButton.setAttribute("aria-pressed", String(!split));
 }

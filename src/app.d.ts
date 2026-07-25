@@ -40,9 +40,7 @@ interface PiUiNamespace {
 		pickDirectory(): Promise<void>;
 	};
 	workspaceReview: {
-		isOpen(): boolean;
-		setOpen(open: boolean): void;
-		toggle(): void;
+		applyOpen(open: boolean): void;
 	};
 	shouldAbortOnEscape(event: KeyboardEvent): boolean;
 }
