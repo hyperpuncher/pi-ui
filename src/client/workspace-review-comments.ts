@@ -19,6 +19,12 @@ export type {
 
 type ReviewCommentItem = Readonly<{ fileDiff: FileDiffMetadata }>;
 
+const isMacOS = navigator.userAgent.includes("Macintosh");
+
+function hasPrimaryModifier(event: KeyboardEvent): boolean {
+	return isMacOS ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+}
+
 type WorkspaceReviewCommentsOptions = Readonly<{
 	clearSelection(): void;
 	onAnnotationsChange(path: string): void;
@@ -89,7 +95,7 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 			if (event.key === "Escape") {
 				event.preventDefault();
 				remove(id);
-			} else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+			} else if (event.key === "Enter" && hasPrimaryModifier(event)) {
 				event.preventDefault();
 				save();
 			}

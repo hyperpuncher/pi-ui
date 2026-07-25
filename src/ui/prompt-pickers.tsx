@@ -8,6 +8,7 @@ import {
 } from "../commands/actions.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot, AppThinkingLevel } from "../state/app-store.ts";
+import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 
@@ -23,7 +24,7 @@ export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 			aria-label={state.workspacePath}
 			data-attr:disabled="$sessionTransitionLoading"
 			data-on:click={openWorkspaceDialogAction()}
-			data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && evt.code === 'Slash') {
+			data-on:keydown__window={`if (${primaryModifierExpression()} && !evt.altKey && !evt.shiftKey && evt.code === 'Slash') {
 			evt.preventDefault();
 			${toggleWorkspaceDialogAction()}
 			}`}
@@ -182,10 +183,10 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 			<div
 				id="model-select"
 				class="popover"
-				data-on:keydown__window={`if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyL') {
+				data-on:keydown__window={`if (${primaryModifierExpression()} && evt.code === 'KeyL') {
 				evt.preventDefault();
 				${togglePopoverAction("model-select-trigger")};
-				} else if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyP') {
+				} else if (${primaryModifierExpression()} && evt.code === 'KeyP') {
 				evt.preventDefault();
 				${cycleModelAction("event-shift")};
 				}`}

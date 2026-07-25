@@ -1,4 +1,5 @@
 import { setApplicationFocused } from "./desktop-notifications.ts";
+import { hasPrimaryModifier } from "./utils/keyboard.ts";
 
 const hideApplicationMenuId = "hide-application";
 const openWorkspaceMenuId = "change-workspace";
@@ -70,7 +71,7 @@ function setupDesktopWindow(): DesktopWindow | undefined {
 			return;
 		}
 
-		if ((event.ctrlKey || event.metaKey) && event.code === "Slash") {
+		if (hasPrimaryModifier(event) && event.code === "Slash") {
 			event.preventDefault();
 			toggleWorkspaceDialog();
 			return;

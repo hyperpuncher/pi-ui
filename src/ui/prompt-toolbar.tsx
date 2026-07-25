@@ -4,6 +4,7 @@ import {
 	toggleWorkspaceReviewAction,
 } from "../commands/actions.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
+import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { ShortcutTooltip } from "./keyboard.tsx";
 
 type PromptToolbarAction =
@@ -203,32 +204,33 @@ function promptToolbarClickAction(action: PromptToolbarAction): string | undefin
 }
 
 function promptToolbarKeydownAction(action: PromptToolbarAction): string | undefined {
+	const primaryModifier = primaryModifierExpression();
 	if (action === "commands") {
-		return `if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyK') {
+		return `if (${primaryModifier} && evt.code === 'KeyK') {
 			evt.preventDefault();
 			${toggleCommandPaletteAction()}
 		}`;
 	}
 	if (action === "review") {
-		return `if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && !evt.altKey && evt.code === 'KeyG') {
+		return `if (${primaryModifier} && !evt.shiftKey && !evt.altKey && evt.code === 'KeyG') {
 			evt.preventDefault();
 			${toggleWorkspaceReviewAction()};
 		}`;
 	}
 	if (action === "new-chat") {
-		return `if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && evt.code === 'KeyO') {
+		return `if (${primaryModifier} && !evt.altKey && evt.code === 'KeyO') {
 			evt.preventDefault();
 			${newChatAction()}
 		}`;
 	}
 	if (action === "new-temporary-chat") {
-		return `if ((evt.ctrlKey || evt.metaKey) && evt.altKey && evt.code === 'KeyO') {
+		return `if (${primaryModifier} && evt.altKey && evt.code === 'KeyO') {
 			evt.preventDefault();
 			${newTemporaryChatAction()}
 		}`;
 	}
 	if (action === "sessions") {
-		return `if ((evt.ctrlKey || evt.metaKey) && evt.code === 'KeyR') {
+		return `if (${primaryModifier} && evt.code === 'KeyR') {
 			evt.preventDefault();
 			${openSessionDialogAction()}
 		}`;

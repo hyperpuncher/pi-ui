@@ -9,6 +9,7 @@ import type {
 	AppSessionSummary,
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
+import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
@@ -159,7 +160,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 }
 
 function resumeSessionShortcutAction(path: string, index: number): string {
-	return `if ((evt.ctrlKey || evt.metaKey) && evt.code === 'Digit${index + 1}') {
+	return `if (${primaryModifierExpression()} && evt.code === 'Digit${index + 1}') {
 		evt.preventDefault();
 		${resumeSessionAction(path)}
 	}`;
