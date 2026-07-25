@@ -1,5 +1,4 @@
 import { setApplicationFocused } from "./desktop-notifications.ts";
-import { createApp } from "./server/app.ts";
 
 const hideApplicationMenuId = "hide-application";
 const openWorkspaceMenuId = "change-workspace";
@@ -8,26 +7,44 @@ const toggleWorkspaceDialogScript = "window.piUi.dialogs.toggleWorkspace()";
 const suspendWindowFocusScript = "window.piUi.windowFocus.suspend()";
 const restoreWindowFocusScript = "window.piUi.windowFocus.restore()";
 
+type DesktopBindings = {
+	piUiStartupReady(this: Deno.BrowserWindow): Promise<void>;
+};
+type DesktopWindow = Deno.BrowserWindow<DesktopBindings>;
+
+// Adopt and hide Deno Desktop's implicit 800x600 window before loading the
+// application graph. Otherwise the default window remains mapped throughout
+// backend startup, then resizes after the app is ready; Wayland tilers can keep
+// CEF's first surface at those stale bounds until the next focus event.
+setupDesktopWindow();
+const { createApp } = await import("./server/app.ts");
 const app = await createApp();
 Deno.serve(app.fetch);
-setupDesktopWindow();
 
 // Deno Desktop forces every later HTTP listener onto its UI server address
 // while this variable is present. Release it after startup so OAuth providers
 // can bind their fixed localhost callback ports.
 Deno.env.delete("DENO_SERVE_ADDRESS");
 
-function setupDesktopWindow(): void {
+function setupDesktopWindow(): DesktopWindow | undefined {
 	const BrowserWindow = Deno.BrowserWindow;
 	if (!BrowserWindow) {
-		return;
+		return undefined;
 	}
 
-	const win = new BrowserWindow({
+	const win = new BrowserWindow<DesktopBindings>({
 		title: "pi-ui",
 		width: 1000,
 		height: 1400,
 		transparentTitlebar: true,
+	});
+	win.hide();
+	let revealed = false;
+	win.bind("piUiStartupReady", async () => {
+		if (revealed || win.isClosed()) return;
+		revealed = true;
+		win.show();
+		win.focus();
 	});
 
 	const openWorkspaceDialog = () => {
@@ -95,6 +112,8 @@ function setupDesktopWindow(): void {
 			}
 		});
 	}
+
+	return win;
 }
 
 function macosApplicationMenu(): Deno.MenuItem[] {

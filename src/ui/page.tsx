@@ -13,10 +13,42 @@ import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
 
+const desktopStartupReadyScript = `addEventListener("load", () => {
+	globalThis.piUiStartupLayoutGate?.arm();
+	void bindings.piUiStartupReady();
+}, { once: true });`;
+
+// Hyprland can expose CEF's previous child viewport during its animated tile
+// configure. A resize must remain unchanged across three compositor paints
+// before CEF content is allowed to appear.
+const startupLayoutGateScript = `(() => {
+	let armed = false;
+	let generation = 0;
+	let revealed = false;
+	const reveal = (candidate) => {
+		if (revealed || candidate !== generation) return;
+		revealed = true;
+		document.body.classList.remove("invisible");
+	};
+	const resized = () => {
+		if (!armed || revealed) return;
+		const candidate = ++generation;
+		requestAnimationFrame(() => requestAnimationFrame(() =>
+			requestAnimationFrame(() => reveal(candidate))
+		));
+	};
+	addEventListener("resize", resized, { passive: true });
+	visualViewport?.addEventListener("resize", resized, { passive: true });
+	globalThis.piUiStartupLayoutGate = { arm: () => { armed = true; } };
+})();`;
+
 export function renderPage(
 	state: AppRenderSnapshot,
 	workspaceReview: WorkspaceReviewSnapshot = emptyWorkspaceReview(),
 ): string {
+	const desktop = typeof Deno.BrowserWindow === "function";
+	const gateStartupLayout =
+		desktop && Boolean(Deno.env.get("HYPRLAND_INSTANCE_SIGNATURE"));
 	const initialSignals = JSON.stringify({
 		prompt: "",
 		...projectBackendSignals(state),
@@ -50,6 +82,8 @@ export function renderPage(
 				<link rel="icon" type="image/png" href="/favicon.png" />
 				<script src="/theme.js"></script>
 				<link rel="stylesheet" href="/app.css" />
+				{gateStartupLayout && <script>{startupLayoutGateScript}</script>}
+				{desktop && <script>{desktopStartupReadyScript}</script>}
 				<script src="/basecoat.js" defer></script>
 				<script type="module" src="/vendor/datastar.js"></script>
 				<script type="module" src="/app/main.js"></script>
@@ -62,7 +96,7 @@ export function renderPage(
 				)}
 			</head>
 			<body
-				class="h-full overflow-hidden"
+				class={["h-full overflow-hidden", gateStartupLayout ? "invisible" : ""]}
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
 				data-time-locale={systemTimeLocale}
