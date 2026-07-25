@@ -138,6 +138,21 @@ Deno.test("plain tool titles remain escaped", () => {
 	assertStringIncludes(html, "&lt;img");
 });
 
+Deno.test("recent session loading reserves exactly three rows", () => {
+	const loading = renderMessages(
+		[],
+		{ description: "Send", keys: "enter" },
+		false,
+		[],
+		false,
+		true,
+		true,
+	);
+	assertStringIncludes(loading, 'aria-label="Loading recent sessions"');
+	assertStringIncludes(loading, "h-50");
+	assertStringIncludes(loading, "h-44");
+});
+
 Deno.test("messages and prompt consume distinct width tokens", async () => {
 	const html = renderMessages([], { description: "Send", keys: "enter" });
 	assertStringIncludes(html, "--pi-messages-max-width");

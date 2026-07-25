@@ -123,6 +123,7 @@ export type AppRenderSnapshot = Readonly<{
 	messages: readonly AppMessage[];
 	models: readonly AppModel[];
 	sessions: readonly AppSessionSummary[];
+	sessionCatalogLoading: boolean;
 	treeEntries: readonly AppTreeEntry[];
 	slashCommands: readonly AppSlashCommand[];
 	authDialog: AppAuthDialog | undefined;
@@ -184,6 +185,7 @@ export class AppStore {
 	readonly datastarInspector = datastarInspectorEnabled();
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
+	sessionCatalogLoading = true;
 	private sessionIndex: AppSessionSummary[] | undefined;
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
@@ -244,6 +246,7 @@ export class AppStore {
 			messages: this.messages.map((message) => ({ ...message })),
 			models: this.models.map((model) => ({ ...model })),
 			sessions: this.sessions.map((session) => ({ ...session })),
+			sessionCatalogLoading: this.sessionCatalogLoading,
 			treeEntries: this.treeEntries.map((entry) => ({ ...entry })),
 			slashCommands: this.slashCommands.map((command) => ({ ...command })),
 			authDialog: this.authDialog ? structuredClone(this.authDialog) : undefined,
@@ -393,6 +396,11 @@ export class AppStore {
 	}
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
+		this.commit();
+	}
+	setSessionCatalogLoading(loading: boolean): void {
+		if (this.sessionCatalogLoading === loading) return;
+		this.sessionCatalogLoading = loading;
 		this.commit();
 	}
 	setSessionCatalog(sessions: AppSessionSummary[]): void {

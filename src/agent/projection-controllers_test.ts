@@ -14,6 +14,7 @@ import {
 } from "./model-controller.ts";
 import {
 	formatSessionSummary,
+	listRecentSessions,
 	type PreparedSessionList,
 	recentSessionWorkspaces,
 	SessionCatalog,
@@ -258,6 +259,48 @@ Deno.test("tree navigation reports successful empty editor text explicitly", asy
 		editorText: undefined,
 	});
 	assertEquals(navigated, 1);
+});
+
+Deno.test("recent session discovery parses only the newest candidates", async () => {
+	const root = await Deno.makeTempDir();
+	try {
+		const workspace = `${root}/workspace`;
+		await Deno.mkdir(workspace);
+		for (let index = 1; index <= 4; index++) {
+			const timestamp = new Date(index * 1_000);
+			const path = `${workspace}/${index}.jsonl`;
+			await Deno.writeTextFile(
+				path,
+				`${JSON.stringify({
+					type: "session",
+					version: 3,
+					id: `session-${index}`,
+					timestamp: timestamp.toISOString(),
+					cwd: `/workspace-${index}`,
+				})}\n${JSON.stringify({
+					type: "message",
+					id: `message-${index}`,
+					parentId: null,
+					timestamp: timestamp.toISOString(),
+					message: {
+						role: "user",
+						content: `Message ${index}`,
+						timestamp: timestamp.getTime(),
+					},
+				})}\n`,
+			);
+			await Deno.utime(path, timestamp, timestamp);
+		}
+
+		const sessions = await listRecentSessions(root, 3);
+		assertEquals(
+			sessions.map((session) => session.id),
+			["session-4", "session-3", "session-2"],
+		);
+		assertEquals(sessions[0]?.firstMessage, "Message 4");
+	} finally {
+		await Deno.remove(root, { recursive: true });
+	}
 });
 
 Deno.test("session catalog ignores an older refresh that finishes last", async () => {

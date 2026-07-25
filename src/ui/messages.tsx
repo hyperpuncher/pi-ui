@@ -24,6 +24,7 @@ export function renderMessages(
 	sessions: readonly AppSessionSummary[] = [],
 	sessionTransitionVisible = false,
 	authenticated = true,
+	sessionCatalogLoading = false,
 ): string {
 	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
 	return (
@@ -37,7 +38,12 @@ export function renderMessages(
 		>
 			<div class="messages-stack mx-auto w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
 				{messages.length === 0
-					? renderEmptyMessages(emptyHint, sessions.slice(0, 3), authenticated)
+					? renderEmptyMessages(
+							emptyHint,
+							sessions.slice(0, 3),
+							authenticated,
+							sessionCatalogLoading,
+						)
 					: messages.map((message, index) => (
 							<>
 								{hasOlderMessages && index === olderMessagesTriggerIndex
@@ -58,6 +64,7 @@ function renderEmptyMessages(
 	emptyHint: AppKeybindHint,
 	sessions: readonly AppSessionSummary[],
 	authenticated: boolean,
+	sessionCatalogLoading: boolean,
 ) {
 	return (
 		<div class="grid min-h-[calc(100vh-18rem)] place-items-center text-center text-muted-foreground">
@@ -82,16 +89,37 @@ function renderEmptyMessages(
 						to connect a provider and start chatting
 					</p>
 				) : (
-					sessions.length > 0 && (
-						<div class="mt-8 text-left">
+					(sessionCatalogLoading || sessions.length > 0) && (
+						<div class="mt-8 h-50 text-left">
 							<p class="mb-2 px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
 								Recent sessions
 							</p>
-							<div class="flex flex-col gap-1">
-								{sessions.map((session, index) =>
-									renderRecentSession(session, index),
-								)}
-							</div>
+							{sessionCatalogLoading ? (
+								<div
+									class="grid h-44 place-items-center text-muted-foreground"
+									role="status"
+									aria-label="Loading recent sessions"
+								>
+									<svg
+										class="size-5 animate-spin"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M12 2v4m4.2 1.8l2.9-2.9M18 12h4m-5.8 4.2l2.9 2.9M12 18v4m-7.1-2.9l2.9-2.9M2 12h4M4.9 4.9l2.9 2.9" />
+									</svg>
+								</div>
+							) : (
+								<div class="flex flex-col gap-1">
+									{sessions.map((session, index) =>
+										renderRecentSession(session, index),
+									)}
+								</div>
+							)}
 						</div>
 					)
 				)}
@@ -105,7 +133,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 	return (
 		<button
 			type="button"
-			class="flex w-full items-start justify-between gap-4 rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
+			class="flex h-14 w-full items-start justify-between gap-4 overflow-hidden rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
 			data-indicator:_session-loading
 			data-attr:disabled="$sessionTransitionLoading"
 			data-on:click={resumeSessionAction(session.path)}

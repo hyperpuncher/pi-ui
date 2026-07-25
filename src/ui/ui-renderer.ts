@@ -194,6 +194,7 @@ export class UiRenderer implements AppStorePresentation {
 						snapshot.sessions,
 						snapshot.sessionTransition.status !== "idle",
 						snapshot.models.some((model) => model.configured),
+						snapshot.sessionCatalogLoading,
 					);
 		return (
 			messages +

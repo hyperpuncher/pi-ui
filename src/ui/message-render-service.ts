@@ -92,6 +92,7 @@ export class MessageRenderService {
 			this.store.sessions,
 			this.store.sessionTransition.status !== "idle",
 			this.store.models.some((model) => model.configured),
+			this.store.sessionCatalogLoading,
 		);
 	}
 	messageAppended(id: string): void {

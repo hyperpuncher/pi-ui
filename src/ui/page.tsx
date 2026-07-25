@@ -149,6 +149,7 @@ export function renderPage(
 							state.sessions,
 							state.sessionTransition.status !== "idle",
 							state.models.some((model) => model.configured),
+							state.sessionCatalogLoading,
 						)}
 						{renderSessionTransition(state)}
 						{renderPromptBox(state, workspaceReview.isGitRepository)}

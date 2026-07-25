@@ -11,6 +11,7 @@ import {
 	RuntimeController,
 	type RuntimeControllerDependencies,
 } from "./runtime-controller.ts";
+import type { PreparedSessionList } from "./session-catalog.ts";
 
 type Callback = () => void | Promise<void>;
 type ExtensionBindings = Parameters<AgentSessionRuntime["session"]["bindExtensions"]>[0];
@@ -147,6 +148,7 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 			fake.calls.push("create");
 			return Promise.resolve(fake.runtime);
 		},
+		prepareRecentSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		prepareSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		refreshSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		createSessionManager: (cwd) => manager(undefined, true, cwd),
@@ -170,6 +172,62 @@ Deno.test("RuntimeController production path binds callbacks before activation",
 	await controller.dispose();
 	assertEquals(fake.calls.filter((call) => call === "unsubscribe").length, 1);
 	assertEquals(fake.disposeCount, 1);
+});
+
+Deno.test("RuntimeController preparation does not wait for the session catalog", async () => {
+	const fake = fakeRuntime();
+	let resolveSessions!: () => void;
+	const delayedSessions = new Promise<PreparedSessionList>((resolve) => {
+		resolveSessions = () => resolve({ ok: true, sessions: [] });
+	});
+	const controllerPromise = RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: {
+			...dependencies([fake]),
+			prepareRecentSessions: () => delayedSessions,
+		},
+	});
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	const result = await Promise.race([
+		controllerPromise,
+		new Promise<"timeout">((resolve) => {
+			timeout = setTimeout(() => resolve("timeout"), 100);
+		}),
+	]);
+	clearTimeout(timeout);
+	if (result === "timeout") {
+		throw new Error("Runtime preparation waited for session discovery");
+	}
+
+	result.activate();
+	assertEquals(fake.calls.filter((call) => call === "subscribe").length, 1);
+	resolveSessions();
+	await delayedSessions;
+	await result.dispose();
+});
+
+Deno.test("RuntimeController warms the full catalog only when the session stream connects", async () => {
+	const fake = fakeRuntime();
+	let recentLoads = 0;
+	let fullLoads = 0;
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: {
+			...dependencies([fake]),
+			prepareRecentSessions: () => {
+				recentLoads += 1;
+				return Promise.resolve({ ok: true, sessions: [] });
+			},
+			prepareSessions: () => {
+				fullLoads += 1;
+				return Promise.resolve({ ok: true, sessions: [] });
+			},
+		},
+	});
+	controller.activate();
+	assertEquals({ recentLoads, fullLoads }, { recentLoads: 1, fullLoads: 0 });
+	await controller.listSessions();
+	await controller.listSessions();
+	assertEquals({ recentLoads, fullLoads }, { recentLoads: 1, fullLoads: 1 });
+	await controller.dispose();
 });
 
 Deno.test("RuntimeController binds extension session controls to the active runtime", async () => {
