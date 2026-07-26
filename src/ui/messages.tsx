@@ -18,6 +18,13 @@ import { shikiTokenStyle } from "./shiki-token-style.ts";
 const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
 
+export function preservesFinalizedMessageDom(message: AppMessage): boolean {
+	return (
+		message.presentationState === "final" &&
+		(message.role === "assistant" || message.role === "thought")
+	);
+}
+
 export function renderMessages(
 	messages: readonly AppMessage[],
 	emptyHint: AppKeybindHint,
@@ -368,7 +375,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			<article
 				class="message message-narrative message-assistant markdown-content w-full self-start"
 				data-message-id={message.id}
-				data-ignore-morph={message.presentationState === "final" ? "" : undefined}
+				data-ignore-morph={preservesFinalizedMessageDom(message)}
 			>
 				{message.renderedHtml !== undefined ? (
 					<div>{message.renderedHtml}</div>
@@ -387,7 +394,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			<article
 				class="message message-narrative message-thought markdown-content w-full self-start text-sm text-muted-foreground italic"
 				data-message-id={message.id}
-				data-ignore-morph={message.presentationState === "final" ? "" : undefined}
+				data-ignore-morph={preservesFinalizedMessageDom(message)}
 			>
 				{message.renderedHtml !== undefined ? (
 					<div>{message.renderedHtml}</div>

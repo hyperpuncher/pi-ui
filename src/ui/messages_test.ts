@@ -72,6 +72,7 @@ Deno.test("bodyless tools use timeline markup without an output surface", () => 
 	assertStringIncludes(html, "min-w-[6ch]");
 	assertStringIncludes(html, 'aria-hidden="true"');
 	assertEquals(html.includes("pi-tool-output-surface"), false);
+	assertEquals(html.includes("data-ignore-morph"), false);
 });
 
 Deno.test("consecutive tools mark every continuing timeline segment", () => {

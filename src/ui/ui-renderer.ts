@@ -13,7 +13,7 @@ import {
 	MessageRenderService,
 	type MessageRenderServiceOptions,
 } from "./message-render-service.ts";
-import { renderMessages } from "./messages.tsx";
+import { preservesFinalizedMessageDom, renderMessages } from "./messages.tsx";
 import {
 	renderSessionPickerContent,
 	renderSlashPicker,
@@ -195,7 +195,7 @@ export class UiRenderer implements AppStorePresentation {
 				: renderMessages(
 						includeFinalMessageHtml
 							? snapshot.messages
-							: snapshot.messages.map(lightweightFinalMessage),
+							: snapshot.messages.map(omitPreservedMessageHtml),
 						snapshot.emptyChatHint,
 						snapshot.hasOlderMessages,
 						snapshot.sessions,
@@ -279,8 +279,8 @@ export class UiRenderer implements AppStorePresentation {
 	}
 }
 
-function lightweightFinalMessage(message: AppMessage): AppMessage {
-	return message.presentationState === "final"
+function omitPreservedMessageHtml(message: AppMessage): AppMessage {
+	return preservesFinalizedMessageDom(message)
 		? { ...message, renderedHtml: undefined }
 		: message;
 }

@@ -98,6 +98,33 @@ Deno.test("fat patches preserve finalized message DOM without resending its HTML
 	}
 });
 
+Deno.test("fat patches resend finalized tool HTML that the client may morph", async () => {
+	const state = createState({
+		renderDiff: () =>
+			Promise.resolve('<div data-pierre-diff="">highlighted edit</div>'),
+	});
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		state.replaceMessages([
+			{
+				role: "tool",
+				text: "@@ -1 +1 @@\n-old\n+new",
+				timestamp,
+				format: "diff",
+			},
+		]);
+		await waitFor(() => state.messages[0].presentationState === "final");
+		state.setUsage({ text: "$1.000 • 1 token" });
+		const patches = await collectElementPatches(response, 4);
+
+		assertIncludes(patches.patches[2], "highlighted edit");
+		assertIncludes(patches.patches[3], "highlighted edit");
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("session loading clears after fallback and before enhancement", async () => {
 	let resolveEnhancement: ((html: string) => void) | undefined;
 	const state = createState({
