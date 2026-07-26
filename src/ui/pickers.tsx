@@ -60,8 +60,7 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 			aria-selected={selected ? "true" : "false"}
 			data-slash-row
 			data-show={`
-				$prompt.startsWith('/') &&
-				!$prompt.includes(' ') &&
+				$_slashPickerOpen &&
 				(${JSON.stringify(haystack)}.includes($prompt.slice(1).toLowerCase()))
 			`}
 		>
