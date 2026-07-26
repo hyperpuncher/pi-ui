@@ -17,10 +17,16 @@ type DesktopWindow = Deno.BrowserWindow<DesktopBindings>;
 // application graph. Otherwise the default window remains mapped throughout
 // backend startup, then resizes after the app is ready; Wayland tilers can keep
 // CEF's first surface at those stale bounds until the next focus event.
-setupDesktopWindow();
+const desktopWindow = setupDesktopWindow();
 const { createApp } = await import("./server/app.ts");
 const app = await createApp();
-Deno.serve(app.fetch);
+if (desktopWindow) {
+	Deno.serve(app.fetch);
+} else {
+	const serverAbort = new AbortController();
+	Deno.addSignalListener("SIGTERM", () => serverAbort.abort());
+	Deno.serve({ signal: serverAbort.signal }, app.fetch);
+}
 
 // Deno Desktop forces every later HTTP listener onto its UI server address
 // while this variable is present. Release it after startup so OAuth providers
