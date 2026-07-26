@@ -500,7 +500,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 		<article
 			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
-			data-tool-continues={toolContinues ? "" : undefined}
+			data-tool-continues={toolContinues}
 		>
 			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
 				<span

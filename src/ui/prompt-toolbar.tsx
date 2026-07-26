@@ -97,9 +97,7 @@ function PromptToolbarButton(props: {
 			}
 			data-size="icon-sm"
 			type="button"
-			data-indicator:_session-loading={
-				isSessionChangingAction(props.action) ? "" : undefined
-			}
+			data-indicator:_session-loading={isSessionChangingAction(props.action)}
 			data-attr:disabled={
 				isSessionChangingAction(props.action)
 					? "$sessionTransitionLoading"

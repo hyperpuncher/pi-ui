@@ -50,7 +50,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			data-tree-row
 			data-filter={haystack}
 			data-keywords={haystack}
-			data-active-tree-row={entry.active ? "true" : undefined}
+			data-active-tree-row={entry.active}
 			data-on:click={`
 				$treeEntryId = ${JSON.stringify(entry.id)};
 				@post('${endpoints.treeNavigate}', { filterSignals: { include: /^tree(EntryId|Summarize|SummaryInstructions)$/ } });
