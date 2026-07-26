@@ -62,7 +62,7 @@
 		"oxlint-tailwindcss": "npm:oxlint-tailwindcss@^1.3.5",
 		"satteri": "npm:satteri@^0.9.5",
 		"tailwindcss": "npm:tailwindcss@^4.3.3",
-		"undici": "npm:undici@^8.8.0"
+		"undici": "npm:undici@^8.9.0"
 	},
 	"allowScripts": [
 		"npm:@google/genai@1.52.0",

@@ -31,7 +31,7 @@ export default defineConfig((commandLineArgs) => {
 					watch ? "development" : "production",
 				),
 			},
-			target: "chrome120",
+			target: "chrome150",
 		},
 	};
 });
