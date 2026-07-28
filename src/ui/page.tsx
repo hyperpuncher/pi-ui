@@ -56,7 +56,6 @@ export function renderPage(
 		modelCycleDirection: "forward",
 		thinkingCycleDirection: "forward",
 		_sessionLoading: false,
-		_sessionTarget: "",
 		workspaceDraft: "",
 		_filePickerOpen: false,
 		_slashPickerOpen: false,

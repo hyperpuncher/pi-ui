@@ -12,9 +12,5 @@ export function projectBackendSignals(
 		isSessionReady: state.sessionTransition.status !== "loading",
 		sessionTransitionLoading: state.sessionTransition.status === "loading",
 		sessionTransitionVisible: state.sessionTransition.status !== "idle",
-		sessionTransitionTarget:
-			state.sessionTransition.status === "idle"
-				? ""
-				: state.sessionTransition.targetPath,
 	};
 }

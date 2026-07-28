@@ -5,8 +5,7 @@ const emptySignals = "filterSignals: { include: /^$/ }";
 
 export function newSessionAction(temporary = false): string {
 	const endpoint = temporary ? endpoints.sessionsNewTemporary : endpoints.sessionsNew;
-	const target = temporary ? "New temporary session" : "New session";
-	return `if (!$sessionTransitionLoading) { $_sessionTarget = '${target}'; @post('${endpoint}', { ${emptySignals} }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }`;
+	return `if (!$sessionTransitionLoading) { @post('${endpoint}', { ${emptySignals} }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }`;
 }
 
 export function openSessionDialogAction(): string {

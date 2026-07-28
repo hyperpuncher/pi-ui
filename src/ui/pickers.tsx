@@ -169,7 +169,6 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			aria-current={current ? "true" : undefined}
 			data-filter={`${label} ${workspacePath}`}
 			data-keywords={`${label} ${workspacePath}`}
-			data-indicator:_workspaceOpening
 			data-indicator:_session-loading
 			data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
@@ -187,7 +186,6 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 function openWorkspaceAction(valueExpression: string): string {
 	return `if (!$sessionTransitionLoading) {
 		$workspacePath = ${valueExpression};
-		$_sessionTarget = $workspacePath;
 		@post('${endpoints.workspaceOpen}', { filterSignals: { include: /^workspacePath$/ } });
 	}`;
 }

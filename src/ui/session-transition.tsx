@@ -7,7 +7,6 @@ export function resumeSessionAction(
 ): string {
 	return `if (!$_sessionLoading && !$sessionTransitionLoading) {
 		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
-		$_sessionTarget = ${JSON.stringify(path)};
 		@post('${endpoints.sessionsResume}', {
 			payload: { sessionPath: ${JSON.stringify(path)} },
 		});
