@@ -22,7 +22,7 @@ export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 			data-size="sm"
 			type="button"
 			aria-label={state.workspacePath}
-			data-attr:disabled="$sessionTransitionLoading"
+			data-attr:disabled="$_sessionTransitionLoading"
 			data-on:click={openWorkspaceDialogAction()}
 			data-on:keydown__window={`if (${primaryModifierExpression()} && !evt.altKey && !evt.shiftKey && evt.code === 'Slash') {
 			evt.preventDefault();

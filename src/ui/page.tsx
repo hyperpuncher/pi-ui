@@ -243,7 +243,7 @@ export function renderPage(
 								data-variant="outline"
 								data-indicator:_workspace-picking
 								data-attr:disabled="
-									$sessionTransitionLoading ||
+									$_sessionTransitionLoading ||
 									$_workspacePicking
 								"
 								data-on:click={`

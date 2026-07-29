@@ -63,7 +63,7 @@ export function renderPromptBox(
 					});
 					`}
 					data-on:pi-ui-file-close="$_filePickerOpen = false"
-					data-effect={`if ($isSessionReady) {
+					data-effect={`if ($_isSessionReady) {
 						el.focus({ preventScroll: true });
 						el.selectionStart = el.value.length;
 						el.selectionEnd = el.value.length;
@@ -73,14 +73,14 @@ export function renderPromptBox(
 						window.piUi.fileTransfer.insert(evt.clipboardData);
 					}`}
 					data-on:keydown={`
-						window.piUi.promptHistory.handleKeydown(evt, $promptHistory);
+						window.piUi.promptHistory.handleKeydown(evt, $_promptHistory);
 						if (
 							evt.code === 'Escape' &&
 							!evt.ctrlKey &&
 							!evt.metaKey &&
 							!evt.altKey &&
 							!evt.shiftKey &&
-							!$isBusy
+							!$_isBusy
 						) {
 							evt.preventDefault();
 							el.blur();

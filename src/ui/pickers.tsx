@@ -170,7 +170,7 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-filter={`${label} ${workspacePath}`}
 			data-keywords={`${label} ${workspacePath}`}
 			data-indicator:_session-loading
-			data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
+			data-attr:aria-disabled="$_sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
 			<span class="mt-0.5 w-4 shrink-0 text-center text-primary" aria-hidden="true">
@@ -184,7 +184,7 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 }
 
 function openWorkspaceAction(valueExpression: string): string {
-	return `if (!$sessionTransitionLoading) {
+	return `if (!$_sessionTransitionLoading) {
 		$workspacePath = ${valueExpression};
 		@post('${endpoints.workspaceOpen}', { filterSignals: { include: /^workspacePath$/ } });
 	}`;
@@ -266,7 +266,7 @@ function renderSessionRow(
 			data-filter={haystack}
 			data-keywords={haystack}
 			data-indicator:_session-loading
-			data-attr:aria-disabled="$sessionTransitionLoading ? 'true' : 'false'"
+			data-attr:aria-disabled="$_sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={
 				current
 					? "document.getElementById('session-dialog')?.close()"

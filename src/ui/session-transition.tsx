@@ -5,7 +5,7 @@ export function resumeSessionAction(
 	path: string,
 	options: { closeDialog?: boolean } = {},
 ): string {
-	return `if (!$_sessionLoading && !$sessionTransitionLoading) {
+	return `if (!$_sessionLoading && !$_sessionTransitionLoading) {
 		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
 		@post('${endpoints.sessionsResume}', {
 			payload: { sessionPath: ${JSON.stringify(path)} },
@@ -21,7 +21,7 @@ export function renderSessionTransition(state: AppRenderSnapshot): string {
 			id="session-transition"
 			class="min-h-0 place-items-center px-6 text-center"
 			style={transition.status === "idle" ? "display: none" : "display: grid"}
-			data-style:display="$_sessionLoading || $sessionTransitionVisible ? 'grid' : 'none'"
+			data-style:display="$_sessionLoading || $_sessionTransitionVisible ? 'grid' : 'none'"
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"
 			aria-busy={transition.status === "loading" ? "true" : "false"}

@@ -7,10 +7,10 @@ export function projectBackendSignals(
 		model: state.currentModel ?? "",
 		thinkingLevel: state.thinkingLevel,
 		workspacePath: state.workspacePath,
-		promptHistory: state.promptHistory,
-		isBusy: Boolean(state.activityText),
-		isSessionReady: state.sessionTransition.status !== "loading",
-		sessionTransitionLoading: state.sessionTransition.status === "loading",
-		sessionTransitionVisible: state.sessionTransition.status !== "idle",
+		_promptHistory: state.promptHistory,
+		_isBusy: Boolean(state.activityText),
+		_isSessionReady: state.sessionTransition.status !== "loading",
+		_sessionTransitionLoading: state.sessionTransition.status === "loading",
+		_sessionTransitionVisible: state.sessionTransition.status !== "idle",
 	};
 }

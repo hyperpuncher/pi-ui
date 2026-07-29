@@ -218,7 +218,7 @@ Deno.test("shared resume action drives every immediate loading signal", () => {
 	});
 	for (const expected of [
 		"$_sessionLoading",
-		"$sessionTransitionLoading",
+		"$_sessionTransitionLoading",
 		'payload: { sessionPath: "/sessions/one.json" }',
 		"/sessions/resume",
 		"session-dialog",
@@ -272,7 +272,7 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 			throw new Error("Missing resume action");
 		}
 		if (!html.includes("_sessionLoading")) throw new Error("Missing indicator");
-		if (!html.includes("$sessionTransitionLoading")) {
+		if (!html.includes("$_sessionTransitionLoading")) {
 			throw new Error("Missing disabled transition guard");
 		}
 	}

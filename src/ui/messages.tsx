@@ -40,7 +40,7 @@ export function renderMessages(
 			id="messages"
 			class="min-h-0 overflow-y-auto mask-[linear-gradient(to_bottom,black_92%,transparent),linear-gradient(black,black)] mask-size-[calc(100%-var(--scrollbar-width))_100%,var(--scrollbar-width)_100%] mask-position-[left_top,right_top] mask-no-repeat px-4 pt-24 pb-48 sm:px-6 xl:px-8"
 			style={sessionTransitionVisible ? "display: none" : undefined}
-			data-show="!($_sessionLoading || $sessionTransitionVisible)"
+			data-show="!($_sessionLoading || $_sessionTransitionVisible)"
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
@@ -143,7 +143,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 			type="button"
 			class="flex h-14 w-full items-start justify-between gap-4 overflow-hidden rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
 			data-indicator:_session-loading
-			data-attr:disabled="$sessionTransitionLoading"
+			data-attr:disabled="$_sessionTransitionLoading"
 			data-on:click={resumeSessionAction(session.path)}
 			data-on:keydown__window={resumeSessionShortcutAction(session.path, index)}
 		>

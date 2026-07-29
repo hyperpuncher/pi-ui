@@ -144,18 +144,18 @@ Deno.test("session loading clears after fallback and before enhancement", async 
 		state.replaceMessages([markdownMessage("content ready")]);
 		state.setSessionTransition({ status: "idle", generation: 1 });
 		const beforeEnhancement = await readUntil(reader, (text) => {
-			const loading = text.indexOf('"sessionTransitionLoading":true');
+			const loading = text.indexOf('"_sessionTransitionLoading":true');
 			const fallback = text.indexOf("content ready", loading);
 			return (
 				loading >= 0 &&
 				fallback > loading &&
-				text.indexOf('"sessionTransitionLoading":false', fallback) > fallback
+				text.indexOf('"_sessionTransitionLoading":false', fallback) > fallback
 			);
 		});
-		const loading = beforeEnhancement.indexOf('"sessionTransitionLoading":true');
+		const loading = beforeEnhancement.indexOf('"_sessionTransitionLoading":true');
 		const fallback = beforeEnhancement.indexOf("content ready", loading);
 		const idle = beforeEnhancement.indexOf(
-			'"sessionTransitionLoading":false',
+			'"_sessionTransitionLoading":false',
 			loading + 1,
 		);
 		if (!(loading >= 0 && fallback > loading && idle > fallback)) {
@@ -537,6 +537,23 @@ Deno.test("initial and live backend-owned signals share exact projections", () =
 			JSON.stringify(projectBackendSignals(snapshot)),
 		);
 	}
+});
+
+Deno.test("server-owned view signals are transport-private", () => {
+	const signals = projectBackendSignals(createState().snapshot());
+	assertEqual(
+		JSON.stringify(Object.keys(signals).sort()),
+		JSON.stringify([
+			"_isBusy",
+			"_isSessionReady",
+			"_promptHistory",
+			"_sessionTransitionLoading",
+			"_sessionTransitionVisible",
+			"model",
+			"thinkingLevel",
+			"workspacePath",
+		]),
+	);
 });
 
 Deno.test("primary and picker fat views contain every server-owned dynamic root", () => {
