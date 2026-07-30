@@ -1,3 +1,4 @@
+import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
@@ -56,6 +57,7 @@ export function renderPage(
 		modelCycleDirection: "forward",
 		thinkingCycleDirection: "forward",
 		_sessionLoading: false,
+		_newSessionPending: false,
 		workspaceDraft: "",
 		_filePickerOpen: false,
 		_slashPickerOpen: false,
@@ -187,7 +189,7 @@ export function renderPage(
 							state.emptyChatHint,
 							state.hasOlderMessages,
 							state.sessions,
-							state.sessionTransition.status !== "idle",
+							sessionTransitionOverlayVisible(state.sessionTransition),
 							state.models.some((model) => model.configured),
 							state.sessionCatalogLoading,
 						)}

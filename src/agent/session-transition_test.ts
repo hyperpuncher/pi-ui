@@ -1,8 +1,10 @@
+import { newSessionAction } from "../commands/actions.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { sessionTransitionResponse } from "../server/routes/sessions.ts";
 import { AppStore } from "../state/app-store.ts";
 import { renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker } from "../ui/pickers.tsx";
+import { renderPromptToolbar } from "../ui/prompt-toolbar.tsx";
 import {
 	renderSessionTransition,
 	resumeSessionAction,
@@ -187,7 +189,12 @@ Deno.test("idle replacement is disposed once", async () => {
 Deno.test("session transition renderer escapes targets and renders loading and errors", () => {
 	const targetPath = '<session name="bad">';
 	const loading = renderSessionTransition({
-		sessionTransition: { status: "loading", generation: 1, targetPath },
+		sessionTransition: {
+			status: "loading",
+			generation: 1,
+			targetPath,
+			overlay: true,
+		},
 	} as AppStore);
 	if (!loading.includes('role="status"')) {
 		throw new Error("Missing loading status");
@@ -197,6 +204,18 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 	}
 	if (loading.includes(targetPath)) {
 		throw new Error("Unsafe target path rendered");
+	}
+
+	const quiet = renderSessionTransition({
+		sessionTransition: {
+			status: "loading",
+			generation: 2,
+			targetPath: "New session",
+			overlay: false,
+		},
+	} as AppStore);
+	if (!quiet.includes('style="display: none"')) {
+		throw new Error("Non-overlay transition should remain hidden");
 	}
 
 	const error = renderSessionTransition({
@@ -209,6 +228,20 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 	} as AppStore);
 	if (!error.includes('role="alert"') || !error.includes("Try another session.")) {
 		throw new Error("Missing recoverable transition error");
+	}
+});
+
+Deno.test("new session actions lock without driving the transition overlay", () => {
+	const action = newSessionAction();
+	if (!action.includes("$_newSessionPending")) {
+		throw new Error("Missing immediate new-session guard");
+	}
+	const toolbar = renderPromptToolbar({ isTemporarySession: false } as AppStore);
+	if (!toolbar.includes("data-indicator:_new-session-pending")) {
+		throw new Error("Missing dedicated new-session indicator");
+	}
+	if (toolbar.includes("data-indicator:_session-loading")) {
+		throw new Error("New-session controls should not drive the overlay indicator");
 	}
 });
 
@@ -291,6 +324,7 @@ Deno.test("session picker command state morphs on its dedicated stream", async (
 			status: "loading",
 			generation: 1,
 			targetPath: "/sessions/one.jsonl",
+			overlay: true,
 		});
 		state.setSessions([
 			{
@@ -324,6 +358,7 @@ Deno.test("completed session transition scrolls the transcript to bottom", async
 			status: "loading",
 			generation: 1,
 			targetPath: "/sessions/one.jsonl",
+			overlay: true,
 		});
 		state.setSessionTransition({ status: "idle", generation: 1 });
 

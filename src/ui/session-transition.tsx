@@ -1,3 +1,4 @@
+import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 
@@ -15,12 +16,13 @@ export function resumeSessionAction(
 
 export function renderSessionTransition(state: AppRenderSnapshot): string {
 	const transition = state.sessionTransition;
+	const visible = sessionTransitionOverlayVisible(transition);
 	const targetPath = transition.status === "idle" ? "" : transition.targetPath;
 	return (
 		<main
 			id="session-transition"
 			class="min-h-0 place-items-center px-6 text-center"
-			style={transition.status === "idle" ? "display: none" : "display: grid"}
+			style={visible ? "display: grid" : "display: none"}
 			data-style:display="$_sessionLoading || $_sessionTransitionVisible ? 'grid' : 'none'"
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"

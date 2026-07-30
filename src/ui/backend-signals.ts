@@ -1,3 +1,4 @@
+import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 
 export function projectBackendSignals(
@@ -11,6 +12,8 @@ export function projectBackendSignals(
 		_isBusy: Boolean(state.activityText),
 		_isSessionReady: state.sessionTransition.status !== "loading",
 		_sessionTransitionLoading: state.sessionTransition.status === "loading",
-		_sessionTransitionVisible: state.sessionTransition.status !== "idle",
+		_sessionTransitionVisible: sessionTransitionOverlayVisible(
+			state.sessionTransition,
+		),
 	};
 }

@@ -1,3 +1,4 @@
+import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import type {
 	AppMessage,
@@ -199,7 +200,7 @@ export class UiRenderer implements AppStorePresentation {
 						snapshot.emptyChatHint,
 						snapshot.hasOlderMessages,
 						snapshot.sessions,
-						snapshot.sessionTransition.status !== "idle",
+						sessionTransitionOverlayVisible(snapshot.sessionTransition),
 						snapshot.models.some((model) => model.configured),
 						snapshot.sessionCatalogLoading,
 					);

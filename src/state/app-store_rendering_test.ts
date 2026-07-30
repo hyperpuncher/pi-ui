@@ -140,6 +140,7 @@ Deno.test("session loading clears after fallback and before enhancement", async 
 			status: "loading",
 			generation: 1,
 			targetPath: "/session.jsonl",
+			overlay: true,
 		});
 		state.replaceMessages([markdownMessage("content ready")]);
 		state.setSessionTransition({ status: "idle", generation: 1 });
@@ -520,6 +521,7 @@ Deno.test("initial and live backend-owned signals share exact projections", () =
 				status: "loading",
 				generation: 1,
 				targetPath: "/session.jsonl",
+				overlay: true,
 			}),
 		() => {
 			state.setCurrentModel("provider/model");

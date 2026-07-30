@@ -30,6 +30,21 @@ Deno.test("session transition controller surfaces errors and remains recoverable
 	assertEquals((await controller.run("next", () => true)).status, "success");
 });
 
+Deno.test("session transition controller supports non-overlay loading", async () => {
+	const states: unknown[] = [];
+	const controller = new SessionTransitionController((state) => states.push(state));
+	assertEquals(
+		(await controller.run("new", () => true, { overlay: false })).status,
+		"success",
+	);
+	assertEquals(states[1], {
+		status: "loading",
+		generation: 1,
+		targetPath: "new",
+		overlay: false,
+	});
+});
+
 Deno.test("session transition controller ignores concurrent transitions", async () => {
 	let release = () => {};
 	const pending = new Promise<void>((resolve) => (release = resolve));

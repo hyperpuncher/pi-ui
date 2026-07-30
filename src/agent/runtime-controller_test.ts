@@ -306,15 +306,109 @@ Deno.test("RuntimeController replaces and trashes the current idle session", asy
 	await controller.dispose();
 });
 
+Deno.test("RuntimeController clears chat at authoritative session invalidation", async () => {
+	const fake = fakeRuntime();
+	let releaseReplacement!: () => void;
+	const replacement = new Promise<void>((resolve) => {
+		releaseReplacement = resolve;
+	});
+	(
+		fake.runtime as unknown as {
+			newSession: () => Promise<{ cancelled: boolean }>;
+		}
+	).newSession = async () => {
+		await fake.beforeInvalidate.at(-1)?.();
+		await replacement;
+		return { cancelled: false };
+	};
+	const store = new AppStore();
+	store.appendMessage("user", "old session");
+	const controller = await RuntimeController.prepare(store, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+
+	const transition = controller.newSession();
+	await Promise.resolve();
+	assertEquals(store.messages, []);
+	releaseReplacement();
+	assertEquals((await transition).status, "success");
+	await controller.dispose();
+});
+
+Deno.test("RuntimeController clears chat before temporary runtime creation", async () => {
+	const current = fakeRuntime();
+	const replacement = fakeRuntime(undefined, false);
+	let releaseCreation!: () => void;
+	const creation = new Promise<void>((resolve) => {
+		releaseCreation = resolve;
+	});
+	let createCount = 0;
+	const store = new AppStore();
+	store.appendMessage("user", "old session");
+	const controller = await RuntimeController.prepare(store, "/workspace", {
+		dependencies: {
+			...dependencies([]),
+			createRuntime: async () => {
+				createCount += 1;
+				if (createCount === 1) return current.runtime;
+				await creation;
+				return replacement.runtime;
+			},
+		},
+	});
+	controller.activate();
+
+	const transition = controller.newTemporarySession();
+	await Promise.resolve();
+	await Promise.resolve();
+	assertEquals(store.messages, []);
+	releaseCreation();
+	assertEquals((await transition).status, "success");
+	await controller.dispose();
+});
+
+Deno.test("RuntimeController keeps chat when new session is cancelled", async () => {
+	const fake = fakeRuntime();
+	(
+		fake.runtime as unknown as {
+			newSession: () => Promise<{ cancelled: boolean }>;
+		}
+	).newSession = () => Promise.resolve({ cancelled: true });
+	const store = new AppStore();
+	store.appendMessage("user", "old session");
+	const controller = await RuntimeController.prepare(store, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+
+	assertEquals((await controller.newSession()).status, "cancelled");
+	assertEquals(
+		store.messages.map((message) => message.text),
+		["old session"],
+	);
+	await controller.dispose();
+});
+
 Deno.test("RuntimeController ignores callbacks captured before in-place replacement", async () => {
 	const fake = fakeRuntime();
-	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+	const store = new AppStore();
+	const loadingOverlays: boolean[] = [];
+	const setSessionTransition = store.setSessionTransition.bind(store);
+	store.setSessionTransition = (transition) => {
+		if (transition.status === "loading") {
+			loadingOverlays.push(transition.overlay);
+		}
+		setSessionTransition(transition);
+	};
+	const controller = await RuntimeController.prepare(store, "/workspace", {
 		dependencies: dependencies([fake]),
 	});
 	controller.activate();
 	const oldInvalidate = fake.beforeInvalidate[0];
 	const oldRebind = fake.rebind[0];
 	assertEquals((await controller.newSession()).status, "success");
+	assertEquals(loadingOverlays, [false]);
 	const callsAfterReplacement = fake.calls.length;
 	await oldInvalidate();
 	await oldRebind();

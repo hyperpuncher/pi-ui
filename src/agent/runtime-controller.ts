@@ -109,6 +109,7 @@ export class RuntimeController {
 	private readonly tree: TreeProjector;
 	private foregroundGeneration: number;
 	private foregroundObservedRunning: boolean;
+	private resetChatOnInvalidation = false;
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
 	private fullCatalogLoad: Promise<void> | undefined;
@@ -323,8 +324,10 @@ export class RuntimeController {
 	}
 
 	async newSession(): Promise<SessionTransitionResult> {
-		return await this.transitionController.run("New session", () =>
-			this.createNewSession(),
+		return await this.transitionController.run(
+			"New session",
+			() => this.createNewSession(),
+			{ overlay: false },
 		);
 	}
 
@@ -342,6 +345,7 @@ export class RuntimeController {
 				this.unbindSession();
 				await this.runtime.dispose();
 			}
+			this.state.resetChat();
 			const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
 				cwd,
 				agentDir: this.dependencies.getAgentDir(),
@@ -352,7 +356,13 @@ export class RuntimeController {
 			this.assignNewForegroundGeneration();
 			this.bindRuntimeCallbacks(runtime);
 		} else {
-			const result = await this.runtime.newSession();
+			this.resetChatOnInvalidation = true;
+			let result: { cancelled: boolean };
+			try {
+				result = await this.runtime.newSession();
+			} finally {
+				this.resetChatOnInvalidation = false;
+			}
 			if (result.cancelled) {
 				return false;
 			}
@@ -360,14 +370,15 @@ export class RuntimeController {
 			// SDK in-place replacement overwrites lifecycle callbacks before returning.
 			this.bindRuntimeCallbacks(this.runtime);
 		}
-		this.state.resetChat();
 		await this.bindSession({ refreshSessions: true });
 		return true;
 	}
 
 	async newTemporarySession(): Promise<SessionTransitionResult> {
-		return await this.transitionController.run("New temporary session", () =>
-			this.createNewTemporarySession(),
+		return await this.transitionController.run(
+			"New temporary session",
+			() => this.createNewTemporarySession(),
+			{ overlay: false },
 		);
 	}
 
@@ -385,6 +396,7 @@ export class RuntimeController {
 			await this.runtime.dispose();
 		}
 
+		this.state.resetChat();
 		const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
 			cwd,
 			agentDir: this.dependencies.getAgentDir(),
@@ -398,7 +410,6 @@ export class RuntimeController {
 		this.runtime = runtime;
 		this.assignNewForegroundGeneration();
 		this.bindRuntimeCallbacks(runtime);
-		this.state.resetChat();
 		await this.bindSession();
 		return true;
 	}
@@ -848,7 +859,9 @@ export class RuntimeController {
 			);
 		runtime.setBeforeSessionInvalidate(() => {
 			// Delayed shutdown from an old generation must not detach its successor.
-			if (ownsForeground()) this.unbindSession();
+			if (!ownsForeground()) return;
+			this.unbindSession();
+			if (this.resetChatOnInvalidation) this.state.resetChat();
 		});
 		runtime.setRebindSession(async () => {
 			if (!ownsForeground()) return;
