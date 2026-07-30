@@ -4,6 +4,7 @@ export default defineConfig((commandLineArgs) => {
 	const watch = commandLineArgs.watch === true;
 	return {
 		input: {
+			"model-search": "static/app/model-search.js",
 			"pierre-worker": "src/client/pierre-worker.ts",
 			"workspace-review": "src/client/workspace-review.ts",
 		},

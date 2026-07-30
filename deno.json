@@ -51,6 +51,7 @@
 		"@bruits/satteri-wasm32-wasi": "npm:@bruits/satteri-wasm32-wasi@^0.9.5",
 		"@earendil-works/pi-ai": "npm:@earendil-works/pi-ai@^0.82.0",
 		"@earendil-works/pi-coding-agent": "npm:@earendil-works/pi-coding-agent@^0.82.0",
+		"@earendil-works/pi-tui": "npm:@earendil-works/pi-tui@^0.82.1",
 		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
 		"@pierre/diffs": "npm:@pierre/diffs@^1.2.12",
 		"@pierre/trees": "npm:@pierre/trees@1.0.0-beta.5",

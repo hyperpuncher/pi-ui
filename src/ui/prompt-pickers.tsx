@@ -216,7 +216,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 					aria-hidden="true"
 					class="w-80 max-w-[calc(100vw-2rem)] p-0"
 				>
-					<div class="command" aria-label="Models">
+					<div class="command" aria-label="Models" data-filter="manual">
 						<header>
 							<input
 								id="model-select-input"
@@ -248,7 +248,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 									<span>Models</span>
 									<ShortcutKbd shortcut="ctrl L" />
 								</div>
-								{state.models.map((model) => {
+								{state.models.map((model, index) => {
 									const value = `${model.provider}/${model.id}`;
 									const configured = model.configured
 										? ""
@@ -261,8 +261,9 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 													? "true"
 													: "false"
 											}
-											data-filter={model.id}
-											data-keywords={`${model.provider} ${model.name}`}
+											data-filter={`${model.id} ${model.provider}`}
+											data-keywords={model.name}
+											data-model-search-order={index}
 											data-on:click={`
 												$model = ${JSON.stringify(value)};
 												document.getElementById('model-select-trigger')?.click();

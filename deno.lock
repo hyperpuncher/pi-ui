@@ -17,6 +17,8 @@
     "npm:@bruits/satteri-wasm32-wasi@~0.9.5": "0.9.5",
     "npm:@earendil-works/pi-ai@0.82": "0.82.0_zod@4.4.3",
     "npm:@earendil-works/pi-coding-agent@0.82": "0.82.0_zod@4.4.3",
+    "npm:@earendil-works/pi-tui@0.82.0": "0.82.0",
+    "npm:@earendil-works/pi-tui@~0.82.1": "0.82.1",
     "npm:@kitajs/html@5.0.0-next.1": "5.0.0-next.1",
     "npm:@pierre/diffs@^1.2.12": "1.2.12_react@19.2.7_react-dom@19.2.7__react@19.2.7",
     "npm:@pierre/trees@1.0.0-beta.5": "1.0.0-beta.5_react@19.2.7_react-dom@19.2.7__react@19.2.7",
@@ -446,7 +448,7 @@
       "dependencies": [
         "@earendil-works/pi-agent-core",
         "@earendil-works/pi-ai",
-        "@earendil-works/pi-tui",
+        "@earendil-works/pi-tui@0.82.1",
         "@silvia-odwyer/photon-node",
         "chalk",
         "cross-spawn",
@@ -470,6 +472,13 @@
     },
     "@earendil-works/pi-tui@0.82.0": {
       "integrity": "sha512-9IDjQOXne7t9l2s2YcjnIBxsVNVPE7qScVSB3YmFlXsBW4pfo2gOElTxggV84KrRiGqABnlFPBWbf0k54hszHQ==",
+      "dependencies": [
+        "get-east-asian-width",
+        "marked"
+      ]
+    },
+    "@earendil-works/pi-tui@0.82.1": {
+      "integrity": "sha512-9yN8hALfKaxZq7n54EMxqhFCWnMi6LHkraMJ/1YjHiATq75XrI6XDMVppn9EDtiK7Fks8hUe1SDXUTrIvwRWfQ==",
       "dependencies": [
         "get-east-asian-width",
         "marked"
@@ -2287,6 +2296,7 @@
       "npm:@bruits/satteri-wasm32-wasi@~0.9.5",
       "npm:@earendil-works/pi-ai@0.82",
       "npm:@earendil-works/pi-coding-agent@0.82",
+      "npm:@earendil-works/pi-tui@~0.82.1",
       "npm:@kitajs/html@5.0.0-next.1",
       "npm:@pierre/diffs@^1.2.12",
       "npm:@pierre/trees@1.0.0-beta.5",

@@ -1,3 +1,4 @@
+import { bindModelSearch } from "../build/model-search.js";
 import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
 import * as dialogs from "./dialogs.js";
@@ -42,6 +43,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindPromptInteractions();
 	bindPickers();
 	bindMessageScroll();
+	bindModelSearch();
 	bindCodeCopy();
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();

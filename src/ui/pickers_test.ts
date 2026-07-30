@@ -176,10 +176,15 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	} as unknown as AppRenderSnapshot);
 	assertStringIncludes(withoutSelection, "choose model");
 	assertStringIncludes(withoutSelection, 'class="popover"');
-	assertStringIncludes(withoutSelection, 'class="command"');
+	assertStringIncludes(
+		withoutSelection,
+		'class="command" aria-label="Models" data-filter="manual"',
+	);
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
 	assertStringIncludes(withoutSelection, "autofocus");
-	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet"');
+	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet anthropic"');
+	assertStringIncludes(withoutSelection, 'data-keywords="Claude Sonnet"');
+	assertStringIncludes(withoutSelection, 'data-model-search-order="0"');
 });
 
 Deno.test("thinking picker describes every supported maximum level", () => {
