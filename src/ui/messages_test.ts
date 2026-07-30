@@ -139,6 +139,28 @@ Deno.test("plain tool titles remain escaped", () => {
 	assertStringIncludes(html, "&lt;img");
 });
 
+Deno.test("empty messages center within the padded chat area", () => {
+	const html = renderMessages([], { description: "Send", keys: "enter" });
+	assertStringIncludes(html, "messages-stack mx-auto min-h-full");
+	assertStringIncludes(html, "grid flex-1 place-items-center");
+	assertStringIncludes(html, "pt-8 pb-32");
+	assertEquals(html.includes("100vh"), false);
+	const populated = renderMessages(
+		[
+			{
+				id: "user-1",
+				presentationState: "plain",
+				presentationVersion: 1,
+				role: "user",
+				text: "hello",
+				timestamp: new Date(0),
+			},
+		],
+		{ description: "Send", keys: "enter" },
+	);
+	assertStringIncludes(populated, "pt-24 pb-48");
+});
+
 Deno.test("recent session loading reserves exactly three rows", () => {
 	const loading = renderMessages(
 		[],
