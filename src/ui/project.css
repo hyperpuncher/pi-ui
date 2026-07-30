@@ -100,6 +100,11 @@
 		color: var(--pi-surface-raised-foreground);
 	}
 
+	.command-dialog > .command {
+		top: 50%;
+		translate: -50% -50%;
+	}
+
 	.pi-selected-surface[aria-pressed="true"] {
 		background: var(--muted);
 		box-shadow: none;
