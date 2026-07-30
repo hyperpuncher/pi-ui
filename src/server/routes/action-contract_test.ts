@@ -116,6 +116,7 @@ Deno.test("dynamic and rendered endpoint references remain explicit", async () =
 	assertStringIncludes(promptBox, "@get('${endpoints.filesSearch}'");
 	assertStringIncludes(promptBox, "filterSignals: { include: /^fileQuery$/ }");
 	assertStringIncludes(promptBox, "requestCancellation: 'cleanup'");
+	assertStringIncludes(promptBox, "evt.key === 'Enter'");
 
 	assertStringIncludes(page, "data-init={`@get('${endpoints.sessionsStream}', {");
 	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.toggleSession()");

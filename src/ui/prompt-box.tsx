@@ -90,7 +90,7 @@ export function renderPromptBox(
 							@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } });
 						}
 						if (
-							evt.code === 'Enter' &&
+							evt.key === 'Enter' &&
 							!evt.shiftKey &&
 							$prompt.trim() !== '' &&
 							!window.piUi.pickers.isOpen()
