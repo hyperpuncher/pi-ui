@@ -107,6 +107,8 @@
 
 	#chat-pane {
 		inset-block: var(--pi-workspace-inset);
+		width: calc(100% - 2 * var(--pi-workspace-inset));
+		margin-left: var(--pi-workspace-inset);
 	}
 
 	#workspace-review {
