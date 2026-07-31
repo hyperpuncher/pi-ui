@@ -2,7 +2,7 @@ name: Release
 
 env:
     CEF_BACKEND_REPOSITORY: hyperpuncher/laufey
-    CEF_BACKEND_TAG: cef-150.0.11-pi-ui.1
+    CEF_BACKEND_TAG: cef-151.3.14-pi-ui.1
     DENO_VERSION: v2.9.4
 
 on:
@@ -41,7 +41,7 @@ jobs:
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Download CEF 150 backend
+            - name: Download CEF 151 backend
               shell: bash
               env:
                   GH_TOKEN: ${{ github.token }}

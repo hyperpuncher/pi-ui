@@ -7,6 +7,6 @@
 	},
 	"imports": {
 		"@pierre/diffs": "npm:@pierre/diffs@^1.2.12",
-		"@pierre/trees": "npm:@pierre/trees@1.0.0-beta.5"
+		"@pierre/trees": "npm:@pierre/trees@1.0.0-beta.6"
 	}
 }
