@@ -203,9 +203,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 					data-tooltip="Model"
 					data-tooltip-delay
 				>
-					<span class="max-w-40 truncate sm:max-w-48" safe>
-						{currentLabel}
-					</span>
+					<span safe>{currentLabel}</span>
 					<ShortcutTooltip label="Model" shortcut="ctrl L" />
 				</button>
 				<div
