@@ -1,4 +1,7 @@
+import { assertEquals, assertStringIncludes as assertIncludes } from "@std/assert";
+
 import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
+import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { renderSessionPicker } from "../ui/pickers.tsx";
 import {
 	abortRunningBackgroundSession,
@@ -91,24 +94,4 @@ function summary(path: string, title: string): AppSessionSummary {
 		subtitle: "1 message",
 		modified: "Today",
 	};
-}
-
-function assertEquals(actual: unknown, expected: unknown): void {
-	if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-		throw new Error(
-			`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`,
-		);
-	}
-}
-
-function assertIncludes(actual: string, expected: string): void {
-	if (!actual.includes(expected)) {
-		throw new Error(`Expected output to include ${JSON.stringify(expected)}`);
-	}
-}
-
-function assertNotIncludes(actual: string, expected: string): void {
-	if (actual.includes(expected)) {
-		throw new Error(`Expected output not to include ${JSON.stringify(expected)}`);
-	}
 }

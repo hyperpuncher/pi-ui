@@ -1,3 +1,5 @@
+import { assert, assertEquals, assertRejects } from "@std/assert";
+
 import {
 	MAX_TRANSFER_FILES,
 	MAX_TRANSFER_FILE_BYTES,
@@ -191,25 +193,4 @@ async function withTempRoot(callback: (path: string) => Promise<void>): Promise<
 			if (!(error instanceof Deno.errors.NotFound)) throw error;
 		});
 	}
-}
-
-function assert(condition: unknown, message: string): asserts condition {
-	if (!condition) throw new Error(message);
-}
-
-function assertEquals(actual: unknown, expected: unknown): void {
-	if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-		throw new Error(
-			`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
-		);
-	}
-}
-
-async function assertRejects(callback: () => Promise<unknown>): Promise<void> {
-	try {
-		await callback();
-	} catch {
-		return;
-	}
-	throw new Error("Expected promise to reject");
 }

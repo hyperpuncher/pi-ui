@@ -1,3 +1,5 @@
+import { assertEquals as assertEqual, assertThrows } from "@std/assert";
+
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
 
 Deno.test("BoundedCache validates its capacity", () => {
@@ -40,18 +42,3 @@ Deno.test("deleteStringKeysWithPrefix only removes one message's state", () => {
 	deleteStringKeysWithPrefix(states, "message-1:");
 	assertEqual([...states.keys()].join(","), "message-10:0,message-2:0");
 });
-
-function assertEqual(actual: unknown, expected: unknown): void {
-	if (!Object.is(actual, expected)) {
-		throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
-	}
-}
-
-function assertThrows(callback: () => unknown): void {
-	try {
-		callback();
-	} catch {
-		return;
-	}
-	throw new Error("Expected callback to throw");
-}

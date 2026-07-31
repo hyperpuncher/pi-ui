@@ -1,5 +1,11 @@
+import {
+	assertEquals as assertEqual,
+	assertStringIncludes as assertIncludes,
+} from "@std/assert";
+
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { AppStore } from "../state/app-store.ts";
+import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import {
 	collectElementPatches,
@@ -269,22 +275,4 @@ function completeTransition(transitionId: number | undefined): void {
 	sessionPerformance.markTranscriptProjected(transitionId);
 	sessionPerformance.markFirstTranscriptPatch(transitionId);
 	sessionPerformance.markSessionTransitionComplete(transitionId);
-}
-
-function assertEqual(actual: unknown, expected: unknown): void {
-	if (!Object.is(actual, expected)) {
-		throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
-	}
-}
-
-function assertIncludes(actual: string, expected: string): void {
-	if (!actual.includes(expected)) {
-		throw new Error(`Expected output to include ${JSON.stringify(expected)}`);
-	}
-}
-
-function assertNotIncludes(actual: string, expected: string): void {
-	if (actual.includes(expected)) {
-		throw new Error(`Expected output not to include ${JSON.stringify(expected)}`);
-	}
 }

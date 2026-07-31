@@ -12,11 +12,6 @@ export type RuntimeActivation<T> = {
 	rollback(): void;
 };
 
-/** Rejects delayed lifecycle callbacks from a runtime that no longer owns foreground. */
-export function ownsForegroundRuntime<T>(current: T, callbackOwner: T): boolean {
-	return current === callbackOwner;
-}
-
 /** Also rejects callbacks retained across an in-place session generation change. */
 export function ownsForegroundGeneration<T>(
 	current: T,

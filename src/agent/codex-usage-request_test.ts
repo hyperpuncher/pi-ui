@@ -1,3 +1,5 @@
+import { assert } from "@std/assert";
+
 import {
 	CodexUsageRequestTracker,
 	matchesCodexUsageRequest,
@@ -70,7 +72,3 @@ Deno.test("stale completion cannot release a newer request", () => {
 	assert(tracker.release(current, runtime, session, model));
 	assert(!tracker.loading);
 });
-
-function assert(condition: boolean): void {
-	if (!condition) throw new Error("Assertion failed");
-}

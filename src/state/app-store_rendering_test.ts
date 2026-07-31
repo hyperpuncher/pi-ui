@@ -1,5 +1,11 @@
+import {
+	assertEquals as assertEqual,
+	assertStringIncludes as assertIncludes,
+} from "@std/assert";
+
 import { collectElementPatches } from "../perf/session-benchmark.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { projectBackendSignals } from "../ui/backend-signals.ts";
 import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
 import { renderPage } from "../ui/page.tsx";
@@ -336,17 +342,23 @@ Deno.test("completed background transcript enhances only after activation", asyn
 });
 
 Deno.test("enhancement errors retain the rendered Markdown fallback", async () => {
-	const state = createState({
-		renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
-	});
-	state.replaceMessages([markdownMessage("<b>**fallback**</b>")]);
-	await settleMicrotasks();
-	assertEqual(state.messages[0].renderedHtml, "<p><strong>fallback</strong></p>\n");
-	assertEqual(state.messages[0].presentationState, "plain");
-	assertIncludes(
-		state.renderer.renderMessagesElement(),
-		"<p><strong>fallback</strong></p>",
-	);
+	const originalWarn = console.warn;
+	console.warn = () => {};
+	try {
+		const state = createState({
+			renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
+		});
+		state.replaceMessages([markdownMessage("<b>**fallback**</b>")]);
+		await settleMicrotasks();
+		assertEqual(state.messages[0].renderedHtml, "<p><strong>fallback</strong></p>\n");
+		assertEqual(state.messages[0].presentationState, "plain");
+		assertIncludes(
+			state.renderer.renderMessagesElement(),
+			"<p><strong>fallback</strong></p>",
+		);
+	} finally {
+		console.warn = originalWarn;
+	}
 });
 
 Deno.test("nested state updates commit one fat morph and one signal patch", async () => {
@@ -682,24 +694,6 @@ async function readUntil(
 		if (complete(output)) return output;
 	}
 	throw new Error("Expected stream output was not received");
-}
-
-function assertEqual(actual: unknown, expected: unknown): void {
-	if (!Object.is(actual, expected)) {
-		throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
-	}
-}
-
-function assertIncludes(actual: string, expected: string): void {
-	if (!actual.includes(expected)) {
-		throw new Error(`Expected output to include ${JSON.stringify(expected)}`);
-	}
-}
-
-function assertNotIncludes(actual: string, expected: string): void {
-	if (actual.includes(expected)) {
-		throw new Error(`Expected output not to include ${JSON.stringify(expected)}`);
-	}
 }
 
 function count(value: string, search: string): number {

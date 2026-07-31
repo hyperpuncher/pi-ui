@@ -1,6 +1,12 @@
 import path from "node:path";
 
 import {
+	assertEquals as assertEqual,
+	assertEquals as assertEvents,
+	assertRejects,
+} from "@std/assert";
+
+import {
 	canonicalSessionPath,
 	executeSessionResume,
 	type SessionResumeRuntimeState,
@@ -156,22 +162,3 @@ Deno.test("session paths use SDK-compatible POSIX and Windows lexical resolution
 		"C:\\Users\\test\\one.jsonl",
 	);
 });
-
-function assertEqual(actual: unknown, expected: unknown): void {
-	if (!Object.is(actual, expected)) {
-		throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
-	}
-}
-
-function assertEvents(actual: string[], expected: string[]): void {
-	assertEqual(actual.join(","), expected.join(","));
-}
-
-async function assertRejects(operation: () => Promise<unknown>): Promise<void> {
-	try {
-		await operation();
-	} catch {
-		return;
-	}
-	throw new Error("Expected operation to reject");
-}

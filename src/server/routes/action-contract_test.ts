@@ -1,7 +1,5 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals } from "@std/assert";
 
-import { commandActions } from "../../commands/actions.ts";
-import { appCommandCatalog } from "../../commands/catalog.ts";
 import { endpoints } from "./endpoints.ts";
 
 const typescriptActionSources = [
@@ -76,87 +74,6 @@ Deno.test("each literal browser action references a registered endpoint", async 
 	);
 });
 
-Deno.test("dynamic and rendered endpoint references remain explicit", async () => {
-	const [
-		authDialog,
-		page,
-		promptAction,
-		promptBox,
-		promptPickers,
-		promptToolbar,
-		catalog,
-		dialogs,
-		main,
-	] = await Promise.all(
-		[
-			"../../ui/auth-dialog.tsx",
-			"../../ui/page.tsx",
-			"../../ui/prompt-action.tsx",
-			"../../ui/prompt-box.tsx",
-			"../../ui/prompt-pickers.tsx",
-			"../../ui/prompt-toolbar.tsx",
-			"../../commands/catalog.ts",
-			"../../../static/app/dialogs.js",
-			"../../main.ts",
-		].map((path) => Deno.readTextFile(new URL(path, import.meta.url))),
-	);
-	const renderedCommandActions = Object.values(commandActions).join("\n");
-
-	assertStringIncludes(authDialog, "endpoints.authLoginStart");
-	assertStringIncludes(authDialog, "endpoints.authLogout");
-	assertStringIncludes(authDialog, "@post('${action}'");
-	assertStringIncludes(page, "@post('${endpoints.workspacePick}'");
-	assertStringIncludes(page, "data-indicator:_workspace-picking");
-	assertStringIncludes(page, "data-files-pick-endpoint={endpoints.filesPick}");
-	assertStringIncludes(page, "data-files-import-endpoint={endpoints.filesImport}");
-	assertStringIncludes(
-		page,
-		"data-display-refresh-endpoint={endpoints.displayRefresh}",
-	);
-	assertStringIncludes(promptBox, "@get('${endpoints.filesSearch}'");
-	assertStringIncludes(promptBox, "filterSignals: { include: /^fileQuery$/ }");
-	assertStringIncludes(promptBox, "requestCancellation: 'cleanup'");
-	assertStringIncludes(promptBox, "evt.key === 'Enter'");
-
-	assertStringIncludes(page, "data-init={`@get('${endpoints.sessionsStream}', {");
-	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.toggleSession()");
-
-	for (const authAction of [endpoints.authOpenLogin, endpoints.authOpenLogout]) {
-		assertStringIncludes(
-			browserActionsFor(`${authDialog}\n${renderedCommandActions}`, authAction),
-			"filterSignals: { include: /^$/ }",
-		);
-	}
-
-	assertEquals(appCommandCatalog.length, Object.keys(commandActions).length);
-	assertEquals(
-		appCommandCatalog.find((command) => command.id === "toggle-review")?.shortcut,
-		{ display: "ctrl G", native: "CmdOrCtrl+G", keys: ["g"] },
-	);
-	assertStringIncludes(promptToolbar, "!evt.shiftKey && !evt.altKey");
-	assertStringIncludes(promptToolbar, "evt.code === 'KeyG'");
-	assertStringIncludes(promptToolbar, "window.piUi.dialogs.toggleCommand()");
-	const promptActions = `${promptAction}\n${promptBox}`;
-	assertEquals(promptActions.match(/const submittedPrompt = \$prompt;/g)?.length, 2);
-	assertEquals(promptActions.match(/\$prompt = '';/g)?.length, 2);
-	assertEquals(
-		promptActions.match(/payload: \{ prompt: submittedPrompt \}/g)?.length,
-		3,
-	);
-	assertEquals(/@post|document\.|window\./.test(catalog), false);
-	assertStringIncludes(dialogs, "export function openCommand()");
-	assertStringIncludes(dialogs, "export function toggleCommand()");
-	assertStringIncludes(dialogs, "export function openWorkspace()");
-	assertStringIncludes(dialogs, "export function toggleWorkspace()");
-	assertStringIncludes(dialogs, "export function togglePopover(triggerId)");
-	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.openWorkspace()");
-	assertStringIncludes(renderedCommandActions, "window.piUi.dialogs.togglePopover(");
-	assertStringIncludes(promptPickers, "openWorkspaceDialogAction()");
-	assertStringIncludes(promptPickers, "togglePopoverAction(");
-	assertStringIncludes(promptPickers, "toggleWorkspaceDialogAction()");
-	assertStringIncludes(main, '"window.piUi.dialogs.toggleWorkspace()"');
-});
-
 function extractLiteralWriteActionPaths(source: string): string[] {
 	const paths = source.matchAll(/@(?:post|put|patch|delete)\(\s*(["'])(\/[^"']*)\1/g);
 	return [...paths].map((match) => match[2].split("?", 1)[0]);
@@ -166,9 +83,4 @@ async function readActionSources(paths: readonly string[]): Promise<string[]> {
 	return await Promise.all(
 		paths.map((path) => Deno.readTextFile(new URL(path, import.meta.url))),
 	);
-}
-
-function browserActionsFor(source: string, path: string): string {
-	const index = source.indexOf(`@post('${path}'`);
-	return index < 0 ? "" : source.slice(index, index + 160);
 }

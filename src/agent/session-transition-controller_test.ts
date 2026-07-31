@@ -1,4 +1,9 @@
-import { SessionTransitionController } from "./session-transition-controller.ts";
+import { assertEquals } from "@std/assert";
+
+import {
+	SessionTransitionController,
+	type SessionTransitionState,
+} from "./session-transition-controller.ts";
 
 Deno.test("session transition controller reports success and cancellation", async () => {
 	const states: string[] = [];
@@ -11,7 +16,7 @@ Deno.test("session transition controller reports success and cancellation", asyn
 });
 
 Deno.test("session transition controller surfaces errors and remains recoverable", async () => {
-	const states: Array<{ status: string; message?: string }> = [];
+	const states: SessionTransitionState[] = [];
 	const controller = new SessionTransitionController((state) => states.push(state));
 	assertEquals(
 		(
@@ -57,11 +62,3 @@ Deno.test("session transition controller ignores concurrent transitions", async 
 	release();
 	assertEquals((await first).status, "success");
 });
-
-function assertEquals(actual: unknown, expected: unknown): void {
-	if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-		throw new Error(
-			`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`,
-		);
-	}
-}

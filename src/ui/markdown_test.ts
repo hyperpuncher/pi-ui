@@ -1,3 +1,9 @@
+import {
+	assertEquals as assertEqual,
+	assertStringIncludes as assertIncludes,
+} from "@std/assert";
+
+import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { preloadPierreHighlighter } from "./diffs.ts";
 import {
 	markdownCacheStatsForTest,
@@ -97,21 +103,3 @@ Deno.test("streaming code blocks omit the terminal empty display line", async ()
 	assertEqual(html.match(/streaming-code-line-number/g)?.length, 3);
 	releaseMarkdownStreamingState(key);
 });
-
-function assertEqual(actual: unknown, expected: unknown): void {
-	if (!Object.is(actual, expected)) {
-		throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
-	}
-}
-
-function assertIncludes(actual: string, expected: string): void {
-	if (!actual.includes(expected)) {
-		throw new Error(`Expected output to include ${JSON.stringify(expected)}`);
-	}
-}
-
-function assertNotIncludes(actual: string, expected: string): void {
-	if (actual.includes(expected)) {
-		throw new Error(`Expected output not to include ${JSON.stringify(expected)}`);
-	}
-}

@@ -1,3 +1,8 @@
+import {
+	assertAlmostEquals as assertNear,
+	assertEquals as assertEqual,
+} from "@std/assert";
+
 import { StreamingFrameScheduler } from "./streaming-frame-scheduler.ts";
 
 Deno.test("streaming scheduler is latest-wins with one queued frame", () => {
@@ -124,17 +129,5 @@ class FakeClock {
 			next[1].callback();
 		}
 		this.time = target;
-	}
-}
-
-function assertEqual(actual: unknown, expected: unknown): void {
-	if (!Object.is(actual, expected)) {
-		throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
-	}
-}
-
-function assertNear(actual: number, expected: number, tolerance: number): void {
-	if (Math.abs(actual - expected) > tolerance) {
-		throw new Error(`Expected ${actual} to be within ${tolerance} of ${expected}`);
 	}
 }

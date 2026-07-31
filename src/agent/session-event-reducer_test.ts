@@ -1,4 +1,5 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import { assertEquals } from "@std/assert";
 
 import type { AppMessage, AppMessageOptions } from "../state/app-store.ts";
 import {
@@ -491,11 +492,3 @@ Deno.test("failed compaction appends the error without reloading", () => {
 		options: {},
 	});
 });
-
-function assertEquals(actual: unknown, expected: unknown): void {
-	const actualJson = JSON.stringify(actual);
-	const expectedJson = JSON.stringify(expected);
-	if (actualJson !== expectedJson) {
-		throw new Error(`Expected ${expectedJson}, received ${actualJson}`);
-	}
-}

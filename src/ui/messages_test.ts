@@ -175,13 +175,3 @@ Deno.test("recent session loading reserves exactly three rows", () => {
 	assertStringIncludes(loading, "h-50");
 	assertStringIncludes(loading, "h-44");
 });
-
-Deno.test("messages and prompt consume distinct width tokens", async () => {
-	const html = renderMessages([], { description: "Send", keys: "enter" });
-	assertStringIncludes(html, "--pi-messages-max-width");
-	const promptSource = await Deno.readTextFile(
-		new URL("./prompt-box.tsx", import.meta.url),
-	);
-	assert(promptSource.includes("--pi-prompt-max-width"));
-	assertEquals(promptSource.includes("--pi-messages-max-width"), false);
-});

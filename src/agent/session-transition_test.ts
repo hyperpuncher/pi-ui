@@ -1,3 +1,5 @@
+import { assertEquals as assertEvents } from "@std/assert";
+
 import { newSessionAction } from "../commands/actions.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { sessionTransitionResponse } from "../server/routes/sessions.ts";
@@ -400,12 +402,4 @@ async function readUntil(
 		if (complete(output)) return output;
 	}
 	throw new Error("Expected transition stream output was not received");
-}
-
-function assertEvents(actual: string[], expected: string[]): void {
-	if (actual.join(",") !== expected.join(",")) {
-		throw new Error(
-			`Expected ${expected.join(" → ")}, received ${actual.join(" → ")}`,
-		);
-	}
 }

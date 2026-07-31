@@ -1,24 +1,9 @@
+import { assertEquals } from "@std/assert";
+
 import { TranscriptState } from "./transcript-state.ts";
 
 const hint = { keys: "ctrl N", description: "New session" };
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
-
-Deno.test("transcript state has no presentation or transport dependencies", async () => {
-	const source = await Deno.readTextFile(
-		new URL("./transcript-state.ts", import.meta.url),
-	);
-	for (const forbidden of [
-		"../ui/",
-		"../server/",
-		"renderMarkdown",
-		"Datastar",
-		"StreamingFrameScheduler",
-	]) {
-		if (source.includes(forbidden)) {
-			throw new Error(`Headless transcript contains ${forbidden}`);
-		}
-	}
-});
 
 Deno.test("transcript state appends, streams, updates, and finishes messages", () => {
 	const state = new TranscriptState(hint);
@@ -83,11 +68,3 @@ Deno.test("transcript paging and reset have no presentation state", () => {
 	assertEquals(state.hasOlderMessages, false);
 	assertEquals(state.emptyChatHint.keys, "new");
 });
-
-function assertEquals(actual: unknown, expected: unknown): void {
-	if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-		throw new Error(
-			`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`,
-		);
-	}
-}

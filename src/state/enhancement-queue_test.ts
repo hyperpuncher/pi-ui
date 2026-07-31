@@ -1,3 +1,5 @@
+import { assertEquals as assertEqual } from "@std/assert";
+
 import { EnhancementQueue } from "./enhancement-queue.ts";
 
 Deno.test("enhancement queue bounds concurrency and continues after errors", async () => {
@@ -68,9 +70,3 @@ Deno.test("enhancement queue cancels pending and active jobs", async () => {
 	assertEqual(cancelled, 2);
 	assertEqual(secondRan, false);
 });
-
-function assertEqual(actual: unknown, expected: unknown): void {
-	if (!Object.is(actual, expected)) {
-		throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
-	}
-}
