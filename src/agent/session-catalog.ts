@@ -8,6 +8,7 @@ import { join } from "@std/path";
 import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
 import { errorMessage } from "../utils/errors.ts";
 import { formatDateTime } from "../utils/locale.ts";
+import { isRecord } from "../utils/type-guards.ts";
 
 export type PreparedSessionList =
 	| { ok: true; sessions: SessionInfo[] }
@@ -208,10 +209,6 @@ function messageText(content: unknown): string {
 		)
 		.map((block) => block.text)
 		.join(" ");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
 }
 
 export function recentSessionWorkspaces(sessions: SessionInfo[]): string[] {

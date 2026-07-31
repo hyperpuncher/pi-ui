@@ -1,6 +1,6 @@
 import { fileUriToPath } from "../file-uri.js";
 import { closePickers } from "./pickers.js";
-import { promptInput } from "./prompt.js";
+import { insertPromptText, promptInput } from "./prompt.js";
 
 const FILE_REFERENCE_TYPES = [
 	"text/uri-list",
@@ -159,14 +159,8 @@ function insertFileReferences(paths) {
 	const input = promptInput();
 	if (!input) return;
 	const start = input.selectionStart ?? input.value.length;
-	const end = input.selectionEnd ?? start;
 	const prefix = start > 0 && !/\s/.test(input.value[start - 1] ?? "") ? " " : "";
-	const text = `${prefix}${formatFileReferences(paths)}`;
-	input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
-	const cursor = start + text.length;
-	input.selectionStart = cursor;
-	input.selectionEnd = cursor;
-	input.dispatchEvent(new Event("input", { bubbles: true }));
+	insertPromptText(`${prefix}${formatFileReferences(paths)}`);
 	input.focus();
 	closePickers(true);
 }

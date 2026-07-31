@@ -1,6 +1,7 @@
 import type { AgentSessionRuntime, SessionStats } from "@earendil-works/pi-coding-agent";
 
 import type { AppStore, AppUsage } from "../state/app-store.ts";
+import { formatTokens } from "../utils/format.ts";
 import { CodexUsageRequestTracker } from "./codex-usage-request.ts";
 import {
 	codexUsageTtlMs,
@@ -139,14 +140,6 @@ export function formatStats(
 		codexPrimaryPercent: codexUsage?.primary?.usedPercent,
 		codexSecondaryPercent: codexUsage?.secondary?.usedPercent,
 	};
-}
-
-export function formatTokens(count: number): string {
-	if (count < 1_000) return count.toString();
-	if (count < 10_000) return `${(count / 1_000).toFixed(1)}k`;
-	if (count < 1_000_000) return `${Math.round(count / 1_000)}k`;
-	if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-	return `${Math.round(count / 1_000_000)}M`;
 }
 
 function formatCost(cost: number): string {

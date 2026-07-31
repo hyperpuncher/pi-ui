@@ -12,11 +12,8 @@ export class ModelController {
 	) {}
 
 	async set(modelRef: string): Promise<boolean> {
-		const model = this.find(modelRef);
-		if (!model) {
-			this.state.appendMessage("system", `Model not found: ${modelRef}`);
-			return false;
-		}
+		const model = this.findOrReport(modelRef);
+		if (!model) return false;
 		await this.getRuntime().session.setModel(model);
 		this.onModelChanged();
 		return true;
@@ -29,11 +26,8 @@ export class ModelController {
 	}
 
 	async toggleScoped(modelRef: string): Promise<boolean> {
-		const model = this.find(modelRef);
-		if (!model) {
-			this.state.appendMessage("system", `Model not found: ${modelRef}`);
-			return false;
-		}
+		const model = this.findOrReport(modelRef);
+		if (!model) return false;
 		const runtime = this.getRuntime();
 		const session = runtime.session;
 		const key = `${model.provider}/${model.id}`;
@@ -127,12 +121,17 @@ export class ModelController {
 		);
 	}
 
-	private find(modelRef: string) {
+	private findOrReport(modelRef: string) {
 		const [provider, ...parts] = modelRef.split("/");
 		const id = parts.join("/");
-		return provider && id
-			? this.getRuntime().services.modelRuntime.getModel(provider, id)
-			: undefined;
+		const model =
+			provider && id
+				? this.getRuntime().services.modelRuntime.getModel(provider, id)
+				: undefined;
+		if (!model) {
+			this.state.appendMessage("system", `Model not found: ${modelRef}`);
+		}
+		return model;
 	}
 }
 

@@ -1,5 +1,6 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
+import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
@@ -239,22 +240,5 @@ function QueueIcon() {
 				<path d="M3 6h.01M3 12h.01M3 18h.01" />
 			</>
 		</Icon>
-	);
-}
-
-function Icon(props: { children: JSX.Element }) {
-	return (
-		<svg
-			class="size-3.5"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			stroke-width="2"
-			aria-hidden="true"
-		>
-			{props.children}
-		</svg>
 	);
 }

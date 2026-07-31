@@ -115,11 +115,12 @@ export function flattenTree(
 			id: node.entry.id,
 			parentId: node.entry.parentId,
 			prefix: buildTreePrefix(indent, showConnector, isLast, gutters),
-			continuationPrefix: buildTreeContinuationPrefix(
+			continuationPrefix: buildTreePrefix(
 				indent,
 				showConnector,
 				isLast,
 				gutters,
+				true,
 			),
 			label: node.label,
 			active: node.entry.id === activeId,
@@ -166,30 +167,14 @@ function buildTreePrefix(
 	showConnector: boolean,
 	isLast: boolean,
 	gutters: boolean[],
+	continuation = false,
 ): string {
 	if (indent === 0 && !showConnector) return "";
 	const parts: string[] = [];
 	for (let position = 0; position < indent; position += 1) {
 		if (position === indent - 1 && showConnector) {
-			parts.push(isLast ? "└─ " : "├─ ");
-		} else {
-			parts.push(gutters[position] ? "│  " : "   ");
-		}
-	}
-	return parts.join("");
-}
-
-function buildTreeContinuationPrefix(
-	indent: number,
-	showConnector: boolean,
-	isLast: boolean,
-	gutters: boolean[],
-): string {
-	if (indent === 0 && !showConnector) return "";
-	const parts: string[] = [];
-	for (let position = 0; position < indent; position += 1) {
-		if (position === indent - 1 && showConnector) {
-			parts.push(isLast ? "   " : "│  ");
+			if (continuation) parts.push(isLast ? "   " : "│  ");
+			else parts.push(isLast ? "└─ " : "├─ ");
 		} else {
 			parts.push(gutters[position] ? "│  " : "   ");
 		}

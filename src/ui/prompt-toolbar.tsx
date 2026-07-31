@@ -5,6 +5,7 @@ import {
 } from "../commands/actions.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
+import { Icon } from "./icon.tsx";
 import { ShortcutTooltip } from "./keyboard.tsx";
 
 type PromptToolbarAction =
@@ -113,23 +114,6 @@ function PromptToolbarButton(props: {
 				<ShortcutTooltip label={props.label} shortcut={props.shortcut} />
 			)}
 		</button>
-	);
-}
-
-function Icon(props: { children: JSX.Element }) {
-	return (
-		<svg
-			class="size-3.5"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			stroke-width="2"
-			aria-hidden="true"
-		>
-			{props.children}
-		</svg>
 	);
 }
 

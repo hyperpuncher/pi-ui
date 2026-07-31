@@ -7,6 +7,7 @@ import type {
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
 import { AppStore } from "../state/app-store.ts";
+import { formatTokens } from "../utils/format.ts";
 import {
 	modelMatchesPattern,
 	parseScopedModelPattern,
@@ -33,7 +34,7 @@ import {
 	userContentToMessages,
 } from "./transcript-projector.ts";
 import { flattenTree, TreeProjector } from "./tree-projector.ts";
-import { formatStats, formatTokens } from "./usage-controller.ts";
+import { formatStats } from "./usage-controller.ts";
 
 Deno.test("tool presentation preserves representative and malformed values", () => {
 	assertEquals(toolEndMeta(Date.now() - 90_000), "1m 30s");

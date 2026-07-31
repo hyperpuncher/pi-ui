@@ -373,29 +373,15 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 		) as string;
 	}
 
-	if (message.role === "assistant") {
+	if (message.role === "assistant" || message.role === "thought") {
 		return (
 			<article
-				class="message message-narrative message-assistant markdown-content w-full self-start"
-				data-message-id={message.id}
-				data-ignore-morph={preservesFinalizedMessageDom(message)}
-			>
-				{message.renderedHtml !== undefined ? (
-					<div>{message.renderedHtml}</div>
-				) : (
-					<p class="m-0 whitespace-pre-wrap" safe>
-						{message.text}
-					</p>
-				)}
-				{renderDeferredEnhancement(message)}
-			</article>
-		) as string;
-	}
-
-	if (message.role === "thought") {
-		return (
-			<article
-				class="message message-narrative message-thought markdown-content w-full self-start text-sm text-muted-foreground italic"
+				class={[
+					"message message-narrative markdown-content w-full self-start",
+					message.role === "assistant"
+						? "message-assistant"
+						: "message-thought text-sm text-muted-foreground italic",
+				]}
 				data-message-id={message.id}
 				data-ignore-morph={preservesFinalizedMessageDom(message)}
 			>

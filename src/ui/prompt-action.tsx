@@ -1,23 +1,7 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
+import { Icon } from "./icon.tsx";
 import { ShortcutTooltip } from "./keyboard.tsx";
-
-function Icon(props: { children: JSX.Element }) {
-	return (
-		<svg
-			class="size-3.5"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-			stroke-width="2"
-			aria-hidden="true"
-		>
-			{props.children}
-		</svg>
-	);
-}
 
 function StopIcon() {
 	return (

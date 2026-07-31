@@ -1,6 +1,8 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 
+import { formatTokens } from "../utils/format.ts";
+
 /** Anthropic's default prompt-cache lifetime. */
 export const cacheTtlMs = 5 * 60 * 1000;
 
@@ -127,12 +129,4 @@ function asPreviousRequest(
 		timestamp: message.timestamp,
 		reportedCache: reportedCache || usage.cacheRead + usage.cacheWrite > 0,
 	};
-}
-
-function formatTokens(count: number): string {
-	if (count < 1_000) return count.toString();
-	if (count < 10_000) return `${(count / 1_000).toFixed(1)}k`;
-	if (count < 1_000_000) return `${Math.round(count / 1_000)}k`;
-	if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-	return `${Math.round(count / 1_000_000)}M`;
 }
