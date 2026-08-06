@@ -344,6 +344,25 @@ function sessionInfo(
 	};
 }
 
+Deno.test("session catalog keeps every recent workspace", () => {
+	const state = new AppStore();
+	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const sessions = Array.from({ length: 12 }, (_, index) => {
+		const session = sessionInfo(`/session-${index}`, `Session ${index}`);
+		session.cwd = `/work/project-${index}`;
+		return session;
+	});
+
+	catalog.applyPrepared({ ok: true, sessions });
+
+	assertEquals(
+		state.recentWorkspaces.filter((workspace) =>
+			workspace.startsWith("/work/project-"),
+		),
+		sessions.map((session) => session.cwd),
+	);
+});
+
 Deno.test("session catalog keeps recent rows small while searching every session", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);

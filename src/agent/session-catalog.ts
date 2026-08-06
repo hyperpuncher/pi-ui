@@ -216,7 +216,6 @@ export function recentSessionWorkspaces(sessions: SessionInfo[]): string[] {
 	for (const session of sessions) {
 		if (!session.cwd || workspaces.includes(session.cwd)) continue;
 		workspaces.push(session.cwd);
-		if (workspaces.length >= 8) break;
 	}
 	return workspaces;
 }

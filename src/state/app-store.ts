@@ -430,7 +430,7 @@ export class AppStore {
 			this.workspacePath,
 			...values,
 			...this.recentWorkspaces,
-		]).slice(0, 8);
+		]);
 		this.commit();
 	}
 	setSlashCommands(commands: AppSlashCommand[]): void {
