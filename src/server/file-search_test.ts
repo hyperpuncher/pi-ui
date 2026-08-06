@@ -30,6 +30,20 @@ Deno.test("file search preserves scoped ranking and result cap", async () => {
 	);
 });
 
+Deno.test("file search includes recursive fd results", async () => {
+	let args: string[] = [];
+	const results = await searchFiles("/workspace", "button", undefined, (next) => {
+		args = next;
+		return Promise.resolve(output("src/components/button.tsx"));
+	});
+
+	assertEquals(args.includes("--max-depth"), false);
+	assertEquals(
+		results.map((item) => item.value),
+		["src/components/button.tsx"],
+	);
+});
+
 Deno.test("file search suggests closest sibling entries for an incorrect name", async () => {
 	let calls = 0;
 	const results = await searchFiles(
@@ -126,6 +140,23 @@ Deno.test("aborted unsuccessful fd output does not enter manual fallback", async
 		);
 		controller.abort(reason);
 		await assertRejects(() => search, Error, "cancelled unsuccessful command");
+	} finally {
+		await Deno.remove(workspace, { recursive: true });
+	}
+});
+
+Deno.test("unavailable fd falls back to recursive manual search", async () => {
+	const workspace = await Deno.makeTempDir();
+	try {
+		await Deno.mkdir(`${workspace}/src/components`, { recursive: true });
+		await Deno.writeTextFile(`${workspace}/src/components/button.tsx`, "");
+		const results = await searchFiles(workspace, "button", undefined, () =>
+			Promise.reject(new Deno.errors.NotFound("fd")),
+		);
+		assertEquals(
+			results.map((item) => item.value),
+			["src/components/button.tsx"],
+		);
 	} finally {
 		await Deno.remove(workspace, { recursive: true });
 	}
