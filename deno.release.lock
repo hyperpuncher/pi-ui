@@ -2,18 +2,18 @@
   "version": "5",
   "specifiers": {
     "jsr:@std/assert@^1.0.19": "1.0.19",
-    "jsr:@std/cli@^1.0.31": "1.0.32",
+    "jsr:@std/cli@^1.0.32": "1.0.32",
     "jsr:@std/encoding@^1.0.11": "1.0.11",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
     "jsr:@std/fs@^1.0.24": "1.0.24",
     "jsr:@std/html@^1.0.7": "1.0.7",
-    "jsr:@std/http@^1.1.2": "1.1.2",
+    "jsr:@std/http@^1.1.3": "1.1.3",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/media-types@^1.1.0": "1.1.0",
     "jsr:@std/net@^1.0.6": "1.0.6",
     "jsr:@std/path@^1.1.6": "1.1.6",
-    "jsr:@std/streams@^1.1.1": "1.1.1",
+    "jsr:@std/streams@^1.1.2": "1.1.2",
     "npm:@bruits/satteri-wasm32-wasi@~0.9.5": "0.9.5",
     "npm:@earendil-works/pi-ai@0.83": "0.83.0_zod@4.4.3",
     "npm:@earendil-works/pi-coding-agent@0.83": "0.83.0_zod@4.4.3",
@@ -23,10 +23,10 @@
     "npm:@pierre/trees@1.0.0-beta.6": "1.0.0-beta.6_react@19.2.8_react-dom@19.2.8__react@19.2.8",
     "npm:@starfederation/datastar-sdk@1.0.0": "1.0.0",
     "npm:basecoat-css@^1.0.2": "1.0.2",
-    "npm:oxlint-tailwindcss@^1.6.0": "1.6.0",
+    "npm:oxlint-tailwindcss@^1.7.0": "1.7.0",
     "npm:satteri@~0.9.5": "0.9.5",
     "npm:tailwindcss@^4.3.3": "4.3.3",
-    "npm:undici@^8.9.0": "8.9.0"
+    "npm:undici@^8.10.0": "8.10.0"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -50,8 +50,8 @@
     "@std/html@1.0.7": {
       "integrity": "175c818905a6e75743c69c251395e273d82698e58cfe7dd76268d70e28b8d8fe"
     },
-    "@std/http@1.1.2": {
-      "integrity": "1c0473590d5e5b75b30b2be4833c08047dd799aeea35624fd34ec58d67fc9240",
+    "@std/http@1.1.3": {
+      "integrity": "73a98e05ff58aa18bea562d286172e6c815b1eddd4fcab194beda19e3683b88c",
       "dependencies": [
         "jsr:@std/cli",
         "jsr:@std/encoding",
@@ -79,8 +79,8 @@
         "jsr:@std/internal@^1.0.14"
       ]
     },
-    "@std/streams@1.1.1": {
-      "integrity": "92556d350e537e9dce527a6d08f6f15be3ff65e656079dea69d15252187c7613"
+    "@std/streams@1.1.2": {
+      "integrity": "0249bf9b78a999f57032ca4d8e7ccaa57579090242640b35ddc948fbb745d3af"
     }
   },
   "npm": {
@@ -988,8 +988,8 @@
         "safe-buffer"
       ]
     },
-    "enhanced-resolve@5.24.4": {
-      "integrity": "sha512-GVoi+ICHocoOIU7qVVM48wOJziRsqrsyqlI0Ce0LdowRn6v3bcH2zUa9kp85ncx0nwIb9/HOCOLS3fdThDG/XQ==",
+    "enhanced-resolve@5.24.5": {
+      "integrity": "sha512-L1l8TNvomm6UVW5B253AGxQagSQr+vGwhMlrrfRS2qmhx46AMpMVJKQYLvWYbysTMY8VoicOvzHzoHMbyzB+4A==",
       "dependencies": [
         "graceful-fs",
         "tapable"
@@ -1317,8 +1317,8 @@
       ],
       "bin": true
     },
-    "oxlint-tailwindcss@1.6.0": {
-      "integrity": "sha512-Y1ZWJLI8Szu4Bl2OuZWH1lUv9VfDzD14CqlZBCU3Qxiz5AsthRqXWaYTshUPBFF1WXazsFfRBkWHRO+tIezfQA==",
+    "oxlint-tailwindcss@1.7.0": {
+      "integrity": "sha512-cH+Qml5tUuVgAPC88S3vbjaqj6wNw5EF8l4zsLmQx6x+wXKRGWy1+AzKi3wmLHMy9m/QXkpJHyzMsuEnLSRpQQ==",
       "dependencies": [
         "@tailwindcss/node",
         "tailwindcss"
@@ -1501,11 +1501,11 @@
     "undici-types@8.3.0": {
       "integrity": "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="
     },
+    "undici@8.10.0": {
+      "integrity": "sha512-HvltHd7avK13QIw/oLe4qoOLyoVSoafqJ2jYOrtMRBkbYT31eiBQ8O0ehRKZiEZCMEyLFQNIADpgCWC5fALvYQ=="
+    },
     "undici@8.5.0": {
       "integrity": "sha512-xamtWoB1EshgjpmlXd7GGm2VfdDtw1+rD8uhry8pSNW3If6S8E0m2T2+orSKeZXEn/aPJMviCpDBA65WJt8zhg=="
-    },
-    "undici@8.9.0": {
-      "integrity": "sha512-aWZpUj7XoGonMClx4gdDRfgBjqeA+F473aDmROQQbM9n6PRfK/u1q/a0X4wMTgcHfT8H6fpbt98PFuDUwFg2YA=="
     },
     "unist-util-is@6.0.1": {
       "integrity": "sha512-LsiILbtBETkDz8I9p1dQ0uyRUWuaQzd/cuEeS1hoRSyW5E5XGmTzlwY1OrNzzakGowI9Dr/I8HVaw4hTtnxy8g==",
@@ -1587,7 +1587,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@^1.0.19",
-      "jsr:@std/http@^1.1.2",
+      "jsr:@std/http@^1.1.3",
       "jsr:@std/path@^1.1.6",
       "npm:@bruits/satteri-wasm32-wasi@~0.9.5",
       "npm:@earendil-works/pi-ai@0.83",
@@ -1598,10 +1598,10 @@
       "npm:@pierre/trees@1.0.0-beta.6",
       "npm:@starfederation/datastar-sdk@1.0.0",
       "npm:basecoat-css@^1.0.2",
-      "npm:oxlint-tailwindcss@^1.6.0",
+      "npm:oxlint-tailwindcss@^1.7.0",
       "npm:satteri@~0.9.5",
       "npm:tailwindcss@^4.3.3",
-      "npm:undici@^8.9.0"
+      "npm:undici@^8.10.0"
     ]
   }
 }
