@@ -766,8 +766,8 @@ export class RuntimeController {
 			await this.runtime.session.compact(customInstructions);
 			this.loadCurrentSessionMessages();
 			return true;
-		} catch (error) {
-			this.state.appendMessage("system", errorMessage(error));
+		} catch {
+			// AgentSession emits compaction_end with the user-facing error.
 			return false;
 		}
 	}

@@ -496,6 +496,34 @@ Deno.test("RuntimeController disposal awaits and attempts foreground and backgro
 	assertEquals(replacement.disposeCount, 1);
 });
 
+Deno.test("RuntimeController shows one error when manual compaction fails", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+	(fake.runtime.session as unknown as { compact: () => Promise<void> }).compact =
+		async () => {
+			fake.emit({
+				type: "compaction_end",
+				reason: "manual",
+				result: undefined,
+				aborted: false,
+				willRetry: false,
+				errorMessage: "Compaction failed: Nothing to compact (session too small)",
+			} as AgentSessionEvent);
+			throw new Error("Nothing to compact (session too small)");
+		};
+
+	assertEquals(await controller.compact(), false);
+	assertEquals(
+		state.messages.map((message) => message.text),
+		["Compaction failed: Nothing to compact (session too small)"],
+	);
+	await controller.dispose();
+});
+
 Deno.test("RuntimeController shows prompts queued during compaction and sends them afterward", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();

@@ -403,7 +403,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 				class={[
 					"message message-narrative max-w-3xl self-start",
 					message.role === "notice"
-						? "text-amber-700 dark:text-yellow-300"
+						? "message-notice text-amber-700 dark:text-yellow-300"
 						: "message-system text-muted-foreground",
 				]}
 				data-message-id={message.id}

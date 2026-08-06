@@ -29,6 +29,18 @@ Deno.test("user messages wrap uninterrupted content", () => {
 	assertStringIncludes(html, "wrap-anywhere");
 });
 
+Deno.test("cache miss notices have a dedicated spacing class", () => {
+	const html = renderMessage({
+		id: "notice-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "notice",
+		text: "cache miss after 6m idle",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "message-notice");
+});
+
 Deno.test("skills use the tool timeline without enhancement controls", () => {
 	const html = renderMessage({
 		id: "skill-1",

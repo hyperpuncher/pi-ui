@@ -367,6 +367,11 @@
 		margin-top: var(--message-thought-assistant-gap);
 	}
 
+	.messages-stack > .message + .message-notice,
+	.messages-stack > .message-notice + .message {
+		margin-top: var(--message-tool-narrative-gap);
+	}
+
 	.markdown-content {
 		line-height: 1.7;
 		overflow-wrap: anywhere;
