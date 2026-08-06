@@ -27,7 +27,12 @@ type RuntimeFake = {
 	disposeResult: Promise<void>;
 	disposeError?: Error;
 	promptResult: Promise<void>;
+	promptInputs: Array<{
+		text: string;
+		streamingBehavior: "steer" | "followUp" | undefined;
+	}>;
 	emit(event: AgentSessionEvent): void;
+	setCompacting(value: boolean): void;
 	setStreaming(value: boolean): void;
 };
 
@@ -64,8 +69,16 @@ function fakeRuntime(
 		disposeCount: 0,
 		disposeResult: Promise.resolve(),
 		promptResult: Promise.resolve(),
+		promptInputs: [],
 		emit: (event) => {
+			if (event.type === "queue_update") {
+				steeringMessages.splice(0, steeringMessages.length, ...event.steering);
+				followUpMessages.splice(0, followUpMessages.length, ...event.followUp);
+			}
 			for (const callback of activeSubscriptions) callback(event);
+		},
+		setCompacting: (value) => {
+			(session as { isCompacting: boolean }).isCompacting = value;
 		},
 		setStreaming: (value) => {
 			(session as { isStreaming: boolean }).isStreaming = value;
@@ -78,7 +91,10 @@ function fakeRuntime(
 		hasConfiguredAuth: () => false,
 		refresh: () => Promise.resolve({ aborted: false, errors: new Map() }),
 	};
+	const steeringMessages: string[] = [];
+	const followUpMessages: string[] = [];
 	const session = {
+		isCompacting: false,
 		isStreaming: false,
 		sessionManager: manager(path, persisted, cwd),
 		model: undefined,
@@ -100,12 +116,36 @@ function fakeRuntime(
 		},
 		waitForIdle: () => Promise.resolve(),
 		prompt: async (
-			_text: string,
-			options?: { preflightResult?: (accepted: boolean) => void },
+			text: string,
+			options?: {
+				preflightResult?: (accepted: boolean) => void;
+				streamingBehavior?: "steer" | "followUp";
+			},
 		) => {
 			calls.push("prompt");
+			fake.promptInputs.push({
+				text,
+				streamingBehavior: options?.streamingBehavior,
+			});
 			options?.preflightResult?.(true);
 			await fake.promptResult;
+		},
+		clearQueue: () => {
+			const queued = {
+				steering: steeringMessages.splice(0),
+				followUp: followUpMessages.splice(0),
+			};
+			return queued;
+		},
+		getSteeringMessages: () => steeringMessages,
+		getFollowUpMessages: () => followUpMessages,
+		steer: (text: string) => {
+			steeringMessages.push(text);
+			return Promise.resolve();
+		},
+		followUp: (text: string) => {
+			followUpMessages.push(text);
+			return Promise.resolve();
 		},
 		subscribe: (callback: (event: AgentSessionEvent) => void) => {
 			calls.push("subscribe");
@@ -454,6 +494,62 @@ Deno.test("RuntimeController disposal awaits and attempts foreground and backgro
 	);
 	assertEquals(foreground.disposeCount, 1);
 	assertEquals(replacement.disposeCount, 1);
+});
+
+Deno.test("RuntimeController shows prompts queued during compaction and sends them afterward", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+	fake.setCompacting(true);
+
+	assertEquals(await controller.prompt("remove me"), true);
+	assertEquals(await controller.prompt("send after compaction"), true);
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.queuedSteeringMessages, ["remove me", "send after compaction"]);
+	assertEquals(state.queuedFollowUpMessages, []);
+	assertEquals(await controller.removeQueuedMessage("steer", 0), true);
+	assertEquals(state.queuedSteeringMessages, ["send after compaction"]);
+	assertEquals(await controller.removeQueuedMessage("steer", 2), false);
+
+	fake.setCompacting(false);
+	fake.emit({
+		type: "compaction_end",
+		reason: "manual",
+		result: undefined,
+		aborted: false,
+		willRetry: false,
+	} as AgentSessionEvent);
+	await Promise.resolve();
+
+	assertEquals(fake.promptInputs, [
+		{ text: "send after compaction", streamingBehavior: undefined },
+	]);
+	assertEquals(state.queuedSteeringMessages, []);
+	assertEquals(state.queuedFollowUpMessages, []);
+	await controller.dispose();
+});
+
+Deno.test("RuntimeController removes one message from the active agent queue", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+	fake.setStreaming(true);
+	fake.emit({
+		type: "queue_update",
+		steering: ["remove me", "keep me"],
+		followUp: ["later"],
+	} as AgentSessionEvent);
+
+	assertEquals(await controller.removeQueuedMessage("steer", 0), true);
+	assertEquals(state.queuedSteeringMessages, ["keep me"]);
+	assertEquals(state.queuedFollowUpMessages, ["later"]);
+	await controller.dispose();
 });
 
 Deno.test("RuntimeController reuses streaming runtimes across repeated background activation", async () => {

@@ -52,6 +52,13 @@ export class AgentHost {
 		return this.runtime.restoreQueuedMessages();
 	}
 
+	removeQueuedMessage(
+		streamingBehavior: "steer" | "followUp",
+		index: number,
+	): Promise<boolean> {
+		return this.runtime.removeQueuedMessage(streamingBehavior, index);
+	}
+
 	newSession(): Promise<SessionTransitionResult> {
 		return this.runtime.newSession();
 	}

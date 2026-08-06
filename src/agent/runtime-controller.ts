@@ -57,6 +57,12 @@ import { TranscriptProjector } from "./transcript-projector.ts";
 import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
 
+type PromptStreamingBehavior = "steer" | "followUp";
+type CompactionQueuedPrompt = {
+	text: string;
+	streamingBehavior: PromptStreamingBehavior;
+};
+
 export type RuntimeControllerDependencies = Readonly<{
 	createRuntime: typeof createAgentSessionRuntime;
 	prepareRecentSessions: typeof SessionCatalog.prepareRecent;
@@ -99,6 +105,10 @@ export class RuntimeController {
 	private readonly toolCallArgs = new Map<string, unknown>();
 	private readonly toolStartedAt = new Map<string, number>();
 	private readonly pendingPrompts = new Map<AgentSessionRuntime, number>();
+	private readonly compactionQueuedPrompts = new Map<
+		AgentSessionRuntime,
+		CompactionQueuedPrompt[]
+	>();
 	private readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
 	private readonly backgroundSessions = new BackgroundSessionController();
@@ -234,7 +244,7 @@ export class RuntimeController {
 
 	async prompt(
 		text: string,
-		options: { streamingBehavior?: "steer" | "followUp" } = {},
+		options: { streamingBehavior?: PromptStreamingBehavior } = {},
 	): Promise<boolean> {
 		const trimmed = text.trim();
 		if (!trimmed) {
@@ -265,39 +275,23 @@ export class RuntimeController {
 			return true;
 		}
 
-		let resolveAccepted: (accepted: boolean) => void = () => {};
-		let settled = false;
-		const accepted = new Promise<boolean>((resolve) => {
-			resolveAccepted = (value) => {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				resolve(value);
-			};
-		});
-
 		const runtime = this.runtime;
-		this.markPromptPending(runtime);
-		runtime.session
-			.prompt(trimmed, {
-				streamingBehavior: runtime.session.isStreaming
-					? (options.streamingBehavior ?? "steer")
-					: undefined,
-				preflightResult: resolveAccepted,
-			})
-			.catch((error: unknown) => {
-				resolveAccepted(false);
-				this.reportPromptError(runtime, error);
-			})
-			.finally(() => this.markPromptSettled(runtime));
+		if (runtime.session.isCompacting) {
+			this.queuePromptAfterCompaction(
+				runtime,
+				trimmed,
+				options.streamingBehavior ?? "steer",
+			);
+			return true;
+		}
 
-		return await accepted;
+		return await this.submitRuntimePrompt(runtime, trimmed, options);
 	}
 
 	async abort(): Promise<void> {
 		this.tree.cancelNavigation();
 		await this.runtime.session.abort();
+		this.compactionQueuedPrompts.delete(this.runtime);
 		this.foregroundObservedRunning = false;
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
@@ -318,9 +312,63 @@ export class RuntimeController {
 	}
 
 	restoreQueuedMessages(): string {
-		const { steering, followUp } = this.runtime.session.clearQueue();
+		const runtime = this.runtime;
+		const compactionQueued = this.compactionQueuedPrompts.get(runtime) ?? [];
+		this.compactionQueuedPrompts.delete(runtime);
+		const { steering, followUp } = runtime.session.clearQueue();
 		this.state.setQueuedMessages([], []);
-		return [...steering, ...followUp].join("\n\n");
+		return [
+			...steering,
+			...compactionQueued
+				.filter((prompt) => prompt.streamingBehavior === "steer")
+				.map((prompt) => prompt.text),
+			...followUp,
+			...compactionQueued
+				.filter((prompt) => prompt.streamingBehavior === "followUp")
+				.map((prompt) => prompt.text),
+		].join("\n\n");
+	}
+
+	async removeQueuedMessage(
+		streamingBehavior: PromptStreamingBehavior,
+		index: number,
+	): Promise<boolean> {
+		const runtime = this.runtime;
+		const runtimeQueued =
+			streamingBehavior === "steer"
+				? runtime.session.getSteeringMessages()
+				: runtime.session.getFollowUpMessages();
+		const compactionQueued = this.compactionQueuedPrompts.get(runtime) ?? [];
+		const matchingCompactionIndexes = compactionQueued.flatMap((prompt, index) =>
+			prompt.streamingBehavior === streamingBehavior ? [index] : [],
+		);
+		if (index >= runtimeQueued.length + matchingCompactionIndexes.length) {
+			return false;
+		}
+
+		if (index >= runtimeQueued.length) {
+			compactionQueued.splice(
+				matchingCompactionIndexes[index - runtimeQueued.length],
+				1,
+			);
+			if (compactionQueued.length === 0) {
+				this.compactionQueuedPrompts.delete(runtime);
+			}
+			this.syncRuntimeQueuedMessages(runtime);
+			return true;
+		}
+
+		// AgentSession has no single-item removal API, so rebuild its tracked queues.
+		const queued = runtime.session.clearQueue();
+		queued[streamingBehavior === "steer" ? "steering" : "followUp"].splice(index, 1);
+		try {
+			for (const text of queued.steering) await runtime.session.steer(text);
+			for (const text of queued.followUp) await runtime.session.followUp(text);
+		} catch (error) {
+			this.reportPromptError(runtime, error);
+		}
+		this.syncRuntimeQueuedMessages(runtime);
+		return true;
 	}
 
 	async newSession(): Promise<SessionTransitionResult> {
@@ -776,6 +824,7 @@ export class RuntimeController {
 			runtimes.push(session.runtime);
 		}
 		this.backgroundSessions.clear();
+		this.compactionQueuedPrompts.clear();
 
 		const results = await Promise.allSettled(
 			runtimes.map((runtime) => Promise.resolve().then(() => runtime.dispose())),
@@ -791,9 +840,100 @@ export class RuntimeController {
 	private isCurrentRuntimeActive(): boolean {
 		return (
 			this.runtime.session.isStreaming ||
+			this.runtime.session.isCompacting ||
 			this.foregroundObservedRunning ||
 			(this.pendingPrompts.get(this.runtime) ?? 0) > 0
 		);
+	}
+
+	private async submitRuntimePrompt(
+		runtime: AgentSessionRuntime,
+		text: string,
+		options: { streamingBehavior?: PromptStreamingBehavior } = {},
+	): Promise<boolean> {
+		let resolveAccepted: (accepted: boolean) => void = () => {};
+		let settled = false;
+		const accepted = new Promise<boolean>((resolve) => {
+			resolveAccepted = (value) => {
+				if (settled) return;
+				settled = true;
+				resolve(value);
+			};
+		});
+
+		this.markPromptPending(runtime);
+		runtime.session
+			.prompt(text, {
+				streamingBehavior: runtime.session.isStreaming
+					? (options.streamingBehavior ?? "steer")
+					: undefined,
+				preflightResult: resolveAccepted,
+			})
+			.catch((error: unknown) => {
+				resolveAccepted(false);
+				this.reportPromptError(runtime, error);
+			})
+			.finally(() => this.markPromptSettled(runtime));
+
+		return await accepted;
+	}
+
+	private queuePromptAfterCompaction(
+		runtime: AgentSessionRuntime,
+		text: string,
+		streamingBehavior: PromptStreamingBehavior,
+	): void {
+		const queued = this.compactionQueuedPrompts.get(runtime) ?? [];
+		queued.push({ text, streamingBehavior });
+		this.compactionQueuedPrompts.set(runtime, queued);
+		this.syncRuntimeQueuedMessages(runtime);
+	}
+
+	private syncRuntimeQueuedMessages(runtime: AgentSessionRuntime): void {
+		const compactionQueued = this.compactionQueuedPrompts.get(runtime) ?? [];
+		const steering = [
+			...runtime.session.getSteeringMessages(),
+			...compactionQueued
+				.filter((prompt) => prompt.streamingBehavior === "steer")
+				.map((prompt) => prompt.text),
+		];
+		const followUp = [
+			...runtime.session.getFollowUpMessages(),
+			...compactionQueued
+				.filter((prompt) => prompt.streamingBehavior === "followUp")
+				.map((prompt) => prompt.text),
+		];
+		if (runtime === this.runtime) {
+			this.state.setQueuedMessages(steering, followUp);
+			return;
+		}
+		for (const session of this.backgroundSessions.values()) {
+			if (session.runtime === runtime) {
+				session.state.setQueuedMessages(steering, followUp);
+				return;
+			}
+		}
+	}
+
+	private async flushCompactionQueue(runtime: AgentSessionRuntime): Promise<void> {
+		const queued = this.compactionQueuedPrompts.get(runtime);
+		if (!queued?.length) return;
+		this.compactionQueuedPrompts.delete(runtime);
+		this.syncRuntimeQueuedMessages(runtime);
+
+		for (let index = 0; index < queued.length; index += 1) {
+			const prompt = queued[index];
+			if (
+				await this.submitRuntimePrompt(runtime, prompt.text, {
+					streamingBehavior: prompt.streamingBehavior,
+				})
+			)
+				continue;
+
+			this.compactionQueuedPrompts.set(runtime, queued.slice(index));
+			this.syncRuntimeQueuedMessages(runtime);
+			return;
+		}
 	}
 
 	private markPromptPending(runtime: AgentSessionRuntime): void {
@@ -877,6 +1017,7 @@ export class RuntimeController {
 
 	private async discardTemporaryRuntime(): Promise<void> {
 		const runtime = this.runtime;
+		this.compactionQueuedPrompts.delete(runtime);
 		await transitionRuntime({
 			action: "discard",
 			unsubscribe: () => this.unbindSession(),
@@ -957,6 +1098,12 @@ export class RuntimeController {
 					backgroundSession.state,
 				),
 		);
+		if (event.type === "queue_update") {
+			this.syncRuntimeQueuedMessages(backgroundSession.runtime);
+		}
+		if (event.type === "compaction_end") {
+			void this.flushCompactionQueue(backgroundSession.runtime);
+		}
 		if (outcome.agentCompleted) {
 			this.unsubscribeBackgroundSession(backgroundSession);
 			backgroundSession.status = "completed";
@@ -1187,6 +1334,12 @@ export class RuntimeController {
 			// Streaming deltas use the documented targeted-message patch path.
 			{ commit: false },
 		);
+		if (event.type === "queue_update") {
+			this.syncRuntimeQueuedMessages(this.runtime);
+		}
+		if (event.type === "compaction_end") {
+			void this.flushCompactionQueue(this.runtime);
+		}
 	}
 
 	private reduceEvent(

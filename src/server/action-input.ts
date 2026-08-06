@@ -62,6 +62,14 @@ export function booleanField(
 	return value;
 }
 
+export function nonnegativeIntegerField(signals: ActionSignals, field: string): number {
+	const value = signals[field];
+	if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+		throw new ActionInputError(`Invalid ${field}.`);
+	}
+	return value;
+}
+
 export function enumField<const T extends readonly string[]>(
 	signals: ActionSignals,
 	field: string,

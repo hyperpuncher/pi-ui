@@ -183,8 +183,18 @@ function renderLatestButton() {
 
 function renderQueuedMessages(state: AppRenderSnapshot): string {
 	const items = [
-		...state.queuedSteeringMessages.map((text) => ["Steering", text] as const),
-		...state.queuedFollowUpMessages.map((text) => ["Follow-up", text] as const),
+		...state.queuedSteeringMessages.map((text, index) => ({
+			behavior: "steer" as const,
+			index,
+			label: "Steering",
+			text,
+		})),
+		...state.queuedFollowUpMessages.map((text, index) => ({
+			behavior: "followUp" as const,
+			index,
+			label: "Follow-up",
+			text,
+		})),
 	];
 	if (items.length === 0) return "";
 	return (
@@ -210,8 +220,8 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 				</button>
 			</header>
 			<div class="flex max-h-32 flex-col overflow-y-auto px-1.5 pb-4">
-				{items.map(([label, text]) => (
-					<div class="prompt-queue-item flex min-w-0 translate-y-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs opacity-100 transition-[opacity,translate] duration-100 ease-out hover:bg-muted/60 motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
+				{items.map(({ behavior, index, label, text }) => (
+					<div class="prompt-queue-item group flex min-w-0 translate-y-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs opacity-100 transition-[opacity,translate] duration-100 ease-out hover:bg-muted/60 motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
 						<span
 							class={[
 								"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
@@ -222,9 +232,19 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 						>
 							{label}
 						</span>
-						<span class="truncate text-muted-foreground" safe>
+						<span class="min-w-0 flex-1 truncate text-muted-foreground" safe>
 							{text}
 						</span>
+						<button
+							type="button"
+							class="-my-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-[color,background-color,opacity] hover:bg-muted hover:text-foreground focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+							data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
+							aria-label="Remove queued message"
+						>
+							<Icon>
+								<path d="m18 6-12 12M6 6l12 12" />
+							</Icon>
+						</button>
 					</div>
 				))}
 			</div>

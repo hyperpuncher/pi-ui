@@ -22,6 +22,7 @@ export type RouteAgentHost = Pick<
 	| "openLogout"
 	| "openTree"
 	| "prompt"
+	| "removeQueuedMessage"
 	| "restoreQueuedMessages"
 	| "resumeSession"
 	| "setModel"

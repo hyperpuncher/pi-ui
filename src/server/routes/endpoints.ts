@@ -6,6 +6,7 @@ export const endpoints = {
 	prompt: "/prompt",
 	promptFollowUp: "/prompt/follow-up",
 	promptDequeue: "/prompt/dequeue",
+	promptQueueRemove: "/prompt/queue/remove",
 	abort: "/abort",
 	messagesOlder: "/messages/older",
 	messagesEnhance: "/messages/enhance",
