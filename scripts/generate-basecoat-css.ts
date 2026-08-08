@@ -1,5 +1,7 @@
 const sourcePath = new URL(import.meta.resolve("basecoat-css/styles/nova"));
 const outputPath = new URL("../src/ui/basecoat.generated.css", import.meta.url);
+const basecoatJsSourcePath = new URL(import.meta.resolve("basecoat-css/all.min"));
+const basecoatJsOutputPath = new URL("../static/basecoat.vendor.js", import.meta.url);
 const components = [
 	["Badge", "badge"],
 	["Button", "button"],
@@ -44,7 +46,10 @@ const selectedCss = sections
 	})
 	.join("\n");
 
-await Deno.writeTextFile(
-	outputPath,
-	`${imports}\n\n/* Generated from the used Basecoat Nova component sections. */\n@layer components {${selectedCss}\n}\n`,
-);
+await Promise.all([
+	Deno.writeTextFile(
+		outputPath,
+		`${imports}\n\n/* Generated from the used Basecoat Nova component sections. */\n@layer components {${selectedCss}\n}\n`,
+	),
+	Deno.copyFile(basecoatJsSourcePath, basecoatJsOutputPath),
+]);

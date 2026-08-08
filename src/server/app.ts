@@ -23,7 +23,9 @@ import { registerWorkspaceReviewRoutes } from "./routes/workspace-review.ts";
 import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 
-const basecoatJsPath = fromFileUrl(import.meta.resolve("basecoat-css/all.min"));
+const basecoatJsPath = fromFileUrl(
+	new URL("../../static/basecoat.vendor.js", import.meta.url),
+);
 const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
