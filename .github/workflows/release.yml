@@ -2,8 +2,8 @@ name: Release
 
 env:
     CEF_BACKEND_REPOSITORY: hyperpuncher/laufey
-    CEF_BACKEND_TAG: cef-151.3.14-pi-ui.1
-    DENO_VERSION: v2.9.4
+    CEF_BACKEND_TAG: cef-151.3.14-pi-ui.2
+    DENO_VERSION: v2.9.5
 
 on:
     workflow_dispatch:
@@ -100,7 +100,6 @@ jobs:
                   rm -rf node_modules
                   desktop_args=(
                     -A
-                    --unstable-no-legacy-abort
                     --conditions browser
                     --frozen
                     --include static
