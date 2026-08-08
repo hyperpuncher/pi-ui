@@ -82,7 +82,7 @@ function clientEffectScript(effect: ClientEffect): string {
 		case "focus-prompt":
 			return "document.getElementById('prompt-input')?.focus({ preventScroll: true })";
 		case "open-tree":
-			return "window.piUi.basecoat.refresh(document.getElementById('tree-dialog')); window.piUi.dialogs.openTree(); requestAnimationFrame(() => { const row = document.querySelector('[data-active-tree-row]'); row?.focus(); row?.scrollIntoView({ block: 'center' }); });";
+			return "window.piUi.dialogs.openTree()";
 		case "restore-messages-anchor":
 			return "window.piUi.messageScroll.restoreAnchor()";
 		case "refresh-session-picker":

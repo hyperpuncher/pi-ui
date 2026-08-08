@@ -1,11 +1,19 @@
-function openAndFocus(dialogId, inputId) {
+import { refresh } from "./basecoat.js";
+
+function openAndFocus(dialogId, inputId, options = {}) {
 	const dialog = document.getElementById(dialogId);
 	if (!(dialog instanceof HTMLDialogElement)) return;
 	if (!dialog.open) {
 		restoreFocusWhenDialogCloses(dialog, document.activeElement);
 		dialog.showModal();
 	}
+	refresh(dialog);
 	requestAnimationFrame(() => {
+		const activeItem = options.activeSelector
+			? dialog.querySelector(options.activeSelector)
+			: undefined;
+		activeItem?.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+		activeItem?.scrollIntoView({ block: "center" });
 		const input = document.getElementById(inputId);
 		if (input instanceof HTMLInputElement) input.focus({ preventScroll: true });
 	});
@@ -52,7 +60,9 @@ export function toggleSession() {
 }
 
 export function openTree() {
-	openAndFocus("tree-dialog", "tree-input");
+	openAndFocus("tree-dialog", "tree-input", {
+		activeSelector: "[data-active-tree-row]",
+	});
 }
 
 export function openCommand() {
