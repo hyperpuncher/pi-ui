@@ -71,7 +71,7 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 				data-picker-value={commandText}
 			>
 				<span class="min-w-0">
-					<span class="block truncate">
+					<span class="block truncate font-mono">
 						<span class="text-primary" safe>
 							{label}
 						</span>
