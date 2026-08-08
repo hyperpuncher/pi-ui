@@ -9,7 +9,7 @@
 		"server": "deno task assets:build && deno run -A --conditions browser --watch src/main.ts",
 		"assets:build": "deno task client:build && deno task css:build",
 		"build": "deno task assets:build && deno desktop -A --conditions browser --include static src/main.ts",
-		"build:server": "deno task assets:build && deno compile -A --conditions browser --include static --output ./dist/server/pi-ui src/main.ts",
+		"build:server": "deno task assets:build && deno compile -A --conditions browser --node-modules-dir=none --exclude-unused-npm --include static --output ./dist/server/pi-ui src/main.ts",
 		"run:server": "./dist/server/pi-ui",
 		"run:linux": "./dist/linux/pi-ui/pi-ui --disable-spell-checking",
 		"client:build": "deno run -A npm:rolldown@latest -c rolldown.config.ts --configLoader native",
