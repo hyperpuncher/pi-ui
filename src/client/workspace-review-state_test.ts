@@ -5,6 +5,7 @@ import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
 	reconcileSelection,
+	selectionForReviewOpen,
 } from "./workspace-review-state.ts";
 
 function commit(hash: string): WorkspaceCommit {
@@ -49,6 +50,15 @@ Deno.test("changed head resets history and pagination", () => {
 		commits: next,
 		hasMore: false,
 	});
+});
+
+Deno.test("opening review prefers working changes over a commit", () => {
+	const selectedCommit = { hash: "head", kind: "commit" } as const;
+	assertEquals(selectionForReviewOpen(selectedCommit, [change("first.ts")]), {
+		kind: "working",
+		path: "first.ts",
+	});
+	assertEquals(selectionForReviewOpen(selectedCommit, []), selectedCommit);
 });
 
 Deno.test("snapshot reconciliation chooses an available selection", () => {

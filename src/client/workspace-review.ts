@@ -42,6 +42,7 @@ import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
 	reconcileSelection,
+	selectionForReviewOpen,
 	type Selection,
 } from "./workspace-review-state.ts";
 
@@ -138,6 +139,13 @@ const reviewLayout = bindWorkspaceReviewLayout({
 const visibility = createVisibility(app, snapshot.isGitRepository, (open) => {
 	reviewLayout.setOpen(open);
 	if (open) {
+		const nextSelection = selectionForReviewOpen(
+			selection,
+			preferredWorkingChanges(),
+		);
+		if (nextSelection !== selection && nextSelection.kind === "working") {
+			selectWorking(nextSelection.path);
+		}
 		cancelSnapshotPrefetch();
 		connectUpdates("live");
 		if (snapshot.revision === "git-unloaded") showEmpty("Loading Git data…");
@@ -326,7 +334,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	selection = reconcileSelection(
 		selection,
 		wasUnloaded,
-		snapshot.changes,
+		preferredWorkingChanges(),
 		snapshot.commits,
 	);
 	if (wasUnloaded) initializedSelection = true;
@@ -370,7 +378,6 @@ function selectWorking(path?: string, fromTree = false): void {
 	activateWorking(path);
 	renderHistory();
 	if (path && !fromTree) {
-		tree.getItem(path)?.select();
 		tree.scrollToPath(path, { focus: false, offset: "nearest" });
 	}
 	if (path) scrollToPath(path);
@@ -458,6 +465,18 @@ function scrollToPath(path: string): void {
 			behavior: "smooth-auto",
 		});
 	}
+}
+
+function preferredWorkingChanges(): readonly WorkspaceFileChange[] {
+	const changedPaths = new Set(snapshot.changes.map(({ path }) => path));
+	const firstPath = tree
+		.getVisibleRows(0, tree.getVisibleCount())
+		.find((row) => row.kind === "file" && changedPaths.has(row.path))?.path;
+	if (!firstPath || firstPath === snapshot.changes[0]?.path) return snapshot.changes;
+	const first = snapshot.changes.find(({ path }) => path === firstPath);
+	return first
+		? [first, ...snapshot.changes.filter(({ path }) => path !== firstPath)]
+		: snapshot.changes;
 }
 
 function clearTreeSelection(): void {

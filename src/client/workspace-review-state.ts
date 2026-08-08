@@ -41,6 +41,16 @@ export function reconcileFirstHistoryPage(
 	};
 }
 
+export function selectionForReviewOpen(
+	selection: Selection,
+	changes: readonly WorkspaceFileChange[],
+): Selection {
+	if (selection.kind === "commit" && changes[0]) {
+		return { kind: "working", path: changes[0].path };
+	}
+	return selection;
+}
+
 export function reconcileSelection(
 	selection: Selection,
 	wasUnloaded: boolean,
