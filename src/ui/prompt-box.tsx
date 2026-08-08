@@ -56,14 +56,23 @@ export function renderPromptBox(
 					"
 					data-on:pi-ui-picker-close="$_slashPickerOpen = false"
 					data-on:pi-ui-file-query={`
+						if (typeof $_fileSearchController?.abort === 'function') {
+							$_fileSearchController.abort();
+						}
+						$_fileSearchController = new AbortController();
 						$fileQuery = evt.detail.query;
-						$_filePickerOpen = true;
 						@get('${endpoints.filesSearch}', {
 						filterSignals: { include: /^fileQuery$/ },
-						requestCancellation: 'cleanup',
+						requestCancellation: $_fileSearchController,
 					});
 					`}
-					data-on:pi-ui-file-close="$_filePickerOpen = false"
+					data-on:pi-ui-file-close={`
+						if (typeof $_fileSearchController?.abort === 'function') {
+							$_fileSearchController.abort();
+						}
+						$_fileSearchController = '';
+						$_filePickerOpen = false;
+					`}
 					data-effect={`if ($_isSessionReady) {
 						el.focus({ preventScroll: true });
 						el.selectionStart = el.value.length;

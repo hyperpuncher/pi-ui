@@ -29,6 +29,33 @@ Deno.test("exact router turns thrown handlers into generic 500 responses", async
 	assertEquals((await response.text()).includes("local details"), false);
 });
 
+Deno.test("exact router silently handles aborted requests", async () => {
+	const reported: unknown[] = [];
+	const router = new ExactRouter({}, (error) => reported.push(error));
+	router.register(
+		"GET",
+		"/slow",
+		(request) =>
+			new Promise((_resolve, reject) => {
+				request.signal.addEventListener(
+					"abort",
+					() => reject(request.signal.reason),
+					{
+						once: true,
+					},
+				);
+			}),
+	);
+	const controller = new AbortController();
+	const response = router.fetch(
+		new Request("http://localhost/slow", { signal: controller.signal }),
+	);
+	controller.abort();
+
+	assertEquals((await response).status, 499);
+	assertEquals(reported, []);
+});
+
 Deno.test("exact router reads mutable replacement resources from context", async () => {
 	const context = { resource: { name: "first" } };
 	const router = new ExactRouter(context);

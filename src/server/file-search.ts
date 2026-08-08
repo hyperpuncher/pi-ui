@@ -9,11 +9,22 @@ export type FileSuggestion = {
 	isDirectory: boolean;
 };
 
-const maxDepth = 8;
+type FileSearchScope = {
+	baseDir: string;
+	displayBase: string;
+	query: string;
+};
+
+const maxDepth = 4;
 const maxScanned = 5_000;
 const maxCollected = 30;
 const maxResults = 20;
 const fdMaxResults = 100;
+const ignoredDirectoryNames = new Set(["node_modules", "__pycache__", ".venv", "venv"]);
+const fdIgnoredDirectoryArgs = [...ignoredDirectoryNames].flatMap((name) => [
+	"--exclude",
+	name,
+]);
 
 export type FileSearchCommand = (
 	args: string[],
@@ -30,63 +41,51 @@ export async function searchFiles(
 	command: FileSearchCommand = runFd,
 ): Promise<FileSuggestion[]> {
 	const normalizedQuery = query.replaceAll("\\", "/").replace(/^@/, "");
-	const fdResults = await searchWithFd(workspacePath, normalizedQuery, signal, command);
-	if (fdResults !== undefined) {
-		if (fdResults.length > 0 || !normalizedQuery) return fdResults;
-		return findClosestFiles(
-			(await searchWithFd(
-				workspacePath,
-				parentQuery(normalizedQuery),
-				signal,
-				command,
-				fdMaxResults,
-			)) ?? [],
-			normalizedQuery,
+	const includeHidden = includesExplicitHiddenSegment(normalizedQuery);
+	const scope = resolveFileSearchScope(workspacePath, normalizedQuery);
+	const shallowResults = await searchWithFd(scope, signal, command, includeHidden, 1);
+	if (shallowResults !== undefined) {
+		if (shallowResults.length > 0 || !scope.query) return shallowResults;
+		return (
+			(await searchWithFd(scope, signal, command, includeHidden, maxDepth)) ?? []
 		);
 	}
 	signal?.throwIfAborted();
-	const manualResults = searchManually(workspacePath, normalizedQuery);
-	if (manualResults.length > 0) return manualResults;
-	return findClosestFiles(
-		searchManually(
-			workspacePath,
-			parentQuery(normalizedQuery),
-			fdMaxResults,
-			maxScanned,
-		),
-		normalizedQuery,
-	);
+	const shallowManualResults = searchManually(scope, includeHidden, 0);
+	if (shallowManualResults.length > 0 || !scope.query) return shallowManualResults;
+	return searchManually(scope, includeHidden, maxDepth);
 }
 
 async function searchWithFd(
-	workspacePath: string,
-	query: string,
+	scope: FileSearchScope,
 	signal: AbortSignal | undefined,
 	command: FileSearchCommand,
-	limit = maxResults,
+	includeHidden: boolean,
+	maxSearchDepth: number,
 ): Promise<FileSuggestion[] | undefined> {
-	const scoped = resolveFileSearchScope(workspacePath, query);
 	const args = [
 		"--base-directory",
-		scoped.baseDir,
+		scope.baseDir,
 		"--max-results",
 		String(fdMaxResults),
 		"--type",
 		"f",
 		"--type",
 		"d",
-		"--follow",
-		"--hidden",
+		"--max-depth",
+		String(maxSearchDepth),
 		"--exclude",
 		".git",
 		"--exclude",
 		".git/*",
 		"--exclude",
 		".git/**",
+		...fdIgnoredDirectoryArgs,
 	];
-	if (scoped.query) {
-		args.push(buildFdPathQuery(scoped.query));
+	if (includeHidden) {
+		args.push("--hidden");
 	}
+	if (scope.query) args.push(escapeRegex(scope.query));
 
 	let output: Deno.CommandOutput;
 	try {
@@ -107,54 +106,10 @@ async function searchWithFd(
 	return text
 		.split("\n")
 		.filter(Boolean)
-		.map((line) => toSuggestion(scoped.displayBase, line))
+		.map((line) => toSuggestion(scope.displayBase, line))
 		.filter((item) => !item.description.startsWith(".git/"))
-		.sort(fileSuggestionComparator(scoped.query))
-		.slice(0, limit);
-}
-
-function parentQuery(query: string): string {
-	const slashIndex = query.lastIndexOf("/");
-	return slashIndex === -1 ? "" : query.slice(0, slashIndex + 1);
-}
-
-function findClosestFiles(
-	items: readonly FileSuggestion[],
-	query: string,
-): FileSuggestion[] {
-	const name = query.slice(query.lastIndexOf("/") + 1).toLowerCase();
-	if (!name) return [];
-	return [...items]
-		.sort((a, b) => {
-			const aName = path.basename(a.description).toLowerCase();
-			const bName = path.basename(b.description).toLowerCase();
-			const distanceDiff = editDistance(aName, name) - editDistance(bName, name);
-			if (distanceDiff !== 0) return distanceDiff;
-			const lengthDiff =
-				Math.abs(aName.length - name.length) -
-				Math.abs(bName.length - name.length);
-			return lengthDiff || a.description.localeCompare(b.description);
-		})
+		.sort(fileSuggestionComparator(scope.query))
 		.slice(0, maxResults);
-}
-
-function editDistance(left: string, right: string): number {
-	let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-	for (let leftIndex = 0; leftIndex < left.length; leftIndex += 1) {
-		const current = [leftIndex + 1];
-		for (let rightIndex = 0; rightIndex < right.length; rightIndex += 1) {
-			current.push(
-				Math.min(
-					current[rightIndex] + 1,
-					previous[rightIndex + 1] + 1,
-					previous[rightIndex] +
-						(left[leftIndex] === right[rightIndex] ? 0 : 1),
-				),
-			);
-		}
-		previous = current;
-	}
-	return previous[right.length];
 }
 
 function toSuggestion(displayBase: string, line: string): FileSuggestion {
@@ -171,39 +126,45 @@ function toSuggestion(displayBase: string, line: string): FileSuggestion {
 }
 
 function searchManually(
-	workspacePath: string,
-	query: string,
-	limit = maxResults,
-	collectionLimit = maxCollected,
+	scope: FileSearchScope,
+	includeHidden: boolean,
+	maxSearchDepth: number,
 ): FileSuggestion[] {
-	const scoped = resolveFileSearchScope(workspacePath, query);
 	const results: FileSuggestion[] = [];
 	let scanned = 0;
-	walkFiles(scoped.baseDir, (entryPath, isDirectory) => {
-		if (scanned > maxScanned || results.length >= collectionLimit) {
-			return false;
-		}
-		scanned += 1;
-		const relative = path.relative(scoped.baseDir, entryPath).replaceAll("\\", "/");
-		if (!relative || relative.startsWith(".git/")) {
+	walkFiles(
+		scope.baseDir,
+		(entryPath, isDirectory) => {
+			if (scanned >= maxScanned || results.length >= maxCollected) {
+				return false;
+			}
+			scanned += 1;
+			const relative = path
+				.relative(scope.baseDir, entryPath)
+				.replaceAll("\\", "/");
+			if (!relative || relative.startsWith(".git/")) {
+				return true;
+			}
+			const displayPath = scope.displayBase
+				? `${scope.displayBase}${relative}`
+				: relative;
+			const score = scoreFile(displayPath, scope.query);
+			if (score <= 0) {
+				return true;
+			}
+			results.push({
+				value: isDirectory ? `${displayPath}/` : displayPath,
+				label: `${path.basename(displayPath)}${isDirectory ? "/" : ""}`,
+				description: displayPath,
+				isDirectory,
+			});
 			return true;
-		}
-		const displayPath = scoped.displayBase
-			? `${scoped.displayBase}${relative}`
-			: relative;
-		const score = scoreFile(displayPath, scoped.query, isDirectory);
-		if (score <= 0) {
-			return true;
-		}
-		results.push({
-			value: isDirectory ? `${displayPath}/` : displayPath,
-			label: `${path.basename(displayPath)}${isDirectory ? "/" : ""}`,
-			description: displayPath,
-			isDirectory,
-		});
-		return true;
-	});
-	return results.sort(fileSuggestionComparator(scoped.query)).slice(0, limit);
+		},
+		0,
+		includeHidden,
+		maxSearchDepth,
+	);
+	return results.sort(fileSuggestionComparator(scope.query)).slice(0, maxResults);
 }
 
 function fileSuggestionComparator(
@@ -211,19 +172,20 @@ function fileSuggestionComparator(
 ): (a: FileSuggestion, b: FileSuggestion) => number {
 	return (a, b) => {
 		const scoreDiff =
-			scoreFile(b.description, query, b.isDirectory) -
-			scoreFile(a.description, query, a.isDirectory);
+			scoreFile(b.description, query) - scoreFile(a.description, query);
 		if (scoreDiff !== 0) return scoreDiff;
+		const depthDiff = pathDepth(a.description) - pathDepth(b.description);
+		if (depthDiff !== 0) return depthDiff;
 		if (a.isDirectory && !b.isDirectory) return -1;
 		if (!a.isDirectory && b.isDirectory) return 1;
-		return a.description.localeCompare(b.description);
+		return (
+			a.description.length - b.description.length ||
+			a.description.localeCompare(b.description)
+		);
 	};
 }
 
-function resolveFileSearchScope(
-	workspacePath: string,
-	query: string,
-): { baseDir: string; displayBase: string; query: string } {
+function resolveFileSearchScope(workspacePath: string, query: string): FileSearchScope {
 	const slashIndex = query.lastIndexOf("/");
 	if (slashIndex === -1) {
 		return { baseDir: workspacePath, displayBase: "", query };
@@ -237,23 +199,6 @@ function resolveFileSearchScope(
 	};
 }
 
-function buildFdPathQuery(query: string): string {
-	if (!query.includes("/")) {
-		return query;
-	}
-	const hasTrailingSeparator = query.endsWith("/");
-	const segments = query
-		.replace(/^\/+|\/+$/g, "")
-		.split("/")
-		.filter(Boolean)
-		.map(escapeRegex);
-	let pattern = segments.join("[\\\\/]");
-	if (hasTrailingSeparator) {
-		pattern += "[\\\\/]";
-	}
-	return pattern;
-}
-
 function escapeRegex(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -262,8 +207,10 @@ function walkFiles(
 	dir: string,
 	visit: (entryPath: string, isDirectory: boolean) => boolean,
 	depth = 0,
+	includeHidden = false,
+	maxSearchDepth = maxDepth,
 ): boolean {
-	if (depth > maxDepth) return true;
+	if (depth > maxSearchDepth) return true;
 	let entries: Deno.DirEntry[];
 	try {
 		entries = [...Deno.readDirSync(dir)];
@@ -276,32 +223,50 @@ function walkFiles(
 		return a.name.localeCompare(b.name);
 	});
 	for (const entry of entries) {
-		if (entry.name === ".git" || entry.name === "node_modules") {
+		if (
+			entry.name === ".git" ||
+			ignoredDirectoryNames.has(entry.name) ||
+			(!includeHidden && isHiddenSegment(entry.name))
+		) {
 			continue;
 		}
 		const entryPath = path.join(dir, entry.name);
 		if (!visit(entryPath, entry.isDirectory)) {
 			return false;
 		}
-		if (entry.isDirectory && !walkFiles(entryPath, visit, depth + 1)) {
+		if (
+			entry.isDirectory &&
+			!walkFiles(entryPath, visit, depth + 1, includeHidden, maxSearchDepth)
+		) {
 			return false;
 		}
 	}
 	return true;
 }
 
-function scoreFile(filePath: string, query: string, isDirectory: boolean): number {
+function scoreFile(filePath: string, query: string): number {
 	const lowerPath = filePath.toLowerCase();
 	const lowerName = path.basename(filePath).toLowerCase();
 	const lowerQuery = query.toLowerCase();
-	let score = 0;
-	if (!lowerQuery) score = 1;
-	else if (lowerName === lowerQuery) score = 100;
-	else if (lowerName.startsWith(lowerQuery)) score = 80;
-	else if (lowerName.includes(lowerQuery)) score = 50;
-	else if (lowerPath.includes(lowerQuery)) score = 30;
-	else if (fuzzyIncludes(lowerPath, lowerQuery)) score = 10;
-	return isDirectory && score > 0 ? score + 10 : score;
+	if (!lowerQuery) return 1;
+	if (lowerName === lowerQuery) return 100;
+	if (lowerName.startsWith(lowerQuery)) return 80;
+	if (lowerName.includes(lowerQuery)) return 50;
+	if (lowerPath.includes(lowerQuery)) return 30;
+	return fuzzyIncludes(lowerPath, lowerQuery) ? 10 : 0;
+}
+
+function pathDepth(filePath: string): number {
+	return filePath.split("/").filter(Boolean).length;
+}
+
+function includesExplicitHiddenSegment(query: string): boolean {
+	const segments = query.replaceAll("\\", "/").split("/");
+	return segments.some(isHiddenSegment) || segments.at(-1) === ".";
+}
+
+function isHiddenSegment(segment: string): boolean {
+	return segment.startsWith(".") && segment !== "." && segment !== "..";
 }
 
 function fuzzyIncludes(haystack: string, needle: string): boolean {

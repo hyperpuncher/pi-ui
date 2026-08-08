@@ -60,6 +60,9 @@ export class ExactRouter<Context> {
 		try {
 			return await handler(request, this.context, url);
 		} catch (error) {
+			if (request.signal.aborted) {
+				return new Response(null, { status: 499 });
+			}
 			if (error instanceof ActionInputError || error instanceof RouteError) {
 				return errorResponse(error.status, error.message);
 			}

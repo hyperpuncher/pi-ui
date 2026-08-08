@@ -60,6 +60,7 @@ export function renderPage(
 		_newSessionPending: false,
 		workspaceDraft: "",
 		_filePickerOpen: false,
+		_fileSearchController: "",
 		_slashPickerOpen: false,
 		_workspaceReviewOpen: false,
 		fileQuery: "",

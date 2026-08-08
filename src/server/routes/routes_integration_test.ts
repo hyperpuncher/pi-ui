@@ -119,6 +119,12 @@ Deno.test("file search uses current workspace and escapes Datastar fragments", a
 		assertStringIncludes(body, 'id="file-picker-results"');
 		assertStringIncludes(body, "&lt;unsafe>.txt");
 		assertStringIncludes(body, "datastar-patch-elements");
+		assertStringIncludes(body, '"_filePickerOpen":true');
+
+		const empty = await router.fetch(
+			signalGet("/files/search", { fileQuery: "definitely-missing" }),
+		);
+		assertStringIncludes(await empty.text(), '"_filePickerOpen":false');
 		assertEquals((await router.fetch(signalGet("/files/search", {}))).status, 400);
 		assertEquals(
 			(

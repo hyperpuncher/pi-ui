@@ -30,40 +30,105 @@ Deno.test("file search preserves scoped ranking and result cap", async () => {
 	);
 });
 
-Deno.test("file search includes recursive fd results", async () => {
+Deno.test("file search excludes hidden paths unless explicitly requested", async () => {
+	const calls: string[][] = [];
+	for (const query of ["config", ".config"]) {
+		await searchFiles("/workspace", query, undefined, (args) => {
+			calls.push(args);
+			return Promise.resolve(output(".config/"));
+		});
+	}
+
+	assertEquals(calls[0].includes("--hidden"), false);
+	assertEquals(calls[1].includes("--hidden"), true);
+	assertEquals(calls[1].at(-1), String.raw`\.config`);
+});
+
+Deno.test("terminal dot includes hidden entries in a scoped directory", async () => {
 	let args: string[] = [];
-	const results = await searchFiles("/workspace", "button", undefined, (next) => {
+	const results = await searchFiles(
+		"/workspace",
+		"dotfiles/pi/.",
+		undefined,
+		(next) => {
+			args = next;
+			return Promise.resolve(output(".pi/"));
+		},
+	);
+
+	assertEquals(args[args.indexOf("--base-directory") + 1], "/workspace/dotfiles/pi");
+	assertEquals(args.includes("--hidden"), true);
+	assertEquals(
+		results.map((item) => item.value),
+		["dotfiles/pi/.pi/"],
+	);
+});
+
+Deno.test("file search scopes trailing directory queries before recursing", async () => {
+	let args: string[] = [];
+	await searchFiles("/workspace", ".dotfiles/", undefined, (next) => {
 		args = next;
-		return Promise.resolve(output("src/components/button.tsx"));
+		return Promise.resolve(output("config/nvim/init.lua"));
 	});
 
-	assertEquals(args.includes("--max-depth"), false);
+	assertEquals(args[args.indexOf("--base-directory") + 1], "/workspace/.dotfiles");
+	assertEquals(args.at(-1), "--hidden");
+});
+
+Deno.test("file search excludes dependency and environment directories", async () => {
+	let args: string[] = [];
+	await searchFiles("/workspace", "package", undefined, (next) => {
+		args = next;
+		return Promise.resolve(output("package.json"));
+	});
+
+	const exclusions = args.flatMap((arg, index) =>
+		arg === "--exclude" ? [args[index + 1]] : [],
+	);
+	assertEquals(exclusions.includes("node_modules"), true);
+	assertEquals(exclusions.includes("__pycache__"), true);
+	assertEquals(exclusions.includes(".venv"), true);
+	assertEquals(exclusions.includes("venv"), true);
+});
+
+Deno.test("file search ranks shallower equal-quality matches first", async () => {
+	const results = await searchFiles("/workspace", "config.ts", undefined, () =>
+		Promise.resolve(output("packages/generated/config.ts\nconfig.ts\nsrc/config.ts")),
+	);
+
+	assertEquals(
+		results.map((item) => item.value),
+		["config.ts", "src/config.ts", "packages/generated/config.ts"],
+	);
+});
+
+Deno.test("file search tries shallow results before bounded recursion", async () => {
+	const calls: string[][] = [];
+	const results = await searchFiles("/workspace", "button", undefined, (args) => {
+		calls.push(args);
+		const depth = args[args.indexOf("--max-depth") + 1];
+		return Promise.resolve(output(depth === "1" ? "" : "src/components/button.tsx"));
+	});
+
+	assertEquals(
+		calls.map((args) => args[args.indexOf("--max-depth") + 1]),
+		["1", "4"],
+	);
+	assertEquals(
+		calls.every((args) => !args.includes("--follow")),
+		true,
+	);
+	assertEquals(
+		calls.every((args) => args.includes("100")),
+		true,
+	);
 	assertEquals(
 		results.map((item) => item.value),
 		["src/components/button.tsx"],
 	);
 });
 
-Deno.test("file search suggests closest sibling entries for an incorrect name", async () => {
-	let calls = 0;
-	const results = await searchFiles(
-		"/workspace",
-		"auth.jsonasdfasdf",
-		undefined,
-		() => {
-			calls += 1;
-			return Promise.resolve(
-				output(calls === 1 ? "" : "auth.py\nauth.json\nbackend-oauth.md"),
-			);
-		},
-	);
-	assertEquals(
-		results.map((item) => item.value),
-		["auth.json", "auth.py", "backend-oauth.md"],
-	);
-});
-
-Deno.test("closest file suggestions stay within the selected directory", async () => {
+Deno.test("file search returns no typo suggestions after recursive miss", async () => {
 	const calls: string[][] = [];
 	const results = await searchFiles(
 		"/workspace",
@@ -71,18 +136,19 @@ Deno.test("closest file suggestions stay within the selected directory", async (
 		undefined,
 		(args) => {
 			calls.push(args);
-			return Promise.resolve(
-				output(calls.length === 1 ? "" : "auth.json\nauth.py"),
-			);
+			return Promise.resolve(output(""));
 		},
 	);
+
+	assertEquals(results, []);
+	assertEquals(calls.length, 2);
 	assertEquals(
 		calls.map((args) => args[args.indexOf("--base-directory") + 1]),
 		["/workspace/src", "/workspace/src"],
 	);
 	assertEquals(
-		results.map((item) => item.value),
-		["src/auth.json", "src/auth.py"],
+		calls.every((args) => args.at(-1) === "auth\\.jsonasdfasdf"),
+		true,
 	);
 });
 
@@ -140,6 +206,33 @@ Deno.test("aborted unsuccessful fd output does not enter manual fallback", async
 		);
 		controller.abort(reason);
 		await assertRejects(() => search, Error, "cancelled unsuccessful command");
+	} finally {
+		await Deno.remove(workspace, { recursive: true });
+	}
+});
+
+Deno.test("manual file search applies explicit hidden path behavior", async () => {
+	const workspace = await Deno.makeTempDir();
+	try {
+		await Deno.mkdir(`${workspace}/.config`);
+		await Deno.mkdir(`${workspace}/node_modules/package`, { recursive: true });
+		await Deno.writeTextFile(`${workspace}/.config/settings.json`, "");
+		await Deno.writeTextFile(`${workspace}/node_modules/package/settings.json`, "");
+		await Deno.writeTextFile(`${workspace}/settings.json`, "");
+		const unavailable = () => Promise.reject(new Deno.errors.NotFound("fd"));
+
+		assertEquals(
+			(await searchFiles(workspace, "settings", undefined, unavailable)).map(
+				(item) => item.value,
+			),
+			["settings.json"],
+		);
+		assertEquals(
+			(
+				await searchFiles(workspace, ".config/settings", undefined, unavailable)
+			).map((item) => item.value),
+			[".config/settings.json"],
+		);
 	} finally {
 		await Deno.remove(workspace, { recursive: true });
 	}
