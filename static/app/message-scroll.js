@@ -1,8 +1,15 @@
 import { collectAddedElementRoots } from "../mutation-roots.js";
 
+const liveEdgeThresholdPx = 8;
 const promptSpacerClearancePx = 48;
 const scrollControlThresholdPx = 48;
-const state = { pinnedToBottom: true };
+const state = {
+	middleScrolling: false,
+	pinnedToBottom: true,
+	pointerScrolling: false,
+	rearmOnBottom: false,
+	scrollTop: 0,
+};
 const bottomScrollTimers = new Set();
 let anchor;
 let historyLoading = false;
@@ -12,9 +19,28 @@ export function bindMessageScroll() {
 		"scroll",
 		(event) => {
 			const messages = document.getElementById("messages");
-			// Ignore captured scroll events from nested tool and code outputs. Scroll
-			// position alone is not intent: streaming layout can also move scrollTop.
+			// Ignore captured scroll events from nested tool and code outputs. Layout
+			// changes alone never re-arm following; reaching the end during an active
+			// downward wheel or scrollbar gesture does.
 			if (!(messages instanceof HTMLElement) || event.target !== messages) return;
+			if (state.middleScrolling && messages.scrollTop < state.scrollTop)
+				markUnpinned();
+			const distance =
+				messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+			if (
+				shouldRearmAfterScroll(
+					state.pinnedToBottom,
+					state.scrollTop,
+					messages.scrollTop,
+					distance,
+					state.middleScrolling ||
+						state.rearmOnBottom ||
+						state.pointerScrolling,
+				)
+			)
+				state.pinnedToBottom = true;
+			state.scrollTop = messages.scrollTop;
+			state.rearmOnBottom = false;
 			updateScrollControl();
 		},
 		true,
@@ -26,21 +52,33 @@ export function bindMessageScroll() {
 		// Native CEF autoscroll can begin outside the transcript's DOM event path,
 		// so middle-button intent is global. Primary presses inside the transcript
 		// cover scrollbar drags, selection, links, and expanding interactive rows.
-		if (
-			event.button === 1 ||
-			(event.button === 0 && isMessageInteraction(event.target))
-		)
+		if (event.button === 1) {
+			state.middleScrolling = true;
 			markUnpinned();
+		} else if (event.button === 0 && isMessageInteraction(event.target)) {
+			state.middleScrolling = false;
+			state.pointerScrolling = true;
+			markUnpinned();
+		}
 	};
 	document.addEventListener("pointerdown", releasePointerScroll, {
 		capture: true,
 		passive: true,
 	});
+	for (const type of ["pointerup", "pointercancel"]) {
+		document.addEventListener(type, () => (state.pointerScrolling = false), {
+			capture: true,
+			passive: true,
+		});
+	}
 	for (const type of ["mousedown", "auxclick"]) {
 		document.addEventListener(
 			type,
 			(event) => {
-				if (event.button === 1) markUnpinned();
+				if (event.button === 1) {
+					state.middleScrolling = true;
+					markUnpinned();
+				}
 			},
 			{
 				capture: true,
@@ -51,7 +89,10 @@ export function bindMessageScroll() {
 	document.addEventListener(
 		"wheel",
 		(event) => {
-			if (event.deltaY < 0 && isMessageInteraction(event.target)) markUnpinned();
+			if (!isMessageInteraction(event.target)) return;
+			state.middleScrolling = false;
+			if (event.deltaY < 0) markUnpinned();
+			else if (event.deltaY > 0) state.rearmOnBottom = true;
 		},
 		{ capture: true, passive: true },
 	);
@@ -99,6 +140,7 @@ export function bindMessageScroll() {
 	hydratePierreDiffs([document]);
 	pinToolOutputs([document]);
 	bindPromptSpacer();
+	bindMessageResize();
 	scrollBottom();
 }
 
@@ -171,11 +213,29 @@ export function retainedAnchorScrollTop(scrollTop, currentOffset, savedOffset) {
 	return scrollTop + currentOffset - savedOffset;
 }
 
+export function shouldRearmAfterScroll(
+	wasPinned,
+	previousTop,
+	scrollTop,
+	distance,
+	hasDownwardIntent,
+) {
+	return (
+		!wasPinned &&
+		hasDownwardIntent &&
+		scrollTop > previousTop &&
+		distance <= liveEdgeThresholdPx
+	);
+}
+
 export function scrollBottom(behavior = "auto") {
 	clearBottomScrollTimers();
 	anchor = undefined;
 	historyLoading = false;
+	state.middleScrolling = false;
 	state.pinnedToBottom = true;
+	state.pointerScrolling = false;
+	state.rearmOnBottom = false;
 	const scroll = () => {
 		const messages = document.getElementById("messages");
 		if (!(messages instanceof HTMLElement) || !state.pinnedToBottom) return;
@@ -197,6 +257,9 @@ export function scrollBottom(behavior = "auto") {
 export function markUnpinned() {
 	clearBottomScrollTimers();
 	state.pinnedToBottom = false;
+	state.rearmOnBottom = false;
+	const messages = document.getElementById("messages");
+	if (messages instanceof HTMLElement) state.scrollTop = messages.scrollTop;
 	updateScrollControl();
 }
 
@@ -221,6 +284,22 @@ function isUpwardScrollKey(event) {
 		event.key === "Home" ||
 		(event.key === " " && event.shiftKey)
 	);
+}
+
+function bindMessageResize() {
+	const stack = document.querySelector("#messages > .messages-stack");
+	if (!(stack instanceof HTMLElement)) return;
+	let frame;
+	new ResizeObserver(() => {
+		if (frame) return;
+		frame = requestAnimationFrame(() => {
+			frame = undefined;
+			const messages = document.getElementById("messages");
+			if (messages instanceof HTMLElement && state.pinnedToBottom)
+				messages.scrollTop = messages.scrollHeight;
+			updateScrollControl();
+		});
+	}).observe(stack);
 }
 
 function bindPromptSpacer() {
