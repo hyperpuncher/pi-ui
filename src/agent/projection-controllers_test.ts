@@ -344,6 +344,20 @@ function sessionInfo(
 	};
 }
 
+Deno.test("session catalog updates a streaming session incrementally", () => {
+	const state = new AppStore();
+	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const empty = sessionInfo("/session", "Untitled session");
+	empty.messageCount = 0;
+	catalog.applyPrepared({ ok: true, sessions: [empty] });
+
+	catalog.messageStarted("/session", "A newly submitted prompt");
+	catalog.touch("/session");
+
+	assertEquals(state.sessions[0]?.title, "A newly submitted prompt");
+	assertEquals(state.sessions[0]?.subtitle, "1 message");
+});
+
 Deno.test("session catalog keeps every recent workspace", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);

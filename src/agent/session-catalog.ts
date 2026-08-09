@@ -28,6 +28,7 @@ const HOME_RECENT_SESSION_LIMIT = 3;
 
 export class SessionCatalog {
 	private refreshGeneration = 0;
+	private readonly pathRefreshGenerations = new Map<string, number>();
 
 	constructor(
 		private readonly state: AppStore,
@@ -86,6 +87,50 @@ export class SessionCatalog {
 
 	mergeCurrentStatuses(): void {
 		this.state.setSessionCatalog(this.mergeStatuses(this.state.getSessionCatalog()));
+	}
+
+	messageStarted(path: string, firstUserMessage?: string): void {
+		this.state.updateSessionSummary(path, (session) => {
+			const count = sessionMessageCount(session.subtitle) + 1;
+			const title =
+				count === 1 && firstUserMessage?.trim()
+					? truncate(firstUserMessage.trim(), 96)
+					: session.title;
+			return {
+				...session,
+				title,
+				subtitle: `${count} message${count === 1 ? "" : "s"}`,
+				modified: formatDateTime(new Date()),
+			};
+		});
+	}
+
+	touch(path: string): void {
+		this.state.updateSessionSummary(path, (session) => ({
+			...session,
+			modified: formatDateTime(new Date()),
+		}));
+	}
+
+	async refreshPath(path: string): Promise<void> {
+		const generation = (this.pathRefreshGenerations.get(path) ?? 0) + 1;
+		this.pathRefreshGenerations.set(path, generation);
+		let candidate: RecentCandidate;
+		try {
+			const info = await Deno.stat(path);
+			candidate = { path, modified: info.mtime ?? new Date() };
+		} catch (error) {
+			if (!(error instanceof Deno.errors.NotFound)) return;
+			if (this.pathRefreshGenerations.get(path) !== generation) return;
+			this.state.removeSession(path);
+			return;
+		}
+		const info = openSessionInfo(candidate);
+		if (!info || this.pathRefreshGenerations.get(path) !== generation) return;
+		const summary = this.mergeStatuses([formatSessionSummary(info)])[0];
+		if (!summary) return;
+		if (this.state.updateSessionSummary(path, () => summary)) return;
+		this.state.setSessionCatalog([summary, ...this.state.getSessionCatalog()]);
 	}
 
 	private apply(sessions: SessionInfo[], options: SessionCatalogOptions = {}): void {
@@ -230,6 +275,11 @@ export function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 		subtitle: messageLabel,
 		modified: formatDateTime(info.modified),
 	};
+}
+
+function sessionMessageCount(subtitle: string): number {
+	const count = Number.parseInt(subtitle, 10);
+	return Number.isFinite(count) ? count : 0;
 }
 
 function truncate(value: string, maxLength: number): string {

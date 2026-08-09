@@ -33,6 +33,10 @@ import {
 import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "./cache-miss.ts";
 import { ModelController, resolveScopedModels } from "./model-controller.ts";
+import {
+	type SessionCatalogWatch,
+	watchSessionCatalog,
+} from "./session-catalog-watcher.ts";
 import { type PreparedSessionList, SessionCatalog } from "./session-catalog.ts";
 import {
 	reduceSessionEvent,
@@ -73,6 +77,7 @@ export type RuntimeControllerDependencies = Readonly<{
 	openSessionManager: typeof SessionManager.open;
 	moveToTrash: typeof moveToTrash;
 	getAgentDir: typeof getAgentDir;
+	watchSessionCatalog?: SessionCatalogWatch;
 }>;
 
 const runtimeControllerDependencies: RuntimeControllerDependencies = {
@@ -85,6 +90,7 @@ const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	openSessionManager: SessionManager.open,
 	moveToTrash,
 	getAgentDir,
+	watchSessionCatalog,
 };
 
 export type RuntimeControllerActivationOptions = {
@@ -123,6 +129,16 @@ export class RuntimeController {
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
 	private fullCatalogLoad: Promise<void> | undefined;
+	private readonly sessionTouchTimers = new Map<
+		string,
+		ReturnType<typeof setTimeout>
+	>();
+	private readonly sessionTouchTimes = new Map<string, number>();
+	private readonly sessionFileRefreshTimers = new Map<
+		string,
+		ReturnType<typeof setTimeout>
+	>();
+	private stopSessionCatalogWatch: (() => void) | undefined;
 	private readonly dependencies: RuntimeControllerDependencies;
 
 	private constructor(
@@ -240,6 +256,10 @@ export class RuntimeController {
 	activate(): void {
 		this.bindSessionState({ syncSessions: false });
 		this.initialCatalogLoad = this.loadInitialCatalog();
+		this.stopSessionCatalogWatch = this.dependencies.watchSessionCatalog?.(
+			this.dependencies.getAgentDir(),
+			(path) => this.scheduleSessionFileRefresh(path),
+		);
 	}
 
 	async prompt(
@@ -816,6 +836,13 @@ export class RuntimeController {
 	private async disposeOwnedRuntimes(): Promise<void> {
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
+		this.stopSessionCatalogWatch?.();
+		this.stopSessionCatalogWatch = undefined;
+		for (const timer of this.sessionTouchTimers.values()) clearTimeout(timer);
+		for (const timer of this.sessionFileRefreshTimers.values()) clearTimeout(timer);
+		this.sessionTouchTimers.clear();
+		this.sessionTouchTimes.clear();
+		this.sessionFileRefreshTimers.clear();
 		this.auth.dispose();
 		this.usage.dispose();
 		const runtimes = [this.runtime];
@@ -1098,6 +1125,7 @@ export class RuntimeController {
 					backgroundSession.state,
 				),
 		);
+		this.updateSessionCatalogFromEvent(event, backgroundSession.runtime);
 		if (event.type === "queue_update") {
 			this.syncRuntimeQueuedMessages(backgroundSession.runtime);
 		}
@@ -1271,9 +1299,73 @@ export class RuntimeController {
 	}
 
 	private async refreshSessions(): Promise<void> {
+		await this.initialCatalogLoad;
 		await this.catalog.refresh(this.dependencies.refreshSessions, {
 			showLoading: false,
 		});
+	}
+
+	private updateSessionCatalogFromEvent(
+		event: AgentSessionEvent,
+		runtime: AgentSessionRuntime,
+	): void {
+		const path = runtime.session.sessionManager.getSessionFile();
+		if (!path) return;
+		if (event.type === "message_start") {
+			this.catalog.messageStarted(
+				path,
+				event.message.role === "user"
+					? sessionEventMessageText(event.message.content)
+					: undefined,
+			);
+			return;
+		}
+		if (event.type === "message_end") {
+			this.flushSessionTouch(path);
+			void this.catalog.refreshPath(path);
+			return;
+		}
+		if (
+			event.type === "message_update" ||
+			event.type === "tool_execution_start" ||
+			event.type === "tool_execution_update" ||
+			event.type === "tool_execution_end"
+		) {
+			this.scheduleSessionTouch(path);
+		}
+	}
+
+	private scheduleSessionTouch(path: string): void {
+		const elapsed = Date.now() - (this.sessionTouchTimes.get(path) ?? 0);
+		if (elapsed >= 1_000) {
+			this.flushSessionTouch(path);
+			return;
+		}
+		if (this.sessionTouchTimers.has(path)) return;
+		this.sessionTouchTimers.set(
+			path,
+			setTimeout(() => this.flushSessionTouch(path), 1_000 - elapsed),
+		);
+	}
+
+	private flushSessionTouch(path: string): void {
+		const timer = this.sessionTouchTimers.get(path);
+		if (timer) clearTimeout(timer);
+		this.sessionTouchTimers.delete(path);
+		this.sessionTouchTimes.set(path, Date.now());
+		this.catalog.touch(path);
+	}
+
+	private scheduleSessionFileRefresh(path: string): void {
+		const pending = this.sessionFileRefreshTimers.get(path);
+		if (pending) clearTimeout(pending);
+		this.sessionFileRefreshTimers.set(
+			path,
+			setTimeout(() => {
+				this.sessionFileRefreshTimers.delete(path);
+				void this.catalog.refreshPath(path);
+			}, 200),
+		);
 	}
 
 	private syncBackgroundStatuses(): void {
@@ -1324,6 +1416,7 @@ export class RuntimeController {
 					() => this.loadCurrentSessionMessages(),
 					() => this.syncUsage(),
 				);
+				this.updateSessionCatalogFromEvent(event, this.runtime);
 				if (outcome.agentCompleted) {
 					this.syncUsage();
 					this.refreshCodexUsage(true);
@@ -1493,4 +1586,21 @@ export class RuntimeController {
 	): void {
 		this.transcript.load(runtime, state);
 	}
+}
+
+function sessionEventMessageText(content: unknown): string {
+	if (typeof content === "string") return content;
+	if (!Array.isArray(content)) return "";
+	return content
+		.flatMap((block) =>
+			typeof block === "object" &&
+			block !== null &&
+			"type" in block &&
+			block.type === "text" &&
+			"text" in block &&
+			typeof block.text === "string"
+				? [block.text]
+				: [],
+		)
+		.join(" ");
 }

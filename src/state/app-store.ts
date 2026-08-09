@@ -109,6 +109,7 @@ export interface AppStorePresentation {
 	messageUpdated(id: string): void;
 	streamingMessageStarted(id: string): void;
 	streamingMessageChanged(): void;
+	sessionsChanged(): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
 	transcriptReplacing(): void;
 	transcriptReplaced(
@@ -410,6 +411,22 @@ export class AppStore {
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
 		return this.sessionIndex ?? this.sessions;
+	}
+	updateSessionSummary(
+		path: string,
+		update: (session: AppSessionSummary) => AppSessionSummary,
+	): boolean {
+		const catalog = this.getSessionCatalog();
+		const session = catalog.find((candidate) => candidate.path === path);
+		if (!session) return false;
+		const sessions = [
+			update(session),
+			...catalog.filter((candidate) => candidate.path !== path),
+		];
+		this.sessionIndex = sessions;
+		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.presentation?.sessionsChanged();
+		return true;
 	}
 	searchSessions(query: string): AppSessionSummary[] {
 		const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);

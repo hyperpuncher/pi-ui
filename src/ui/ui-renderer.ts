@@ -45,6 +45,7 @@ export class UiRenderer implements AppStorePresentation {
 	private pickerHtml: string | undefined;
 	private readonly sessionHub = new DatastarClientHub(undefined, false);
 	private sessionPickerHtml: string | undefined;
+	private sessionCommitScheduled = false;
 
 	constructor(
 		private readonly store: AppStore,
@@ -130,7 +131,7 @@ export class UiRenderer implements AppStorePresentation {
 			);
 		}
 		if (this.sessionHub.clientCount > 0) {
-			const elements = renderSessionPickerContent(this.store.snapshot());
+			const elements = renderSessionPickerContent(snapshot);
 			if (elements !== this.sessionPickerHtml) {
 				this.sessionPickerHtml = elements;
 				this.sessionHub.patchElement(elements, "#session-menu-content");
@@ -158,6 +159,18 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	streamingMessageChanged(): void {
 		this.messages.streamingMessageChanged();
+	}
+	sessionsChanged(): void {
+		if (this.sessionCommitScheduled) return;
+		this.sessionCommitScheduled = true;
+		queueMicrotask(() => {
+			this.sessionCommitScheduled = false;
+			if (this.sessionHub.clientCount === 0) return;
+			const elements = renderSessionPickerContent(this.store.snapshot());
+			if (elements === this.sessionPickerHtml) return;
+			this.sessionPickerHtml = elements;
+			this.sessionHub.patchElement(elements, "#session-menu-content");
+		});
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
 		this.messages.assistantFinished(ids);
