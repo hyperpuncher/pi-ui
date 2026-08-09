@@ -1,8 +1,8 @@
 import { collectAddedElementRoots } from "../mutation-roots.js";
 
-const bottomThresholdPx = 120;
-const scrollDirectionTolerancePx = 1;
-const state = { pinnedToBottom: true, scrollTop: 0 };
+const scrollControlThresholdPx = 48;
+const state = { pinnedToBottom: true };
+const bottomScrollTimers = new Set();
 let anchor;
 let historyLoading = false;
 
@@ -11,18 +11,61 @@ export function bindMessageScroll() {
 		"scroll",
 		(event) => {
 			const messages = document.getElementById("messages");
-			// Ignore captured scroll events from nested tool and code outputs.
+			// Ignore captured scroll events from nested tool and code outputs. Scroll
+			// position alone is not intent: streaming layout can also move scrollTop.
 			if (!(messages instanceof HTMLElement) || event.target !== messages) return;
-			const distance =
-				messages.scrollHeight - messages.scrollTop - messages.clientHeight;
-			state.pinnedToBottom = pinnedAfterScroll(
-				state.pinnedToBottom,
-				state.scrollTop,
-				messages.scrollTop,
-				distance,
-			);
-			state.scrollTop = messages.scrollTop;
 			updateScrollControl();
+		},
+		true,
+	);
+
+	// Release follow mode from explicit reader interactions, never from scroll
+	// position changes alone: streamed tables, code, and other blocks can resize.
+	const releasePointerScroll = (event) => {
+		// Native CEF autoscroll can begin outside the transcript's DOM event path,
+		// so middle-button intent is global. Primary presses inside the transcript
+		// cover scrollbar drags, selection, links, and expanding interactive rows.
+		if (
+			event.button === 1 ||
+			(event.button === 0 && isMessageInteraction(event.target))
+		)
+			markUnpinned();
+	};
+	document.addEventListener("pointerdown", releasePointerScroll, {
+		capture: true,
+		passive: true,
+	});
+	for (const type of ["mousedown", "auxclick"]) {
+		document.addEventListener(
+			type,
+			(event) => {
+				if (event.button === 1) markUnpinned();
+			},
+			{
+				capture: true,
+				passive: true,
+			},
+		);
+	}
+	document.addEventListener(
+		"wheel",
+		(event) => {
+			if (event.deltaY < 0 && isMessageInteraction(event.target)) markUnpinned();
+		},
+		{ capture: true, passive: true },
+	);
+	document.addEventListener(
+		"touchmove",
+		(event) => {
+			if (isMessageInteraction(event.target)) markUnpinned();
+		},
+		{ capture: true, passive: true },
+	);
+	document.addEventListener(
+		"keydown",
+		(event) => {
+			if (isUpwardScrollKey(event) && isMessageInteraction(event.target))
+				markUnpinned();
 		},
 		true,
 	);
@@ -40,7 +83,6 @@ export function bindMessageScroll() {
 			const messages = document.getElementById("messages");
 			if (messages instanceof HTMLElement && state.pinnedToBottom) {
 				messages.scrollTop = messages.scrollHeight;
-				state.scrollTop = messages.scrollTop;
 			}
 			updateScrollControl();
 		});
@@ -66,8 +108,8 @@ export function captureAnchor() {
 		(message) => message.getBoundingClientRect().bottom > viewportTop,
 	);
 	historyLoading = true;
-	state.pinnedToBottom = false;
 	anchor = {
+		pinnedToBottom: state.pinnedToBottom,
 		messageId: visibleMessage?.getAttribute("data-message-id"),
 		offset: visibleMessage
 			? visibleMessage.getBoundingClientRect().top - viewportTop
@@ -84,6 +126,10 @@ export function restoreAnchor() {
 	anchor = undefined;
 	historyLoading = false;
 	if (!saved) return;
+	if (saved.pinnedToBottom) {
+		scrollBottom();
+		return;
+	}
 
 	// Restore against a retained DOM node rather than estimating from scrollHeight.
 	// Datastar morphs and deferred message rendering can both change unrelated heights.
@@ -122,33 +168,56 @@ export function retainedAnchorScrollTop(scrollTop, currentOffset, savedOffset) {
 	return scrollTop + currentOffset - savedOffset;
 }
 
-export function pinnedAfterScroll(wasPinned, previousTop, scrollTop, distance) {
-	if (distance < bottomThresholdPx) return true;
-	// A queued programmatic scroll event can run after streaming content has made
-	// scrollHeight grow. Only upward movement is evidence that the user unpinned.
-	return wasPinned && scrollTop >= previousTop - scrollDirectionTolerancePx;
-}
-
 export function scrollBottom(behavior = "auto") {
+	clearBottomScrollTimers();
 	anchor = undefined;
 	historyLoading = false;
 	state.pinnedToBottom = true;
 	const scroll = () => {
 		const messages = document.getElementById("messages");
-		if (!(messages instanceof HTMLElement)) return;
+		if (!(messages instanceof HTMLElement) || !state.pinnedToBottom) return;
 		messages.scrollTo({ top: messages.scrollHeight, behavior });
-		state.scrollTop = messages.scrollTop;
 		updateScrollControl();
 	};
 	scroll();
 	if (behavior === "auto") {
-		for (const delay of [16, 80, 180]) setTimeout(scroll, delay);
+		for (const delay of [16, 80, 180]) {
+			const timer = setTimeout(() => {
+				bottomScrollTimers.delete(timer);
+				scroll();
+			}, delay);
+			bottomScrollTimers.add(timer);
+		}
 	}
 }
 
 export function markUnpinned() {
+	clearBottomScrollTimers();
 	state.pinnedToBottom = false;
 	updateScrollControl();
+}
+
+function clearBottomScrollTimers() {
+	for (const timer of bottomScrollTimers) clearTimeout(timer);
+	bottomScrollTimers.clear();
+}
+
+function isMessageInteraction(target) {
+	const messages = document.getElementById("messages");
+	return (
+		messages instanceof HTMLElement &&
+		target instanceof Node &&
+		messages.contains(target)
+	);
+}
+
+function isUpwardScrollKey(event) {
+	return (
+		event.key === "ArrowUp" ||
+		event.key === "PageUp" ||
+		event.key === "Home" ||
+		(event.key === " " && event.shiftKey)
+	);
 }
 
 function updateScrollControl() {
@@ -157,7 +226,7 @@ function updateScrollControl() {
 	if (!(messages instanceof HTMLElement) || !(button instanceof HTMLButtonElement))
 		return;
 	const distance = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
-	const active = !state.pinnedToBottom && distance >= bottomThresholdPx;
+	const active = !state.pinnedToBottom && distance >= scrollControlThresholdPx;
 	button.hidden = !active;
 	button.inert = !active;
 	button.tabIndex = active ? 0 : -1;

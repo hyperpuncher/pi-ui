@@ -6,7 +6,6 @@ const stepDurationMs = 120;
 const frameMs = 1000 / 144;
 let animation;
 let target;
-let targetPosition;
 let lastFrame = 0;
 let direction = 0;
 let keyHeld = false;
@@ -63,7 +62,6 @@ function scrollBy(amount) {
 		cancelAnimationFrame(animation);
 		animation = undefined;
 		target = undefined;
-		targetPosition = undefined;
 	}
 	const nextDirection = Math.sign(amount);
 	if (!animation || direction !== nextDirection) {
@@ -82,10 +80,16 @@ function scrollTo(position) {
 	if (!(messages instanceof HTMLElement)) return;
 	direction = 0;
 	keyHeld = false;
-	targetPosition = position;
-	target = position === "top" ? 0 : messages.scrollHeight - messages.clientHeight;
+	if (position === "bottom") {
+		if (animation) cancelAnimationFrame(animation);
+		animation = undefined;
+		target = undefined;
+		scrollBottom("smooth");
+		return;
+	}
+	target = 0;
 	startTargetScroll();
-	if (position === "top") markUnpinned();
+	markUnpinned();
 }
 
 function startLineScroll() {
@@ -143,15 +147,9 @@ function startTargetScroll() {
 		lastFrame = now;
 		elapsedTotal += elapsed;
 		const progress = Math.min(1, elapsedTotal / duration);
-		const currentTarget =
-			targetPosition === "bottom"
-				? current.scrollHeight - current.clientHeight
-				: fixedTarget;
-		current.scrollTop = start + (currentTarget - start) * progress;
+		current.scrollTop = start + (fixedTarget - start) * progress;
 		if (progress >= 1) {
-			if (targetPosition === "bottom") scrollBottom();
 			target = undefined;
-			targetPosition = undefined;
 			animation = undefined;
 			return;
 		}
