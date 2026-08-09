@@ -324,7 +324,7 @@ export function renderPage(
 					})`}
 					onclick="if (event.target === this) this.close()"
 				>
-					<div class="command sm:max-w-2xl" data-filter="manual">
+					<div class="command sm:max-w-2xl">
 						<header>
 							<input
 								id="session-input"
@@ -339,7 +339,11 @@ export function renderPage(
 								aria-controls="session-menu"
 								data-bind:session-search=""
 								attrs={{
-									"data-on:input__debounce.150ms": `@get('${endpoints.sessionsSearch}', { filterSignals: { include: /^sessionSearch$/ } })`,
+									"data-on:input__debounce.100ms": `$sessionSearch.trim().length !== 1 &&
+										@get('${endpoints.sessionsSearch}', {
+											filterSignals: { include: /^sessionSearch$/ },
+											requestCancellation: 'cleanup',
+										})`,
 								}}
 								autofocus
 							/>

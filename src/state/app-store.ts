@@ -414,11 +414,13 @@ export class AppStore {
 	searchSessions(query: string): AppSessionSummary[] {
 		const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
 		if (terms.length === 0) return [...this.sessions];
-		return this.getSessionCatalog().filter((session) => {
-			const haystack =
-				`${session.title} ${session.subtitle} ${session.cwd} ${session.path}`.toLowerCase();
-			return terms.every((term) => haystack.includes(term));
-		});
+		return this.getSessionCatalog()
+			.filter((session) => {
+				const haystack =
+					`${session.title} ${session.subtitle} ${session.cwd} ${session.path}`.toLowerCase();
+				return terms.every((term) => haystack.includes(term));
+			})
+			.slice(0, SESSION_PICKER_RECENT_LIMIT);
 	}
 	removeSession(path: string): void {
 		this.setSessionCatalog(

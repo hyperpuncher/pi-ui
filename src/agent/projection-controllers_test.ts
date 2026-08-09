@@ -377,6 +377,7 @@ Deno.test("session catalog keeps recent rows small while searching every session
 		state.searchSessions("Session 50").map((session) => session.path),
 		["/session-50"],
 	);
+	assertEquals(state.searchSessions("Session").length, 50);
 });
 
 Deno.test("session summaries keep workspace and message metadata separate", () => {
