@@ -156,6 +156,7 @@ Deno.test("empty messages center within the padded chat area", () => {
 	assertStringIncludes(html, "messages-stack mx-auto min-h-full");
 	assertStringIncludes(html, "grid flex-1 place-items-center");
 	assertStringIncludes(html, "pt-8 pb-32");
+	assertEquals(html.includes("messages-prompt-spacer"), false);
 	assertEquals(html.includes("100vh"), false);
 	const populated = renderMessages(
 		[
@@ -170,7 +171,8 @@ Deno.test("empty messages center within the padded chat area", () => {
 		],
 		{ description: "Send", keys: "enter" },
 	);
-	assertStringIncludes(populated, "pt-24 pb-48");
+	assertStringIncludes(populated, "pt-24");
+	assertStringIncludes(populated, 'id="messages-prompt-spacer"');
 });
 
 Deno.test("recent session loading reserves exactly three rows", () => {

@@ -146,7 +146,7 @@ export function renderPromptQueue(state: AppRenderSnapshot): string {
 	return (
 		<div
 			id="prompt-queue"
-			class="pointer-events-none absolute bottom-full left-1/2 flex w-[calc(100%-2rem)] -translate-x-1/2 flex-col items-center sm:w-[calc(100%-4rem)]"
+			class="pointer-events-none mx-auto flex w-[calc(100%-2rem)] flex-col items-center sm:w-[calc(100%-4rem)]"
 			aria-live="polite"
 		>
 			{renderLatestButton()}

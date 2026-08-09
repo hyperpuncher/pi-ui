@@ -1,5 +1,6 @@
 import { collectAddedElementRoots } from "../mutation-roots.js";
 
+const promptSpacerClearancePx = 48;
 const scrollControlThresholdPx = 48;
 const state = { pinnedToBottom: true };
 const bottomScrollTimers = new Set();
@@ -80,6 +81,7 @@ export function bindMessageScroll() {
 			hydratePierreDiffs(affectedRoots);
 			pinToolOutputs(affectedRoots);
 			affectedRoots.clear();
+			updatePromptSpacer();
 			const messages = document.getElementById("messages");
 			if (messages instanceof HTMLElement && state.pinnedToBottom) {
 				messages.scrollTop = messages.scrollHeight;
@@ -96,6 +98,7 @@ export function bindMessageScroll() {
 		});
 	hydratePierreDiffs([document]);
 	pinToolOutputs([document]);
+	bindPromptSpacer();
 	scrollBottom();
 }
 
@@ -218,6 +221,27 @@ function isUpwardScrollKey(event) {
 		event.key === "Home" ||
 		(event.key === " " && event.shiftKey)
 	);
+}
+
+function bindPromptSpacer() {
+	const prompt = document.getElementById("prompt-box");
+	if (!(prompt instanceof HTMLElement)) return;
+	const sync = () => {
+		updatePromptSpacer();
+		const messages = document.getElementById("messages");
+		if (messages instanceof HTMLElement && state.pinnedToBottom)
+			messages.scrollTop = messages.scrollHeight;
+		updateScrollControl();
+	};
+	new ResizeObserver(sync).observe(prompt);
+	sync();
+}
+
+function updatePromptSpacer() {
+	const prompt = document.getElementById("prompt-box");
+	const spacer = document.getElementById("messages-prompt-spacer");
+	if (!(prompt instanceof HTMLElement) || !(spacer instanceof HTMLElement)) return;
+	spacer.style.height = `${prompt.offsetHeight + promptSpacerClearancePx}px`;
 }
 
 function updateScrollControl() {
