@@ -93,8 +93,10 @@ Deno.test("current running session is live but does not resume itself", () => {
 	} as unknown as AppRenderSnapshot);
 
 	assertStringIncludes(html, 'aria-current="true"');
-	assertStringIncludes(html, "data-current-session-indicator");
+	assertStringIncludes(html, 'class="group block! bg-foreground! text-background!"');
+	assertFalse(html.includes("data-current-session-indicator"));
 	assertStringIncludes(html, 'data-background-status="running"');
+	assertStringIncludes(html, 'class="size-3 text-destructive!"');
 	assertStringIncludes(html, "@post('/abort'");
 	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
 	assertFalse(html.includes('disabled=""'));

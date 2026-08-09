@@ -4,7 +4,7 @@ import { formatHomePath } from "../utils/workspace.ts";
 
 export function SessionSubtitle(props: {
 	session: AppSessionSummary;
-	class: string;
+	class: string | Array<string | false | undefined>;
 }): string {
 	const workspace = formatHomePath(props.session.cwd);
 	const faviconUrl = `${endpoints.sessionsFavicon}?cwd=${encodeURIComponent(props.session.cwd)}`;

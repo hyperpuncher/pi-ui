@@ -25,7 +25,6 @@ function captureOpenSessionCommand(component) {
 	if (!(input instanceof HTMLInputElement) || !(menu instanceof HTMLElement)) return;
 	return {
 		activeId: input.getAttribute("aria-activedescendant"),
-		scrollTop: menu.scrollTop,
 	};
 }
 
@@ -41,7 +40,7 @@ function restoreOpenSessionCommand(component, state) {
 	) {
 		active.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
 	}
-	if (menu instanceof HTMLElement) menu.scrollTop = state.scrollTop;
+	if (menu instanceof HTMLElement) menu.scrollTop = 0;
 }
 
 function componentsIn(root) {

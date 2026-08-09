@@ -1,15 +1,7 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
-import { Icon } from "./icon.tsx";
+import { Icon, StopIcon } from "./icon.tsx";
 import { ShortcutTooltip } from "./keyboard.tsx";
-
-function StopIcon() {
-	return (
-		<Icon>
-			<rect width="18" height="18" x="3" y="3" rx="2" fill="currentColor" />
-		</Icon>
-	);
-}
 
 function SendIcon() {
 	return (

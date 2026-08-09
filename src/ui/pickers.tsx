@@ -7,6 +7,7 @@ import type {
 	AppSlashCommand,
 } from "../state/app-store.ts";
 import { formatHomePath } from "../utils/workspace.ts";
+import { StopIcon } from "./icon.tsx";
 import {
 	PickerEmpty,
 	PickerList,
@@ -210,7 +211,7 @@ export function renderSessionPicker(state: AppRenderSnapshot): string {
 		<div
 			role="menu"
 			id="session-menu"
-			class="mt-1"
+			class="mt-1 max-h-96!"
 			aria-orientation="vertical"
 			data-empty="No matching sessions."
 			data-signals:background-session-path__ifmissing="''"
@@ -227,14 +228,7 @@ type SessionPickerState = Pick<
 
 export function renderSessionPickerContent(state: SessionPickerState): string {
 	return (
-		<div
-			id="session-menu-content"
-			role="group"
-			aria-labelledby="session-menu-heading"
-		>
-			<span role="heading" id="session-menu-heading">
-				Recent sessions
-			</span>
+		<div id="session-menu-content" class="px-1">
 			{state.sessions.map((session) => {
 				const current = session.path === state.currentSessionPath;
 				return renderSessionRow(
@@ -263,7 +257,7 @@ function renderSessionRow(
 			id={sessionRowId(session.path)}
 			role="menuitem"
 			tabindex="-1"
-			class="group items-start! gap-2"
+			class={["group block!", current && "bg-foreground! text-background!"]}
 			aria-current={current ? "true" : undefined}
 			data-keep-command-open
 			data-session-row
@@ -277,49 +271,66 @@ function renderSessionRow(
 					: resumeSessionAction(session.path, { closeDialog: true })
 			}
 		>
-			<span class="min-w-0 flex-1">
-				<span class="flex min-w-0 items-center gap-2">
-					{current && (
-						<span
-							class="size-1.5 shrink-0 rounded-full bg-primary"
-							data-current-session-indicator
-							aria-hidden="true"
-						></span>
-					)}
-					<span class="block min-w-0 truncate" safe>
-						{session.title}
-					</span>
+			<span class="flex items-center gap-2">
+				<span class="min-w-0 flex-1 truncate font-medium" safe>
+					{session.title}
 				</span>
-				<SessionSubtitle
-					session={session}
-					class="mt-1 line-clamp-2 text-xs text-muted-foreground"
-				/>
-			</span>
-			<span class="mt-0.5 flex w-32 shrink-0 flex-col items-end gap-1 font-mono whitespace-nowrap">
-				<span data-shortcut safe>
+				<span
+					class={[
+						"shrink-0 font-mono whitespace-nowrap",
+						current && "text-background/65",
+					]}
+					data-shortcut
+					safe
+				>
 					{session.modified}
 				</span>
-				{displayStatus === "running" && (
-					<span
-						class="text-[0.6875rem] font-medium text-foreground"
-						aria-label={
+				{displayStatus === "running" ? (
+					<button
+						type="button"
+						class="btn shrink-0"
+						data-variant="destructive"
+						data-size="icon-xs"
+						aria-label={`Abort ${current ? "current" : "background"} session ${session.title}`}
+						data-on:click={
 							current
-								? "Current session running"
-								: "Background session running"
+								? `
+						evt.stopPropagation();
+						@post('${endpoints.abort}', { filterSignals: { include: /^$/ } });
+						`
+								: `
+						evt.stopPropagation();
+						$backgroundSessionPath = ${JSON.stringify(session.path)};
+						@post('${endpoints.sessionsBackgroundAbort}', {
+						filterSignals: { include: /^backgroundSessionPath$/ },
+						});
+						`
 						}
-						data-background-status="running"
 					>
-						Running
-					</span>
-				)}
-				{displayStatus === "completed" && (
-					<span
-						class="flex items-center gap-1 text-[0.6875rem] text-muted-foreground"
-						aria-label="Background session completed"
-						data-background-status="completed"
+						<StopIcon class="size-3 text-destructive!" />
+					</button>
+				) : (
+					<button
+						type="button"
+						class="btn shrink-0 opacity-35 group-[.active]:opacity-100 hover:opacity-100 focus-visible:opacity-100 disabled:invisible"
+						data-variant="ghost"
+						data-attr:data-variant={`$sessionDeleteHover === ${JSON.stringify(session.path)} ? 'destructive' : 'ghost'`}
+						data-size="icon-xs"
+						aria-label="Delete session"
+						data-on:mouseenter={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}
+						data-on:mouseleave="$sessionDeleteHover = ''"
+						data-on:focus={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}
+						data-on:blur="$sessionDeleteHover = ''"
+						data-on:click={`
+							evt.stopPropagation();
+							$sessionDeletePath = ${JSON.stringify(session.path)};
+							$sessionDeleteTitle = ${JSON.stringify(session.title)};
+							document.getElementById('session-delete-dialog')?.showModal();
+						`}
 					>
 						<svg
-							class="size-3"
+							xmlns="http://www.w3.org/2000/svg"
+							class="text-current!"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -328,81 +339,49 @@ function renderSessionRow(
 							stroke-linejoin="round"
 							aria-hidden="true"
 						>
-							<path d="m5 12 4 4L19 6" />
+							<path d="M10 11v6" />
+							<path d="M14 11v6" />
+							<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+							<path d="M3 6h18" />
+							<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
 						</svg>
-						Completed
-					</span>
+					</button>
 				)}
 			</span>
-			{displayStatus === "running" && (
-				<button
-					type="button"
-					class="btn shrink-0 leading-none"
-					data-variant="destructive"
-					data-size="icon-xs"
-					aria-label={`Abort ${current ? "current" : "background"} session ${session.title}`}
-					data-on:click={
-						current
-							? `
-					evt.stopPropagation();
-					@post('${endpoints.abort}', { filterSignals: { include: /^$/ } });
-					`
-							: `
-					evt.stopPropagation();
-					$backgroundSessionPath = ${JSON.stringify(session.path)};
-					@post('${endpoints.sessionsBackgroundAbort}', {
-					filterSignals: { include: /^backgroundSessionPath$/ },
-					});
-					`
-					}
-				>
-					<svg
-						class="size-3 fill-destructive! text-destructive!"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
+			<span class="flex items-center gap-2">
+				<SessionSubtitle
+					session={session}
+					class={[
+						"min-w-0 flex-1 text-xs",
+						current ? "text-background/65" : "text-muted-foreground",
+					]}
+				/>
+				{displayStatus === "running" && (
+					<span
+						class="badge"
+						data-variant="secondary"
+						aria-label={
+							current
+								? "Current session running"
+								: "Background session running"
+						}
+						data-background-status="running"
 					>
-						<rect x="3" y="3" width="18" height="18" rx="2" />
-					</svg>
-				</button>
-			)}
-			{displayStatus !== "running" && (
-				<button
-					type="button"
-					class="btn shrink-0 opacity-35 group-[.active]:opacity-100 hover:opacity-100 focus-visible:opacity-100 disabled:invisible"
-					data-variant="ghost"
-					data-attr:data-variant={`$sessionDeleteHover === ${JSON.stringify(session.path)} ? 'destructive' : 'ghost'`}
-					data-size="icon-xs"
-					aria-label="Delete session"
-					data-on:mouseenter={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}
-					data-on:mouseleave="$sessionDeleteHover = ''"
-					data-on:focus={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}
-					data-on:blur="$sessionDeleteHover = ''"
-					data-on:click={`
-						evt.stopPropagation();
-						$sessionDeletePath = ${JSON.stringify(session.path)};
-						$sessionDeleteTitle = ${JSON.stringify(session.title)};
-						document.getElementById('session-delete-dialog')?.showModal();
-					`}
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="text-current!"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
+						running
+					</span>
+				)}
+				{displayStatus === "completed" && (
+					<span
+						class="badge"
+						data-variant="secondary"
+						aria-label="Background session completed"
+						data-background-status="completed"
 					>
-						<path d="M10 11v6" />
-						<path d="M14 11v6" />
-						<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-						<path d="M3 6h18" />
-						<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-					</svg>
-				</button>
-			)}
+						completed
+					</span>
+				)}
+				<span class="size-6 shrink-0" aria-hidden="true"></span>
+			</span>
 		</div>
 	) as string;
 }
