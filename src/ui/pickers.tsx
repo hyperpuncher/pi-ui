@@ -51,7 +51,6 @@ function slashCommandHaystack(item: AppSlashCommand): string {
 function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 	const label = `/${item.name}`;
 	const haystack = slashCommandHaystack(item);
-	const commandText = `${label} `;
 	return (
 		<li
 			role="option"
@@ -68,7 +67,12 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 				class="flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
 				type="button"
 				data-picker-kind="slash"
-				data-picker-value={commandText}
+				data-on:click={`
+					window.piUi.messageScroll.scrollBottom();
+					$prompt = '';
+					if (${JSON.stringify(label)} === '/tree') window.piUi.dialogs.openTree();
+					@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} } });
+				`}
 			>
 				<span class="min-w-0">
 					<span class="block truncate font-mono">

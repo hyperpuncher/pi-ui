@@ -109,8 +109,6 @@ function handleClick(event) {
 		closePickers(true);
 	} else if (slash instanceof HTMLElement) {
 		event.preventDefault();
-		setPromptValue(slash.dataset.pickerValue ?? "");
-		focusPromptEnd();
 	} else if (file instanceof HTMLElement) {
 		event.preventDefault();
 		applyFileCompletion(file.dataset.pickerValue ?? "");

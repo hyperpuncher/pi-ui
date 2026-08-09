@@ -26,6 +26,9 @@ Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	assertStringIncludes(html, 'id="slash-picker-list"');
 	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'aria-selected="true"');
+	assertStringIncludes(html, "$prompt = '';");
+	assertStringIncludes(html, "@post('/prompt'");
+	assertStringIncludes(html, "payload: { prompt: &#34;/login&#34; }");
 });
 
 Deno.test("slash picker only opens while a command or skill matches", () => {
