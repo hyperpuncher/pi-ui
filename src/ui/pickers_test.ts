@@ -71,6 +71,9 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 		currentSessionPath: undefined,
 	} as unknown as AppRenderSnapshot);
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
+	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
+	assertStringIncludes(html, 'aria-hidden="true"');
+	assertStringIncludes(html, "No matching sessions.");
 });
 
 Deno.test("current running session is live but does not resume itself", () => {

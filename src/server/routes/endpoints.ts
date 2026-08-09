@@ -14,6 +14,7 @@ export const endpoints = {
 	sessionsNewTemporary: "/sessions/new-temporary",
 	sessionsStream: "/sessions/stream",
 	sessionsSearch: "/sessions/search",
+	sessionsFavicon: "/sessions/favicon",
 	sessionsBackgroundAbort: "/sessions/background/abort",
 	sessionsDelete: "/sessions/delete",
 	sessionsResume: "/sessions/resume",

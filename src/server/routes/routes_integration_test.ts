@@ -27,6 +27,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /sessions/new-temporary",
 		"GET /sessions/stream",
 		"GET /sessions/search",
+		"GET /sessions/favicon",
 		"POST /sessions/background/abort",
 		"POST /sessions/delete",
 		"POST /sessions/resume",
@@ -63,6 +64,50 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		new Set(Object.values(endpoints)),
 		new Set(expected.map((route) => route.slice(route.indexOf(" ") + 1))),
 	);
+});
+
+Deno.test("session favicons use workspace assets and fall back to a folder", async () => {
+	const workspace = await Deno.makeTempDir();
+	try {
+		await Deno.mkdir(`${workspace}/public`);
+		await Deno.writeFile(
+			`${workspace}/public/favicon.png`,
+			new Uint8Array([1, 2, 3]),
+		);
+		const context = fakeContext();
+		context.store.setSessions([
+			{
+				path: "/sessions/one.jsonl",
+				cwd: workspace,
+				title: "One",
+				subtitle: "1 message",
+				modified: "Now",
+			},
+		]);
+		const router = createRouter(context);
+
+		const favicon = await router.fetch(
+			new Request(
+				`http://localhost/sessions/favicon?cwd=${encodeURIComponent(workspace)}`,
+			),
+		);
+		assertEquals(favicon.headers.get("content-type"), "image/png");
+		assertEquals(
+			new Uint8Array(await favicon.arrayBuffer()),
+			new Uint8Array([1, 2, 3]),
+		);
+
+		const fallback = await router.fetch(
+			new Request("http://localhost/sessions/favicon?cwd=unknown"),
+		);
+		assertEquals(
+			fallback.headers.get("content-type"),
+			"image/svg+xml; charset=utf-8",
+		);
+		assertStringIncludes(await fallback.text(), "M20 20a2 2");
+	} finally {
+		await Deno.remove(workspace, { recursive: true });
+	}
 });
 
 Deno.test("native workspace picking opens directly through Datastar", async () => {

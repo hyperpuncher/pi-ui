@@ -212,7 +212,7 @@ export function renderSessionPicker(state: AppRenderSnapshot): string {
 			id="session-menu"
 			class="mt-1"
 			aria-orientation="vertical"
-			data-empty="No saved sessions for this project yet."
+			data-empty="No matching sessions."
 			data-signals:background-session-path__ifmissing="''"
 		>
 			{renderSessionPickerContent(state)}

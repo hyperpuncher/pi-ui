@@ -1,3 +1,5 @@
+import { join } from "@std/path";
+
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
 import { renderSessionPickerContent } from "../../ui/pickers.tsx";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
@@ -30,6 +32,20 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 			},
 			{ type: "effect", effect: { type: "refresh-session-picker" } },
 		]);
+	});
+	router.register("GET", endpoints.sessionsFavicon, async (_request, context, url) => {
+		const cwd = url.searchParams.get("cwd");
+		const knownWorkspace = context.store
+			.getSessionCatalog()
+			.some((candidate) => candidate.cwd === cwd);
+		if (!cwd || !knownWorkspace) return folderIconResponse();
+
+		const favicon = await readWorkspaceFavicon(cwd);
+		return favicon
+			? new Response(favicon.bytes, {
+					headers: faviconHeaders(favicon.contentType),
+				})
+			: folderIconResponse();
 	});
 	router.register(
 		"POST",
@@ -67,6 +83,76 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 			"sessionPath",
 		).trim();
 		return sessionTransitionResponse(await requireHost(context).resumeSession(path));
+	});
+}
+
+const FAVICON_CANDIDATES = [
+	"favicon.ico",
+	"favicon.svg",
+	"favicon.png",
+	"public/favicon.ico",
+	"public/favicon.svg",
+	"public/favicon.png",
+	"static/favicon.ico",
+	"static/favicon.svg",
+	"static/favicon.png",
+	"app/favicon.ico",
+	"app/favicon.svg",
+	"app/favicon.png",
+	"src/app/favicon.ico",
+	"src/app/favicon.svg",
+	"src/app/favicon.png",
+] as const;
+
+const FAVICON_CONTENT_TYPES: Readonly<Record<string, string>> = {
+	ico: "image/x-icon",
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	png: "image/png",
+	svg: "image/svg+xml",
+	webp: "image/webp",
+};
+
+const FOLDER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><style>:root{color:#737373}@media(prefers-color-scheme:dark){:root{color:#a1a1aa}}</style><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`;
+
+export async function readWorkspaceFavicon(
+	cwd: string,
+): Promise<{ bytes: ArrayBuffer; contentType: string } | undefined> {
+	for (const candidate of FAVICON_CANDIDATES) {
+		const favicon = await readFaviconFile(join(cwd, candidate));
+		if (favicon) return favicon;
+	}
+
+	return undefined;
+}
+
+async function readFaviconFile(
+	path: string,
+): Promise<{ bytes: ArrayBuffer; contentType: string } | undefined> {
+	try {
+		const info = await Deno.stat(path);
+		if (!info.isFile) return undefined;
+		const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+		return {
+			bytes: (await Deno.readFile(path)).buffer as ArrayBuffer,
+			contentType: FAVICON_CONTENT_TYPES[extension] ?? "application/octet-stream",
+		};
+	} catch {
+		return undefined;
+	}
+}
+
+function faviconHeaders(contentType: string): HeadersInit {
+	return {
+		"cache-control": "private, max-age=300",
+		"content-type": contentType,
+		"x-content-type-options": "nosniff",
+	};
+}
+
+function folderIconResponse(): Response {
+	return new Response(FOLDER_ICON, {
+		headers: faviconHeaders("image/svg+xml; charset=utf-8"),
 	});
 }
 
