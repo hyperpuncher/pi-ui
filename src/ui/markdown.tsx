@@ -238,7 +238,7 @@ function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
 	for (const [index, block] of blocks.entries()) {
 		const [raw, rawLanguage, rawCode] = block;
 		const language = codeFenceLanguage(rawLanguage);
-		const code = decodeHtml(rawCode);
+		const code = decodeHtml(rawCode).replace(/\n$/, "");
 		const replacement = cacheKeyPrefix
 			? highlightStreamingCodeBlock(code, language, `${cacheKeyPrefix}:${index}`)
 			: renderPlainCodeBlock(code, language);
@@ -267,7 +267,7 @@ async function highlightCodeBlocksFinal(html: string): Promise<string> {
 	for (const block of blocks) {
 		const [raw, rawLanguage, rawCode] = block;
 		const language = await codeFenceLanguageFinal(rawLanguage);
-		const code = decodeHtml(rawCode);
+		const code = decodeHtml(rawCode).replace(/\n$/, "");
 		const replacement = (
 			<CodeBlock
 				pre={await cachedPierreCodeBlock(code, language)}

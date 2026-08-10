@@ -94,12 +94,14 @@ Deno.test("growing streaming code fences preserve the latest complete source", (
 	releaseMarkdownStreamingState(key);
 });
 
-Deno.test("streaming code blocks omit the terminal empty display line", async () => {
+Deno.test("code blocks omit the parser-added terminal display line", async () => {
 	await preloadPierreHighlighter();
+	const markdown = "```ts\none\n\nthree\n```";
 	const key = "terminal-newline";
-	const html = renderMarkdownStreaming("```ts\none\n\nthree\n```", {
-		cacheKey: key,
-	});
-	assertEqual(html.match(/streaming-code-line-number/g)?.length, 3);
+	const streaming = renderMarkdownStreaming(markdown, { cacheKey: key });
+	assertEqual(streaming.match(/streaming-code-line-number/g)?.length, 3);
 	releaseMarkdownStreamingState(key);
+
+	const final = await renderMarkdownFinal(markdown);
+	assertEqual(final.match(/<div data-line="\d+"/g)?.length, 3);
 });
