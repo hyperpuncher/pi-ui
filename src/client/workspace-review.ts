@@ -516,12 +516,14 @@ function createItems(
 	for (const patchFile of parsePatchFiles(patch)) {
 		for (const file of patchFile.files) parsed.set(file.name, file);
 	}
-	version++;
+	const itemVersion = ++version;
 	return changes.map((change) => ({
 		fileDiff: parsed.get(change.path) ?? emptyDiff(change),
-		id: `diff:${source}:${change.path}`,
+		// A new diff must get a new renderer. Reusing one lets an older async
+		// highlight overwrite the latest working-tree snapshot.
+		id: `diff:${source}:${itemVersion}:${change.path}`,
 		type: "diff",
-		version,
+		version: itemVersion,
 	}));
 }
 
