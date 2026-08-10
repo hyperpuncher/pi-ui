@@ -21,18 +21,23 @@ jobs:
                 include:
                     - name: linux-x64
                       os: ubuntu-latest
+                      server_executable: pi-ui
                       target: x86_64-unknown-linux-gnu
                     - name: linux-arm64
                       os: ubuntu-24.04-arm
+                      server_executable: pi-ui
                       target: aarch64-unknown-linux-gnu
                     - name: darwin-x64
                       os: macos-15-intel
+                      server_executable: pi-ui
                       target: x86_64-apple-darwin
                     - name: darwin-arm64
                       os: macos-14
+                      server_executable: pi-ui
                       target: aarch64-apple-darwin
                     - name: windows-x64
                       os: windows-latest
+                      server_executable: pi-ui.exe
                       target: x86_64-pc-windows-msvc
 
         steps:
@@ -94,6 +99,21 @@ jobs:
             - name: Build CSS
               run: deno task css:build
 
+            - name: Build server
+              shell: bash
+              run: |
+                  deno compile \
+                    -A \
+                    --conditions browser \
+                    --exclude-unused-npm \
+                    --frozen \
+                    --include static \
+                    --lock deno.release.lock \
+                    --node-modules-dir=none \
+                    --output "dist/server/${{ matrix.server_executable }}" \
+                    --target "${{ matrix.target }}" \
+                    src/main.ts
+
             - name: Build desktop app
               shell: bash
               run: |
@@ -120,18 +140,27 @@ jobs:
                   case "${{ matrix.name }}" in
                     linux-*)
                       tar --zstd -cf "dist/pi-ui-${{ matrix.name }}.tar.zst" -C dist/linux pi-ui
+                      tar --zstd -cf "dist/pi-ui-server-${{ matrix.name }}.tar.zst" -C dist/server pi-ui
                       mv dist/linux/pi-ui.AppImage "dist/pi-ui-${{ matrix.name }}.AppImage"
                       mv dist/linux/pi-ui.deb "dist/pi-ui-${{ matrix.name }}.deb"
                       ;;
-                    windows-*) mv dist/windows/pi-ui.msi "dist/pi-ui-${{ matrix.name }}.msi" ;;
-                    darwin-*) ditto -c -k --keepParent dist/macos/pi-ui.app "dist/pi-ui-${{ matrix.name }}.zip" ;;
+                    windows-*)
+                      mv dist/windows/pi-ui.msi "dist/pi-ui-${{ matrix.name }}.msi"
+                      (cd dist/server && 7z a "../../dist/pi-ui-server-${{ matrix.name }}.zip" pi-ui.exe)
+                      ;;
+                    darwin-*)
+                      ditto -c -k --keepParent dist/macos/pi-ui.app "dist/pi-ui-${{ matrix.name }}.zip"
+                      ditto -c -k --keepParent dist/server/pi-ui "dist/pi-ui-server-${{ matrix.name }}.zip"
+                      ;;
                   esac
 
             - name: Upload artifact
               uses: actions/upload-artifact@v7
               with:
                   name: ${{ matrix.name }}
-                  path: dist/pi-ui-${{ matrix.name }}.*
+                  path: |
+                      dist/pi-ui-${{ matrix.name }}.*
+                      dist/pi-ui-server-${{ matrix.name }}.*
 
     publish:
         name: Publish release and packages
