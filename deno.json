@@ -12,6 +12,7 @@
 		"build:server": "deno task assets:build && deno compile -A --conditions browser --node-modules-dir=none --exclude-unused-npm --include static --output ./dist/server/pi-ui src/main.ts",
 		"run:server": "./dist/server/pi-ui",
 		"run:linux": "./dist/linux/pi-ui/pi-ui --disable-spell-checking",
+		"release": "deno run -A scripts/release.ts",
 		"client:build": "deno run -A npm:rolldown@latest -c rolldown.config.ts --configLoader native",
 		"client:watch": "deno run -A npm:rolldown@latest -c rolldown.config.ts --configLoader native --watch",
 		"css:build": "deno run -A scripts/generate-basecoat-css.ts && deno run -A npm:@tailwindcss/cli -i src/ui/styles.css -o static/app.css --minify",
@@ -19,7 +20,7 @@
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
 		"lint": "deno run -A npm:oxlint",
 		"lint:fix": "deno run -A npm:oxlint --fix",
-		"check": "deno check --conditions browser src/main.ts rolldown.config.ts && deno check --config deno.client.json --conditions browser src/client/workspace-review.ts src/client/pierre-worker.ts",
+		"check": "deno check --conditions browser src/main.ts rolldown.config.ts scripts/release.ts && deno check --config deno.client.json --conditions browser src/client/workspace-review.ts src/client/pierre-worker.ts",
 		"test": "deno test --conditions browser -A",
 		"perf:session": "deno run --conditions browser -A src/perf/session-benchmark.ts"
 	},
