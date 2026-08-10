@@ -21,9 +21,9 @@ const tag = `v${await output("deno", ["bump-version"])}`;
 await run("git", ["add", "deno.json"]);
 await run("git", ["commit", "-m", "chore: bump version"]);
 await run("git", ["tag", "-a", tag, "-m", tag]);
+await run("git", ["push", "origin", "main", tag]);
 
-console.log(`\ncreated ${tag}; push with:`);
-console.log(`  git push origin main ${tag}`);
+console.log(`\ncreated and pushed ${tag}`);
 
 async function run(command: string, args: string[]): Promise<void> {
 	const status = await new Deno.Command(command, {
