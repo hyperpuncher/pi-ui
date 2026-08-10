@@ -1,6 +1,6 @@
-const increment = Deno.args[0];
+const increment = Deno.args.length === 1 ? Deno.args[0] : undefined;
 if (!increment || !["patch", "minor", "major"].includes(increment)) {
-	throw new Error("usage: deno task release -- patch|minor|major");
+	throw new Error("usage: deno task release patch|minor|major");
 }
 
 if (await output("git", ["status", "--porcelain"])) {
