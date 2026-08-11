@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 
 import type { AppMessage } from "../state/app-store.ts";
 import { renderMessage, renderMessages } from "./messages.tsx";
@@ -188,4 +188,26 @@ Deno.test("recent session loading reserves exactly three rows", () => {
 	assertStringIncludes(loading, 'aria-label="Loading recent sessions"');
 	assertStringIncludes(loading, "h-50");
 	assertStringIncludes(loading, "h-44");
+});
+
+Deno.test("partial recent sessions stay visible during full catalog loading", () => {
+	const loading = renderMessages(
+		[],
+		{ description: "Send", keys: "enter" },
+		false,
+		[
+			{
+				path: "/sessions/recent.jsonl",
+				cwd: "/workspace",
+				title: "Recent session",
+				subtitle: "1 message",
+				modified: "Now",
+			},
+		],
+		false,
+		true,
+		true,
+	);
+	assertStringIncludes(loading, "Recent session");
+	assertFalse(loading.includes('aria-label="Loading recent sessions"'));
 });

@@ -96,11 +96,51 @@ Deno.test("current running session is live but does not resume itself", () => {
 	assertStringIncludes(html, 'class="group block! bg-foreground! text-background!"');
 	assertFalse(html.includes("data-current-session-indicator"));
 	assertStringIncludes(html, 'data-background-status="running"');
+	assertStringIncludes(html, "pi-tool-status-ball");
+	assertStringIncludes(
+		html,
+		'class="inline-grid size-2 shrink-0 *:[grid-area:1/1] ml-0.75"',
+	);
+	assertStringIncludes(html, "text-background/65");
+	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
+	assertStringIncludes(html, "text-[10px] whitespace-nowrap lowercase");
 	assertStringIncludes(html, 'class="size-3 text-destructive!"');
 	assertStringIncludes(html, "@post('/abort'");
 	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
 	assertFalse(html.includes('disabled=""'));
 	assertFalse(html.includes("/sessions/resume"));
+});
+
+Deno.test("background session statuses use shared semantic dots", () => {
+	const html = renderSessionPicker({
+		sessions: [
+			{
+				path: "/sessions/running.jsonl",
+				cwd: "/workspace",
+				title: "Running session",
+				subtitle: "1 message",
+				modified: "Now",
+				backgroundStatus: "running",
+			},
+			{
+				path: "/sessions/completed.jsonl",
+				cwd: "/workspace",
+				title: "Completed session",
+				subtitle: "2 messages",
+				modified: "Today",
+				backgroundStatus: "completed",
+			},
+		],
+		currentSessionPath: undefined,
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, 'data-background-status="running"');
+	assertStringIncludes(html, 'data-background-status="completed"');
+	assertStringIncludes(html, "animate-ping");
+	assertStringIncludes(html, "pi-tool-status-success");
+	assertStringIncludes(html, '<kbd class="kbd">1</kbd>');
+	assertStringIncludes(html, '<kbd class="kbd">2</kbd>');
+	assertFalse(html.includes('class="badge'));
 });
 
 Deno.test("current idle session exposes deletion", () => {
@@ -119,6 +159,12 @@ Deno.test("current idle session exposes deletion", () => {
 	} as unknown as AppRenderSnapshot);
 
 	assertStringIncludes(html, "$sessionDeletePath");
+	assertStringIncludes(html, "opacity-0 transition-opacity");
+	assertStringIncludes(html, "group-hover:opacity-100");
+	assertStringIncludes(html, 'data-variant="ghost"');
+	assertStringIncludes(html, "$sessionDeleteHover");
+	assertStringIncludes(html, "? 'destructive' : 'ghost'");
+	assertFalse(html.includes("hover:bg-destructive"));
 	assertFalse(html.includes('disabled=""'));
 });
 

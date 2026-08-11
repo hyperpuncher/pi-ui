@@ -7,6 +7,7 @@ import { AppStore } from "../state/app-store.ts";
 import { renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker } from "../ui/pickers.tsx";
 import { renderPromptToolbar } from "../ui/prompt-toolbar.tsx";
+import { renderSessionSidebar } from "../ui/session-sidebar.tsx";
 import {
 	renderSessionTransition,
 	resumeSessionAction,
@@ -311,7 +312,13 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 			throw new Error("Missing disabled transition guard");
 		}
 	}
-	if (!recent.includes("evt.ctrlKey")) {
+	const shortcuts = renderSessionSidebar({
+		sessions: [session],
+		currentSessionPath: undefined,
+		activityText: undefined,
+		sessionCatalogLoading: false,
+	});
+	if (!shortcuts.includes("evt.ctrlKey")) {
 		throw new Error("Missing keyboard resume");
 	}
 });

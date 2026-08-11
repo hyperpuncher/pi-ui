@@ -486,7 +486,6 @@ export class RuntimeController {
 		await this.initialCatalogLoad;
 		this.fullCatalogLoad ??= this.catalog.refresh(this.dependencies.prepareSessions, {
 			refreshWorkspaces: this.activationOptions.refreshWorkspaces,
-			showLoading: false,
 		});
 		await this.fullCatalogLoad;
 		this.syncUsage();

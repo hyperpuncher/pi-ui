@@ -1,6 +1,7 @@
 import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
+import { primaryModifierExpression } from "../utils/keyboard.ts";
 
 export function resumeSessionAction(
 	path: string,
@@ -11,6 +12,13 @@ export function resumeSessionAction(
 		@post('${endpoints.sessionsResume}', {
 			payload: { sessionPath: ${JSON.stringify(path)} },
 		});
+	}`;
+}
+
+export function resumeSessionShortcutAction(path: string, index: number): string {
+	return `if (${primaryModifierExpression()} && evt.code === 'Digit${index + 1}') {
+		evt.preventDefault();
+		${resumeSessionAction(path)}
 	}`;
 }
 

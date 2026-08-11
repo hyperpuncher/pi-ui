@@ -589,6 +589,7 @@ Deno.test("primary and picker fat views contain every server-owned dynamic root"
 			"prompt-status",
 			"workspace-picker",
 			"session-transition",
+			"session-sidebar-content",
 			"debug-overlay",
 		])
 			assertIncludes(primary, `id="${id}"`);
@@ -638,6 +639,10 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'id="messages"');
 	assertIncludes(html, 'id="workspace-dialog"');
 	assertIncludes(html, 'id="session-dialog"');
+	assertIncludes(html, 'id="session-sidebar"');
+	assertIncludes(html, 'class="sidebar"');
+	assertIncludes(html, 'data-side="right"');
+	assertIncludes(html, 'id="workspace-shell"');
 	assertIncludes(html, 'id="model-select"');
 	if (html.indexOf("/app/main.js") > html.indexOf("/vendor/datastar.js")) {
 		throw new Error("window.piUi must initialize before Datastar");

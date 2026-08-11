@@ -10,6 +10,7 @@ import { renderDebugOverlay } from "./debug.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
+import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
@@ -174,30 +175,37 @@ export function renderPage(
 				</div>
 				<div
 					id="app"
-					class="pi-workspace-canvas fixed inset-0 grid grid-cols-1 overflow-hidden"
+					class="pi-workspace-canvas fixed inset-0 overflow-hidden"
+					style="--sidebar-width: 18rem;"
 					data-class:pi-review-open="$_workspaceReviewOpen"
 					data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 					data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 					data-init="@get('/stream')"
 				>
-					<section
-						id="chat-pane"
-						class="pi-raised-surface absolute grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
-						aria-label="Chat"
+					{renderSessionSidebar(state)}
+					<div
+						id="workspace-shell"
+						class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
 					>
-						{renderMessages(
-							state.messages,
-							state.emptyChatHint,
-							state.hasOlderMessages,
-							state.sessions,
-							sessionTransitionOverlayVisible(state.sessionTransition),
-							state.models.some((model) => model.configured),
-							state.sessionCatalogLoading,
-						)}
-						{renderSessionTransition(state)}
-						{renderPromptBox(state, workspaceReview.isGitRepository)}
-					</section>
-					{renderWorkspaceReview(workspaceReview)}
+						<section
+							id="chat-pane"
+							class="pi-raised-surface absolute grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+							aria-label="Chat"
+						>
+							{renderMessages(
+								state.messages,
+								state.emptyChatHint,
+								state.hasOlderMessages,
+								state.sessions,
+								sessionTransitionOverlayVisible(state.sessionTransition),
+								state.models.some((model) => model.configured),
+								state.sessionCatalogLoading,
+							)}
+							{renderSessionTransition(state)}
+							{renderPromptBox(state, workspaceReview.isGitRepository)}
+						</section>
+						{renderWorkspaceReview(workspaceReview)}
+					</div>
 				</div>
 
 				<div

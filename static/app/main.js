@@ -13,6 +13,7 @@ import {
 import { bindPickers, isFileOpen, isOpen as isPickerOpen } from "./pickers.js";
 import { createPromptHistory } from "./prompt-history.js";
 import { bindPromptInteractions, focusPromptEnd } from "./prompt.js";
+import { bindSessionSidebarResize } from "./session-sidebar.js";
 import { bindVimScroll } from "./vim-scroll.js";
 import { windowFocus } from "./window-focus.js";
 
@@ -31,6 +32,8 @@ window.piUi = {
 		return !event.defaultPrevented && !hasOpenDismissible();
 	},
 };
+
+bindSessionSidebarResize();
 
 function hasOpenDismissible() {
 	if (isPickerOpen() || document.querySelector("dialog[open]")) return true;

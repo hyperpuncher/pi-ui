@@ -9,11 +9,11 @@ import type {
 	AppSessionSummary,
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
-import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 import { shikiTokenStyle } from "./shiki-token-style.ts";
+import { StatusDot } from "./status-dot.tsx";
 
 const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
@@ -114,7 +114,7 @@ function renderEmptyMessages(
 							<p class="mb-2 px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
 								Recent sessions
 							</p>
-							{sessionCatalogLoading ? (
+							{sessionCatalogLoading && sessions.length === 0 ? (
 								<div
 									class="grid h-44 place-items-center text-muted-foreground"
 									role="status"
@@ -157,7 +157,6 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 			data-indicator:_session-loading
 			data-attr:disabled="$_sessionTransitionLoading"
 			data-on:click={resumeSessionAction(session.path)}
-			data-on:keydown__window={resumeSessionShortcutAction(session.path, index)}
 		>
 			<span class="min-w-0">
 				<span class="block truncate text-sm text-foreground" safe>
@@ -176,13 +175,6 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 			</span>
 		</button>
 	);
-}
-
-function resumeSessionShortcutAction(path: string, index: number): string {
-	return `if (${primaryModifierExpression()} && evt.code === 'Digit${index + 1}') {
-		evt.preventDefault();
-		${resumeSessionAction(path)}
-	}`;
 }
 
 function loadOlderMessagesAction(): string {
@@ -486,8 +478,6 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 
 	const title = message.title ?? "Tool";
 	const hasToolBody = message.text.trim().length > 0;
-	const statusClass =
-		message.state === "error" ? "pi-tool-status-error" : "pi-tool-status-success";
 	const statusLabel =
 		message.state === "running"
 			? "Running"
@@ -501,31 +491,17 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			data-tool-continues={toolContinues}
 		>
 			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
-				<span
-					class="pi-tool-state-dot inline-grid size-2 *:[grid-area:1/1]"
-					aria-label={statusLabel}
-					role="status"
-				>
-					<span
-						class={[
-							"pi-tool-status-ball text-muted-foreground transition-opacity duration-500 ease-out motion-reduce:transition-none",
-							message.state === "running" ? "opacity-100" : "opacity-0",
-						]}
-					/>
-					<span
-						class={[
-							"pi-tool-status-ball transition-opacity duration-500 ease-out motion-reduce:transition-none",
-							statusClass,
-							message.state === "running" ? "opacity-0" : "opacity-100",
-						]}
-					/>
-					<span
-						class={[
-							"pi-tool-status-ball transition-opacity duration-500 ease-out motion-reduce:animate-none motion-reduce:transition-none",
-							message.state === "running" ? "animate-ping" : "opacity-0",
-						]}
-					/>
-				</span>
+				<StatusDot
+					class="pi-tool-state-dot"
+					state={
+						message.state === "running"
+							? "running"
+							: message.state === "error"
+								? "error"
+								: "success"
+					}
+					label={statusLabel}
+				/>
 				<span class="min-w-0 flex-1 leading-4.5 font-medium wrap-anywhere">
 					{renderToolTitle(title, message.titleParts)}
 				</span>

@@ -9,11 +9,11 @@ import {
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot, AppThinkingLevel } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
-import { formatHomePath } from "../utils/workspace.ts";
+import { workspaceDisplayName } from "../utils/workspace.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 
 export function renderWorkspacePicker(state: AppRenderSnapshot): string {
-	const label = workspaceLabel(state.workspacePath);
+	const label = workspaceDisplayName(state.workspacePath);
 	return (
 		<button
 			id="workspace-picker"
@@ -144,12 +144,6 @@ function thinkingDescription(level: AppThinkingLevel): string {
 		case "max":
 			return "Maximum reasoning";
 	}
-}
-
-function workspaceLabel(path: string): string {
-	const display = formatHomePath(path).replaceAll("\\", "/");
-	if (display === "~") return display;
-	return display.split("/").filter(Boolean).at(-1) ?? display;
 }
 
 export function renderModelPicker(state: AppRenderSnapshot): string {

@@ -58,6 +58,7 @@ const preferences = await api.readPreferences();
 
 const root = requiredElement("workspace-review");
 const app = requiredElement("app");
+const workspaceShell = requiredElement("workspace-shell");
 const chat = requiredElement("chat-pane");
 const reviewBody = requiredElement("review-body");
 const treeHost = requiredElement("review-file-tree");
@@ -123,7 +124,7 @@ const commitRequests = new Map<string, Promise<CommitView | undefined>>();
 let workspaceVersion = 0;
 
 const reviewLayout = bindWorkspaceReviewLayout({
-	app,
+	app: workspaceShell,
 	changesSection,
 	changesSeparator,
 	chat,

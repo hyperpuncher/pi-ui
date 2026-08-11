@@ -13,6 +13,7 @@ const components = [
 	["Input Group", "input-group"],
 	["Kbd", "kbd"],
 	["Popover", "popover"],
+	["Sidebar", "sidebar"],
 	["Table", "table"],
 	["Textarea", "textarea"],
 	["Tooltip", "tooltip"],

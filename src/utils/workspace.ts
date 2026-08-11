@@ -21,3 +21,9 @@ export function formatHomePath(path: string): string {
 	if (path.startsWith(`${home}\\`)) return `~\\${path.slice(home.length + 1)}`;
 	return path;
 }
+
+export function workspaceDisplayName(path: string): string {
+	const display = formatHomePath(path).replaceAll("\\", "/");
+	if (display === "~") return display;
+	return display.split("/").filter(Boolean).at(-1) ?? display;
+}

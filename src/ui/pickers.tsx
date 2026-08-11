@@ -14,8 +14,11 @@ import {
 	PickerMetadata,
 	PickerRow,
 } from "./picker-components.tsx";
+import { SessionRowAction } from "./session-row-action.tsx";
+import { sessionStatusLabel } from "./session-status.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
+import { StatusDot } from "./status-dot.tsx";
 
 const bottomAnchoredPickerClass =
 	"flex max-h-72 list-none flex-col-reverse overflow-y-auto p-1";
@@ -229,10 +232,11 @@ type SessionPickerState = Pick<
 export function renderSessionPickerContent(state: SessionPickerState): string {
 	return (
 		<div id="session-menu-content" class="px-1">
-			{state.sessions.map((session) => {
+			{state.sessions.map((session, index) => {
 				const current = session.path === state.currentSessionPath;
 				return renderSessionRow(
 					session,
+					index,
 					current,
 					current && Boolean(state.activityText),
 				);
@@ -247,11 +251,14 @@ function sessionRowId(path: string): string {
 
 function renderSessionRow(
 	session: AppSessionSummary,
+	index: number,
 	current: boolean,
 	foregroundRunning: boolean,
 ): string {
 	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
 	const displayStatus = foregroundRunning ? "running" : session.backgroundStatus;
+	const shortcut = index < 9 && !current ? `ctrl ${index + 1}` : undefined;
+	const deletable = displayStatus !== "running";
 	return (
 		<div
 			id={sessionRowId(session.path)}
@@ -272,20 +279,28 @@ function renderSessionRow(
 			}
 		>
 			<span class="flex items-center gap-2">
+				{displayStatus && (
+					<StatusDot
+						class="ml-0.75"
+						state={displayStatus === "running" ? "running" : "success"}
+						label={sessionStatusLabel(displayStatus, current)}
+						dataStatus={displayStatus}
+						runningClass={current ? "text-background/65" : undefined}
+					/>
+				)}
 				<span class="min-w-0 flex-1 truncate font-medium" safe>
 					{session.title}
 				</span>
 				<span
 					class={[
-						"shrink-0 font-mono whitespace-nowrap",
-						current && "text-background/65",
+						"shrink-0 text-[10px] whitespace-nowrap lowercase",
+						current ? "text-background/65" : "text-muted-foreground",
 					]}
-					data-shortcut
 					safe
 				>
 					{session.modified}
 				</span>
-				{displayStatus === "running" ? (
+				{displayStatus === "running" && (
 					<button
 						type="button"
 						class="btn shrink-0"
@@ -309,46 +324,9 @@ function renderSessionRow(
 					>
 						<StopIcon class="size-3 text-destructive!" />
 					</button>
-				) : (
-					<button
-						type="button"
-						class="btn shrink-0 opacity-35 group-[.active]:opacity-100 hover:opacity-100 focus-visible:opacity-100 disabled:invisible"
-						data-variant="ghost"
-						data-attr:data-variant={`$sessionDeleteHover === ${JSON.stringify(session.path)} ? 'destructive' : 'ghost'`}
-						data-size="icon-xs"
-						aria-label="Delete session"
-						data-on:mouseenter={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}
-						data-on:mouseleave="$sessionDeleteHover = ''"
-						data-on:focus={`$sessionDeleteHover = ${JSON.stringify(session.path)}`}
-						data-on:blur="$sessionDeleteHover = ''"
-						data-on:click={`
-							evt.stopPropagation();
-							$sessionDeletePath = ${JSON.stringify(session.path)};
-							$sessionDeleteTitle = ${JSON.stringify(session.title)};
-							document.getElementById('session-delete-dialog')?.showModal();
-						`}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="text-current!"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<path d="M10 11v6" />
-							<path d="M14 11v6" />
-							<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-							<path d="M3 6h18" />
-							<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-						</svg>
-					</button>
 				)}
 			</span>
-			<span class="flex items-center gap-2">
+			<span class="flex h-6 items-center gap-2">
 				<SessionSubtitle
 					session={session}
 					class={[
@@ -356,31 +334,11 @@ function renderSessionRow(
 						current ? "text-background/65" : "text-muted-foreground",
 					]}
 				/>
-				{displayStatus === "running" && (
-					<span
-						class="badge"
-						data-variant="secondary"
-						aria-label={
-							current
-								? "Current session running"
-								: "Background session running"
-						}
-						data-background-status="running"
-					>
-						running
-					</span>
-				)}
-				{displayStatus === "completed" && (
-					<span
-						class="badge"
-						data-variant="secondary"
-						aria-label="Background session completed"
-						data-background-status="completed"
-					>
-						completed
-					</span>
-				)}
-				<span class="size-6 shrink-0" aria-hidden="true"></span>
+				<SessionRowAction
+					session={session}
+					shortcut={shortcut}
+					deletable={deletable}
+				/>
 			</span>
 		</div>
 	) as string;

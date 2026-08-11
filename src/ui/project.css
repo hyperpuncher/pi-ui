@@ -144,6 +144,28 @@
 		}
 	}
 
+	#chat-pane {
+		container-type: inline-size;
+	}
+
+	@container (width >= calc(50vw + 28rem)) {
+		#app:not(.pi-review-open) #prompt-box {
+			translate: calc(50vw - var(--pi-workspace-inset) - 50cqw) 0;
+		}
+	}
+
+	@container (width >= calc(50vw + 26rem)) {
+		#app:not(.pi-review-open) #messages > .messages-stack {
+			translate: calc(50vw - var(--pi-workspace-inset) - 50cqw) 0;
+		}
+	}
+
+	@container (width >= calc(50vw + 2rem)) {
+		#app:not(.pi-review-open) #session-transition > * {
+			translate: calc(50vw - var(--pi-workspace-inset) - 50cqw) 0;
+		}
+	}
+
 	#prompt-box .pi-prompt-surface {
 		@apply shadow-lg;
 
@@ -262,7 +284,7 @@
 		background: var(--foreground);
 	}
 
-	.pi-resizing :is(#chat-pane, #workspace-review) {
+	.pi-resizing :is(#workspace-shell, #chat-pane, #workspace-review) {
 		transition: none !important;
 	}
 

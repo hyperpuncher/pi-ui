@@ -29,6 +29,7 @@ import {
 } from "./prompt-pickers.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import { renderPromptToolbar } from "./prompt-toolbar.tsx";
+import { renderSessionSidebarContent } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 
@@ -165,8 +166,15 @@ export class UiRenderer implements AppStorePresentation {
 		this.sessionCommitScheduled = true;
 		queueMicrotask(() => {
 			this.sessionCommitScheduled = false;
+			const snapshot = this.store.snapshot();
+			if (this.hub.clientCount > 0) {
+				this.hub.patchElement(
+					renderSessionSidebarContent(snapshot),
+					"#session-sidebar-content",
+				);
+			}
 			if (this.sessionHub.clientCount === 0) return;
-			const elements = renderSessionPickerContent(this.store.snapshot());
+			const elements = renderSessionPickerContent(snapshot);
 			if (elements === this.sessionPickerHtml) return;
 			this.sessionPickerHtml = elements;
 			this.sessionHub.patchElement(elements, "#session-menu-content");
@@ -225,6 +233,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderPromptStatus(snapshot) +
 			renderWorkspacePicker(snapshot) +
 			renderSessionTransition(snapshot) +
+			renderSessionSidebarContent(snapshot) +
 			renderDebugOverlay(snapshot)
 		);
 	}

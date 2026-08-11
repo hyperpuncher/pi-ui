@@ -247,9 +247,14 @@ Deno.test("RuntimeController preparation does not wait for the session catalog",
 
 Deno.test("RuntimeController warms the full catalog only when the session stream connects", async () => {
 	const fake = fakeRuntime();
+	const store = new AppStore();
 	let recentLoads = 0;
 	let fullLoads = 0;
-	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+	let resolveFullLoad!: () => void;
+	const fullLoad = new Promise<PreparedSessionList>((resolve) => {
+		resolveFullLoad = () => resolve({ ok: true, sessions: [] });
+	});
+	const controller = await RuntimeController.prepare(store, "/workspace", {
 		dependencies: {
 			...dependencies([fake]),
 			prepareRecentSessions: () => {
@@ -258,13 +263,18 @@ Deno.test("RuntimeController warms the full catalog only when the session stream
 			},
 			prepareSessions: () => {
 				fullLoads += 1;
-				return Promise.resolve({ ok: true, sessions: [] });
+				return fullLoad;
 			},
 		},
 	});
 	controller.activate();
 	assertEquals({ recentLoads, fullLoads }, { recentLoads: 1, fullLoads: 0 });
-	await controller.listSessions();
+	const loading = controller.listSessions();
+	while (fullLoads === 0) await Promise.resolve();
+	assertEquals(store.snapshot().sessionCatalogLoading, true);
+	resolveFullLoad();
+	await loading;
+	assertEquals(store.snapshot().sessionCatalogLoading, false);
 	await controller.listSessions();
 	assertEquals({ recentLoads, fullLoads }, { recentLoads: 1, fullLoads: 1 });
 	await controller.dispose();
