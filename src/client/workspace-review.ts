@@ -2,7 +2,6 @@ import {
 	CodeView,
 	type CodeViewItem,
 	type CodeViewOptions,
-	DEFAULT_THEMES,
 	type FileDiffMetadata,
 	parsePatchFiles,
 } from "@pierre/diffs";
@@ -12,6 +11,7 @@ import {
 } from "@pierre/diffs/worker";
 import { FileTree } from "@pierre/trees";
 
+import { PIERRE_THEMES } from "../pierre-theme.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommitDetail,
@@ -634,7 +634,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 		lineHoverHighlight: "both",
 		overflow: wrap ? "wrap" : "scroll",
 		stickyHeaders: true,
-		theme: DEFAULT_THEMES,
+		theme: PIERRE_THEMES,
 		themeType: document.documentElement.classList.contains("dark") ? "dark" : "light",
 		unsafeCSS: `
 			:host {
@@ -705,7 +705,7 @@ function createWorkerPool() {
 		highlighterOptions: {
 			langs: ["text"],
 			preferredHighlighter: "shiki-js",
-			theme: DEFAULT_THEMES,
+			theme: PIERRE_THEMES,
 		},
 		poolOptions: {
 			poolSize: 1,

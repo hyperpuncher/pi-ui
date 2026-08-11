@@ -1,6 +1,7 @@
-import { DEFAULT_THEMES, getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
+import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
 import { authDialogAction } from "../commands/actions.ts";
+import { PIERRE_THEMES } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	AppKeybindHint,
@@ -307,7 +308,7 @@ function renderInlineBash(command: string): string {
 	try {
 		const result = highlighter.codeToTokens(command, {
 			lang: "bash",
-			themes: DEFAULT_THEMES,
+			themes: PIERRE_THEMES,
 		});
 		const highlighted = result.tokens
 			.map((line) => line.map(renderInlineToken).join(""))

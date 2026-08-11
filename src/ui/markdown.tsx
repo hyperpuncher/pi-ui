@@ -1,5 +1,4 @@
 import {
-	DEFAULT_THEMES,
 	getFiletypeFromFileName,
 	getHighlighterIfLoaded,
 	ShikiStreamTokenizer,
@@ -13,6 +12,7 @@ import {
 	type CompileOptions,
 } from "satteri";
 
+import { PIERRE_THEMES } from "../pierre-theme.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
@@ -305,7 +305,7 @@ function highlightStreamingCodeBlock(
 			tokenizer: new ShikiStreamTokenizer({
 				highlighter,
 				lang: language as SupportedLanguages,
-				themes: DEFAULT_THEMES,
+				themes: PIERRE_THEMES,
 			}),
 		};
 		streamingCodeBlockStates.set(cacheKey, state);

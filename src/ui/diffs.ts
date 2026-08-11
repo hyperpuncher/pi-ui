@@ -1,11 +1,12 @@
 import {
-	DEFAULT_THEMES,
 	DIFFS_TAG_NAME,
 	getHighlighterIfLoaded,
 	preloadHighlighter,
 	type SupportedLanguages,
 } from "@pierre/diffs";
 import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
+
+import { PIERRE_THEMES } from "../pierre-theme.ts";
 
 const pierreUnsafeCSS = `
 	:host {
@@ -76,7 +77,7 @@ const maxLanguageLoadEntries = 256;
 
 export async function preloadPierreHighlighter(): Promise<void> {
 	await preloadHighlighter({
-		themes: [DEFAULT_THEMES.dark, DEFAULT_THEMES.light],
+		themes: [PIERRE_THEMES.dark, PIERRE_THEMES.light],
 		langs: [...pierreLanguages],
 	});
 }
@@ -88,7 +89,7 @@ export function loadPierreLanguage(language: string): Promise<boolean> {
 	if (cached) return cached;
 
 	const loading = preloadHighlighter({
-		themes: [DEFAULT_THEMES.dark, DEFAULT_THEMES.light],
+		themes: [PIERRE_THEMES.dark, PIERRE_THEMES.light],
 		langs: [language],
 	})
 		.then(() => isPierreLanguageLoaded(language))
@@ -132,7 +133,7 @@ export async function renderPierreDiff(patch: string): Promise<string | undefine
 	const files = await preloadPatchFile({
 		patch,
 		options: {
-			theme: DEFAULT_THEMES,
+			theme: PIERRE_THEMES,
 			themeType: "system",
 			disableFileHeader: true,
 			diffStyle: "unified",
@@ -163,7 +164,7 @@ export async function renderPierreCode(
 			lang: language as SupportedLanguages,
 		},
 		options: {
-			theme: DEFAULT_THEMES,
+			theme: PIERRE_THEMES,
 			themeType: "system",
 			disableFileHeader: true,
 			disableLineNumbers: options.disableLineNumbers,
