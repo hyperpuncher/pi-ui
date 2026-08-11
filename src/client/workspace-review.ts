@@ -513,11 +513,13 @@ function createItems(
 	patch: string,
 	source: string,
 ): ReviewItem[] {
+	const itemVersion = ++version;
 	const parsed = new Map<string, FileDiffMetadata>();
-	for (const patchFile of parsePatchFiles(patch)) {
+	// Pierre 1.3.5 otherwise derives cache keys from file names, allowing a
+	// newer working-tree diff to receive an older highlighted AST.
+	for (const patchFile of parsePatchFiles(patch, `${source}:${itemVersion}`)) {
 		for (const file of patchFile.files) parsed.set(file.name, file);
 	}
-	const itemVersion = ++version;
 	return changes.map((change) => ({
 		fileDiff: parsed.get(change.path) ?? emptyDiff(change),
 		// A new diff must get a new renderer. Reusing one lets an older async
