@@ -207,67 +207,54 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 	];
 	if (items.length === 0) return "";
 	return (
-		<section class="prompt-queue-surface pi-raised-surface pi-prompt-surface pointer-events-auto -mb-3 w-full translate-y-0 overflow-hidden border border-transparent opacity-100 transition-[opacity,translate] duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity motion-reduce:duration-100 starting:translate-y-full starting:opacity-0">
-			<header class="flex h-8 items-center justify-between gap-3 px-3">
-				<div class="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground">
-					<span class="text-muted-foreground">
-						<QueueIcon />
+		<section class="pointer-events-auto -mx-3 -mb-3 flex max-h-40 w-[calc(100%+1.5rem)] flex-col gap-1 overflow-y-auto px-3 pt-2 pb-4">
+			{items.map(({ behavior, index, label, text }, itemIndex) => (
+				<div class="prompt-queue-item pi-raised-surface pi-prompt-surface group flex min-h-9 min-w-0 translate-y-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs opacity-100 shadow-md transition-[opacity,translate] duration-100 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
+					<span
+						class={[
+							"size-1 shrink-0 rounded-full",
+							label === "Steering" ? "bg-amber-400" : "bg-sky-400",
+						]}
+						aria-hidden="true"
+					/>
+					<span
+						class={[
+							"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+							label === "Steering"
+								? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+								: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+						]}
+					>
+						{label}
 					</span>
-					<span>
-						{items.length} queued{" "}
-						{items.length === 1 ? "message" : "messages"}
+					<span class="min-w-0 flex-1 truncate text-muted-foreground" safe>
+						{text}
 					</span>
-				</div>
-				<button
-					type="button"
-					class="-mr-1 flex h-7 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-					data-on:click={`@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } })`}
-					aria-label="Restore queued messages to the prompt"
-				>
-					<span>Restore</span>
-					<ShortcutKbd shortcut="alt ↑" />
-				</button>
-			</header>
-			<div class="flex max-h-32 flex-col overflow-y-auto px-1.5 pb-4">
-				{items.map(({ behavior, index, label, text }) => (
-					<div class="prompt-queue-item group flex min-w-0 translate-y-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-xs opacity-100 transition-[opacity,translate] duration-100 ease-out hover:bg-muted/60 motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
-						<span
-							class={[
-								"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
-								label === "Steering"
-									? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-									: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-							]}
-						>
-							{label}
-						</span>
-						<span class="min-w-0 flex-1 truncate text-muted-foreground" safe>
-							{text}
-						</span>
+					{itemIndex === 0 ? (
 						<button
 							type="button"
-							class="-my-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-[color,background-color,opacity] hover:bg-muted hover:text-foreground focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-							data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
-							aria-label="Remove queued message"
+							class="-my-1 flex h-7 shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							data-on:click={`@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } })`}
+							aria-label="Restore all queued messages to the prompt"
 						>
-							<Icon>
-								<path d="m18 6-12 12M6 6l12 12" />
-							</Icon>
+							<span>Restore all</span>
+							<ShortcutKbd shortcut="alt ↑" />
 						</button>
-					</div>
-				))}
-			</div>
+					) : (
+						""
+					)}
+					<button
+						type="button"
+						class="-my-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-[color,background-color,opacity] hover:bg-muted hover:text-foreground focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+						data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
+						aria-label="Remove queued message"
+					>
+						<Icon>
+							<path d="m18 6-12 12M6 6l12 12" />
+						</Icon>
+					</button>
+				</div>
+			))}
 		</section>
 	) as string;
-}
-
-function QueueIcon() {
-	return (
-		<Icon>
-			<>
-				<path d="M8 6h13M8 12h13M8 18h13" />
-				<path d="M3 6h.01M3 12h.01M3 18h.01" />
-			</>
-		</Icon>
-	);
 }
