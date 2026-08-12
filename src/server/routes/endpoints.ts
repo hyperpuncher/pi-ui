@@ -42,6 +42,7 @@ export const endpoints = {
 	filesSearch: "/files/search",
 	filesPick: "/files/pick",
 	filesImport: "/files/import",
+	filesOpen: "/files/open",
 	basecoat: "/basecoat.js",
 	inspector: "/vendor/datastar-inspector.min.js",
 } as const;

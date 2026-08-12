@@ -1,10 +1,9 @@
-import { spawn } from "node:child_process";
-
 import type { AuthEvent, AuthPrompt, AuthType } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
 import type { AppAuthDialog, AppAuthProvider, AppStore } from "../state/app-store.ts";
 import { errorMessage } from "../utils/errors.ts";
+import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 
 type AuthInputResolver = (value: string | undefined) => void;
 
@@ -383,13 +382,5 @@ function compareAuthProviders(a: AppAuthProvider, b: AppAuthProvider): number {
 }
 
 function openExternalUrl(url: string): void {
-	const [command, args]: [string, string[]] =
-		Deno.build.os === "darwin"
-			? ["open", [url]]
-			: Deno.build.os === "windows"
-				? ["rundll32", ["url.dll,FileProtocolHandler", url]]
-				: ["xdg-open", [url]];
-	spawn(command, args, { stdio: "ignore", detached: true })
-		.on("error", () => {})
-		.unref();
+	void openWithDefaultApp(url).catch(() => {});
 }

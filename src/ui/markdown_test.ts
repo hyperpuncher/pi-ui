@@ -36,7 +36,7 @@ Deno.test("streaming without a key does not retain output", () => {
 
 Deno.test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
 	const markdown =
-		'<script>alert("xss")</script> [bad](javascript:alert(1)) ![bad](data:text/html,bad)';
+		'<script>alert("xss")</script>\n\n[unsafe label](javascript:alert(1)) ![bad image](data:text/html,bad) [local file](file:///tmp/example.txt)';
 	for (const html of [
 		renderMarkdownStreaming(markdown),
 		await renderMarkdownFinal(markdown),
@@ -44,6 +44,10 @@ Deno.test("markdown fallback and final rendering reject unsafe HTML and URLs", a
 		assertNotIncludes(html, "<script>");
 		assertNotIncludes(html, "javascript:");
 		assertNotIncludes(html, "data:text/html");
+		assertIncludes(html, "<span>unsafe label</span>");
+		assertIncludes(html, 'href="file:///tmp/example.txt"');
+		assertIncludes(html, "data-pi-file-link");
+		assertIncludes(html, "local file");
 	}
 });
 

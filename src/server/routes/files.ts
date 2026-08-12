@@ -1,9 +1,12 @@
+import { basename } from "@std/path";
+
+import { fileUriToPath } from "../../../static/file-uri.js";
 import { pickNativeFilePaths } from "../../native-file-picker.ts";
 import { renderFilePickerResults } from "../../ui/pickers.tsx";
-import { readActionSignals, stringField } from "../action-input.ts";
+import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { searchFiles } from "../file-search.ts";
-import type { ExactRouter } from "../router.ts";
+import { RouteError, type ExactRouter } from "../router.ts";
 import {
 	getTransferredFiles,
 	TransferredFileError,
@@ -31,6 +34,45 @@ export function registerFileRoutes(router: ExactRouter<RouteContext>): void {
 		Response.json({ paths: await pickNativeFilePaths() }),
 	);
 	router.register("POST", endpoints.filesImport, importTransferredFiles);
+	router.register("POST", endpoints.filesOpen, openLinkedFile);
+}
+
+async function openLinkedFile(
+	request: Request,
+	context: RouteContext,
+): Promise<Response> {
+	const uri = requiredString(await readActionSignals(request), "uri");
+	const path = fileUriToPath(uri);
+	if (!path) throw new RouteError(400, "Invalid file link.");
+
+	let info: Deno.FileInfo;
+	try {
+		info = await Deno.stat(path);
+	} catch (error) {
+		if (error instanceof Deno.errors.NotFound) {
+			throw new RouteError(404, "File not found.");
+		}
+		throw error;
+	}
+
+	if (context.isLocalRequest(request)) {
+		await context.openPath(path);
+		return new Response(null, { status: 204 });
+	}
+	if (!info.isFile) {
+		throw new RouteError(400, "Only files can be downloaded remotely.");
+	}
+
+	const file = await Deno.open(path, { read: true });
+	const name = basename(path) || "download";
+	return new Response(file.readable, {
+		headers: {
+			"content-type": "application/octet-stream",
+			"content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+			"x-content-type-options": "nosniff",
+			"x-pi-file-name": encodeURIComponent(name),
+		},
+	});
 }
 
 async function importTransferredFiles(

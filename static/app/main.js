@@ -3,6 +3,7 @@ import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
 import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
+import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
 import {
 	bindMessageScroll,
@@ -50,6 +51,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindCodeCopy();
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();
+	bindFileLinks();
 	bindDebugFps();
 });
 

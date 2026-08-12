@@ -1,9 +1,10 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
+import { toFileUrl } from "@std/path";
 
 import type { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
 import type { UiRenderer } from "../../ui/ui-renderer.ts";
-import { createRouter } from "../app.ts";
+import { createRouter, isLoopbackAddress } from "../app.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 import { pickWorkspace } from "./workspace.ts";
@@ -56,6 +57,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"GET /files/search",
 		"POST /files/pick",
 		"POST /files/import",
+		"POST /files/open",
 		"GET /basecoat.js",
 		"GET /vendor/datastar-inspector.min.js",
 	].sort();
@@ -413,8 +415,57 @@ Deno.test("tree navigation state follows mutable host ownership", async () => {
 	assertEquals(cancelledBody.includes('"prompt"'), false);
 });
 
+Deno.test("file links open locally and download remotely", async () => {
+	const path = await Deno.makeTempFile({ suffix: "-linked file.txt" });
+	await Deno.writeTextFile(path, "linked content");
+	const uri = toFileUrl(path).href;
+	try {
+		let openedPath: string | undefined;
+		const localRouter = createRouter(
+			fakeContext({
+				isLocalRequest: () => true,
+				openPath: (path) => {
+					openedPath = path;
+					return Promise.resolve();
+				},
+			}),
+		);
+		const local = await localRouter.fetch(fileOpenRequest(uri));
+		assertEquals(local.status, 204);
+		assertEquals(openedPath, path);
+
+		const remote = await createRouter(fakeContext()).fetch(fileOpenRequest(uri));
+		assertEquals(remote.status, 200);
+		assertEquals(remote.headers.get("content-type"), "application/octet-stream");
+		assertStringIncludes(
+			remote.headers.get("content-disposition") ?? "",
+			"attachment;",
+		);
+		assertEquals(await remote.text(), "linked content");
+	} finally {
+		await Deno.remove(path);
+	}
+});
+
+Deno.test("request locality uses the connection peer address", () => {
+	const address = (hostname: string): Deno.NetAddr => ({
+		transport: "tcp",
+		hostname,
+		port: 1234,
+	});
+	assertEquals(isLoopbackAddress(address("127.0.0.1")), true);
+	assertEquals(isLoopbackAddress(address("::1")), true);
+	assertEquals(isLoopbackAddress(address("::ffff:127.0.0.1")), true);
+	assertEquals(isLoopbackAddress(address("192.168.1.20")), false);
+});
+
 function fakeContext(
-	overrides: { host?: AgentHost; renderer?: UiRenderer } = {},
+	overrides: {
+		host?: AgentHost;
+		renderer?: UiRenderer;
+		openPath?: (path: string) => Promise<void>;
+		isLocalRequest?: (request: Request) => boolean;
+	} = {},
 ): RouteContext {
 	const store = new AppStore();
 	return {
@@ -430,6 +481,8 @@ function fakeContext(
 		resources: { host: overrides.host ?? fakeHost() },
 		transferredFiles: { importFiles: async () => [] } as never,
 		openWorkspace: async () => true,
+		openPath: overrides.openPath ?? (async () => {}),
+		isLocalRequest: overrides.isLocalRequest ?? (() => false),
 		readBasecoat: async () => new ArrayBuffer(0),
 		serveStatic: async () => new Response("static"),
 	};
@@ -463,6 +516,14 @@ function fakeHost(overrides: Record<string, unknown> = {}): AgentHost {
 		toggleScopedModel: async () => true,
 		...overrides,
 	} as unknown as AgentHost;
+}
+
+function fileOpenRequest(uri: string): Request {
+	return new Request("http://localhost/files/open", {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ uri }),
+	});
 }
 
 function treeNavigateRequest(entryId: string): Request {

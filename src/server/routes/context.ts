@@ -42,6 +42,8 @@ export interface RouteContext {
 	resources: RouteResources;
 	transferredFiles: TransferredFileStore;
 	openWorkspace(path: string): Promise<boolean>;
+	openPath(path: string): Promise<void>;
+	isLocalRequest(request: Request): boolean;
 	readBasecoat(): Promise<ArrayBuffer>;
 	serveStatic(request: Request): Promise<Response>;
 }

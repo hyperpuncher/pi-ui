@@ -108,6 +108,7 @@ export function renderPage(
 				data-time-locale={systemTimeLocale}
 				data-files-pick-endpoint={endpoints.filesPick}
 				data-files-import-endpoint={endpoints.filesImport}
+				data-files-open-endpoint={endpoints.filesOpen}
 				data-display-refresh-endpoint={endpoints.displayRefresh}
 				data-workspace-review-endpoint={endpoints.workspaceReview}
 				data-signals={initialSignals}

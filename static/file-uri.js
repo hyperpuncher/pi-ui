@@ -1,3 +1,4 @@
+/** @param {string} uri */
 export function fileUriToPath(uri) {
 	try {
 		const url = new URL(uri);

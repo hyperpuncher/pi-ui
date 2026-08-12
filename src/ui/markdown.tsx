@@ -119,11 +119,20 @@ const safeLinksAndImages = defineHastPlugin({
 			if (node.tagName === "a") {
 				const href = stringProperty(node.properties.href);
 				if (!href || !safeUrl(href, { allowDataImage: false })) {
-					ctx.removeNode(node);
+					ctx.replaceNode(node, {
+						type: "element",
+						tagName: "span",
+						properties: {},
+						children: node.children,
+					});
 					return;
 				}
-				ctx.setProperty(node, "target", "_blank");
-				ctx.setProperty(node, "rel", "noreferrer");
+				if (new URL(href, "http://pi-ui.local").protocol === "file:") {
+					ctx.setProperty(node, "data-pi-file-link", "");
+				} else {
+					ctx.setProperty(node, "target", "_blank");
+					ctx.setProperty(node, "rel", "noreferrer");
+				}
 			}
 
 			if (node.tagName === "img") {
@@ -490,7 +499,7 @@ function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {
 				/^data:image\/(png|jpeg|gif|webp);base64,/i.test(value)
 			);
 		}
-		return ["http:", "https:", "mailto:"].includes(url.protocol);
+		return ["http:", "https:", "mailto:", "file:"].includes(url.protocol);
 	} catch {
 		return false;
 	}

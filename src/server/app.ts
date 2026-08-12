@@ -6,6 +6,7 @@ import { SessionTransitionController } from "../agent/session-transition-control
 import { AppStore } from "../state/app-store.ts";
 import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
+import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 import { expandHomePath } from "../utils/workspace.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
 import { ExactRouter } from "./router.ts";
@@ -30,6 +31,7 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const preloadHighlighterPromise = preloadPierreHighlighter();
+	const localRequests = new WeakSet<Request>();
 	const store = new AppStore();
 	const renderer = new UiRenderer(store, new DatastarClientHub());
 	const transitions = new SessionTransitionController((transition) =>
@@ -72,16 +74,31 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 			(await Deno.readFile(basecoatJsPath)).buffer as ArrayBuffer,
 		serveStatic: (request) => serveDir(request, { fsRoot: staticRoot }),
 		openWorkspace: (path) => openWorkspace(path, store, resources, transitions),
+		openPath: openWithDefaultApp,
+		isLocalRequest: (request) => localRequests.has(request),
 	};
 	const router = createRouter(context);
 	return {
-		fetch: (request) => {
+		fetch: (request, info) => {
+			if (isLoopbackAddress(info.remoteAddr)) localRequests.add(request);
 			const pathname = new URL(request.url).pathname;
 			if (router.has(request.method, pathname)) return router.fetch(request);
 			if (request.method === "GET") return context.serveStatic(request);
 			return router.fetch(request);
 		},
 	};
+}
+
+export function isLoopbackAddress(address: Deno.Addr): boolean {
+	if (address.transport !== "tcp") return true;
+	const hostname = address.hostname.toLowerCase();
+	return (
+		hostname === "localhost" ||
+		hostname === "::1" ||
+		hostname === "0:0:0:0:0:0:0:1" ||
+		/^127(?:\.\d{1,3}){3}$/.test(hostname) ||
+		hostname.startsWith("::ffff:127.")
+	);
 }
 
 export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
