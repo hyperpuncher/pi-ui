@@ -25,7 +25,10 @@ if (desktopWindow) {
 } else {
 	const serverAbort = new AbortController();
 	Deno.addSignalListener("SIGTERM", () => serverAbort.abort());
-	Deno.serve({ port: 31415, signal: serverAbort.signal }, app.fetch);
+	Deno.serve(
+		{ hostname: "127.0.0.1", port: 31415, signal: serverAbort.signal },
+		app.fetch,
+	);
 }
 
 // Deno Desktop forces every later HTTP listener onto its UI server address
