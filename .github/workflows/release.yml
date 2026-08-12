@@ -262,8 +262,6 @@ jobs:
                   ' < /tmp/PKGBUILD > /tmp/.SRCINFO
 
             - name: Push AUR package
-              # Temporarily disabled while AUR SSH access is unavailable.
-              if: ${{ false }}
               env:
                   AUR_KEY: ${{ secrets.AUR_KEY }}
               run: |
