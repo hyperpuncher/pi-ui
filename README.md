@@ -16,8 +16,13 @@ keyboard-first minimal gui for [`pi`](https://pi.dev).
 	</picture>
 </div>
 
-feature parity with the pi tui, plus desktop niceties like background sessions,
-native notifications, file paste/drop, and rich code/diff rendering.
+features:
+
+- desktop and server apps
+- background sessions and native notifications
+- git review with commit history and inline comments
+- markdown, syntax highlighting, and rich diffs
+- file attachments with image previews
 
 built with:
 
@@ -29,6 +34,40 @@ built with:
 - [`basecoat`](https://basecoatui.com/)
 
 ## install
+
+> server mode is recommended for most users: it is lighter and runs in your existing browser
+
+### server
+
+use pi-ui in your browser without installing the desktop app. after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415)
+
+#### arch
+
+```sh
+paru -S pi-ui-server-bin
+pi-ui-server autostart enable
+```
+
+#### other linux
+
+```sh
+curl -fsSL https://pi-ui.app/install-server | sh
+```
+
+#### mac
+
+```sh
+brew install hyperpuncher/tap/pi-ui-server
+brew services start pi-ui-server
+```
+
+#### windows
+
+```powershell
+irm https://pi-ui.app/install-server.ps1 | iex
+```
+
+the windows installer starts pi-ui at login.
 
 ### desktop
 
@@ -66,38 +105,6 @@ chmod +x pi-ui-linux-*.AppImage
 ```sh
 brew install --cask hyperpuncher/tap/pi-ui
 ```
-
-### server
-
-use pi-ui in your browser without installing the desktop app. after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415)
-
-#### arch
-
-```sh
-paru -S pi-ui-server-bin
-pi-ui-server autostart enable
-```
-
-#### other linux
-
-```sh
-curl -fsSL https://pi-ui.app/install-server | sh
-```
-
-#### mac
-
-```sh
-brew install hyperpuncher/tap/pi-ui-server
-brew services start pi-ui-server
-```
-
-#### windows
-
-```powershell
-irm https://pi-ui.app/install-server.ps1 | iex
-```
-
-the windows installer starts pi-ui at login.
 
 ## keybinds
 
