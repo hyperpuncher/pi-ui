@@ -304,6 +304,32 @@ Deno.test("accepted prompts do not clear a newer frontend draft", async () => {
 	}
 });
 
+Deno.test("multipart prompts pass image attachments directly to pi", async () => {
+	let submitted: { text: string; options: Record<string, unknown> } | undefined;
+	const host = fakeHost({
+		prompt: async (text: string, options: Record<string, unknown>) => {
+			submitted = { text, options };
+			return true;
+		},
+	});
+	const formData = new FormData();
+	formData.set("prompt", "@/tmp/screenshot.png\ninspect this");
+	formData.set(
+		"image",
+		new File(["image bytes"], "screenshot.png", { type: "image/png" }),
+	);
+	const response = await createRouter(fakeContext({ host })).fetch(
+		new Request("http://localhost/prompt", { method: "POST", body: formData }),
+	);
+	assertEquals(response.status, 204);
+	assertEquals(submitted, {
+		text: "@/tmp/screenshot.png\ninspect this",
+		options: {
+			images: [{ type: "image", data: "aW1hZ2UgYnl0ZXM=", mimeType: "image/png" }],
+		},
+	});
+});
+
 Deno.test("display refresh updates presentation owner directly", async () => {
 	let measured = 0;
 	const context = fakeContext({

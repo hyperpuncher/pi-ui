@@ -88,8 +88,15 @@ export class TranscriptProjector {
 
 	message(message: AgentMessage, timestamp: Date): AppMessageInput[] {
 		switch (message.role) {
-			case "user":
-				return userContentToMessages(contentToText(message.content), timestamp);
+			case "user": {
+				const text = userContentRawText(message.content);
+				const { prompt, paths } = splitAttachmentReferences(text);
+				return userContentToMessages(
+					prompt,
+					timestamp,
+					userContentAttachments(paths, message.content),
+				);
+			}
 			case "assistant":
 				return assistantContentToMessages(message.content, timestamp);
 			case "toolResult":
@@ -136,9 +143,21 @@ export class TranscriptProjector {
 	}
 }
 
-export function userContentToMessages(text: string, timestamp: Date): AppMessageInput[] {
+export function userContentToMessages(
+	text: string,
+	timestamp: Date,
+	attachments?: AppMessageInput["attachments"],
+): AppMessageInput[] {
 	const skill = parseSkillBlock(text);
-	if (!skill) return [{ role: "user", text, timestamp }];
+	if (!skill)
+		return [
+			{
+				role: "user",
+				text,
+				timestamp,
+				...(attachments?.length ? { attachments } : {}),
+			},
+		];
 	const messages: AppMessageInput[] = [
 		{
 			role: "skill",
@@ -148,9 +167,102 @@ export function userContentToMessages(text: string, timestamp: Date): AppMessage
 			meta: skill.name,
 		},
 	];
-	if (skill.userMessage)
-		messages.push({ role: "user", text: skill.userMessage, timestamp });
+	if (skill.userMessage || attachments?.length)
+		messages.push({
+			role: "user",
+			text: skill.userMessage ?? "",
+			timestamp,
+			attachments,
+		});
 	return messages;
+}
+
+function userContentRawText(content: unknown): string {
+	return Array.isArray(content)
+		? content
+				.filter(
+					(part) =>
+						isRecord(part) &&
+						part.type === "text" &&
+						typeof part.text === "string",
+				)
+				.map((part) => stripAnsi(String(part.text)))
+				.join("\n")
+		: contentToText(content);
+}
+
+function splitAttachmentReferences(text: string): {
+	prompt: string;
+	paths: string[];
+} {
+	const paths: string[] = [];
+	let prompt = text;
+	while (true) {
+		const match = prompt.match(/^@((?:\/|[A-Za-z]:[\\/])[^\r\n]+)(?:\r?\n|$)/);
+		if (!match) break;
+		paths.push(match[1]);
+		prompt = prompt.slice(match[0].length);
+	}
+	return { prompt, paths };
+}
+
+function userContentAttachments(
+	paths: readonly string[],
+	content: unknown,
+): AppMessageInput["attachments"] {
+	const images = Array.isArray(content)
+		? content.flatMap((part) =>
+				isRecord(part) &&
+				part.type === "image" &&
+				typeof part.data === "string" &&
+				typeof part.mimeType === "string" &&
+				/^image\/[a-z0-9.+-]+$/i.test(part.mimeType)
+					? [{ data: part.data, mimeType: part.mimeType }]
+					: [],
+			)
+		: [];
+	let imageIndex = 0;
+	const attachments: NonNullable<AppMessageInput["attachments"]> = paths.map((path) => {
+		const name = attachmentDisplayName(path);
+		const image = isImageFileName(name) ? images[imageIndex++] : undefined;
+		return {
+			name,
+			path,
+			mimeType: image?.mimeType ?? mimeTypeFromName(name),
+			...(image ? { image } : {}),
+		};
+	});
+	for (; imageIndex < images.length; imageIndex += 1) {
+		attachments.push({
+			name: `Image ${imageIndex + 1}`,
+			mimeType: images[imageIndex].mimeType,
+			image: images[imageIndex],
+		});
+	}
+	return attachments.length > 0 ? attachments : undefined;
+}
+
+function attachmentDisplayName(path: string): string {
+	const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
+	return name.replace(/^file-[a-f0-9]+-/i, "");
+}
+
+function isImageFileName(name: string): boolean {
+	return /\.(?:jpe?g|png|gif|webp|bmp)$/i.test(name);
+}
+
+function mimeTypeFromName(name: string): string | undefined {
+	const extension = name.split(".").at(-1)?.toLowerCase();
+	const types: Record<string, string> = {
+		txt: "text/plain",
+		md: "text/markdown",
+		json: "application/json",
+		pdf: "application/pdf",
+		ogg: "audio/ogg",
+		mp3: "audio/mpeg",
+		wav: "audio/wav",
+	};
+	return extension ? types[extension] : undefined;
 }
 
 export function toolResultToAppMessage(

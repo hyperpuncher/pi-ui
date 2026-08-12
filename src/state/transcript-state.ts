@@ -15,10 +15,18 @@ export type TranscriptMessageTitlePart = {
 	highlight?: "bash";
 };
 
+export type TranscriptMessageAttachment = {
+	name: string;
+	path?: string;
+	mimeType?: string;
+	image?: { data: string; mimeType: string };
+};
+
 export type TranscriptMessage = {
 	id: string;
 	role: TranscriptMessageRole;
 	text: string;
+	attachments?: TranscriptMessageAttachment[];
 	timestamp: Date;
 	title?: string;
 	titleParts?: TranscriptMessageTitlePart[];
@@ -29,7 +37,7 @@ export type TranscriptMessage = {
 
 export type TranscriptMessageOptions = Pick<
 	TranscriptMessage,
-	"title" | "titleParts" | "meta" | "state" | "format"
+	"title" | "titleParts" | "meta" | "state" | "format" | "attachments"
 >;
 
 export type TranscriptMessageInput = Omit<TranscriptMessage, "id">;
@@ -224,6 +232,10 @@ export class TranscriptState {
 function cloneMessage(message: TranscriptMessage): TranscriptMessage {
 	return {
 		...message,
+		attachments: message.attachments?.map((attachment) => ({
+			...attachment,
+			image: attachment.image ? { ...attachment.image } : undefined,
+		})),
 		timestamp: new Date(message.timestamp),
 		titleParts: message.titleParts?.map((part) => ({ ...part })),
 	};

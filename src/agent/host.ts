@@ -1,3 +1,5 @@
+import type { PromptOptions } from "@earendil-works/pi-coding-agent";
+
 import type { AppStore } from "../state/app-store.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
 import {
@@ -35,7 +37,7 @@ export class AgentHost {
 
 	prompt(
 		text: string,
-		options: { streamingBehavior?: "steer" | "followUp" } = {},
+		options: Pick<PromptOptions, "images" | "streamingBehavior"> = {},
 	): Promise<boolean> {
 		return this.runtime.prompt(text, options);
 	}

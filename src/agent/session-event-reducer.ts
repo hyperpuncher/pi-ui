@@ -107,6 +107,9 @@ export function reduceSessionEvent(
 				context.now?.() ?? new Date(),
 			)) {
 				state.appendMessage(message.role, message.text, {
+					...(message.attachments?.length
+						? { attachments: message.attachments }
+						: {}),
 					title: message.title,
 					titleParts: message.titleParts,
 					meta: message.meta,

@@ -15,6 +15,13 @@ interface PiUiNamespace {
 		pick(): Promise<void>;
 		hasFiles(data?: unknown): boolean;
 		insert(data?: unknown): Promise<void>;
+		hasAttachments(): boolean;
+		canSubmit(prompt: string): boolean;
+		submit(
+			endpoint: string,
+			prompt: string,
+			streamingBehavior?: "steer" | "followUp",
+		): Promise<boolean>;
 		enterDrag(): boolean;
 		leaveDrag(): boolean;
 		resetDrag(): void;

@@ -42,6 +42,13 @@ export function renderPromptBox(
 				class="input-group pi-raised-surface pi-prompt-surface relative z-10 overflow-visible p-3 text-sm transition-none"
 				data-orientation="vertical"
 			>
+				<div
+					id="prompt-attachments"
+					class="absolute bottom-full left-3 z-20 mb-2 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 overflow-visible"
+					aria-label="Attachments"
+					data-ignore-morph
+					hidden
+				/>
 				<textarea
 					id="prompt-input"
 					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 text-[15px]"
@@ -53,6 +60,8 @@ export function renderPromptBox(
 						window.piUi.promptHistory.handleInput();
 						$_slashPickerOpen = $prompt.startsWith('/') &&
 						!$prompt.includes(' ');
+						const send = document.querySelector('[data-send-trigger]');
+						if (send) send.disabled = !window.piUi.fileTransfer.canSubmit($prompt);
 					"
 					data-on:pi-ui-picker-close="$_slashPickerOpen = false"
 					data-on:pi-ui-file-query={`
@@ -102,7 +111,7 @@ export function renderPromptBox(
 						if (
 							evt.key === 'Enter' &&
 							!evt.shiftKey &&
-							$prompt.trim() !== '' &&
+							window.piUi.fileTransfer.canSubmit($prompt) &&
 							!window.piUi.pickers.isOpen()
 						) {
 							evt.preventDefault();
@@ -110,9 +119,11 @@ export function renderPromptBox(
 							const submittedPrompt = $prompt;
 							$prompt = '';
 							if (submittedPrompt.trim() === '/tree') window.piUi.dialogs.openTree();
-							evt.altKey
-								? @post('${endpoints.promptFollowUp}', { payload: { prompt: submittedPrompt } })
-								: @post('${endpoints.prompt}', { payload: { prompt: submittedPrompt } });
+							window.piUi.fileTransfer.submit(
+								evt.altKey ? '${endpoints.promptFollowUp}' : '${endpoints.prompt}',
+								submittedPrompt,
+								evt.altKey ? 'followUp' : undefined,
+							);
 						};
 					`}
 				></textarea>
@@ -160,10 +171,10 @@ function renderLatestButton() {
 		<button
 			id="messages-latest"
 			type="button"
-			class="btn pointer-events-auto z-20 mb-4 rounded-full border-foreground/10! bg-background/40! backdrop-blur-[2px] hover:bg-muted/70! dark:bg-input/30! hover:dark:bg-input/50!"
+			class="btn pointer-events-auto z-20 mb-4 rounded-full border-foreground/10! bg-background/40! backdrop-blur-[2px] transition-[translate,background-color] duration-150 ease-out hover:bg-muted/70! motion-reduce:transition-none dark:bg-input/30! hover:dark:bg-input/50!"
 			data-variant="outline"
 			data-size="icon"
-			data-preserve-attr="hidden inert tabindex"
+			data-preserve-attr="hidden inert tabindex style"
 			data-on:click="window.piUi.messageScroll.scrollBottom('smooth')"
 			aria-label="Jump to latest message"
 			hidden

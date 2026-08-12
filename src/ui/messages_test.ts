@@ -29,6 +29,33 @@ Deno.test("user messages wrap uninterrupted content", () => {
 	assertStringIncludes(html, "wrap-anywhere");
 });
 
+Deno.test("user messages render attached images without placeholder text", () => {
+	const html = renderMessage({
+		id: "user-image",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "user",
+		text: "check this",
+		attachments: [
+			{
+				name: "image.png",
+				image: { data: "aW1hZ2U=", mimeType: "image/png" },
+			},
+			{ name: "notes.txt", mimeType: "text/plain", path: "/tmp/notes.txt" },
+		],
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, 'src="data:image/png;base64,aW1hZ2U="');
+	assertStringIncludes(html, "flex-col items-end gap-2");
+	assertStringIncludes(html, "rounded-xl bg-primary p-1.5");
+	assertStringIncludes(html, "notes.txt");
+	assertStringIncludes(html, "h-16");
+	assertStringIncludes(html, "bg-card");
+	assertStringIncludes(html, "rounded-lg border bg-muted");
+	assertStringIncludes(html, "check this");
+	assertFalse(html.includes("[image:"));
+});
+
 Deno.test("cache miss notices have a dedicated spacing class", () => {
 	const html = renderMessage({
 		id: "notice-1",

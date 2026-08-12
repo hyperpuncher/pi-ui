@@ -350,6 +350,30 @@ function renderDeferredEnhancement(message: AppMessage) {
 	);
 }
 
+function renderUserFileAttachment(
+	attachment: NonNullable<AppMessage["attachments"]>[number],
+) {
+	const extension = attachment.name.includes(".")
+		? attachment.name.split(".").at(-1)?.slice(0, 4).toLowerCase()
+		: undefined;
+	const type = attachment.mimeType?.split("/")[0] ?? "file";
+	return (
+		<div class="flex h-16 max-w-60 min-w-0 items-center gap-2 rounded-xl border bg-card p-2 pr-3 text-card-foreground shadow-sm">
+			<span class="grid size-12 shrink-0 place-items-center rounded-lg border bg-muted font-mono text-[10px] text-muted-foreground">
+				{extension || "file"}
+			</span>
+			<span class="min-w-0">
+				<span class="block truncate text-xs font-medium" safe>
+					{attachment.name}
+				</span>
+				<span class="block text-[10px] text-muted-foreground" safe>
+					{type}
+				</span>
+			</span>
+		</div>
+	);
+}
+
 function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	const classes = [];
 	if (index === 0 && !part.mono) classes.push("mr-2");
@@ -363,14 +387,46 @@ function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 
 export function renderMessage(message: AppMessage, toolContinues = false): string {
 	if (message.role === "user") {
+		const imageAttachments =
+			message.attachments?.filter((attachment) => attachment.image) ?? [];
+		const fileAttachments =
+			message.attachments?.filter((attachment) => !attachment.image) ?? [];
 		return (
 			<article
-				class="message message-user max-w-[min(32rem,72%)] self-end rounded-xl bg-primary px-3.5 py-2.5 text-primary-foreground"
+				class="message message-user flex max-w-[min(32rem,72%)] flex-col items-end gap-2 self-end"
 				data-message-id={message.id}
 			>
-				<p class="m-0 wrap-anywhere whitespace-pre-wrap" safe>
-					{message.text}
-				</p>
+				{imageAttachments.length ? (
+					<div class="flex max-w-full flex-wrap justify-end gap-2">
+						{imageAttachments.map((attachment, index) => (
+							<div class="overflow-clip rounded-xl bg-primary p-1.5">
+								<img
+									class="max-h-72 max-w-full rounded-lg object-contain"
+									src={`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`}
+									alt={attachment.name || `Attached image ${index + 1}`}
+									style="overflow-clip-margin: unset;"
+								/>
+							</div>
+						))}
+					</div>
+				) : (
+					""
+				)}
+				{fileAttachments.length ? (
+					<div class="flex max-w-full flex-wrap justify-end gap-2">
+						{fileAttachments.map(renderUserFileAttachment)}
+					</div>
+				) : (
+					""
+				)}
+				{message.text && (
+					<p
+						class="m-0 max-w-full rounded-xl bg-primary px-3.5 py-2.5 wrap-anywhere whitespace-pre-wrap text-primary-foreground"
+						safe
+					>
+						{message.text}
+					</p>
+				)}
 			</article>
 		) as string;
 	}

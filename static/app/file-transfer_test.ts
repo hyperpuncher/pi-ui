@@ -1,12 +1,24 @@
 import { assertEquals } from "@std/assert";
 
-import { extractTransferredFilePaths, formatFileReferences } from "./file-transfer.js";
+import {
+	composePrompt,
+	extractTransferredFilePaths,
+	formatFileReferences,
+} from "./file-transfer.js";
 
 Deno.test("file references use one line per path and end with a newline", () => {
 	assertEquals(
 		formatFileReferences(["/tmp/one.txt", "/tmp/two.txt"]),
 		"@/tmp/one.txt\n@/tmp/two.txt\n",
 	);
+});
+
+Deno.test("attachment paths are composed separately from visible prompt editing", () => {
+	assertEquals(
+		composePrompt("review these", ["/tmp/one.txt", "/tmp/two.txt"]),
+		"@/tmp/one.txt\n@/tmp/two.txt\nreview these",
+	);
+	assertEquals(composePrompt("", ["/tmp/one.txt"]), "@/tmp/one.txt");
 });
 
 Deno.test("transferred files use their original paths", () => {

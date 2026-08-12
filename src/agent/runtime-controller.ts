@@ -1,6 +1,7 @@
 import {
 	type AgentSessionEvent,
 	type AgentSessionRuntime,
+	type PromptOptions,
 	createAgentSessionFromServices,
 	createAgentSessionRuntime,
 	type CreateAgentSessionRuntimeFactory,
@@ -61,9 +62,11 @@ import { TranscriptProjector } from "./transcript-projector.ts";
 import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
 
-type PromptStreamingBehavior = "steer" | "followUp";
+type PromptStreamingBehavior = NonNullable<PromptOptions["streamingBehavior"]>;
+type RuntimePromptOptions = Pick<PromptOptions, "images" | "streamingBehavior">;
 type CompactionQueuedPrompt = {
 	text: string;
+	images?: RuntimePromptOptions["images"];
 	streamingBehavior: PromptStreamingBehavior;
 };
 
@@ -262,10 +265,7 @@ export class RuntimeController {
 		);
 	}
 
-	async prompt(
-		text: string,
-		options: { streamingBehavior?: PromptStreamingBehavior } = {},
-	): Promise<boolean> {
+	async prompt(text: string, options: RuntimePromptOptions = {}): Promise<boolean> {
 		const trimmed = text.trim();
 		if (!trimmed) {
 			return false;
@@ -301,6 +301,7 @@ export class RuntimeController {
 				runtime,
 				trimmed,
 				options.streamingBehavior ?? "steer",
+				options.images,
 			);
 			return true;
 		}
@@ -875,7 +876,7 @@ export class RuntimeController {
 	private async submitRuntimePrompt(
 		runtime: AgentSessionRuntime,
 		text: string,
-		options: { streamingBehavior?: PromptStreamingBehavior } = {},
+		options: RuntimePromptOptions = {},
 	): Promise<boolean> {
 		let resolveAccepted: (accepted: boolean) => void = () => {};
 		let settled = false;
@@ -890,6 +891,7 @@ export class RuntimeController {
 		this.markPromptPending(runtime);
 		runtime.session
 			.prompt(text, {
+				images: options.images,
 				streamingBehavior: runtime.session.isStreaming
 					? (options.streamingBehavior ?? "steer")
 					: undefined,
@@ -908,9 +910,10 @@ export class RuntimeController {
 		runtime: AgentSessionRuntime,
 		text: string,
 		streamingBehavior: PromptStreamingBehavior,
+		images?: RuntimePromptOptions["images"],
 	): void {
 		const queued = this.compactionQueuedPrompts.get(runtime) ?? [];
-		queued.push({ text, streamingBehavior });
+		queued.push({ text, images, streamingBehavior });
 		this.compactionQueuedPrompts.set(runtime, queued);
 		this.syncRuntimeQueuedMessages(runtime);
 	}
@@ -951,6 +954,7 @@ export class RuntimeController {
 			const prompt = queued[index];
 			if (
 				await this.submitRuntimePrompt(runtime, prompt.text, {
+					images: prompt.images,
 					streamingBehavior: prompt.streamingBehavior,
 				})
 			)

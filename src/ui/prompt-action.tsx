@@ -48,12 +48,16 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 			data-size="icon"
 			type="button"
 			data-send-trigger
-			data-attr:disabled="$prompt.trim() === ''"
+			data-attr:disabled="
+				$prompt.trim() === '' &&
+				!window.piUi.fileTransfer.hasAttachments()
+			"
 			data-on:click={`
 				window.piUi.messageScroll.scrollBottom();
 				const submittedPrompt = $prompt;
 				$prompt = '';
-				@post('${endpoints.prompt}', { payload: { prompt: submittedPrompt } });
+				if (submittedPrompt.trim() === '/tree') window.piUi.dialogs.openTree();
+				window.piUi.fileTransfer.submit('${endpoints.prompt}', submittedPrompt);
 			`}
 			data-tooltip="Send"
 			data-tooltip-delay

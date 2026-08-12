@@ -31,6 +31,7 @@ import {
 } from "./tool-presentation.ts";
 import {
 	assistantContentToMessages,
+	TranscriptProjector,
 	userContentToMessages,
 } from "./transcript-projector.ts";
 import { flattenTree, TreeProjector } from "./tree-projector.ts";
@@ -116,6 +117,41 @@ Deno.test("transcript projection preserves user, skill, thought, and assistant r
 			{ role: "assistant", text: "answer" },
 		],
 	);
+});
+
+Deno.test("user projection keeps image data and hides transfer implementation text", () => {
+	const [message] = new TranscriptProjector().message(
+		{
+			role: "user",
+			content: [
+				{
+					type: "text",
+					text: "@/tmp/pi-ui-transfers-id/file-a1b2-image.png\n@/tmp/pi-ui-transfers-id/file-c3d4-notes.txt\ncheck this",
+				},
+				{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" },
+			],
+			timestamp: 0,
+		},
+		new Date(0),
+	);
+	assertEquals(message, {
+		role: "user",
+		text: "check this",
+		timestamp: new Date(0),
+		attachments: [
+			{
+				name: "image.png",
+				path: "/tmp/pi-ui-transfers-id/file-a1b2-image.png",
+				mimeType: "image/png",
+				image: { data: "aW1hZ2U=", mimeType: "image/png" },
+			},
+			{
+				name: "notes.txt",
+				path: "/tmp/pi-ui-transfers-id/file-c3d4-notes.txt",
+				mimeType: "text/plain",
+			},
+		],
+	});
 });
 
 Deno.test("model patterns preserve wildcards, thinking suffixes, and first-match ordering", () => {
