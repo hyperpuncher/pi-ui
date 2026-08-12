@@ -21,23 +21,23 @@ jobs:
                 include:
                     - name: linux-x64
                       os: ubuntu-latest
-                      server_executable: pi-ui
+                      server_executable: pi-ui-server
                       target: x86_64-unknown-linux-gnu
                     - name: linux-arm64
                       os: ubuntu-24.04-arm
-                      server_executable: pi-ui
+                      server_executable: pi-ui-server
                       target: aarch64-unknown-linux-gnu
                     - name: darwin-x64
                       os: macos-15-intel
-                      server_executable: pi-ui
+                      server_executable: pi-ui-server
                       target: x86_64-apple-darwin
                     - name: darwin-arm64
                       os: macos-14
-                      server_executable: pi-ui
+                      server_executable: pi-ui-server
                       target: aarch64-apple-darwin
                     - name: windows-x64
                       os: windows-latest
-                      server_executable: pi-ui.exe
+                      server_executable: pi-ui-server.exe
                       target: x86_64-pc-windows-msvc
 
         steps:
@@ -102,17 +102,21 @@ jobs:
             - name: Build server
               shell: bash
               run: |
-                  deno compile \
-                    -A \
-                    --conditions browser \
-                    --exclude-unused-npm \
-                    --frozen \
-                    --include static \
-                    --lock deno.release.lock \
-                    --node-modules-dir=none \
-                    --output "dist/server/${{ matrix.server_executable }}" \
-                    --target "${{ matrix.target }}" \
-                    src/main.ts
+                  server_args=(
+                    -A
+                    --conditions browser
+                    --exclude-unused-npm
+                    --frozen
+                    --include static
+                    --lock deno.release.lock
+                    --node-modules-dir=none
+                    --output "dist/server/${{ matrix.server_executable }}"
+                    --target "${{ matrix.target }}"
+                  )
+                  case "${{ matrix.target }}" in
+                    *windows*) server_args+=(--no-terminal) ;;
+                  esac
+                  deno compile "${server_args[@]}" src/server-main.ts
 
             - name: Build desktop app
               shell: bash
@@ -140,17 +144,17 @@ jobs:
                   case "${{ matrix.name }}" in
                     linux-*)
                       tar --zstd -cf "dist/pi-ui-${{ matrix.name }}.tar.zst" -C dist/linux pi-ui
-                      tar --zstd -cf "dist/pi-ui-server-${{ matrix.name }}.tar.zst" -C dist/server pi-ui
+                      ZSTD_CLEVEL=19 tar --zstd -cf "dist/pi-ui-server-${{ matrix.name }}.tar.zst" -C dist/server pi-ui-server
                       mv dist/linux/pi-ui.AppImage "dist/pi-ui-${{ matrix.name }}.AppImage"
                       mv dist/linux/pi-ui.deb "dist/pi-ui-${{ matrix.name }}.deb"
                       ;;
                     windows-*)
                       mv dist/windows/pi-ui.msi "dist/pi-ui-${{ matrix.name }}.msi"
-                      (cd dist/server && 7z a "../../dist/pi-ui-server-${{ matrix.name }}.zip" pi-ui.exe)
+                      (cd dist/server && 7z a "../../dist/pi-ui-server-${{ matrix.name }}.zip" pi-ui-server.exe)
                       ;;
                     darwin-*)
                       ditto -c -k --keepParent dist/macos/pi-ui.app "dist/pi-ui-${{ matrix.name }}.zip"
-                      ditto -c -k --keepParent dist/server/pi-ui "dist/pi-ui-server-${{ matrix.name }}.zip"
+                      ditto -c -k --keepParent dist/server/pi-ui-server "dist/pi-ui-server-${{ matrix.name }}.zip"
                       ;;
                   esac
 
@@ -216,6 +220,10 @@ jobs:
                     echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.tar.zst | cut -d' ' -f1)"
                     echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)"
                     echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)"
+                    echo "server-linux-x64=$(sha256sum dist/pi-ui-server-linux-x64.tar.zst | cut -d' ' -f1)"
+                    echo "server-linux-arm64=$(sha256sum dist/pi-ui-server-linux-arm64.tar.zst | cut -d' ' -f1)"
+                    echo "server-darwin-x64=$(sha256sum dist/pi-ui-server-darwin-x64.zip | cut -d' ' -f1)"
+                    echo "server-darwin-arm64=$(sha256sum dist/pi-ui-server-darwin-arm64.zip | cut -d' ' -f1)"
                   } >> "$GITHUB_OUTPUT"
 
             - name: Generate Homebrew cask
@@ -226,17 +234,26 @@ jobs:
                       -e "s/{{SHA_DARWIN_ARM64}}/${{ steps.sha.outputs.darwin-arm64 }}/g" \
                       packaging/homebrew/pi-ui.rb.in > /tmp/pi-ui.rb
 
-            - name: Push Homebrew cask
+            - name: Generate Homebrew formula
+              run: |
+                  V="${GITHUB_REF_NAME#v}"
+                  sed -e "s/{{VERSION}}/$V/g" \
+                      -e "s/{{SHA_DARWIN_X64}}/${{ steps.sha.outputs.server-darwin-x64 }}/g" \
+                      -e "s/{{SHA_DARWIN_ARM64}}/${{ steps.sha.outputs.server-darwin-arm64 }}/g" \
+                      packaging/homebrew/pi-ui-server.rb.in > /tmp/pi-ui-server.rb
+
+            - name: Push Homebrew packages
               env:
                   GH_PAT: ${{ secrets.GH_PAT }}
               run: |
                   git clone "https://x-access-token:${GH_PAT}@github.com/hyperpuncher/homebrew-tap.git" /tmp/homebrew-tap
-                  mkdir -p /tmp/homebrew-tap/Casks
+                  mkdir -p /tmp/homebrew-tap/Casks /tmp/homebrew-tap/Formula
                   cp /tmp/pi-ui.rb /tmp/homebrew-tap/Casks/pi-ui.rb
+                  cp /tmp/pi-ui-server.rb /tmp/homebrew-tap/Formula/pi-ui-server.rb
                   cd /tmp/homebrew-tap
                   git config user.name "github-actions"
                   git config user.email "github-actions@github.com"
-                  git add Casks/pi-ui.rb
+                  git add Casks/pi-ui.rb Formula/pi-ui-server.rb
                   git diff --staged --quiet || git commit -m "pi-ui ${GITHUB_REF_NAME}"
                   git push
 
@@ -253,6 +270,11 @@ jobs:
                       -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
                       -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
                       packaging/aur/PKGBUILD.in > /tmp/PKGBUILD
+                  sed -e "s/{{VERSION}}/$V/g" \
+                      -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
+                      -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.server-linux-x64 }}/g" \
+                      -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.server-linux-arm64 }}/g" \
+                      packaging/aur/PKGBUILD.server.in > /tmp/PKGBUILD.server
                   docker run --rm --interactive archlinux:base-devel bash -c '
                     useradd --create-home builder
                     cat > /home/builder/PKGBUILD
@@ -260,8 +282,15 @@ jobs:
                     cd /home/builder
                     runuser --user builder -- makepkg --printsrcinfo
                   ' < /tmp/PKGBUILD > /tmp/.SRCINFO
+                  docker run --rm --interactive archlinux:base-devel bash -c '
+                    useradd --create-home builder
+                    cat > /home/builder/PKGBUILD
+                    chown builder:builder /home/builder/PKGBUILD
+                    cd /home/builder
+                    runuser --user builder -- makepkg --printsrcinfo
+                  ' < /tmp/PKGBUILD.server > /tmp/.SRCINFO.server
 
-            - name: Push AUR package
+            - name: Push AUR packages
               env:
                   AUR_KEY: ${{ secrets.AUR_KEY }}
               run: |
@@ -281,4 +310,15 @@ jobs:
                   git config user.email "hyperpuncher@users.noreply.github.com"
                   git add PKGBUILD .SRCINFO pi-logo.svg pi-ui.desktop LICENSE
                   git diff --staged --quiet || git commit -m "upgpkg: pi-ui-bin ${GITHUB_REF_NAME#v}"
+                  git push
+
+                  git clone ssh://aur@aur.archlinux.org/pi-ui-server-bin.git /tmp/aur-server-repo
+                  cp /tmp/PKGBUILD.server /tmp/aur-server-repo/PKGBUILD
+                  cp /tmp/.SRCINFO.server /tmp/aur-server-repo/.SRCINFO
+                  cp "$GITHUB_WORKSPACE/LICENSE" /tmp/aur-server-repo/LICENSE
+                  cd /tmp/aur-server-repo
+                  git config user.name "hyperpuncher"
+                  git config user.email "hyperpuncher@users.noreply.github.com"
+                  git add PKGBUILD .SRCINFO LICENSE
+                  git diff --staged --quiet || git commit -m "upgpkg: pi-ui-server-bin ${GITHUB_REF_NAME#v}"
                   git push

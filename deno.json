@@ -6,11 +6,11 @@
 	"unstable": ["no-legacy-abort"],
 	"tasks": {
 		"dev": "deno run -A npm:concurrently -r \"deno task css:watch\" \"deno task client:watch\" \"deno desktop -A --conditions browser --hmr src/main.ts\"",
-		"server": "deno task assets:build && deno run -A --conditions browser --watch src/main.ts",
+		"server": "deno task assets:build && deno run -A --conditions browser --watch src/server-main.ts",
 		"assets:build": "deno task client:build && deno task css:build",
 		"build": "deno task assets:build && deno desktop -A --conditions browser --include static src/main.ts",
-		"build:server": "deno task assets:build && deno compile -A --conditions browser --node-modules-dir=none --exclude-unused-npm --include static --output ./dist/server/pi-ui src/main.ts",
-		"run:server": "./dist/server/pi-ui",
+		"build:server": "deno task assets:build && deno compile -A --conditions browser --node-modules-dir=none --exclude-unused-npm --include static --output ./dist/server/pi-ui-server src/server-main.ts",
+		"run:server": "./dist/server/pi-ui-server",
 		"run:linux": "./dist/linux/pi-ui/pi-ui --disable-spell-checking",
 		"release": "deno run -A scripts/release.ts",
 		"client:build": "deno run -A npm:rolldown@latest -c rolldown.config.ts --configLoader native",
@@ -20,7 +20,7 @@
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
 		"lint": "deno run -A npm:oxlint",
 		"lint:fix": "deno run -A npm:oxlint --fix",
-		"check": "deno check --conditions browser src/main.ts rolldown.config.ts scripts/release.ts && deno check --config deno.client.json --conditions browser src/client/workspace-review.ts src/client/pierre-worker.ts",
+		"check": "deno check --conditions browser src/main.ts src/server-main.ts rolldown.config.ts scripts/release.ts && deno check --config deno.client.json --conditions browser src/client/workspace-review.ts src/client/pierre-worker.ts",
 		"test": "deno test --conditions browser -A",
 		"perf:session": "deno run --conditions browser -A src/perf/session-benchmark.ts"
 	},

@@ -65,11 +65,58 @@ brew install --cask hyperpuncher/tap/pi-ui
 irm https://raw.githubusercontent.com/hyperpuncher/pi-ui/main/packaging/windows/install.ps1 | iex
 ```
 
+## server
+
+use pi-ui in your browser without installing the desktop app. after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415).
+
+### arch
+
+```sh
+paru -S pi-ui-server-bin
+pi-ui-server autostart enable
+```
+
+### other linux
+
+```sh
+case "$(uname -m)" in
+  x86_64) arch=x64 ;;
+  aarch64 | arm64) arch=arm64 ;;
+  *) echo "unsupported architecture"; exit 1 ;;
+esac
+mkdir -p "$HOME/.local/bin"
+tmp=$(mktemp "$HOME/.local/bin/pi-ui-server.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+curl -fsSL "https://github.com/hyperpuncher/pi-ui/releases/latest/download/pi-ui-server-linux-$arch.tar.zst" \
+  | tar --zstd -xO pi-ui-server > "$tmp"
+chmod +x "$tmp"
+mv "$tmp" "$HOME/.local/bin/pi-ui-server"
+trap - EXIT
+"$HOME/.local/bin/pi-ui-server" autostart enable
+```
+
+### mac
+
+```sh
+brew install hyperpuncher/tap/pi-ui-server
+brew services start pi-ui-server
+```
+
+### windows
+
+```powershell
+irm https://raw.githubusercontent.com/hyperpuncher/pi-ui/main/packaging/windows/install-server.ps1 | iex
+```
+
+the windows installer starts pi-ui at login.
+
 ## keybinds
 
 | key                                             | action                    |
 | ----------------------------------------------- | ------------------------- |
-| <kbd>ctrl/⌘</kbd> <kbd>k</kbd>                  | command menu              |
+| <kbd>ctrl/⌘</kbd> <kbd>k</kbd>                  | command palette           |
+| <kbd>ctrl/⌘</kbd> <kbd>b</kbd>                  | toggle session sidebar    |
+| <kbd>ctrl/⌘</kbd> <kbd>1–9</kbd>                | switch session            |
 | <kbd>ctrl/⌘</kbd> <kbd>o</kbd>                  | new session               |
 | <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>o</kbd>   | temporary chat            |
 | <kbd>ctrl/⌘</kbd> <kbd>r</kbd>                  | session picker            |
