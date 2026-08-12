@@ -35,7 +35,7 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 	assertStringIncludes(html, "pi-resize-handle");
 	assertStringIncludes(html, "absolute! inset-0 h-full! p-0!");
 	assertStringIncludes(html, "flex min-w-0 flex-col gap-1 p-2");
-	assertStringIncludes(html, "text-muted-foreground lowercase");
+	assertStringIncludes(html, "pi-fine-print shrink-0 text-[10px] lowercase");
 	assertStringIncludes(html, ">workspace</span>");
 	assertFalse(html.includes("3 messages"));
 	assertFalse(html.includes("1 message"));

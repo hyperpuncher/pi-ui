@@ -189,7 +189,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					</div>
 				)}
 				{dialog.error && (
-					<p class="text-sm text-destructive" safe>
+					<p class="pi-error-foreground text-sm" safe>
 						{dialog.error}
 					</p>
 				)}
@@ -274,7 +274,7 @@ function renderResult(dialog: AppAuthDialog): string {
 				<h2 id="auth-dialog-title">
 					{dialog.error ? "Authentication failed" : "Authentication updated"}
 				</h2>
-				<p class={dialog.error ? "text-destructive" : undefined} safe>
+				<p class={dialog.error ? "pi-error-foreground" : undefined} safe>
 					{dialog.error ?? dialog.status}
 				</p>
 			</header>

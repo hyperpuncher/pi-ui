@@ -284,7 +284,7 @@ export function renderPage(
 						</header>
 						<p
 							id="workspace-picker-error"
-							class="px-3 pt-2 text-xs text-destructive"
+							class="pi-error-foreground px-3 pt-2 text-xs"
 							role="alert"
 							style="display: none"
 							data-show="$_workspacePickerError"

@@ -69,7 +69,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			</span>
 			<span class="col-start-3 row-start-1 min-w-0 truncate">
 				{entry.label && (
-					<span class="mr-1 text-amber-500" safe>
+					<span class="pi-warning-foreground mr-1" safe>
 						[{entry.label}]
 					</span>
 				)}

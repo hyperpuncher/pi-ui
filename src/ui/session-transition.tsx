@@ -38,7 +38,7 @@ export function renderSessionTransition(state: AppRenderSnapshot): string {
 		>
 			{transition.status === "error" ? (
 				<div class="max-w-lg">
-					<p class="m-0 font-medium text-destructive">
+					<p class="pi-error-foreground m-0 font-medium">
 						Session transition failed
 					</p>
 					<p class="mt-2 mb-0 text-sm text-muted-foreground" safe>

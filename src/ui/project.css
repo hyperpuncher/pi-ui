@@ -44,12 +44,38 @@
 			var(--muted-foreground) 55%,
 			transparent
 		);
-		--pi-success: var(--color-emerald-600);
+		--pi-fine-print-foreground: oklch(27% 0 0);
+		--pi-inverse-fine-print-foreground: oklch(78% 0 0);
+		--pi-thought-foreground: oklch(62% 0 0);
+		--pi-error-foreground: oklch(54% 0.18 22);
+		--pi-error-fine-print-foreground: oklch(40% 0.15 22);
+		--pi-warning-foreground: var(--color-amber-700);
+		--pi-warning-fine-print-foreground: oklch(40% 0.14 60);
+		--pi-info-fine-print-foreground: oklch(40% 0.1 243);
+		--pi-success: oklch(38% 0.1 163);
 		--pi-success-soft: color-mix(in oklab, var(--pi-success) 12%, transparent);
 		--pi-status-error: oklch(71% 0.194 13.428);
-		--pi-status-success: oklch(76% 0.177 163.223);
+		--pi-status-success: var(--color-emerald-600);
 		--pi-timeline-rail-x: 0.625rem;
 	}
+}
+
+:root {
+	--muted: oklch(94% 0 0);
+	--muted-foreground: oklch(45% 0 0);
+}
+
+.dark {
+	--muted: oklch(37.1% 0 0);
+	--muted-foreground: oklch(90% 0 0);
+	--pi-fine-print-foreground: oklch(97% 0 0);
+	--pi-inverse-fine-print-foreground: oklch(60% 0 0);
+	--pi-thought-foreground: oklch(78% 0 0);
+	--pi-error-foreground: oklch(90% 0.12 22);
+	--pi-error-fine-print-foreground: oklch(96% 0.08 22);
+	--pi-warning-foreground: var(--color-yellow-300);
+	--pi-warning-fine-print-foreground: oklch(98% 0.14 98);
+	--pi-info-fine-print-foreground: oklch(94% 0.1 230);
 }
 
 @layer base {
@@ -71,7 +97,8 @@
 		--code-background: color-mix(in oklab, var(--muted) 55%, transparent);
 		--pi-control-well: color-mix(in oklab, var(--muted) 45%, var(--background));
 		--pi-prompt-surface: color-mix(in oklab, var(--card) 96%, var(--foreground));
-		--pi-success: var(--color-emerald-400);
+		--pi-success: oklch(94% 0.1 163);
+		--pi-status-success: var(--color-emerald-400);
 		--pi-surface-raised: var(--card);
 		--pi-workspace-canvas-background: var(--background);
 	}
@@ -87,6 +114,51 @@
 }
 
 @layer components {
+	.kbd {
+		color: var(--foreground);
+	}
+
+	.pi-fine-print {
+		color: var(--pi-fine-print-foreground);
+	}
+
+	.pi-inverse-fine-print {
+		color: var(--pi-inverse-fine-print-foreground);
+	}
+
+	.pi-thought-foreground {
+		color: var(--pi-thought-foreground);
+	}
+
+	.pi-error-foreground {
+		color: var(--pi-error-foreground);
+	}
+
+	.pi-error-fine-print {
+		color: var(--pi-error-fine-print-foreground);
+	}
+
+	.pi-warning-foreground {
+		color: var(--pi-warning-foreground);
+	}
+
+	.pi-warning-fine-print {
+		color: var(--pi-warning-fine-print-foreground);
+	}
+
+	.pi-info-fine-print {
+		color: var(--pi-info-fine-print-foreground);
+	}
+
+	#session-sidebar nav {
+		background: var(--pi-surface-raised);
+		color: var(--pi-surface-raised-foreground);
+	}
+
+	#session-sidebar nav li > button[data-active="true"] {
+		background: var(--muted);
+	}
+
 	.pi-workspace-canvas {
 		background: var(--pi-workspace-canvas-background);
 	}
@@ -531,7 +603,7 @@
 		box-sizing: content-box;
 		min-width: 1ch;
 		padding-inline: 2ch 1ch;
-		color: var(--muted-foreground);
+		color: var(--pi-fine-print-foreground);
 		text-align: right;
 		user-select: none;
 	}

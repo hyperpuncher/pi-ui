@@ -113,17 +113,14 @@ function renderSessionSidebarRow(
 					>
 						{session.title}
 					</span>
-					<span
-						class="shrink-0 text-[10px] text-muted-foreground lowercase"
-						safe
-					>
+					<span class="pi-fine-print shrink-0 text-[10px] lowercase" safe>
 						{session.modified}
 					</span>
 				</span>
 				<span class="flex h-6 min-w-0 items-center gap-2">
 					<SessionSubtitle
 						session={session}
-						class="min-w-0 flex-1 overflow-hidden text-[10px] text-muted-foreground"
+						class="pi-fine-print min-w-0 flex-1 overflow-hidden text-[10px]"
 						workspaceNameOnly
 						showSubtitle={false}
 					/>

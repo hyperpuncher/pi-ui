@@ -78,7 +78,7 @@ function renderContextTooltip(usage: AppUsage): string {
 						<strong class="font-semibold">
 							{formatTokens(contextTokens)} tokens
 						</strong>
-						<span class="text-background/60">
+						<span class="pi-inverse-fine-print">
 							of {formatTokens(contextWindow)}
 						</span>
 					</span>
@@ -88,7 +88,7 @@ function renderContextTooltip(usage: AppUsage): string {
 							style={`width: ${clampPercent(contextPercent)}%`}
 						/>
 					</span>
-					<span class="mt-1.5 flex items-baseline justify-between gap-3 font-mono text-[0.625rem] text-background/60">
+					<span class="pi-inverse-fine-print mt-1.5 flex items-baseline justify-between gap-3 font-mono text-[0.625rem]">
 						<span>
 							{usage.cacheHitPercent === undefined
 								? "cache hit unavailable"
@@ -101,11 +101,11 @@ function renderContextTooltip(usage: AppUsage): string {
 				<>
 					<span class="mb-1 flex items-baseline justify-between gap-3 font-mono">
 						<strong class="text-xs font-semibold">Context usage</strong>
-						<span class="text-[0.625rem] text-background/60">
+						<span class="pi-inverse-fine-print text-[0.625rem]">
 							{usage.costText} session
 						</span>
 					</span>
-					<span class="font-mono text-[0.6875rem] text-background/60">
+					<span class="pi-inverse-fine-print font-mono text-[0.6875rem]">
 						Available after next response
 					</span>
 				</>
@@ -123,7 +123,7 @@ function renderLimitsTooltip(limits: AppUsageLimits): string {
 		>
 			<strong class="mb-2 font-mono text-xs font-semibold">{limits.label}</strong>
 			{limits.status && (
-				<span class="font-mono text-[0.6875rem] text-background/60">
+				<span class="pi-inverse-fine-print font-mono text-[0.6875rem]">
 					{limits.status}
 				</span>
 			)}
@@ -141,7 +141,7 @@ function renderLimitsTooltip(limits: AppUsageLimits): string {
 							style={`width: ${clampPercent(window.remainingPercent)}%`}
 						/>
 					</span>
-					<span class="text-right font-mono text-[0.625rem] text-background/60">
+					<span class="pi-inverse-fine-print text-right font-mono text-[0.625rem]">
 						{window.resetText === "?"
 							? "reset time unavailable"
 							: `resets in ${window.resetText}`}

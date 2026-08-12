@@ -285,7 +285,7 @@ function renderSessionRow(
 						state={displayStatus === "running" ? "running" : "success"}
 						label={sessionStatusLabel(displayStatus, current)}
 						dataStatus={displayStatus}
-						runningClass={current ? "text-background/65" : undefined}
+						runningClass={current ? "pi-inverse-fine-print" : undefined}
 					/>
 				)}
 				<span class="min-w-0 flex-1 truncate font-medium" safe>
@@ -294,7 +294,7 @@ function renderSessionRow(
 				<span
 					class={[
 						"shrink-0 text-[10px] whitespace-nowrap lowercase",
-						current ? "text-background/65" : "text-muted-foreground",
+						current ? "pi-inverse-fine-print" : "pi-fine-print",
 					]}
 					safe
 				>
@@ -331,7 +331,7 @@ function renderSessionRow(
 					session={session}
 					class={[
 						"min-w-0 flex-1 text-xs",
-						current ? "text-background/65" : "text-muted-foreground",
+						current ? "pi-inverse-fine-print" : "text-muted-foreground",
 					]}
 				/>
 				<SessionRowAction

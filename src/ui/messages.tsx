@@ -359,14 +359,14 @@ function renderUserFileAttachment(
 	const type = attachment.mimeType?.split("/")[0] ?? "file";
 	return (
 		<div class="flex h-16 max-w-60 min-w-0 items-center gap-2 rounded-xl border bg-card p-2 pr-3 text-card-foreground shadow-sm">
-			<span class="grid size-12 shrink-0 place-items-center rounded-lg border bg-muted font-mono text-[10px] text-muted-foreground">
+			<span class="pi-fine-print grid size-12 shrink-0 place-items-center rounded-lg border bg-muted font-mono text-[10px]">
 				{extension || "file"}
 			</span>
 			<span class="min-w-0">
 				<span class="block truncate text-xs font-medium" safe>
 					{attachment.name}
 				</span>
-				<span class="block text-[10px] text-muted-foreground" safe>
+				<span class="pi-fine-print block text-[10px]" safe>
 					{type}
 				</span>
 			</span>
@@ -380,7 +380,7 @@ function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	if (part.mono) classes.push("font-mono");
 	if (part.highlight === "bash") classes.push("break-all whitespace-pre-wrap");
 	if (part.tone === "accent") classes.push("text-primary");
-	if (part.tone === "warning") classes.push("text-amber-600 dark:text-yellow-300");
+	if (part.tone === "warning") classes.push("pi-warning-foreground");
 	if (part.tone === "muted") classes.push("text-muted-foreground");
 	return classes.join(" ");
 }
@@ -438,7 +438,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 					"message message-narrative markdown-content w-full self-start",
 					message.role === "assistant"
 						? "message-assistant"
-						: "message-thought text-sm text-muted-foreground italic",
+						: "message-thought pi-thought-foreground text-sm italic",
 				]}
 				data-message-id={message.id}
 				data-ignore-morph={preservesFinalizedMessageDom(message)}
@@ -461,7 +461,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 				class={[
 					"message message-narrative max-w-3xl self-start",
 					message.role === "notice"
-						? "message-notice text-amber-700 dark:text-yellow-300"
+						? "message-notice pi-warning-foreground"
 						: "message-system text-muted-foreground",
 				]}
 				data-message-id={message.id}

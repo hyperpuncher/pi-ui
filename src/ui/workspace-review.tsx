@@ -45,7 +45,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 							<span>Changes</span>
 							<span
 								id="review-change-count"
-								class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground tabular-nums"
+								class="pi-fine-print rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums"
 							>
 								{snapshot.changes.length}
 							</span>
@@ -58,7 +58,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 								</span>
 								<span
 									id="review-total-deletions"
-									class="text-destructive"
+									class="pi-error-fine-print"
 								>
 									-{deletions}
 								</span>
@@ -119,7 +119,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center justify-between gap-2 px-1">
 						<span
 							id="review-branch"
-							class="min-w-0 truncate font-mono text-[11px] text-muted-foreground"
+							class="pi-fine-print min-w-0 truncate font-mono text-[11px]"
 							style={snapshot.branch ? undefined : "display: none"}
 							safe
 						>
@@ -202,7 +202,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 							</button>
 							<span
 								id="review-comment-status"
-								class="hidden text-xs text-destructive"
+								class="pi-error-foreground hidden text-xs"
 								aria-live="polite"
 							/>
 							<button

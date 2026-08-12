@@ -57,7 +57,7 @@ export function renderWorkspaceReviewHistory({
 		subject.textContent = commit.subject || "Untitled commit";
 		const metadata = document.createElement("span");
 		metadata.className =
-			"text-muted-foreground flex w-full min-w-0 items-center gap-1.5 font-mono text-[10px]";
+			"pi-fine-print flex w-full min-w-0 items-center gap-1.5 font-mono text-[10px]";
 		const shortHash = document.createElement("span");
 		shortHash.className = "shrink-0";
 		shortHash.textContent = commit.shortHash;
@@ -89,7 +89,7 @@ export function renderWorkspaceReviewHistory({
 	}
 	if (loading) {
 		const message = document.createElement("p");
-		message.className = "text-muted-foreground px-2 py-2 text-center text-[10px]";
+		message.className = "pi-fine-print px-2 py-2 text-center text-[10px]";
 		message.textContent = "Loading older commits…";
 		history.append(message);
 	}
@@ -113,13 +113,13 @@ export function showWorkspaceReviewDetailHeader(
 	additions.className = "text-(--pi-success)";
 	additions.textContent = `+${sumChanges(detail.changes, "additions")}`;
 	const deletions = document.createElement("span");
-	deletions.className = "text-destructive";
+	deletions.className = "pi-error-fine-print";
 	deletions.textContent = `-${sumChanges(detail.changes, "deletions")}`;
 	totals.append(additions, deletions);
 	heading.append(subject, totals);
 	const metadata = document.createElement("div");
 	metadata.className =
-		"text-muted-foreground mt-0.5 flex min-w-0 items-center gap-2 font-mono text-[10px]";
+		"pi-fine-print mt-0.5 flex min-w-0 items-center gap-2 font-mono text-[10px]";
 	const hash = document.createElement("span");
 	hash.textContent = detail.commit.shortHash;
 	const author = document.createElement("span");
@@ -141,7 +141,7 @@ export function hideWorkspaceReviewDetailHeader(detailHeader: HTMLElement): void
 function renderPushGroup(pushed: boolean | null): HTMLElement {
 	const group = document.createElement("div");
 	group.className =
-		"text-muted-foreground flex items-center gap-2 px-2 py-1 text-[10px] font-medium";
+		"pi-fine-print flex items-center gap-2 px-2 py-1 text-[10px] font-medium";
 	const label = document.createElement("span");
 	label.textContent =
 		pushed === null ? "No upstream" : pushed ? "Pushed" : "Not pushed";
@@ -163,12 +163,12 @@ function renderCommitFiles(
 		const button = document.createElement("button");
 		button.type = "button";
 		button.className =
-			"pi-selected-surface hover:bg-muted/60 flex w-full min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-[11px]";
+			"pi-fine-print pi-selected-surface hover:bg-muted/60 flex w-full min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-[11px]";
 		button.setAttribute("aria-pressed", String(selectedPath === change.path));
 		button.title = change.path;
 		button.addEventListener("click", () => onSelect(hash, change.path));
 		const status = document.createElement("span");
-		status.className = "text-muted-foreground w-3 shrink-0 font-mono";
+		status.className = "w-3 shrink-0 font-mono";
 		status.textContent = statusLetter(change.status);
 		const path = document.createElement("span");
 		path.className = "truncate";

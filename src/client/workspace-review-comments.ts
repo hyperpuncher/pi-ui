@@ -112,7 +112,7 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 		const actions = document.createElement("div");
 		actions.className = "mt-2";
 		const removeButton = button("Remove", "ghost");
-		removeButton.classList.add("text-destructive");
+		removeButton.classList.add("pi-error-foreground");
 		removeButton.addEventListener("click", () => remove(id));
 		actions.append(removeButton);
 		card.append(body, actions);

@@ -101,7 +101,7 @@ Deno.test("current running session is live but does not resume itself", () => {
 		html,
 		'class="inline-grid size-2 shrink-0 *:[grid-area:1/1] ml-0.75"',
 	);
-	assertStringIncludes(html, "text-background/65");
+	assertStringIncludes(html, "pi-inverse-fine-print");
 	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
 	assertStringIncludes(html, "text-[10px] whitespace-nowrap lowercase");
 	assertStringIncludes(html, 'class="size-3 text-destructive!"');

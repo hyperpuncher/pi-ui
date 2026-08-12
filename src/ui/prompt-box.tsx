@@ -232,8 +232,8 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 						class={[
 							"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
 							label === "Steering"
-								? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-								: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+								? "pi-warning-fine-print bg-amber-500/10"
+								: "pi-info-fine-print bg-sky-500/10",
 						]}
 					>
 						{label}
@@ -256,7 +256,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 					)}
 					<button
 						type="button"
-						class="-my-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-[color,background-color,opacity] hover:bg-muted hover:text-foreground focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+						class="-my-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color,opacity] hover:bg-muted hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:sm:opacity-100"
 						data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
 						aria-label="Remove queued message"
 					>
