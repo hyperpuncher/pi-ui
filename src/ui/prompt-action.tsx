@@ -33,6 +33,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 					@post('${endpoints.abort}', { filterSignals: { include: /^$/ } });
 				}`}
 				data-tooltip="Abort"
+				data-align="end"
 				aria-label="Abort"
 			>
 				<StopIcon />
@@ -61,6 +62,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 			`}
 			data-tooltip="Send"
 			data-tooltip-delay
+			data-align="end"
 			aria-label="Send"
 		>
 			<SendIcon />

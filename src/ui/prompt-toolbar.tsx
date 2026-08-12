@@ -26,7 +26,12 @@ export function renderPromptToolbar(
 			class="flex shrink-0 items-center gap-0.5"
 			aria-label="Message tools"
 		>
-			<PromptToolbarButton label="Commands" action="commands" shortcut="ctrl K">
+			<PromptToolbarButton
+				label="Commands"
+				action="commands"
+				shortcut="ctrl K"
+				tooltipAlign="start"
+			>
 				<CommandIcon />
 			</PromptToolbarButton>
 			<PromptToolbarButton label="Files" action="files" shortcut="@">
@@ -71,6 +76,7 @@ function PromptToolbarButton(props: {
 	variant?: "primary" | "secondary" | "ghost";
 	unavailable?: boolean;
 	pressed?: boolean;
+	tooltipAlign?: "start" | "center" | "end";
 	children: JSX.Element;
 }) {
 	return (
@@ -107,6 +113,7 @@ function PromptToolbarButton(props: {
 			data-on:click={promptToolbarClickAction(props.action)}
 			data-on:keydown__window={promptToolbarKeydownAction(props.action)}
 			data-tooltip={props.label}
+			data-align={props.tooltipAlign}
 			aria-label={props.label}
 		>
 			{props.children}

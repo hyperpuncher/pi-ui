@@ -118,6 +118,10 @@
 		color: var(--foreground);
 	}
 
+	[data-slot="tooltip-content"] .kbd {
+		color: var(--background);
+	}
+
 	.pi-fine-print {
 		color: var(--pi-fine-print-foreground);
 	}
@@ -651,7 +655,20 @@
 	}
 
 	:where([data-tooltip] > [data-slot="tooltip-content"]) {
-		@apply pointer-events-none invisible absolute bottom-full left-1/2 z-[60] mb-1.5 inline-flex w-max max-w-xs -translate-x-1/2 translate-y-2 scale-95 items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background opacity-0 transition-all;
+		@apply pointer-events-none invisible absolute bottom-full z-[60] mb-1.5 inline-flex w-max max-w-[calc(100vw-1rem)] translate-y-2 scale-95 items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background opacity-0 transition-all;
+	}
+
+	:where([data-tooltip]:not([data-align]) > [data-slot="tooltip-content"]),
+	:where([data-tooltip][data-align="center"] > [data-slot="tooltip-content"]) {
+		@apply left-1/2 -translate-x-1/2;
+	}
+
+	:where([data-tooltip][data-align="start"] > [data-slot="tooltip-content"]) {
+		@apply left-0;
+	}
+
+	:where([data-tooltip][data-align="end"] > [data-slot="tooltip-content"]) {
+		@apply right-0;
 	}
 
 	[data-tooltip]:hover > [data-slot="tooltip-content"] {
