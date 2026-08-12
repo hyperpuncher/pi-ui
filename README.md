@@ -30,13 +30,21 @@ built with:
 
 ## install
 
-### arch
+### desktop
+
+#### quick install (linux / mac)
+
+```sh
+curl -fsSL https://pi-ui.app/install | sh
+```
+
+#### arch
 
 ```sh
 paru -S pi-ui-bin
 ```
 
-### debian / ubuntu
+#### debian / ubuntu
 
 download the `.deb` for your architecture from the [latest release](https://github.com/hyperpuncher/pi-ui/releases/latest), then:
 
@@ -44,7 +52,7 @@ download the `.deb` for your architecture from the [latest release](https://gith
 sudo apt install ./pi-ui-linux-*.deb
 ```
 
-### other linux
+#### other linux
 
 download the `.AppImage` for your architecture from the [latest release](https://github.com/hyperpuncher/pi-ui/releases/latest), then:
 
@@ -53,59 +61,40 @@ chmod +x pi-ui-linux-*.AppImage
 ./pi-ui-linux-*.AppImage
 ```
 
-### mac
+#### mac
 
 ```sh
 brew install --cask hyperpuncher/tap/pi-ui
 ```
 
-### windows
+### server
 
-```powershell
-irm https://raw.githubusercontent.com/hyperpuncher/pi-ui/main/packaging/windows/install.ps1 | iex
-```
+use pi-ui in your browser without installing the desktop app. after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415)
 
-## server
-
-use pi-ui in your browser without installing the desktop app. after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415).
-
-### arch
+#### arch
 
 ```sh
 paru -S pi-ui-server-bin
 pi-ui-server autostart enable
 ```
 
-### other linux
+#### other linux
 
 ```sh
-case "$(uname -m)" in
-  x86_64) arch=x64 ;;
-  aarch64 | arm64) arch=arm64 ;;
-  *) echo "unsupported architecture"; exit 1 ;;
-esac
-mkdir -p "$HOME/.local/bin"
-tmp=$(mktemp "$HOME/.local/bin/pi-ui-server.XXXXXX")
-trap 'rm -f "$tmp"' EXIT
-curl -fsSL "https://github.com/hyperpuncher/pi-ui/releases/latest/download/pi-ui-server-linux-$arch.tar.zst" \
-  | tar --zstd -xO pi-ui-server > "$tmp"
-chmod +x "$tmp"
-mv "$tmp" "$HOME/.local/bin/pi-ui-server"
-trap - EXIT
-"$HOME/.local/bin/pi-ui-server" autostart enable
+curl -fsSL https://pi-ui.app/install-server | sh
 ```
 
-### mac
+#### mac
 
 ```sh
 brew install hyperpuncher/tap/pi-ui-server
 brew services start pi-ui-server
 ```
 
-### windows
+#### windows
 
 ```powershell
-irm https://raw.githubusercontent.com/hyperpuncher/pi-ui/main/packaging/windows/install-server.ps1 | iex
+irm https://pi-ui.app/install-server.ps1 | iex
 ```
 
 the windows installer starts pi-ui at login.
