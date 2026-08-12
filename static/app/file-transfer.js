@@ -23,6 +23,10 @@ export function hasFiles(data) {
 
 export async function pick() {
 	showTransferError("");
+	if (document.body.dataset.nativeFilePicker !== "true") {
+		pickBrowserFiles();
+		return;
+	}
 	try {
 		const endpoint = document.body.dataset.filesPickEndpoint;
 		const response = await fetch(endpoint, { method: "POST" });
@@ -35,6 +39,20 @@ export async function pick() {
 		console.error(error);
 		showTransferError(error?.message || "Could not open the native file picker.");
 	}
+}
+
+function pickBrowserFiles() {
+	const input = document.createElement("input");
+	input.type = "file";
+	input.multiple = true;
+	input.addEventListener(
+		"change",
+		() => {
+			if (input.files?.length) void insert(input.files);
+		},
+		{ once: true },
+	);
+	input.click();
 }
 
 export function enterDrag() {

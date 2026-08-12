@@ -106,6 +106,7 @@ export function renderPage(
 				spellcheck="false"
 				data-workspace-path={state.workspacePath}
 				data-time-locale={systemTimeLocale}
+				data-native-file-picker={desktop ? "true" : "false"}
 				data-files-pick-endpoint={endpoints.filesPick}
 				data-files-import-endpoint={endpoints.filesImport}
 				data-files-open-endpoint={endpoints.filesOpen}

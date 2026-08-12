@@ -633,6 +633,7 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	const html = renderPage(state.snapshot());
 
 	assertIncludes(html, 'id="prompt-input"');
+	assertIncludes(html, 'data-native-file-picker="false"');
 	assertIncludes(html, "&#34;_fileSearchController&#34;:&#34;&#34;");
 	assertIncludes(html, "$_fileSearchController.abort()");
 	assertIncludes(html, "requestCancellation: $_fileSearchController");
