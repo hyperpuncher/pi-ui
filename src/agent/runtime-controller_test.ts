@@ -46,6 +46,7 @@ function manager(
 		getSessionFile: () => path,
 		isPersisted: () => persisted,
 		getBranch: () => [],
+		getEntries: () => [],
 	} as unknown as SessionManager;
 }
 

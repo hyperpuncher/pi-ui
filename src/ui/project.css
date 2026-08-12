@@ -578,7 +578,7 @@
 		display: none;
 	}
 
-	[data-tooltip] > [data-slot="tooltip-content"] {
+	:where([data-tooltip] > [data-slot="tooltip-content"]) {
 		@apply pointer-events-none invisible absolute bottom-full left-1/2 z-[60] mb-1.5 inline-flex w-max max-w-xs -translate-x-1/2 translate-y-2 scale-95 items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background opacity-0 transition-all;
 	}
 

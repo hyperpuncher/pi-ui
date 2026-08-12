@@ -1,13 +1,10 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
 import { asRecord } from "../utils/type-guards.ts";
+import { fetchProviderUsagePayload } from "./provider-usage.ts";
 
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";
-const codexUsageTimeoutMs = 15_000;
-
-export const codexUsageTtlMs = 60 * 1000;
-
 export type CodexWindow = {
 	usedPercent: number;
 	windowSeconds?: number;
@@ -19,6 +16,13 @@ export type CodexUsage = {
 	secondary?: CodexWindow;
 };
 
+export type CodexUsageWindowDescription = {
+	label: string;
+	usedPercent: number;
+	remainingPercent: number;
+	resetText: string;
+};
+
 export function isOpenAICodex(model: { provider?: string } | undefined): boolean {
 	return model?.provider === codexProviderId;
 }
@@ -26,59 +30,35 @@ export function isOpenAICodex(model: { provider?: string } | undefined): boolean
 export async function fetchCodexUsage(
 	session: AgentSession,
 ): Promise<CodexUsage | undefined> {
-	const model = session.model;
-	if (!model) return undefined;
-
-	const resolution = await session.modelRuntime.getAuth(model);
-	if (!resolution) return undefined;
-
-	const headers = new Headers();
-	for (const [name, value] of Object.entries(resolution.auth.headers ?? {})) {
-		if (value !== null) headers.set(name, value);
-	}
-	if (!headers.has("authorization")) {
-		if (!resolution.auth.apiKey) return undefined;
-		headers.set("Authorization", `Bearer ${resolution.auth.apiKey}`);
-	}
-	if (!headers.has("user-agent")) {
-		headers.set("User-Agent", "pi-ui");
-	}
-
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), codexUsageTimeoutMs);
-	try {
-		const response = await fetch(codexUsageUrl, {
-			headers,
-			signal: controller.signal,
-		});
-		if (!response.ok) return undefined;
-		return parseCodexUsage(await response.json());
-	} finally {
-		clearTimeout(timeout);
-	}
+	const payload = await fetchProviderUsagePayload(session, codexUsageUrl);
+	return payload === undefined ? undefined : parseCodexUsage(payload);
 }
 
 export function formatCodexUsage(usage: CodexUsage): string {
-	const parts: string[] = [];
-	if (usage.primary) {
-		parts.push(formatCodexWindow(usage.primary, "5h"));
-	}
-	if (usage.secondary) {
-		parts.push(formatCodexWindow(usage.secondary, "1w"));
-	}
-	return parts.join("  ");
+	return describeCodexUsage(usage)
+		.map(
+			(window) => `${window.label} ${window.remainingPercent}% ${window.resetText}`,
+		)
+		.join("  ");
 }
 
-function formatCodexWindow(window: CodexWindow, fallbackLabel: string): string {
-	return `${formatWindowDuration(window.windowSeconds) ?? fallbackLabel} ${formatRemainingPercent(window)} ${formatRemainingTime(window)}`;
+export function describeCodexUsage(usage: CodexUsage): CodexUsageWindowDescription[] {
+	const windows: CodexUsageWindowDescription[] = [];
+	if (usage.primary) windows.push(describeCodexWindow(usage.primary, "5 hours"));
+	if (usage.secondary) windows.push(describeCodexWindow(usage.secondary, "Weekly"));
+	return windows;
 }
 
-function formatWindowDuration(seconds: number | undefined): string | undefined {
-	if (!seconds || seconds <= 0) return undefined;
-	if (seconds < 3_600) return `${formatOneDecimal(seconds / 60)}m`;
-	if (seconds < 86_400) return `${formatOneDecimal(seconds / 3_600)}h`;
-	if (seconds < 604_800) return `${formatOneDecimal(seconds / 86_400)}d`;
-	return `${formatOneDecimal(seconds / 604_800)}w`;
+function describeCodexWindow(
+	window: CodexWindow,
+	fallbackLabel: string,
+): CodexUsageWindowDescription {
+	return {
+		label: formatWindowLabel(window.windowSeconds) ?? fallbackLabel,
+		usedPercent: window.usedPercent,
+		remainingPercent: Math.round(100 - clampPercent(window.usedPercent)),
+		resetText: formatRemainingTime(window),
+	};
 }
 
 function parseCodexUsage(payload: unknown): CodexUsage | undefined {
@@ -117,8 +97,20 @@ function asNumber(value: unknown): number | undefined {
 	return undefined;
 }
 
-function formatRemainingPercent(window: CodexWindow): string {
-	return `${Math.round(100 - clampPercent(window.usedPercent))}%`;
+function formatWindowLabel(seconds: number | undefined): string | undefined {
+	if (!seconds || seconds <= 0) return undefined;
+	if (seconds === 604_800) return "Weekly";
+	if (seconds >= 2_419_200 && seconds <= 2_678_400) return "Monthly";
+	if (seconds === 86_400) return "Daily";
+	if (seconds % 3_600 === 0) {
+		const hours = seconds / 3_600;
+		return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+	}
+	if (seconds % 60 === 0) {
+		const minutes = seconds / 60;
+		return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+	}
+	return undefined;
 }
 
 function formatRemainingTime(window: CodexWindow): string {

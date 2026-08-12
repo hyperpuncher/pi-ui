@@ -84,12 +84,25 @@ export type AppTreeEntry = {
 	active: boolean;
 	inPath: boolean;
 };
+export type AppUsageLimitWindow = {
+	label: string;
+	usedPercent: number;
+	remainingPercent: number;
+	resetText: string;
+};
+export type AppUsageLimits = {
+	label: string;
+	status?: string;
+	windows: readonly AppUsageLimitWindow[];
+};
 export type AppUsage = {
 	text: string;
+	costText: string;
 	contextPercent?: number;
-	codexText?: string;
-	codexPrimaryPercent?: number;
-	codexSecondaryPercent?: number;
+	contextTokens?: number;
+	contextWindow?: number;
+	cacheHitPercent?: number;
+	limits?: Readonly<AppUsageLimits>;
 };
 export type AppKeybindHint = { keys: string; description: string };
 
@@ -196,7 +209,7 @@ export class AppStore {
 	isTemporarySession = false;
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
-	usage: AppUsage = { text: "$0.000 • 0 tokens" };
+	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
 	recentWorkspaces: string[] = [];
 	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };

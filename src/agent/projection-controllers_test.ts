@@ -440,9 +440,9 @@ Deno.test("catalog and usage formatting remain stable", () => {
 		} as unknown as Parameters<typeof formatStats>[0]),
 		{
 			text: "$0.125 • 1.3k tokens",
-			codexText: undefined,
-			codexPrimaryPercent: undefined,
-			codexSecondaryPercent: undefined,
+			costText: "$0.125",
+			cacheHitPercent: undefined,
+			limits: undefined,
 		},
 	);
 });

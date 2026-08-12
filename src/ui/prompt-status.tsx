@@ -1,4 +1,5 @@
-import type { AppRenderSnapshot, AppUsage } from "../state/app-store.ts";
+import type { AppRenderSnapshot, AppUsage, AppUsageLimits } from "../state/app-store.ts";
+import { formatTokens } from "../utils/format.ts";
 
 export function renderPromptStatus(state: AppRenderSnapshot): string {
 	return (
@@ -23,61 +24,146 @@ export function renderPromptStatus(state: AppRenderSnapshot): string {
 
 function renderUsageIndicator(usage: AppUsage): string {
 	const contextPercent = usage.contextPercent ?? 0;
-	const circumference = 2 * Math.PI * 10;
+	const limitPercent = usage.limits
+		? Math.max(0, ...usage.limits.windows.map((window) => window.usedPercent))
+		: 0;
 	return (
 		<span class="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs">
 			<span
 				class="group inline-flex size-4 shrink-0 items-center justify-center"
-				data-tooltip={usage.text}
-				data-tooltip-multiline
+				data-tooltip="Context usage"
 				aria-label={usage.text}
 			>
-				{usageRing({
-					circumference,
-					rings: [
-						{
-							percent: contextPercent,
-							className: contextUsageColor(contextPercent),
-						},
-					],
-				})}
+				{usageRing(contextPercent, usageColor(contextPercent))}
+				{renderContextTooltip(usage)}
 			</span>
-			{usage.codexText && (
+			{usage.limits && (
 				<span
 					class="group inline-flex size-4 shrink-0 items-center justify-center"
-					data-tooltip={`codex limits\n${usage.codexText.replace("  ", "\n")}`}
-					data-tooltip-multiline
-					aria-label={`codex limits • ${usage.codexText}`}
+					data-tooltip={usage.limits.label}
+					aria-label={formatLimitsAriaLabel(usage.limits)}
 				>
-					{usageRing({
-						circumference,
-						rings: [
-							{
-								percent: usage.codexSecondaryPercent ?? 0,
-								className: codexUsageColor(
-									usage.codexSecondaryPercent ?? 0,
-									"secondary",
-								),
-							},
-							{
-								percent: usage.codexPrimaryPercent ?? 0,
-								className: codexUsageColor(
-									usage.codexPrimaryPercent ?? 0,
-									"primary",
-								),
-							},
-						],
-					})}
+					{usageRing(limitPercent, usageColor(limitPercent))}
+					{renderLimitsTooltip(usage.limits)}
 				</span>
 			)}
 		</span>
 	) as string;
 }
 
-function usageRing(props: {
-	circumference: number;
-	rings: { percent: number; className: string }[];
-}): string {
+function renderContextTooltip(usage: AppUsage): string {
+	const { contextPercent, contextTokens, contextWindow } = usage;
+	const hasContext =
+		contextPercent !== undefined &&
+		contextTokens !== undefined &&
+		contextWindow !== undefined;
+
+	return (
+		<span
+			role="tooltip"
+			data-slot="tooltip-content"
+			class="grid w-60 max-w-none items-stretch gap-0 px-3 py-2.5 text-left"
+		>
+			{hasContext ? (
+				<>
+					<span class="mb-1.5 flex items-baseline justify-between gap-3">
+						<strong class="font-mono text-xs font-semibold">
+							Context usage
+						</strong>
+						<strong class="font-mono text-xs font-semibold">
+							{Math.round(contextPercent)}% used
+						</strong>
+					</span>
+					<span class="mb-1 flex items-baseline justify-between gap-3 font-mono text-[0.6875rem]">
+						<strong class="font-semibold">
+							{formatTokens(contextTokens)} tokens
+						</strong>
+						<span class="text-background/60">
+							of {formatTokens(contextWindow)}
+						</span>
+					</span>
+					<span class="h-1 overflow-hidden rounded-full bg-background/20">
+						<span
+							class="block h-full rounded-full bg-background"
+							style={`width: ${clampPercent(contextPercent)}%`}
+						/>
+					</span>
+					<span class="mt-1.5 flex items-baseline justify-between gap-3 font-mono text-[0.625rem] text-background/60">
+						<span>
+							{usage.cacheHitPercent === undefined
+								? "cache hit unavailable"
+								: `${usage.cacheHitPercent.toFixed(1)}% cache hit`}
+						</span>
+						<span>{usage.costText} session</span>
+					</span>
+				</>
+			) : (
+				<>
+					<span class="mb-1 flex items-baseline justify-between gap-3 font-mono">
+						<strong class="text-xs font-semibold">Context usage</strong>
+						<span class="text-[0.625rem] text-background/60">
+							{usage.costText} session
+						</span>
+					</span>
+					<span class="font-mono text-[0.6875rem] text-background/60">
+						Available after next response
+					</span>
+				</>
+			)}
+		</span>
+	) as string;
+}
+
+function renderLimitsTooltip(limits: AppUsageLimits): string {
+	return (
+		<span
+			role="tooltip"
+			data-slot="tooltip-content"
+			class="grid w-52 max-w-none items-stretch gap-0 px-3 py-2.5 text-left"
+		>
+			<strong class="mb-2 font-mono text-xs font-semibold">{limits.label}</strong>
+			{limits.status && (
+				<span class="font-mono text-[0.6875rem] text-background/60">
+					{limits.status}
+				</span>
+			)}
+			{limits.windows.map((window, index) => (
+				<span class={index === 0 ? "grid gap-0.5" : "mt-2 grid gap-0.5"}>
+					<span class="flex items-baseline justify-between gap-4 font-mono text-[0.6875rem]">
+						<strong class="font-semibold">{window.label}</strong>
+						<strong class="font-semibold">
+							{window.remainingPercent}% left
+						</strong>
+					</span>
+					<span class="h-1 overflow-hidden rounded-full bg-background/20">
+						<span
+							class="block h-full rounded-full bg-background"
+							style={`width: ${clampPercent(window.remainingPercent)}%`}
+						/>
+					</span>
+					<span class="text-right font-mono text-[0.625rem] text-background/60">
+						{window.resetText === "?"
+							? "reset time unavailable"
+							: `resets in ${window.resetText}`}
+					</span>
+				</span>
+			))}
+		</span>
+	) as string;
+}
+
+function formatLimitsAriaLabel(limits: AppUsageLimits): string {
+	if (limits.status) return `${limits.label} • ${limits.status}`;
+	return `${limits.label} • ${limits.windows
+		.map(
+			(window) =>
+				`${window.label} ${window.remainingPercent}% left, resets in ${window.resetText}`,
+		)
+		.join(" • ")}`;
+}
+
+function usageRing(percent: number, className: string): string {
+	const circumference = 2 * Math.PI * 10;
 	return (
 		<svg
 			class="size-4 -rotate-90 opacity-60 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
@@ -93,39 +179,30 @@ function usageRing(props: {
 				stroke-width="3"
 				class="text-muted-foreground/20"
 			/>
-			{props.rings.map((ring) => (
-				<circle
-					cx="12"
-					cy="12"
-					r="10"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="3"
-					stroke-linecap="round"
-					class={ring.className}
-					stroke-dasharray={props.circumference}
-					stroke-dashoffset={usageDashOffset(ring.percent, props.circumference)}
-				/>
-			))}
+			<circle
+				cx="12"
+				cy="12"
+				r="10"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="3"
+				stroke-linecap="round"
+				class={className}
+				stroke-dasharray={circumference}
+				stroke-dashoffset={
+					circumference - (clampPercent(percent) / 100) * circumference
+				}
+			/>
 		</svg>
 	) as string;
 }
 
-function usageDashOffset(percent: number, circumference: number): number {
-	return circumference - (Math.min(100, Math.max(0, percent)) / 100) * circumference;
+function usageColor(percent: number): string {
+	return percent > 90 ? "text-destructive" : "text-foreground";
 }
 
-function contextUsageColor(percent: number): string {
-	return usageColor(percent, "primary");
-}
-
-function codexUsageColor(percent: number, layer: "primary" | "secondary"): string {
-	return usageColor(percent, layer);
-}
-
-function usageColor(percent: number, layer: "primary" | "secondary"): string {
-	if (percent > 90) return "text-destructive";
-	return layer === "primary" ? "text-foreground" : "text-muted-foreground/45";
+function clampPercent(value: number): number {
+	return Math.min(100, Math.max(0, value));
 }
 
 export function loaderIcon() {

@@ -91,7 +91,7 @@ Deno.test("fat patches preserve finalized message DOM without resending its HTML
 		while (!resolveEnhancement) await Promise.resolve();
 		resolveEnhancement("<p>large finalized HTML</p>");
 		await waitFor(() => state.messages[0].presentationState === "final");
-		state.setUsage({ text: "$1.000 • 1 token" });
+		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
 		const patches = await collectElementPatches(response, 4);
 
 		assertIncludes(patches.patches[2], "large finalized HTML");
@@ -121,7 +121,7 @@ Deno.test("fat patches resend finalized tool HTML that the client may morph", as
 			},
 		]);
 		await waitFor(() => state.messages[0].presentationState === "final");
-		state.setUsage({ text: "$1.000 • 1 token" });
+		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
 		const patches = await collectElementPatches(response, 4);
 
 		assertIncludes(patches.patches[2], "highlighted edit");

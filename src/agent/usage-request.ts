@@ -1,9 +1,9 @@
-export type CodexUsageRequestModel = {
+export type UsageRequestModel = {
 	provider?: string;
 	id?: string;
 };
 
-export type CodexUsageRequestIdentity = {
+export type UsageRequestIdentity = {
 	generation: number;
 	runtime: object;
 	session: object;
@@ -11,16 +11,16 @@ export type CodexUsageRequestIdentity = {
 	modelId: string | undefined;
 };
 
-type CodexUsageRequestContext = {
+type UsageRequestContext = {
 	generation: number;
 	runtime: object;
 	session: object;
-	model: CodexUsageRequestModel | undefined;
+	model: UsageRequestModel | undefined;
 };
 
-export function matchesCodexUsageRequest(
-	request: CodexUsageRequestIdentity,
-	current: CodexUsageRequestContext,
+export function matchesUsageRequest(
+	request: UsageRequestIdentity,
+	current: UsageRequestContext,
 ): boolean {
 	return (
 		request.generation === current.generation &&
@@ -31,15 +31,15 @@ export function matchesCodexUsageRequest(
 	);
 }
 
-export class CodexUsageRequestTracker {
+export class UsageRequestTracker {
 	private generation = 0;
-	private active: CodexUsageRequestIdentity | undefined;
+	private active: UsageRequestIdentity | undefined;
 
 	begin(
 		runtime: object,
 		session: object,
-		model: CodexUsageRequestModel | undefined,
-	): CodexUsageRequestIdentity {
+		model: UsageRequestModel | undefined,
+	): UsageRequestIdentity {
 		this.generation += 1;
 		const request = {
 			generation: this.generation,
@@ -58,14 +58,14 @@ export class CodexUsageRequestTracker {
 	}
 
 	owns(
-		request: CodexUsageRequestIdentity,
+		request: UsageRequestIdentity,
 		runtime: object,
 		session: object,
-		model: CodexUsageRequestModel | undefined,
+		model: UsageRequestModel | undefined,
 	): boolean {
 		return (
 			this.active === request &&
-			matchesCodexUsageRequest(request, {
+			matchesUsageRequest(request, {
 				generation: this.generation,
 				runtime,
 				session,
@@ -75,10 +75,10 @@ export class CodexUsageRequestTracker {
 	}
 
 	release(
-		request: CodexUsageRequestIdentity,
+		request: UsageRequestIdentity,
 		runtime: object,
 		session: object,
-		model: CodexUsageRequestModel | undefined,
+		model: UsageRequestModel | undefined,
 	): boolean {
 		if (!this.owns(request, runtime, session, model)) return false;
 		this.active = undefined;

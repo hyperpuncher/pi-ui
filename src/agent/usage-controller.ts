@@ -1,38 +1,80 @@
-import type { AgentSessionRuntime, SessionStats } from "@earendil-works/pi-coding-agent";
+import type {
+	AgentSessionRuntime,
+	SessionEntry,
+	SessionStats,
+} from "@earendil-works/pi-coding-agent";
 
-import type { AppStore, AppUsage } from "../state/app-store.ts";
+import type {
+	AppStore,
+	AppUsage,
+	AppUsageLimits,
+	AppUsageLimitWindow,
+} from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
-import { CodexUsageRequestTracker } from "./codex-usage-request.ts";
 import {
-	codexUsageTtlMs,
+	describeCodexUsage,
 	fetchCodexUsage,
-	formatCodexUsage,
 	isOpenAICodex,
 	type CodexUsage,
 } from "./codex-usage.ts";
+import {
+	describeOpenCodeGoUsage,
+	fetchOpenCodeGoUsage,
+	isOpenCodeGo,
+	type OpenCodeGoUsage,
+} from "./opencode-go-usage.ts";
+import { providerUsageTtlMs } from "./provider-usage.ts";
+import { UsageRequestTracker } from "./usage-request.ts";
+
+type LimitProvider = "codex" | "opencode-go";
+type LimitUsageResult =
+	| { provider: "codex"; usage: CodexUsage | undefined }
+	| { provider: "opencode-go"; usage: OpenCodeGoUsage | undefined };
 
 export class UsageController {
-	private codexText = "";
+	private codexStatus = "";
 	private codexUsage: CodexUsage | undefined;
-	private fetchedAt = 0;
-	private readonly requests = new CodexUsageRequestTracker();
+	private codexFetchedAt = 0;
+	private opencodeGoStatus = "";
+	private opencodeGoUsage: OpenCodeGoUsage | undefined;
+	private opencodeGoFetchedAt = 0;
+	private readonly requests = new UsageRequestTracker();
 	private timer: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(
 		private readonly getRuntime: () => AgentSessionRuntime,
 		private readonly state: AppStore,
-		private readonly fetchUsage = fetchCodexUsage,
+		private readonly fetchCodex = fetchCodexUsage,
+		private readonly fetchOpenCodeGo = fetchOpenCodeGoUsage,
 	) {}
 
 	sync(): void {
 		const session = this.getRuntime().session;
 		const showCodexUsage = isOpenAICodex(session.model);
+		const showOpenCodeGoUsage = isOpenCodeGo(session.model);
 		this.state.setUsage(
-			formatStats(
-				session.getSessionStats(),
-				showCodexUsage ? this.codexText : "",
-				showCodexUsage ? this.codexUsage : undefined,
-			),
+			formatStats(session.getSessionStats(), {
+				cacheHitPercent: latestCacheHitPercent(
+					session.sessionManager.getEntries(),
+				),
+				limits: showCodexUsage
+					? usageLimits(
+							"Codex limits",
+							this.codexStatus,
+							this.codexUsage
+								? describeCodexUsage(this.codexUsage)
+								: undefined,
+						)
+					: showOpenCodeGoUsage
+						? usageLimits(
+								"OpenCode Go usage",
+								this.opencodeGoStatus,
+								this.opencodeGoUsage
+									? describeOpenCodeGoUsage(this.opencodeGoUsage)
+									: undefined,
+							)
+						: undefined,
+			}),
 		);
 	}
 
@@ -43,35 +85,32 @@ export class UsageController {
 	refresh(force = false): void {
 		const runtime = this.getRuntime();
 		const session = runtime.session;
-		if (!isOpenAICodex(session.model)) {
+		const provider = limitProvider(session.model);
+		if (!provider) {
 			this.suspend();
 			this.sync();
 			return;
 		}
 		if (
 			this.requests.loading ||
-			(!force && Date.now() - this.fetchedAt < codexUsageTtlMs)
+			(!force && Date.now() - this.fetchedAt(provider) < providerUsageTtlMs)
 		)
 			return;
 		const request = this.requests.begin(runtime, session, session.model);
-		if (!this.codexText) {
-			this.codexText = "loading";
+		if (!this.hasUsageState(provider)) {
+			this.setUsageStatus(provider, "loading");
 			this.sync();
 		}
-		void this.fetchUsage(session)
-			.then((usage) => {
+		void this.fetchProviderUsage(provider, session)
+			.then((result) => {
 				if (!this.owns(request)) return;
-				this.codexText = usage ? formatCodexUsage(usage) : "unavailable";
-				this.codexUsage = usage;
-				this.fetchedAt = Date.now();
+				this.setUsageResult(result, result.usage ? "" : "unavailable");
 				this.sync();
 			})
 			.catch((error: unknown) => {
 				if (!this.owns(request)) return;
-				console.warn("Failed to fetch Codex usage", error);
-				this.codexText = "unavailable";
-				this.codexUsage = undefined;
-				this.fetchedAt = Date.now();
+				console.warn(`Failed to fetch ${provider} usage`, error);
+				this.setUsageResult({ provider, usage: undefined }, "unavailable");
 				this.sync();
 			})
 			.finally(() => {
@@ -93,7 +132,43 @@ export class UsageController {
 		this.suspend();
 	}
 
-	private owns(request: ReturnType<CodexUsageRequestTracker["begin"]>): boolean {
+	private fetchProviderUsage(
+		provider: LimitProvider,
+		session: AgentSessionRuntime["session"],
+	): Promise<LimitUsageResult> {
+		return provider === "codex"
+			? this.fetchCodex(session).then((usage) => ({ provider, usage }))
+			: this.fetchOpenCodeGo(session).then((usage) => ({ provider, usage }));
+	}
+
+	private hasUsageState(provider: LimitProvider): boolean {
+		return provider === "codex"
+			? this.codexFetchedAt > 0 || !!this.codexStatus
+			: this.opencodeGoFetchedAt > 0 || !!this.opencodeGoStatus;
+	}
+
+	private fetchedAt(provider: LimitProvider): number {
+		return provider === "codex" ? this.codexFetchedAt : this.opencodeGoFetchedAt;
+	}
+
+	private setUsageStatus(provider: LimitProvider, status: string): void {
+		if (provider === "codex") this.codexStatus = status;
+		else this.opencodeGoStatus = status;
+	}
+
+	private setUsageResult(result: LimitUsageResult, status: string): void {
+		if (result.provider === "codex") {
+			this.codexStatus = status;
+			this.codexUsage = result.usage;
+			this.codexFetchedAt = Date.now();
+			return;
+		}
+		this.opencodeGoStatus = status;
+		this.opencodeGoUsage = result.usage;
+		this.opencodeGoFetchedAt = Date.now();
+	}
+
+	private owns(request: ReturnType<UsageRequestTracker["begin"]>): boolean {
 		const runtime = this.getRuntime();
 		return this.requests.owns(
 			request,
@@ -114,32 +189,67 @@ export class UsageController {
 		this.timer = setTimeout(() => {
 			this.timer = undefined;
 			this.refresh(true);
-		}, codexUsageTtlMs);
+		}, providerUsageTtlMs);
 		this.timer.unref?.();
 	}
 }
 
 export function formatStats(
 	stats: SessionStats,
-	codexUsageText = "",
-	codexUsage?: CodexUsage,
+	options: { cacheHitPercent?: number; limits?: AppUsageLimits } = {},
 ): AppUsage {
-	const cost = formatCost(stats.cost);
+	const costText = formatCost(stats.cost);
 	if (stats.contextUsage) {
 		return {
-			text: `${cost} • ${formatPercent(stats.contextUsage.percent)}/${formatTokens(stats.contextUsage.contextWindow)}`,
+			text: `${costText} • ${formatPercent(stats.contextUsage.percent)}/${formatTokens(stats.contextUsage.contextWindow)}`,
+			costText,
 			contextPercent: stats.contextUsage.percent ?? undefined,
-			codexText: codexUsageText || undefined,
-			codexPrimaryPercent: codexUsage?.primary?.usedPercent,
-			codexSecondaryPercent: codexUsage?.secondary?.usedPercent,
+			contextTokens: stats.contextUsage.tokens ?? undefined,
+			contextWindow: stats.contextUsage.contextWindow,
+			cacheHitPercent: options.cacheHitPercent,
+			limits: options.limits,
 		};
 	}
 	return {
-		text: `${cost} • ${formatTokens(stats.tokens.total)} tokens`,
-		codexText: codexUsageText || undefined,
-		codexPrimaryPercent: codexUsage?.primary?.usedPercent,
-		codexSecondaryPercent: codexUsage?.secondary?.usedPercent,
+		text: `${costText} • ${formatTokens(stats.tokens.total)} tokens`,
+		costText,
+		cacheHitPercent: options.cacheHitPercent,
+		limits: options.limits,
 	};
+}
+
+export function latestCacheHitPercent(
+	entries: readonly SessionEntry[],
+): number | undefined {
+	for (let index = entries.length - 1; index >= 0; index -= 1) {
+		const entry = entries[index];
+		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		const usage = entry.message.usage;
+		const promptTokens = usage.input + usage.cacheRead + usage.cacheWrite;
+		return promptTokens > 0 ? (usage.cacheRead / promptTokens) * 100 : undefined;
+	}
+	return undefined;
+}
+
+function usageLimits(
+	label: string,
+	status: string,
+	windows: readonly AppUsageLimitWindow[] | undefined,
+): AppUsageLimits | undefined {
+	if (!status && !windows?.length) return undefined;
+	return {
+		label,
+		status: windows?.length ? undefined : status,
+		windows: windows ?? [],
+	};
+}
+
+function limitProvider(
+	model: { provider?: string } | undefined,
+): LimitProvider | undefined {
+	if (isOpenAICodex(model)) return "codex";
+	if (isOpenCodeGo(model)) return "opencode-go";
+	return undefined;
 }
 
 function formatCost(cost: number): string {
