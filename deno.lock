@@ -26,7 +26,7 @@
     "npm:basecoat-css@^1.0.2": "1.0.2",
     "npm:concurrently@*": "10.0.3",
     "npm:oxfmt@*": "0.58.0",
-    "npm:oxlint-tailwindcss@^1.7.1": "1.7.1",
+    "npm:oxlint-tailwindcss@^1.9.0": "1.9.0",
     "npm:oxlint@*": "1.73.0",
     "npm:rolldown@latest": "1.2.0",
     "npm:satteri@~0.9.5": "0.9.5",
@@ -1943,8 +1943,8 @@
       ],
       "bin": true
     },
-    "oxlint-tailwindcss@1.7.1": {
-      "integrity": "sha512-b1020t2FGEaqAubB9TF2+unoCqllj8Uo1NTh6JX1uR9Ht/s4Vmunc0Nh+UdobUFH55y059SlRMhy4ljdslXdUw==",
+    "oxlint-tailwindcss@1.9.0": {
+      "integrity": "sha512-6Zp5AiKPWpkt/HOtvHP3VtmWO2vrl5PAY3DPNker771RUwp5TEHZKRrQ3yCQnSEbCRWrqaVbkBf1pWiIVpms+w==",
       "dependencies": [
         "@tailwindcss/node@4.3.3",
         "tailwindcss@4.3.3"
@@ -2347,7 +2347,7 @@
       "npm:@pierre/trees@1.0.0-beta.6",
       "npm:@starfederation/datastar-sdk@1.0.0",
       "npm:basecoat-css@^1.0.2",
-      "npm:oxlint-tailwindcss@^1.7.1",
+      "npm:oxlint-tailwindcss@^1.9.0",
       "npm:satteri@~0.9.5",
       "npm:tailwindcss@^4.3.3",
       "npm:undici@^8.10.0"
