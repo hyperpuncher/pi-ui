@@ -11,6 +11,7 @@ import type {
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
+import { renderMarkdownStreaming } from "./markdown.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 import { shikiTokenStyle } from "./shiki-token-style.ts";
@@ -444,13 +445,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 				data-message-id={message.id}
 				data-ignore-morph={preservesFinalizedMessageDom(message)}
 			>
-				{message.renderedHtml !== undefined ? (
-					<div>{message.renderedHtml}</div>
-				) : (
-					<p class="m-0 whitespace-pre-wrap" safe>
-						{message.text}
-					</p>
-				)}
+				<div>{message.renderedHtml ?? renderMarkdownStreaming(message.text)}</div>
 				{renderDeferredEnhancement(message)}
 			</article>
 		) as string;
@@ -520,13 +515,10 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 					</summary>
 					<div class="pi-tool-output-surface p-3 text-sm text-muted-foreground">
 						<div class="markdown-content">
-							{message.renderedHtml !== undefined ? (
-								<div>{message.renderedHtml}</div>
-							) : (
-								<p class="m-0 whitespace-pre-wrap" safe>
-									{message.text}
-								</p>
-							)}
+							<div>
+								{message.renderedHtml ??
+									renderMarkdownStreaming(message.text)}
+							</div>
 						</div>
 					</div>
 				</details>

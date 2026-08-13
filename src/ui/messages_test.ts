@@ -110,6 +110,19 @@ Deno.test("message projection replaces inline image data with stable URLs", () =
 	assertEquals(registrations, 1);
 });
 
+Deno.test("narrative fallback still renders markdown structure", () => {
+	const html = renderMessage({
+		id: "thought-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "thought",
+		text: "**Planning full validation tests**",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "<strong>Planning full validation tests</strong>");
+	assertFalse(html.includes("**Planning"));
+});
+
 Deno.test("cache miss notices have a dedicated spacing class", () => {
 	const html = renderMessage({
 		id: "notice-1",
