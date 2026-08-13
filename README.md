@@ -41,6 +41,13 @@ built with:
 
 use pi-ui in your browser without installing the desktop app. after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415)
 
+change the listen address with flags or environment variables:
+
+```sh
+pi-ui-server --host 0.0.0.0 --port 8080
+PI_UI_HOST=0.0.0.0 PI_UI_PORT=8080 pi-ui-server
+```
+
 #### arch
 
 ```sh

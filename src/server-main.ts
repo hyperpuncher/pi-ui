@@ -1,4 +1,5 @@
 import { disableServerAutostart, enableServerAutostart } from "./server-autostart.ts";
+import { parseServerOptions, serverUsage } from "./server-options.ts";
 
 if (Deno.args[0] === "autostart") {
 	if (Deno.args.length !== 2 || !["enable", "disable"].includes(Deno.args[1])) {
@@ -12,10 +13,15 @@ if (Deno.args[0] === "autostart") {
 		console.log("pi-ui server will no longer start automatically at login");
 	}
 } else {
-	if (Deno.args.length > 0) {
-		throw new Error("usage: pi-ui-server [autostart enable|disable]");
+	const options = parseServerOptions(Deno.args, {
+		host: Deno.env.get("PI_UI_HOST"),
+		port: Deno.env.get("PI_UI_PORT"),
+	});
+	if (options.help) {
+		console.log(serverUsage);
+	} else {
+		const { createApp } = await import("./server/app.ts");
+		const app = await createApp();
+		Deno.serve({ hostname: options.hostname, port: options.port }, app.fetch);
 	}
-	const { createApp } = await import("./server/app.ts");
-	const app = await createApp();
-	Deno.serve({ hostname: "127.0.0.1", port: 31415 }, app.fetch);
 }
