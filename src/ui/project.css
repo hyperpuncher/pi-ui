@@ -42,7 +42,7 @@
 			var(--muted-foreground) 55%,
 			transparent
 		);
-		--pi-fine-print-foreground: oklch(27% 0 0);
+		--pi-fine-print-foreground: var(--muted-foreground);
 		--pi-inverse-fine-print-foreground: oklch(78% 0 0);
 		--pi-thought-foreground: oklch(62% 0 0);
 		--pi-error-foreground: oklch(54% 0.18 22);
@@ -68,7 +68,6 @@
 .dark {
 	--muted: oklch(37.1% 0 0);
 	--muted-foreground: oklch(90% 0 0);
-	--pi-fine-print-foreground: oklch(97% 0 0);
 	--pi-inverse-fine-print-foreground: oklch(60% 0 0);
 	--pi-thought-foreground: oklch(78% 0 0);
 	--pi-error-foreground: oklch(90% 0.12 22);
