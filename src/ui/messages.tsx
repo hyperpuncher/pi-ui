@@ -1,5 +1,9 @@
 import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
+import {
+	attachmentFileIconShapes,
+	attachmentFileKind,
+} from "../../static/app/attachment-file.js";
 import { authDialogAction } from "../commands/actions.ts";
 import { PIERRE_THEMES } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
@@ -11,6 +15,7 @@ import type {
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { DateTime } from "./date-time.tsx";
+import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderMarkdownStreaming } from "./markdown.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
@@ -362,21 +367,47 @@ function renderUserFileAttachment(
 	const extension = attachment.name.includes(".")
 		? attachment.name.split(".").at(-1)?.slice(0, 4).toLowerCase()
 		: undefined;
-	const type = attachment.mimeType?.split("/")[0] ?? "file";
+	const kind = attachmentFileKind(attachment.name, attachment.mimeType);
 	return (
 		<div class="flex h-16 max-w-60 min-w-0 items-center gap-2 rounded-xl border bg-card p-2 pr-3 text-card-foreground shadow-sm">
-			<span class="pi-fine-print grid size-12 shrink-0 place-items-center rounded-lg border bg-muted font-mono text-[10px]">
-				{extension || "file"}
+			<span
+				class="pi-fine-print flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border bg-muted"
+				data-file-kind={kind}
+			>
+				<AttachmentFileIcon kind={kind} />
+				{extension && (
+					<span class="font-mono text-[9px] leading-none uppercase" safe>
+						{extension}
+					</span>
+				)}
 			</span>
 			<span class="min-w-0">
 				<span class="block truncate text-xs font-medium" safe>
 					{attachment.name}
 				</span>
-				<span class="pi-fine-print block text-[10px]" safe>
-					{type}
-				</span>
+				<span class="pi-fine-print block text-[10px]">{fileKindLabel(kind)}</span>
 			</span>
 		</div>
+	);
+}
+
+type AttachmentFileKind = keyof typeof attachmentFileIconShapes;
+
+function fileKindLabel(kind: AttachmentFileKind): string {
+	return kind;
+}
+
+function AttachmentFileIcon(props: { kind: AttachmentFileKind }) {
+	const shape = attachmentFileIconShapes[props.kind];
+	return (
+		<Icon class="size-5">
+			<>
+				{shape.paths.map((path) => (
+					<path d={path} />
+				))}
+				{"circle" in shape && <circle {...shape.circle} />}
+			</>
+		</Icon>
 	);
 }
 

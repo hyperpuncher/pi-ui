@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 
+import { attachmentFileKind } from "./attachment-file.js";
 import {
 	composePrompt,
 	extractTransferredFilePaths,
@@ -35,6 +36,14 @@ Deno.test("transferred files use their original paths", () => {
 		}),
 		["/tmp/one.txt", "/tmp/two words.txt", "/tmp/three.txt", "/tmp/four.txt"],
 	);
+});
+
+Deno.test("attachment file kinds use MIME types and extensions", () => {
+	assertEquals(attachmentFileKind("vadim.txt", "text/plain"), "text");
+	assertEquals(attachmentFileKind("recording.ogg", "audio/ogg"), "audio");
+	assertEquals(attachmentFileKind("source.ts", ""), "code");
+	assertEquals(attachmentFileKind("bundle.zip", ""), "archive");
+	assertEquals(attachmentFileKind("unknown.bin", ""), "file");
 });
 
 Deno.test("transferred files use a webview-provided path without reading bytes", () => {

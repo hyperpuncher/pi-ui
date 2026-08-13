@@ -1,4 +1,5 @@
 import { fileUriToPath } from "../file-uri.js";
+import { attachmentFileIconShapes, attachmentFileKind } from "./attachment-file.js";
 import { closePickers } from "./pickers.js";
 import { promptInput } from "./prompt.js";
 
@@ -298,10 +299,19 @@ function renderAttachment(attachment) {
 		"group relative flex h-16 max-w-52 items-center gap-2 overflow-visible rounded-lg border bg-card p-2 pr-3 text-left text-card-foreground shadow-sm";
 	item.setAttribute("aria-label", `Remove ${name}`);
 	item.addEventListener("click", () => removeAttachment(attachment.path));
+	const extension = fileExtension(name);
+	const kind = attachmentFileKind(name, attachment.file?.type);
 	const icon = document.createElement("span");
 	icon.className =
-		"grid size-11 shrink-0 place-items-center rounded-md border bg-muted font-mono text-[10px] text-muted-foreground";
-	icon.textContent = fileExtension(displayName(attachment.path)) || "file";
+		"flex size-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border bg-muted text-muted-foreground";
+	icon.dataset.fileKind = kind;
+	icon.append(attachmentFileIcon(kind));
+	if (extension) {
+		const extensionElement = document.createElement("span");
+		extensionElement.className = "font-mono text-[9px] leading-none uppercase";
+		extensionElement.textContent = extension;
+		icon.append(extensionElement);
+	}
 	item.append(icon);
 	const details = document.createElement("span");
 	details.className = "min-w-0";
@@ -345,6 +355,33 @@ function displayName(path) {
 function fileExtension(name) {
 	const extension = name.includes(".") ? name.split(".").at(-1) : "";
 	return extension.slice(0, 4).toLowerCase();
+}
+
+function attachmentFileIcon(kind) {
+	const namespace = "http://www.w3.org/2000/svg";
+	const shape = attachmentFileIconShapes[kind] ?? attachmentFileIconShapes.file;
+	const svg = document.createElementNS(namespace, "svg");
+	svg.setAttribute("class", "size-5");
+	svg.setAttribute("viewBox", "0 0 24 24");
+	svg.setAttribute("fill", "none");
+	svg.setAttribute("stroke", "currentColor");
+	svg.setAttribute("stroke-linecap", "round");
+	svg.setAttribute("stroke-linejoin", "round");
+	svg.setAttribute("stroke-width", "2");
+	svg.setAttribute("aria-hidden", "true");
+	for (const data of shape.paths) {
+		const path = document.createElementNS(namespace, "path");
+		path.setAttribute("d", data);
+		svg.append(path);
+	}
+	if (shape.circle) {
+		const circle = document.createElementNS(namespace, "circle");
+		for (const [name, value] of Object.entries(shape.circle)) {
+			circle.setAttribute(name, String(value));
+		}
+		svg.append(circle);
+	}
+	return svg;
 }
 
 function formatBytes(bytes) {
