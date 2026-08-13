@@ -1,5 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { appendSessionPerformanceRecord } from "./session-performance-log.ts";
+
 const utf8Encoder = new TextEncoder();
 
 // SDK 0.80.6 loads entries once for the header and again for manager state.
@@ -66,6 +68,7 @@ export type SessionPerformanceSnapshot = PerformanceCounters & {
 
 export type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
 	id: number;
+	generation?: number;
 	elapsedMs: number;
 	spans: SpanSnapshot;
 	ownership: SessionOwnershipDiagnostics;
@@ -79,6 +82,7 @@ export type SessionPerformanceRecord = {
 
 type Transition = PerformanceCounters & {
 	id: number;
+	generation?: number;
 	startedAt: number;
 	hostComplete: boolean;
 	transcriptProjected: boolean;
@@ -190,11 +194,12 @@ class SessionPerformanceCollector {
 		}
 	}
 
-	startSessionTransition(): number | undefined {
+	startSessionTransition(generation?: number): number | undefined {
 		if (!this.enabled) return undefined;
 		const id = this.nextTransitionId++;
 		this.transitions.set(id, {
 			id,
+			generation,
 			startedAt: performance.now(),
 			hostComplete: false,
 			transcriptProjected: false,
@@ -238,6 +243,21 @@ class SessionPerformanceCollector {
 			transition.id,
 		);
 		this.finishTransitionIfReady(transition);
+	}
+
+	recordClientTransitionPaint(metrics: {
+		generation: number;
+		clickToLoadingMs: number;
+		clickToMorphMs: number;
+		clickToPaintMs: number;
+	}): void {
+		if (!this.enabled) return;
+		const record = {
+			type: "pi-ui-session-client-performance" as const,
+			transition: metrics,
+		};
+		appendSessionPerformanceRecord(record);
+		console.log(JSON.stringify(record));
 	}
 
 	recordSessionOpen(transitionId?: number): void {
@@ -335,6 +355,7 @@ class SessionPerformanceCollector {
 			type: "pi-ui-session-performance",
 			transition: {
 				id: transition.id,
+				generation: transition.generation,
 				elapsedMs,
 				spans: structuredClone(transition.spans),
 				logicalSessionOpenCount: transition.logicalSessionOpenCount,
@@ -347,6 +368,7 @@ class SessionPerformanceCollector {
 			},
 			cumulative: this.snapshot(),
 		};
+		appendSessionPerformanceRecord(record);
 		console.log(JSON.stringify(record));
 	}
 }

@@ -1,9 +1,11 @@
 import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
+	assertThrows,
 } from "@std/assert";
 
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { parseClientTransitionPaint } from "../server/routes/session-performance.ts";
 import { AppStore } from "../state/app-store.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
@@ -13,6 +15,10 @@ import {
 	generatedSessionFixture,
 	markdownMessageCount,
 } from "./session-benchmark.ts";
+import {
+	appendSessionPerformanceRecord,
+	flushSessionPerformanceLog,
+} from "./session-performance-log.ts";
 import { sessionPerformance } from "./session-performance.ts";
 
 Deno.test("performance metrics are disabled by default and retain no content", () => {
@@ -68,7 +74,7 @@ Deno.test("transition records isolate overlapping spans and reset counters", () 
 		sessionPerformance.reset();
 		console.log = (value?: unknown) => output.push(String(value));
 
-		const first = sessionPerformance.startSessionTransition();
+		const first = sessionPerformance.startSessionTransition(12);
 		const endFirst = sessionPerformance.startSpan("runtimeServicesCreate", first);
 		const second = sessionPerformance.startSessionTransition();
 		const endSecond = sessionPerformance.startSpan("runtimeServicesCreate", second);
@@ -84,6 +90,7 @@ Deno.test("transition records isolate overlapping spans and reset counters", () 
 		const firstRecord = JSON.parse(output[1]);
 		assertEqual(secondRecord.transition.id, second);
 		assertEqual(firstRecord.transition.id, first);
+		assertEqual(firstRecord.transition.generation, 12);
 		assertEqual(secondRecord.transition.spans.runtimeServicesCreate.count, 1);
 		assertEqual(firstRecord.transition.spans.runtimeServicesCreate.count, 1);
 		assertEqual(secondRecord.transition.fatMorphCount, 1);
@@ -214,6 +221,48 @@ Deno.test("cancelled transitions emit no record or sensitive fields", () => {
 	}
 });
 
+Deno.test("client transition metrics validate timing order and bounds", () => {
+	assertEqual(
+		parseClientTransitionPaint({
+			generation: 3,
+			clickToLoadingMs: 8,
+			clickToMorphMs: 120,
+			clickToPaintMs: 145,
+		}),
+		{
+			generation: 3,
+			clickToLoadingMs: 8,
+			clickToMorphMs: 120,
+			clickToPaintMs: 145,
+		},
+	);
+	assertThrows(() =>
+		parseClientTransitionPaint({
+			generation: 3,
+			clickToLoadingMs: 8,
+			clickToMorphMs: 150,
+			clickToPaintMs: 140,
+		}),
+	);
+});
+
+Deno.test("performance records append to the configured JSONL file", async () => {
+	const previous = Deno.env.get("PI_UI_PERF_FILE");
+	const directory = await Deno.makeTempDir();
+	const path = `${directory}/performance.jsonl`;
+	try {
+		Deno.env.set("PI_UI_PERF_FILE", path);
+		appendSessionPerformanceRecord({ id: 1 });
+		appendSessionPerformanceRecord({ id: 2 });
+		await flushSessionPerformanceLog();
+		assertEqual(await Deno.readTextFile(path), '{"id":1}\n{"id":2}\n');
+	} finally {
+		if (previous === undefined) Deno.env.delete("PI_UI_PERF_FILE");
+		else Deno.env.set("PI_UI_PERF_FILE", previous);
+		await Deno.remove(directory, { recursive: true });
+	}
+});
+
 Deno.test("SSE parser handles event frames split across chunk boundaries", async () => {
 	const encoder = new TextEncoder();
 	const chunks = [
@@ -272,7 +321,14 @@ Deno.test("50-message restore emits fallback once and targets enhancements", asy
 });
 
 function completeTransition(transitionId: number | undefined): void {
-	sessionPerformance.markTranscriptProjected(transitionId);
-	sessionPerformance.markFirstTranscriptPatch(transitionId);
-	sessionPerformance.markSessionTransitionComplete(transitionId);
+	const previous = Deno.env.get("PI_UI_PERF_FILE");
+	try {
+		Deno.env.set("PI_UI_PERF_FILE", "off");
+		sessionPerformance.markTranscriptProjected(transitionId);
+		sessionPerformance.markFirstTranscriptPatch(transitionId);
+		sessionPerformance.markSessionTransitionComplete(transitionId);
+	} finally {
+		if (previous === undefined) Deno.env.delete("PI_UI_PERF_FILE");
+		else Deno.env.set("PI_UI_PERF_FILE", previous);
+	}
 }

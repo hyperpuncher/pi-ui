@@ -581,8 +581,8 @@ export class RuntimeController {
 		if (sessionPath === this.runtime.session.sessionManager.getSessionFile()) {
 			return { status: "success" };
 		}
-		return await this.transitionController.run(sessionPath, async () => {
-			const transitionId = sessionPerformance.startSessionTransition();
+		return await this.transitionController.run(sessionPath, async (generation) => {
+			const transitionId = sessionPerformance.startSessionTransition(generation);
 			try {
 				const resumed = await sessionPerformance.runInTransition(
 					transitionId,

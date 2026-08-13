@@ -41,7 +41,7 @@ export class SessionTransitionController {
 
 	async run(
 		targetPath: string,
-		operation: () => boolean | Promise<boolean>,
+		operation: (generation: number) => boolean | Promise<boolean>,
 		options: { overlay?: boolean } = {},
 	): Promise<SessionTransitionResult> {
 		if (this.loading) return { status: "busy" };
@@ -56,7 +56,7 @@ export class SessionTransitionController {
 			overlay: options.overlay ?? true,
 		});
 		try {
-			const completed = await operation();
+			const completed = await operation(generation);
 			this.update({ status: "idle", generation });
 			return { status: completed ? "success" : "cancelled" };
 		} catch (error) {

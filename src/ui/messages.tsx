@@ -402,7 +402,10 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 							<div class="overflow-clip rounded-xl bg-primary p-1.5">
 								<img
 									class="max-h-72 max-w-full rounded-lg object-contain"
-									src={`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`}
+									src={
+										attachment.image!.url ??
+										`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`
+									}
 									alt={attachment.name || `Attached image ${index + 1}`}
 									style="overflow-clip-margin: unset;"
 								/>

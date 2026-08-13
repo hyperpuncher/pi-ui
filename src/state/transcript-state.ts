@@ -19,7 +19,7 @@ export type TranscriptMessageAttachment = {
 	name: string;
 	path?: string;
 	mimeType?: string;
-	image?: { data: string; mimeType: string };
+	image?: { data?: string; url?: string; mimeType: string };
 };
 
 export type TranscriptMessage = {

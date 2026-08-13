@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 
-import type { AppMessage } from "../state/app-store.ts";
+import { type AppMessage, AppStore } from "../state/app-store.ts";
+import { MessageRenderService } from "./message-render-service.ts";
 import { renderMessage, renderMessages } from "./messages.tsx";
 
 function tool(overrides: Partial<AppMessage> = {}): AppMessage {
@@ -46,6 +47,23 @@ Deno.test("user messages render attached images without placeholder text", () =>
 		timestamp: new Date(0),
 	});
 	assertStringIncludes(html, 'src="data:image/png;base64,aW1hZ2U="');
+	assertStringIncludes(
+		renderMessage({
+			id: "user-image-url",
+			presentationState: "plain",
+			presentationVersion: 1,
+			role: "user",
+			text: "",
+			attachments: [
+				{
+					name: "image.png",
+					image: { url: "/sessions/image?id=one", mimeType: "image/png" },
+				},
+			],
+			timestamp: new Date(0),
+		}),
+		'src="/sessions/image?id=one"',
+	);
 	assertStringIncludes(html, "flex-col items-end gap-2");
 	assertStringIncludes(html, "rounded-xl bg-primary p-1.5");
 	assertStringIncludes(html, "notes.txt");
@@ -54,6 +72,42 @@ Deno.test("user messages render attached images without placeholder text", () =>
 	assertStringIncludes(html, "rounded-lg border bg-muted");
 	assertStringIncludes(html, "check this");
 	assertFalse(html.includes("[image:"));
+});
+
+Deno.test("message projection replaces inline image data with stable URLs", () => {
+	const store = new AppStore();
+	let registrations = 0;
+	const renderer = new MessageRenderService(
+		store,
+		() => {},
+		() => {},
+		{
+			registerImage: () => {
+				registrations += 1;
+				return "/sessions/image?id=one";
+			},
+		},
+	);
+	store.transcript.replaceMessages([
+		{
+			role: "user",
+			text: "",
+			attachments: [
+				{
+					name: "image.png",
+					image: { data: "aW1hZ2U=", mimeType: "image/png" },
+				},
+			],
+			timestamp: new Date(0),
+		},
+	]);
+	const message = renderer.projectMessages(store.transcript.messages)[0];
+	assertEquals(message.attachments?.[0].image, {
+		url: "/sessions/image?id=one",
+		mimeType: "image/png",
+	});
+	renderer.projectMessages(store.transcript.messages);
+	assertEquals(registrations, 1);
 });
 
 Deno.test("cache miss notices have a dedicated spacing class", () => {

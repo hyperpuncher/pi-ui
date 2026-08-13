@@ -5,6 +5,7 @@ import { renderSessionPickerContent } from "../../ui/pickers.tsx";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
+import { decodeBase64Image } from "../session-image-store.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
@@ -32,6 +33,19 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 			},
 			{ type: "effect", effect: { type: "refresh-session-picker" } },
 		]);
+	});
+	router.register("GET", endpoints.sessionsImage, (_request, context, url) => {
+		const image = context.resources.sessionImages.get(
+			url.searchParams.get("id") ?? "",
+		);
+		if (!image) throw new RouteError(404, "Session image not found.");
+		return new Response(decodeBase64Image(image.data), {
+			headers: {
+				"cache-control": "private, max-age=3600",
+				"content-type": image.mimeType,
+				"x-content-type-options": "nosniff",
+			},
+		});
 	});
 	router.register("GET", endpoints.sessionsFavicon, async (_request, context, url) => {
 		const cwd = url.searchParams.get("cwd");

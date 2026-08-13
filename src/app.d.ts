@@ -39,6 +39,9 @@ interface PiUiNamespace {
 		handleInput(): void;
 		handleKeydown(event: KeyboardEvent, entries: readonly string[]): boolean;
 	};
+	sessionPerformance: {
+		start(): void;
+	};
 	windowFocus: {
 		restore(): void;
 		suspend(): void;

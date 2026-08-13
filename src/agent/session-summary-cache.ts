@@ -1,8 +1,7 @@
-import os from "node:os";
-
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
-import { dirname, join } from "@std/path";
+import { dirname } from "@std/path";
 
+import { appCachePath } from "../utils/app-cache.ts";
 import { isRecord } from "../utils/type-guards.ts";
 
 const cacheVersion = 1;
@@ -36,23 +35,7 @@ export type SessionSummaryCandidate = {
 };
 
 export function sessionSummaryCachePath(): string {
-	const home = os.homedir();
-	if (Deno.build.os === "windows") {
-		return join(
-			Deno.env.get("LOCALAPPDATA") ?? join(home, "AppData", "Local"),
-			"pi-ui",
-			"Cache",
-			"session-index.json",
-		);
-	}
-	if (Deno.build.os === "darwin") {
-		return join(home, "Library", "Caches", "pi-ui", "session-index.json");
-	}
-	return join(
-		Deno.env.get("XDG_CACHE_HOME") ?? join(home, ".cache"),
-		"pi-ui",
-		"session-index.json",
-	);
+	return appCachePath("session-index.json");
 }
 
 export async function readSessionSummaryCache(

@@ -2,6 +2,7 @@ import type { AgentHost } from "../../agent/host.ts";
 import type { AppStore } from "../../state/app-store.ts";
 import type { UiRenderer } from "../../ui/ui-renderer.ts";
 import { RouteError } from "../router.ts";
+import type { SessionImageStore } from "../session-image-store.ts";
 import type { TransferredFileStore } from "../transferred-files.ts";
 
 export type RouteAgentHost = Pick<
@@ -34,6 +35,7 @@ export type RouteAgentHost = Pick<
 
 export interface RouteResources {
 	host: AgentHost | undefined;
+	sessionImages: SessionImageStore;
 }
 
 export interface RouteContext {

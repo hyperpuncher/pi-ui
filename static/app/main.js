@@ -14,6 +14,10 @@ import {
 import { bindPickers, isFileOpen, isOpen as isPickerOpen } from "./pickers.js";
 import { createPromptHistory } from "./prompt-history.js";
 import { bindPromptInteractions, focusPromptEnd } from "./prompt.js";
+import {
+	bindSessionPerformance,
+	startSessionPerformanceMeasurement,
+} from "./session-performance.js";
 import { bindSessionSidebarResize } from "./session-sidebar.js";
 import { bindVimScroll } from "./vim-scroll.js";
 import { windowFocus } from "./window-focus.js";
@@ -27,6 +31,7 @@ window.piUi = {
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
 	pickers: { isFileOpen, isOpen: isPickerOpen },
 	promptHistory,
+	sessionPerformance: { start: startSessionPerformanceMeasurement },
 	windowFocus,
 	workspaceReview: { applyOpen: () => {} },
 	shouldAbortOnEscape(event) {
@@ -48,6 +53,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindPickers();
 	bindMessageScroll();
 	bindModelSearch();
+	bindSessionPerformance();
 	bindCodeCopy();
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();

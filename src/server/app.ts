@@ -17,11 +17,13 @@ import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
 import { registerFileRoutes } from "./routes/files.ts";
 import { registerModelRoutes } from "./routes/models.ts";
 import { registerPromptRoutes } from "./routes/prompt.ts";
+import { registerSessionPerformanceRoutes } from "./routes/session-performance.ts";
 import { registerSessionRoutes } from "./routes/sessions.ts";
 import { registerStreamRoutes } from "./routes/stream.ts";
 import { registerTreeRoutes } from "./routes/tree.ts";
 import { registerWorkspaceReviewRoutes } from "./routes/workspace-review.ts";
 import { registerWorkspaceRoutes } from "./routes/workspace.ts";
+import { SessionImageStore } from "./session-image-store.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 
 const basecoatJsPath = fromFileUrl(
@@ -33,7 +35,11 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const preloadHighlighterPromise = preloadPierreHighlighter();
 	const localRequests = new WeakSet<Request>();
 	const store = new AppStore();
-	const renderer = new UiRenderer(store, new DatastarClientHub());
+	const sessionImages = new SessionImageStore();
+	const renderer = new UiRenderer(store, new DatastarClientHub(), {
+		registerImage: (image) => sessionImages.register(image),
+		clearImages: () => sessionImages.clear(),
+	});
 	const transitions = new SessionTransitionController((transition) =>
 		store.setSessionTransition(transition),
 	);
@@ -47,7 +53,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	await preloadHighlighterPromise.catch((error: unknown) => {
 		console.error("Failed to preload highlighter", error);
 	});
-	const resources: RouteResources = { host };
+	const resources: RouteResources = { host, sessionImages };
 	const transferredFiles = await TransferredFileStore.create();
 	addEventListener(
 		"unload",
@@ -108,6 +114,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerDisplayRefreshRoutes(router);
 	registerPromptRoutes(router);
 	registerSessionRoutes(router);
+	registerSessionPerformanceRoutes(router);
 	registerWorkspaceRoutes(router);
 	registerWorkspaceReviewRoutes(router);
 	registerModelRoutes(router);

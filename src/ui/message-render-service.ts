@@ -24,6 +24,8 @@ export type MessageRenderServiceOptions = {
 	renderMarkdownFinal?: (text: string) => Promise<string>;
 	renderCode?: (text: string, language: string) => Promise<string>;
 	renderDiff?: (text: string) => Promise<string | undefined>;
+	registerImage?: (image: { data: string; mimeType: string }) => string;
+	clearImages?: () => void;
 };
 
 const markdownRoles = new Set<AppMessage["role"]>([
@@ -53,6 +55,7 @@ function unique(values: readonly (string | undefined)[]): string[] {
 /** Owns message presentation caches, frame scheduling, and bounded enhancement work. */
 export class MessageRenderService {
 	private readonly presentation = new Map<string, MessagePresentation>();
+	private readonly imageUrls = new Map<string, { data: string; url: string }>();
 	private readonly queue: EnhancementQueue;
 	private readonly streaming: StreamingFrameScheduler<readonly string[]>;
 	private generation = 0;
@@ -62,6 +65,8 @@ export class MessageRenderService {
 		language: string,
 	) => Promise<string>;
 	private readonly renderDiffEnhancement: (text: string) => Promise<string | undefined>;
+	private readonly registerImage: MessageRenderServiceOptions["registerImage"];
+	private readonly clearImages: MessageRenderServiceOptions["clearImages"];
 
 	constructor(
 		private readonly store: AppStore,
@@ -77,6 +82,8 @@ export class MessageRenderService {
 			((text, language) =>
 				renderPierreCode(text, language, { disableLineNumbers: true }));
 		this.renderDiffEnhancement = options.renderDiff ?? renderPierreDiff;
+		this.registerImage = options.registerImage;
+		this.clearImages = options.clearImages;
 		this.streaming = new StreamingFrameScheduler((ids) => {
 			for (const id of ids) this.patchStreaming(id);
 		});
@@ -136,6 +143,8 @@ export class MessageRenderService {
 		for (const message of this.store.transcript.allMessages)
 			releaseMarkdownStreamingState(message.id);
 		this.presentation.clear();
+		this.imageUrls.clear();
+		this.clearImages?.();
 	}
 	transcriptReplaced(
 		activeIds: readonly (string | undefined)[],
@@ -253,7 +262,30 @@ export class MessageRenderService {
 			// highlighting may remain queued, but plain source must never flash.
 			presentation.renderedHtml = renderMarkdownStreaming(message.text);
 		}
-		return { ...message, ...presentation };
+		return {
+			...message,
+			attachments: message.attachments?.map((attachment, index) => {
+				const image = attachment.image;
+				if (!image?.data || !this.registerImage) return attachment;
+				const key = `${message.id}:${index}`;
+				let registered = this.imageUrls.get(key);
+				if (!registered || registered.data !== image.data) {
+					registered = {
+						data: image.data,
+						url: this.registerImage({
+							data: image.data,
+							mimeType: image.mimeType,
+						}),
+					};
+					this.imageUrls.set(key, registered);
+				}
+				return {
+					...attachment,
+					image: { mimeType: image.mimeType, url: registered.url },
+				};
+			}),
+			...presentation,
+		};
 	}
 	private broadcast(message: TranscriptMessage): void {
 		const projected = this.project(message);

@@ -1,4 +1,5 @@
 import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
+import { sessionPerformance } from "../perf/session-performance.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
@@ -9,6 +10,7 @@ export function resumeSessionAction(
 ): string {
 	return `if (!$_sessionLoading && !$_sessionTransitionLoading) {
 		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
+		window.piUi.sessionPerformance.start();
 		@post('${endpoints.sessionsResume}', {
 			payload: { sessionPath: ${JSON.stringify(path)} },
 		});
@@ -35,6 +37,11 @@ export function renderSessionTransition(state: AppRenderSnapshot): string {
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"
 			aria-busy={transition.status === "loading" ? "true" : "false"}
+			data-session-transition-status={transition.status}
+			data-session-transition-generation={transition.generation}
+			data-session-performance-enabled={
+				sessionPerformance.enabled ? "true" : "false"
+			}
 		>
 			{transition.status === "error" ? (
 				<div class="max-w-lg">

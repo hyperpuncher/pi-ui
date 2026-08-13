@@ -5,6 +5,7 @@ import type { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
 import type { UiRenderer } from "../../ui/ui-renderer.ts";
 import { createRouter, isLoopbackAddress } from "../app.ts";
+import { SessionImageStore } from "../session-image-store.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 import { pickWorkspace } from "./workspace.ts";
@@ -17,6 +18,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"GET /stream",
 		"GET /pickers/stream",
 		"POST /display-refresh",
+		"POST /session-performance/client",
 		"POST /prompt",
 		"POST /prompt/follow-up",
 		"POST /prompt/dequeue",
@@ -29,6 +31,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"GET /sessions/stream",
 		"GET /sessions/search",
 		"GET /sessions/favicon",
+		"GET /sessions/image",
 		"POST /sessions/background/abort",
 		"POST /sessions/delete",
 		"POST /sessions/resume",
@@ -110,6 +113,20 @@ Deno.test("session favicons use workspace assets and fall back to a folder", asy
 	} finally {
 		await Deno.remove(workspace, { recursive: true });
 	}
+});
+
+Deno.test("session images are served separately from transcript HTML", async () => {
+	const context = fakeContext();
+	const url = context.resources.sessionImages.register({
+		data: "aW1hZ2U=",
+		mimeType: "image/png",
+	});
+	const response = await createRouter(context).fetch(
+		new Request(`http://localhost${url}`),
+	);
+	assertEquals(response.status, 200);
+	assertEquals(response.headers.get("content-type"), "image/png");
+	assertEquals(new TextDecoder().decode(await response.arrayBuffer()), "image");
 });
 
 Deno.test("native workspace picking opens directly through Datastar", async () => {
@@ -478,7 +495,10 @@ function fakeContext(
 				enhanceMessage: () => true,
 				setDisplayRefreshHz: () => true,
 			} as unknown as UiRenderer),
-		resources: { host: overrides.host ?? fakeHost() },
+		resources: {
+			host: overrides.host ?? fakeHost(),
+			sessionImages: new SessionImageStore(),
+		},
 		transferredFiles: { importFiles: async () => [] } as never,
 		openWorkspace: async () => true,
 		openPath: overrides.openPath ?? (async () => {}),
