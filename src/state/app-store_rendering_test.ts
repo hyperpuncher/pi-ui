@@ -238,7 +238,11 @@ Deno.test("loading older pages enqueues only newly revealed messages", async () 
 			markdownMessage(`**message ${index}**`),
 		),
 	);
+	await waitFor(() => renderCount === 50);
+	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
 	await waitFor(() => renderCount === 100);
+	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
+	await waitFor(() => renderCount === 150);
 	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
 	const immediatePage = state.renderer.renderMessagesElement();
 	assertIncludes(immediatePage, "<strong>message 0</strong>");

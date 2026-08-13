@@ -59,7 +59,7 @@ export type TranscriptSnapshot = {
 	queuedFollowUpMessages: string[];
 };
 
-export const transcriptMessagePageSize = 100;
+export const transcriptMessagePageSize = 50;
 
 /** Renderer-independent, authoritative transcript state. */
 export class TranscriptState {

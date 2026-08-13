@@ -57,9 +57,12 @@ Deno.test("transcript paging and reset have no presentation state", () => {
 			timestamp,
 		})),
 	);
-	assertEquals(state.messages.length, 100);
+	assertEquals(state.messages.length, 50);
 	assertEquals(state.hasOlderMessages, true);
-	assertEquals(state.loadOlderMessages().length, 100);
+	assertEquals(state.loadOlderMessages().length, 50);
+	assertEquals(state.messages.length, 100);
+	assertEquals(state.loadOlderMessages().length, 50);
+	assertEquals(state.loadOlderMessages().length, 50);
 	assertEquals(state.messages.length, 200);
 	assertEquals(state.loadOlderMessages(), []);
 
