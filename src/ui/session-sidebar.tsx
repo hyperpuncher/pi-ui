@@ -120,7 +120,7 @@ function renderSessionSidebarRow(
 				<span class="flex h-6 min-w-0 items-center gap-2">
 					<SessionSubtitle
 						session={session}
-						class="pi-fine-print min-w-0 flex-1 overflow-hidden text-[10px]"
+						class="pi-fine-print min-w-0 flex-1 overflow-hidden text-xs"
 						workspaceNameOnly
 						showSubtitle={false}
 					/>
