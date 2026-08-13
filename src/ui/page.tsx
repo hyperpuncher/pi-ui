@@ -198,11 +198,11 @@ export function renderPage(
 					{renderSessionSidebar(state)}
 					<div
 						id="workspace-shell"
-						class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+						class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
 					>
 						<section
 							id="chat-pane"
-							class="pi-raised-surface absolute grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+							class="pi-raised-surface absolute grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
 							aria-label="Chat"
 						>
 							{renderMessages(

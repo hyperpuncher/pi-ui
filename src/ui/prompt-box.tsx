@@ -39,7 +39,7 @@ export function renderPromptBox(
 			</div>
 			{renderPromptQueue(state)}
 			<div
-				class="input-group pi-raised-surface pi-prompt-surface relative z-10 overflow-visible p-3 text-sm transition-none"
+				class="input-group pi-raised-surface pi-prompt-surface relative z-10 overflow-visible p-3 text-sm transition-shadow duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
 				data-orientation="vertical"
 			>
 				<div

@@ -20,6 +20,9 @@
 		--pi-workspace-structural-gap: var(--pi-workspace-gap);
 		--pi-review-toolbar-height: 2.125rem;
 
+		/* Motion */
+		--pi-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
 		/* Width hierarchy */
 		--pi-messages-max-width: 50rem;
 		--pi-prompt-max-width: 54rem;
@@ -225,8 +228,8 @@
 		transform: translateX(-100%);
 		box-shadow: var(--shadow-xl);
 		transition:
-			transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
-			opacity 150ms cubic-bezier(0.23, 1, 0.32, 1),
+			transform 150ms var(--pi-ease-out),
+			opacity 150ms var(--pi-ease-out),
 			display 150ms;
 		transition-behavior: allow-discrete;
 	}
@@ -267,13 +270,13 @@
 	}
 
 	#prompt-box .pi-prompt-surface {
-		@apply shadow-lg;
+		@apply shadow-md;
 
 		background: var(--pi-prompt-surface);
 	}
 
 	#prompt-box .input-group:is(:focus, :focus-within) {
-		@apply shadow-lg ring-0;
+		@apply shadow-xl ring-0;
 
 		border-color: var(--pi-surface-edge);
 		outline: none;

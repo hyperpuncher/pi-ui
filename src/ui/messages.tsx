@@ -507,7 +507,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 						</span>
 						<span class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs text-muted-foreground">
 							<svg
-								class="size-3.5 rotate-180 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-open:rotate-90 motion-reduce:transition-none"
+								class="size-3.5 rotate-180 transition-transform duration-150 ease-(--pi-ease-out) group-open:rotate-90 motion-reduce:transition-none"
 								viewBox="0 0 24 24"
 								fill="none"
 								stroke="currentColor"
