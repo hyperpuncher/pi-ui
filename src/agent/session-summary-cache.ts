@@ -2,9 +2,13 @@ import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { dirname } from "@std/path";
 
 import { appCachePath } from "../utils/app-cache.ts";
+import {
+	attachmentDisplayName,
+	splitLeadingAttachmentReferences,
+} from "../utils/attachment-references.ts";
 import { isRecord } from "../utils/type-guards.ts";
 
-const cacheVersion = 1;
+const cacheVersion = 2;
 const maxSummaryTextLength = 96;
 const readBufferSize = 64 * 1024;
 const decoder = new TextDecoder();
@@ -24,7 +28,7 @@ export type SessionSummaryCacheEntry = {
 };
 
 export type SessionSummaryCache = {
-	version: 1;
+	version: 2;
 	sessions: Record<string, SessionSummaryCacheEntry>;
 };
 
@@ -240,8 +244,24 @@ function applyLine(state: MutableSummary, bytes: Uint8Array): void {
 			: dateValue(value.timestamp);
 	if (activity > 0) state.lastActivity = Math.max(state.lastActivity, activity);
 	if (!state.firstMessage && role === "user") {
-		state.firstMessage = summaryText(messageText(value.message.content));
+		state.firstMessage = firstMessageTitle(value.message.content);
 	}
+}
+
+function firstMessageTitle(content: unknown): string {
+	const text = messageText(content);
+	const { prompt, paths } = splitLeadingAttachmentReferences(text);
+	const promptTitle = prompt.trim();
+	if (promptTitle) return summaryText(promptTitle);
+	if (paths.length === 1) return summaryText(attachmentDisplayName(paths[0]));
+	if (paths.length > 1) return `${paths.length} attachments`;
+
+	const imageCount = Array.isArray(content)
+		? content.filter((block) => isRecord(block) && block.type === "image").length
+		: 0;
+	if (imageCount === 1) return "Image";
+	if (imageCount > 1) return `${imageCount} images`;
+	return summaryText(text.trim());
 }
 
 function messageText(content: unknown): string {

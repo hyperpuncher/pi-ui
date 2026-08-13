@@ -101,6 +101,48 @@ Deno.test("the cached catalog indexes every session and drops deleted files", as
 	}
 });
 
+Deno.test("attachment references produce readable session titles", async () => {
+	const root = await Deno.makeTempDir();
+	const sessionsRoot = join(root, "sessions");
+	const workspace = join(sessionsRoot, "workspace");
+	const cachePath = join(root, "cache", "session-index.json");
+	await Deno.mkdir(workspace, { recursive: true });
+	try {
+		const prompts = [
+			"@/tmp/pi-ui-transfers/file-d1a3d330684a04ab-image.png",
+			"@/tmp/pi-ui-transfers/file-a1-image.png\n@/tmp/pi-ui-transfers/file-b2-notes.md",
+			"@/tmp/pi-ui-transfers/file-a1-image.png\nwhy is the sidebar visible?",
+		];
+		for (const [index, prompt] of prompts.entries()) {
+			await Deno.writeTextFile(
+				join(workspace, `session-${index}.jsonl`),
+				lines([
+					{
+						type: "session",
+						version: 3,
+						id: `session-${index}`,
+						timestamp: `2026-01-0${index + 1}T00:00:00.000Z`,
+						cwd: "/workspace",
+					},
+					message("user", prompt, (index + 1) * 1_000),
+				]),
+			);
+		}
+
+		const sessions = await listCachedSessions(sessionsRoot, cachePath);
+		const titles = Object.fromEntries(
+			sessions.map((session) => [session.id, session.firstMessage]),
+		);
+		assertEquals(titles, {
+			"session-0": "image.png",
+			"session-1": "2 attachments",
+			"session-2": "why is the sidebar visible?",
+		});
+	} finally {
+		await Deno.remove(root, { recursive: true });
+	}
+});
+
 Deno.test("a corrupt summary cache is rebuilt", async () => {
 	const root = await Deno.makeTempDir();
 	const sessionsRoot = join(root, "sessions");
@@ -127,7 +169,7 @@ Deno.test("a corrupt summary cache is rebuilt", async () => {
 
 		const sessions = await listCachedSessions(sessionsRoot, cachePath);
 		assertEquals(sessions[0].firstMessage, "Recovered");
-		assertEquals((await readSessionSummaryCache(cachePath)).version, 1);
+		assertEquals((await readSessionSummaryCache(cachePath)).version, 2);
 	} finally {
 		await Deno.remove(root, { recursive: true });
 	}

@@ -7,6 +7,10 @@ import {
 
 import type { AppMessageInput } from "../state/app-store.ts";
 import type { TranscriptState } from "../state/transcript-state.ts";
+import {
+	attachmentDisplayName,
+	splitLeadingAttachmentReferences,
+} from "../utils/attachment-references.ts";
 import { isRecord } from "../utils/type-guards.ts";
 import { collectCacheMisses, formatCacheMissNotice } from "./cache-miss.ts";
 import {
@@ -90,7 +94,7 @@ export class TranscriptProjector {
 		switch (message.role) {
 			case "user": {
 				const text = userContentRawText(message.content);
-				const { prompt, paths } = splitAttachmentReferences(text);
+				const { prompt, paths } = splitLeadingAttachmentReferences(text);
 				return userContentToMessages(
 					prompt,
 					timestamp,
@@ -191,21 +195,6 @@ function userContentRawText(content: unknown): string {
 		: contentToText(content);
 }
 
-function splitAttachmentReferences(text: string): {
-	prompt: string;
-	paths: string[];
-} {
-	const paths: string[] = [];
-	let prompt = text;
-	while (true) {
-		const match = prompt.match(/^@((?:\/|[A-Za-z]:[\\/])[^\r\n]+)(?:\r?\n|$)/);
-		if (!match) break;
-		paths.push(match[1]);
-		prompt = prompt.slice(match[0].length);
-	}
-	return { prompt, paths };
-}
-
 function userContentAttachments(
 	paths: readonly string[],
 	content: unknown,
@@ -240,11 +229,6 @@ function userContentAttachments(
 		});
 	}
 	return attachments.length > 0 ? attachments : undefined;
-}
-
-function attachmentDisplayName(path: string): string {
-	const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
-	return name.replace(/^file-[a-f0-9]+-/i, "");
 }
 
 function isImageFileName(name: string): boolean {
