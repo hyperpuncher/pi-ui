@@ -15,12 +15,10 @@
 		--message-thought-assistant-gap: 0.25rem;
 
 		/* Shared workspace geometry */
-		--pi-workspace-gap: 0.75rem;
-		--pi-workspace-inset: 0.4375rem;
-		--pi-workspace-structural-gap: calc(var(--pi-workspace-gap) / 2);
+		--pi-workspace-gap: 0.25rem;
+		--pi-workspace-inset: 0.25rem;
+		--pi-workspace-structural-gap: var(--pi-workspace-gap);
 		--pi-review-toolbar-height: 2.125rem;
-		--pi-resize-handle-thickness: 0.1875rem;
-		--pi-resize-handle-length: 1.75rem;
 
 		/* Width hierarchy */
 		--pi-messages-max-width: 50rem;
@@ -195,6 +193,10 @@
 		color: var(--pi-surface-raised-foreground);
 	}
 
+	:is(#chat-pane, #session-sidebar nav, #workspace-review .pi-raised-surface) {
+		border-radius: var(--radius-sm);
+	}
+
 	.command-dialog > .command {
 		top: 50%;
 		translate: -50% -50%;
@@ -304,9 +306,9 @@
 	.pi-review-diff-canvas {
 		overflow: hidden;
 		margin-block-end: calc(-1 * var(--pi-workspace-inset));
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-sm);
 		background: var(--pi-workspace-canvas-background);
-		clip-path: inset(0 round var(--radius-lg));
+		clip-path: inset(0 round var(--radius-sm));
 	}
 
 	#review-diff-view {
@@ -316,19 +318,19 @@
 
 		/* Keep top clearance fixed while widening below the corners for side shadows. */
 		clip-path: shape(
-			from 0 calc(var(--pi-workspace-structural-gap) + var(--radius-lg)),
+			from 0 calc(var(--pi-workspace-structural-gap) + var(--radius-sm)),
 			line to var(--pi-workspace-structural-gap)
-				calc(var(--pi-workspace-structural-gap) + var(--radius-lg)),
-			curve to calc(var(--pi-workspace-structural-gap) + var(--radius-lg))
+				calc(var(--pi-workspace-structural-gap) + var(--radius-sm)),
+			curve to calc(var(--pi-workspace-structural-gap) + var(--radius-sm))
 				var(--pi-workspace-structural-gap) with var(--pi-workspace-structural-gap)
 				var(--pi-workspace-structural-gap),
-			line to calc(100% - var(--pi-workspace-structural-gap) - var(--radius-lg))
+			line to calc(100% - var(--pi-workspace-structural-gap) - var(--radius-sm))
 				var(--pi-workspace-structural-gap),
 			curve to calc(100% - var(--pi-workspace-structural-gap))
-				calc(var(--pi-workspace-structural-gap) + var(--radius-lg)) with
+				calc(var(--pi-workspace-structural-gap) + var(--radius-sm)) with
 				calc(100% - var(--pi-workspace-structural-gap))
 				var(--pi-workspace-structural-gap),
-			line to 100% calc(var(--pi-workspace-structural-gap) + var(--radius-lg)),
+			line to 100% calc(var(--pi-workspace-structural-gap) + var(--radius-sm)),
 			line to 100% 100%,
 			line to 0 100%,
 			close
@@ -356,27 +358,18 @@
 		cursor: row-resize;
 	}
 
-	.pi-resize-handle::after {
+	.pi-resize-handle::before {
 		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: var(--pi-resize-handle-thickness);
-		height: var(--pi-resize-handle-length);
-		border-radius: 999px;
-		background: var(--pi-divider-handle);
+		inset: 0 -0.25rem;
 		content: "";
-		translate: -50% -50%;
-		transition: background-color 100ms ease-out;
 	}
 
-	.pi-resize-handle[data-orientation="horizontal"]::after {
-		width: var(--pi-resize-handle-length);
-		height: var(--pi-resize-handle-thickness);
+	.pi-resize-handle[data-orientation="horizontal"]::before {
+		inset: -0.25rem 0;
 	}
 
-	.pi-resize-handle:is(:hover, :focus-visible, :active)::after,
-	.pi-resizing .pi-resize-handle::after {
-		background: var(--foreground);
+	.pi-resize-handle:focus-visible {
+		background: color-mix(in oklab, var(--foreground) 18%, transparent);
 	}
 
 	.pi-resizing :is(#workspace-shell, #chat-pane, #workspace-review) {
@@ -389,7 +382,7 @@
 		display: block;
 		overflow: hidden;
 		border: 1px solid var(--pi-surface-edge);
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-sm);
 		background: var(--pi-surface-raised);
 	}
 
@@ -746,12 +739,6 @@
 
 		.pi-review-controls {
 			margin-left: 0;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.pi-resize-handle::after {
-			transition: none;
 		}
 	}
 }

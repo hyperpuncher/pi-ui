@@ -23,9 +23,9 @@ export {
 	reviewSidebarWidthMax,
 	reviewSidebarWidthMin,
 };
-export const workspaceGap = 12;
-export const workspaceInset = 7;
-export const workspaceStructuralGap = workspaceGap / 2;
+export const workspaceGap = 4;
+export const workspaceInset = 4;
+export const workspaceStructuralGap = workspaceGap;
 export const resizeKeyboardStep = 16;
 export const resizeKeyboardLargeStep = 48;
 
