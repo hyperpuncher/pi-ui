@@ -63,8 +63,10 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 
 		assertEqual(maximum, 2);
 		assertEqual(order.join(","), "tool,markdown");
-		assertEqual(summary.fullPatchCount, 2);
-		assertEqual(summary.targetedPatchCount, 2);
+		assertEqual(summary.fullPatchCount, 1);
+		assertEqual(summary.targetedPatchCount, 3);
+		assertIncludes(summary.patches[1], "data: selector #messages");
+		assertIncludes(summary.patches[1], "data: mode replace");
 		assertIncludes(summary.patches[1], "<strong>answer</strong>");
 		assertNotIncludes(summary.patches[1], "<img");
 		assertIncludes(
@@ -160,6 +162,8 @@ Deno.test("session transitions morph only changed stable regions", async () => {
 			text.includes("restored transcript"),
 		);
 		assertIncludes(restored, 'id="messages"');
+		assertIncludes(restored, "data: selector #messages");
+		assertIncludes(restored, "data: mode replace");
 		assertNotIncludes(restored, 'id="prompt-toolbar"');
 		assertNotIncludes(restored, 'id="session-sidebar-content"');
 

@@ -13,6 +13,8 @@ const state = {
 const bottomScrollTimers = new Set();
 let anchor;
 let historyLoading = false;
+let observedMessageStack;
+let messageResizeObserver;
 
 export function bindMessageScroll() {
 	document.addEventListener(
@@ -119,6 +121,7 @@ export function bindMessageScroll() {
 		if (frame) return;
 		frame = requestAnimationFrame(() => {
 			frame = undefined;
+			bindMessageResize();
 			hydratePierreDiffs(affectedRoots);
 			pinToolOutputs(affectedRoots);
 			affectedRoots.clear();
@@ -288,18 +291,18 @@ function isUpwardScrollKey(event) {
 
 function bindMessageResize() {
 	const stack = document.querySelector("#messages > .messages-stack");
-	if (!(stack instanceof HTMLElement)) return;
-	let frame;
-	new ResizeObserver(() => {
-		if (frame) return;
-		frame = requestAnimationFrame(() => {
-			frame = undefined;
+	if (!(stack instanceof HTMLElement) || stack === observedMessageStack) return;
+	messageResizeObserver ??= new ResizeObserver(() => {
+		requestAnimationFrame(() => {
 			const messages = document.getElementById("messages");
 			if (messages instanceof HTMLElement && state.pinnedToBottom)
 				messages.scrollTop = messages.scrollHeight;
 			updateScrollControl();
 		});
-	}).observe(stack);
+	});
+	if (observedMessageStack) messageResizeObserver.unobserve(observedMessageStack);
+	observedMessageStack = stack;
+	messageResizeObserver.observe(stack);
 }
 
 function bindPromptSpacer() {

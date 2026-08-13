@@ -301,8 +301,10 @@ Deno.test("50-message restore emits fallback once and targets enhancements", asy
 
 		assertEqual(markdownPatches, 20);
 		assertEqual(enhancementPatches, 40);
-		assertEqual(summary.fullPatchCount, 2);
-		assertEqual(summary.targetedPatchCount, 40);
+		assertEqual(summary.fullPatchCount, 1);
+		assertEqual(summary.targetedPatchCount, 41);
+		assertIncludes(summary.patches[1], "data: selector #messages");
+		assertIncludes(summary.patches[1], "data: mode replace");
 		assertIncludes(summary.patches[1], 'data-message-id="m-50"');
 		assertNotIncludes(summary.patches[1], "data-pierre-diff");
 		assertNotIncludes(summary.patches[1], 'class="pierre-code"');

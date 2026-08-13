@@ -13,6 +13,7 @@ Deno.test("hub connects, sends an initial view, broadcasts fat and targeted patc
 	assertEquals(hub.clientCount, 1);
 	hub.patchView('<main id="app">updated</main>', '{"ready":false}', []);
 	hub.patchElement('<article id="message">target</article>', "#message");
+	hub.replaceElement('<main id="messages">replaced</main>', "#messages");
 	hub.patchSignals('{"extra":true}');
 	controller.abort();
 	assertEquals(hub.clientCount, 0);
@@ -21,6 +22,8 @@ Deno.test("hub connects, sends an initial view, broadcasts fat and targeted patc
 	assertStringIncludes(body, "initial");
 	assertStringIncludes(body, "updated");
 	assertStringIncludes(body, "selector #message");
+	assertStringIncludes(body, "selector #messages");
+	assertStringIncludes(body, "mode replace");
 	assertStringIncludes(body, 'signals {"extra":true}');
 });
 

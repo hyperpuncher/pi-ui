@@ -47,6 +47,7 @@ export class UiRenderer implements AppStorePresentation {
 	private sessionPickerHtml: string | undefined;
 	private sessionCommitScheduled = false;
 	private mainRegionHtml: string[] | undefined;
+	private replaceTranscriptOnCommit = false;
 
 	constructor(
 		private readonly store: AppStore,
@@ -127,16 +128,22 @@ export class UiRenderer implements AppStorePresentation {
 		}
 		if (this.hub.clientCount > 0) {
 			const regions = this.renderElementRegions(snapshot, false);
+			const replaceTranscript =
+				this.replaceTranscriptOnCommit && Boolean(regions[0]);
 			const changedRegions = regions.filter(
-				(region, index) => region !== this.mainRegionHtml?.[index],
+				(region, index) =>
+					!(replaceTranscript && index === 0) &&
+					region !== this.mainRegionHtml?.[index],
 			);
 			this.mainRegionHtml = regions;
+			if (replaceTranscript) this.hub.replaceElement(regions[0], "#messages");
 			this.hub.patchView(
 				changedRegions.join(""),
 				this.renderSignals(snapshot, this.effectSignalOverrides(effects)),
 				this.mainEffectScripts(effects),
 			);
 		}
+		this.replaceTranscriptOnCommit = false;
 		if (this.sessionHub.clientCount > 0) {
 			const elements = renderSessionPickerContent(snapshot);
 			if (elements !== this.sessionPickerHtml) {
@@ -190,6 +197,7 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.assistantFinished(ids);
 	}
 	transcriptReplacing(): void {
+		this.replaceTranscriptOnCommit = true;
 		this.messages.transcriptReplacing();
 	}
 	transcriptReplaced(

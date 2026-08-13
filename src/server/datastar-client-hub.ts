@@ -71,6 +71,20 @@ export class DatastarClientHub {
 		}
 	}
 
+	replaceElement(elements: string, selector: string): void {
+		for (const [id, client] of this.clients) {
+			try {
+				client.patchElements(elements, { selector, mode: "replace" });
+				if (this.recordPerformance) {
+					sessionPerformance.recordFatMorph(elements);
+					sessionPerformance.markFirstTranscriptPatch();
+				}
+			} catch {
+				this.disconnect(id, client);
+			}
+		}
+	}
+
 	patchSignals(signals: string): void {
 		for (const [id, client] of this.clients) {
 			try {
