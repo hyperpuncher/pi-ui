@@ -515,6 +515,20 @@
 		font-size: var(--text-lg);
 	}
 
+	.markdown-content h4 {
+		font-size: var(--text-base);
+	}
+
+	.markdown-content h5 {
+		font-size: var(--text-sm);
+	}
+
+	.markdown-content h6 {
+		color: var(--muted-foreground);
+		font-size: var(--text-xs);
+		letter-spacing: var(--tracking-wide);
+	}
+
 	.markdown-content :where(p, ul, ol, blockquote, .table-container) {
 		margin-block: 0.75rem;
 	}
