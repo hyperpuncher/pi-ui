@@ -176,6 +176,10 @@
 		color: var(--pi-surface-raised-foreground);
 	}
 
+	#session-sidebar[aria-hidden="true"] nav {
+		translate: calc(100% + var(--pi-workspace-inset)) 0;
+	}
+
 	#session-sidebar nav li > button[data-active="true"] {
 		background: var(--muted);
 	}
