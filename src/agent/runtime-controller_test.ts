@@ -189,7 +189,6 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 			fake.calls.push("create");
 			return Promise.resolve(fake.runtime);
 		},
-		prepareRecentSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		prepareSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		refreshSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		createSessionManager: (cwd) => manager(undefined, true, cwd),
@@ -224,7 +223,7 @@ Deno.test("RuntimeController preparation does not wait for the session catalog",
 	const controllerPromise = RuntimeController.prepare(new AppStore(), "/workspace", {
 		dependencies: {
 			...dependencies([fake]),
-			prepareRecentSessions: () => delayedSessions,
+			prepareSessions: () => delayedSessions,
 		},
 	});
 	let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -246,38 +245,32 @@ Deno.test("RuntimeController preparation does not wait for the session catalog",
 	await result.dispose();
 });
 
-Deno.test("RuntimeController warms the full catalog only when the session stream connects", async () => {
+Deno.test("RuntimeController loads the full catalog once during activation", async () => {
 	const fake = fakeRuntime();
 	const store = new AppStore();
-	let recentLoads = 0;
-	let fullLoads = 0;
-	let resolveFullLoad!: () => void;
-	const fullLoad = new Promise<PreparedSessionList>((resolve) => {
-		resolveFullLoad = () => resolve({ ok: true, sessions: [] });
+	let loads = 0;
+	let resolveLoad!: () => void;
+	const load = new Promise<PreparedSessionList>((resolve) => {
+		resolveLoad = () => resolve({ ok: true, sessions: [] });
 	});
 	const controller = await RuntimeController.prepare(store, "/workspace", {
 		dependencies: {
 			...dependencies([fake]),
-			prepareRecentSessions: () => {
-				recentLoads += 1;
-				return Promise.resolve({ ok: true, sessions: [] });
-			},
 			prepareSessions: () => {
-				fullLoads += 1;
-				return fullLoad;
+				loads += 1;
+				return load;
 			},
 		},
 	});
 	controller.activate();
-	assertEquals({ recentLoads, fullLoads }, { recentLoads: 1, fullLoads: 0 });
+	assertEquals(loads, 1);
 	const loading = controller.listSessions();
-	while (fullLoads === 0) await Promise.resolve();
 	assertEquals(store.snapshot().sessionCatalogLoading, true);
-	resolveFullLoad();
+	resolveLoad();
 	await loading;
 	assertEquals(store.snapshot().sessionCatalogLoading, false);
 	await controller.listSessions();
-	assertEquals({ recentLoads, fullLoads }, { recentLoads: 1, fullLoads: 1 });
+	assertEquals(loads, 1);
 	await controller.dispose();
 });
 

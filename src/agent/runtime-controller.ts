@@ -72,7 +72,6 @@ type CompactionQueuedPrompt = {
 
 export type RuntimeControllerDependencies = Readonly<{
 	createRuntime: typeof createAgentSessionRuntime;
-	prepareRecentSessions: typeof SessionCatalog.prepareRecent;
 	prepareSessions: typeof SessionCatalog.prepare;
 	refreshSessions: typeof SessionCatalog.prepare;
 	createSessionManager: typeof SessionManager.create;
@@ -85,7 +84,6 @@ export type RuntimeControllerDependencies = Readonly<{
 
 const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	createRuntime: createAgentSessionRuntime,
-	prepareRecentSessions: SessionCatalog.prepareRecent,
 	prepareSessions: SessionCatalog.prepare,
 	refreshSessions: SessionCatalog.prepare,
 	createSessionManager: SessionManager.create,
@@ -131,7 +129,6 @@ export class RuntimeController {
 	private resetChatOnInvalidation = false;
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
-	private fullCatalogLoad: Promise<void> | undefined;
 	private readonly sessionTouchTimers = new Map<
 		string,
 		ReturnType<typeof setTimeout>
@@ -148,7 +145,7 @@ export class RuntimeController {
 		private runtime: AgentSessionRuntime,
 		private readonly state: AppStore,
 		private readonly runtimeFactory: CreateAgentSessionRuntimeFactory,
-		private readonly preparedRecentSessions: Promise<PreparedSessionList>,
+		private readonly preparedSessions: Promise<PreparedSessionList>,
 		private readonly activationOptions: RuntimeControllerActivationOptions,
 	) {
 		this.dependencies =
@@ -198,7 +195,7 @@ export class RuntimeController {
 		options: RuntimeControllerActivationOptions = {},
 	): Promise<RuntimeController> {
 		const dependencies = options.dependencies ?? runtimeControllerDependencies;
-		const recentSessionsPromise = dependencies.prepareRecentSessions();
+		const sessionsPromise = dependencies.prepareSessions();
 		const createRuntime: CreateAgentSessionRuntimeFactory = async ({
 			cwd,
 			sessionManager,
@@ -244,7 +241,7 @@ export class RuntimeController {
 				runtime,
 				state,
 				createRuntime,
-				recentSessionsPromise,
+				sessionsPromise,
 				options,
 			);
 			host.bindRuntimeCallbacks(runtime);
@@ -485,10 +482,6 @@ export class RuntimeController {
 
 	async listSessions(): Promise<void> {
 		await this.initialCatalogLoad;
-		this.fullCatalogLoad ??= this.catalog.refresh(this.dependencies.prepareSessions, {
-			refreshWorkspaces: this.activationOptions.refreshWorkspaces,
-		});
-		await this.fullCatalogLoad;
 		this.syncUsage();
 	}
 
@@ -1296,7 +1289,7 @@ export class RuntimeController {
 	}
 
 	private async loadInitialCatalog(): Promise<void> {
-		await this.catalog.refresh(() => this.preparedRecentSessions, {
+		await this.catalog.refresh(() => this.preparedSessions, {
 			refreshWorkspaces: this.activationOptions.refreshWorkspaces,
 		});
 	}

@@ -15,7 +15,7 @@ import {
 } from "./model-controller.ts";
 import {
 	formatSessionSummary,
-	listRecentSessions,
+	listCachedSessions,
 	type PreparedSessionList,
 	recentSessionWorkspaces,
 	SessionCatalog,
@@ -298,7 +298,7 @@ Deno.test("tree navigation reports successful empty editor text explicitly", asy
 	assertEquals(navigated, 1);
 });
 
-Deno.test("recent session discovery parses only the newest candidates", async () => {
+Deno.test("session discovery indexes every candidate in newest-first order", async () => {
 	const root = await Deno.makeTempDir();
 	try {
 		const workspace = `${root}/workspace`;
@@ -329,10 +329,10 @@ Deno.test("recent session discovery parses only the newest candidates", async ()
 			await Deno.utime(path, timestamp, timestamp);
 		}
 
-		const sessions = await listRecentSessions(root, 3);
+		const sessions = await listCachedSessions(root, `${root}/session-index.json`);
 		assertEquals(
 			sessions.map((session) => session.id),
-			["session-4", "session-3", "session-2"],
+			["session-4", "session-3", "session-2", "session-1"],
 		);
 		assertEquals(sessions[0]?.firstMessage, "Message 4");
 	} finally {

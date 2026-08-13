@@ -1,14 +1,16 @@
-import {
-	getAgentDir,
-	SessionManager,
-	type SessionInfo,
-} from "@earendil-works/pi-coding-agent";
+import { getAgentDir, type SessionInfo } from "@earendil-works/pi-coding-agent";
 import { join } from "@std/path";
 
 import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
 import { errorMessage } from "../utils/errors.ts";
 import { formatDateTime } from "../utils/locale.ts";
-import { isRecord } from "../utils/type-guards.ts";
+import {
+	loadSessionSummary,
+	readSessionSummaryCache,
+	sessionInfoFromSummary,
+	sessionSummaryCachePath,
+	updateSessionSummaryCache,
+} from "./session-summary-cache.ts";
 
 export type PreparedSessionList =
 	| { ok: true; sessions: SessionInfo[] }
@@ -19,12 +21,13 @@ type SessionCatalogOptions = {
 	showLoading?: boolean;
 };
 
-type RecentCandidate = {
+type SessionCandidate = {
 	path: string;
-	modified: Date;
+	indexedBytes: number;
+	mtime: number;
 };
 
-const HOME_RECENT_SESSION_LIMIT = 3;
+const SESSION_INDEX_CONCURRENCY = 4;
 
 export class SessionCatalog {
 	private refreshGeneration = 0;
@@ -38,14 +41,7 @@ export class SessionCatalog {
 	) {}
 
 	static prepare(): Promise<PreparedSessionList> {
-		return SessionManager.listAll().then(
-			(sessions) => ({ ok: true as const, sessions }),
-			(error: unknown) => ({ ok: false as const, error }),
-		);
-	}
-
-	static prepareRecent(): Promise<PreparedSessionList> {
-		return listRecentSessions().then(
+		return listCachedSessions().then(
 			(sessions) => ({ ok: true as const, sessions }),
 			(error: unknown) => ({ ok: false as const, error }),
 		);
@@ -115,19 +111,32 @@ export class SessionCatalog {
 	async refreshPath(path: string): Promise<void> {
 		const generation = (this.pathRefreshGenerations.get(path) ?? 0) + 1;
 		this.pathRefreshGenerations.set(path, generation);
-		let candidate: RecentCandidate;
+		let candidate: SessionCandidate;
 		try {
-			const info = await Deno.stat(path);
-			candidate = { path, modified: info.mtime ?? new Date() };
+			const file = await Deno.stat(path);
+			const modified = file.mtime ?? new Date();
+			candidate = {
+				path,
+				indexedBytes: file.size,
+				mtime: modified.getTime(),
+			};
 		} catch (error) {
 			if (!(error instanceof Deno.errors.NotFound)) return;
 			if (this.pathRefreshGenerations.get(path) !== generation) return;
 			this.state.removeSession(path);
 			return;
 		}
-		const info = openSessionInfo(candidate);
-		if (!info || this.pathRefreshGenerations.get(path) !== generation) return;
-		const summary = this.mergeStatuses([formatSessionSummary(info)])[0];
+		const cachePath = sessionSummaryCachePath();
+		const cache = await readSessionSummaryCache(cachePath);
+		const cached = cache.sessions[path];
+		const indexed = await loadSessionSummary(candidate, cached);
+		if (!indexed || this.pathRefreshGenerations.get(path) !== generation) return;
+		if (indexed !== cached) {
+			await updateSessionSummaryCache({ [path]: indexed }, cachePath);
+		}
+		const summary = this.mergeStatuses([
+			formatSessionSummary(sessionInfoFromSummary(path, indexed)),
+		])[0];
 		if (!summary) return;
 		if (this.state.updateSessionSummary(path, () => summary)) return;
 		this.state.setSessionCatalog([summary, ...this.state.getSessionCatalog()]);
@@ -143,25 +152,57 @@ export class SessionCatalog {
 	}
 }
 
-export async function listRecentSessions(
+export async function listCachedSessions(
 	sessionsRoot = join(getAgentDir(), "sessions"),
-	limit = HOME_RECENT_SESSION_LIMIT,
+	cachePath = sessionSummaryCachePath(),
 ): Promise<SessionInfo[]> {
-	if (limit <= 0) return [];
+	const [candidates, cache] = await Promise.all([
+		sessionCandidates(sessionsRoot),
+		readSessionSummaryCache(cachePath),
+	]);
+	const summaries: Array<Awaited<ReturnType<typeof loadSessionSummary>>> = Array.from({
+		length: candidates.length,
+	});
+	let nextIndex = 0;
+	const loadNext = async () => {
+		while (nextIndex < candidates.length) {
+			const index = nextIndex++;
+			const candidate = candidates[index];
+			summaries[index] = await loadSessionSummary(
+				candidate,
+				cache.sessions[candidate.path],
+			);
+		}
+	};
+	await Promise.all(
+		Array.from(
+			{ length: Math.min(SESSION_INDEX_CONCURRENCY, candidates.length) },
+			loadNext,
+		),
+	);
 
-	const candidates = await recentCandidates(sessionsRoot);
 	const sessions: SessionInfo[] = [];
-	for (const candidate of candidates) {
-		const session = openSessionInfo(candidate);
-		if (!session) continue;
-		sessions.push(session);
-		if (sessions.length >= limit) break;
+	const changedEntries = {} as typeof cache.sessions;
+	for (const [index, candidate] of candidates.entries()) {
+		const summary = summaries[index];
+		if (!summary) continue;
+		if (summary !== cache.sessions[candidate.path]) {
+			changedEntries[candidate.path] = summary;
+		}
+		sessions.push(sessionInfoFromSummary(candidate.path, summary));
+	}
+	const retainedPaths = new Set(candidates.map((candidate) => candidate.path));
+	const hasDeletedEntries = Object.keys(cache.sessions).some(
+		(path) => !retainedPaths.has(path),
+	);
+	if (Object.keys(changedEntries).length > 0 || hasDeletedEntries) {
+		await updateSessionSummaryCache(changedEntries, cachePath, retainedPaths);
 	}
 	sessions.sort((left, right) => right.modified.getTime() - left.modified.getTime());
 	return sessions;
 }
 
-async function recentCandidates(sessionsRoot: string): Promise<RecentCandidate[]> {
+async function sessionCandidates(sessionsRoot: string): Promise<SessionCandidate[]> {
 	const paths: string[] = [];
 	try {
 		for await (const workspace of Deno.readDir(sessionsRoot)) {
@@ -183,77 +224,23 @@ async function recentCandidates(sessionsRoot: string): Promise<RecentCandidate[]
 	}
 
 	const candidates = await Promise.all(
-		paths.map(async (path): Promise<RecentCandidate | undefined> => {
+		paths.map(async (path): Promise<SessionCandidate | undefined> => {
 			try {
 				const info = await Deno.stat(path);
-				return { path, modified: info.mtime ?? new Date(0) };
+				const modified = info.mtime ?? new Date(0);
+				return {
+					path,
+					indexedBytes: info.size,
+					mtime: modified.getTime(),
+				};
 			} catch {
 				return undefined;
 			}
 		}),
 	);
 	return candidates
-		.filter((candidate): candidate is RecentCandidate => Boolean(candidate))
-		.sort((left, right) => right.modified.getTime() - left.modified.getTime());
-}
-
-function openSessionInfo(candidate: RecentCandidate): SessionInfo | undefined {
-	try {
-		const manager = SessionManager.open(candidate.path);
-		const header = manager.getHeader();
-		if (!header) return undefined;
-
-		let messageCount = 0;
-		let firstMessage = "";
-		let lastActivity = 0;
-		for (const entry of manager.getEntries()) {
-			if (entry.type !== "message") continue;
-			messageCount += 1;
-			const message = entry.message as unknown;
-			if (!isRecord(message)) continue;
-			const role = message.role;
-			if (role !== "user" && role !== "assistant") continue;
-			const timestamp =
-				typeof message.timestamp === "number"
-					? message.timestamp
-					: new Date(entry.timestamp).getTime();
-			if (!Number.isNaN(timestamp))
-				lastActivity = Math.max(lastActivity, timestamp);
-			if (!firstMessage && role === "user") {
-				firstMessage = messageText(message.content);
-			}
-		}
-
-		return {
-			path: candidate.path,
-			id: header.id,
-			cwd: header.cwd ?? "",
-			name: manager.getSessionName(),
-			parentSessionPath: header.parentSession,
-			created: new Date(header.timestamp),
-			modified: lastActivity > 0 ? new Date(lastActivity) : candidate.modified,
-			messageCount,
-			firstMessage: firstMessage || "(no messages)",
-			// The complete background catalog owns full-text session search.
-			allMessagesText: "",
-		};
-	} catch {
-		return undefined;
-	}
-}
-
-function messageText(content: unknown): string {
-	if (typeof content === "string") return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.filter(
-			(block): block is { type: "text"; text: string } =>
-				isRecord(block) &&
-				block.type === "text" &&
-				typeof block.text === "string",
-		)
-		.map((block) => block.text)
-		.join(" ");
+		.filter((candidate): candidate is SessionCandidate => Boolean(candidate))
+		.sort((left, right) => right.mtime - left.mtime);
 }
 
 export function recentSessionWorkspaces(sessions: SessionInfo[]): string[] {
