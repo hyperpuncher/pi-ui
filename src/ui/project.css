@@ -182,6 +182,10 @@
 		background: var(--muted);
 	}
 
+	html:not(.dark) #session-sidebar nav li > button:not([data-active="true"]):hover {
+		background: var(--muted);
+	}
+
 	.pi-workspace-canvas {
 		background: var(--pi-workspace-canvas-background);
 	}

@@ -30,6 +30,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /sessions/new-temporary",
 		"GET /sessions/stream",
 		"GET /sessions/search",
+		"GET /sessions/more",
 		"GET /sessions/favicon",
 		"GET /sessions/image",
 		"POST /sessions/background/abort",
@@ -113,6 +114,27 @@ Deno.test("session favicons use workspace assets and fall back to a folder", asy
 	} finally {
 		await Deno.remove(workspace, { recursive: true });
 	}
+});
+
+Deno.test("older sessions load as a cumulative sidebar page", async () => {
+	const context = fakeContext();
+	context.store.setSessionCatalog(
+		Array.from({ length: 51 }, (_, index) => ({
+			path: `/sessions/${index + 1}.jsonl`,
+			cwd: "/workspace",
+			title: `Session ${index + 1}`,
+			subtitle: "1 message",
+			modified: "Today",
+		})),
+	);
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/sessions/more?limit=100"),
+	);
+	const body = await response.text();
+
+	assertEquals(response.status, 200);
+	assertStringIncludes(body, "Session 51");
+	assertEquals(body.includes("data-on-intersect__once"), false);
 });
 
 Deno.test("session images are served separately from transcript HTML", async () => {

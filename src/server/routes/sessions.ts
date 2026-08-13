@@ -2,6 +2,10 @@ import { join } from "@std/path";
 
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
 import { renderSessionPickerContent } from "../../ui/pickers.tsx";
+import {
+	renderSessionSidebarContent,
+	sessionSidebarPageSize,
+} from "../../ui/session-sidebar.tsx";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
@@ -32,6 +36,25 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 				}),
 			},
 			{ type: "effect", effect: { type: "refresh-session-picker" } },
+		]);
+	});
+	router.register("GET", endpoints.sessionsMore, (_request, context, url) => {
+		const limit = sessionPageLimit(url.searchParams.get("limit"));
+		const catalog = context.store.getSessionCatalog();
+		const sessions = catalog.slice(0, limit);
+		return datastarResponse([
+			{
+				type: "elements",
+				elements: renderSessionSidebarContent(
+					{
+						activityText: context.store.activityText,
+						currentSessionPath: context.store.currentSessionPath,
+						sessionCatalogLoading: context.store.sessionCatalogLoading,
+						sessions,
+					},
+					{ hasMoreSessions: sessions.length < catalog.length },
+				),
+			},
 		]);
 	});
 	router.register("GET", endpoints.sessionsImage, (_request, context, url) => {
@@ -98,6 +121,14 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 		).trim();
 		return sessionTransitionResponse(await requireHost(context).resumeSession(path));
 	});
+}
+
+function sessionPageLimit(value: string | null): number {
+	const requested = Number(value);
+	if (!Number.isSafeInteger(requested) || requested <= 0) {
+		return sessionSidebarPageSize;
+	}
+	return Math.min(requested, 100_000);
 }
 
 const FAVICON_CANDIDATES = [

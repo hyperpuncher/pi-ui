@@ -1,4 +1,6 @@
+import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot, AppSessionSummary } from "../state/app-store.ts";
+import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
 import { SessionRowAction } from "./session-row-action.tsx";
@@ -14,6 +16,12 @@ type SessionSidebarState = Pick<
 	AppRenderSnapshot,
 	"activityText" | "currentSessionPath" | "sessionCatalogLoading" | "sessions"
 >;
+
+type SessionSidebarContentOptions = {
+	hasMoreSessions?: boolean;
+};
+
+export const sessionSidebarPageSize = 30;
 
 export function renderSessionSidebar(state: SessionSidebarState): string {
 	return (
@@ -50,27 +58,147 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 	) as string;
 }
 
-export function renderSessionSidebarContent(state: SessionSidebarState): string {
+export function renderSessionSidebarContent(
+	state: SessionSidebarState,
+	options: SessionSidebarContentOptions = {},
+): string {
+	const sessions =
+		options.hasMoreSessions === undefined
+			? state.sessions.slice(0, sessionSidebarPageSize)
+			: state.sessions;
+	const groups = groupSessionsByDate(sessions);
+	const hasMoreSessions =
+		options.hasMoreSessions ??
+		(!state.sessionCatalogLoading && state.sessions.length >= sessionSidebarPageSize);
 	return (
-		<ul id="session-sidebar-content">
-			{state.sessions.map((session, index) =>
-				renderSessionSidebarRow(session, index, state),
-			)}
-			{state.sessionCatalogLoading ? (
-				<li class="flex justify-center px-2 py-4 text-muted-foreground">
+		<div id="session-sidebar-content">
+			{groups.map((group) => (
+				<div>
+					{group.label && (
+						<h3
+							id={`session-sidebar-${group.key}`}
+							class="flex h-auto items-center gap-2 px-2 py-1 text-[10px] font-medium tracking-wide text-muted-foreground lowercase"
+						>
+							<span>{group.label}</span>
+							<span
+								class="flex-1 border-t border-border"
+								aria-hidden="true"
+							/>
+						</h3>
+					)}
+					<ul>
+						{group.sessions.map(({ session, index }) =>
+							renderSessionSidebarRow(
+								session,
+								index,
+								state,
+								group.showRowDate,
+							),
+						)}
+					</ul>
+				</div>
+			))}
+			{state.sessionCatalogLoading && (
+				<div class="flex justify-center px-2 py-4 text-muted-foreground">
 					{loaderIcon()}
-				</li>
-			) : state.sessions.length === 0 ? (
-				<li class="px-2 py-4 text-xs text-muted-foreground">No sessions yet.</li>
-			) : undefined}
-		</ul>
+				</div>
+			)}
+			{hasMoreSessions && renderSessionPageTrigger(sessions.length)}
+		</div>
 	) as string;
+}
+
+function renderSessionPageTrigger(loadedCount: number) {
+	const nextLimit = loadedCount + sessionSidebarPageSize;
+	return (
+		<div
+			class="flex min-h-8 items-center justify-center text-muted-foreground"
+			data-indicator:_session-page-loading
+			data-on-intersect__once={`@get('${endpoints.sessionsMore}?limit=${nextLimit}', { filterSignals: { include: /^$/ } })`}
+		>
+			<span
+				data-show="$_sessionPageLoading"
+				style="display: none"
+				aria-live="polite"
+			>
+				{loaderIcon()}
+			</span>
+		</div>
+	);
+}
+
+type SessionDateGroup = {
+	key: string;
+	label: string | undefined;
+	showRowDate: boolean;
+	sessions: Array<{ session: AppSessionSummary; index: number }>;
+};
+
+function groupSessionsByDate(
+	sessions: readonly AppSessionSummary[],
+	now = new Date(),
+): SessionDateGroup[] {
+	const groups = new Map<string, SessionDateGroup>();
+	for (const [index, session] of sessions.entries()) {
+		const date = sessionDate(session.modifiedAt);
+		const key = date ? localDateKey(date) : "unknown";
+		let group = groups.get(key);
+		if (!group) {
+			const difference = date ? calendarDayDifference(date, now) : undefined;
+			group = {
+				key,
+				label:
+					date && difference !== undefined
+						? sessionGroupLabel(date, difference, now)
+						: "Unknown date",
+				showRowDate: difference === 0 || difference === undefined,
+				sessions: [],
+			};
+			groups.set(key, group);
+		}
+		group.sessions.push({ session, index });
+	}
+	return [...groups.values()];
+}
+
+function sessionDate(dateTime: string | undefined): Date | undefined {
+	if (!dateTime) return undefined;
+	const date = new Date(dateTime);
+	return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function localDateKey(date: Date): string {
+	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+function calendarDayDifference(date: Date, now: Date): number {
+	const dateDay = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+	const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+	return Math.round((nowDay - dateDay) / 86_400_000);
+}
+
+function sessionGroupLabel(
+	date: Date,
+	difference: number,
+	now: Date,
+): string | undefined {
+	if (difference === 0) return undefined;
+	if (difference === 1) return "Yesterday";
+	if (difference > 1 && difference < 7) {
+		return date.toLocaleDateString(systemTimeLocale, { weekday: "long" });
+	}
+	return date.toLocaleDateString(systemTimeLocale, {
+		month: "short",
+		day: "numeric",
+		year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+	});
 }
 
 function renderSessionSidebarRow(
 	session: AppSessionSummary,
 	index: number,
 	state: SessionSidebarState,
+	showDate: boolean,
 ): string {
 	const current = session.path === state.currentSessionPath;
 	const status = current && state.activityText ? "running" : session.backgroundStatus;
@@ -115,7 +243,12 @@ function renderSessionSidebarRow(
 					>
 						{session.title}
 					</span>
-					<DateTime dateTime={session.modifiedAt} label={session.modified} />
+					{showDate && (
+						<DateTime
+							dateTime={session.modifiedAt}
+							label={session.modified}
+						/>
+					)}
 				</span>
 				<span class="flex h-6 min-w-0 items-center gap-2">
 					<SessionSubtitle

@@ -96,6 +96,82 @@ Deno.test("session sidebar keeps loading visible beneath partial results", () =>
 	assertStringIncludes(html, "animate-spin");
 });
 
+Deno.test("session sidebar groups sessions while preserving times and shortcuts", () => {
+	const now = new Date();
+	const today = new Date(now);
+	today.setHours(12, 0, 0, 0);
+	const yesterday = new Date(now);
+	yesterday.setDate(now.getDate() - 1);
+	yesterday.setHours(12, 0, 0, 0);
+	const earlier = new Date(now);
+	earlier.setDate(now.getDate() - 8);
+	earlier.setHours(12, 0, 0, 0);
+	const html = renderSessionSidebar({
+		sessions: [
+			{
+				path: "/sessions/today.jsonl",
+				cwd: "/workspace",
+				title: "Today session",
+				subtitle: "1 message",
+				modified: "12:00",
+				modifiedAt: today.toISOString(),
+			},
+			{
+				path: "/sessions/yesterday.jsonl",
+				cwd: "/workspace",
+				title: "Yesterday session",
+				subtitle: "1 message",
+				modified: "yesterday",
+				modifiedAt: yesterday.toISOString(),
+			},
+			{
+				path: "/sessions/earlier.jsonl",
+				cwd: "/workspace",
+				title: "Earlier session",
+				subtitle: "1 message",
+				modified: "Aug 1",
+				modifiedAt: earlier.toISOString(),
+			},
+		],
+		currentSessionPath: undefined,
+		activityText: undefined,
+		sessionCatalogLoading: false,
+	} as unknown as AppRenderSnapshot);
+
+	assertFalse(html.includes(">Today</span>"));
+	assertStringIncludes(html, ">Yesterday</span>");
+	assertFalse(html.includes(">Earlier</span>"));
+	assertStringIncludes(html, 'class="flex-1 border-t border-border"');
+	assertStringIncludes(html, "items-center gap-2 px-2 py-1");
+	assertStringIncludes(html, "text-muted-foreground lowercase");
+	assertStringIncludes(html, ">12:00</time>");
+	assertFalse(html.includes(">yesterday</time>"));
+	assertFalse(html.includes(">Aug 1</time>"));
+	assertStringIncludes(html, "Earlier session");
+	assertStringIncludes(html, "evt.code === 'Digit3'");
+});
+
+Deno.test("session sidebar initially renders 30 sessions and an infinite-scroll trigger", () => {
+	const html = renderSessionSidebar({
+		sessions: Array.from({ length: 31 }, (_, index) => ({
+			path: `/sessions/${index + 1}.jsonl`,
+			cwd: "/workspace",
+			title: `Session ${index + 1}`,
+			subtitle: "1 message",
+			modified: "Today",
+		})),
+		currentSessionPath: undefined,
+		activityText: undefined,
+		sessionCatalogLoading: false,
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, "Session 30");
+	assertFalse(html.includes("Session 31"));
+	assertStringIncludes(html, "data-on-intersect__once");
+	assertStringIncludes(html, "/sessions/more?limit=60");
+	assertStringIncludes(html, "data-indicator:_session-page-loading");
+});
+
 Deno.test("session sidebar assigns shortcuts to only the first nine sessions", () => {
 	const html = renderSessionSidebar({
 		sessions: Array.from({ length: 10 }, (_, index) => ({
