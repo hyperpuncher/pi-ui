@@ -30,6 +30,7 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 
 	assertStringIncludes(html, 'class="sidebar"');
 	assertStringIncludes(html, 'data-side="right"');
+	assertFalse(html.includes('data-initial-open="false"'));
 	assertStringIncludes(html, 'aria-label="Sessions"');
 	assertStringIncludes(html, "pi-raised-surface");
 	assertStringIncludes(html, "pi-resize-handle");
@@ -57,6 +58,17 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 	assertStringIncludes(html, "group-hover:opacity-0");
 	assertStringIncludes(html, "Delete session Background session");
 	assertStringIncludes(html, "$sessionDeletePath");
+});
+
+Deno.test("session sidebar starts closed without sessions", () => {
+	const html = renderSessionSidebar({
+		sessions: [],
+		currentSessionPath: undefined,
+		activityText: undefined,
+		sessionCatalogLoading: false,
+	} as unknown as AppRenderSnapshot);
+
+	assertStringIncludes(html, 'data-initial-open="false"');
 });
 
 Deno.test("session sidebar keeps loading visible beneath partial results", () => {

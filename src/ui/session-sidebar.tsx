@@ -21,6 +21,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			id="session-sidebar"
 			class="sidebar"
 			data-side="right"
+			data-initial-open={state.sessions.length === 0 && "false"}
 			aria-keyshortcuts="Control+B Meta+B"
 		>
 			<div
