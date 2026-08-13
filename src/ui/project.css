@@ -540,15 +540,30 @@
 	.markdown-content .table-container {
 		position: relative;
 		left: 50%;
-		width: max-content;
+		width: fit-content;
 		min-width: 100%;
-		max-width: calc(100vw - 2rem);
+		max-width: calc(100cqw - 2rem);
+		overflow-x: auto;
 		transform: translateX(-50%);
 	}
 
 	.markdown-content .table-container table {
+		width: max-content;
+		min-width: 100%;
 		border-collapse: separate;
 		border-spacing: 0;
+	}
+
+	@media (width >= 40rem) {
+		.markdown-content .table-container {
+			max-width: calc(100cqw - 3rem);
+		}
+	}
+
+	@media (width >= 80rem) {
+		.markdown-content .table-container {
+			max-width: calc(100cqw - 4rem);
+		}
 	}
 
 	.markdown-content .table-container :where(th, td) {
