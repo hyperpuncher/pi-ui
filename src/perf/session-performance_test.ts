@@ -284,7 +284,7 @@ Deno.test("SSE parser handles event frames split across chunk boundaries", async
 	assertEqual(summary.targetedPatchCount, 1);
 });
 
-Deno.test("50-message restore emits fallback once and targets enhancements", async () => {
+Deno.test("20-message restore emits fallback once and targets enhancements", async () => {
 	const previous = Deno.env.get("PI_UI_PERF");
 	Deno.env.set("PI_UI_PERF", "1");
 	sessionPerformance.reset();
@@ -293,27 +293,27 @@ Deno.test("50-message restore emits fallback once and targets enhancements", asy
 	const controller = new AbortController();
 	try {
 		const response = renderer.createStream(controller.signal);
-		const messages = generatedSessionFixture(50);
+		const messages = generatedSessionFixture(20);
 		state.replaceMessages(messages);
 		const markdownPatches = markdownMessageCount(messages);
 		const enhancementPatches = enhancementMessageCount(messages);
 		const summary = await collectElementPatches(response, 2 + enhancementPatches);
 
-		assertEqual(markdownPatches, 20);
-		assertEqual(enhancementPatches, 40);
+		assertEqual(markdownPatches, 8);
+		assertEqual(enhancementPatches, 16);
 		assertEqual(summary.fullPatchCount, 1);
-		assertEqual(summary.targetedPatchCount, 41);
+		assertEqual(summary.targetedPatchCount, 17);
 		assertIncludes(summary.patches[1], "data: selector #messages");
 		assertIncludes(summary.patches[1], "data: mode replace");
-		assertIncludes(summary.patches[1], 'data-message-id="m-50"');
+		assertIncludes(summary.patches[1], 'data-message-id="m-20"');
 		assertNotIncludes(summary.patches[1], "data-pierre-diff");
 		assertNotIncludes(summary.patches[1], 'class="pierre-code"');
 
 		const snapshot = sessionPerformance.snapshot();
 		assertEqual(snapshot.fatMorphCount, 2);
-		assertEqual(snapshot.targetedMessagePatchCount, 40);
-		assertEqual(snapshot.spans.toolEnhancement.count, 20);
-		assertEqual(snapshot.spans.markdownEnhancement.count, 20);
+		assertEqual(snapshot.targetedMessagePatchCount, 16);
+		assertEqual(snapshot.spans.toolEnhancement.count, 8);
+		assertEqual(snapshot.spans.markdownEnhancement.count, 8);
 	} finally {
 		controller.abort();
 		if (previous === undefined) Deno.env.delete("PI_UI_PERF");

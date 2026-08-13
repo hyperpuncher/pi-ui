@@ -581,24 +581,29 @@ export class RuntimeController {
 		if (sessionPath === this.runtime.session.sessionManager.getSessionFile()) {
 			return { status: "success" };
 		}
-		return await this.transitionController.run(sessionPath, async (generation) => {
-			const transitionId = sessionPerformance.startSessionTransition(generation);
-			try {
-				const resumed = await sessionPerformance.runInTransition(
-					transitionId,
-					() => this.resumeSessionTransition(sessionPath, transitionId),
-				);
-				if (resumed) {
-					sessionPerformance.markSessionTransitionComplete(transitionId);
-				} else {
+		return await this.transitionController.run(
+			sessionPath,
+			async (generation) => {
+				const transitionId =
+					sessionPerformance.startSessionTransition(generation);
+				try {
+					const resumed = await sessionPerformance.runInTransition(
+						transitionId,
+						() => this.resumeSessionTransition(sessionPath, transitionId),
+					);
+					if (resumed) {
+						sessionPerformance.markSessionTransitionComplete(transitionId);
+					} else {
+						sessionPerformance.cancelSessionTransition(transitionId);
+					}
+					return resumed;
+				} catch (error) {
 					sessionPerformance.cancelSessionTransition(transitionId);
+					throw error;
 				}
-				return resumed;
-			} catch (error) {
-				sessionPerformance.cancelSessionTransition(transitionId);
-				throw error;
-			}
-		});
+			},
+			{ overlay: false },
+		);
 	}
 
 	private async resumeSessionTransition(

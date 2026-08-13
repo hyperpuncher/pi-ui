@@ -33,7 +33,7 @@ export function renderSessionTransition(state: AppRenderSnapshot): string {
 			id="session-transition"
 			class="min-h-0 place-items-center px-6 text-center"
 			style={visible ? "display: grid" : "display: none"}
-			data-style:display="$_sessionLoading || $_sessionTransitionVisible ? 'grid' : 'none'"
+			data-style:display="$_sessionTransitionVisible ? 'grid' : 'none'"
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"
 			aria-busy={transition.status === "loading" ? "true" : "false"}

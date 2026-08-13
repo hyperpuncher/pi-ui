@@ -248,6 +248,25 @@ Deno.test("new session actions lock without driving the transition overlay", () 
 	}
 });
 
+Deno.test("session request indicators lock controls without hiding the transcript", () => {
+	const state = new AppStore();
+	const transition = renderSessionTransition(state.snapshot());
+	const messages = renderMessages([], { keys: "/", description: "Commands" });
+	if (transition.includes("$_sessionLoading || $_sessionTransitionVisible")) {
+		throw new Error("Request indicator should not show the transition overlay");
+	}
+	if (messages.includes("$_sessionLoading || $_sessionTransitionVisible")) {
+		throw new Error("Request indicator should not hide the transcript");
+	}
+	if (
+		!messages.includes("data-class:opacity-50") ||
+		!messages.includes("$_sessionLoading") ||
+		!messages.includes("$_sessionTransitionLoading")
+	) {
+		throw new Error("Request indicator should mute the retained transcript");
+	}
+});
+
 Deno.test("shared resume action drives every immediate loading signal", () => {
 	const action = resumeSessionAction("/sessions/one.json", {
 		closeDialog: true,
