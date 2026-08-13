@@ -87,10 +87,14 @@ export class DatastarClientHub {
 		signals: string,
 		scripts: readonly string[],
 	): void {
-		client.patchElements(elements);
-		if (this.recordPerformance) {
-			sessionPerformance.recordFatMorph(elements);
-			sessionPerformance.markFirstTranscriptPatch();
+		if (elements) {
+			client.patchElements(elements);
+			if (this.recordPerformance) {
+				sessionPerformance.recordFatMorph(elements);
+				if (elements.includes('id="messages"')) {
+					sessionPerformance.markFirstTranscriptPatch();
+				}
+			}
 		}
 		client.patchSignals(signals);
 		if (scripts.length > 0) client.executeScript(scripts.join(";"));

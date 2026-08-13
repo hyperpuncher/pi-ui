@@ -1,4 +1,3 @@
-import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import type { AppMessage, AppStore } from "../state/app-store.ts";
 import { shouldDeferEnhancement } from "../state/enhancement-policy.ts";
@@ -98,7 +97,6 @@ export class MessageRenderService {
 			this.store.emptyChatHint,
 			this.store.hasOlderMessages,
 			this.store.sessions,
-			sessionTransitionOverlayVisible(this.store.sessionTransition),
 			this.store.models.some((model) => model.configured),
 			this.store.sessionCatalogLoading,
 		);

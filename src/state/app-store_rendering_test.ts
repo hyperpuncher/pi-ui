@@ -131,6 +131,49 @@ Deno.test("fat patches resend finalized tool HTML that the client may morph", as
 	}
 });
 
+Deno.test("session transitions morph only changed stable regions", async () => {
+	const state = createState();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+
+		state.setSessionTransition({
+			status: "loading",
+			generation: 1,
+			targetPath: "/session.jsonl",
+			overlay: true,
+		});
+		const loading = await readUntil(reader, (text) =>
+			text.includes('"_sessionTransitionLoading":true'),
+		);
+		assertIncludes(loading, 'id="session-transition"');
+		assertNotIncludes(loading, 'id="messages"');
+		assertNotIncludes(loading, 'id="prompt-toolbar"');
+		assertNotIncludes(loading, 'id="session-sidebar-content"');
+
+		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
+		state.flush();
+		const restored = await readUntil(reader, (text) =>
+			text.includes("restored transcript"),
+		);
+		assertIncludes(restored, 'id="messages"');
+		assertNotIncludes(restored, 'id="prompt-toolbar"');
+		assertNotIncludes(restored, 'id="session-sidebar-content"');
+
+		state.setSessionTransition({ status: "idle", generation: 1 });
+		const idle = await readUntil(reader, (text) =>
+			text.includes('"_sessionTransitionLoading":false'),
+		);
+		assertIncludes(idle, 'id="session-transition"');
+		assertNotIncludes(idle, 'id="messages"');
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("session loading clears after fallback and before enhancement", async () => {
 	let resolveEnhancement: ((html: string) => void) | undefined;
 	const state = createState({

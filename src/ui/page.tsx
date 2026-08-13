@@ -1,4 +1,3 @@
-import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
@@ -199,7 +198,6 @@ export function renderPage(
 								state.emptyChatHint,
 								state.hasOlderMessages,
 								state.sessions,
-								sessionTransitionOverlayVisible(state.sessionTransition),
 								state.models.some((model) => model.configured),
 								state.sessionCatalogLoading,
 							)}

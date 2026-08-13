@@ -262,7 +262,6 @@ Deno.test("recent session loading reserves exactly three rows", () => {
 		{ description: "Send", keys: "enter" },
 		false,
 		[],
-		false,
 		true,
 		true,
 	);
@@ -285,7 +284,6 @@ Deno.test("partial recent sessions stay visible during full catalog loading", ()
 				modified: "Now",
 			},
 		],
-		false,
 		true,
 		true,
 	);

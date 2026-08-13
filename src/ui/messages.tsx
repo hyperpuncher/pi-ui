@@ -31,7 +31,6 @@ export function renderMessages(
 	emptyHint: AppKeybindHint,
 	hasOlderMessages = false,
 	sessions: readonly AppSessionSummary[] = [],
-	sessionTransitionVisible = false,
 	authenticated = true,
 	sessionCatalogLoading = false,
 ): string {
@@ -43,7 +42,6 @@ export function renderMessages(
 				"min-h-0 overflow-y-auto mask-[linear-gradient(to_bottom,black_92%,transparent),linear-gradient(black,black)] mask-size-[calc(100%-var(--scrollbar-width))_100%,var(--scrollbar-width)_100%] mask-position-[left_top,right_top] mask-no-repeat px-4 sm:px-6 xl:px-8",
 				messages.length === 0 ? "pt-8 pb-32" : "pt-24",
 			]}
-			style={sessionTransitionVisible ? "display: none" : undefined}
 			data-show="!($_sessionLoading || $_sessionTransitionVisible)"
 			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"

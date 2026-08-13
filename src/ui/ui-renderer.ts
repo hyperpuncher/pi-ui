@@ -1,4 +1,3 @@
-import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import type {
 	AppMessage,
@@ -47,6 +46,7 @@ export class UiRenderer implements AppStorePresentation {
 	private readonly sessionHub = new DatastarClientHub(undefined, false);
 	private sessionPickerHtml: string | undefined;
 	private sessionCommitScheduled = false;
+	private mainRegionHtml: string[] | undefined;
 
 	constructor(
 		private readonly store: AppStore,
@@ -64,7 +64,13 @@ export class UiRenderer implements AppStorePresentation {
 
 	createStream(signal: AbortSignal): Response {
 		this.flush();
-		return this.hub.createStream(signal, () => this.renderView());
+		return this.hub.createStream(signal, () => {
+			const snapshot = this.store.snapshot();
+			const view = this.renderView({}, snapshot);
+			// Live commits omit finalized Markdown that the browser already owns.
+			this.mainRegionHtml = this.renderElementRegions(snapshot, false);
+			return view;
+		});
 	}
 	createPickersStream(signal: AbortSignal): Response {
 		this.flush();
@@ -120,14 +126,14 @@ export class UiRenderer implements AppStorePresentation {
 			}
 		}
 		if (this.hub.clientCount > 0) {
-			const view = this.renderView(
-				this.effectSignalOverrides(effects),
-				snapshot,
-				false,
+			const regions = this.renderElementRegions(snapshot, false);
+			const changedRegions = regions.filter(
+				(region, index) => region !== this.mainRegionHtml?.[index],
 			);
+			this.mainRegionHtml = regions;
 			this.hub.patchView(
-				view.elements,
-				view.signals,
+				changedRegions.join(""),
+				this.renderSignals(snapshot, this.effectSignalOverrides(effects)),
 				this.mainEffectScripts(effects),
 			);
 		}
@@ -211,6 +217,12 @@ export class UiRenderer implements AppStorePresentation {
 	}
 
 	renderElements(snapshot: AppRenderSnapshot, includeFinalMessageHtml = true): string {
+		return this.renderElementRegions(snapshot, includeFinalMessageHtml).join("");
+	}
+	private renderElementRegions(
+		snapshot: AppRenderSnapshot,
+		includeFinalMessageHtml: boolean,
+	): string[] {
 		const messages =
 			this.suppressMessagesDepth > 0
 				? ""
@@ -221,21 +233,20 @@ export class UiRenderer implements AppStorePresentation {
 						snapshot.emptyChatHint,
 						snapshot.hasOlderMessages,
 						snapshot.sessions,
-						sessionTransitionOverlayVisible(snapshot.sessionTransition),
 						snapshot.models.some((model) => model.configured),
 						snapshot.sessionCatalogLoading,
 					);
-		return (
-			messages +
-			renderPromptAction(snapshot) +
-			renderPromptQueue(snapshot) +
-			renderPromptToolbar(snapshot) +
-			renderPromptStatus(snapshot) +
-			renderWorkspacePicker(snapshot) +
-			renderSessionTransition(snapshot) +
-			renderSessionSidebarContent(snapshot) +
-			renderDebugOverlay(snapshot)
-		);
+		return [
+			messages,
+			renderPromptAction(snapshot),
+			renderPromptQueue(snapshot),
+			renderPromptToolbar(snapshot),
+			renderPromptStatus(snapshot),
+			renderWorkspacePicker(snapshot),
+			renderSessionTransition(snapshot),
+			renderSessionSidebarContent(snapshot),
+			renderDebugOverlay(snapshot),
+		];
 	}
 	renderPickerElements(snapshot: AppRenderSnapshot): string {
 		return (

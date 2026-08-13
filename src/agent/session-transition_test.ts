@@ -278,7 +278,6 @@ Deno.test("empty chat shows login instead of recent sessions without auth", () =
 			},
 		],
 		false,
-		false,
 	);
 	if (!html.includes("/login") || !html.includes("/auth/open-login")) {
 		throw new Error("Missing login action");
