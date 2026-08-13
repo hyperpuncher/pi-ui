@@ -19,6 +19,18 @@ const desktopStartupReadyScript = `addEventListener("load", () => {
 	void bindings.piUiStartupReady();
 }, { once: true });`;
 
+// Restore the persisted sidebar width before CSS can paint. The resize binding
+// applies the same value later, but waiting for that module causes the workspace
+// margin to visibly transition from its default width on every reload.
+const sessionSidebarStartupScript = `try {
+	const stored = Number(localStorage.getItem("pi-ui-session-sidebar-width"));
+	if (Number.isFinite(stored) && stored > 0) {
+		const maximum = Math.max(224, Math.min(480, innerWidth * 0.5));
+		const width = Math.round(Math.min(maximum, Math.max(224, stored)));
+		document.documentElement.style.setProperty("--sidebar-width", width + "px");
+	}
+} catch {}`;
+
 // Hyprland can expose CEF's previous child viewport during its animated tile
 // configure. A resize must remain unchanged across three compositor paints
 // before CEF content is allowed to appear. The nearly opaque cover forces CEF
@@ -79,13 +91,14 @@ export function renderPage(
 
 	return ("<!doctype html>" +
 	(
-		<html lang="en" class="h-full overflow-hidden">
+		<html lang="en" class="h-full overflow-hidden" style="--sidebar-width: 18rem;">
 			<head>
 				<meta charset="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>pi-ui</title>
 				<link rel="icon" type="image/png" href="/favicon.png" />
 				<script src="/theme.js"></script>
+				<script>{sessionSidebarStartupScript}</script>
 				<link rel="stylesheet" href="/app.css" />
 				{gateStartupLayout && <script>{startupLayoutGateScript}</script>}
 				{desktop && <script>{desktopStartupReadyScript}</script>}
@@ -177,7 +190,6 @@ export function renderPage(
 				<div
 					id="app"
 					class="pi-workspace-canvas fixed inset-0 overflow-hidden"
-					style="--sidebar-width: 18rem;"
 					data-class:pi-review-open="$_workspaceReviewOpen"
 					data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 					data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"

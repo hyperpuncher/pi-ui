@@ -27,7 +27,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			<div
 				id="session-sidebar-separator"
 				class="pi-resize-handle fixed! inset-y-(--pi-workspace-inset)! z-50 w-(--pi-workspace-gap)! max-md:hidden"
-				style="right: calc(18rem + var(--pi-workspace-inset) - var(--pi-workspace-gap));"
+				style="right: calc(var(--sidebar-width) + var(--pi-workspace-inset) - var(--pi-workspace-gap));"
 				role="separator"
 				tabindex="0"
 				aria-label="Resize sessions and chat"
