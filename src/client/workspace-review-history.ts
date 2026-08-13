@@ -110,10 +110,10 @@ export function showWorkspaceReviewDetailHeader(
 	const totals = document.createElement("span");
 	totals.className = "flex shrink-0 gap-1 font-mono text-[10px] tabular-nums";
 	const additions = document.createElement("span");
-	additions.className = "text-(--pi-success)";
+	additions.className = "text-(--pi-diff-addition)";
 	additions.textContent = `+${sumChanges(detail.changes, "additions")}`;
 	const deletions = document.createElement("span");
-	deletions.className = "pi-error-fine-print";
+	deletions.className = "text-(--pi-diff-deletion)";
 	deletions.textContent = `-${sumChanges(detail.changes, "deletions")}`;
 	totals.append(additions, deletions);
 	heading.append(subject, totals);

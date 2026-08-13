@@ -52,13 +52,13 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 							<span class="ml-auto flex gap-1 font-mono text-[10px] tabular-nums">
 								<span
 									id="review-total-additions"
-									class="text-(--pi-success)"
+									class="text-(--pi-diff-addition)"
 								>
 									+{additions}
 								</span>
 								<span
 									id="review-total-deletions"
-									class="pi-error-fine-print"
+									class="text-(--pi-diff-deletion)"
 								>
 									-{deletions}
 								</span>
