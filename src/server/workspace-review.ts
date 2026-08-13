@@ -1,5 +1,6 @@
 import { parsePatchFiles } from "@pierre/diffs";
 
+import { sortWorkspaceReviewEntries } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
@@ -91,9 +92,7 @@ export async function readWorkspaceReview(
 		]);
 	assertGit(statusResult, "read repository status");
 
-	let changes = parsePorcelainStatus(statusResult.stdout).sort((a, b) =>
-		a.path.localeCompare(b.path, "en", { numeric: true }),
-	);
+	let changes = sortWorkspaceReviewEntries(parsePorcelainStatus(statusResult.stdout));
 	const tracked = await git(
 		root,
 		"diff",

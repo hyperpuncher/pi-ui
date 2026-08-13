@@ -83,6 +83,12 @@ Deno.test("workspace review combines repository files with tracked and untracked
 		assertStringIncludes(commit?.patch ?? "", "diff --git a/README.md b/README.md");
 		assertEquals(snapshot.changes, [
 			{
+				additions: 0,
+				deletions: 0,
+				path: "src/new.ts",
+				status: "renamed",
+			},
+			{
 				additions: 1,
 				deletions: 0,
 				path: "notes.txt",
@@ -93,12 +99,6 @@ Deno.test("workspace review combines repository files with tracked and untracked
 				deletions: 1,
 				path: "README.md",
 				status: "modified",
-			},
-			{
-				additions: 0,
-				deletions: 0,
-				path: "src/new.ts",
-				status: "renamed",
 			},
 		]);
 		assertStringIncludes(snapshot.patch, "diff --git a/README.md b/README.md");
