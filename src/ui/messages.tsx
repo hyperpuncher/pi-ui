@@ -5,7 +5,7 @@ import {
 	attachmentFileKind,
 } from "../../static/app/attachment-file.js";
 import { authDialogAction } from "../commands/actions.ts";
-import { PIERRE_THEMES } from "../pierre-theme.ts";
+import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	AppKeybindHint,
@@ -310,7 +310,8 @@ function renderToolTitlePart(part: AppMessageTitlePart, index: number) {
 }
 
 function renderInlineBash(command: string): string {
-	const cached = inlineBashCache.get(command);
+	const cacheKey = `${getActiveCodeThemeId()}\0${command}`;
+	const cached = inlineBashCache.get(cacheKey);
 	if (cached) return cached;
 
 	const highlighter = getHighlighterIfLoaded();
@@ -319,23 +320,23 @@ function renderInlineBash(command: string): string {
 	try {
 		const result = highlighter.codeToTokens(command, {
 			lang: "bash",
-			themes: PIERRE_THEMES,
+			themes: getPierreThemes(),
 		});
 		const highlighted = result.tokens
 			.map((line) => line.map(renderInlineToken).join(""))
 			.join("\n");
-		cacheInlineBash(command, highlighted);
+		cacheInlineBash(cacheKey, highlighted);
 		return highlighted;
 	} catch {
 		return escapeHtml(command);
 	}
 }
 
-function cacheInlineBash(command: string, html: string): void {
+function cacheInlineBash(cacheKey: string, html: string): void {
 	if (inlineBashCache.size >= maxInlineBashCacheEntries) {
 		inlineBashCache.delete(inlineBashCache.keys().next().value ?? "");
 	}
-	inlineBashCache.set(command, html);
+	inlineBashCache.set(cacheKey, html);
 }
 
 function renderInlineToken(token: ThemedToken): string {

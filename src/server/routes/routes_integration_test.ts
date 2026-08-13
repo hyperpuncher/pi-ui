@@ -18,6 +18,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"GET /stream",
 		"GET /pickers/stream",
 		"POST /display-refresh",
+		"POST /code-theme",
 		"POST /session-performance/client",
 		"POST /prompt",
 		"POST /prompt/follow-up",

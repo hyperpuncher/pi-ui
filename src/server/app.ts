@@ -3,15 +3,18 @@ import { fromFileUrl } from "@std/path";
 
 import { AgentHost } from "../agent/host.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
+import { setActiveCodeTheme } from "../pierre-theme.ts";
 import { AppStore } from "../state/app-store.ts";
 import { preloadPierreHighlighter } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 import { expandHomePath } from "../utils/workspace.ts";
+import { readCodeThemePreference } from "./code-theme-preferences.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
 import { ExactRouter } from "./router.ts";
 import { registerAssetRoutes } from "./routes/assets.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
+import { registerCodeThemeRoutes } from "./routes/code-theme.ts";
 import type { RouteContext, RouteResources } from "./routes/context.ts";
 import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
 import { registerFileRoutes } from "./routes/files.ts";
@@ -32,6 +35,8 @@ const basecoatJsPath = fromFileUrl(
 const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
+	const codeTheme = await readCodeThemePreference();
+	setActiveCodeTheme(codeTheme);
 	const preloadHighlighterPromise = preloadPierreHighlighter();
 	const localRequests = new WeakSet<Request>();
 	const store = new AppStore();
@@ -112,6 +117,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerAssetRoutes(router);
 	registerStreamRoutes(router);
 	registerDisplayRefreshRoutes(router);
+	registerCodeThemeRoutes(router);
 	registerPromptRoutes(router);
 	registerSessionRoutes(router);
 	registerSessionPerformanceRoutes(router);

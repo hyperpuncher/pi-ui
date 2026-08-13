@@ -1,9 +1,11 @@
+import { getPierreThemes } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
+import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
 import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderMessages } from "./messages.tsx";
@@ -61,6 +63,7 @@ export function renderPage(
 	workspaceReview: WorkspaceReviewSnapshot = emptyWorkspaceReview(),
 ): string {
 	const desktop = typeof Deno.BrowserWindow === "function";
+	const codeThemes = getPierreThemes();
 	const gateStartupLayout =
 		desktop && Boolean(Deno.env.get("HYPRLAND_INSTANCE_SIGNATURE"));
 	const initialSignals = JSON.stringify({
@@ -106,6 +109,7 @@ export function renderPage(
 				<script type="module" src="/app/main.js"></script>
 				<script type="module" src="/vendor/datastar.js"></script>
 				<script type="module" src="/build/workspace-review.js"></script>
+				<script type="module" src="/build/code-theme.js"></script>
 				{state.datastarInspector && (
 					<script
 						type="module"
@@ -124,6 +128,9 @@ export function renderPage(
 				data-files-open-endpoint={endpoints.filesOpen}
 				data-display-refresh-endpoint={endpoints.displayRefresh}
 				data-workspace-review-endpoint={endpoints.workspaceReview}
+				data-code-theme-endpoint={endpoints.codeTheme}
+				data-code-theme-light={codeThemes.light}
+				data-code-theme-dark={codeThemes.dark}
 				data-signals={initialSignals}
 				data-on:dragenter__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 					evt.preventDefault();
@@ -231,6 +238,7 @@ export function renderPage(
 				/>
 
 				{renderCommandMenu()}
+				{renderCodeThemeDialog()}
 				{renderAuthDialog(state.authDialog)}
 
 				<dialog

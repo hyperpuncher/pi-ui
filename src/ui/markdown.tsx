@@ -12,7 +12,7 @@ import {
 	type CompileOptions,
 } from "satteri";
 
-import { PIERRE_THEMES } from "../pierre-theme.ts";
+import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
@@ -197,7 +197,10 @@ export function renderMarkdownStreamingMeasured(
 
 export function releaseMarkdownStreamingState(cacheKey: string): void {
 	streamingCache.delete(cacheKey);
-	deleteStringKeysWithPrefix(streamingCodeBlockStates, `${cacheKey}:`);
+	deleteStringKeysWithPrefix(
+		streamingCodeBlockStates,
+		`${getActiveCodeThemeId()}:${cacheKey}:`,
+	);
 }
 
 export function markdownCacheStatsForTest(): {
@@ -211,12 +214,13 @@ export function markdownCacheStatsForTest(): {
 }
 
 export async function renderMarkdownFinal(markdown: string): Promise<string> {
-	const cached = highlightedCache.get(markdown);
+	const cacheKey = `${getActiveCodeThemeId()}\0${markdown}`;
+	const cached = highlightedCache.get(cacheKey);
 	if (cached) {
 		return cached;
 	}
 	const html = await highlightCodeBlocksFinal(compileMarkdown(markdown));
-	highlightedCache.set(markdown, html);
+	highlightedCache.set(cacheKey, html);
 	return html;
 }
 
@@ -290,7 +294,7 @@ async function highlightCodeBlocksFinal(html: string): Promise<string> {
 }
 
 async function cachedPierreCodeBlock(code: string, language: string): Promise<string> {
-	const key = `${language}\0${code}`;
+	const key = `${getActiveCodeThemeId()}\0${language}\0${code}`;
 	const cached = pierreCodeBlockCache.get(key);
 	if (cached) return cached;
 	const highlighted = await renderPierreCode(code, language);
@@ -306,7 +310,8 @@ function highlightStreamingCodeBlock(
 	const highlighter = getHighlighterIfLoaded();
 	if (!highlighter) return renderPlainCodeBlock(code, language);
 
-	let state = streamingCodeBlockStates.get(cacheKey);
+	const themedCacheKey = `${getActiveCodeThemeId()}:${cacheKey}`;
+	let state = streamingCodeBlockStates.get(themedCacheKey);
 	if (!state || state.language !== language || !code.startsWith(state.code)) {
 		state = {
 			language,
@@ -314,10 +319,10 @@ function highlightStreamingCodeBlock(
 			tokenizer: new ShikiStreamTokenizer({
 				highlighter,
 				lang: language as SupportedLanguages,
-				themes: PIERRE_THEMES,
+				themes: getPierreThemes(),
 			}),
 		};
-		streamingCodeBlockStates.set(cacheKey, state);
+		streamingCodeBlockStates.set(themedCacheKey, state);
 	}
 
 	const chunk = code.slice(state.code.length);

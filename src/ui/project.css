@@ -3,7 +3,10 @@
 	:host {
 		--font-sans: ui-sans-serif, system-ui, sans-serif;
 		--font-mono: ui-monospace, monospace;
-		--code-background: color-mix(in oklab, var(--muted) 40%, transparent);
+		--pi-code-surface-light: oklch(96% 0 0);
+		--pi-code-surface-dark: oklch(17% 0 0);
+		--pi-code-surface: var(--pi-code-surface-light);
+		--code-background: var(--pi-code-surface);
 		--message-gap: 2rem;
 		--message-user-gap: 0.5rem;
 		--message-tool-gap: 1.25rem;
@@ -94,13 +97,14 @@
 	}
 
 	html.dark {
-		--code-background: color-mix(in oklab, var(--muted) 55%, transparent);
+		--pi-workspace-canvas-background: #000;
+		--pi-code-surface: var(--pi-code-surface-dark);
+		--code-background: var(--pi-code-surface);
 		--pi-control-well: color-mix(in oklab, var(--muted) 45%, var(--background));
 		--pi-prompt-surface: color-mix(in oklab, var(--card) 96%, var(--foreground));
 		--pi-success: oklch(94% 0.1 163);
 		--pi-status-success: var(--color-emerald-400);
 		--pi-surface-raised: var(--card);
-		--pi-workspace-canvas-background: var(--background);
 	}
 
 	html.dark .shiki span,
@@ -145,6 +149,69 @@
 		color: var(--pi-inverse-fine-print-foreground);
 	}
 
+	.code-theme-dialog > div {
+		gap: 0;
+		padding: 0;
+	}
+
+	.code-theme-dialog > div > footer {
+		margin: 0;
+		border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+	}
+
+	.code-theme-mode button[aria-pressed="true"] {
+		background: var(--background);
+		color: var(--foreground);
+		box-shadow: 0 1px 2px color-mix(in oklab, black 35%, transparent);
+	}
+
+	.code-theme-card {
+		transition:
+			border-color 130ms ease,
+			transform 130ms var(--pi-ease-out);
+	}
+
+	.code-theme-card:hover {
+		border-color: color-mix(in oklab, var(--foreground) 35%, var(--border));
+	}
+
+	.code-theme-card:active {
+		transform: scale(0.985);
+	}
+
+	.code-theme-card[aria-pressed="true"] {
+		border-color: var(--primary);
+		box-shadow: 0 0 0 2px var(--primary);
+	}
+
+	.code-theme-card:disabled {
+		cursor: wait;
+		opacity: 0.65;
+	}
+
+	.code-theme-preview {
+		font-family: var(--font-mono);
+		white-space: pre;
+	}
+
+	.code-theme-card[data-theme-appearance="light"] .code-theme-preview {
+		background: var(--pi-code-surface-light) !important;
+	}
+
+	.code-theme-card[data-theme-appearance="dark"] .code-theme-preview {
+		background: var(--pi-code-surface-dark) !important;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.code-theme-card {
+			transition: border-color 130ms ease;
+		}
+
+		.code-theme-card:active {
+			transform: none;
+		}
+	}
+
 	.pi-thought-foreground {
 		color: var(--pi-thought-foreground);
 	}
@@ -178,11 +245,7 @@
 		translate: calc(100% + var(--pi-workspace-inset)) 0;
 	}
 
-	#session-sidebar nav li > button[data-active="true"] {
-		background: var(--muted);
-	}
-
-	html:not(.dark) #session-sidebar nav li > button:not([data-active="true"]):hover {
+	html:not(.dark) #session-sidebar nav li > button:is([data-active="true"], :hover) {
 		background: var(--muted);
 	}
 
@@ -448,8 +511,9 @@
 
 	.pi-tool-output-surface {
 		margin-top: 0.5rem;
-		border-radius: var(--radius-lg);
-		background: var(--pi-tool-output-background);
+		border: 1px solid var(--pi-surface-edge);
+		border-radius: var(--radius-md);
+		background: var(--pi-code-surface);
 	}
 
 	.messages-stack {

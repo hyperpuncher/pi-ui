@@ -11,7 +11,7 @@ import {
 } from "@pierre/diffs/worker";
 import { FileTree } from "@pierre/trees";
 
-import { PIERRE_THEMES } from "../pierre-theme.ts";
+import { getPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommitDetail,
@@ -52,9 +52,30 @@ type DiffLayout = NonNullable<WorkspaceReviewPreferences["layout"]>;
 type CommitView = { detail: WorkspaceCommitDetail; items: ReviewItem[] };
 
 const diffListEndPadding = 10;
+const codeThemeLight = document.body.dataset.codeThemeLight;
+const codeThemeDark = document.body.dataset.codeThemeDark;
+if (codeThemeLight && codeThemeDark) {
+	setActiveCodeTheme({ dark: codeThemeDark, light: codeThemeLight });
+}
 const endpoint = document.body.dataset.workspaceReviewEndpoint ?? "";
 const api = createWorkspaceReviewApi(endpoint);
 const preferences = await api.readPreferences();
+
+window.addEventListener("pi-ui-code-theme-changed", (event) => {
+	const themes = (event as CustomEvent<{ dark: string; light: string }>).detail;
+	if (!themes?.dark || !themes.light) return;
+	setActiveCodeTheme(themes);
+	if (viewer) {
+		viewer.setOptions(viewerOptions());
+		viewer.setItems(
+			mode === "all"
+				? items
+				: selection.path && itemsByPath.has(selection.path)
+					? [itemsByPath.get(selection.path)!]
+					: [],
+		);
+	}
+});
 
 const root = requiredElement("workspace-review");
 const app = requiredElement("app");
@@ -634,17 +655,17 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 		lineHoverHighlight: "both",
 		overflow: wrap ? "wrap" : "scroll",
 		stickyHeaders: true,
-		theme: PIERRE_THEMES,
+		theme: getPierreThemes(),
 		themeType: document.documentElement.classList.contains("dark") ? "dark" : "light",
 		unsafeCSS: `
 			:host {
-				--diffs-bg: var(--pi-surface-raised);
-				--diffs-dark-bg: var(--pi-surface-raised);
+				--diffs-bg: var(--pi-code-surface);
+				--diffs-dark-bg: var(--pi-code-surface);
 				--diffs-font-family: var(--font-mono);
 				--diffs-gap-block: 0px;
 				--diffs-gap-style: 0 solid transparent;
 				--diffs-header-font-family: var(--font-sans);
-				--diffs-light-bg: var(--pi-surface-raised);
+				--diffs-light-bg: var(--pi-code-surface);
 				--diffs-scrollbar-gutter-override: 0px;
 			}
 
@@ -705,7 +726,7 @@ function createWorkerPool() {
 		highlighterOptions: {
 			langs: ["text"],
 			preferredHighlighter: "shiki-js",
-			theme: PIERRE_THEMES,
+			theme: getPierreThemes(),
 		},
 		poolOptions: {
 			poolSize: 1,

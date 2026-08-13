@@ -4,6 +4,7 @@ export type AppCommandId =
 	| "resume-session"
 	| "session-tree"
 	| "command-palette"
+	| "change-code-theme"
 	| "switch-model"
 	| "cycle-model"
 	| "cycle-thinking"
@@ -54,6 +55,12 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Command palette",
 		description: "Open the keyboard command launcher.",
 		shortcut: { display: "ctrl K", native: "CmdOrCtrl+K", keys: ["k"] },
+	},
+	{
+		id: "change-code-theme",
+		title: "Change code theme",
+		description: "Choose syntax colors for code and diffs.",
+		shortcut: { display: "", native: "", keys: [] },
 	},
 	{
 		id: "switch-model",

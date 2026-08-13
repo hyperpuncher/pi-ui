@@ -3,6 +3,7 @@ export const endpoints = {
 	stream: "/stream",
 	pickersStream: "/pickers/stream",
 	displayRefresh: "/display-refresh",
+	codeTheme: "/code-theme",
 	sessionPerformanceClient: "/session-performance/client",
 	prompt: "/prompt",
 	promptFollowUp: "/prompt/follow-up",

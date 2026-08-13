@@ -168,6 +168,11 @@ export class UiRenderer implements AppStorePresentation {
 	messageUpdated(id: string): void {
 		this.messages.messageUpdated(id);
 	}
+	codeThemeChanged(): void {
+		this.messages.codeThemeChanged();
+		this.replaceTranscriptOnCommit = true;
+		this.requestCommit();
+	}
 	streamingMessageStarted(id: string): void {
 		this.messages.streamingMessageStarted(id);
 	}

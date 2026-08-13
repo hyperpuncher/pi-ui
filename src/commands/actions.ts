@@ -60,6 +60,8 @@ export const commandActions = {
 	"resume-session": openSessionDialogAction(),
 	"session-tree": openTreeAction(),
 	"command-palette": "document.getElementById('command-input')?.focus()",
+	"change-code-theme":
+		"document.getElementById('command-dialog')?.close(); window.dispatchEvent(new Event('pi-ui-open-code-theme'))",
 	"switch-model": `setTimeout(() => ${togglePopoverAction("model-select-trigger")}, 0)`,
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),

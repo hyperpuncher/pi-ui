@@ -20,7 +20,7 @@
 		"fmt": "~/projects/dsfmt/target/release/dsfmt --write . ; deno run -A npm:oxfmt",
 		"lint": "deno run -A npm:oxlint",
 		"lint:fix": "deno run -A npm:oxlint --fix",
-		"check": "deno check --conditions browser src/main.ts src/server-main.ts rolldown.config.ts scripts/release.ts && deno check --config deno.client.json --conditions browser src/client/workspace-review.ts src/client/pierre-worker.ts",
+		"check": "deno check --conditions browser src/main.ts src/server-main.ts rolldown.config.ts scripts/release.ts && deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
 		"test": "deno test --conditions browser -A",
 		"perf:session": "deno run --conditions browser -A src/perf/session-benchmark.ts"
 	},

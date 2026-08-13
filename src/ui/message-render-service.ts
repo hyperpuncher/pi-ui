@@ -36,7 +36,9 @@ const markdownRoles = new Set<AppMessage["role"]>([
 function rendersMarkdown(role: AppMessage["role"]): boolean {
 	return markdownRoles.has(role);
 }
-function enhancementKind(message: AppMessage): EnhancementKind | undefined {
+function enhancementKind(
+	message: Pick<AppMessage, "format" | "role">,
+): EnhancementKind | undefined {
 	if (
 		rendersMarkdown(message.role) &&
 		message.role !== "skill" &&
@@ -121,6 +123,25 @@ export class MessageRenderService {
 		value.presentationState = "plain";
 		value.presentationVersion += 1;
 		this.deferEnhancement(id);
+	}
+	codeThemeChanged(): void {
+		const streamingIds = new Set(this.streamingIds());
+		this.streaming.clear();
+		this.generation += 1;
+		this.queue.cancelAll();
+		for (const message of this.store.transcript.allMessages) {
+			releaseMarkdownStreamingState(message.id);
+		}
+		this.presentation.clear();
+		for (const message of this.store.transcript.allMessages) {
+			this.messageAppended(message.id);
+			if (
+				enhancementKind(message) === "markdown" &&
+				!streamingIds.has(message.id)
+			) {
+				this.deferEnhancement(message.id);
+			}
+		}
 	}
 	streamingMessageStarted(id: string): void {
 		this.initializeStreaming(id);
