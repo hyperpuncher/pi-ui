@@ -70,6 +70,7 @@ export type AppSessionSummary = {
 	title: string;
 	subtitle: string;
 	modified: string;
+	modifiedAt?: string;
 	backgroundStatus?: BackgroundSessionStatus;
 };
 export type AppTreeEntry = {
@@ -81,6 +82,7 @@ export type AppTreeEntry = {
 	role: string;
 	text: string;
 	meta: string;
+	metaTimestamp?: string;
 	active: boolean;
 	inPath: boolean;
 };

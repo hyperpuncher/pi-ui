@@ -88,6 +88,7 @@ export class SessionCatalog {
 	messageStarted(path: string, firstUserMessage?: string): void {
 		this.state.updateSessionSummary(path, (session) => {
 			const count = sessionMessageCount(session.subtitle) + 1;
+			const modified = new Date();
 			const title =
 				count === 1 && firstUserMessage?.trim()
 					? truncate(firstUserMessage.trim(), 96)
@@ -96,15 +97,18 @@ export class SessionCatalog {
 				...session,
 				title,
 				subtitle: `${count} message${count === 1 ? "" : "s"}`,
-				modified: formatDateTime(new Date()),
+				modified: formatDateTime(modified),
+				modifiedAt: modified.toISOString(),
 			};
 		});
 	}
 
 	touch(path: string): void {
+		const modified = new Date();
 		this.state.updateSessionSummary(path, (session) => ({
 			...session,
-			modified: formatDateTime(new Date()),
+			modified: formatDateTime(modified),
+			modifiedAt: modified.toISOString(),
 		}));
 	}
 
@@ -261,6 +265,7 @@ export function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 		title: truncate(title, 96),
 		subtitle: messageLabel,
 		modified: formatDateTime(info.modified),
+		modifiedAt: info.modified.toISOString(),
 	};
 }
 

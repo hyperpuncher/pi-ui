@@ -103,7 +103,7 @@ Deno.test("current running session is live but does not resume itself", () => {
 	);
 	assertStringIncludes(html, "pi-inverse-fine-print");
 	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
-	assertStringIncludes(html, "text-[10px] whitespace-nowrap lowercase");
+	assertStringIncludes(html, 'class="pi-date pi-date-inverse"');
 	assertStringIncludes(html, 'class="size-3 text-destructive!"');
 	assertStringIncludes(html, "@post('/abort'");
 	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");

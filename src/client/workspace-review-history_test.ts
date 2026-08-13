@@ -8,16 +8,16 @@ Deno.test("commit dates use local calendar days instead of elapsed 24-hour perio
 	const now = new Date(2026, 6, 22, 0, 30);
 
 	assertEquals(
-		formatCommitDate(new Date(2026, 6, 22, 0, 0).toISOString(), now),
-		"today",
+		formatCommitDate(new Date(2026, 6, 22, 0, 0).toISOString(), now, "en-US"),
+		"12:00 AM",
 	);
 	assertEquals(
-		formatCommitDate(new Date(2026, 6, 21, 23, 30).toISOString(), now),
-		"1d",
+		formatCommitDate(new Date(2026, 6, 21, 23, 30).toISOString(), now, "en-US"),
+		"yesterday",
 	);
 	assertEquals(
-		formatCommitDate(new Date(2026, 6, 20, 23, 30).toISOString(), now),
-		"2d",
+		formatCommitDate(new Date(2026, 6, 20, 23, 30).toISOString(), now, "en-US"),
+		"Monday",
 	);
 });
 

@@ -7,6 +7,7 @@ import type {
 	AppSlashCommand,
 } from "../state/app-store.ts";
 import { formatHomePath } from "../utils/workspace.ts";
+import { DateTime } from "./date-time.tsx";
 import { StopIcon } from "./icon.tsx";
 import {
 	PickerEmpty,
@@ -291,15 +292,11 @@ function renderSessionRow(
 				<span class="min-w-0 flex-1 truncate font-medium" safe>
 					{session.title}
 				</span>
-				<span
-					class={[
-						"shrink-0 text-[10px] whitespace-nowrap lowercase",
-						current ? "pi-inverse-fine-print" : "pi-fine-print",
-					]}
-					safe
-				>
-					{session.modified}
-				</span>
+				<DateTime
+					class={current && "pi-date-inverse"}
+					dateTime={session.modifiedAt}
+					label={session.modified}
+				/>
 				{displayStatus === "running" && (
 					<button
 						type="button"

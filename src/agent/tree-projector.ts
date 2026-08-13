@@ -184,60 +184,72 @@ function buildTreePrefix(
 
 function formatTreeEntry(
 	node: SessionTreeNode,
-): Pick<AppTreeEntry, "role" | "text" | "meta"> {
+): Pick<AppTreeEntry, "role" | "text" | "meta" | "metaTimestamp"> {
 	const entry = node.entry;
-	const meta = formatDateTime(new Date(entry.timestamp));
+	const timestamp = new Date(entry.timestamp);
+	const metadata = {
+		meta: formatDateTime(timestamp),
+		metaTimestamp: timestamp.toISOString(),
+	};
 	if (entry.type === "message") {
 		const message = entry.message;
 		if (message.role === "user") {
 			return {
 				role: "user: ",
 				text: normalizeTreeText(extractTreeText(message.content)),
-				meta,
+				...metadata,
 			};
 		}
 		if (message.role === "assistant") {
 			const text = normalizeTreeText(extractTreeText(message.content));
-			return { role: "assistant: ", text: text || "(no text)", meta };
+			return { role: "assistant: ", text: text || "(no text)", ...metadata };
 		}
 		if (message.role === "toolResult") {
-			return { role: "tool: ", text: message.toolName ?? "tool", meta };
+			return { role: "tool: ", text: message.toolName ?? "tool", ...metadata };
 		}
 		if (message.role === "bashExecution") {
-			return { role: "bash: ", text: normalizeTreeText(message.command), meta };
+			return {
+				role: "bash: ",
+				text: normalizeTreeText(message.command),
+				...metadata,
+			};
 		}
-		return { role: `${message.role}: `, text: "", meta };
+		return { role: `${message.role}: `, text: "", ...metadata };
 	}
 	if (entry.type === "custom_message") {
 		return {
 			role: `${entry.customType}: `,
 			text: normalizeTreeText(extractTreeText(entry.content)),
-			meta,
+			...metadata,
 		};
 	}
 	if (entry.type === "compaction") {
 		return {
 			role: "compaction: ",
 			text: `${Math.round(entry.tokensBefore / 1000)}k tokens`,
-			meta,
+			...metadata,
 		};
 	}
 	if (entry.type === "branch_summary") {
-		return { role: "branch summary: ", text: normalizeTreeText(entry.summary), meta };
+		return {
+			role: "branch summary: ",
+			text: normalizeTreeText(entry.summary),
+			...metadata,
+		};
 	}
 	if (entry.type === "model_change") {
-		return { role: "model: ", text: entry.modelId, meta };
+		return { role: "model: ", text: entry.modelId, ...metadata };
 	}
 	if (entry.type === "thinking_level_change") {
-		return { role: "thinking: ", text: entry.thinkingLevel, meta };
+		return { role: "thinking: ", text: entry.thinkingLevel, ...metadata };
 	}
 	if (entry.type === "custom") {
-		return { role: "custom: ", text: entry.customType, meta };
+		return { role: "custom: ", text: entry.customType, ...metadata };
 	}
 	if (entry.type === "label") {
-		return { role: "label: ", text: entry.label ?? "(cleared)", meta };
+		return { role: "label: ", text: entry.label ?? "(cleared)", ...metadata };
 	}
-	return { role: "title: ", text: entry.name ?? "(empty)", meta };
+	return { role: "title: ", text: entry.name ?? "(empty)", ...metadata };
 }
 
 function extractTreeText(content: unknown): string {

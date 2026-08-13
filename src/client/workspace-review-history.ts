@@ -1,4 +1,8 @@
 import {
+	formatAdaptiveDateTime,
+	formatExpandedDateTime,
+} from "../utils/date-time-format.ts";
+import {
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
 	type WorkspaceFileChange,
@@ -57,16 +61,17 @@ export function renderWorkspaceReviewHistory({
 		subject.textContent = commit.subject || "Untitled commit";
 		const metadata = document.createElement("span");
 		metadata.className =
-			"pi-fine-print flex w-full min-w-0 items-center gap-1.5 font-mono text-[10px]";
+			"pi-fine-print flex w-full min-w-0 items-center gap-1.5 text-[10px]";
 		const shortHash = document.createElement("span");
-		shortHash.className = "shrink-0";
+		shortHash.className = "shrink-0 font-mono";
 		shortHash.textContent = commit.shortHash;
 		const author = document.createElement("span");
 		author.className = "truncate";
 		author.textContent = commit.author;
 		const date = document.createElement("time");
-		date.className = "ml-auto shrink-0";
+		date.className = "pi-date ml-auto";
 		date.dateTime = commit.authoredAt;
+		date.title = formatCommitDetailDate(commit.authoredAt);
 		date.textContent = formatCommitDate(commit.authoredAt);
 		metadata.append(shortHash, author, date);
 		button.append(subject, metadata);
@@ -119,16 +124,18 @@ export function showWorkspaceReviewDetailHeader(
 	heading.append(subject, totals);
 	const metadata = document.createElement("div");
 	metadata.className =
-		"pi-fine-print mt-0.5 flex min-w-0 items-center gap-2 font-mono text-[10px]";
+		"pi-fine-print mt-0.5 flex min-w-0 items-center gap-2 text-[10px]";
 	const hash = document.createElement("span");
+	hash.className = "font-mono";
 	hash.textContent = detail.commit.shortHash;
 	const author = document.createElement("span");
 	author.className = "truncate";
 	author.textContent = detail.commit.author;
 	const date = document.createElement("time");
-	date.className = "ml-auto shrink-0";
+	date.className = "pi-date ml-auto";
 	date.dateTime = detail.commit.authoredAt;
-	date.textContent = formatCommitDetailDate(detail.commit.authoredAt);
+	date.title = formatCommitDetailDate(detail.commit.authoredAt);
+	date.textContent = date.title;
 	metadata.append(hash, author, date);
 	detailHeader.append(heading, metadata);
 }
@@ -183,10 +190,7 @@ export function formatCommitDetailDate(
 	value: string,
 	locale = configuredTimeLocale(),
 ): string {
-	return new Intl.DateTimeFormat(locale, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(new Date(value));
+	return formatExpandedDateTime(new Date(value), locale);
 }
 
 export function formatCommitDate(
@@ -194,25 +198,13 @@ export function formatCommitDate(
 	now = new Date(),
 	locale = configuredTimeLocale(),
 ): string {
-	const date = new Date(value);
-	const calendarDays = calendarDayNumber(now) - calendarDayNumber(date);
-	if (calendarDays <= 0) return "today";
-	if (calendarDays === 1) return "1d";
-	if (calendarDays < 30) return `${calendarDays}d`;
-	return new Intl.DateTimeFormat(locale, {
-		month: "short",
-		year: "2-digit",
-	}).format(date);
+	return formatAdaptiveDateTime(new Date(value), now, locale);
 }
 
 function configuredTimeLocale(): string | undefined {
 	return typeof document === "undefined"
 		? undefined
 		: document.body.dataset.timeLocale || undefined;
-}
-
-function calendarDayNumber(date: Date): number {
-	return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
 }
 
 function sumChanges(

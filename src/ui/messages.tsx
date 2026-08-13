@@ -10,6 +10,7 @@ import type {
 	AppSessionSummary,
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
+import { DateTime } from "./date-time.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderMarkdownStreaming } from "./markdown.tsx";
 import { SessionSubtitle } from "./session-summary.tsx";
@@ -175,10 +176,8 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 					class="mt-1 line-clamp-2 text-xs text-muted-foreground"
 				/>
 			</span>
-			<span class="flex shrink-0 items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
-				<span class="font-mono" safe>
-					{session.modified}
-				</span>
+			<span class="flex shrink-0 items-center gap-2 whitespace-nowrap">
+				<DateTime dateTime={session.modifiedAt} label={session.modified} />
 				<ShortcutKbd shortcut={shortcut} />
 			</span>
 		</button>

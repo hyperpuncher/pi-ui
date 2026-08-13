@@ -1,4 +1,5 @@
 import type { AppRenderSnapshot, AppSessionSummary } from "../state/app-store.ts";
+import { DateTime } from "./date-time.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
 import { SessionRowAction } from "./session-row-action.tsx";
 import { sessionStatusLabel } from "./session-status.ts";
@@ -113,9 +114,7 @@ function renderSessionSidebarRow(
 					>
 						{session.title}
 					</span>
-					<span class="pi-fine-print shrink-0 text-[10px] lowercase" safe>
-						{session.modified}
-					</span>
+					<DateTime dateTime={session.modifiedAt} label={session.modified} />
 				</span>
 				<span class="flex h-6 min-w-0 items-center gap-2">
 					<SessionSubtitle

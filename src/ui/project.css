@@ -134,6 +134,21 @@
 		color: var(--pi-inverse-fine-print-foreground);
 	}
 
+	.pi-date {
+		flex-shrink: 0;
+		color: var(--pi-fine-print-foreground);
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-variant-numeric: tabular-nums;
+		line-height: 1rem;
+		text-transform: lowercase;
+		white-space: nowrap;
+	}
+
+	.pi-date-inverse {
+		color: var(--pi-inverse-fine-print-foreground);
+	}
+
 	.pi-thought-foreground {
 		color: var(--pi-thought-foreground);
 	}

@@ -1,5 +1,6 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot, AppTreeEntry } from "../state/app-store.ts";
+import { DateTime } from "./date-time.tsx";
 
 export function renderTreePicker(state: AppRenderSnapshot): string {
 	return (
@@ -88,12 +89,11 @@ function renderTreeRow(entry: AppTreeEntry): string {
 				{"  "}
 			</span>
 			{entry.meta && (
-				<span
-					class="col-start-3 row-start-2 mt-0.5 min-w-0 truncate text-muted-foreground"
-					safe
-				>
-					{entry.meta}
-				</span>
+				<DateTime
+					class="col-start-3 row-start-2 mt-0.5 min-w-0 truncate"
+					dateTime={entry.metaTimestamp}
+					label={entry.meta}
+				/>
 			)}
 			{entry.active && (
 				<span
