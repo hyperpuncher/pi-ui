@@ -1,6 +1,7 @@
 import type { SessionTransitionState } from "../agent/session-transition-controller.ts";
 import { appCommandCatalog } from "../commands/catalog.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
+import type { JsonObject } from "../utils/json-types.ts";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
 import {
@@ -112,7 +113,7 @@ export type UiCommitEffect =
 	| { type: "reopen-model-picker" }
 	| { type: "auth-dialog"; open: boolean }
 	| { type: "scroll-messages-to-bottom" }
-	| { type: "signal-overrides"; values: Readonly<Record<string, unknown>> };
+	| { type: "signal-overrides"; values: JsonObject };
 
 export interface AppStorePresentation {
 	beginUpdate(): void;

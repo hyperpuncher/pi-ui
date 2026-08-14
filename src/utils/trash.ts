@@ -1,3 +1,5 @@
+export type TrashCommand = { command: string; args: string[] };
+
 export async function moveToTrash(path: string): Promise<void> {
 	const command = trashCommand(path);
 	try {
@@ -17,7 +19,7 @@ export async function moveToTrash(path: string): Promise<void> {
 	}
 }
 
-export function trashCommand(path: string): { command: string; args: string[] } {
+export function trashCommand(path: string): TrashCommand {
 	if (Deno.build.os === "darwin") {
 		return {
 			command: "osascript",

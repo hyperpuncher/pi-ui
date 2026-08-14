@@ -53,5 +53,5 @@ function componentsIn(root) {
 }
 
 function isRefreshable(value) {
-	return typeof value.refresh === "function";
+	return value.refresh instanceof Function;
 }

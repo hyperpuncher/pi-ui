@@ -149,14 +149,16 @@ const FAVICON_CANDIDATES = [
 	"src/app/favicon.png",
 ] as const;
 
-const FAVICON_CONTENT_TYPES: Readonly<Record<string, string>> = {
-	ico: "image/x-icon",
-	jpg: "image/jpeg",
-	jpeg: "image/jpeg",
-	png: "image/png",
-	svg: "image/svg+xml",
-	webp: "image/webp",
-};
+const FAVICON_CONTENT_TYPES = new Map<string, string>(
+	Object.entries({
+		ico: "image/x-icon",
+		jpg: "image/jpeg",
+		jpeg: "image/jpeg",
+		png: "image/png",
+		svg: "image/svg+xml",
+		webp: "image/webp",
+	}),
+);
 
 const FOLDER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><style>:root{color:#737373}@media(prefers-color-scheme:dark){:root{color:#a1a1aa}}</style><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`;
 
@@ -179,8 +181,9 @@ async function readFaviconFile(
 		if (!info.isFile) return undefined;
 		const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
 		return {
-			bytes: (await Deno.readFile(path)).buffer as ArrayBuffer,
-			contentType: FAVICON_CONTENT_TYPES[extension] ?? "application/octet-stream",
+			bytes: new Uint8Array(await Deno.readFile(path)).buffer,
+			contentType:
+				FAVICON_CONTENT_TYPES.get(extension) ?? "application/octet-stream",
 		};
 	} catch {
 		return undefined;

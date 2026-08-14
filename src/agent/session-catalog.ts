@@ -43,7 +43,7 @@ export class SessionCatalog {
 	static prepare(): Promise<PreparedSessionList> {
 		return listCachedSessions().then(
 			(sessions) => ({ ok: true as const, sessions }),
-			(error: unknown) => ({ ok: false as const, error }),
+			(error: ErrorOptions["cause"]) => ({ ok: false as const, error }),
 		);
 	}
 
@@ -186,7 +186,7 @@ export async function listCachedSessions(
 	);
 
 	const sessions: SessionInfo[] = [];
-	const changedEntries = {} as typeof cache.sessions;
+	const changedEntries: typeof cache.sessions = {};
 	for (const [index, candidate] of candidates.entries()) {
 		const summary = summaries[index];
 		if (!summary) continue;

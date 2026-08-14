@@ -1,4 +1,5 @@
 import type { AppSessionSummary } from "../state/app-store.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function SessionDeleteButton(props: {
 	session: AppSessionSummary;
@@ -6,7 +7,7 @@ export function SessionDeleteButton(props: {
 }): string {
 	const path = JSON.stringify(props.session.path);
 	const title = JSON.stringify(props.session.title);
-	return (
+	return syncHtml(
 		<button
 			type="button"
 			class={["btn shrink-0", props.class]}
@@ -42,6 +43,6 @@ export function SessionDeleteButton(props: {
 				<path d="M3 6h18" />
 				<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
 			</svg>
-		</button>
-	) as string;
+		</button>,
+	);
 }

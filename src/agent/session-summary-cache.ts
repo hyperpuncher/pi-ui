@@ -1,18 +1,34 @@
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { dirname } from "@std/path";
+import Type from "typebox";
+import { Compile } from "typebox/compile";
 
 import { appCachePath } from "../utils/app-cache.ts";
 import {
 	attachmentDisplayName,
 	splitLeadingAttachmentReferences,
 } from "../utils/attachment-references.ts";
-import { isRecord } from "../utils/type-guards.ts";
+import type { JsonValue } from "../utils/json-types.ts";
+import { isNumber, isRecord, isString } from "../utils/type-guards.ts";
 
 const cacheVersion = 2;
 const maxSummaryTextLength = 96;
 const readBufferSize = 64 * 1024;
 const decoder = new TextDecoder();
 const cacheWrites = new Map<string, Promise<void>>();
+const cacheEntrySchema = Type.Object({
+	indexedBytes: Type.Number(),
+	mtime: Type.Number(),
+	id: Type.String(),
+	cwd: Type.String(),
+	name: Type.Optional(Type.String()),
+	firstMessage: Type.String(),
+	messageCount: Type.Number(),
+	lastActivity: Type.Number(),
+	created: Type.Number(),
+	parentSessionPath: Type.Optional(Type.String()),
+});
+const cacheEntryValidator = Compile(cacheEntrySchema);
 
 export type SessionSummaryCacheEntry = {
 	indexedBytes: number;
@@ -46,7 +62,7 @@ export async function readSessionSummaryCache(
 	path = sessionSummaryCachePath(),
 ): Promise<SessionSummaryCache> {
 	try {
-		const value: unknown = JSON.parse(await Deno.readTextFile(path));
+		const value = JSON.parse(await Deno.readTextFile(path));
 		if (
 			!isRecord(value) ||
 			value.version !== cacheVersion ||
@@ -210,25 +226,26 @@ type MutableSummary = SessionSummaryCacheEntry;
 
 function applyLine(state: MutableSummary, bytes: Uint8Array): void {
 	if (bytes.length === 0) return;
-	let value: unknown;
+	let value: JsonValue;
 	try {
 		value = JSON.parse(decoder.decode(bytes));
 	} catch {
 		return;
 	}
-	if (!isRecord(value) || typeof value.type !== "string") return;
+	if (!isRecord(value) || !isString(value.type)) return;
 	if (value.type === "session" && !state.id) {
-		if (typeof value.id !== "string" || typeof value.timestamp !== "string") return;
+		if (!isString(value.id) || !isString(value.timestamp)) return;
 		state.id = value.id;
-		state.cwd = typeof value.cwd === "string" ? value.cwd : "";
+		state.cwd = isString(value.cwd) ? value.cwd : "";
 		state.created = dateValue(value.timestamp);
-		state.parentSessionPath =
-			typeof value.parentSession === "string" ? value.parentSession : undefined;
+		state.parentSessionPath = isString(value.parentSession)
+			? value.parentSession
+			: undefined;
 		return;
 	}
 	if (value.type === "session_info") {
 		state.name =
-			typeof value.name === "string" && value.name.trim()
+			isString(value.name) && value.name.trim()
 				? summaryText(value.name.trim())
 				: undefined;
 		return;
@@ -238,17 +255,16 @@ function applyLine(state: MutableSummary, bytes: Uint8Array): void {
 	if (!isRecord(value.message)) return;
 	const role = value.message.role;
 	if (role !== "user" && role !== "assistant") return;
-	const activity =
-		typeof value.message.timestamp === "number"
-			? value.message.timestamp
-			: dateValue(value.timestamp);
+	const activity = isNumber(value.message.timestamp)
+		? value.message.timestamp
+		: dateValue(value.timestamp);
 	if (activity > 0) state.lastActivity = Math.max(state.lastActivity, activity);
 	if (!state.firstMessage && role === "user") {
 		state.firstMessage = firstMessageTitle(value.message.content);
 	}
 }
 
-function firstMessageTitle(content: unknown): string {
+function firstMessageTitle<Content>(content: Content): string {
 	const text = messageText(content);
 	const { prompt, paths } = splitLeadingAttachmentReferences(text);
 	const promptTitle = prompt.trim();
@@ -264,12 +280,12 @@ function firstMessageTitle(content: unknown): string {
 	return summaryText(text.trim());
 }
 
-function messageText(content: unknown): string {
-	if (typeof content === "string") return content;
+function messageText<Content>(content: Content): string {
+	if (isString(content)) return content;
 	if (!Array.isArray(content)) return "";
 	const parts: string[] = [];
 	for (const block of content) {
-		if (isRecord(block) && block.type === "text" && typeof block.text === "string") {
+		if (isRecord(block) && block.type === "text" && isString(block.text)) {
 			parts.push(block.text);
 		}
 	}
@@ -282,8 +298,8 @@ function summaryText(value: string): string {
 		: value;
 }
 
-function dateValue(value: unknown): number {
-	if (typeof value !== "string") return 0;
+function dateValue<Value>(value: Value): number {
+	if (!isString(value)) return 0;
 	const parsed = new Date(value).getTime();
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
@@ -304,38 +320,6 @@ function joinBytes(
 	return result;
 }
 
-function parseCacheEntry(value: unknown): SessionSummaryCacheEntry | undefined {
-	if (!isRecord(value)) return undefined;
-	for (const key of [
-		"indexedBytes",
-		"mtime",
-		"messageCount",
-		"lastActivity",
-		"created",
-	] as const) {
-		if (typeof value[key] !== "number" || !Number.isFinite(value[key]))
-			return undefined;
-	}
-	if (
-		typeof value.id !== "string" ||
-		typeof value.cwd !== "string" ||
-		typeof value.firstMessage !== "string"
-	) {
-		return undefined;
-	}
-	return {
-		indexedBytes: value.indexedBytes as number,
-		mtime: value.mtime as number,
-		id: value.id,
-		cwd: value.cwd,
-		name: typeof value.name === "string" ? value.name : undefined,
-		firstMessage: value.firstMessage,
-		messageCount: value.messageCount as number,
-		lastActivity: value.lastActivity as number,
-		created: value.created as number,
-		parentSessionPath:
-			typeof value.parentSessionPath === "string"
-				? value.parentSessionPath
-				: undefined,
-	};
+function parseCacheEntry<Value>(value: Value): SessionSummaryCacheEntry | undefined {
+	return cacheEntryValidator.Check(value) ? value : undefined;
 }

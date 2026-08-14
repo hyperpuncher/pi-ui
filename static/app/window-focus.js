@@ -36,9 +36,7 @@ export function createWindowFocusGuard(options = {}) {
 
 function isFocusable(element) {
 	return Boolean(
-		element &&
-		typeof element.blur === "function" &&
-		typeof element.focus === "function",
+		element && element.blur instanceof Function && element.focus instanceof Function,
 	);
 }
 

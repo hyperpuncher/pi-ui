@@ -8,7 +8,7 @@ export type RouteHandler<Context> = (
 ) => Response | Promise<Response>;
 
 export type RouteErrorReporter = (
-	error: unknown,
+	error: ErrorOptions["cause"],
 	request: Pick<Request, "method" | "url">,
 ) => void;
 
@@ -77,13 +77,13 @@ function routeKey(method: string, pathname: string): string {
 }
 
 function defaultErrorReporter(
-	error: unknown,
+	error: ErrorOptions["cause"],
 	request: Pick<Request, "method" | "url">,
 ): void {
 	const url = new URL(request.url);
 	const details =
 		error instanceof Error
 			? { name: error.name, stack: error.stack?.split("\n").slice(1).join("\n") }
-			: { type: typeof error };
+			: { type: Object.prototype.toString.call(error) };
 	console.error(`Route ${request.method} ${url.pathname} failed`, details);
 }

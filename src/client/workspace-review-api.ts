@@ -1,5 +1,8 @@
 import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import {
+	isWorkspaceCommitDetail,
+	isWorkspaceCommitHistory,
+	isWorkspaceReviewSnapshot,
 	normalizeWorkspaceReviewPreferences,
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
@@ -21,7 +24,8 @@ export function createWorkspaceReviewApi(endpoint: string) {
 					{ headers: { accept: "application/json" } },
 				);
 				if (!response.ok) return undefined;
-				return (await response.json()) as WorkspaceCommitDetail;
+				const value = await response.json();
+				return isWorkspaceCommitDetail(value) ? value : undefined;
 			} catch {
 				return undefined;
 			}
@@ -33,7 +37,8 @@ export function createWorkspaceReviewApi(endpoint: string) {
 					headers: { accept: "application/json" },
 				});
 				if (!response.ok) return undefined;
-				return (await response.json()) as WorkspaceCommit[];
+				const value = await response.json();
+				return isWorkspaceCommitHistory(value) ? value : undefined;
 			} catch {
 				return undefined;
 			}
@@ -75,7 +80,8 @@ export function createWorkspaceReviewApi(endpoint: string) {
 			const suffix = mode === "live" ? "" : `?${mode}`;
 			const source = new EventSource(`${endpoint}${suffix}`);
 			source.addEventListener("message", (event) => {
-				onSnapshot(JSON.parse(event.data) as WorkspaceReviewSnapshot);
+				const value = JSON.parse(event.data);
+				if (isWorkspaceReviewSnapshot(value)) onSnapshot(value);
 			});
 			return source;
 		},

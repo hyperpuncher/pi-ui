@@ -1,10 +1,16 @@
-import { isRecord } from "./utils/type-guards.ts";
+import Type from "typebox";
+import { Compile } from "typebox/compile";
+
+import { isRecord, isString, type JsonRecord } from "./utils/type-guards.ts";
 
 const maximumCommentCount = 100;
 const maximumCommentLength = 20_000;
 const maximumPathLength = 4_096;
 const maximumReviewLength = 200_000;
 const maximumLineNumber = 10_000_000;
+const lineNumberValidator = Compile(
+	Type.Integer({ minimum: 1, maximum: maximumLineNumber }),
+);
 
 export type WorkspaceReviewCommentSide = "additions" | "deletions";
 
@@ -17,7 +23,9 @@ export type WorkspaceReviewComment = Readonly<{
 	startSide: WorkspaceReviewCommentSide;
 }>;
 
-export function parseWorkspaceReviewComments(value: unknown): WorkspaceReviewComment[] {
+export function parseWorkspaceReviewComments<Value>(
+	value: Value,
+): WorkspaceReviewComment[] {
 	if (!isRecord(value) || !Array.isArray(value.comments)) {
 		throw new Error("Missing or invalid review comments.");
 	}
@@ -45,7 +53,7 @@ export function formatWorkspaceReviewPrompt(
 	return ["address the following review comments:", ...entries].join("\n\n");
 }
 
-function parseComment(value: unknown): WorkspaceReviewComment {
+function parseComment<Value>(value: Value): WorkspaceReviewComment {
 	if (!isRecord(value)) throw new Error("Invalid review comment.");
 	const body = requiredText(value.body, "comment body", maximumCommentLength);
 	const path = requiredText(value.path, "comment path", maximumPathLength);
@@ -62,8 +70,8 @@ function parseComment(value: unknown): WorkspaceReviewComment {
 	};
 }
 
-function requiredText(value: unknown, label: string, maximum: number): string {
-	if (typeof value !== "string") {
+function requiredText(value: JsonRecord[string], label: string, maximum: number): string {
+	if (!isString(value)) {
 		throw new Error(`Missing or invalid ${label}.`);
 	}
 	const text = value.trim();
@@ -73,19 +81,14 @@ function requiredText(value: unknown, label: string, maximum: number): string {
 	return text;
 }
 
-function lineNumber(value: unknown): number {
-	if (
-		typeof value !== "number" ||
-		!Number.isSafeInteger(value) ||
-		value < 1 ||
-		value > maximumLineNumber
-	) {
+function lineNumber(value: JsonRecord[string]): number {
+	if (!lineNumberValidator.Check(value)) {
 		throw new Error("Invalid review comment line number.");
 	}
 	return value;
 }
 
-function side(value: unknown): WorkspaceReviewCommentSide {
+function side(value: JsonRecord[string]): WorkspaceReviewCommentSide {
 	if (value !== "additions" && value !== "deletions") {
 		throw new Error("Invalid review comment side.");
 	}

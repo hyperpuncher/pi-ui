@@ -12,6 +12,7 @@ import {
 	renderSessionTransition,
 	resumeSessionAction,
 } from "../ui/session-transition.tsx";
+import { appRenderSnapshot } from "../ui/test-fixtures.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import {
 	classifySessionLeave,
@@ -191,14 +192,16 @@ Deno.test("idle replacement is disposed once", async () => {
 
 Deno.test("session transition renderer escapes targets and renders loading and errors", () => {
 	const targetPath = '<session name="bad">';
-	const loading = renderSessionTransition({
-		sessionTransition: {
-			status: "loading",
-			generation: 1,
-			targetPath,
-			overlay: true,
-		},
-	} as AppStore);
+	const loading = renderSessionTransition(
+		appRenderSnapshot({
+			sessionTransition: {
+				status: "loading",
+				generation: 1,
+				targetPath,
+				overlay: true,
+			},
+		}),
+	);
 	if (!loading.includes('role="status"')) {
 		throw new Error("Missing loading status");
 	}
@@ -209,26 +212,30 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 		throw new Error("Unsafe target path rendered");
 	}
 
-	const quiet = renderSessionTransition({
-		sessionTransition: {
-			status: "loading",
-			generation: 2,
-			targetPath: "New session",
-			overlay: false,
-		},
-	} as AppStore);
+	const quiet = renderSessionTransition(
+		appRenderSnapshot({
+			sessionTransition: {
+				status: "loading",
+				generation: 2,
+				targetPath: "New session",
+				overlay: false,
+			},
+		}),
+	);
 	if (!quiet.includes('style="display: none"')) {
 		throw new Error("Non-overlay transition should remain hidden");
 	}
 
-	const error = renderSessionTransition({
-		sessionTransition: {
-			status: "error",
-			generation: 2,
-			targetPath,
-			message: "Try another session.",
-		},
-	} as AppStore);
+	const error = renderSessionTransition(
+		appRenderSnapshot({
+			sessionTransition: {
+				status: "error",
+				generation: 2,
+				targetPath,
+				message: "Try another session.",
+			},
+		}),
+	);
 	if (!error.includes('role="alert"') || !error.includes("Try another session.")) {
 		throw new Error("Missing recoverable transition error");
 	}
@@ -239,7 +246,7 @@ Deno.test("new session actions lock without driving the transition overlay", () 
 	if (!action.includes("$_newSessionPending")) {
 		throw new Error("Missing immediate new-session guard");
 	}
-	const toolbar = renderPromptToolbar({ isTemporarySession: false } as AppStore);
+	const toolbar = renderPromptToolbar(appRenderSnapshot({ isTemporarySession: false }));
 	if (!toolbar.includes("data-indicator:_new-session-pending")) {
 		throw new Error("Missing dedicated new-session indicator");
 	}
@@ -317,10 +324,12 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	const recent = renderMessages([], { keys: "ctrl 1", description: "Resume" }, false, [
 		session,
 	]);
-	const picker = renderSessionPicker({
-		sessions: [session],
-		currentSessionPath: undefined,
-	} as AppStore);
+	const picker = renderSessionPicker(
+		appRenderSnapshot({
+			sessions: [session],
+			currentSessionPath: undefined,
+		}),
+	);
 	for (const html of [recent, picker]) {
 		if (!html.includes("/sessions/resume")) {
 			throw new Error("Missing resume action");

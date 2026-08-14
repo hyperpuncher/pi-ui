@@ -1,5 +1,7 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
+import type { JsonValue } from "../utils/json-types.ts";
+
 const usageTimeoutMs = 15_000;
 
 export const providerUsageTtlMs = 60 * 1000;
@@ -7,7 +9,7 @@ export const providerUsageTtlMs = 60 * 1000;
 export async function fetchProviderUsagePayload(
 	session: AgentSession,
 	url: string,
-): Promise<unknown | undefined> {
+): Promise<JsonValue | undefined> {
 	const model = session.model;
 	if (!model) return undefined;
 

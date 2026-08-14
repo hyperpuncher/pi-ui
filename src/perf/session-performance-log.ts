@@ -1,6 +1,7 @@
 import { dirname } from "@std/path";
 
 import { appCachePath } from "../utils/app-cache.ts";
+import type { JsonValue } from "../utils/json-types.ts";
 
 const maxLogBytes = 5 * 1024 * 1024;
 let pendingWrite = Promise.resolve();
@@ -11,7 +12,7 @@ export function sessionPerformanceLogPath(): string | undefined {
 	return configured || appCachePath("session-performance.jsonl");
 }
 
-export function appendSessionPerformanceRecord(record: unknown): void {
+export function appendSessionPerformanceRecord(record: JsonValue): void {
 	const path = sessionPerformanceLogPath();
 	if (!path) return;
 	const line = `${JSON.stringify(record)}\n`;

@@ -11,7 +11,7 @@ Deno.test("display refresh update accepts only typed safe-range JSON", async () 
 	}
 });
 
-function request(body: unknown): Request {
+function request(body: Parameters<typeof JSON.stringify>[0]): Request {
 	return new Request("http://localhost/display-refresh", {
 		method: "POST",
 		headers: { "content-type": "application/json" },

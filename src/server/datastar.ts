@@ -65,7 +65,12 @@ export function datastarResponse(
 				}
 			}
 		},
-		{ responseInit: init as Record<string, unknown> },
+		{
+			// SAFETY: Datastar forwards this value to the Response constructor as ResponseInit.
+			responseInit: init as NonNullable<
+				Parameters<typeof ds.stream>[1]
+			>["responseInit"],
+		},
 	);
 }
 

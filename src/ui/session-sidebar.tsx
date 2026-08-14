@@ -11,6 +11,7 @@ import {
 	resumeSessionShortcutAction,
 } from "./session-transition.tsx";
 import { StatusDot } from "./status-dot.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 type SessionSidebarState = Pick<
 	AppRenderSnapshot,
@@ -24,7 +25,7 @@ type SessionSidebarContentOptions = {
 export const sessionSidebarPageSize = 30;
 
 export function renderSessionSidebar(state: SessionSidebarState): string {
-	return (
+	return syncHtml(
 		<aside
 			id="session-sidebar"
 			class="sidebar"
@@ -54,8 +55,8 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					</div>
 				</section>
 			</nav>
-		</aside>
-	) as string;
+		</aside>,
+	);
 }
 
 export function renderSessionSidebarContent(
@@ -70,7 +71,7 @@ export function renderSessionSidebarContent(
 	const hasMoreSessions =
 		options.hasMoreSessions ??
 		(!state.sessionCatalogLoading && state.sessions.length >= sessionSidebarPageSize);
-	return (
+	return syncHtml(
 		<div id="session-sidebar-content">
 			{groups.map((group) => (
 				<div>
@@ -104,8 +105,8 @@ export function renderSessionSidebarContent(
 				</div>
 			)}
 			{hasMoreSessions && renderSessionPageTrigger(sessions.length)}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function renderSessionPageTrigger(loadedCount: number) {
@@ -204,7 +205,7 @@ function renderSessionSidebarRow(
 	const status = current && state.activityText ? "running" : session.backgroundStatus;
 	const shortcut = index < 9 ? `ctrl ${index + 1}` : undefined;
 	const deletable = status !== "running";
-	return (
+	return syncHtml(
 		<li class="group relative">
 			<button
 				type="button"
@@ -264,6 +265,6 @@ function renderSessionSidebarRow(
 					/>
 				</span>
 			</span>
-		</li>
-	) as string;
+		</li>,
+	);
 }

@@ -73,7 +73,7 @@ export class SessionTransitionController {
 	}
 }
 
-function formatTransitionError(error: unknown): string {
+function formatTransitionError(error: ErrorOptions["cause"]): string {
 	const message = errorMessage(error);
 	return message.trim() || "Session transition failed.";
 }

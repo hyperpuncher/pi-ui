@@ -1,10 +1,28 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
+import Type, { type Static } from "typebox";
+import { Compile } from "typebox/compile";
 
-import { asRecord } from "../utils/type-guards.ts";
+import type { JsonValue } from "../utils/json-types.ts";
 import { fetchProviderUsagePayload } from "./provider-usage.ts";
+import { formatRemainingTime, remainingPercent } from "./usage-format.ts";
 
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";
+const numericInputSchema = Type.Union([Type.Number(), Type.String({ pattern: "\\S" })]);
+const codexWindowSchema = Type.Object({
+	used_percent: numericInputSchema,
+	limit_window_seconds: Type.Optional(numericInputSchema),
+	reset_at: Type.Optional(numericInputSchema),
+});
+const codexPayloadSchema = Type.Object({
+	rate_limit: Type.Object({
+		primary_window: Type.Optional(codexWindowSchema),
+		secondary_window: Type.Optional(codexWindowSchema),
+	}),
+});
+const codexPayloadValidator = Compile(codexPayloadSchema);
+type NumericInput = Static<typeof numericInputSchema>;
+type CodexWindowInput = Static<typeof codexWindowSchema>;
 export type CodexWindow = {
 	usedPercent: number;
 	windowSeconds?: number;
@@ -56,45 +74,38 @@ function describeCodexWindow(
 	return {
 		label: formatWindowLabel(window.windowSeconds) ?? fallbackLabel,
 		usedPercent: window.usedPercent,
-		remainingPercent: Math.round(100 - clampPercent(window.usedPercent)),
-		resetText: formatRemainingTime(window),
+		remainingPercent: remainingPercent(window.usedPercent),
+		resetText: formatRemainingTime(
+			window.resetsAt === undefined ? undefined : window.resetsAt * 1000,
+		),
 	};
 }
 
-function parseCodexUsage(payload: unknown): CodexUsage | undefined {
-	const root = asRecord(payload);
-	const rateLimit = asRecord(root?.rate_limit);
-	if (!rateLimit) return undefined;
-
-	const usage = {
-		primary: parseCodexWindow(rateLimit.primary_window),
-		secondary: parseCodexWindow(rateLimit.secondary_window),
-	};
-
-	return usage.primary || usage.secondary ? usage : undefined;
+function parseCodexUsage(payload: JsonValue): CodexUsage | undefined {
+	if (!codexPayloadValidator.Check(payload)) return undefined;
+	const primary = parseCodexWindow(payload.rate_limit.primary_window);
+	const secondary = parseCodexWindow(payload.rate_limit.secondary_window);
+	return primary || secondary ? { primary, secondary } : undefined;
 }
 
-function parseCodexWindow(value: unknown): CodexWindow | undefined {
-	const window = asRecord(value);
+function parseCodexWindow(window: CodexWindowInput | undefined): CodexWindow | undefined {
 	if (!window) return undefined;
-
-	const usedPercent = asNumber(window.used_percent);
+	const usedPercent = finiteNumber(window.used_percent);
 	if (usedPercent === undefined) return undefined;
-
 	return {
 		usedPercent,
-		windowSeconds: asNumber(window.limit_window_seconds),
-		resetsAt: asNumber(window.reset_at),
+		windowSeconds: optionalFiniteNumber(window.limit_window_seconds),
+		resetsAt: optionalFiniteNumber(window.reset_at),
 	};
 }
 
-function asNumber(value: unknown): number | undefined {
-	if (typeof value === "number" && Number.isFinite(value)) return value;
-	if (typeof value === "string" && value.trim()) {
-		const parsed = Number(value);
-		if (Number.isFinite(parsed)) return parsed;
-	}
-	return undefined;
+function finiteNumber(value: NumericInput): number | undefined {
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function optionalFiniteNumber(value: NumericInput | undefined): number | undefined {
+	return value === undefined ? undefined : finiteNumber(value);
 }
 
 function formatWindowLabel(seconds: number | undefined): string | undefined {
@@ -111,25 +122,4 @@ function formatWindowLabel(seconds: number | undefined): string | undefined {
 		return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
 	}
 	return undefined;
-}
-
-function formatRemainingTime(window: CodexWindow): string {
-	if (!window.resetsAt) return "?";
-
-	const ms = Math.max(0, window.resetsAt * 1000 - Date.now());
-	const minutes = ms / 60_000;
-	if (minutes < 60) return `${Math.round(minutes)}m`;
-
-	const hours = minutes / 60;
-	if (hours < 24) return `${formatOneDecimal(hours)}h`;
-	return `${formatOneDecimal(hours / 24)}d`;
-}
-
-function clampPercent(value: number): number {
-	return Math.min(100, Math.max(0, value));
-}
-
-function formatOneDecimal(value: number): string {
-	const rounded = Math.round(value * 10) / 10;
-	return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }

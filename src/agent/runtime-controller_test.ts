@@ -12,6 +12,11 @@ import {
 	type RuntimeControllerDependencies,
 } from "./runtime-controller.ts";
 import type { PreparedSessionList } from "./session-catalog.ts";
+import {
+	agentSessionEventStub,
+	agentSessionRuntimeStub,
+	sessionManagerStub,
+} from "./test-fixtures.ts";
 
 type Callback = () => void | Promise<void>;
 type ExtensionBindings = Parameters<AgentSessionRuntime["session"]["bindExtensions"]>[0];
@@ -34,6 +39,7 @@ type RuntimeFake = {
 	emit(event: AgentSessionEvent): void;
 	setCompacting(value: boolean): void;
 	setStreaming(value: boolean): void;
+	setCompact(value: () => Promise<void>): void;
 };
 
 function manager(
@@ -41,13 +47,13 @@ function manager(
 	persisted = true,
 	cwd = "/workspace",
 ): SessionManager {
-	return {
+	return sessionManagerStub({
 		getCwd: () => cwd,
 		getSessionFile: () => path,
 		isPersisted: () => persisted,
 		getBranch: () => [],
 		getEntries: () => [],
-	} as unknown as SessionManager;
+	});
 }
 
 function fakeRuntime(
@@ -60,8 +66,16 @@ function fakeRuntime(
 	const events: Array<(event: AgentSessionEvent) => void> = [];
 	const calls: string[] = [];
 	const activeSubscriptions = new Set<(event: AgentSessionEvent) => void>();
+	let runtime: AgentSessionRuntime | undefined;
+	let compact = () => Promise.resolve();
 	const fake: RuntimeFake = {
-		runtime: undefined as unknown as AgentSessionRuntime,
+		get runtime() {
+			if (!runtime) throw new Error("runtime fixture is not initialized");
+			return runtime;
+		},
+		set runtime(value: AgentSessionRuntime) {
+			runtime = value;
+		},
 		beforeInvalidate,
 		rebind,
 		events,
@@ -79,10 +93,13 @@ function fakeRuntime(
 			for (const callback of activeSubscriptions) callback(event);
 		},
 		setCompacting: (value) => {
-			(session as { isCompacting: boolean }).isCompacting = value;
+			session.isCompacting = value;
 		},
 		setStreaming: (value) => {
-			(session as { isStreaming: boolean }).isStreaming = value;
+			session.isStreaming = value;
+		},
+		setCompact: (value) => {
+			compact = value;
 		},
 	};
 	const modelRuntime = {
@@ -116,6 +133,12 @@ function fakeRuntime(
 			return Promise.resolve();
 		},
 		waitForIdle: () => Promise.resolve(),
+		compact: () => compact(),
+		abort: () => {
+			calls.push("abort");
+			session.isStreaming = false;
+			return Promise.resolve();
+		},
 		prompt: async (
 			text: string,
 			options?: {
@@ -158,7 +181,7 @@ function fakeRuntime(
 			};
 		},
 	};
-	fake.runtime = {
+	fake.runtime = agentSessionRuntimeStub({
 		session,
 		setBeforeSessionInvalidate: (callback: Callback) =>
 			beforeInvalidate.push(callback),
@@ -171,12 +194,7 @@ function fakeRuntime(
 			return fake.disposeResult;
 		},
 		services: { modelRuntime },
-	} as unknown as AgentSessionRuntime;
-	(session as { abort?: () => Promise<void> }).abort = () => {
-		calls.push("abort");
-		(session as { isStreaming: boolean }).isStreaming = false;
-		return Promise.resolve();
-	};
+	});
 	return fake;
 }
 
@@ -284,12 +302,8 @@ Deno.test("RuntimeController binds extension session controls to the active runt
 	const actions = fake.extensionBindings[0]?.commandContextActions;
 	if (!actions) throw new Error("missing extension command context actions");
 	const options = { parentSession: "/sessions/parent.jsonl" };
-	let received: unknown;
-	(
-		fake.runtime as unknown as {
-			newSession: (value: unknown) => Promise<{ cancelled: boolean }>;
-		}
-	).newSession = (value) => {
+	let received: Parameters<AgentSessionRuntime["newSession"]>[0] | undefined;
+	fake.runtime.newSession = (value) => {
 		received = value;
 		return Promise.resolve({ cancelled: false });
 	};
@@ -318,16 +332,8 @@ Deno.test("RuntimeController treats the current session as an immediate no-op", 
 Deno.test("RuntimeController replaces and trashes the current idle session", async () => {
 	const fake = fakeRuntime("/sessions/current.jsonl");
 	let currentPath = "/sessions/current.jsonl";
-	(
-		fake.runtime.session.sessionManager as unknown as {
-			getSessionFile: () => string;
-		}
-	).getSessionFile = () => currentPath;
-	(
-		fake.runtime as unknown as {
-			newSession: () => Promise<{ cancelled: boolean }>;
-		}
-	).newSession = async () => {
+	fake.runtime.session.sessionManager.getSessionFile = () => currentPath;
+	fake.runtime.newSession = async () => {
 		currentPath = "/sessions/replacement.jsonl";
 		return { cancelled: false };
 	};
@@ -356,11 +362,7 @@ Deno.test("RuntimeController clears chat at authoritative session invalidation",
 	const replacement = new Promise<void>((resolve) => {
 		releaseReplacement = resolve;
 	});
-	(
-		fake.runtime as unknown as {
-			newSession: () => Promise<{ cancelled: boolean }>;
-		}
-	).newSession = async () => {
+	fake.runtime.newSession = async () => {
 		await fake.beforeInvalidate.at(-1)?.();
 		await replacement;
 		return { cancelled: false };
@@ -414,11 +416,7 @@ Deno.test("RuntimeController clears chat before temporary runtime creation", asy
 
 Deno.test("RuntimeController keeps chat when new session is cancelled", async () => {
 	const fake = fakeRuntime();
-	(
-		fake.runtime as unknown as {
-			newSession: () => Promise<{ cancelled: boolean }>;
-		}
-	).newSession = () => Promise.resolve({ cancelled: true });
+	fake.runtime.newSession = () => Promise.resolve({ cancelled: true });
 	const store = new AppStore();
 	store.appendMessage("user", "old session");
 	const controller = await RuntimeController.prepare(store, "/workspace", {
@@ -465,8 +463,7 @@ Deno.test("RuntimeController ignores callbacks captured before in-place replacem
 Deno.test("RuntimeController disposal awaits and attempts foreground and background runtimes", async () => {
 	const foreground = fakeRuntime();
 	const replacement = fakeRuntime("/sessions/b.jsonl");
-	(foreground.runtime.session as unknown as { isStreaming: boolean }).isStreaming =
-		true;
+	foreground.setStreaming(true);
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
 		dependencies: dependencies([foreground, replacement]),
 	});
@@ -507,18 +504,19 @@ Deno.test("RuntimeController shows one error when manual compaction fails", asyn
 		dependencies: dependencies([fake]),
 	});
 	controller.activate();
-	(fake.runtime.session as unknown as { compact: () => Promise<void> }).compact =
-		async () => {
-			fake.emit({
+	fake.setCompact(async () => {
+		fake.emit(
+			agentSessionEventStub({
 				type: "compaction_end",
 				reason: "manual",
 				result: undefined,
 				aborted: false,
 				willRetry: false,
 				errorMessage: "Compaction failed: Nothing to compact (session too small)",
-			} as AgentSessionEvent);
-			throw new Error("Nothing to compact (session too small)");
-		};
+			}),
+		);
+		throw new Error("Nothing to compact (session too small)");
+	});
 
 	assertEquals(await controller.compact(), false);
 	assertEquals(
@@ -547,13 +545,15 @@ Deno.test("RuntimeController shows prompts queued during compaction and sends th
 	assertEquals(await controller.removeQueuedMessage("steer", 2), false);
 
 	fake.setCompacting(false);
-	fake.emit({
-		type: "compaction_end",
-		reason: "manual",
-		result: undefined,
-		aborted: false,
-		willRetry: false,
-	} as AgentSessionEvent);
+	fake.emit(
+		agentSessionEventStub({
+			type: "compaction_end",
+			reason: "manual",
+			result: undefined,
+			aborted: false,
+			willRetry: false,
+		}),
+	);
 	await Promise.resolve();
 
 	assertEquals(fake.promptInputs, [
@@ -572,11 +572,13 @@ Deno.test("RuntimeController removes one message from the active agent queue", a
 	});
 	controller.activate();
 	fake.setStreaming(true);
-	fake.emit({
-		type: "queue_update",
-		steering: ["remove me", "keep me"],
-		followUp: ["later"],
-	} as AgentSessionEvent);
+	fake.emit(
+		agentSessionEventStub({
+			type: "queue_update",
+			steering: ["remove me", "keep me"],
+			followUp: ["later"],
+		}),
+	);
 
 	assertEquals(await controller.removeQueuedMessage("steer", 0), true);
 	assertEquals(state.queuedSteeringMessages, ["keep me"]);
@@ -609,23 +611,27 @@ Deno.test("RuntimeController reuses streaming runtimes across repeated backgroun
 	assertEquals(b.calls.filter((call) => call === "create").length, 1);
 	assertEquals(a.calls.filter((call) => call === "subscribe").length, 5);
 	assertEquals(a.calls.filter((call) => call === "unsubscribe").length, 4);
-	a.emit({ type: "agent_start" } as AgentSessionEvent);
+	a.emit(agentSessionEventStub({ type: "agent_start" }));
 	assertEquals(state.activityText, "Working...");
-	a.emit({
-		type: "queue_update",
-		steering: ["now"],
-		followUp: ["later"],
-	} as AgentSessionEvent);
-	a.emit({
-		type: "tool_execution_start",
-		toolCallId: "call",
-		toolName: "bash",
-		args: { command: "pwd" },
-	} as AgentSessionEvent);
+	a.emit(
+		agentSessionEventStub({
+			type: "queue_update",
+			steering: ["now"],
+			followUp: ["later"],
+		}),
+	);
+	a.emit(
+		agentSessionEventStub({
+			type: "tool_execution_start",
+			toolCallId: "call",
+			toolName: "bash",
+			args: { command: "pwd" },
+		}),
+	);
 	assertEquals(state.queuedSteeringMessages, ["now"]);
 	assertEquals(state.queuedFollowUpMessages, ["later"]);
 	assertEquals(state.messages.length, 1);
-	a.emit({ type: "agent_end", messages: [], willRetry: false } as AgentSessionEvent);
+	a.emit(agentSessionEventStub({ type: "agent_end", messages: [], willRetry: false }));
 	assertEquals(state.activityText, undefined);
 	await controller.dispose();
 	assertEquals(a.disposeCount, 1);
@@ -766,7 +772,7 @@ Deno.test("RuntimeController completes and aborts background runtimes exactly on
 	});
 	controller.activate();
 	assertEquals((await controller.newSession()).status, "success");
-	completed.emit({ type: "agent_end" } as AgentSessionEvent);
+	completed.emit(agentSessionEventStub({ type: "agent_end" }));
 	assertEquals(
 		await controller.abortBackgroundSession("/sessions/completed.jsonl"),
 		false,
@@ -810,7 +816,7 @@ Deno.test("RuntimeController notifies for completed foreground work only while u
 		},
 	);
 	focusedController.activate();
-	focused.emit({ type: "agent_end" } as AgentSessionEvent);
+	focused.emit(agentSessionEventStub({ type: "agent_end" }));
 	assertEquals(notifications, []);
 	await focusedController.dispose();
 
@@ -825,7 +831,7 @@ Deno.test("RuntimeController notifies for completed foreground work only while u
 		},
 	);
 	unfocusedController.activate();
-	unfocused.emit({ type: "agent_end" } as AgentSessionEvent);
+	unfocused.emit(agentSessionEventStub({ type: "agent_end" }));
 	await Promise.resolve();
 	assertEquals(notifications, [
 		{
@@ -851,7 +857,7 @@ Deno.test("RuntimeController always notifies for completed background work", asy
 	});
 	controller.activate();
 	assertEquals((await controller.newSession()).status, "success");
-	background.emit({ type: "agent_end" } as AgentSessionEvent);
+	background.emit(agentSessionEventStub({ type: "agent_end" }));
 	assertEquals(notifications, [
 		{
 			workspace: "/workspace",

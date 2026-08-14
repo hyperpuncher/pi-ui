@@ -3,24 +3,24 @@ export type UsageRequestModel = {
 	id?: string;
 };
 
-export type UsageRequestIdentity = {
+export type UsageRequestIdentity<Runtime extends object, Session extends object> = {
 	generation: number;
-	runtime: object;
-	session: object;
+	runtime: Runtime;
+	session: Session;
 	provider: string | undefined;
 	modelId: string | undefined;
 };
 
-type UsageRequestContext = {
+type UsageRequestContext<Runtime extends object, Session extends object> = {
 	generation: number;
-	runtime: object;
-	session: object;
+	runtime: Runtime;
+	session: Session;
 	model: UsageRequestModel | undefined;
 };
 
-export function matchesUsageRequest(
-	request: UsageRequestIdentity,
-	current: UsageRequestContext,
+export function matchesUsageRequest<Runtime extends object, Session extends object>(
+	request: UsageRequestIdentity<Runtime, Session>,
+	current: UsageRequestContext<Runtime, Session>,
 ): boolean {
 	return (
 		request.generation === current.generation &&
@@ -33,13 +33,13 @@ export function matchesUsageRequest(
 
 export class UsageRequestTracker {
 	private generation = 0;
-	private active: UsageRequestIdentity | undefined;
+	private active: UsageRequestIdentity<object, object> | undefined;
 
-	begin(
-		runtime: object,
-		session: object,
+	begin<Runtime extends object, Session extends object>(
+		runtime: Runtime,
+		session: Session,
 		model: UsageRequestModel | undefined,
-	): UsageRequestIdentity {
+	): UsageRequestIdentity<Runtime, Session> {
 		this.generation += 1;
 		const request = {
 			generation: this.generation,
@@ -57,10 +57,10 @@ export class UsageRequestTracker {
 		this.active = undefined;
 	}
 
-	owns(
-		request: UsageRequestIdentity,
-		runtime: object,
-		session: object,
+	owns<Runtime extends object, Session extends object>(
+		request: UsageRequestIdentity<Runtime, Session>,
+		runtime: Runtime,
+		session: Session,
 		model: UsageRequestModel | undefined,
 	): boolean {
 		return (
@@ -74,10 +74,10 @@ export class UsageRequestTracker {
 		);
 	}
 
-	release(
-		request: UsageRequestIdentity,
-		runtime: object,
-		session: object,
+	release<Runtime extends object, Session extends object>(
+		request: UsageRequestIdentity<Runtime, Session>,
+		runtime: Runtime,
+		session: Session,
 		model: UsageRequestModel | undefined,
 	): boolean {
 		if (!this.owns(request, runtime, session, model)) return false;

@@ -1,9 +1,6 @@
 import os from "node:os";
 
-import type {
-	AgentSessionRuntime,
-	SessionTreeNode,
-} from "@earendil-works/pi-coding-agent";
+import type { SessionTreeNode } from "@earendil-works/pi-coding-agent";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
 import { AppStore } from "../state/app-store.ts";
@@ -20,6 +17,11 @@ import {
 	recentSessionWorkspaces,
 	SessionCatalog,
 } from "./session-catalog.ts";
+import {
+	agentSessionRuntimeStub,
+	sessionEntryStub,
+	sessionStatsStub,
+} from "./test-fixtures.ts";
 import {
 	contentToText,
 	formatShellCommandDisplay,
@@ -93,7 +95,8 @@ Deno.test("tool presentation preserves representative and malformed values", () 
 		]),
 		"[image: image/png]",
 	);
-	const circular: Record<string, unknown> = {};
+	type CircularToolValue = { self?: object };
+	const circular: CircularToolValue = {};
 	circular.self = circular;
 	assertEquals(summarizeValue(circular), "[object Object]");
 });
@@ -171,14 +174,15 @@ Deno.test("model patterns preserve wildcards, thinking suffixes, and first-match
 });
 
 Deno.test("tree projection orders the active branch first", () => {
-	const entry = (id: string, parentId: string | null, text: string) => ({
-		id,
-		parentId,
-		timestamp: "2026-01-01T00:00:00.000Z",
-		type: "message",
-		message: { role: "user", content: text },
-	});
-	const roots = [
+	const entry = (id: string, parentId: string | null, text: string) =>
+		sessionEntryStub({
+			id,
+			parentId,
+			timestamp: "2026-01-01T00:00:00.000Z",
+			type: "message",
+			message: { role: "user", content: text },
+		});
+	const roots: SessionTreeNode[] = [
 		{
 			entry: entry("root", null, "root"),
 			children: [
@@ -186,7 +190,7 @@ Deno.test("tree projection orders the active branch first", () => {
 				{ entry: entry("active", "root", "active"), children: [] },
 			],
 		},
-	] as unknown as SessionTreeNode[];
+	];
 	const rows = flattenTree(roots, "active", new Set(["root", "active"]));
 	assertEquals(
 		rows.map((row) => row.id),
@@ -203,7 +207,7 @@ Deno.test("tree navigation rejects overlap and can cancel summarization", async 
 	const navigation = new Promise<{ cancelled: boolean }>((resolve) => {
 		finishNavigation = resolve;
 	});
-	const runtime = {
+	const runtime = agentSessionRuntimeStub({
 		session: {
 			navigateTree: () => {
 				navigateCount += 1;
@@ -219,7 +223,7 @@ Deno.test("tree navigation rejects overlap and can cancel summarization", async 
 				getBranch: () => [],
 			},
 		},
-	} as unknown as AgentSessionRuntime;
+	});
 	const projector = new TreeProjector(() => runtime, {
 		setTreeEntries: () => {},
 	});
@@ -251,7 +255,7 @@ Deno.test("stale tree navigation cannot mutate a reused session generation", asy
 			getBranch: () => [],
 		},
 	};
-	const runtime = { session } as unknown as AgentSessionRuntime;
+	const runtime = agentSessionRuntimeStub({ session });
 	let generation = 1;
 	let navigated = 0;
 	let treeLoads = 0;
@@ -275,7 +279,7 @@ Deno.test("stale tree navigation cannot mutate a reused session generation", asy
 
 Deno.test("tree navigation reports successful empty editor text explicitly", async () => {
 	let navigated = 0;
-	const runtime = {
+	const runtime = agentSessionRuntimeStub({
 		session: {
 			navigateTree: async () => ({ cancelled: false, editorText: undefined }),
 			sessionManager: {
@@ -284,7 +288,7 @@ Deno.test("tree navigation reports successful empty editor text explicitly", asy
 				getBranch: () => [],
 			},
 		},
-	} as unknown as AgentSessionRuntime;
+	});
 	const projector = new TreeProjector(
 		() => runtime,
 		{ setTreeEntries: () => {} },
@@ -440,24 +444,19 @@ Deno.test("session summaries keep workspace and message metadata separate", () =
 });
 
 Deno.test("catalog and usage formatting remain stable", () => {
-	const sessions = [
+	const sessions: Parameters<typeof recentSessionWorkspaces>[0] = [
 		{
-			path: "/one",
+			...sessionInfo("/one", "first"),
 			cwd: "/work/a",
 			name: "Named",
-			firstMessage: "first",
-			messageCount: 1,
-			modified: new Date(0),
 		},
 		{
-			path: "/two",
+			...sessionInfo("/two", "second"),
 			cwd: "/work/a",
 			name: "",
-			firstMessage: "second",
 			messageCount: 2,
-			modified: new Date(0),
 		},
-	] as Parameters<typeof recentSessionWorkspaces>[0];
+	];
 	assertEquals(recentSessionWorkspaces(sessions), ["/work/a"]);
 	const summary = formatSessionSummary(sessions[0]);
 	assertEquals(
@@ -469,11 +468,19 @@ Deno.test("catalog and usage formatting remain stable", () => {
 	);
 	assertEquals(formatTokens(1_250), "1.3k");
 	assertEquals(
-		formatStats({
-			cost: 0.125,
-			tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 1_250 },
-			contextUsage: null,
-		} as unknown as Parameters<typeof formatStats>[0]),
+		formatStats(
+			sessionStatsStub({
+				cost: 0.125,
+				tokens: {
+					input: 0,
+					output: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					total: 1_250,
+				},
+				contextUsage: undefined,
+			}),
+		),
 		{
 			text: "$0.125 • 1.3k tokens",
 			costText: "$0.125",

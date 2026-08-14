@@ -14,9 +14,11 @@ import {
 
 import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
 import { escapeHtml } from "../utils/html.ts";
+import { isString } from "../utils/type-guards.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
 import { shikiTokenStyle } from "./shiki-token-style.ts";
+import { syncHtml } from "./sync-html.ts";
 
 // Streaming entries track roughly two restored pages; final results can deduplicate
 // repeated content across a much longer desktop session.
@@ -203,10 +205,12 @@ export function releaseMarkdownStreamingState(cacheKey: string): void {
 	);
 }
 
-export function markdownCacheStatsForTest(): {
+export type MarkdownCacheStats = {
 	streamingEntries: number;
 	streamingCodeBlockStates: number;
-} {
+};
+
+export function markdownCacheStatsForTest(): MarkdownCacheStats {
 	return {
 		streamingEntries: streamingCache.size,
 		streamingCodeBlockStates: streamingCodeBlockStates.size,
@@ -281,13 +285,13 @@ async function highlightCodeBlocksFinal(html: string): Promise<string> {
 		const [raw, rawLanguage, rawCode] = block;
 		const language = await codeFenceLanguageFinal(rawLanguage);
 		const code = decodeHtml(rawCode).replace(/\n$/, "");
-		const replacement = (
+		const replacement = syncHtml(
 			<CodeBlock
 				pre={await cachedPierreCodeBlock(code, language)}
 				language={language}
 				source={code}
-			/>
-		) as string;
+			/>,
+		);
 		highlighted = highlighted.replace(raw, replacement);
 	}
 	return highlighted;
@@ -318,6 +322,7 @@ function highlightStreamingCodeBlock(
 			code: "",
 			tokenizer: new ShikiStreamTokenizer({
 				highlighter,
+				// SAFETY: codeFenceLanguage only returns languages accepted by Pierre or Shiki.
 				lang: language as SupportedLanguages,
 				themes: getPierreThemes(),
 			}),
@@ -331,7 +336,7 @@ function highlightStreamingCodeBlock(
 		state.code = code;
 	}
 
-	return (
+	return syncHtml(
 		<CodeBlock
 			pre={renderStreamingTokensPre([
 				...state.tokenizer.tokensStable,
@@ -339,8 +344,8 @@ function highlightStreamingCodeBlock(
 			])}
 			language={language}
 			source={code}
-		/>
-	) as string;
+		/>,
+	);
 }
 
 function renderStreamingTokensPre(tokens: ThemedToken[]): string {
@@ -368,13 +373,13 @@ function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 }
 
 function renderPlainCodeBlock(code: string, language: string): string {
-	return (
+	return syncHtml(
 		<CodeBlock
 			pre={renderPlainCode(code, language, { chrome: false })}
 			language={language}
 			source={code}
-		/>
-	) as string;
+		/>,
+	);
 }
 
 function renderPlainCode(
@@ -385,7 +390,7 @@ function renderPlainCode(
 	const pre = `<pre class="plain-code" tabindex="0"><code class="language-${escapeHtml(language)}">${escapeHtml(code)}</code></pre>`;
 	return options.chrome === false
 		? pre
-		: ((<CodeBlock pre={pre} language={language} />) as string);
+		: syncHtml(<CodeBlock pre={pre} language={language} />);
 }
 
 function CodeBlock(props: { pre: string; language: string; source?: string }) {
@@ -510,14 +515,14 @@ function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {
 	}
 }
 
-function stringProperty(value: unknown): string | undefined {
-	return typeof value === "string" ? value : undefined;
+function stringProperty<Value>(value: Value): string | undefined {
+	return isString(value) ? value : undefined;
 }
 
-function classes(value: unknown, additions: string[]): string[] {
+function classes<Value>(value: Value, additions: string[]): string[] {
 	const current = Array.isArray(value)
-		? value.filter((item): item is string => typeof item === "string")
-		: typeof value === "string"
+		? value.filter((item): item is string => isString(item))
+		: isString(value)
 			? value.split(/\s+/).filter(Boolean)
 			: [];
 	return [...new Set([...current, ...additions])];

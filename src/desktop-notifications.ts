@@ -24,7 +24,7 @@ export function isApplicationFocused(): boolean {
 
 export async function notifySessionDone(details: SessionDoneNotification): Promise<void> {
 	if (Deno.build.os === "linux" && (await notifyLinux(details))) return;
-	if (typeof Notification !== "function") return;
+	if (!("Notification" in globalThis)) return;
 	try {
 		if (Notification.permission !== "granted") {
 			const permission = await Notification.requestPermission();

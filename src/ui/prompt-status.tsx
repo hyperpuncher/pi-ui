@@ -1,8 +1,9 @@
 import type { AppRenderSnapshot, AppUsage, AppUsageLimits } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderPromptStatus(state: AppRenderSnapshot): string {
-	return (
+	return syncHtml(
 		<span
 			id="prompt-status"
 			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
@@ -18,8 +19,8 @@ export function renderPromptStatus(state: AppRenderSnapshot): string {
 			<span class="inline-flex shrink-0 items-center gap-1">
 				{renderUsageIndicator(state.usage)}
 			</span>
-		</span>
-	) as string;
+		</span>,
+	);
 }
 
 function renderUsageIndicator(usage: AppUsage): string {
@@ -27,7 +28,7 @@ function renderUsageIndicator(usage: AppUsage): string {
 	const limitPercent = usage.limits
 		? Math.max(0, ...usage.limits.windows.map((window) => window.usedPercent))
 		: 0;
-	return (
+	return syncHtml(
 		<span class="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs">
 			<span
 				class="group inline-flex size-4 shrink-0 items-center justify-center"
@@ -47,8 +48,8 @@ function renderUsageIndicator(usage: AppUsage): string {
 					{renderLimitsTooltip(usage.limits)}
 				</span>
 			)}
-		</span>
-	) as string;
+		</span>,
+	);
 }
 
 function renderContextTooltip(usage: AppUsage): string {
@@ -58,7 +59,7 @@ function renderContextTooltip(usage: AppUsage): string {
 		contextTokens !== undefined &&
 		contextWindow !== undefined;
 
-	return (
+	return syncHtml(
 		<span
 			role="tooltip"
 			data-slot="tooltip-content"
@@ -110,12 +111,12 @@ function renderContextTooltip(usage: AppUsage): string {
 					</span>
 				</>
 			)}
-		</span>
-	) as string;
+		</span>,
+	);
 }
 
 function renderLimitsTooltip(limits: AppUsageLimits): string {
-	return (
+	return syncHtml(
 		<span
 			role="tooltip"
 			data-slot="tooltip-content"
@@ -148,8 +149,8 @@ function renderLimitsTooltip(limits: AppUsageLimits): string {
 					</span>
 				</span>
 			))}
-		</span>
-	) as string;
+		</span>,
+	);
 }
 
 function formatLimitsAriaLabel(limits: AppUsageLimits): string {
@@ -164,7 +165,7 @@ function formatLimitsAriaLabel(limits: AppUsageLimits): string {
 
 function usageRing(percent: number, className: string): string {
 	const circumference = 2 * Math.PI * 10;
-	return (
+	return syncHtml(
 		<svg
 			class="size-4 -rotate-90 opacity-60 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
 			viewBox="0 0 24 24"
@@ -193,8 +194,8 @@ function usageRing(percent: number, className: string): string {
 					circumference - (clampPercent(percent) / 100) * circumference
 				}
 			/>
-		</svg>
-	) as string;
+		</svg>,
+	);
 }
 
 function usageColor(percent: number): string {

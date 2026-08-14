@@ -1,26 +1,28 @@
+import { syncHtml } from "./sync-html.ts";
+
 export function PickerList(props: {
 	id: string;
 	children: JSX.Element | JSX.Element[] | string[];
 	class?: string;
 	role?: "listbox" | "menu";
 }): string {
-	return (
+	return syncHtml(
 		<ul
 			id={props.id}
 			role={props.role ?? "listbox"}
 			class={props.class ?? "max-h-72 list-none overflow-y-auto p-1"}
 		>
 			{props.children}
-		</ul>
-	) as string;
+		</ul>,
+	);
 }
 
 export function PickerEmpty(props: { children: JSX.Element }): string {
-	return (
+	return syncHtml(
 		<li role="status" class="px-3 py-4 text-center text-sm text-muted-foreground">
 			{props.children}
-		</li>
-	) as string;
+		</li>,
+	);
 }
 
 export function PickerRow(props: {
@@ -31,7 +33,7 @@ export function PickerRow(props: {
 	metadata: string;
 	selected?: boolean;
 }): string {
-	return (
+	return syncHtml(
 		<li
 			role="option"
 			tabindex="-1"
@@ -55,14 +57,14 @@ export function PickerRow(props: {
 				</span>
 				<PickerMetadata text={props.metadata} />
 			</button>
-		</li>
-	) as string;
+		</li>,
+	);
 }
 
 export function PickerMetadata(props: { text: string }): string {
-	return (
+	return syncHtml(
 		<span class="badge" data-variant="secondary" safe>
 			{props.text}
-		</span>
-	) as string;
+		</span>,
+	);
 }

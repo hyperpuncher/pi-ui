@@ -72,7 +72,8 @@ Deno.test("transition records isolate overlapping spans and reset counters", () 
 	try {
 		Deno.env.set("PI_UI_PERF", "1");
 		sessionPerformance.reset();
-		console.log = (value?: unknown) => output.push(String(value));
+		console.log = (value?: Parameters<Console["log"]>[0]) =>
+			output.push(String(value));
 
 		const first = sessionPerformance.startSessionTransition(12);
 		const endFirst = sessionPerformance.startSpan("runtimeServicesCreate", first);
@@ -115,7 +116,8 @@ Deno.test("async transition context keeps nested spans on their owner", async ()
 	try {
 		Deno.env.set("PI_UI_PERF", "1");
 		sessionPerformance.reset();
-		console.log = (value?: unknown) => output.push(String(value));
+		console.log = (value?: Parameters<Console["log"]>[0]) =>
+			output.push(String(value));
 		const first = sessionPerformance.startSessionTransition();
 		const firstWork = sessionPerformance.runInTransition(first, async () => {
 			await wait;
@@ -150,7 +152,8 @@ Deno.test("ownership diagnostics are transition-scoped and content-free", () => 
 	try {
 		Deno.env.set("PI_UI_PERF", "1");
 		sessionPerformance.reset();
-		console.log = (value?: unknown) => output.push(String(value));
+		console.log = (value?: Parameters<Console["log"]>[0]) =>
+			output.push(String(value));
 		const transition = sessionPerformance.startSessionTransition();
 		sessionPerformance.recordOwnershipDiagnostics(
 			{
@@ -194,7 +197,8 @@ Deno.test("cancelled transitions emit no record or sensitive fields", () => {
 	try {
 		Deno.env.set("PI_UI_PERF", "1");
 		sessionPerformance.reset();
-		console.log = (value?: unknown) => output.push(String(value));
+		console.log = (value?: Parameters<Console["log"]>[0]) =>
+			output.push(String(value));
 		const transition = sessionPerformance.startSessionTransition();
 		const end = sessionPerformance.startSpan("runtimeSwitchCreate", transition);
 		sessionPerformance.cancelSessionTransition(transition);

@@ -3,6 +3,7 @@ import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import type { BackgroundSessionStatus } from "../state/app-store.ts";
 import type { TranscriptState } from "../state/transcript-state.ts";
 import { BackgroundRuntimeOwnership } from "./background-runtime-ownership.ts";
+import type { ToolArguments } from "./session-event-reducer.ts";
 
 export type BackgroundSession = {
 	runtime: AgentSessionRuntime;
@@ -12,7 +13,7 @@ export type BackgroundSession = {
 	observedRunning: boolean;
 	toolMessageIds: Map<string, string>;
 	toolPreviewMessages: Map<number, { id: string; argumentPrefix: string | undefined }>;
-	toolCallArgs: Map<string, unknown>;
+	toolCallArgs: Map<string, ToolArguments>;
 	toolStartedAt: Map<string, number>;
 	unsubscribe: () => void;
 };

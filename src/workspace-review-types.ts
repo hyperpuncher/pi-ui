@@ -1,4 +1,7 @@
-import { isRecord } from "./utils/type-guards.ts";
+import Type from "typebox";
+import { Compile } from "typebox/compile";
+
+import { isBoolean, isNumber, isRecord, type JsonRecord } from "./utils/type-guards.ts";
 
 export const workspaceReviewHistoryPageSize = 50;
 export const gitPaneRatioDefault = 0.5;
@@ -49,8 +52,8 @@ export type WorkspaceReviewPreferences = Readonly<{
 	wrap?: boolean;
 }>;
 
-export function normalizeWorkspaceReviewPreferences(
-	value: unknown,
+export function normalizeWorkspaceReviewPreferences<Value>(
+	value: Value,
 ): WorkspaceReviewPreferences {
 	if (!isRecord(value)) return {};
 	return {
@@ -74,16 +77,16 @@ export function normalizeWorkspaceReviewPreferences(
 			reviewSidebarWidthMin,
 			reviewSidebarWidthMax,
 		),
-		wrap: typeof value.wrap === "boolean" ? value.wrap : undefined,
+		wrap: isBoolean(value.wrap) ? value.wrap : undefined,
 	};
 }
 
 function normalizedNumber(
-	value: unknown,
+	value: JsonRecord[string],
 	minimum: number,
 	maximum: number,
 ): number | undefined {
-	return typeof value === "number" && Number.isFinite(value)
+	return isNumber(value) && Number.isFinite(value)
 		? Math.min(Math.max(value, minimum), maximum)
 		: undefined;
 }
@@ -96,3 +99,62 @@ export type WorkspaceReviewSnapshot = Readonly<{
 	patch: string;
 	revision: string;
 }>;
+
+const workspaceFileChangeSchema = Type.Object({
+	additions: Type.Number(),
+	deletions: Type.Number(),
+	path: Type.String(),
+	status: Type.Union([
+		Type.Literal("added"),
+		Type.Literal("deleted"),
+		Type.Literal("modified"),
+		Type.Literal("renamed"),
+		Type.Literal("untracked"),
+	]),
+});
+
+const workspaceCommitSchema = Type.Object({
+	author: Type.String(),
+	authoredAt: Type.String(),
+	hash: Type.String(),
+	pushed: Type.Union([Type.Boolean(), Type.Null()]),
+	shortHash: Type.String(),
+	subject: Type.String(),
+});
+
+const workspaceCommitDetailSchema = Type.Object({
+	changes: Type.Array(workspaceFileChangeSchema),
+	commit: workspaceCommitSchema,
+	patch: Type.String(),
+});
+
+const workspaceReviewSnapshotSchema = Type.Object({
+	branch: Type.Union([Type.String(), Type.Null()]),
+	changes: Type.Array(workspaceFileChangeSchema),
+	commits: Type.Array(workspaceCommitSchema),
+	isGitRepository: Type.Boolean(),
+	patch: Type.String(),
+	revision: Type.String(),
+});
+
+const workspaceCommitDetailValidator = Compile(workspaceCommitDetailSchema);
+const workspaceCommitHistoryValidator = Compile(Type.Array(workspaceCommitSchema));
+const workspaceReviewSnapshotValidator = Compile(workspaceReviewSnapshotSchema);
+
+export function isWorkspaceCommitDetail<Value>(
+	value: Value,
+): value is Value & WorkspaceCommitDetail {
+	return workspaceCommitDetailValidator.Check(value);
+}
+
+export function isWorkspaceCommitHistory<Value>(
+	value: Value,
+): value is Value & WorkspaceCommit[] {
+	return workspaceCommitHistoryValidator.Check(value);
+}
+
+export function isWorkspaceReviewSnapshot<Value>(
+	value: Value,
+): value is Value & WorkspaceReviewSnapshot {
+	return workspaceReviewSnapshotValidator.Check(value);
+}

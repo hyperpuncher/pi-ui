@@ -1,10 +1,32 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
+import Type, { type Static } from "typebox";
+import { Compile } from "typebox/compile";
 
-import { asRecord } from "../utils/type-guards.ts";
+import type { JsonValue } from "../utils/json-types.ts";
 import { fetchProviderUsagePayload } from "./provider-usage.ts";
+import { formatRemainingTime, remainingPercent } from "./usage-format.ts";
 
 const opencodeGoProviderId = "opencode-go";
 const opencodeGoUsageUrl = "https://opencode.ai/zen/go/v1/usage";
+const stringInputSchema = Type.String({ pattern: "\\S" });
+const numericInputSchema = Type.Union([Type.Number(), stringInputSchema]);
+const timestampInputSchema = Type.Union([Type.Number(), stringInputSchema]);
+const usageWindowSchema = Type.Object({
+	percent: numericInputSchema,
+	resetsAt: Type.Optional(timestampInputSchema),
+});
+const openCodeGoPayloadSchema = Type.Object({
+	usage: Type.Object({
+		rolling: Type.Optional(usageWindowSchema),
+		weekly: Type.Optional(usageWindowSchema),
+		monthly: Type.Optional(usageWindowSchema),
+	}),
+});
+const openCodeGoPayloadValidator = Compile(openCodeGoPayloadSchema);
+const stringInputValidator = Compile(stringInputSchema);
+type NumericInput = Static<typeof numericInputSchema>;
+type TimestampInput = Static<typeof timestampInputSchema>;
+type UsageWindowInput = Static<typeof usageWindowSchema>;
 export type OpenCodeGoWindow = {
 	usedPercent: number;
 	resetsAt?: number;
@@ -34,15 +56,12 @@ export async function fetchOpenCodeGoUsage(
 	return payload === undefined ? undefined : parseOpenCodeGoUsage(payload);
 }
 
-export function parseOpenCodeGoUsage(payload: unknown): OpenCodeGoUsage | undefined {
-	const root = asRecord(payload);
-	const usage = asRecord(root?.usage);
-	if (!usage) return undefined;
-
+export function parseOpenCodeGoUsage(payload: JsonValue): OpenCodeGoUsage | undefined {
+	if (!openCodeGoPayloadValidator.Check(payload)) return undefined;
 	const parsed = {
-		rolling: parseWindow(usage.rolling),
-		weekly: parseWindow(usage.weekly),
-		monthly: parseWindow(usage.monthly),
+		rolling: parseWindow(payload.usage.rolling),
+		weekly: parseWindow(payload.usage.weekly),
+		monthly: parseWindow(payload.usage.monthly),
 	};
 	return parsed.rolling || parsed.weekly || parsed.monthly ? parsed : undefined;
 }
@@ -65,12 +84,11 @@ export function describeOpenCodeGoUsage(
 	return windows;
 }
 
-function parseWindow(value: unknown): OpenCodeGoWindow | undefined {
-	const window = asRecord(value);
+function parseWindow(window: UsageWindowInput | undefined): OpenCodeGoWindow | undefined {
 	if (!window) return undefined;
-	const usedPercent = asNumber(window.percent);
+	const usedPercent = finiteNumber(window.percent);
 	if (usedPercent === undefined) return undefined;
-	return { usedPercent, resetsAt: asTimestamp(window.resetsAt) };
+	return { usedPercent, resetsAt: timestamp(window.resetsAt) };
 }
 
 function describeWindow(
@@ -80,44 +98,21 @@ function describeWindow(
 	return {
 		label,
 		usedPercent: window.usedPercent,
-		remainingPercent: Math.round(100 - clampPercent(window.usedPercent)),
+		remainingPercent: remainingPercent(window.usedPercent),
 		resetText: formatRemainingTime(window.resetsAt),
 	};
 }
 
-function formatRemainingTime(resetsAt: number | undefined): string {
-	if (!resetsAt) return "?";
-	const minutes = Math.max(0, resetsAt - Date.now()) / 60_000;
-	if (minutes < 60) return `${Math.round(minutes)}m`;
-	const hours = minutes / 60;
-	if (hours < 24) return `${formatOneDecimal(hours)}h`;
-	return `${formatOneDecimal(hours / 24)}d`;
+function finiteNumber(value: NumericInput): number | undefined {
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function asNumber(value: unknown): number | undefined {
-	if (typeof value === "number" && Number.isFinite(value)) return value;
-	if (typeof value === "string" && value.trim()) {
-		const parsed = Number(value);
-		if (Number.isFinite(parsed)) return parsed;
-	}
-	return undefined;
-}
-
-function asTimestamp(value: unknown): number | undefined {
-	if (typeof value === "string") {
+function timestamp(value: TimestampInput | undefined): number | undefined {
+	if (value === undefined) return undefined;
+	if (stringInputValidator.Check(value)) {
 		const parsed = Date.parse(value);
 		return Number.isFinite(parsed) ? parsed : undefined;
 	}
-	const parsed = asNumber(value);
-	if (parsed === undefined) return undefined;
-	return parsed < 10_000_000_000 ? parsed * 1000 : parsed;
-}
-
-function clampPercent(value: number): number {
-	return Math.min(100, Math.max(0, value));
-}
-
-function formatOneDecimal(value: number): string {
-	const rounded = Math.round(value * 10) / 10;
-	return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+	return value < 10_000_000_000 ? value * 1000 : value;
 }

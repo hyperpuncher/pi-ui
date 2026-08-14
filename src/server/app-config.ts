@@ -1,17 +1,20 @@
 import os from "node:os";
 
 import { dirname, join } from "@std/path";
+import { Compile } from "typebox/compile";
 
-import { isRecord } from "../utils/type-guards.ts";
+import { type JsonObject, JsonObjectSchema } from "../utils/json-types.ts";
 
-export type AppConfig = Record<string, unknown>;
+export type AppConfig = JsonObject;
+
+const appConfigValidator = Compile(JsonObjectSchema);
 
 let pendingWrite = Promise.resolve();
 
 export async function readAppConfig(path = appConfigPath()): Promise<AppConfig> {
 	try {
-		const value: unknown = JSON.parse(await Deno.readTextFile(path));
-		return isRecord(value) ? value : {};
+		const value = JSON.parse(await Deno.readTextFile(path));
+		return appConfigValidator.Check(value) ? value : {};
 	} catch (error) {
 		if (error instanceof Deno.errors.NotFound || error instanceof SyntaxError) {
 			return {};

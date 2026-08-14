@@ -4,10 +4,11 @@ import {
 	type CodeThemeOption,
 } from "../code-themes.ts";
 import { getPierreThemes } from "../pierre-theme.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderCodeThemeDialog(): string {
 	const active = getPierreThemes();
-	return (
+	return syncHtml(
 		<dialog
 			id="code-theme-dialog"
 			class="dialog code-theme-dialog"
@@ -80,12 +81,12 @@ export function renderCodeThemeDialog(): string {
 					</button>
 				</footer>
 			</div>
-		</dialog>
-	) as string;
+		</dialog>,
+	);
 }
 
 function renderThemeCard(theme: CodeThemeOption, active: string): string {
-	return (
+	return syncHtml(
 		<button
 			type="button"
 			class="code-theme-card relative block min-w-0 shrink-0 overflow-hidden rounded-lg border border-border bg-card text-left"
@@ -104,8 +105,8 @@ function renderThemeCard(theme: CodeThemeOption, active: string): string {
 					{theme.group}
 				</small>
 			</span>
-		</button>
-	) as string;
+		</button>,
+	);
 }
 
 function sampleCode(name: string, appearance: CodeThemeAppearance): string {

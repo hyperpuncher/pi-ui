@@ -202,9 +202,9 @@ export function formatCommitDate(
 }
 
 function configuredTimeLocale(): string | undefined {
-	return typeof document === "undefined"
-		? undefined
-		: document.body.dataset.timeLocale || undefined;
+	return "document" in globalThis
+		? globalThis.document.body.dataset.timeLocale || undefined
+		: undefined;
 }
 
 function sumChanges(

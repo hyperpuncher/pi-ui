@@ -1,4 +1,4 @@
-export function escapeHtml(value: unknown): string {
+export function escapeHtml(value: Parameters<StringConstructor>[0]): string {
 	return String(value)
 		.replaceAll("&", "&amp;")
 		.replaceAll("<", "&lt;")

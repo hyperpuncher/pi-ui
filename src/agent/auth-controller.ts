@@ -34,18 +34,16 @@ export class AuthController {
 					provider.name.toLowerCase() === normalized,
 			);
 		}
-		this.state.setAuthDialog(
-			{
-				mode: "login",
-				phase: "providers",
-				providers,
-				progress: [],
-				...(providerRef && providers.length === 0
-					? { error: `Provider not found: ${providerRef}` }
-					: {}),
-			},
-			{ resetInput: true },
-		);
+		const dialog: AppAuthDialog = {
+			mode: "login",
+			phase: "providers",
+			providers,
+			progress: [],
+		};
+		if (providerRef && providers.length === 0) {
+			dialog.error = `Provider not found: ${providerRef}`;
+		}
+		this.state.setAuthDialog(dialog, { resetInput: true });
 	}
 
 	openLogout(): void {
@@ -83,7 +81,7 @@ export class AuthController {
 					status: undefined,
 				});
 			})
-			.catch((error: unknown) => {
+			.catch((error: ErrorOptions["cause"]) => {
 				const dialog = this.state.authDialog;
 				if (!dialog || dialog.mode !== "logout") return;
 				this.state.setAuthDialog({
@@ -178,7 +176,7 @@ export class AuthController {
 						: `Removed the stored API key for ${provider.name}.`,
 				);
 			})
-			.catch((error: unknown) => {
+			.catch((error: ErrorOptions["cause"]) => {
 				const current = this.state.authDialog;
 				if (!current || current.mode !== "logout") return;
 				this.state.setAuthDialog({
@@ -254,7 +252,7 @@ export class AuthController {
 						: `Saved credentials for ${provider.name}.`,
 				);
 			})
-			.catch((error: unknown) => {
+			.catch((error: ErrorOptions["cause"]) => {
 				if (!this.isCurrentRun(run)) return;
 				this.loginRun = undefined;
 				this.patchAuthenticationDialog({

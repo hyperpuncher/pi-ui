@@ -1,8 +1,9 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppAuthDialog, AppAuthProvider } from "../state/app-store.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
-	return (
+	return syncHtml(
 		<dialog
 			id="auth-dialog"
 			class="dialog"
@@ -11,16 +12,16 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 			data-on:close={`@post('${endpoints.authClose}', { filterSignals: { include: /^$/ } })`}
 		>
 			{renderAuthDialogContent(dialog)}
-		</dialog>
-	) as string;
+		</dialog>,
+	);
 }
 
 export function renderAuthDialogContent(dialog: AppAuthDialog | undefined): string {
-	return (
+	return syncHtml(
 		<div id="auth-dialog-content" class="sm:max-w-lg">
 			{dialog ? renderDialogContent(dialog) : <div />}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function renderDialogContent(dialog: AppAuthDialog): string {
@@ -36,7 +37,7 @@ function renderDialogContent(dialog: AppAuthDialog): string {
 function renderProviderPicker(dialog: AppAuthDialog): string {
 	const title = dialog.mode === "login" ? "Log in" : "Log out";
 	const providerHaystacks = dialog.providers.map(providerSearchHaystack);
-	return (
+	return syncHtml(
 		<>
 			<header>
 				<h2 id="auth-dialog-title">{title}</h2>
@@ -101,8 +102,8 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 					Close
 				</button>
 			</footer>
-		</>
-	) as string;
+		</>,
+	);
 }
 
 function renderProviderButton(
@@ -110,7 +111,7 @@ function renderProviderButton(
 	mode: AppAuthDialog["mode"],
 ): string {
 	const action = mode === "login" ? endpoints.authLoginStart : endpoints.authLogout;
-	return (
+	return syncHtml(
 		<button
 			type="button"
 			class="btn h-auto w-full justify-between gap-4 px-3 py-2 text-left"
@@ -133,8 +134,8 @@ function renderProviderButton(
 			<span class="badge shrink-0" data-variant="secondary">
 				{provider.authType === "oauth" ? "Subscription" : "API key"}
 			</span>
-		</button>
-	) as string;
+		</button>,
+	);
 }
 
 function providerSearchHaystack(provider: AppAuthProvider): string {
@@ -143,7 +144,7 @@ function providerSearchHaystack(provider: AppAuthProvider): string {
 
 function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 	const hasTextPrompt = Boolean(dialog.prompt && !dialog.prompt.options);
-	return (
+	return syncHtml(
 		<>
 			<header>
 				<h2 id="auth-dialog-title" safe>
@@ -213,14 +214,14 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					</button>
 				)}
 			</footer>
-		</>
-	) as string;
+		</>,
+	);
 }
 
 function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 	const prompt = dialog.prompt!;
 	if (prompt.options) {
-		return (
+		return syncHtml(
 			<div class="space-y-2">
 				<p class="text-sm font-medium" safe>
 					{prompt.message}
@@ -239,10 +240,10 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 						{option.label}
 					</button>
 				))}
-			</div>
-		) as string;
+			</div>,
+		);
 	}
-	return (
+	return syncHtml(
 		<div role="group" class="field" data-invalid={dialog.error ? "true" : undefined}>
 			<label for="auth-input" safe>
 				{prompt.message}
@@ -263,12 +264,12 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 					});
 				}`}
 			/>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function renderResult(dialog: AppAuthDialog): string {
-	return (
+	return syncHtml(
 		<>
 			<header>
 				<h2 id="auth-dialog-title">
@@ -287,6 +288,6 @@ function renderResult(dialog: AppAuthDialog): string {
 					Done
 				</button>
 			</footer>
-		</>
-	) as string;
+		</>,
+	);
 }

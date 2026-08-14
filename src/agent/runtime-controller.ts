@@ -21,6 +21,7 @@ import { TranscriptState } from "../state/transcript-state.ts";
 import { errorMessage } from "../utils/errors.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { moveToTrash } from "../utils/trash.ts";
+import { isRecord, isString } from "../utils/type-guards.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 import { AuthController } from "./auth-controller.ts";
 import {
@@ -43,6 +44,7 @@ import {
 	reduceSessionEvent,
 	type SessionEventStateSink,
 	type SessionEventToolState,
+	type ToolArguments,
 } from "./session-event-reducer.ts";
 import { executeSessionResume } from "./session-resume.ts";
 import {
@@ -109,7 +111,7 @@ export class RuntimeController {
 		number,
 		{ id: string; argumentPrefix: string | undefined }
 	>();
-	private readonly toolCallArgs = new Map<string, unknown>();
+	private readonly toolCallArgs = new Map<string, ToolArguments>();
 	private readonly toolStartedAt = new Map<string, number>();
 	private readonly pendingPrompts = new Map<AgentSessionRuntime, number>();
 	private readonly compactionQueuedPrompts = new Map<
@@ -895,7 +897,7 @@ export class RuntimeController {
 					: undefined,
 				preflightResult: resolveAccepted,
 			})
-			.catch((error: unknown) => {
+			.catch((error: ErrorOptions["cause"]) => {
 				resolveAccepted(false);
 				this.reportPromptError(runtime, error);
 			})
@@ -974,7 +976,10 @@ export class RuntimeController {
 		else this.pendingPrompts.delete(runtime);
 	}
 
-	private reportPromptError(runtime: AgentSessionRuntime, error: unknown): void {
+	private reportPromptError(
+		runtime: AgentSessionRuntime,
+		error: ErrorOptions["cause"],
+	): void {
 		const message = errorMessage(error);
 		if (runtime === this.runtime) {
 			this.state.appendMessage("system", message);
@@ -1243,7 +1248,7 @@ export class RuntimeController {
 			this.syncModels();
 			void this.models
 				.refresh()
-				.catch((error: unknown) =>
+				.catch((error: ErrorOptions["cause"]) =>
 					console.warn("Failed to refresh model catalogs", error),
 				);
 			this.syncThinking();
@@ -1500,7 +1505,7 @@ export class RuntimeController {
 		});
 	}
 
-	private formatRunningTool(toolName: string, args: unknown, showBody = true) {
+	private formatRunningTool(toolName: string, args: ToolArguments, showBody = true) {
 		const view = formatToolStart(toolName, args);
 		return {
 			text: showBody ? view.text : "",
@@ -1589,17 +1594,12 @@ export class RuntimeController {
 	}
 }
 
-function sessionEventMessageText(content: unknown): string {
-	if (typeof content === "string") return content;
+function sessionEventMessageText<Content>(content: Content): string {
+	if (isString(content)) return content;
 	if (!Array.isArray(content)) return "";
 	return content
 		.flatMap((block) =>
-			typeof block === "object" &&
-			block !== null &&
-			"type" in block &&
-			block.type === "text" &&
-			"text" in block &&
-			typeof block.text === "string"
+			isRecord(block) && block.type === "text" && isString(block.text)
 				? [block.text]
 				: [],
 		)

@@ -33,6 +33,9 @@ const minimumPaneSize = 320;
 const minimumReviewColumnSize = 320;
 const minimumSidebarSectionSize = 96;
 
+type GitSplit = { chat: number; git: number; ratio: number };
+type ChangesSplit = { changes: number; history: number; ratio: number };
+
 export function clamp(value: number, minimum: number, maximum: number): number {
 	return Math.min(Math.max(value, minimum), maximum);
 }
@@ -40,7 +43,7 @@ export function clamp(value: number, minimum: number, maximum: number): number {
 export function calculateGitSplit(
 	containerWidth: number,
 	ratio = gitPaneRatioDefault,
-): { chat: number; git: number; ratio: number } {
+): GitSplit {
 	const available = Math.max(0, containerWidth - workspaceStructuralGap);
 	const persistedRatio = clamp(ratio, gitPaneRatioMin, gitPaneRatioMax);
 	const minimum = Math.min(minimumPaneSize, available / 2);
@@ -69,7 +72,7 @@ export function calculateSidebarSplit(
 export function calculateChangesSplit(
 	containerHeight: number,
 	ratio = changesRatioDefault,
-): { changes: number; history: number; ratio: number } {
+): ChangesSplit {
 	const available = Math.max(0, containerHeight - workspaceInset * 2 - workspaceGap);
 	const persistedRatio = clamp(ratio, changesRatioMin, changesRatioMax);
 	const minimum = Math.min(minimumSidebarSectionSize, available / 2);

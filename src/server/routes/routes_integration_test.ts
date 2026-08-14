@@ -1,9 +1,10 @@
+import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { toFileUrl } from "@std/path";
 
-import type { AgentHost } from "../../agent/host.ts";
+import { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
-import type { UiRenderer } from "../../ui/ui-renderer.ts";
+import { UiRenderer } from "../../ui/ui-renderer.ts";
 import { createRouter, isLoopbackAddress } from "../app.ts";
 import { SessionImageStore } from "../session-image-store.ts";
 import type { RouteContext } from "./context.ts";
@@ -347,9 +348,17 @@ Deno.test("accepted prompts do not clear a newer frontend draft", async () => {
 });
 
 Deno.test("multipart prompts pass image attachments directly to pi", async () => {
-	let submitted: { text: string; options: Record<string, unknown> } | undefined;
+	let submitted:
+		| {
+				text: string;
+				options: NonNullable<Parameters<AgentHost["prompt"]>[1]>;
+		  }
+		| undefined;
 	const host = fakeHost({
-		prompt: async (text: string, options: Record<string, unknown>) => {
+		prompt: async (
+			text: string,
+			options: NonNullable<Parameters<AgentHost["prompt"]>[1]>,
+		) => {
 			submitted = { text, options };
 			return true;
 		},
@@ -375,9 +384,9 @@ Deno.test("multipart prompts pass image attachments directly to pi", async () =>
 Deno.test("display refresh updates presentation owner directly", async () => {
 	let measured = 0;
 	const context = fakeContext({
-		renderer: {
+		renderer: uiRendererStub({
 			setDisplayRefreshHz: (hz: number) => ((measured = hz), true),
-		} as UiRenderer,
+		}),
 	});
 	const router = createRouter(context);
 	const response = await router.fetch(
@@ -499,6 +508,10 @@ Deno.test("request locality uses the connection peer address", () => {
 	assertEquals(isLoopbackAddress(address("192.168.1.20")), false);
 });
 
+function uiRendererStub<Stub extends Partial<UiRenderer>>(stub: Stub): UiRenderer {
+	return Object.assign(Object.create(UiRenderer.prototype), stub);
+}
+
 function fakeContext(
 	overrides: {
 		host?: AgentHost;
@@ -512,17 +525,17 @@ function fakeContext(
 		store,
 		renderer:
 			overrides.renderer ??
-			({
+			uiRendererStub({
 				createStream: () => new Response(),
 				renderMessagesElement: () => "<div id=messages></div>",
 				enhanceMessage: () => true,
 				setDisplayRefreshHz: () => true,
-			} as unknown as UiRenderer),
+			}),
 		resources: {
 			host: overrides.host ?? fakeHost(),
 			sessionImages: new SessionImageStore(),
 		},
-		transferredFiles: { importFiles: async () => [] } as never,
+		transferredFiles: { importFiles: async () => [] },
 		openWorkspace: async () => true,
 		openPath: overrides.openPath ?? (async () => {}),
 		isLocalRequest: overrides.isLocalRequest ?? (() => false),
@@ -531,8 +544,8 @@ function fakeContext(
 	};
 }
 
-function fakeHost(overrides: Record<string, unknown> = {}): AgentHost {
-	return {
+function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
+	return Object.assign(Object.create(AgentHost.prototype), {
 		abort: async () => {},
 		abortBackgroundSession: async () => true,
 		closeAuth: () => {},
@@ -558,7 +571,7 @@ function fakeHost(overrides: Record<string, unknown> = {}): AgentHost {
 		submitAuthInput: () => true,
 		toggleScopedModel: async () => true,
 		...overrides,
-	} as unknown as AgentHost;
+	});
 }
 
 function fileOpenRequest(uri: string): Request {
@@ -577,12 +590,12 @@ function treeNavigateRequest(entryId: string): Request {
 	});
 }
 
-function signalGet(path: string, signals: Record<string, unknown>): Request {
+function signalGet(path: string, signals: Record<string, Jsonifiable>): Request {
 	const datastar = encodeURIComponent(JSON.stringify(signals));
 	return new Request(`http://localhost${path}?datastar=${datastar}`);
 }
 
-function signalRequest(path: string, signals: Record<string, unknown>): Request {
+function signalRequest(path: string, signals: Record<string, Jsonifiable>): Request {
 	return new Request(`http://localhost${path}`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },

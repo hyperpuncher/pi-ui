@@ -1,7 +1,11 @@
-export function splitLeadingAttachmentReferences(text: string): {
+export type LeadingAttachmentReferences = {
 	prompt: string;
 	paths: string[];
-} {
+};
+
+export function splitLeadingAttachmentReferences(
+	text: string,
+): LeadingAttachmentReferences {
 	const paths: string[] = [];
 	let prompt = text;
 	while (true) {

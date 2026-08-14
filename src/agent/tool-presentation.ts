@@ -1,16 +1,21 @@
 import type { AppMessageTitlePart } from "../state/app-store.ts";
-import { asRecord, isRecord } from "../utils/type-guards.ts";
+import type { JsonValue } from "../utils/json-types.ts";
+import { asRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 
 const bashPreviewLines = 4;
 const bashCompactThreshold = 7;
 const hiddenBashOutputCommands = new Set(["fd", "find", "grep", "ls", "rg", "tree"]);
 
-export function toolTitleParts(toolName: string, args: unknown): AppMessageTitlePart[] {
+type ToolPresentation = {
+	text: string;
+	format?: "pre" | "diff" | "code" | "output";
+};
+
+export function toolTitleParts(toolName: string, args: JsonValue): AppMessageTitlePart[] {
 	const record = asRecord(args);
 	if (toolName === "bash" && record) {
-		const timeout =
-			typeof record.timeout === "number" ? ` timeout ${record.timeout}s` : "";
+		const timeout = isNumber(record.timeout) ? ` timeout ${record.timeout}s` : "";
 		return [
 			{ text: "$ ", tone: "accent", mono: true },
 			{
@@ -109,12 +114,11 @@ export function formatShellCommandDisplay(command: string): string {
 export function toolTitle(
 	status: "running" | "success" | "error",
 	toolName: string,
-	args: unknown,
+	args: JsonValue,
 ): string {
 	const record = asRecord(args);
 	if (toolName === "bash" && record) {
-		const timeout =
-			typeof record.timeout === "number" ? ` timeout ${record.timeout}s` : "";
+		const timeout = isNumber(record.timeout) ? ` timeout ${record.timeout}s` : "";
 		return `$ ${stringValue(record.command) || "..."}${timeout}`;
 	}
 
@@ -123,7 +127,7 @@ export function toolTitle(
 	return target ? `${verb} ${target}${toolRange(args)}` : verb;
 }
 
-export function toolMeta(toolName: string, args: unknown): string | undefined {
+export function toolMeta(toolName: string, args: JsonValue): string | undefined {
 	const record = asRecord(args);
 	if (!record) return undefined;
 	const details: string[] = [];
@@ -132,7 +136,7 @@ export function toolMeta(toolName: string, args: unknown): string | undefined {
 			`${record.edits.length} edit${record.edits.length === 1 ? "" : "s"}`,
 		);
 	}
-	if (typeof record.limit === "number") {
+	if (isNumber(record.limit)) {
 		details.push(`limit ${record.limit}`);
 	}
 	return details.join(" • ") || undefined;
@@ -153,14 +157,14 @@ function formatDuration(ms: number): string {
 	return `${minutes}m ${seconds}s`;
 }
 
-function toolRange(args: unknown): string {
+function toolRange(args: JsonValue): string {
 	const record = asRecord(args);
-	if (!record || typeof record.offset !== "number") return "";
-	if (typeof record.limit !== "number") return `:${record.offset}`;
+	if (!record || !isNumber(record.offset)) return "";
+	if (!isNumber(record.limit)) return `:${record.offset}`;
 	return `:${record.offset}-${record.offset + record.limit - 1}`;
 }
 
-function toolTarget(toolName: string, args: unknown): string {
+function toolTarget(toolName: string, args: JsonValue): string {
 	const record = asRecord(args);
 	if (!record) return "";
 	if (toolName === "bash") return stringValue(record.command);
@@ -177,10 +181,7 @@ function toolTarget(toolName: string, args: unknown): string {
 	return shortenPath(stringValue(record.path) || stringValue(record.file_path));
 }
 
-export function formatToolStart(
-	toolName: string,
-	args: unknown,
-): { text: string; format?: "pre" | "diff" | "code" | "output" } {
+export function formatToolStart(toolName: string, args: JsonValue): ToolPresentation {
 	const record = asRecord(args);
 	if (!record) return { text: summarizeValue(args), format: "pre" };
 	if (toolName === "bash") return { text: "", format: "pre" };
@@ -194,21 +195,21 @@ export function formatToolStart(
 	return { text: "", format: "pre" };
 }
 
-export function formatToolResult(
+export function formatToolResult<Result>(
 	toolName: string,
-	result: unknown,
-	options: { args?: unknown; isError?: boolean } = {},
-): { text: string; format?: "pre" | "diff" | "code" | "output" } {
+	result: Result,
+	options: { args?: JsonValue; isError?: boolean } = {},
+): ToolPresentation {
 	const text = extractToolText(result);
 	if (options.isError) {
 		return { text: compactToolOutput(text), format: "output" };
 	}
 	const record = asRecord(result);
 	const details = asRecord(record?.details);
-	if (toolName === "edit" && typeof details?.patch === "string") {
+	if (toolName === "edit" && isString(details?.patch)) {
 		return { text: details.patch, format: "diff" };
 	}
-	if (toolName === "edit" && typeof details?.diff === "string") {
+	if (toolName === "edit" && isString(details?.diff)) {
 		return { text: details.diff, format: "diff" };
 	}
 	if (/^\(no output\)$/i.test(text.trim())) {
@@ -242,7 +243,7 @@ function compactReadOutput(text: string): string {
 		.trimEnd();
 }
 
-function shouldHideBashOutput(args: unknown): boolean {
+function shouldHideBashOutput(args: JsonValue | undefined): boolean {
 	const command = stringValue(asRecord(args)?.command).trimStart();
 	const executable = command.match(
 		/^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*(?:\S+\/)?([^\s;|&]+)/,
@@ -268,7 +269,7 @@ export function compactToolOutput(text: string): string {
 	return `... (${skipped} earlier lines)\n${lines.slice(-bashPreviewLines).join("\n")}`;
 }
 
-function extractToolText(result: unknown): string {
+function extractToolText<Result>(result: Result): string {
 	const record = asRecord(result);
 	if (record?.content !== undefined) {
 		const text = contentToText(record.content);
@@ -281,18 +282,18 @@ function extractToolText(result: unknown): string {
 	if (result instanceof Error) {
 		return result.message;
 	}
-	if (typeof result === "string") {
+	if (isString(result)) {
 		return stripAnsi(result);
 	}
 	return summarizeValue(result);
 }
 
-function stringValue(value: unknown): string {
-	return typeof value === "string" ? value : "";
+function stringValue<Value>(value: Value): string {
+	return isString(value) ? value : "";
 }
 
-export function contentToText(content: unknown): string {
-	if (typeof content === "string") {
+export function contentToText<Content>(content: Content): string {
+	if (isString(content)) {
 		return stripAnsi(content);
 	}
 	if (!Array.isArray(content)) {
@@ -300,7 +301,7 @@ export function contentToText(content: unknown): string {
 	}
 	return content
 		.map((part) => {
-			if (isRecord(part) && part.type === "text" && typeof part.text === "string") {
+			if (isRecord(part) && part.type === "text" && isString(part.text)) {
 				return stripAnsi(part.text);
 			}
 			if (isRecord(part) && part.type === "image") {
@@ -327,8 +328,8 @@ export function stripAnsi(value: string): string {
 	return value.replace(ansiPattern, "");
 }
 
-export function summarizeValue(value: unknown): string {
-	if (typeof value === "string") {
+export function summarizeValue<Value>(value: Value): string {
+	if (isString(value)) {
 		return value;
 	}
 	try {

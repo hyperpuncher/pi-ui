@@ -23,16 +23,18 @@ Deno.test("attachment paths are composed separately from visible prompt editing"
 });
 
 Deno.test("transferred files use their original paths", () => {
-	const values: Record<string, string> = {
-		"text/uri-list": "# files\nfile:///tmp/one.txt\nfile:///tmp/two%20words.txt",
-		"x-special/gnome-copied-files":
-			"copy\nfile:///tmp/one.txt\nfile:///tmp/three.txt",
-		"text/plain": "/tmp/four.txt\nnot-a-path",
-	};
+	const values = new Map(
+		Object.entries({
+			"text/uri-list": "# files\nfile:///tmp/one.txt\nfile:///tmp/two%20words.txt",
+			"x-special/gnome-copied-files":
+				"copy\nfile:///tmp/one.txt\nfile:///tmp/three.txt",
+			"text/plain": "/tmp/four.txt\nnot-a-path",
+		}),
+	);
 
 	assertEquals(
 		extractTransferredFilePaths({
-			getData: (type: string) => values[type] ?? "",
+			getData: (type: string) => values.get(type) ?? "",
 		}),
 		["/tmp/one.txt", "/tmp/two words.txt", "/tmp/three.txt", "/tmp/four.txt"],
 	);

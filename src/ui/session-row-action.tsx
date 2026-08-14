@@ -1,6 +1,7 @@
 import type { AppSessionSummary } from "../state/app-store.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { SessionDeleteButton } from "./session-delete-button.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 export function SessionRowAction(props: {
 	session: AppSessionSummary;
@@ -8,7 +9,7 @@ export function SessionRowAction(props: {
 	deletable: boolean;
 }): string {
 	if (!props.shortcut && !props.deletable) return "";
-	return (
+	return syncHtml(
 		<span class="grid shrink-0 items-center justify-items-end *:[grid-area:1/1]">
 			{props.shortcut && (
 				<span
@@ -27,6 +28,6 @@ export function SessionRowAction(props: {
 					class="pointer-events-none opacity-0 transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 motion-reduce:transition-none"
 				/>
 			)}
-		</span>
-	) as string;
+		</span>,
+	);
 }

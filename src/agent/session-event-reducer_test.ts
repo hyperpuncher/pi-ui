@@ -6,7 +6,9 @@ import {
 	reduceSessionEvent,
 	type SessionEventReducerContext,
 	type SessionEventStateSink,
+	type ToolArguments,
 } from "./session-event-reducer.ts";
+import { agentSessionEventStub } from "./test-fixtures.ts";
 
 class FakeState implements SessionEventStateSink {
 	readonly appended: Array<{
@@ -69,7 +71,7 @@ function fixture(options: { syncUsage?: () => void; reload?: () => void } = {}) 
 			number,
 			{ id: string; argumentPrefix: string | undefined }
 		>(),
-		callArgs: new Map<string, unknown>(),
+		callArgs: new Map<string, ToolArguments>(),
 		startedAt: new Map<string, number>(),
 	};
 	const context: SessionEventReducerContext = {
@@ -111,8 +113,10 @@ function fixture(options: { syncUsage?: () => void; reload?: () => void } = {}) 
 	return { state, tools, context };
 }
 
-function event(value: object): AgentSessionEvent {
-	return value as AgentSessionEvent;
+function event<Event extends { type: AgentSessionEvent["type"] }>(
+	value: Event,
+): AgentSessionEvent {
+	return agentSessionEventStub(value);
 }
 
 function userMessage() {

@@ -1,8 +1,4 @@
-import type {
-	AgentSessionRuntime,
-	SessionEntry,
-	SessionStats,
-} from "@earendil-works/pi-coding-agent";
+import type { AgentSessionRuntime, SessionStats } from "@earendil-works/pi-coding-agent";
 
 import type {
 	AppStore,
@@ -27,6 +23,14 @@ import { providerUsageTtlMs } from "./provider-usage.ts";
 import { UsageRequestTracker } from "./usage-request.ts";
 
 type LimitProvider = "codex" | "opencode-go";
+type UsageState = Pick<AppStore, "setUsage">;
+type CacheUsageEntry = {
+	type: string;
+	message?: {
+		role: string;
+		usage?: { input: number; cacheRead: number; cacheWrite: number };
+	};
+};
 type LimitUsageResult =
 	| { provider: "codex"; usage: CodexUsage | undefined }
 	| { provider: "opencode-go"; usage: OpenCodeGoUsage | undefined };
@@ -43,7 +47,7 @@ export class UsageController {
 
 	constructor(
 		private readonly getRuntime: () => AgentSessionRuntime,
-		private readonly state: AppStore,
+		private readonly state: UsageState,
 		private readonly fetchCodex = fetchCodexUsage,
 		private readonly fetchOpenCodeGo = fetchOpenCodeGoUsage,
 	) {}
@@ -107,7 +111,7 @@ export class UsageController {
 				this.setUsageResult(result, result.usage ? "" : "unavailable");
 				this.sync();
 			})
-			.catch((error: unknown) => {
+			.catch((error: ErrorOptions["cause"]) => {
 				if (!this.owns(request)) return;
 				console.warn(`Failed to fetch ${provider} usage`, error);
 				this.setUsageResult({ provider, usage: undefined }, "unavailable");
@@ -219,12 +223,13 @@ export function formatStats(
 }
 
 export function latestCacheHitPercent(
-	entries: readonly SessionEntry[],
+	entries: readonly CacheUsageEntry[],
 ): number | undefined {
 	for (let index = entries.length - 1; index >= 0; index -= 1) {
 		const entry = entries[index];
-		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		if (entry.type !== "message" || entry.message?.role !== "assistant") continue;
 		const usage = entry.message.usage;
+		if (!usage) continue;
 		const promptTokens = usage.input + usage.cacheRead + usage.cacheWrite;
 		return promptTokens > 0 ? (usage.cacheRead / promptTokens) * 100 : undefined;
 	}
@@ -259,5 +264,5 @@ function formatCost(cost: number): string {
 }
 
 function formatPercent(value: number | null): string {
-	return typeof value === "number" ? `${value.toFixed(1)}%` : "?";
+	return value === null ? "?" : `${value.toFixed(1)}%`;
 }

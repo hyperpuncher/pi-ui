@@ -163,6 +163,7 @@ export async function renderPierreCode(
 		file: {
 			name: language === "text" ? "code" : `code.${language}`,
 			contents: code,
+			// SAFETY: callers normalize the language through Pierre or Shiki before rendering.
 			lang: language as SupportedLanguages,
 		},
 		options: {

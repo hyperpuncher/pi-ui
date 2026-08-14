@@ -1,7 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
 import { DatastarClientHub, type DatastarClient } from "./datastar-client-hub.ts";
-import type { DatastarStream } from "./datastar.ts";
+import { DatastarStream } from "./datastar.ts";
 
 Deno.test("hub connects, sends an initial view, broadcasts fat and targeted patches, and aborts", async () => {
 	const hub = new DatastarClientHub();
@@ -57,10 +57,11 @@ Deno.test("hub removes a client after a failed send", () => {
 			closed = true;
 		},
 	};
-	const factory = ((start: (stream: DatastarStream) => void) => {
-		start(client as DatastarStream);
+	const stream = Object.assign(Object.create(DatastarStream.prototype), client);
+	const factory: ConstructorParameters<typeof DatastarClientHub>[0] = (start) => {
+		start(stream);
 		return new Response();
-	}) as unknown as ConstructorParameters<typeof DatastarClientHub>[0];
+	};
 	const hub = new DatastarClientHub(factory);
 
 	hub.createStream(new AbortController().signal, () => ({

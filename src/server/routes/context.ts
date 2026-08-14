@@ -42,7 +42,7 @@ export interface RouteContext {
 	store: AppStore;
 	renderer: UiRenderer;
 	resources: RouteResources;
-	transferredFiles: TransferredFileStore;
+	transferredFiles: Pick<TransferredFileStore, "importFiles">;
 	openWorkspace(path: string): Promise<boolean>;
 	openPath(path: string): Promise<void>;
 	isLocalRequest(request: Request): boolean;

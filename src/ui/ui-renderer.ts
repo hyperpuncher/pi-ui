@@ -6,6 +6,7 @@ import type {
 	AppStorePresentation,
 	UiCommitEffect,
 } from "../state/app-store.ts";
+import type { JsonObject } from "../utils/json-types.ts";
 import { renderAuthDialogContent } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderDebugOverlay } from "./debug.tsx";
@@ -33,6 +34,8 @@ import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 
 /** Complete-view renderer and logical commit scheduler. */
+type RenderedView = { elements: string; signals: string };
+
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
 	private updateDepth = 0;
@@ -271,31 +274,23 @@ export class UiRenderer implements AppStorePresentation {
 			renderTreePicker(snapshot)
 		);
 	}
-	renderSignals(
-		snapshot: AppRenderSnapshot,
-		overrides: Record<string, unknown> = {},
-	): string {
+	renderSignals(snapshot: AppRenderSnapshot, overrides: JsonObject = {}): string {
 		return JSON.stringify({
 			...projectBackendSignals(snapshot),
 			...overrides,
 		});
 	}
 	private renderView(
-		overrides: Record<string, unknown> = {},
+		overrides: JsonObject = {},
 		snapshot = this.store.snapshot(),
 		includeFinalMessageHtml = true,
-	): {
-		elements: string;
-		signals: string;
-	} {
+	): RenderedView {
 		return {
 			elements: this.renderElements(snapshot, includeFinalMessageHtml),
 			signals: this.renderSignals(snapshot, overrides),
 		};
 	}
-	private effectSignalOverrides(
-		effects: readonly UiCommitEffect[],
-	): Record<string, unknown> {
+	private effectSignalOverrides(effects: readonly UiCommitEffect[]): JsonObject {
 		return Object.assign(
 			{},
 			...effects

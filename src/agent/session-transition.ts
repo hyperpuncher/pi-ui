@@ -24,7 +24,7 @@ export type RuntimeTransitionLifecycle = {
 	dispose: () => Promise<void> | void;
 	background: () => void;
 	bindReplacement: () => void | Promise<void>;
-	onAbortError?: (error: unknown) => void;
+	onAbortError?: (error: ErrorOptions["cause"]) => void;
 };
 
 /** Runs the ownership hand-off in a deterministic order without depending on SDK types. */

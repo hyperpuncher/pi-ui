@@ -1,7 +1,7 @@
 import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
 import {
-	attachmentFileIconShapes,
+	attachmentFileIcons,
 	attachmentFileKind,
 } from "../../static/app/attachment-file.js";
 import { authDialogAction } from "../commands/actions.ts";
@@ -22,6 +22,7 @@ import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 import { shikiTokenStyle } from "./shiki-token-style.ts";
 import { StatusDot } from "./status-dot.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
@@ -42,7 +43,7 @@ export function renderMessages(
 	sessionCatalogLoading = false,
 ): string {
 	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
-	return (
+	return syncHtml(
 		<main
 			id="messages"
 			class={[
@@ -90,8 +91,8 @@ export function renderMessages(
 					/>
 				)}
 			</div>
-		</main>
-	) as string;
+		</main>,
+	);
 }
 
 function renderEmptyMessages(
@@ -392,21 +393,21 @@ function renderUserFileAttachment(
 	);
 }
 
-type AttachmentFileKind = keyof typeof attachmentFileIconShapes;
+type AttachmentFileKind = keyof typeof attachmentFileIcons;
 
 function fileKindLabel(kind: AttachmentFileKind): string {
 	return kind;
 }
 
 function AttachmentFileIcon(props: { kind: AttachmentFileKind }) {
-	const shape = attachmentFileIconShapes[props.kind];
+	const icon = attachmentFileIcons[props.kind];
 	return (
 		<Icon class="size-5">
 			<>
-				{shape.paths.map((path) => (
+				{icon.paths.map((path) => (
 					<path d={path} />
 				))}
-				{"circle" in shape && <circle {...shape.circle} />}
+				{"circle" in icon && <circle {...icon.circle} />}
 			</>
 		</Icon>
 	);
@@ -429,7 +430,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			message.attachments?.filter((attachment) => attachment.image) ?? [];
 		const fileAttachments =
 			message.attachments?.filter((attachment) => !attachment.image) ?? [];
-		return (
+		return syncHtml(
 			<article
 				class="message message-user flex max-w-[min(32rem,72%)] flex-col items-end gap-2 self-end"
 				data-message-id={message.id}
@@ -468,12 +469,12 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 						{message.text}
 					</p>
 				)}
-			</article>
-		) as string;
+			</article>,
+		);
 	}
 
 	if (message.role === "assistant" || message.role === "thought") {
-		return (
+		return syncHtml(
 			<article
 				class={[
 					"message message-narrative markdown-content w-full self-start",
@@ -486,12 +487,12 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			>
 				<div>{message.renderedHtml ?? renderMarkdownStreaming(message.text)}</div>
 				{renderDeferredEnhancement(message)}
-			</article>
-		) as string;
+			</article>,
+		);
 	}
 
 	if (message.role === "system" || message.role === "notice") {
-		return (
+		return syncHtml(
 			<article
 				class={[
 					"message message-narrative max-w-3xl self-start",
@@ -505,13 +506,13 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 				<p class="m-0 whitespace-pre-wrap" safe>
 					{message.text}
 				</p>
-			</article>
-		) as string;
+			</article>,
+		);
 	}
 
 	if (message.role === "compaction" || message.role === "skill") {
 		const label = message.role === "compaction" ? "compaction" : "skill";
-		return (
+		return syncHtml(
 			<article
 				class={[
 					"message pi-tool-timeline-item w-full self-start",
@@ -561,8 +562,8 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 						</div>
 					</div>
 				</details>
-			</article>
-		) as string;
+			</article>,
+		);
 	}
 
 	const title = message.title ?? "Tool";
@@ -573,7 +574,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			: message.state === "error"
 				? "Failed"
 				: "Completed";
-	return (
+	return syncHtml(
 		<article
 			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
@@ -612,6 +613,6 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 							: renderPreOutput(message.text)
 				: ""}
 			{renderDeferredEnhancement(message)}
-		</article>
-	) as string;
+		</article>,
+	);
 }

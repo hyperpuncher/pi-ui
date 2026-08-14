@@ -97,7 +97,7 @@ async function readPrompt(
 	if (contentLengthError) throw new TransferredFileError(contentLengthError);
 	const formData = await request.formData();
 	const prompt = formData.get("prompt");
-	if (typeof prompt !== "string" || prompt.trim() === "") {
+	if (prompt === null || prompt instanceof File || prompt.trim() === "") {
 		throw new ActionInputError("Missing or invalid prompt.");
 	}
 	const files = formData

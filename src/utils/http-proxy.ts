@@ -3,6 +3,8 @@ import process from "node:process";
 
 import * as undici from "undici";
 
+import { isString } from "./type-guards.ts";
+
 export const defaultHttpIdleTimeoutMs = 300_000;
 
 const originalFetch = globalThis.fetch;
@@ -51,6 +53,7 @@ function installDenoFetchProxy(): void {
 	}
 
 	proxyFetchInstalled = true;
+	// SAFETY: proxyFetch preserves the platform fetch parameters and response contract.
 	globalThis.fetch = proxyFetch as typeof fetch;
 }
 
@@ -69,11 +72,12 @@ function proxyFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respo
 		return originalFetch(input, init);
 	}
 
+	// SAFETY: Deno extends RequestInit with `client`; the runtime fetch accepts it.
 	return originalFetch(input, { ...init, client } as RequestInit);
 }
 
 function fetchTargetUrl(input: RequestInfo | URL): string | undefined {
-	if (typeof input === "string") {
+	if (isString(input)) {
 		return input;
 	}
 	if (input instanceof URL) {
@@ -105,11 +109,16 @@ function withUndiciErrorListener<T extends undici.Dispatcher>(dispatcher: T): T 
 	return dispatcher;
 }
 
-function ignoreUndiciDispatcherError(_error: unknown): void {
+function ignoreUndiciDispatcherError(cause: unknown): void {
 	// Undici emits internal client errors while fetch bodies reject normally.
+	void cause;
 }
 
-function createUndiciClient(origin: string | URL, options: object): undici.Dispatcher {
+function createUndiciClient(
+	origin: string | URL,
+	options: Parameters<NonNullable<undici.ProxyAgent.Options["clientFactory"]>>[1],
+): undici.Dispatcher {
+	// SAFETY: Undici erases factory options to `object`, but clientFactory supplies Client options.
 	const clientOptions = options as undici.Client.Options;
 	const client = new undici.Client(origin, clientOptions);
 	return withUndiciErrorListener(client);
@@ -117,8 +126,9 @@ function createUndiciClient(origin: string | URL, options: object): undici.Dispa
 
 function createUndiciOriginDispatcher(
 	origin: string | URL,
-	options: object,
+	options: Parameters<NonNullable<undici.Pool.Options["factory"]>>[1],
 ): undici.Dispatcher {
+	// SAFETY: Undici erases factory options to `object`, but Pool factory supplies Pool options.
 	const poolOptions = options as undici.Pool.Options;
 	if (poolOptions.connections === 1) {
 		return createUndiciClient(origin, poolOptions);

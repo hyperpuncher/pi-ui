@@ -1,8 +1,9 @@
 import { assertEquals, assertStringIncludes as assertIncludes } from "@std/assert";
 
-import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
+import type { AppSessionSummary } from "../state/app-store.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { renderSessionPicker } from "../ui/pickers.tsx";
+import { appRenderSnapshot } from "../ui/test-fixtures.ts";
 import {
 	abortRunningBackgroundSession,
 	mergeBackgroundSessionStatuses,
@@ -39,12 +40,9 @@ Deno.test("foreground session takes precedence over background status", () => {
 });
 
 Deno.test("background abort targets only an exact running path", async () => {
-	const sessions = new Map([
+	const sessions = new Map<string, { name: string; status: "running" | "completed" }>([
 		["/sessions/one.json", { name: "one", status: "completed" as const }],
-		[
-			"/sessions/two.json",
-			{ name: "two", status: "running" as "running" | "completed" },
-		],
+		["/sessions/two.json", { name: "two", status: "running" }],
 	]);
 	const aborted: string[] = [];
 	const abort = (session: { name: string }) => {
@@ -70,13 +68,15 @@ Deno.test("background abort targets only an exact running path", async () => {
 
 Deno.test("session picker escapes titles and renders background controls", () => {
 	const escapedTitle = '<script>alert("x")</script>';
-	const html = renderSessionPicker({
-		sessions: [
-			{ ...running, title: escapedTitle, backgroundStatus: "running" },
-			{ ...completed, backgroundStatus: "completed" },
-		],
-		currentSessionPath: ordinary.path,
-	} as AppStore);
+	const html = renderSessionPicker(
+		appRenderSnapshot({
+			sessions: [
+				{ ...running, title: escapedTitle, backgroundStatus: "running" },
+				{ ...completed, backgroundStatus: "completed" },
+			],
+			currentSessionPath: ordinary.path,
+		}),
+	);
 
 	assertIncludes(html, "&lt;script>alert(&#34;x&#34;)&lt;/script>");
 	assertIncludes(html, 'data-background-status="running"');

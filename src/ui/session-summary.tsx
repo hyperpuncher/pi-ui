@@ -1,6 +1,7 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppSessionSummary } from "../state/app-store.ts";
 import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function SessionSubtitle(props: {
 	session: AppSessionSummary;
@@ -12,7 +13,7 @@ export function SessionSubtitle(props: {
 		? workspaceDisplayName(props.session.cwd)
 		: formatHomePath(props.session.cwd);
 	const faviconUrl = `${endpoints.sessionsFavicon}?cwd=${encodeURIComponent(props.session.cwd)}`;
-	return (
+	return syncHtml(
 		<span class={props.class}>
 			<span class="flex min-w-0 items-center gap-1.5">
 				<img
@@ -36,6 +37,6 @@ export function SessionSubtitle(props: {
 					</>
 				)}
 			</span>
-		</span>
-	) as string;
+		</span>,
+	);
 }

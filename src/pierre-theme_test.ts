@@ -7,12 +7,13 @@ import {
 } from "./pierre-theme.ts";
 
 Deno.test("active Pierre themes discard catalog metadata", () => {
-	setActiveCodeTheme({
+	const catalogTheme = {
 		dark: "dark-theme",
 		light: "light-theme",
 		group: "pierre",
 		label: "Catalog Theme",
-	} as { dark: string; light: string });
+	};
+	setActiveCodeTheme(catalogTheme);
 	assertEquals(getPierreThemes(), {
 		dark: "dark-theme",
 		light: "light-theme",

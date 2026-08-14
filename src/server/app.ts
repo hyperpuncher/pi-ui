@@ -51,11 +51,11 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	installUnhandledErrorReporter();
 	const host = await AgentHost.create(store, undefined, {
 		transitionController: transitions,
-	}).catch((error: unknown) => {
+	}).catch((error: ErrorOptions["cause"]) => {
 		console.error("Failed to start pi SDK runtime", error);
 		return undefined;
 	});
-	await preloadHighlighterPromise.catch((error: unknown) => {
+	await preloadHighlighterPromise.catch((error: ErrorOptions["cause"]) => {
 		console.error("Failed to preload highlighter", error);
 	});
 	const resources: RouteResources = { host, sessionImages };
@@ -69,7 +69,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 				// Best-effort only during process teardown.
 			}
 			// Unload cannot reliably await asynchronous runtime teardown.
-			resources.host?.dispose().catch((error: unknown) => {
+			resources.host?.dispose().catch((error: ErrorOptions["cause"]) => {
 				console.error("Failed to dispose pi SDK runtime during teardown", error);
 			});
 		},
@@ -82,7 +82,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		resources,
 		transferredFiles,
 		readBasecoat: async () =>
-			(await Deno.readFile(basecoatJsPath)).buffer as ArrayBuffer,
+			new Uint8Array(await Deno.readFile(basecoatJsPath)).buffer,
 		serveStatic: (request) => serveDir(request, { fsRoot: staticRoot }),
 		openWorkspace: (path) => openWorkspace(path, store, resources, transitions),
 		openPath: openWithDefaultApp,

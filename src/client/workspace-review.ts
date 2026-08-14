@@ -11,12 +11,13 @@ import {
 } from "@pierre/diffs/worker";
 import { FileTree } from "@pierre/trees";
 
-import { getPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
+import { getPierreThemes, isPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommitDetail,
 	type WorkspaceFileChange,
 	workspaceReviewHistoryPageSize,
+	isWorkspaceReviewSnapshot,
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
@@ -62,8 +63,8 @@ const api = createWorkspaceReviewApi(endpoint);
 const preferences = await api.readPreferences();
 
 window.addEventListener("pi-ui-code-theme-changed", (event) => {
-	const themes = (event as CustomEvent<{ dark: string; light: string }>).detail;
-	if (!themes?.dark || !themes.light) return;
+	if (!(event instanceof CustomEvent) || !isPierreThemes(event.detail)) return;
+	const themes = event.detail;
 	setActiveCodeTheme(themes);
 	if (viewer) {
 		viewer.setOptions(viewerOptions());
@@ -105,7 +106,11 @@ const submitCommentsButton = requiredButton("review-submit-comments");
 const commentStatus = requiredElement("review-comment-status");
 const data = requiredElement("workspace-review-data");
 
-let snapshot = JSON.parse(data.textContent ?? "") as WorkspaceReviewSnapshot;
+const initialSnapshot = JSON.parse(data.textContent ?? "");
+if (!isWorkspaceReviewSnapshot(initialSnapshot)) {
+	throw new Error("Invalid initial workspace review snapshot");
+}
+let snapshot: WorkspaceReviewSnapshot = initialSnapshot;
 let historyCommits = [...snapshot.commits];
 let historyHasMore = snapshot.commits.length === workspaceReviewHistoryPageSize;
 let historyLoading = false;

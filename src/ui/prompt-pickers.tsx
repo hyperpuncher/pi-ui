@@ -11,10 +11,11 @@ import type { AppRenderSnapshot, AppThinkingLevel } from "../state/app-store.ts"
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 	const label = workspaceDisplayName(state.workspacePath);
-	return (
+	return syncHtml(
 		<button
 			id="workspace-picker"
 			class="btn hidden max-w-48 min-w-0 font-mono text-muted-foreground hover:text-foreground sm:inline-flex"
@@ -35,13 +36,13 @@ export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 				{label}
 			</span>
 			<ShortcutTooltip label="Workspace" shortcut="ctrl /" />
-		</button>
-	) as string;
+		</button>,
+	);
 }
 
 export function renderThinkingPicker(state: AppRenderSnapshot): string {
 	const current = state.thinkingLevel;
-	return (
+	return syncHtml(
 		<div id="thinking-picker" class="hidden min-w-0 sm:block">
 			<label class="sr-only" for="thinking-select-trigger">
 				Thinking level
@@ -119,8 +120,8 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 					</div>
 				</div>
 			</div>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function thinkingLabel(level: AppThinkingLevel): string {
@@ -152,7 +153,7 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 	);
 	const hasModels = state.models.length > 0;
 	if (!hasModels) {
-		return (
+		return syncHtml(
 			<div id="model-picker" class="shrink-0">
 				<button
 					type="button"
@@ -165,11 +166,11 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 				>
 					no provider
 				</button>
-			</div>
-		) as string;
+			</div>,
+		);
 	}
 	const currentLabel = current ? modelTriggerLabel(current) : "choose model";
-	return (
+	return syncHtml(
 		<div id="model-picker" class="shrink-0">
 			<label class="sr-only" for="model-select-trigger">
 				Model
@@ -335,8 +336,8 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 					</div>
 				</div>
 			</div>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function modelTriggerLabel(model: AppRenderSnapshot["models"][number]): string {

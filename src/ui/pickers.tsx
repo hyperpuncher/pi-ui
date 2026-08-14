@@ -20,6 +20,7 @@ import { sessionStatusLabel } from "./session-status.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 import { StatusDot } from "./status-dot.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 const bottomAnchoredPickerClass =
 	"flex max-h-72 list-none flex-col-reverse overflow-y-auto p-1";
@@ -34,7 +35,7 @@ export function slashPickerOpenExpression(state: AppRenderSnapshot): string {
 }
 
 export function renderSlashPicker(state: AppRenderSnapshot): string {
-	return (
+	return syncHtml(
 		<div id="slash-picker">
 			<PickerList id="slash-picker-list" class={bottomAnchoredPickerClass}>
 				{state.slashCommands.length === 0 ? (
@@ -45,8 +46,8 @@ export function renderSlashPicker(state: AppRenderSnapshot): string {
 					)
 				)}
 			</PickerList>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function slashCommandHaystack(item: AppSlashCommand): string {
@@ -56,7 +57,7 @@ function slashCommandHaystack(item: AppSlashCommand): string {
 function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 	const label = `/${item.name}`;
 	const haystack = slashCommandHaystack(item);
-	return (
+	return syncHtml(
 		<li
 			role="option"
 			tabindex="-1"
@@ -96,21 +97,21 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 				</span>
 				<PickerMetadata text={item.source} />
 			</button>
-		</li>
-	) as string;
+		</li>,
+	);
 }
 
 export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
 	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
-	return (
+	return syncHtml(
 		<div role="menu" id="workspace-menu" aria-orientation="vertical">
 			{renderWorkspaceSearchResults(workspaces, [], state.workspacePath)}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 export function renderFilePickerResults(items: readonly FileSuggestion[]): string {
-	return (
+	return syncHtml(
 		<div id="file-picker-results" aria-live="polite">
 			<PickerList id="file-picker-list" class={bottomAnchoredPickerClass}>
 				{items.map((item, index) => (
@@ -124,8 +125,8 @@ export function renderFilePickerResults(items: readonly FileSuggestion[]): strin
 					/>
 				))}
 			</PickerList>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 export function renderWorkspaceSearchResults(
@@ -137,14 +138,14 @@ export function renderWorkspaceSearchResults(
 	const search = uniqueWorkspaces(
 		searchWorkspaces.map((workspace) => workspace.path),
 	).filter((workspacePath) => !recent.includes(workspacePath));
-	return (
+	return syncHtml(
 		<div id="workspace-search-results">
 			{recent.length > 0 &&
 				renderWorkspaceGroup("Recent workspaces", recent, currentWorkspacePath)}
 			{search.length > 0 &&
 				renderWorkspaceGroup("Search results", search, currentWorkspacePath)}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function renderWorkspaceGroup(
@@ -156,7 +157,7 @@ function renderWorkspaceGroup(
 		heading === "Recent workspaces"
 			? "workspace-recent-heading"
 			: "workspace-search-heading";
-	return (
+	return syncHtml(
 		<div role="group" aria-labelledby={id}>
 			<span role="heading" id={id}>
 				{heading}
@@ -164,13 +165,13 @@ function renderWorkspaceGroup(
 			{workspaces.map((workspacePath) =>
 				renderWorkspaceRow(workspacePath, workspacePath === currentWorkspacePath),
 			)}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	const label = formatHomePath(workspacePath);
-	return (
+	return syncHtml(
 		<div
 			role="menuitem"
 			class="items-start gap-3"
@@ -188,8 +189,8 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			<span class="min-w-0 truncate font-mono text-sm" safe>
 				{label}
 			</span>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function openWorkspaceAction(valueExpression: string): string {
@@ -211,7 +212,7 @@ function uniqueWorkspaces(workspaces: readonly string[]): string[] {
 }
 
 export function renderSessionPicker(state: AppRenderSnapshot): string {
-	return (
+	return syncHtml(
 		<div
 			role="menu"
 			id="session-menu"
@@ -221,8 +222,8 @@ export function renderSessionPicker(state: AppRenderSnapshot): string {
 			data-signals:background-session-path__ifmissing="''"
 		>
 			{renderSessionPickerContent(state)}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 type SessionPickerState = Pick<
@@ -231,7 +232,7 @@ type SessionPickerState = Pick<
 >;
 
 export function renderSessionPickerContent(state: SessionPickerState): string {
-	return (
+	return syncHtml(
 		<div id="session-menu-content" class="px-1">
 			{state.sessions.map((session, index) => {
 				const current = session.path === state.currentSessionPath;
@@ -242,8 +243,8 @@ export function renderSessionPickerContent(state: SessionPickerState): string {
 					current && Boolean(state.activityText),
 				);
 			})}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function sessionRowId(path: string): string {
@@ -260,7 +261,7 @@ function renderSessionRow(
 	const displayStatus = foregroundRunning ? "running" : session.backgroundStatus;
 	const shortcut = index < 9 && !current ? `ctrl ${index + 1}` : undefined;
 	const deletable = displayStatus !== "running";
-	return (
+	return syncHtml(
 		<div
 			id={sessionRowId(session.path)}
 			role="menuitem"
@@ -337,6 +338,6 @@ function renderSessionRow(
 					deletable={deletable}
 				/>
 			</span>
-		</div>
-	) as string;
+		</div>,
+	);
 }

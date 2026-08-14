@@ -1,4 +1,15 @@
+import Type from "typebox";
+import { Compile } from "typebox/compile";
+
 export type PierreThemes = Readonly<{ dark: string; light: string }>;
+
+const pierreThemesValidator = Compile(
+	Type.Object({ dark: Type.String(), light: Type.String() }),
+);
+
+export function isPierreThemes<Value>(value: Value): value is Value & PierreThemes {
+	return pierreThemesValidator.Check(value);
+}
 
 export const DEFAULT_PIERRE_THEMES: PierreThemes = {
 	dark: "pierre-dark",

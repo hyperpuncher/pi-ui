@@ -1,9 +1,10 @@
 import type { AppRenderSnapshot } from "../state/app-store.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderDebugOverlay(state: AppRenderSnapshot): string {
 	if (!state.debugUi) return "";
 
-	return (
+	return syncHtml(
 		<aside
 			id="debug-overlay"
 			class="fixed top-3 right-3 z-50 hidden min-w-44 rounded-md border bg-popover/95 p-2 font-mono text-[0.65rem] text-popover-foreground shadow-lg backdrop-blur md:block"
@@ -20,6 +21,6 @@ export function renderDebugOverlay(state: AppRenderSnapshot): string {
 				<dt class="text-muted-foreground">activity</dt>
 				<dd safe>{state.activityText ?? "idle"}</dd>
 			</dl>
-		</aside>
-	) as string;
+		</aside>,
+	);
 }

@@ -3,6 +3,7 @@ import { sessionPerformance } from "../perf/session-performance.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function resumeSessionAction(
 	path: string,
@@ -28,7 +29,7 @@ export function renderSessionTransition(state: AppRenderSnapshot): string {
 	const transition = state.sessionTransition;
 	const visible = sessionTransitionOverlayVisible(transition);
 	const targetPath = transition.status === "idle" ? "" : transition.targetPath;
-	return (
+	return syncHtml(
 		<main
 			id="session-transition"
 			class="min-h-0 place-items-center px-6 text-center"
@@ -71,6 +72,6 @@ export function renderSessionTransition(state: AppRenderSnapshot): string {
 					</span>
 				</div>
 			)}
-		</main>
-	) as string;
+		</main>,
+	);
 }

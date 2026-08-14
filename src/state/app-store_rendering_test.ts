@@ -364,6 +364,7 @@ Deno.test("AppStore transcript metadata has one owner and restores with chat", (
 	assertEqual(state.activityText, "Working...");
 	assertEqual(state.queuedSteeringMessages.join(","), "steer");
 	assertEqual(state.queuedFollowUpMessages.join(","), "follow");
+	// SAFETY: The test deliberately attempts to mutate the runtime copy behind its readonly API.
 	const steering = state.queuedSteeringMessages as string[];
 	steering.push("external mutation");
 	assertEqual(state.queuedSteeringMessages.join(","), "steer");

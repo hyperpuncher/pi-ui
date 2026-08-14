@@ -2,6 +2,7 @@ import { preloadFileTree, serializeFileTreeSsrPayload } from "@pierre/trees";
 
 import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string {
 	const tree = preloadFileTree({
@@ -19,7 +20,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 	);
 	const initialData = JSON.stringify(snapshot).replaceAll("<", "\\u003c");
 
-	return (
+	return syncHtml(
 		<section
 			id="workspace-review"
 			class="absolute inset-y-0 left-0 z-30 min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_var(--pi-workspace-structural-gap)] max-[80rem]:w-full"
@@ -260,6 +261,6 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 			<script id="workspace-review-data" type="application/json">
 				{initialData}
 			</script>
-		</section>
-	) as string;
+		</section>,
+	);
 }

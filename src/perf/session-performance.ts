@@ -92,6 +92,7 @@ type Transition = PerformanceCounters & {
 };
 
 function emptySpans(): SpanSnapshot {
+	// SAFETY: The entries are generated from the same tuple that defines every snapshot key.
 	return Object.fromEntries(
 		sessionPerformanceSpanNames.map((name) => [
 			name,

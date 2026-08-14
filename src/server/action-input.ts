@@ -1,6 +1,9 @@
+import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web";
+import Type from "typebox";
+import { Compile } from "typebox/compile";
 
-import { isRecord } from "../utils/type-guards.ts";
+import { isBoolean, isRecord, isString } from "../utils/type-guards.ts";
 
 export class ActionInputError extends Error {
 	readonly status = 400;
@@ -11,7 +14,9 @@ export class ActionInputError extends Error {
 	}
 }
 
-export type ActionSignals = Readonly<Record<string, unknown>>;
+export type ActionSignals = Readonly<Record<string, Jsonifiable>>;
+
+const nonnegativeIntegerValidator = Compile(Type.Integer({ minimum: 0 }));
 
 export async function readActionSignals(request: Request): Promise<ActionSignals> {
 	const result = await ds.readSignals(request);
@@ -23,7 +28,7 @@ export async function readActionSignals(request: Request): Promise<ActionSignals
 
 export function stringField(signals: ActionSignals, field: string): string {
 	const value = signals[field];
-	if (typeof value !== "string") {
+	if (!isString(value)) {
 		throw new ActionInputError(`Missing or invalid ${field}.`);
 	}
 	return value;
@@ -43,7 +48,7 @@ export function optionalString(
 ): string | undefined {
 	const value = signals[field];
 	if (value === undefined || value === null || value === "") return undefined;
-	if (typeof value !== "string") {
+	if (!isString(value)) {
 		throw new ActionInputError(`Invalid ${field}.`);
 	}
 	return value;
@@ -56,7 +61,7 @@ export function booleanField(
 ): boolean {
 	const value = signals[field];
 	if (value === undefined && options.optional) return false;
-	if (typeof value !== "boolean") {
+	if (!isBoolean(value)) {
 		throw new ActionInputError(`Invalid ${field}.`);
 	}
 	return value;
@@ -64,7 +69,7 @@ export function booleanField(
 
 export function nonnegativeIntegerField(signals: ActionSignals, field: string): number {
 	const value = signals[field];
-	if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+	if (!nonnegativeIntegerValidator.Check(value)) {
 		throw new ActionInputError(`Invalid ${field}.`);
 	}
 	return value;
@@ -76,8 +81,7 @@ export function enumField<const T extends readonly string[]>(
 	values: T,
 ): T[number] {
 	const value = signals[field];
-	if (typeof value !== "string" || !values.includes(value)) {
-		throw new ActionInputError(`Invalid ${field}.`);
-	}
-	return value as T[number];
+	const matched = values.find((candidate) => candidate === value);
+	if (matched === undefined) throw new ActionInputError(`Invalid ${field}.`);
+	return matched;
 }

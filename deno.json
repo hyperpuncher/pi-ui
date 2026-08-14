@@ -67,6 +67,7 @@
 		"oxlint-tailwindcss": "npm:oxlint-tailwindcss@^1.9.0",
 		"satteri": "npm:satteri@^0.9.5",
 		"tailwindcss": "npm:tailwindcss@^4.3.3",
+		"typebox": "npm:typebox@1.3.7",
 		"undici": "npm:undici@^8.10.0"
 	},
 	"allowScripts": [

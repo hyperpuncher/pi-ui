@@ -1,9 +1,10 @@
 import { commandActions } from "../commands/actions.ts";
 import { appCommandCatalog, type AppCommandMetadata } from "../commands/catalog.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderCommandMenu(): string {
-	return (
+	return syncHtml(
 		<dialog
 			id="command-dialog"
 			class="command-dialog"
@@ -42,12 +43,12 @@ export function renderCommandMenu(): string {
 					</div>
 				</div>
 			</div>
-		</dialog>
-	) as string;
+		</dialog>,
+	);
 }
 
 function renderCommandRow(item: AppCommandMetadata): string {
-	return (
+	return syncHtml(
 		<div
 			role="menuitem"
 			tabindex="-1"
@@ -65,6 +66,6 @@ function renderCommandRow(item: AppCommandMetadata): string {
 			{item.shortcut.display && (
 				<ShortcutKbd shortcut={item.shortcut.display} shortcutSlot />
 			)}
-		</div>
-	) as string;
+		</div>,
+	);
 }

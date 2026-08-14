@@ -2,7 +2,6 @@ import os from "node:os";
 
 import { assertFalse, assertStringIncludes } from "@std/assert";
 
-import type { AppRenderSnapshot } from "../state/app-store.ts";
 import {
 	renderFilePickerResults,
 	renderSessionPicker,
@@ -15,14 +14,17 @@ import {
 	renderThinkingPicker,
 	renderWorkspacePicker,
 } from "./prompt-pickers.tsx";
+import { appRenderSnapshot } from "./test-fixtures.ts";
 
 Deno.test("slash picker anchors its selected result nearest the prompt", () => {
-	const html = renderSlashPicker({
-		slashCommands: [
-			{ name: "login", description: "Log in", source: "system" },
-			{ name: "logout", description: "Log out", source: "system" },
-		],
-	} as unknown as AppRenderSnapshot);
+	const html = renderSlashPicker(
+		appRenderSnapshot({
+			slashCommands: [
+				{ name: "login", description: "Log in", source: "system" },
+				{ name: "logout", description: "Log out", source: "system" },
+			],
+		}),
+	);
 	assertStringIncludes(html, 'id="slash-picker-list"');
 	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'aria-selected="true"');
@@ -32,12 +34,14 @@ Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 });
 
 Deno.test("slash picker only opens while a command or skill matches", () => {
-	const expression = slashPickerOpenExpression({
-		slashCommands: [
-			{ name: "login", description: "Log in", source: "system" },
-			{ name: "skill:review", description: "Review code", source: "skill" },
-		],
-	} as unknown as AppRenderSnapshot);
+	const expression = slashPickerOpenExpression(
+		appRenderSnapshot({
+			slashCommands: [
+				{ name: "login", description: "Log in", source: "system" },
+				{ name: "skill:review", description: "Review code", source: "skill" },
+			],
+		}),
+	);
 
 	assertStringIncludes(expression, "$prompt.startsWith('/')");
 	assertStringIncludes(expression, "!$prompt.includes(' ')");
@@ -50,26 +54,30 @@ Deno.test("slash picker only opens while a command or skill matches", () => {
 		"candidate.includes($prompt.slice(1).toLowerCase())",
 	);
 
-	const emptyExpression = slashPickerOpenExpression({
-		slashCommands: [],
-	} as unknown as AppRenderSnapshot);
+	const emptyExpression = slashPickerOpenExpression(
+		appRenderSnapshot({
+			slashCommands: [],
+		}),
+	);
 	assertStringIncludes(emptyExpression, "[].some");
 });
 
 Deno.test("session rows expose stable ids for resilient active descendants", () => {
 	const path = `/sessions/a session.jsonl`;
-	const html = renderSessionPicker({
-		sessions: [
-			{
-				path,
-				cwd: "/workspace",
-				title: "Session",
-				subtitle: "1 message",
-				modified: "Today",
-			},
-		],
-		currentSessionPath: undefined,
-	} as unknown as AppRenderSnapshot);
+	const html = renderSessionPicker(
+		appRenderSnapshot({
+			sessions: [
+				{
+					path,
+					cwd: "/workspace",
+					title: "Session",
+					subtitle: "1 message",
+					modified: "Today",
+				},
+			],
+			currentSessionPath: undefined,
+		}),
+	);
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
 	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
 	assertStringIncludes(html, 'aria-hidden="true"');
@@ -78,19 +86,21 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 
 Deno.test("current running session is live but does not resume itself", () => {
 	const path = "/sessions/current.jsonl";
-	const html = renderSessionPicker({
-		sessions: [
-			{
-				path,
-				cwd: "/workspace",
-				title: "Current session",
-				subtitle: "1 message",
-				modified: "Now",
-			},
-		],
-		currentSessionPath: path,
-		activityText: "Working...",
-	} as unknown as AppRenderSnapshot);
+	const html = renderSessionPicker(
+		appRenderSnapshot({
+			sessions: [
+				{
+					path,
+					cwd: "/workspace",
+					title: "Current session",
+					subtitle: "1 message",
+					modified: "Now",
+				},
+			],
+			currentSessionPath: path,
+			activityText: "Working...",
+		}),
+	);
 
 	assertStringIncludes(html, 'aria-current="true"');
 	assertStringIncludes(html, 'class="group block! bg-foreground! text-background!"');
@@ -112,27 +122,29 @@ Deno.test("current running session is live but does not resume itself", () => {
 });
 
 Deno.test("background session statuses use shared semantic dots", () => {
-	const html = renderSessionPicker({
-		sessions: [
-			{
-				path: "/sessions/running.jsonl",
-				cwd: "/workspace",
-				title: "Running session",
-				subtitle: "1 message",
-				modified: "Now",
-				backgroundStatus: "running",
-			},
-			{
-				path: "/sessions/completed.jsonl",
-				cwd: "/workspace",
-				title: "Completed session",
-				subtitle: "2 messages",
-				modified: "Today",
-				backgroundStatus: "completed",
-			},
-		],
-		currentSessionPath: undefined,
-	} as unknown as AppRenderSnapshot);
+	const html = renderSessionPicker(
+		appRenderSnapshot({
+			sessions: [
+				{
+					path: "/sessions/running.jsonl",
+					cwd: "/workspace",
+					title: "Running session",
+					subtitle: "1 message",
+					modified: "Now",
+					backgroundStatus: "running",
+				},
+				{
+					path: "/sessions/completed.jsonl",
+					cwd: "/workspace",
+					title: "Completed session",
+					subtitle: "2 messages",
+					modified: "Today",
+					backgroundStatus: "completed",
+				},
+			],
+			currentSessionPath: undefined,
+		}),
+	);
 
 	assertStringIncludes(html, 'data-background-status="running"');
 	assertStringIncludes(html, 'data-background-status="completed"');
@@ -145,18 +157,20 @@ Deno.test("background session statuses use shared semantic dots", () => {
 
 Deno.test("current idle session exposes deletion", () => {
 	const path = "/sessions/current.jsonl";
-	const html = renderSessionPicker({
-		sessions: [
-			{
-				path,
-				cwd: "/workspace",
-				title: "Current session",
-				subtitle: "1 message",
-				modified: "Now",
-			},
-		],
-		currentSessionPath: path,
-	} as unknown as AppRenderSnapshot);
+	const html = renderSessionPicker(
+		appRenderSnapshot({
+			sessions: [
+				{
+					path,
+					cwd: "/workspace",
+					title: "Current session",
+					subtitle: "1 message",
+					modified: "Now",
+				},
+			],
+			currentSessionPath: path,
+		}),
+	);
 
 	assertStringIncludes(html, "$sessionDeletePath");
 	assertStringIncludes(html, "opacity-0 transition-opacity");
@@ -169,24 +183,30 @@ Deno.test("current idle session exposes deletion", () => {
 });
 
 Deno.test("workspace picker shows only the workspace folder name", () => {
-	const nested = renderWorkspacePicker({
-		workspacePath: "/home/user/Documents/Blenderanimation",
-	} as unknown as AppRenderSnapshot);
+	const nested = renderWorkspacePicker(
+		appRenderSnapshot({
+			workspacePath: "/home/user/Documents/Blenderanimation",
+		}),
+	);
 	assertStringIncludes(nested, 'class="truncate">Blenderanimation</span>');
 	assertStringIncludes(nested, 'aria-label="/home/user/Documents/Blenderanimation"');
 
-	const home = renderWorkspacePicker({
-		workspacePath: os.homedir(),
-	} as unknown as AppRenderSnapshot);
+	const home = renderWorkspacePicker(
+		appRenderSnapshot({
+			workspacePath: os.homedir(),
+		}),
+	);
 	assertStringIncludes(home, 'class="truncate">~</span>');
 });
 
 Deno.test("workspace rows show each collapsed path once", () => {
 	const home = os.homedir();
-	const html = renderWorkspaceDialogMenu({
-		workspacePath: home,
-		recentWorkspaces: [`${home}/projects/pi-ui`],
-	} as unknown as AppRenderSnapshot);
+	const html = renderWorkspaceDialogMenu(
+		appRenderSnapshot({
+			workspacePath: home,
+			recentWorkspaces: [`${home}/projects/pi-ui`],
+		}),
+	);
 
 	assertStringIncludes(html, ">~<");
 	assertStringIncludes(html, ">~/projects/pi-ui<");
@@ -196,10 +216,12 @@ Deno.test("workspace rows show each collapsed path once", () => {
 });
 
 Deno.test("workspace picker only opens existing workspace suggestions", () => {
-	const html = renderWorkspaceDialogMenu({
-		workspacePath: "/workspace",
-		recentWorkspaces: [],
-	} as unknown as AppRenderSnapshot);
+	const html = renderWorkspaceDialogMenu(
+		appRenderSnapshot({
+			workspacePath: "/workspace",
+			recentWorkspaces: [],
+		}),
+	);
 
 	assertFalse(html.includes("Open typed path"));
 	assertFalse(html.includes("data-empty"));
@@ -207,27 +229,31 @@ Deno.test("workspace picker only opens existing workspace suggestions", () => {
 });
 
 Deno.test("model picker distinguishes missing auth from an unselected model", () => {
-	const withoutProvider = renderModelPicker({
-		models: [],
-		currentModel: undefined,
-	} as unknown as AppRenderSnapshot);
+	const withoutProvider = renderModelPicker(
+		appRenderSnapshot({
+			models: [],
+			currentModel: undefined,
+		}),
+	);
 	assertStringIncludes(withoutProvider, "no provider");
 	assertStringIncludes(withoutProvider, "Log in to a provider");
 	assertStringIncludes(withoutProvider, "/auth/open-login");
 	assertFalse(withoutProvider.includes("dropdown-menu"));
 
-	const withoutSelection = renderModelPicker({
-		models: [
-			{
-				id: "claude-sonnet",
-				provider: "anthropic",
-				name: "Claude Sonnet",
-				configured: true,
-				scoped: false,
-			},
-		],
-		currentModel: undefined,
-	} as unknown as AppRenderSnapshot);
+	const withoutSelection = renderModelPicker(
+		appRenderSnapshot({
+			models: [
+				{
+					id: "claude-sonnet",
+					provider: "anthropic",
+					name: "Claude Sonnet",
+					configured: true,
+					scoped: false,
+				},
+			],
+			currentModel: undefined,
+		}),
+	);
 	assertStringIncludes(withoutSelection, "choose model");
 	assertStringIncludes(withoutSelection, 'class="popover"');
 	assertStringIncludes(
@@ -242,10 +268,12 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 });
 
 Deno.test("thinking picker describes every supported maximum level", () => {
-	const html = renderThinkingPicker({
-		thinkingLevel: "max",
-		thinkingLevels: ["xhigh", "max"],
-	} as unknown as AppRenderSnapshot);
+	const html = renderThinkingPicker(
+		appRenderSnapshot({
+			thinkingLevel: "max",
+			thinkingLevels: ["xhigh", "max"],
+		}),
+	);
 
 	assertStringIncludes(html, "Extra-high reasoning");
 	assertStringIncludes(html, "Maximum reasoning");

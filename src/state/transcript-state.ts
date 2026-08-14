@@ -63,6 +63,11 @@ const initialVisibleMessageCount = 20;
 const olderMessageBatchSize = 50;
 
 /** Renderer-independent, authoritative transcript state. */
+export type FinishedAssistantIds = {
+	assistantId?: string;
+	thoughtId?: string;
+};
+
 export class TranscriptState {
 	private messageSeq = 0;
 	private activeAssistantId: string | undefined;
@@ -147,7 +152,7 @@ export class TranscriptState {
 		return message.id;
 	}
 
-	finishAssistant(): { assistantId?: string; thoughtId?: string } {
+	finishAssistant(): FinishedAssistantIds {
 		const result = {
 			assistantId: this.activeAssistantId,
 			thoughtId: this.activeThoughtId,

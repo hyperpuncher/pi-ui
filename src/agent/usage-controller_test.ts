@@ -1,7 +1,7 @@
-import type { AgentSessionRuntime, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { assertEquals } from "@std/assert";
 
-import type { AppStore, AppUsage } from "../state/app-store.ts";
+import type { AppUsage } from "../state/app-store.ts";
+import { agentSessionRuntimeStub } from "./test-fixtures.ts";
 import { latestCacheHitPercent, UsageController } from "./usage-controller.ts";
 
 Deno.test("keeps cached Codex usage while switching models", async () => {
@@ -19,12 +19,12 @@ Deno.test("keeps cached Codex usage while switching models", async () => {
 		}),
 		sessionManager: { getEntries: () => [] },
 	};
-	const runtime = { session } as unknown as AgentSessionRuntime;
+	const runtime = agentSessionRuntimeStub({ session });
 	const state = {
 		setUsage: (usage: AppUsage) => {
 			rendered = usage;
 		},
-	} as unknown as AppStore;
+	};
 	const controller = new UsageController(
 		() => runtime,
 		state,
@@ -72,12 +72,12 @@ Deno.test("shows OpenCode Go usage for OpenCode Go models", async () => {
 		}),
 		sessionManager: { getEntries: () => [] },
 	};
-	const runtime = { session } as unknown as AgentSessionRuntime;
+	const runtime = agentSessionRuntimeStub({ session });
 	const state = {
 		setUsage: (usage: AppUsage) => {
 			rendered = usage;
 		},
-	} as unknown as AppStore;
+	};
 	const controller = new UsageController(
 		() => runtime,
 		state,
@@ -138,7 +138,7 @@ Deno.test("uses the latest assistant prompt cache hit rate", () => {
 				usage: { input: 10, cacheRead: 80, cacheWrite: 10 },
 			},
 		},
-	] as unknown as SessionEntry[];
+	];
 
 	assertEquals(latestCacheHitPercent(entries), 80);
 	assertEquals(latestCacheHitPercent([]), undefined);

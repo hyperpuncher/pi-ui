@@ -7,6 +7,7 @@ import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { Icon } from "./icon.tsx";
 import { ShortcutTooltip } from "./keyboard.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 type PromptToolbarAction =
 	| "commands"
@@ -20,7 +21,7 @@ export function renderPromptToolbar(
 	state: AppRenderSnapshot,
 	reviewAvailable = false,
 ): string {
-	return (
+	return syncHtml(
 		<div
 			id="prompt-toolbar"
 			class="flex shrink-0 items-center gap-0.5"
@@ -65,8 +66,8 @@ export function renderPromptToolbar(
 			>
 				<DiffIcon />
 			</PromptToolbarButton>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function PromptToolbarButton(props: {

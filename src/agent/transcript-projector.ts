@@ -11,8 +11,9 @@ import {
 	attachmentDisplayName,
 	splitLeadingAttachmentReferences,
 } from "../utils/attachment-references.ts";
-import { isRecord } from "../utils/type-guards.ts";
+import { isRecord, isString } from "../utils/type-guards.ts";
 import { collectCacheMisses, formatCacheMissNotice } from "./cache-miss.ts";
+import type { ToolArguments } from "./session-event-reducer.ts";
 import {
 	compactToolOutput,
 	contentToText,
@@ -24,10 +25,14 @@ import {
 
 export type ProjectedTranscript = Pick<TranscriptState, "replaceMessages">;
 type AgentMessage = Extract<AgentSessionEvent, { type: "message_start" }>["message"];
+type UserContent = Extract<AgentMessage, { role: "user" }>["content"];
+type AssistantContent = Extract<AgentMessage, { role: "assistant" }>["content"];
+type AssistantContentPart = Extract<AssistantContent, readonly object[]>[number];
+type AgentToolCall = Extract<AssistantContentPart, { type: "toolCall" }>;
 
 export class TranscriptProjector {
 	load(runtime: AgentSessionRuntime, state: ProjectedTranscript): void {
-		const pending = new Map<string, { name: string; args: unknown }>();
+		const pending = new Map<string, { name: string; args: ToolArguments }>();
 		const entries = runtime.session.sessionManager.getBranch();
 		const misses = runtime.session.settingsManager?.getShowCacheMissNotices()
 			? collectCacheMisses(entries, runtime.session.modelRuntime)
@@ -49,7 +54,7 @@ export class TranscriptProjector {
 
 	entry(
 		entry: SessionEntry,
-		pending: Map<string, { name: string; args: unknown }>,
+		pending: Map<string, { name: string; args: ToolArguments }>,
 		cacheMissNotice?: string,
 	): AppMessageInput[] {
 		const timestamp = new Date(entry.timestamp);
@@ -153,15 +158,11 @@ export function userContentToMessages(
 	attachments?: AppMessageInput["attachments"],
 ): AppMessageInput[] {
 	const skill = parseSkillBlock(text);
-	if (!skill)
-		return [
-			{
-				role: "user",
-				text,
-				timestamp,
-				...(attachments?.length ? { attachments } : {}),
-			},
-		];
+	if (!skill) {
+		const message: AppMessageInput = { role: "user", text, timestamp };
+		if (attachments?.length) message.attachments = attachments;
+		return [message];
+	}
 	const messages: AppMessageInput[] = [
 		{
 			role: "skill",
@@ -181,30 +182,28 @@ export function userContentToMessages(
 	return messages;
 }
 
-function userContentRawText(content: unknown): string {
+function userContentRawText(content: UserContent): string {
 	return Array.isArray(content)
 		? content
-				.filter(
-					(part) =>
-						isRecord(part) &&
-						part.type === "text" &&
-						typeof part.text === "string",
+				.flatMap((part) =>
+					isRecord(part) && part.type === "text" && isString(part.text)
+						? [stripAnsi(part.text)]
+						: [],
 				)
-				.map((part) => stripAnsi(String(part.text)))
 				.join("\n")
 		: contentToText(content);
 }
 
 function userContentAttachments(
 	paths: readonly string[],
-	content: unknown,
+	content: UserContent,
 ): AppMessageInput["attachments"] {
 	const images = Array.isArray(content)
 		? content.flatMap((part) =>
 				isRecord(part) &&
 				part.type === "image" &&
-				typeof part.data === "string" &&
-				typeof part.mimeType === "string" &&
+				isString(part.data) &&
+				isString(part.mimeType) &&
 				/^image\/[a-z0-9.+-]+$/i.test(part.mimeType)
 					? [{ data: part.data, mimeType: part.mimeType }]
 					: [],
@@ -214,12 +213,13 @@ function userContentAttachments(
 	const attachments: NonNullable<AppMessageInput["attachments"]> = paths.map((path) => {
 		const name = attachmentDisplayName(path);
 		const image = isImageFileName(name) ? images[imageIndex++] : undefined;
-		return {
+		const attachment: NonNullable<AppMessageInput["attachments"]>[number] = {
 			name,
 			path,
 			mimeType: image?.mimeType ?? mimeTypeFromName(name),
-			...(image ? { image } : {}),
 		};
+		if (image) attachment.image = image;
+		return attachment;
 	});
 	for (; imageIndex < images.length; imageIndex += 1) {
 		attachments.push({
@@ -237,22 +237,24 @@ function isImageFileName(name: string): boolean {
 
 function mimeTypeFromName(name: string): string | undefined {
 	const extension = name.split(".").at(-1)?.toLowerCase();
-	const types: Record<string, string> = {
-		txt: "text/plain",
-		md: "text/markdown",
-		json: "application/json",
-		pdf: "application/pdf",
-		ogg: "audio/ogg",
-		mp3: "audio/mpeg",
-		wav: "audio/wav",
-	};
-	return extension ? types[extension] : undefined;
+	const types = new Map<string, string>(
+		Object.entries({
+			txt: "text/plain",
+			md: "text/markdown",
+			json: "application/json",
+			pdf: "application/pdf",
+			ogg: "audio/ogg",
+			mp3: "audio/mpeg",
+			wav: "audio/wav",
+		}),
+	);
+	return extension ? types.get(extension) : undefined;
 }
 
 export function toolResultToAppMessage(
 	message: AgentMessage & { role: "toolResult" },
 	timestamp: Date,
-	toolCall?: { name: string; args: unknown },
+	toolCall?: { name: string; args: ToolArguments },
 ): AppMessageInput {
 	const view = formatToolResult(message.toolName, message, {
 		args: toolCall?.args,
@@ -275,15 +277,15 @@ export function toolResultToAppMessage(
 	};
 }
 
-export function extractToolCalls(
-	content: unknown,
-): Array<{ id: string; name: string; arguments: unknown }> {
+export function extractToolCalls<Content>(
+	content: Content,
+): Array<Pick<AgentToolCall, "id" | "name" | "arguments">> {
 	if (!Array.isArray(content)) return [];
 	return content.flatMap((part) =>
 		isRecord(part) &&
 		part.type === "toolCall" &&
-		typeof part.id === "string" &&
-		typeof part.name === "string"
+		isString(part.id) &&
+		isString(part.name)
 			? [{ id: part.id, name: part.name, arguments: part.arguments }]
 			: [],
 	);
@@ -299,17 +301,9 @@ export function assistantContentToMessages(
 	let assistantText = "";
 	let thoughtText = "";
 	for (const part of content) {
-		if (
-			isRecord(part) &&
-			part.type === "thinking" &&
-			typeof part.thinking === "string"
-		) {
+		if (isRecord(part) && part.type === "thinking" && isString(part.thinking)) {
 			thoughtText += `${thoughtText ? "\n\n" : ""}${part.thinking}`;
-		} else if (
-			isRecord(part) &&
-			part.type === "text" &&
-			typeof part.text === "string"
-		) {
+		} else if (isRecord(part) && part.type === "text" && isString(part.text)) {
 			assistantText += part.text;
 		}
 	}

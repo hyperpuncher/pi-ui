@@ -5,9 +5,10 @@ import type {
 
 import type { AppStore, AppTreeEntry } from "../state/app-store.ts";
 import { formatDateTime } from "../utils/locale.ts";
-import { isRecord } from "../utils/type-guards.ts";
+import { isRecord, isString } from "../utils/type-guards.ts";
 
 type TreeState = Pick<AppStore, "setTreeEntries">;
+type TreeOwnerToken = PropertyKey | object;
 
 export type TreeNavigationResult =
 	| { status: "success"; editorText?: string }
@@ -16,7 +17,7 @@ export type TreeNavigationResult =
 
 export class TreeProjector {
 	private readonly navigations = new Map<
-		unknown,
+		TreeOwnerToken,
 		{ session: AgentSessionRuntime["session"] }
 	>();
 
@@ -24,7 +25,7 @@ export class TreeProjector {
 		private readonly getRuntime: () => AgentSessionRuntime,
 		private readonly state: TreeState,
 		private readonly onNavigated: () => void = () => {},
-		private readonly getOwnerToken: () => unknown = () => getRuntime().session,
+		private readonly getOwnerToken: () => TreeOwnerToken = () => getRuntime().session,
 	) {}
 
 	open(): void {
@@ -252,13 +253,13 @@ function formatTreeEntry(
 	return { role: "title: ", text: entry.name ?? "(empty)", ...metadata };
 }
 
-function extractTreeText(content: unknown): string {
-	if (typeof content === "string") return content;
+function extractTreeText<Content>(content: Content): string {
+	if (isString(content)) return content;
 	if (!Array.isArray(content)) return "";
 	return content
 		.filter(
 			(item): item is { type: "text"; text: string } =>
-				isRecord(item) && item.type === "text" && typeof item.text === "string",
+				isRecord(item) && item.type === "text" && isString(item.text),
 		)
 		.map((item) => item.text)
 		.join(" ");

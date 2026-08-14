@@ -1,4 +1,5 @@
 import { DEFAULT_PIERRE_THEMES, type PierreThemes } from "./pierre-theme.ts";
+import { isRecord, isString } from "./utils/type-guards.ts";
 
 export type CodeThemeAppearance = keyof PierreThemes;
 export type CodeThemeOption = Readonly<{
@@ -89,19 +90,24 @@ const darkThemeNames = [
 	"vesper",
 ] as const;
 
-const words: Record<string, string> = {
-	ayu: "Ayu",
-	cvd: "CVD",
-	github: "GitHub",
-	min: "Min",
-	pierre: "Pierre",
-	vscode: "VS Code",
-};
+const words = new Map<string, string>(
+	Object.entries({
+		ayu: "Ayu",
+		cvd: "CVD",
+		github: "GitHub",
+		min: "Min",
+		pierre: "Pierre",
+		vscode: "VS Code",
+	}),
+);
 
 function themeLabel(name: string): string {
 	return name
 		.split("-")
-		.map((word) => words[word] ?? `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`)
+		.map(
+			(word) =>
+				words.get(word) ?? `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`,
+		)
 		.join(" ");
 }
 
@@ -131,20 +137,19 @@ export function codeThemesFor(
 	return appearance === "light" ? LIGHT_CODE_THEMES : DARK_CODE_THEMES;
 }
 
-export function findCodeTheme(
+export function findCodeTheme<Value>(
 	appearance: CodeThemeAppearance,
-	name: unknown,
+	name: Value,
 ): CodeThemeOption | undefined {
-	return typeof name === "string"
+	return isString(name)
 		? codeThemesFor(appearance).find((theme) => theme.name === name)
 		: undefined;
 }
 
-export function validCodeThemes(value: unknown): PierreThemes | undefined {
-	if (typeof value !== "object" || value === null) return undefined;
-	const themes = value as Record<string, unknown>;
-	const light = findCodeTheme("light", themes.light)?.name;
-	const dark = findCodeTheme("dark", themes.dark)?.name;
+export function validCodeThemes<Value>(value: Value): PierreThemes | undefined {
+	if (!isRecord(value)) return undefined;
+	const light = findCodeTheme("light", value.light)?.name;
+	const dark = findCodeTheme("dark", value.dark)?.name;
 	return light && dark ? { dark, light } : undefined;
 }
 

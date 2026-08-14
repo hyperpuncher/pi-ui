@@ -104,9 +104,12 @@ export class ModelController {
 			if (!session.cycleThinkingLevel()) return false;
 		} else {
 			if (!session.supportsThinking()) return false;
-			const levels = session.getAvailableThinkingLevels() as AppThinkingLevel[];
+			const levels = session.getAvailableThinkingLevels().filter(isThinkingLevel);
 			if (!levels.length) return false;
-			const index = levels.indexOf(session.thinkingLevel as AppThinkingLevel);
+			const current = isThinkingLevel(session.thinkingLevel)
+				? session.thinkingLevel
+				: levels[0];
+			const index = levels.indexOf(current);
 			session.setThinkingLevel(levels[index <= 0 ? levels.length - 1 : index - 1]);
 		}
 		this.syncThinking();
@@ -115,10 +118,11 @@ export class ModelController {
 
 	syncThinking(): void {
 		const session = this.getRuntime().session;
-		this.state.setThinking(
-			session.thinkingLevel as AppThinkingLevel,
-			session.getAvailableThinkingLevels() as AppThinkingLevel[],
-		);
+		const levels = session.getAvailableThinkingLevels().filter(isThinkingLevel);
+		const current = isThinkingLevel(session.thinkingLevel)
+			? session.thinkingLevel
+			: (levels[0] ?? "off");
+		this.state.setThinking(current, levels);
 	}
 
 	private findOrReport(modelRef: string) {
@@ -156,17 +160,20 @@ export function resolveScopedModels<T extends ScopedModelCandidate>(
 	return scoped;
 }
 
-export function parseScopedModelPattern(pattern: string): {
+export type ScopedModelPattern = {
 	modelPattern: string;
 	thinkingLevel?: AppThinkingLevel;
-} {
+};
+
+export function parseScopedModelPattern(pattern: string): ScopedModelPattern {
 	const trimmed = pattern.trim();
 	const colon = trimmed.lastIndexOf(":");
-	if (colon === -1 || !isThinkingLevel(trimmed.slice(colon + 1)))
-		return { modelPattern: trimmed };
+	if (colon === -1) return { modelPattern: trimmed };
+	const thinkingLevel = trimmed.slice(colon + 1);
+	if (!isThinkingLevel(thinkingLevel)) return { modelPattern: trimmed };
 	return {
 		modelPattern: trimmed.slice(0, colon),
-		thinkingLevel: trimmed.slice(colon + 1) as AppThinkingLevel,
+		thinkingLevel,
 	};
 }
 

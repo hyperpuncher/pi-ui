@@ -1,3 +1,5 @@
+import { syncHtml } from "./sync-html.ts";
+
 export function StatusDot(props: {
 	state: "running" | "success" | "error";
 	label: string;
@@ -8,7 +10,7 @@ export function StatusDot(props: {
 	const statusClass =
 		props.state === "error" ? "pi-tool-status-error" : "pi-tool-status-success";
 	const running = props.state === "running";
-	return (
+	return syncHtml(
 		<span
 			class={["inline-grid size-2 shrink-0 *:[grid-area:1/1]", props.class]}
 			aria-label={props.label}
@@ -35,6 +37,6 @@ export function StatusDot(props: {
 					running ? "animate-ping" : "opacity-0",
 				]}
 			/>
-		</span>
-	) as string;
+		</span>,
+	);
 }

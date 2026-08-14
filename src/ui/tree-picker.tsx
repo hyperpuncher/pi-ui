@@ -1,9 +1,10 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppRenderSnapshot, AppTreeEntry } from "../state/app-store.ts";
 import { DateTime } from "./date-time.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderTreePicker(state: AppRenderSnapshot): string {
-	return (
+	return syncHtml(
 		<div id="tree-picker">
 			<div class="flex items-center gap-3 border-b border-border px-3 py-2 text-xs">
 				<label class="flex items-center gap-2">
@@ -31,14 +32,14 @@ export function renderTreePicker(state: AppRenderSnapshot): string {
 					{state.treeEntries.map(renderTreeRow)}
 				</div>
 			</div>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function renderTreeRow(entry: AppTreeEntry): string {
 	const haystack =
 		`${entry.role} ${entry.text} ${entry.meta} ${entry.label ?? ""}`.toLowerCase();
-	return (
+	return syncHtml(
 		<div
 			role="menuitem"
 			tabindex="-1"
@@ -103,6 +104,6 @@ function renderTreeRow(entry: AppTreeEntry): string {
 					active
 				</span>
 			)}
-		</div>
-	) as string;
+		</div>,
+	);
 }

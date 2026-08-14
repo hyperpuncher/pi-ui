@@ -2,7 +2,7 @@ export type EnhancementQueueJob = {
 	key: string;
 	priority: number;
 	run: (signal: AbortSignal) => Promise<void>;
-	onError?: (error: unknown) => void;
+	onError?: (error: ErrorOptions["cause"]) => void;
 	onCancel?: () => void;
 };
 
@@ -45,7 +45,7 @@ export class EnhancementQueue {
 			this.active.set(job, controller);
 			void job
 				.run(controller.signal)
-				.catch((error: unknown) => {
+				.catch((error: ErrorOptions["cause"]) => {
 					if (!controller.signal.aborted) job.onError?.(error);
 				})
 				.finally(() => {

@@ -1,8 +1,8 @@
-import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import { assertEquals } from "@std/assert";
 
 import { AppStore } from "../state/app-store.ts";
 import { AuthController } from "./auth-controller.ts";
+import { agentSessionRuntimeStub } from "./test-fixtures.ts";
 
 function nextTurn(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));
@@ -48,9 +48,9 @@ Deno.test("provider-owned API key login can request multiple fields", async () =
 			interaction: Parameters<NonNullable<typeof provider.auth.apiKey.login>>[0],
 		) => await provider.auth.apiKey.login(interaction),
 	};
-	const runtime = {
+	const runtime = agentSessionRuntimeStub({
 		services: { modelRuntime },
-	} as unknown as AgentSessionRuntime;
+	});
 	const state = new AppStore();
 	let changed = 0;
 	const controller = new AuthController(

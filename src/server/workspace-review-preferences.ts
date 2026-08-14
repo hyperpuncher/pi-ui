@@ -4,14 +4,10 @@ import {
 } from "../workspace-review-types.ts";
 import { readAppConfig, updateAppConfig } from "./app-config.ts";
 
-type AppConfig = Record<string, unknown> & {
-	gitView?: WorkspaceReviewPreferences;
-};
-
 export async function readWorkspaceReviewPreferences(
 	path?: string,
 ): Promise<WorkspaceReviewPreferences> {
-	const config = (await readAppConfig(path)) as AppConfig;
+	const config = await readAppConfig(path);
 	return normalizeWorkspaceReviewPreferences(config.gitView);
 }
 
@@ -19,7 +15,7 @@ export async function writeWorkspaceReviewPreferences(
 	preferences: WorkspaceReviewPreferences,
 	path?: string,
 ): Promise<void> {
-	await updateAppConfig((config: AppConfig) => {
+	await updateAppConfig((config) => {
 		config.gitView = normalizeWorkspaceReviewPreferences(preferences);
 	}, path);
 }

@@ -16,7 +16,7 @@ Deno.test("mutation roots contain only minimal affected element subtrees", () =>
 function element(descendants: unknown[] = []) {
 	const value = {
 		nodeType: 1,
-		contains(candidate: unknown) {
+		contains(candidate: (typeof descendants)[number]) {
 			return descendants.includes(candidate);
 		},
 	};

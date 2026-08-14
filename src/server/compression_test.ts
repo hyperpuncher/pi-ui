@@ -97,8 +97,10 @@ function decompressedBody(
 			: encoding === "br"
 				? createBrotliDecompress()
 				: createGunzip();
+	// SAFETY: Deno and Node expose the same Web ReadableStream contract here.
 	Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]).pipe(decompressor);
-	return Readable.toWeb(decompressor) as unknown as ReadableStream<Uint8Array>;
+	// SAFETY: The decompressor emits byte chunks, so the Web stream contains Uint8Array values.
+	return Readable.toWeb(decompressor) as ReadableStream<Uint8Array>;
 }
 
 async function readBytes(

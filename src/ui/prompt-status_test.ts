@@ -1,17 +1,19 @@
 import { assertFalse, assertStringIncludes } from "@std/assert";
 
-import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { renderPromptStatus } from "./prompt-status.tsx";
+import { appRenderSnapshot } from "./test-fixtures.ts";
 
 Deno.test("context tooltip stays structured while usage is unavailable", () => {
-	const html = renderPromptStatus({
-		activityText: undefined,
-		usage: {
-			text: "$14.60 • ?/272k",
-			costText: "$14.60",
-			contextWindow: 272_000,
-		},
-	} as unknown as AppRenderSnapshot);
+	const html = renderPromptStatus(
+		appRenderSnapshot({
+			activityText: undefined,
+			usage: {
+				text: "$14.60 • ?/272k",
+				costText: "$14.60",
+				contextWindow: 272_000,
+			},
+		}),
+	);
 
 	assertStringIncludes(html, 'data-tooltip="Context usage"');
 	assertStringIncludes(html, 'data-slot="tooltip-content"');

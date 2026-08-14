@@ -1,6 +1,19 @@
+interface BasecoatRefreshRoot {
+	readonly nodeType?: number;
+}
+
+interface TransferFileCollection {
+	readonly length: number;
+}
+
+interface FileTransferData {
+	readonly files?: TransferFileCollection;
+	readonly types?: readonly string[];
+}
+
 interface PiUiNamespace {
 	basecoat: {
-		refresh(root?: unknown): void;
+		refresh(root?: BasecoatRefreshRoot): void;
 	};
 	dialogs: {
 		toggleSession(): boolean;
@@ -13,8 +26,8 @@ interface PiUiNamespace {
 	};
 	fileTransfer: {
 		pick(): Promise<void>;
-		hasFiles(data?: unknown): boolean;
-		insert(data?: unknown): Promise<void>;
+		hasFiles(data?: FileTransferData): boolean;
+		insert(data?: FileTransferData | TransferFileCollection): Promise<void>;
 		hasAttachments(): boolean;
 		canSubmit(prompt: string): boolean;
 		submit(

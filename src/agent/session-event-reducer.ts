@@ -5,6 +5,8 @@ import type {
 	TranscriptMessageInput,
 	TranscriptMessageOptions,
 } from "../state/transcript-state.ts";
+import type { JsonValue } from "../utils/json-types.ts";
+import { isString } from "../utils/type-guards.ts";
 
 type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 	AgentSessionEvent,
@@ -14,6 +16,7 @@ type AssistantEventMessage = Extract<
 	EventOf<"message_end">["message"],
 	{ role: "assistant" }
 >;
+export type ToolArguments = JsonValue;
 
 export type SessionEventStateSink = {
 	appendMessage(
@@ -32,7 +35,7 @@ export type SessionEventStateSink = {
 export type SessionEventToolState = {
 	messageIds: Map<string, string>;
 	previewMessages: Map<number, { id: string; argumentPrefix: string | undefined }>;
-	callArgs: Map<string, unknown>;
+	callArgs: Map<string, ToolArguments>;
 	startedAt: Map<string, number>;
 };
 
@@ -49,13 +52,13 @@ export type SessionEventReducerContext = {
 		timestamp: Date,
 	) => readonly TranscriptMessageInput[];
 	formatToolStart: (event: EventOf<"tool_execution_start">) => ToolMessageView;
-	formatToolPreview: (toolName: string, args: unknown) => ToolMessageView;
+	formatToolPreview: (toolName: string, args: ToolArguments) => ToolMessageView;
 	formatToolUpdate: (
 		event: EventOf<"tool_execution_update">,
 	) => Partial<Omit<TranscriptMessage, "id">>;
 	formatToolEnd: (
 		event: EventOf<"tool_execution_end">,
-		args: unknown,
+		args: ToolArguments,
 		startedAt: number | undefined,
 	) => ToolMessageView;
 	syncUsage?: () => void;
@@ -85,7 +88,8 @@ function completedPathArgument(prefix: string): Record<string, string> | undefin
 	const match = prefix.match(/"(path|file_path)"\s*:\s*"((?:\\.|[^"\\])*)"/);
 	if (!match) return undefined;
 	try {
-		return { [match[1]]: JSON.parse(`"${match[2]}"`) as string };
+		const path = JSON.parse(`"${match[2]}"`);
+		return isString(path) ? { [match[1]]: path } : undefined;
 	} catch {
 		return undefined;
 	}
@@ -106,16 +110,17 @@ export function reduceSessionEvent(
 				event.message,
 				context.now?.() ?? new Date(),
 			)) {
-				state.appendMessage(message.role, message.text, {
-					...(message.attachments?.length
-						? { attachments: message.attachments }
-						: {}),
+				const options: TranscriptMessageOptions = {
 					title: message.title,
 					titleParts: message.titleParts,
 					meta: message.meta,
 					state: message.state,
 					format: message.format,
-				});
+				};
+				if (message.attachments?.length) {
+					options.attachments = message.attachments;
+				}
+				state.appendMessage(message.role, message.text, options);
 			}
 			break;
 		case "message_update": {

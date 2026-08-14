@@ -124,7 +124,7 @@ export function createWorkspaceReviewCommentStore() {
 
 	return {
 		add,
-		annotations: annotations as ReadonlyMap<string, ReviewAnnotation[]>,
+		annotations,
 		hasDraft,
 		reconcileFiles,
 		remove,

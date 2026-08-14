@@ -1,5 +1,5 @@
 import { fileUriToPath } from "../file-uri.js";
-import { attachmentFileIconShapes, attachmentFileKind } from "./attachment-file.js";
+import { attachmentFileIcons, attachmentFileKind } from "./attachment-file.js";
 import { closePickers } from "./pickers.js";
 import { promptInput } from "./prompt.js";
 
@@ -134,7 +134,7 @@ export async function submit(endpoint, prompt, streamingBehavior) {
 
 export function extractTransferredFilePaths(data) {
 	const references =
-		typeof data.getData === "function"
+		"getData" in data
 			? FILE_REFERENCE_TYPES.flatMap((type) => data.getData(type).split(/\r?\n/))
 			: [];
 	for (const file of transferredFiles(data)) {
@@ -145,7 +145,7 @@ export function extractTransferredFilePaths(data) {
 
 function transferredFiles(data) {
 	if (data.files) return [...data.files];
-	return typeof data[Symbol.iterator] === "function" ? [...data] : [];
+	return Array.from(data);
 }
 
 function fileReferenceToPath(value) {
@@ -186,7 +186,7 @@ async function uploadTransferredFiles(files) {
 		const result = await response.json().catch(() => ({}));
 		if (!response.ok) {
 			showTransferError(
-				typeof result.message === "string"
+				result.message?.constructor === String
 					? result.message
 					: "Could not transfer the selected files.",
 			);
@@ -359,7 +359,7 @@ function fileExtension(name) {
 
 function attachmentFileIcon(kind) {
 	const namespace = "http://www.w3.org/2000/svg";
-	const shape = attachmentFileIconShapes[kind] ?? attachmentFileIconShapes.file;
+	const icon = attachmentFileIcons[kind] ?? attachmentFileIcons.file;
 	const svg = document.createElementNS(namespace, "svg");
 	svg.setAttribute("class", "size-5");
 	svg.setAttribute("viewBox", "0 0 24 24");
@@ -369,14 +369,14 @@ function attachmentFileIcon(kind) {
 	svg.setAttribute("stroke-linejoin", "round");
 	svg.setAttribute("stroke-width", "2");
 	svg.setAttribute("aria-hidden", "true");
-	for (const data of shape.paths) {
+	for (const data of icon.paths) {
 		const path = document.createElementNS(namespace, "path");
 		path.setAttribute("d", data);
 		svg.append(path);
 	}
-	if (shape.circle) {
+	if (icon.circle) {
 		const circle = document.createElementNS(namespace, "circle");
-		for (const [name, value] of Object.entries(shape.circle)) {
+		for (const [name, value] of Object.entries(icon.circle)) {
 			circle.setAttribute(name, String(value));
 		}
 		svg.append(circle);

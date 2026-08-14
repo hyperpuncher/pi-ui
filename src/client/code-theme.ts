@@ -1,11 +1,11 @@
 import {
 	getHighlighterIfLoaded,
 	preloadHighlighter,
-	type SupportedLanguages,
 	type ThemedToken,
 } from "@pierre/diffs";
 
 import { CODE_THEMES, codeThemesFor, type CodeThemeAppearance } from "../code-themes.ts";
+import { isPierreThemes } from "../pierre-theme.ts";
 
 const themeNames = CODE_THEMES.map((theme) => theme.name);
 let previewsPromise: Promise<void> | undefined;
@@ -27,9 +27,8 @@ function bind(): void {
 		return;
 
 	gallery.addEventListener("click", (event) => {
-		const card = (event.target as Element).closest<HTMLButtonElement>(
-			"[data-theme-name]",
-		);
+		if (!(event.target instanceof Element)) return;
+		const card = event.target.closest<HTMLButtonElement>("[data-theme-name]");
 		if (card) void selectTheme(card);
 	});
 	search.addEventListener("input", () => filterCards(gallery, search.value));
@@ -85,7 +84,7 @@ async function loadPreviews(): Promise<void> {
 	setStatus("Loading theme previews…");
 	try {
 		await preloadHighlighter({
-			langs: ["typescript" as SupportedLanguages],
+			langs: ["typescript"],
 			themes: themeNames,
 		});
 		const highlighter = getHighlighterIfLoaded();
@@ -94,7 +93,7 @@ async function loadPreviews(): Promise<void> {
 		const cards = document.querySelectorAll<HTMLButtonElement>("[data-theme-name]");
 		for (const [index, card] of [...cards].entries()) {
 			const name = card.dataset.themeName;
-			const mode = card.dataset.themeAppearance as CodeThemeAppearance | undefined;
+			const mode = themeAppearance(card.dataset.themeAppearance);
 			const preview = card.querySelector<HTMLElement>(".code-theme-preview");
 			if (!name || !mode || !preview) continue;
 			const result = highlighter.codeToTokens(sampleCode(name, mode), {
@@ -109,6 +108,10 @@ async function loadPreviews(): Promise<void> {
 		previewsPromise = undefined;
 		setStatus("Could not load theme previews.");
 	}
+}
+
+function themeAppearance(value: string | undefined): CodeThemeAppearance | undefined {
+	return value === "light" || value === "dark" ? value : undefined;
 }
 
 function sampleCode(name: string, mode: CodeThemeAppearance): string {
@@ -142,7 +145,7 @@ function renderPreview(
 async function selectTheme(card: HTMLButtonElement): Promise<void> {
 	if (saving || card.getAttribute("aria-pressed") === "true") return;
 	const name = card.dataset.themeName;
-	const mode = card.dataset.themeAppearance as CodeThemeAppearance | undefined;
+	const mode = themeAppearance(card.dataset.themeAppearance);
 	const endpoint = document.body.dataset.codeThemeEndpoint;
 	if (!name || !mode || !endpoint) return;
 
@@ -156,7 +159,8 @@ async function selectTheme(card: HTMLButtonElement): Promise<void> {
 			method: "POST",
 		});
 		if (!response.ok) throw new Error("Theme was not saved");
-		const themes = (await response.json()) as { dark: string; light: string };
+		const themes = await response.json();
+		if (!isPierreThemes(themes)) throw new Error("Invalid theme response");
 		document.body.dataset.codeThemeLight = themes.light;
 		document.body.dataset.codeThemeDark = themes.dark;
 		updateSelection(mode, name);

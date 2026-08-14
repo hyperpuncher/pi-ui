@@ -11,12 +11,13 @@ import {
 } from "./prompt-pickers.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import { renderPromptToolbar } from "./prompt-toolbar.tsx";
+import { syncHtml } from "./sync-html.ts";
 
 export function renderPromptBox(
 	state: AppRenderSnapshot,
 	reviewAvailable = false,
 ): string {
-	return (
+	return syncHtml(
 		<div
 			id="prompt-box"
 			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-(--pi-prompt-max-width) overflow-visible text-sm"
@@ -149,12 +150,12 @@ export function renderPromptBox(
 					</div>
 				</footer>
 			</div>
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 export function renderPromptQueue(state: AppRenderSnapshot): string {
-	return (
+	return syncHtml(
 		<div
 			id="prompt-queue"
 			class="pointer-events-none mx-auto flex w-[calc(100%-2rem)] flex-col items-center sm:w-[calc(100%-4rem)]"
@@ -162,8 +163,8 @@ export function renderPromptQueue(state: AppRenderSnapshot): string {
 		>
 			{renderLatestButton()}
 			{renderQueuedMessages(state)}
-		</div>
-	) as string;
+		</div>,
+	);
 }
 
 function renderLatestButton() {
@@ -217,7 +218,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 		})),
 	];
 	if (items.length === 0) return "";
-	return (
+	return syncHtml(
 		<section class="pointer-events-auto -mx-3 -mb-3 flex max-h-40 w-[calc(100%+1.5rem)] flex-col gap-1 overflow-y-auto px-3 pt-2 pb-4">
 			{items.map(({ behavior, index, label, text }, itemIndex) => (
 				<div class="prompt-queue-item pi-raised-surface pi-prompt-surface group flex min-h-9 min-w-0 translate-y-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs opacity-100 shadow-md transition-[opacity,translate] duration-100 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
@@ -266,6 +267,6 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 					</button>
 				</div>
 			))}
-		</section>
-	) as string;
+		</section>,
+	);
 }
