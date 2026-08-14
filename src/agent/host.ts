@@ -136,6 +136,18 @@ export class AgentHost {
 		this.runtime.closeAuth();
 	}
 
+	openLlama(): void {
+		this.runtime.openLlama();
+	}
+
+	toggleLlamaModel(modelId: string): boolean {
+		return this.runtime.toggleLlamaModel(modelId);
+	}
+
+	closeLlama(): void {
+		this.runtime.closeLlama();
+	}
+
 	setModel(modelRef: string): Promise<boolean> {
 		return this.runtime.setModel(modelRef);
 	}

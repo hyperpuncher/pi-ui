@@ -64,6 +64,15 @@ export type AppAuthDialog = {
 	progress: string[];
 	error?: string;
 };
+export type AppLlamaModel = { id: string; status: string };
+export type AppLlamaDialog = {
+	models: AppLlamaModel[];
+	serverUrl?: string;
+	busyModel?: string;
+	progress?: { label: string; ratio?: number };
+	status?: string;
+	error?: string;
+};
 export type BackgroundSessionStatus = "running" | "completed";
 export type AppSessionSummary = {
 	path: string;
@@ -111,7 +120,7 @@ export type AppKeybindHint = { keys: string; description: string };
 
 export type UiCommitEffect =
 	| { type: "reopen-model-picker" }
-	| { type: "auth-dialog"; open: boolean }
+	| { type: "dialog"; id: "auth-dialog" | "llama-dialog"; open: boolean }
 	| { type: "scroll-messages-to-bottom" }
 	| { type: "signal-overrides"; values: JsonObject };
 
@@ -144,6 +153,7 @@ export type AppRenderSnapshot = Readonly<{
 	treeEntries: readonly AppTreeEntry[];
 	slashCommands: readonly AppSlashCommand[];
 	authDialog: AppAuthDialog | undefined;
+	llamaDialog: AppLlamaDialog | undefined;
 	currentModel: string | undefined;
 	currentSessionPath: string | undefined;
 	isTemporarySession: boolean;
@@ -207,6 +217,7 @@ export class AppStore {
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	authDialog: AppAuthDialog | undefined;
+	llamaDialog: AppLlamaDialog | undefined;
 	currentModel: string | undefined;
 	currentSessionPath: string | undefined;
 	isTemporarySession = false;
@@ -267,6 +278,7 @@ export class AppStore {
 			treeEntries: this.treeEntries.map((entry) => ({ ...entry })),
 			slashCommands: this.slashCommands.map((command) => ({ ...command })),
 			authDialog: this.authDialog ? structuredClone(this.authDialog) : undefined,
+			llamaDialog: this.llamaDialog ? structuredClone(this.llamaDialog) : undefined,
 			currentModel: this.currentModel,
 			currentSessionPath: this.currentSessionPath,
 			isTemporarySession: this.isTemporarySession,
@@ -477,12 +489,24 @@ export class AppStore {
 		options: { resetInput?: boolean } = {},
 	): void {
 		this.authDialog = dialog;
-		this.presentation?.requestCommit({ type: "auth-dialog", open: Boolean(dialog) });
+		this.presentation?.requestCommit({
+			type: "dialog",
+			id: "auth-dialog",
+			open: Boolean(dialog),
+		});
 		if (options.resetInput)
 			this.presentation?.requestCommit({
 				type: "signal-overrides",
 				values: { authInput: "" },
 			});
+	}
+	setLlamaDialog(dialog: AppLlamaDialog | undefined): void {
+		this.llamaDialog = dialog;
+		this.presentation?.requestCommit({
+			type: "dialog",
+			id: "llama-dialog",
+			open: Boolean(dialog),
+		});
 	}
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;

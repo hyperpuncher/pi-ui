@@ -643,6 +643,7 @@ Deno.test("primary and picker fat views contain every server-owned dynamic root"
 			assertIncludes(primary, `id="${id}"`);
 		for (const id of [
 			"auth-dialog-content",
+			"llama-dialog-content",
 			"workspace-menu",
 			"model-picker",
 			"thinking-picker",

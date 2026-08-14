@@ -8,7 +8,7 @@ function nextTurn(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-Deno.test("provider-owned API key login can request multiple fields", async () => {
+Deno.test("provider-owned API key login can request multiple fields and accept empty values", async () => {
 	const submitted: string[] = [];
 	const provider = {
 		id: "custom-cloud",
@@ -80,9 +80,9 @@ Deno.test("provider-owned API key login can request multiple fields", async () =
 	assertEquals(state.authDialog?.prompt?.message, "Enter account ID");
 	assertEquals(state.authDialog?.prompt?.secret, false);
 
-	assertEquals(controller.submitInput("account"), true);
+	assertEquals(controller.submitInput(""), true);
 	await nextTurn();
-	assertEquals(submitted, ["secret", "account"]);
+	assertEquals(submitted, ["secret", ""]);
 	assertEquals(changed, 1);
 	assertEquals(state.authDialog?.phase, "result");
 });

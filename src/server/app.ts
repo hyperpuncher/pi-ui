@@ -18,6 +18,7 @@ import { registerCodeThemeRoutes } from "./routes/code-theme.ts";
 import type { RouteContext, RouteResources } from "./routes/context.ts";
 import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
 import { registerFileRoutes } from "./routes/files.ts";
+import { registerLlamaRoutes } from "./routes/llama.ts";
 import { registerModelRoutes } from "./routes/models.ts";
 import { registerPromptRoutes } from "./routes/prompt.ts";
 import { registerSessionPerformanceRoutes } from "./routes/session-performance.ts";
@@ -125,6 +126,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerWorkspaceReviewRoutes(router);
 	registerModelRoutes(router);
 	registerAuthRoutes(router);
+	registerLlamaRoutes(router);
 	registerTreeRoutes(router);
 	registerFileRoutes(router);
 	return router;

@@ -34,6 +34,8 @@ import {
 } from "./background-session-controller.ts";
 import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "./cache-miss.ts";
+import { LlamaController } from "./llama-controller.ts";
+import { llamaProviderExtension } from "./llama-provider-extension.ts";
 import { ModelController, resolveScopedModels } from "./model-controller.ts";
 import {
 	type SessionCatalogWatch,
@@ -63,6 +65,8 @@ import {
 import { TranscriptProjector } from "./transcript-projector.ts";
 import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
+
+const extensionFactories = [llamaProviderExtension];
 
 type PromptStreamingBehavior = NonNullable<PromptOptions["streamingBehavior"]>;
 type RuntimePromptOptions = Pick<PromptOptions, "images" | "streamingBehavior">;
@@ -122,6 +126,7 @@ export class RuntimeController {
 	private readonly transitionController: SessionTransitionController;
 	private readonly backgroundSessions = new BackgroundSessionController();
 	private readonly catalog: SessionCatalog;
+	private readonly llama: LlamaController;
 	private readonly models: ModelController;
 	private readonly usage: UsageController;
 	private readonly transcript = new TranscriptProjector();
@@ -158,6 +163,11 @@ export class RuntimeController {
 			() => this.runtime,
 			state,
 			() => this.afterModelChange(),
+		);
+		this.llama = new LlamaController(
+			() => this.runtime,
+			state,
+			() => this.syncModels(),
 		);
 		this.usage = new UsageController(() => this.runtime, state);
 		this.tree = new TreeProjector(
@@ -205,7 +215,11 @@ export class RuntimeController {
 		}) => {
 			const services = await sessionPerformance.measure(
 				"runtimeServicesCreate",
-				() => createAgentSessionServices({ cwd }),
+				() =>
+					createAgentSessionServices({
+						cwd,
+						resourceLoaderOptions: { extensionFactories },
+					}),
 			);
 			applyHttpProxySetting(services.settingsManager.getGlobalSettings().httpProxy);
 			configureHttpDispatcher(services.settingsManager.getHttpIdleTimeoutMs());
@@ -283,6 +297,11 @@ export class RuntimeController {
 
 		if (trimmed === "/logout") {
 			this.openLogout();
+			return true;
+		}
+
+		if (trimmed === "/llama") {
+			this.openLlama();
 			return true;
 		}
 
@@ -816,6 +835,18 @@ export class RuntimeController {
 		this.auth.close();
 	}
 
+	openLlama(): void {
+		this.llama.open();
+	}
+
+	toggleLlamaModel(modelId: string): boolean {
+		return this.llama.toggle(modelId);
+	}
+
+	closeLlama(): void {
+		this.llama.close();
+	}
+
 	async setModel(modelRef: string): Promise<boolean> {
 		return await this.models.set(modelRef);
 	}
@@ -844,6 +875,7 @@ export class RuntimeController {
 		this.sessionTouchTimes.clear();
 		this.sessionFileRefreshTimers.clear();
 		this.auth.dispose();
+		this.llama.dispose();
 		this.usage.dispose();
 		const runtimes = [this.runtime];
 		for (const session of this.backgroundSessions.values()) {
@@ -1564,6 +1596,11 @@ export class RuntimeController {
 			{
 				name: "tree",
 				description: "Navigate and branch within the current session",
+				source: "system" as const,
+			},
+			{
+				name: "llama",
+				description: "Load or unload llama.cpp models",
 				source: "system" as const,
 			},
 			{

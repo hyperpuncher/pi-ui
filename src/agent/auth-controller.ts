@@ -137,10 +137,6 @@ export class AuthController {
 		) {
 			return false;
 		}
-		if (!value.trim()) {
-			this.state.setAuthDialog({ ...dialog, error: "A value is required." });
-			return false;
-		}
 		const resolve = run.inputResolver;
 		resolve(value);
 		this.state.setAuthDialog(

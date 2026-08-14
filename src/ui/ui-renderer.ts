@@ -10,6 +10,7 @@ import type { JsonObject } from "../utils/json-types.ts";
 import { renderAuthDialogContent } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderDebugOverlay } from "./debug.tsx";
+import { renderLlamaDialogContent } from "./llama-dialog.tsx";
 import {
 	MessageRenderService,
 	type MessageRenderServiceOptions,
@@ -267,6 +268,7 @@ export class UiRenderer implements AppStorePresentation {
 	renderPickerElements(snapshot: AppRenderSnapshot): string {
 		return (
 			renderAuthDialogContent(snapshot.authDialog) +
+			renderLlamaDialogContent(snapshot.llamaDialog) +
 			renderWorkspaceDialogMenu(snapshot) +
 			renderModelPicker(snapshot) +
 			renderThinkingPicker(snapshot) +
@@ -310,11 +312,11 @@ export class UiRenderer implements AppStorePresentation {
 				scripts.push(
 					"window.piUi.basecoat.refresh(document.getElementById('model-select')); requestAnimationFrame(() => document.getElementById('model-select-trigger')?.click())",
 				);
-			if (effect.type === "auth-dialog")
+			if (effect.type === "dialog")
 				scripts.push(
 					effect.open
-						? "{ const dialog = document.getElementById('auth-dialog'); if (dialog && !dialog.open) dialog.showModal(); }"
-						: "document.getElementById('auth-dialog')?.close?.()",
+						? `{ const dialog = document.getElementById('${effect.id}'); if (dialog && !dialog.open) dialog.showModal(); }`
+						: `document.getElementById('${effect.id}')?.close?.()`,
 				);
 		}
 		return [...new Set(scripts)];

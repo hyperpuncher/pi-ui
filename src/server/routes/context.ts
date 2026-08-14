@@ -10,6 +10,7 @@ export type RouteAgentHost = Pick<
 	| "abort"
 	| "abortBackgroundSession"
 	| "closeAuth"
+	| "closeLlama"
 	| "cycleModel"
 	| "cycleThinkingLevel"
 	| "deleteSession"
@@ -21,6 +22,7 @@ export type RouteAgentHost = Pick<
 	| "newTemporarySession"
 	| "openLogin"
 	| "openLogout"
+	| "openLlama"
 	| "openTree"
 	| "prompt"
 	| "removeQueuedMessage"
@@ -30,6 +32,7 @@ export type RouteAgentHost = Pick<
 	| "setThinkingLevel"
 	| "startLogin"
 	| "submitAuthInput"
+	| "toggleLlamaModel"
 	| "toggleScopedModel"
 >;
 

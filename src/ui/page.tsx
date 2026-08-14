@@ -8,6 +8,7 @@ import { projectBackendSignals } from "./backend-signals.ts";
 import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
 import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
+import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
@@ -91,6 +92,7 @@ export function renderPage(
 		authProvider: "",
 		authType: "",
 		authInput: "",
+		llamaModel: "",
 	});
 
 	return syncHtml(
@@ -246,6 +248,7 @@ export function renderPage(
 					{renderCommandMenu()}
 					{renderCodeThemeDialog()}
 					{renderAuthDialog(state.authDialog)}
+					{renderLlamaDialog(state.llamaDialog)}
 
 					<dialog
 						id="workspace-dialog"
