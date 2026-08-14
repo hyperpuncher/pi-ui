@@ -18,7 +18,8 @@ try {
 	Invoke-WebRequest -Uri $archiveUrl -OutFile $tempArchive -UseBasicParsing
 	Expand-Archive -Path $tempArchive -DestinationPath $tempDirectory -Force
 
-	schtasks.exe /End /TN "pi-ui-server" 2>$null | Out-Null
+	Get-ScheduledTask -TaskName "pi-ui-server" -ErrorAction SilentlyContinue |
+		Stop-ScheduledTask -ErrorAction SilentlyContinue
 	New-Item -ItemType Directory -Path $installDirectory -Force | Out-Null
 	Copy-Item (Join-Path $tempDirectory "pi-ui-server.exe") $executable -Force
 

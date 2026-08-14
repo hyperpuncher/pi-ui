@@ -119,7 +119,8 @@ async function enableSystemdService(config: ServerAutostartConfig): Promise<void
 	const path = systemdServicePath(config);
 	await writeConfig(path, systemdService(config));
 	await command("systemctl", ["--user", "daemon-reload"]);
-	await command("systemctl", ["--user", "enable", "--now", `${serviceName}.service`]);
+	await command("systemctl", ["--user", "enable", `${serviceName}.service`]);
+	await command("systemctl", ["--user", "restart", `${serviceName}.service`]);
 }
 
 async function enableLaunchAgent(config: ServerAutostartConfig): Promise<void> {

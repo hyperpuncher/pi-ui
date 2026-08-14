@@ -19,8 +19,14 @@ case "$(uname -s)" in
 			exit 1
 		fi
 		if [ "$mode" = "server" ]; then
-			brew install hyperpuncher/tap/pi-ui-server
-			brew services start pi-ui-server
+			if brew list --formula pi-ui-server >/dev/null 2>&1; then
+				brew upgrade hyperpuncher/tap/pi-ui-server
+			else
+				brew install hyperpuncher/tap/pi-ui-server
+			fi
+			brew services restart pi-ui-server
+		elif brew list --cask pi-ui >/dev/null 2>&1; then
+			brew upgrade --cask hyperpuncher/tap/pi-ui
 		else
 			brew install --cask hyperpuncher/tap/pi-ui
 		fi
