@@ -5,7 +5,7 @@ import { AgentHost } from "../agent/host.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
 import { setActiveCodeTheme } from "../pierre-theme.ts";
 import { AppStore } from "../state/app-store.ts";
-import { preloadPierreHighlighter } from "../ui/diffs.ts";
+import { loadPierreLanguage } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 import { expandHomePath } from "../utils/workspace.ts";
@@ -37,7 +37,7 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const codeTheme = await readCodeThemePreference();
 	setActiveCodeTheme(codeTheme);
-	const preloadHighlighterPromise = preloadPierreHighlighter();
+	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
 	const localRequests = new WeakSet<Request>();
 	const store = new AppStore();
 	const sessionImages = new SessionImageStore();
@@ -55,9 +55,9 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		console.error("Failed to start pi SDK runtime", error);
 		return undefined;
 	});
-	await preloadHighlighterPromise.catch((error: ErrorOptions["cause"]) => {
-		console.error("Failed to preload highlighter", error);
-	});
+	if (!(await preloadShellHighlighterPromise)) {
+		console.error("Failed to preload shell highlighter");
+	}
 	const resources: RouteResources = { host, sessionImages };
 	const transferredFiles = await TransferredFileStore.create();
 	addEventListener(
