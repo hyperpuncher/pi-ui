@@ -2,27 +2,16 @@ import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
-import type { JsonValue } from "../utils/json-types.ts";
+import { type JsonValue, JsonObjectSchema } from "../utils/json-types.ts";
 import { fetchProviderUsagePayload } from "./provider-usage.ts";
 import { formatRemainingTime, remainingPercent } from "./usage-format.ts";
 
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";
 const numericInputSchema = Type.Union([Type.Number(), Type.String({ pattern: "\\S" })]);
-const codexWindowSchema = Type.Object({
-	used_percent: numericInputSchema,
-	limit_window_seconds: Type.Optional(numericInputSchema),
-	reset_at: Type.Optional(numericInputSchema),
-});
-const codexPayloadSchema = Type.Object({
-	rate_limit: Type.Object({
-		primary_window: Type.Optional(codexWindowSchema),
-		secondary_window: Type.Optional(codexWindowSchema),
-	}),
-});
-const codexPayloadValidator = Compile(codexPayloadSchema);
+const numericInputValidator = Compile(numericInputSchema);
+const jsonObjectValidator = Compile(JsonObjectSchema);
 type NumericInput = Static<typeof numericInputSchema>;
-type CodexWindowInput = Static<typeof codexWindowSchema>;
 export type CodexWindow = {
 	usedPercent: number;
 	windowSeconds?: number;
@@ -81,31 +70,35 @@ function describeCodexWindow(
 	};
 }
 
-function parseCodexUsage(payload: JsonValue): CodexUsage | undefined {
-	if (!codexPayloadValidator.Check(payload)) return undefined;
-	const primary = parseCodexWindow(payload.rate_limit.primary_window);
-	const secondary = parseCodexWindow(payload.rate_limit.secondary_window);
+export function parseCodexUsage(payload: JsonValue): CodexUsage | undefined {
+	if (!jsonObjectValidator.Check(payload)) return undefined;
+	const rateLimit = payload.rate_limit;
+	if (!jsonObjectValidator.Check(rateLimit)) return undefined;
+
+	const primary = parseCodexWindow(rateLimit.primary_window);
+	const secondary = parseCodexWindow(rateLimit.secondary_window);
 	return primary || secondary ? { primary, secondary } : undefined;
 }
 
-function parseCodexWindow(window: CodexWindowInput | undefined): CodexWindow | undefined {
-	if (!window) return undefined;
-	const usedPercent = finiteNumber(window.used_percent);
+function parseCodexWindow(value: JsonValue | undefined): CodexWindow | undefined {
+	if (!jsonObjectValidator.Check(value)) return undefined;
+	const usedPercent = parseFiniteNumber(value.used_percent);
 	if (usedPercent === undefined) return undefined;
 	return {
 		usedPercent,
-		windowSeconds: optionalFiniteNumber(window.limit_window_seconds),
-		resetsAt: optionalFiniteNumber(window.reset_at),
+		windowSeconds: parseFiniteNumber(value.limit_window_seconds),
+		resetsAt: parseFiniteNumber(value.reset_at),
 	};
+}
+
+function parseFiniteNumber(value: JsonValue | undefined): number | undefined {
+	if (!numericInputValidator.Check(value)) return undefined;
+	return finiteNumber(value);
 }
 
 function finiteNumber(value: NumericInput): number | undefined {
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function optionalFiniteNumber(value: NumericInput | undefined): number | undefined {
-	return value === undefined ? undefined : finiteNumber(value);
 }
 
 function formatWindowLabel(seconds: number | undefined): string | undefined {
