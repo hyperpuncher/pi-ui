@@ -4,8 +4,8 @@ export function sortWorkspaceReviewEntries<T extends Readonly<{ path: string }>>
 	entries: readonly T[],
 ): T[] {
 	const entriesByPath = new Map(entries.map((entry) => [entry.path, entry]));
-	return prepareFileTreeInput(entries.map((entry) => entry.path)).paths.map(
-		(path) => entriesByPath.get(path)!,
+	return prepareFileTreeInput(entries.map((entry) => entry.path)).paths.map((path) =>
+		entriesByPath.get(path)!,
 	);
 }
 

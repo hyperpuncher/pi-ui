@@ -65,15 +65,13 @@ export class AuthController {
 				const dialog = this.state.authDialog;
 				if (!dialog || dialog.mode !== "logout") return;
 				const providers = credentials
-					.map(
-						({ providerId, type }): AppAuthProvider => ({
-							id: providerId,
-							name:
-								runtime.services.modelRuntime.getProvider(providerId)
-									?.name ?? providerId,
-							authType: type,
-						}),
-					)
+					.map(({ providerId, type }): AppAuthProvider => ({
+						id: providerId,
+						name:
+							runtime.services.modelRuntime.getProvider(providerId)?.name ??
+							providerId,
+						authType: type,
+					}))
 					.sort(compareAuthProviders);
 				this.state.setAuthDialog({
 					...dialog,

@@ -109,13 +109,11 @@ async function readPrompt(
 		throw new ActionInputError("Prompt attachments must be images.");
 	}
 	const images = await Promise.all(
-		files.map(
-			async (file): Promise<ImageContent> => ({
-				type: "image",
-				data: new Uint8Array(await file.arrayBuffer()).toBase64(),
-				mimeType: file.type,
-			}),
-		),
+		files.map(async (file): Promise<ImageContent> => ({
+			type: "image",
+			data: new Uint8Array(await file.arrayBuffer()).toBase64(),
+			mimeType: file.type,
+		})),
 	);
 	return {
 		prompt: prompt.replace(/\r\n/g, "\n"),
