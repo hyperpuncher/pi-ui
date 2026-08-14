@@ -36,12 +36,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 						class="pi-raised-surface flex min-h-0 shrink-0 flex-col overflow-hidden"
 						style={snapshot.changes.length > 0 ? undefined : "display: none"}
 					>
-						<button
-							id="review-working-tree"
-							type="button"
-							class="flex h-8 shrink-0 items-center gap-2 px-3 text-left text-xs font-medium"
-							aria-pressed="true"
-						>
+						<header class="flex h-8 shrink-0 items-center gap-2 px-3 text-xs font-medium">
 							<span>Changes</span>
 							<span
 								id="review-change-count"
@@ -63,7 +58,7 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 									-{deletions}
 								</span>
 							</span>
-						</button>
+						</header>
 						<div
 							id="review-tree"
 							class="min-h-0 flex-1 overflow-hidden [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"

@@ -94,7 +94,6 @@ const diffRoot = requiredElement("review-diff-view");
 const empty = requiredElement("review-empty");
 const branch = requiredElement("review-branch");
 const count = requiredElement("review-change-count");
-const workingTreeButton = requiredButton("review-working-tree");
 const additions = requiredElement("review-total-additions");
 const deletions = requiredElement("review-total-deletions");
 const allButton = requiredButton("review-mode-all");
@@ -195,11 +194,6 @@ const tree = new FileTree({
 });
 tree.hydrate({ fileTreeContainer: treeHost });
 
-workingTreeButton.addEventListener("click", () =>
-	selectWorking(
-		selection.kind === "working" ? selection.path : snapshot.changes[0]?.path,
-	),
-);
 history.addEventListener("scroll", maybeLoadOlderHistory, { passive: true });
 allButton.addEventListener("click", () => setMode("all"));
 selectedButton.addEventListener("click", () => setMode("selected"));
@@ -395,8 +389,6 @@ function setLayout(next: DiffLayout): void {
 }
 
 function selectWorking(path?: string, fromTree = false): void {
-	selection = { kind: "working", path };
-	workingTreeButton.setAttribute("aria-pressed", "true");
 	activateWorking(path);
 	renderHistory();
 	if (path && !fromTree) {
@@ -407,7 +399,6 @@ function selectWorking(path?: string, fromTree = false): void {
 
 function activateWorking(path?: string): void {
 	selection = { kind: "working", path };
-	workingTreeButton.setAttribute("aria-pressed", "true");
 	items = workingItems;
 	itemsByPath = itemMap(items);
 	hideDetailHeader();
@@ -416,7 +407,6 @@ function activateWorking(path?: string): void {
 
 async function activateCommit(hash: string, path?: string): Promise<void> {
 	selection = { hash, kind: "commit", path };
-	workingTreeButton.setAttribute("aria-pressed", "false");
 	clearTreeSelection();
 	renderHistory();
 	const cached = commitCache.get(hash);
@@ -435,7 +425,6 @@ async function activateCommit(hash: string, path?: string): Promise<void> {
 }
 
 function applyCommitView(view: CommitView, path?: string): void {
-	workingTreeButton.setAttribute("aria-pressed", "false");
 	items = view.items;
 	itemsByPath = itemMap(items);
 	selection = {
