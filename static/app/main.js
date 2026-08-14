@@ -5,7 +5,6 @@ import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
 import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
-import { isComposing } from "./keyboard.js";
 import {
 	bindMessageScroll,
 	captureAnchor,
@@ -29,7 +28,6 @@ window.piUi = {
 	basecoat: { refresh },
 	dialogs,
 	fileTransfer,
-	isComposing,
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
 	pickers: { isFileOpen, isOpen: isPickerOpen },
 	promptHistory,

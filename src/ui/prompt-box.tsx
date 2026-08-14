@@ -112,7 +112,7 @@ export function renderPromptBox(
 						if (
 							evt.key === 'Enter' &&
 							!evt.shiftKey &&
-							!window.piUi.isComposing(evt) &&
+							!evt.isComposing &&
 							window.piUi.fileTransfer.canSubmit($prompt) &&
 							!window.piUi.pickers.isOpen()
 						) {

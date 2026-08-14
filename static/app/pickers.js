@@ -1,4 +1,3 @@
-import { isComposing } from "./keyboard.js";
 import {
 	deletePromptCharBeforeCursor,
 	focusPromptEnd,
@@ -126,7 +125,7 @@ function handleOutsidePointer(event) {
 }
 
 function handleKeydown(event) {
-	if (isComposing(event)) return;
+	if (event.isComposing) return;
 	if (event.ctrlKey || event.metaKey || event.altKey) return;
 	if (event.code === "Escape") {
 		if (isOpen()) event.preventDefault();
