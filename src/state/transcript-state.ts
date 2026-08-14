@@ -59,7 +59,8 @@ export type TranscriptSnapshot = {
 	queuedFollowUpMessages: string[];
 };
 
-export const transcriptMessagePageSize = 20;
+const initialVisibleMessageCount = 20;
+const olderMessageBatchSize = 50;
 
 /** Renderer-independent, authoritative transcript state. */
 export class TranscriptState {
@@ -212,7 +213,7 @@ export class TranscriptState {
 		});
 		this.visibleMessageStart = Math.max(
 			0,
-			this.transcriptMessages.length - transcriptMessagePageSize,
+			this.transcriptMessages.length - initialVisibleMessageCount,
 		);
 	}
 
@@ -221,7 +222,7 @@ export class TranscriptState {
 		const previousStart = this.visibleMessageStart;
 		this.visibleMessageStart = Math.max(
 			0,
-			this.visibleMessageStart - transcriptMessagePageSize,
+			this.visibleMessageStart - olderMessageBatchSize,
 		);
 		return this.transcriptMessages
 			.slice(this.visibleMessageStart, previousStart)

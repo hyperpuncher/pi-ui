@@ -238,9 +238,7 @@ Deno.test("loading older pages enqueues only newly revealed messages", async () 
 	);
 	await waitFor(() => renderCount === 20);
 	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
-	await waitFor(() => renderCount === 40);
-	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
-	await waitFor(() => renderCount === 60);
+	await waitFor(() => renderCount === 70);
 	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
 	const immediatePage = state.renderer.renderMessagesElement();
 	assertIncludes(immediatePage, "<strong>message 0</strong>");

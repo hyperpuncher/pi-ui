@@ -191,7 +191,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 
 function loadOlderMessagesAction(): string {
 	return `
-		el.scrollTop < el.clientHeight * 2 &&
+		el.scrollTop < el.clientHeight &&
 		window.piUi.messageScroll.captureAnchor() &&
 		@post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })
 	`;
