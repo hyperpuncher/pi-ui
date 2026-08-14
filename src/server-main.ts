@@ -20,8 +20,19 @@ if (Deno.args[0] === "autostart") {
 	if (options.help) {
 		console.log(serverUsage);
 	} else {
-		const { createApp } = await import("./server/app.ts");
+		const [{ createApp }, { compressSseResponse }] = await Promise.all([
+			import("./server/app.ts"),
+			import("./server/compression.ts"),
+		]);
 		const app = await createApp();
-		Deno.serve({ hostname: options.hostname, port: options.port }, app.fetch);
+		Deno.serve(
+			{
+				hostname: options.hostname,
+				port: options.port,
+				automaticCompression: true,
+			},
+			async (request, info) =>
+				compressSseResponse(request, await app.fetch(request, info)),
+		);
 	}
 }
