@@ -1,4 +1,4 @@
-import { defineConfig } from "npm:rolldown@latest";
+import { defineConfig } from "rolldown";
 
 export default defineConfig((commandLineArgs) => {
 	const watch = commandLineArgs.watch === true;

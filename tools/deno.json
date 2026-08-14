@@ -1,0 +1,15 @@
+{
+	"nodeModulesDir": "auto",
+	"imports": {
+		"@oxlint/plugins": "npm:@oxlint/plugins@1.78.0",
+		"@tailwindcss/cli": "npm:@tailwindcss/cli@4.3.3",
+		"basecoat-css": "npm:basecoat-css@1.0.2",
+		"concurrently": "npm:concurrently@10.0.4",
+		"oxfmt": "npm:oxfmt@0.63.0",
+		"oxlint": "npm:oxlint@1.78.0",
+		"oxlint-tailwindcss": "npm:oxlint-tailwindcss@1.9.0",
+		"rolldown": "npm:rolldown@1.2.4",
+		"tailwindcss": "npm:tailwindcss@4.3.3"
+	},
+	"allowScripts": ["npm:@parcel/watcher@2.5.1"]
+}

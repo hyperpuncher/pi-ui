@@ -1,5 +1,5 @@
 {
-	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"$schema": "./tools/node_modules/oxlint/configuration_schema.json",
 	"jsPlugins": [
 		"oxlint-tailwindcss",
 		{

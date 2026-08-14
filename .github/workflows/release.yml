@@ -46,6 +46,12 @@ jobs:
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
+            - name: Install dependencies
+              shell: bash
+              run: |
+                  deno ci
+                  cd tools && deno ci
+
             - name: Download CEF 151 backend
               shell: bash
               env:
@@ -93,11 +99,8 @@ jobs:
 
                   echo "LAUFEY_DEV_DIR=$RUNNER_TEMP/laufey" >> "$GITHUB_ENV"
 
-            - name: Build client
-              run: deno task client:build
-
-            - name: Build CSS
-              run: deno task css:build
+            - name: Build assets
+              run: deno task assets:build
 
             - name: Build server
               shell: bash
@@ -108,7 +111,7 @@ jobs:
                     --exclude-unused-npm
                     --frozen
                     --include static
-                    --lock deno.release.lock
+                    --lock deno.lock
                     --node-modules-dir=none
                     --output "dist/server/${{ matrix.server_executable }}"
                     --target "${{ matrix.target }}"
@@ -127,7 +130,7 @@ jobs:
                     --conditions browser
                     --frozen
                     --include static
-                    --lock deno.release.lock
+                    --lock deno.lock
                     --target "${{ matrix.target }}"
                   )
                   deno desktop "${desktop_args[@]}" src/main.ts
