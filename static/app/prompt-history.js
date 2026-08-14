@@ -1,3 +1,4 @@
+import { isComposing } from "./keyboard.js";
 import { promptInput, setPromptValue } from "./prompt.js";
 
 export class PromptHistoryNavigator {
@@ -52,6 +53,7 @@ export function createPromptHistory() {
 
 	function handleKeydown(event, entries) {
 		if (
+			isComposing(event) ||
 			event.defaultPrevented ||
 			event.altKey ||
 			event.ctrlKey ||

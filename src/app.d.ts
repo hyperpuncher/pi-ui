@@ -39,6 +39,7 @@ interface PiUiNamespace {
 		leaveDrag(): boolean;
 		resetDrag(): void;
 	};
+	isComposing(event: KeyboardEvent): boolean;
 	messageScroll: {
 		captureAnchor(): boolean;
 		restoreAnchor(): void;
