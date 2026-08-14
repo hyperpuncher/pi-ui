@@ -57,7 +57,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 			data-on:click={`
 				window.piUi.messageScroll.scrollBottom();
 				const submittedPrompt = $prompt;
-				$prompt = '';
+				window.piUi.prompt.clear();
 				if (submittedPrompt.trim() === '/tree') window.piUi.dialogs.openTree();
 				window.piUi.fileTransfer.submit('${endpoints.prompt}', submittedPrompt);
 			`}

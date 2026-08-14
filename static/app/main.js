@@ -13,7 +13,7 @@ import {
 } from "./message-scroll.js";
 import { bindPickers, isFileOpen, isOpen as isPickerOpen } from "./pickers.js";
 import { createPromptHistory } from "./prompt-history.js";
-import { bindPromptInteractions, focusPromptEnd } from "./prompt.js";
+import { bindPromptInteractions, focusPromptEnd, setPromptValue } from "./prompt.js";
 import {
 	bindSessionPerformance,
 	startSessionPerformanceMeasurement,
@@ -30,6 +30,7 @@ window.piUi = {
 	fileTransfer,
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
 	pickers: { isFileOpen, isOpen: isPickerOpen },
+	prompt: { clear: () => setPromptValue("") },
 	promptHistory,
 	sessionPerformance: { start: startSessionPerformanceMeasurement },
 	windowFocus,
