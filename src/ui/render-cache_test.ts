@@ -20,6 +20,22 @@ Deno.test("BoundedCache replaces values and refreshes recency", () => {
 	assertEqual(cache.get("c"), 4);
 });
 
+Deno.test("BoundedCache evicts entries that exceed its weight budget", () => {
+	const cache = new BoundedCache<string, string>(10, {
+		maxWeight: 5,
+		weight: (_key, value) => value.length,
+	});
+	cache.set("a", "12");
+	cache.set("b", "345");
+	assertEqual(cache.size, 2);
+	cache.set("c", "67");
+	assertEqual(cache.get("a"), undefined);
+	assertEqual(cache.get("b"), "345");
+	assertEqual(cache.get("c"), "67");
+	cache.set("oversized", "123456");
+	assertEqual(cache.size, 0);
+});
+
 Deno.test("BoundedCache evicts, deletes, and clears entries", () => {
 	const cache = new BoundedCache<string, number>(2);
 	cache.set("a", 1);

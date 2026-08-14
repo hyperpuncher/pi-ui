@@ -25,12 +25,25 @@ import { syncHtml } from "./sync-html.ts";
 const maxStreamingEntries = 100;
 const maxFinalMarkdownEntries = 500;
 const maxPierreCodeBlockEntries = 500;
+const maxFinalCacheBytes = 8 * 1024 * 1024;
 
 const streamingCache = new BoundedCache<string, { markdown: string; html: string }>(
 	maxStreamingEntries,
 );
-const highlightedCache = new BoundedCache<string, string>(maxFinalMarkdownEntries);
-const pierreCodeBlockCache = new BoundedCache<string, string>(maxPierreCodeBlockEntries);
+const stringCacheOptions = {
+	maxWeight: maxFinalCacheBytes,
+	// V8 strings can use one or two bytes per code unit. Use the upper bound so
+	// restored sessions with large tool output cannot retain hundreds of MiB.
+	weight: (key: string, value: string) => 2 * (key.length + value.length),
+};
+const highlightedCache = new BoundedCache<string, string>(
+	maxFinalMarkdownEntries,
+	stringCacheOptions,
+);
+const pierreCodeBlockCache = new BoundedCache<string, string>(
+	maxPierreCodeBlockEntries,
+	stringCacheOptions,
+);
 const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
 
 type StreamingCodeBlockState = {
