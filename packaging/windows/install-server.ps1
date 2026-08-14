@@ -20,6 +20,9 @@ try {
 
 	Get-ScheduledTask -TaskName "pi-ui-server" -ErrorAction SilentlyContinue |
 		Stop-ScheduledTask -ErrorAction SilentlyContinue
+	Get-Process -Name "pi-ui-server" -ErrorAction SilentlyContinue |
+		Where-Object { $_.Path -eq $executable } |
+		Stop-Process -Force -ErrorAction SilentlyContinue
 	New-Item -ItemType Directory -Path $installDirectory -Force | Out-Null
 	Copy-Item (Join-Path $tempDirectory "pi-ui-server.exe") $executable -Force
 

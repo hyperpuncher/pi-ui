@@ -2,6 +2,7 @@ import { dirname } from "@std/path";
 
 const serviceName = "pi-ui-server";
 const launchAgentLabel = "dev.pi.ui.server";
+const windowsRunKey = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
 export type ServerAutostartPlatform = "linux" | "darwin" | "windows";
 
@@ -37,7 +38,7 @@ export async function enableServerAutostart(
 			await enableLaunchAgent(config);
 			break;
 		case "windows":
-			await enableScheduledTask(config);
+			await enableWindowsAutostart(config);
 			break;
 	}
 }
@@ -63,8 +64,7 @@ export async function disableServerAutostart(
 			break;
 		}
 		case "windows":
-			await command("schtasks.exe", ["/End", "/TN", serviceName], true);
-			await command("schtasks.exe", ["/Delete", "/TN", serviceName, "/F"], true);
+			await disableWindowsAutostart(config);
 			break;
 	}
 }
@@ -111,7 +111,7 @@ export function launchAgent(config: ServerAutostartConfig): string {
 `;
 }
 
-export function windowsTaskCommand(config: ServerAutostartConfig): string {
+export function windowsRunCommand(config: ServerAutostartConfig): string {
 	return `"${config.executable}"`;
 }
 
@@ -130,20 +130,48 @@ async function enableLaunchAgent(config: ServerAutostartConfig): Promise<void> {
 	await command("launchctl", ["bootstrap", launchDomain(config), path]);
 }
 
-async function enableScheduledTask(config: ServerAutostartConfig): Promise<void> {
-	await command("schtasks.exe", [
-		"/Create",
-		"/TN",
+async function enableWindowsAutostart(config: ServerAutostartConfig): Promise<void> {
+	await removeLegacyWindowsTask();
+	await stopWindowsServer(config);
+	await command("reg.exe", [
+		"ADD",
+		windowsRunKey,
+		"/V",
 		serviceName,
-		"/SC",
-		"ONLOGON",
-		"/TR",
-		windowsTaskCommand(config),
-		"/RL",
-		"LIMITED",
+		"/T",
+		"REG_SZ",
+		"/D",
+		windowsRunCommand(config),
 		"/F",
 	]);
-	await command("schtasks.exe", ["/Run", "/TN", serviceName]);
+	const child = new Deno.Command(config.executable, {
+		stdin: "null",
+		stdout: "null",
+		stderr: "null",
+	}).spawn();
+	child.unref();
+}
+
+async function disableWindowsAutostart(config: ServerAutostartConfig): Promise<void> {
+	await command("reg.exe", ["DELETE", windowsRunKey, "/V", serviceName, "/F"], true);
+	await removeLegacyWindowsTask();
+	await stopWindowsServer(config);
+}
+
+async function removeLegacyWindowsTask(): Promise<void> {
+	await command("schtasks.exe", ["/End", "/TN", serviceName], true);
+	await command("schtasks.exe", ["/Delete", "/TN", serviceName, "/F"], true);
+}
+
+async function stopWindowsServer(config: ServerAutostartConfig): Promise<void> {
+	const executable = powershellString(config.executable);
+	const script = `Get-Process -Name '${serviceName}' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${Deno.pid} -and $_.Path -eq '${executable}' } | Stop-Process -Force`;
+	await command("powershell.exe", [
+		"-NoProfile",
+		"-NonInteractive",
+		"-Command",
+		script,
+	]);
 }
 
 function systemdServicePath(config: ServerAutostartConfig): string {
@@ -192,6 +220,10 @@ function systemdArgument(value: string): string {
 			: `\\x${byte.toString(16).padStart(2, "0")}`;
 	}
 	return result;
+}
+
+function powershellString(value: string): string {
+	return value.replaceAll("'", "''");
 }
 
 function xml(value: string): string {

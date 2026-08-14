@@ -4,7 +4,7 @@ import {
 	launchAgent,
 	serverAutostartConfig,
 	systemdService,
-	windowsTaskCommand,
+	windowsRunCommand,
 } from "./server-autostart.ts";
 
 Deno.test("systemd service starts the current server executable", () => {
@@ -32,9 +32,9 @@ Deno.test("launch agent starts at login and escapes paths", () => {
 	assertStringIncludes(agent, "/Applications/pi-ui &amp; dev.app/Contents/MacOS/pi-ui");
 });
 
-Deno.test("windows task command quotes the executable", () => {
+Deno.test("windows startup command quotes the executable", () => {
 	assertEquals(
-		windowsTaskCommand({
+		windowsRunCommand({
 			platform: "windows",
 			executable: "C:\\Program Files\\pi-ui\\pi-ui.exe",
 			home: "C:\\Users\\test",
