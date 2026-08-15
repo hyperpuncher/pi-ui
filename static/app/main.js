@@ -50,6 +50,7 @@ function hasOpenDismissible() {
 
 window.addEventListener("DOMContentLoaded", () => {
 	focusPromptEnd();
+	dialogs.bindDialogs();
 	bindPromptInteractions();
 	bindPickers();
 	bindMessageScroll();

@@ -5,6 +5,7 @@ function openAndFocus(dialogId, inputId, options = {}) {
 	if (!(dialog instanceof HTMLDialogElement)) return;
 	if (!dialog.open) {
 		restoreFocusWhenDialogCloses(dialog, document.activeElement);
+		resetSearchInput(document.getElementById(inputId));
 		dialog.showModal();
 	}
 	refresh(dialog);
@@ -48,13 +49,6 @@ export function toggleSession() {
 		dialog.close();
 		return false;
 	}
-	const input = document.getElementById("session-input");
-	if (input instanceof HTMLInputElement) {
-		input.value = "";
-		input.dispatchEvent(new Event("input", { bubbles: true }));
-	}
-	const menu = document.getElementById("session-menu");
-	if (menu instanceof HTMLElement) menu.scrollTop = 0;
 	openAndFocus("session-dialog", "session-input");
 	return true;
 }
@@ -80,6 +74,25 @@ export function toggleCommand() {
 	return true;
 }
 
+export function bindDialogs() {
+	document.addEventListener(
+		"click",
+		(event) => {
+			const trigger =
+				event.target instanceof Element
+					? event.target.closest("button[aria-haspopup][aria-expanded]")
+					: undefined;
+			if (!(trigger instanceof HTMLButtonElement)) return;
+			if (trigger.getAttribute("aria-expanded") === "true") return;
+			const picker = trigger.closest(".popover, .dropdown-menu");
+			resetSearchInput(
+				picker?.querySelector("input[role='combobox'], input[type='search']"),
+			);
+		},
+		{ capture: true },
+	);
+}
+
 export function togglePopover(triggerId) {
 	const trigger = document.getElementById(triggerId);
 	if (!(trigger instanceof HTMLButtonElement)) return false;
@@ -99,7 +112,6 @@ function restoreFocusWhenPopoverCloses(trigger, origin) {
 }
 
 export function openWorkspace() {
-	resetWorkspaceInput();
 	openAndFocus("workspace-dialog", "workspace-input");
 }
 
@@ -114,9 +126,11 @@ export function toggleWorkspace() {
 	return true;
 }
 
-function resetWorkspaceInput() {
-	const input = document.getElementById("workspace-input");
+function resetSearchInput(input) {
 	if (!(input instanceof HTMLInputElement)) return;
 	input.value = "";
 	input.dispatchEvent(new Event("input", { bubbles: true }));
+	const menuId = input.getAttribute("aria-controls");
+	const menu = menuId ? document.getElementById(menuId) : undefined;
+	if (menu instanceof HTMLElement) menu.scrollTop = 0;
 }
