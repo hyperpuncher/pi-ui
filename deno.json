@@ -52,9 +52,9 @@
 	"nodeModulesDir": "auto",
 	"imports": {
 		"@bruits/satteri-wasm32-wasi": "npm:@bruits/satteri-wasm32-wasi@^0.9.5",
-		"@earendil-works/pi-ai": "npm:@earendil-works/pi-ai@^0.84.1",
-		"@earendil-works/pi-coding-agent": "npm:@earendil-works/pi-coding-agent@^0.84.1",
-		"@earendil-works/pi-tui": "npm:@earendil-works/pi-tui@^0.84.1",
+		"@earendil-works/pi-ai": "npm:@earendil-works/pi-ai@^0.84.2",
+		"@earendil-works/pi-coding-agent": "npm:@earendil-works/pi-coding-agent@^0.84.2",
+		"@earendil-works/pi-tui": "npm:@earendil-works/pi-tui@^0.84.2",
 		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
 		"@pierre/diffs": "npm:@pierre/diffs@1.3.5",
 		"@pierre/trees": "npm:@pierre/trees@1.0.0-beta.6",
@@ -63,7 +63,7 @@
 		"@std/http": "jsr:@std/http@^1.1.3",
 		"@std/path": "jsr:@std/path@^1.1.6",
 		"satteri": "npm:satteri@^0.9.5",
-		"typebox": "npm:typebox@1.3.13",
+		"typebox": "npm:typebox@1.3.14",
 		"undici": "npm:undici@^8.10.0"
 	},
 	"allowScripts": ["npm:@google/genai@1.52.0", "npm:protobufjs@7.6.5"]
