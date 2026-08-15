@@ -59,7 +59,7 @@ export type TranscriptSnapshot = {
 	queuedFollowUpMessages: string[];
 };
 
-const initialVisibleMessageCount = 20;
+const initialVisibleMessageCount = 50;
 const olderMessageBatchSize = 50;
 
 /** Renderer-independent, authoritative transcript state. */

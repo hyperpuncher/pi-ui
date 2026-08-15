@@ -42,7 +42,6 @@ export function renderMessages(
 	authenticated = true,
 	sessionCatalogLoading = false,
 ): string {
-	const olderMessagesTriggerIndex = Math.min(25, Math.max(0, messages.length - 1));
 	return syncHtml(
 		<main
 			id="messages"
@@ -59,10 +58,10 @@ export function renderMessages(
 				$_sessionLoading ||
 				$_sessionTransitionLoading ? 'true' : 'false'
 			"
-			data-on:scroll={hasOlderMessages ? loadOlderMessagesAction() : undefined}
 			aria-live="polite"
 		>
-			<div class="messages-stack mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
+			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
+				{hasOlderMessages ? renderOlderMessagesTrigger() : ""}
 				{messages.length === 0
 					? renderEmptyMessages(
 							emptyHint,
@@ -70,17 +69,9 @@ export function renderMessages(
 							authenticated,
 							sessionCatalogLoading,
 						)
-					: messages.map((message, index) => (
-							<>
-								{hasOlderMessages && index === olderMessagesTriggerIndex
-									? renderOlderMessagesTrigger()
-									: ""}
-								{renderMessage(
-									message,
-									messages[index + 1]?.role === "tool",
-								)}
-							</>
-						))}
+					: messages.map((message, index) =>
+							renderMessage(message, messages[index + 1]?.role === "tool"),
+						)}
 				{messages.length > 0 && (
 					<div
 						id="messages-prompt-spacer"
@@ -92,6 +83,24 @@ export function renderMessages(
 				)}
 			</div>
 		</main>,
+	);
+}
+
+export function renderOlderMessagesPatch(
+	messages: readonly AppMessage[],
+	messageIds: readonly string[],
+	hasOlderMessages: boolean,
+): string {
+	const ids = new Set(messageIds);
+	return (
+		(hasOlderMessages ? renderOlderMessagesTrigger() : "") +
+		messages
+			.map((message, index) =>
+				ids.has(message.id)
+					? renderMessage(message, messages[index + 1]?.role === "tool")
+					: "",
+			)
+			.join("")
 	);
 }
 
@@ -190,26 +199,24 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 	);
 }
 
-function loadOlderMessagesAction(): string {
-	return `
-		el.scrollTop < el.clientHeight &&
-		window.piUi.messageScroll.captureAnchor() &&
-		@post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })
-	`;
-}
-
 function renderOlderMessagesTrigger() {
+	const loadOlderMessages = `window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })`;
 	return (
 		<div
-			class="pointer-events-none mb-[-40vh] h-[40vh] opacity-0"
-			data-load-older-messages
-			data-on:click={`
-				window.piUi.messageScroll.captureAnchor() &&
-				@post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })
-			`}
-			data-on-intersect={`window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })`}
+			id="older-messages-trigger"
+			class="pointer-events-none absolute inset-0"
 			aria-hidden="true"
-		/>
+		>
+			<div
+				class="absolute top-0 h-[min(50vh,100%)] w-full opacity-0"
+				data-on-intersect={loadOlderMessages}
+			/>
+			<div
+				class="absolute h-px w-full opacity-0"
+				style="top: min(250vh, calc(100% - 1px))"
+				data-on-intersect={loadOlderMessages}
+			/>
+		</div>
 	);
 }
 

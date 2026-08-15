@@ -236,16 +236,51 @@ Deno.test("loading older pages enqueues only newly revealed messages", async () 
 	state.replaceMessages(
 		Array.from({ length: 80 }, (_, index) => markdownMessage(`**message ${index}**`)),
 	);
-	await waitFor(() => renderCount === 20);
-	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
-	await waitFor(() => renderCount === 70);
-	assertEqual(state.loadOlderMessages({ broadcast: false }), true);
+	await waitFor(() => renderCount === 50);
+	const ids = state.loadOlderMessages();
+	assertEqual(ids.length, 30);
+	state.renderer.patchOlderMessages(ids);
+	await waitFor(() => renderCount === 80);
+	assertEqual(state.loadOlderMessages(), []);
 	const immediatePage = state.renderer.renderMessagesElement();
 	assertIncludes(immediatePage, "<strong>message 0</strong>");
 	assertNotIncludes(immediatePage, "**message 0**");
-	await waitFor(() => renderCount === 80);
-	assertEqual(state.loadOlderMessages({ broadcast: false }), false);
 	assertEqual(renderCount, 80);
+});
+
+Deno.test("older messages use one targeted patch before restoring the anchor", async () => {
+	const state = createState();
+	state.replaceMessages(
+		Array.from({ length: 130 }, (_, index) => ({
+			role: "user" as const,
+			text: `message ${index}`,
+			timestamp,
+		})),
+	);
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+
+		const ids = state.loadOlderMessages();
+		assertEqual(ids.length, 50);
+		state.renderer.patchOlderMessages(ids);
+		const output = await readUntil(reader, (text) =>
+			text.includes("window.piUi.messageScroll.restoreAnchor()"),
+		);
+
+		assertIncludes(output, "data: selector #older-messages-trigger");
+		assertIncludes(output, "data: mode replace");
+		assertIncludes(output, 'id="older-messages-trigger"');
+		assertIncludes(output, "message 30");
+		assertNotIncludes(output, "message 29");
+		assertNotIncludes(output, 'id="messages"');
+		assertIncludes(output, "window.piUi.messageScroll.restoreAnchor()");
+	} finally {
+		controller.abort();
+	}
 });
 
 Deno.test("replacement discards stale enhancement completion", async () => {

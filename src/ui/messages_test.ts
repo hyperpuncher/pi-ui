@@ -248,7 +248,7 @@ Deno.test("plain tool titles remain escaped", () => {
 
 Deno.test("empty messages center within the padded chat area", () => {
 	const html = renderMessages([], { description: "Send", keys: "enter" });
-	assertStringIncludes(html, "messages-stack mx-auto min-h-full");
+	assertStringIncludes(html, "messages-stack relative mx-auto min-h-full");
 	assertStringIncludes(html, "grid flex-1 place-items-center");
 	assertStringIncludes(html, "pt-8 pb-32");
 	assertEquals(html.includes("messages-prompt-spacer"), false);
@@ -268,6 +268,30 @@ Deno.test("empty messages center within the padded chat area", () => {
 	);
 	assertStringIncludes(populated, "pt-24");
 	assertStringIncludes(populated, 'id="messages-prompt-spacer"');
+});
+
+Deno.test("older messages use one wrapper with prefetch and top triggers", () => {
+	const html = renderMessages(
+		[
+			{
+				id: "user-1",
+				presentationState: "plain",
+				presentationVersion: 1,
+				role: "user",
+				text: "hello",
+				timestamp: new Date(0),
+			},
+		],
+		{ description: "Send", keys: "enter" },
+		true,
+	);
+	const triggerIndex = html.indexOf('id="older-messages-trigger"');
+	const messageIndex = html.indexOf('data-message-id="user-1"');
+	assert(triggerIndex >= 0 && triggerIndex < messageIndex);
+	assertEquals(html.match(/data-on-intersect/g)?.length, 2);
+	assertStringIncludes(html, "h-[min(50vh,100%)]");
+	assertStringIncludes(html, "top: min(250vh, calc(100% - 1px))");
+	assertFalse(html.includes("data-on:scroll"));
 });
 
 Deno.test("recent session loading reserves exactly three rows", () => {

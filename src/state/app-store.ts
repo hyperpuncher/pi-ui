@@ -141,7 +141,6 @@ export interface AppStorePresentation {
 		activeIds: readonly (string | undefined)[],
 		enhancementIds: readonly string[],
 	): void;
-	scheduleEnhancements(ids: readonly string[]): void;
 	projectMessages(messages: readonly TranscriptMessage[]): AppMessage[];
 }
 
@@ -402,12 +401,8 @@ export class AppStore {
 		);
 		this.commit();
 	}
-	loadOlderMessages(options: { broadcast?: boolean } = {}): boolean {
-		const ids = this.transcript.loadOlderMessages();
-		if (ids.length === 0) return false;
-		if (options.broadcast !== false) this.commit();
-		this.presentation?.scheduleEnhancements(ids);
-		return true;
+	loadOlderMessages(): readonly string[] {
+		return this.transcript.loadOlderMessages();
 	}
 	setModels(
 		models: AppModel[],

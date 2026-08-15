@@ -215,10 +215,20 @@ export class UiRenderer implements AppStorePresentation {
 	): void {
 		this.messages.transcriptReplaced(activeIds, enhancementIds);
 	}
-	scheduleEnhancements(ids: readonly string[]): void {
+	patchOlderMessages(ids: readonly string[]): void {
+		const elements = this.messages.renderOlderMessagesPatch(ids);
+		this.hub.patchElement(elements, "#older-messages-trigger", {
+			mode: "replace",
+			scripts: ["window.piUi.messageScroll.restoreAnchor()"],
+		});
+		if (this.mainRegionHtml) {
+			this.mainRegionHtml[0] = this.renderElementRegions(
+				this.store.snapshot(),
+				false,
+			)[0];
+		}
 		// Newly revealed messages nearest the retained scroll anchor finish first.
-		for (const id of ids.toReversed()) this.pendingEnhancements.add(id);
-		this.requestCommit();
+		for (const id of ids.toReversed()) this.messages.enqueueEnhancement(id);
 	}
 	enhanceMessage(id: string): boolean {
 		return this.messages.enhanceMessage(id);

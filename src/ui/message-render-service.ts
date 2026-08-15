@@ -11,7 +11,7 @@ import {
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
 } from "./markdown.tsx";
-import { renderMessage, renderMessages } from "./messages.tsx";
+import { renderMessage, renderMessages, renderOlderMessagesPatch } from "./messages.tsx";
 
 type MessagePresentation = Pick<
 	AppMessage,
@@ -101,6 +101,13 @@ export class MessageRenderService {
 			this.store.sessions,
 			this.store.models.some((model) => model.configured),
 			this.store.sessionCatalogLoading,
+		);
+	}
+	renderOlderMessagesPatch(ids: readonly string[]): string {
+		return renderOlderMessagesPatch(
+			this.store.messages,
+			ids,
+			this.store.hasOlderMessages,
 		);
 	}
 	messageAppended(id: string): void {

@@ -121,6 +121,31 @@ Deno.test("session favicons use workspace assets and fall back to a folder", asy
 	}
 });
 
+Deno.test("older messages use a targeted persistent-stream patch", async () => {
+	let revealedIds: readonly string[] = [];
+	const context = fakeContext({
+		renderer: uiRendererStub({
+			patchOlderMessages: (ids) => {
+				revealedIds = ids;
+			},
+		}),
+	});
+	context.store.replaceMessages(
+		Array.from({ length: 80 }, (_, index) => ({
+			role: "user" as const,
+			text: `message ${index}`,
+			timestamp: new Date(0),
+		})),
+	);
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/messages/older", { method: "POST" }),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(await response.text(), "");
+	assertEquals(revealedIds.length, 30);
+});
+
 Deno.test("older sessions load as a cumulative sidebar page", async () => {
 	const context = fakeContext();
 	context.store.setSessionCatalog(
@@ -530,6 +555,7 @@ function fakeContext(
 			overrides.renderer ??
 			uiRendererStub({
 				createStream: () => new Response(),
+				patchOlderMessages: () => {},
 				renderMessagesElement: () => "<div id=messages></div>",
 				enhanceMessage: () => true,
 				setDisplayRefreshHz: () => true,

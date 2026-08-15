@@ -58,10 +58,21 @@ export class DatastarClientHub {
 		}
 	}
 
-	patchElement(elements: string, selector: string): void {
+	patchElement(
+		elements: string,
+		selector: string,
+		options: {
+			mode?: "outer" | "replace";
+			scripts?: readonly string[];
+		} = {},
+	): void {
 		for (const [id, client] of this.clients) {
 			try {
-				client.patchElements(elements, { selector });
+				client.patchElements(elements, {
+					selector,
+					mode: options.mode ?? "outer",
+				});
+				for (const script of options.scripts ?? []) client.executeScript(script);
 				if (this.recordPerformance) {
 					sessionPerformance.recordTargetedMessagePatch(elements);
 				}
