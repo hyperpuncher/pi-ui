@@ -49,6 +49,7 @@ import {
 	type ToolArguments,
 } from "./session-event-reducer.ts";
 import { executeSessionResume } from "./session-resume.ts";
+import { shareSession } from "./session-share.ts";
 import {
 	SessionTransitionController,
 	type SessionTransitionResult,
@@ -84,6 +85,7 @@ export type RuntimeControllerDependencies = Readonly<{
 	createMemorySessionManager: typeof SessionManager.inMemory;
 	openSessionManager: typeof SessionManager.open;
 	moveToTrash: typeof moveToTrash;
+	shareSession: typeof shareSession;
 	getAgentDir: typeof getAgentDir;
 	watchSessionCatalog?: SessionCatalogWatch;
 }>;
@@ -96,6 +98,7 @@ const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	createMemorySessionManager: SessionManager.inMemory,
 	openSessionManager: SessionManager.open,
 	moveToTrash,
+	shareSession,
 	getAgentDir,
 	watchSessionCatalog,
 };
@@ -133,6 +136,7 @@ export class RuntimeController {
 	private readonly tree: TreeProjector;
 	private foregroundGeneration: number;
 	private foregroundObservedRunning: boolean;
+	private sharing = false;
 	private resetChatOnInvalidation = false;
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
@@ -310,6 +314,11 @@ export class RuntimeController {
 				? trimmed.slice(9).trim()
 				: undefined;
 			void this.compact(customInstructions);
+			return true;
+		}
+
+		if (trimmed === "/share") {
+			void this.share();
 			return true;
 		}
 
@@ -808,6 +817,36 @@ export class RuntimeController {
 		} catch {
 			// AgentSession emits compaction_end with the user-facing error.
 			return false;
+		}
+	}
+
+	private async share(): Promise<void> {
+		if (this.sharing) {
+			this.state.appendMessage("notice", "A session share is already in progress.");
+			return;
+		}
+		this.sharing = true;
+		const generation = this.foregroundGeneration;
+		this.state.setActivityText("Creating share...");
+		try {
+			const result = await this.dependencies.shareSession(this.runtime.session);
+			if (generation !== this.foregroundGeneration) return;
+			this.state.appendMessage(
+				"system",
+				`Share URL: ${result.shareUrl}\nGist: ${result.gistUrl}`,
+			);
+		} catch (error) {
+			if (generation === this.foregroundGeneration) {
+				this.state.appendMessage(
+					"notice",
+					`Failed to share session: ${errorMessage(error)}`,
+				);
+			}
+		} finally {
+			this.sharing = false;
+			if (generation === this.foregroundGeneration) {
+				this.state.setActivityText(undefined);
+			}
 		}
 	}
 
@@ -1608,6 +1647,11 @@ export class RuntimeController {
 				description: "Manually compact the session context",
 				source: "system" as const,
 				argumentHint: "[instructions]",
+			},
+			{
+				name: "share",
+				description: "Share session as a secret GitHub gist",
+				source: "system" as const,
 			},
 			...prompts,
 			...skills,

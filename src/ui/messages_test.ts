@@ -136,6 +136,20 @@ Deno.test("cache miss notices have a dedicated spacing class", () => {
 	assertStringIncludes(html, "message-notice");
 });
 
+Deno.test("system messages make share URLs actionable and escape text", () => {
+	const html = renderMessage({
+		id: "share-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "system",
+		text: "Share <ready>: https://pi.dev/session/#gist-id",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "Share &lt;ready>:");
+	assertStringIncludes(html, 'href="https://pi.dev/session/#gist-id"');
+	assertStringIncludes(html, 'target="_blank"');
+});
+
 Deno.test("skills use the tool timeline without enhancement controls", () => {
 	const html = renderMessage({
 		id: "skill-1",

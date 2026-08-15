@@ -213,6 +213,11 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 		createMemorySessionManager: (cwd) => manager(undefined, false, cwd),
 		openSessionManager: (path) => manager(path),
 		moveToTrash: () => Promise.resolve(),
+		shareSession: () =>
+			Promise.resolve({
+				shareUrl: "https://pi.dev/session/#gist-id",
+				gistUrl: "https://gist.github.com/user/gist-id",
+			}),
 		getAgentDir: () => "/agent",
 	};
 }
@@ -522,6 +527,33 @@ Deno.test("RuntimeController shows one error when manual compaction fails", asyn
 	assertEquals(
 		state.messages.map((message) => message.text),
 		["Compaction failed: Nothing to compact (session too small)"],
+	);
+	await controller.dispose();
+});
+
+Deno.test("RuntimeController handles share without sending it to the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+
+	assertEquals(await controller.prompt("/share"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.activityText, undefined);
+	assertEquals(
+		state.messages.map((message) => message.text),
+		[
+			"Share URL: https://pi.dev/session/#gist-id\n" +
+				"Gist: https://gist.github.com/user/gist-id",
+		],
+	);
+	assertEquals(
+		state.slashCommands.some((command) => command.name === "share"),
+		true,
 	);
 	await controller.dispose();
 });

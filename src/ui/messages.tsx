@@ -431,6 +431,29 @@ function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	return classes.join(" ");
 }
 
+function renderPlainTextLinks(text: string): string {
+	const parts = text.split(/(https?:\/\/\S+)/gu);
+	return syncHtml(
+		<>
+			{parts.filter(Boolean).map((part) =>
+				part.startsWith("http://") || part.startsWith("https://") ? (
+					<a
+						class="underline decoration-border underline-offset-2 hover:decoration-current"
+						href={part}
+						target="_blank"
+						rel="noreferrer"
+						safe
+					>
+						{part}
+					</a>
+				) : (
+					<span safe>{part}</span>
+				),
+			)}
+		</>,
+	);
+}
+
 export function renderMessage(message: AppMessage, toolContinues = false): string {
 	if (message.role === "user") {
 		const imageAttachments =
@@ -510,8 +533,8 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 				data-message-id={message.id}
 				role={message.role === "notice" ? "status" : undefined}
 			>
-				<p class="m-0 whitespace-pre-wrap" safe>
-					{message.text}
+				<p class="m-0 whitespace-pre-wrap">
+					{renderPlainTextLinks(message.text)}
 				</p>
 			</article>,
 		);
