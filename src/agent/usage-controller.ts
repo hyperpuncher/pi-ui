@@ -24,13 +24,6 @@ import { UsageRequestTracker } from "./usage-request.ts";
 
 type LimitProvider = "codex" | "opencode-go";
 type UsageState = Pick<AppStore, "setUsage">;
-type CacheUsageEntry = {
-	type: string;
-	message?: {
-		role: string;
-		usage?: { input: number; cacheRead: number; cacheWrite: number };
-	};
-};
 type LimitUsageResult =
 	| { provider: "codex"; usage: CodexUsage | undefined }
 	| { provider: "opencode-go"; usage: OpenCodeGoUsage | undefined };
@@ -56,11 +49,10 @@ export class UsageController {
 		const session = this.getRuntime().session;
 		const showCodexUsage = isOpenAICodex(session.model);
 		const showOpenCodeGoUsage = isOpenCodeGo(session.model);
+		const stats = session.getSessionStats();
 		this.state.setUsage(
-			formatStats(session.getSessionStats(), {
-				cacheHitPercent: latestCacheHitPercent(
-					session.sessionManager.getEntries(),
-				),
+			formatStats(stats, {
+				cacheHitPercent: cumulativeCacheHitPercent(stats),
 				limits: showCodexUsage
 					? usageLimits(
 							"Codex limits",
@@ -222,18 +214,12 @@ export function formatStats(
 	};
 }
 
-export function latestCacheHitPercent(
-	entries: readonly CacheUsageEntry[],
+export function cumulativeCacheHitPercent(
+	stats: Pick<SessionStats, "tokens">,
 ): number | undefined {
-	for (let index = entries.length - 1; index >= 0; index -= 1) {
-		const entry = entries[index];
-		if (entry.type !== "message" || entry.message?.role !== "assistant") continue;
-		const usage = entry.message.usage;
-		if (!usage) continue;
-		const promptTokens = usage.input + usage.cacheRead + usage.cacheWrite;
-		return promptTokens > 0 ? (usage.cacheRead / promptTokens) * 100 : undefined;
-	}
-	return undefined;
+	const { input, cacheRead, cacheWrite } = stats.tokens;
+	const promptTokens = input + cacheRead + cacheWrite;
+	return promptTokens > 0 ? (cacheRead / promptTokens) * 100 : undefined;
 }
 
 function usageLimits(

@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 
 import type { AppUsage } from "../state/app-store.ts";
 import { agentSessionRuntimeStub } from "./test-fixtures.ts";
-import { latestCacheHitPercent, UsageController } from "./usage-controller.ts";
+import { cumulativeCacheHitPercent, UsageController } from "./usage-controller.ts";
 
 Deno.test("keeps cached Codex usage while switching models", async () => {
 	const codexModel = { provider: "openai-codex", id: "gpt-5" };
@@ -118,28 +118,29 @@ Deno.test("shows OpenCode Go usage for OpenCode Go models", async () => {
 	controller.dispose();
 });
 
-Deno.test("uses the latest assistant prompt cache hit rate", () => {
-	const entries = [
-		{
-			type: "message",
-			message: {
-				role: "assistant",
-				usage: { input: 30, cacheRead: 70, cacheWrite: 0 },
+Deno.test("uses the cumulative session cache hit rate", () => {
+	assertEquals(
+		cumulativeCacheHitPercent({
+			tokens: {
+				input: 40,
+				output: 20,
+				cacheRead: 150,
+				cacheWrite: 10,
+				total: 220,
 			},
-		},
-		{
-			type: "message",
-			message: { role: "user" },
-		},
-		{
-			type: "message",
-			message: {
-				role: "assistant",
-				usage: { input: 10, cacheRead: 80, cacheWrite: 10 },
+		}),
+		75,
+	);
+	assertEquals(
+		cumulativeCacheHitPercent({
+			tokens: {
+				input: 0,
+				output: 20,
+				cacheRead: 0,
+				cacheWrite: 0,
+				total: 20,
 			},
-		},
-	];
-
-	assertEquals(latestCacheHitPercent(entries), 80);
-	assertEquals(latestCacheHitPercent([]), undefined);
+		}),
+		undefined,
+	);
 });
