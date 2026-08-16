@@ -5,6 +5,7 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 
 import { AppStore } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
+import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import {
 	modelMatchesPattern,
 	parseScopedModelPattern,
@@ -396,6 +397,79 @@ Deno.test("session catalog updates a streaming session incrementally", () => {
 
 	assertEquals(state.sessions[0]?.title, "A newly submitted prompt");
 	assertEquals(state.sessions[0]?.subtitle, "1 message");
+});
+
+Deno.test("session catalog reorders only for user-relevant activity", () => {
+	const state = new AppStore();
+	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	catalog.applyPrepared({
+		ok: true,
+		sessions: [sessionInfo("/first", "First"), sessionInfo("/second", "Second")],
+	});
+
+	catalog.messageStarted("/second");
+	catalog.touch("/second");
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/first", "/second"],
+	);
+
+	catalog.messageStarted("/second", "Continue this session");
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/second", "/first"],
+	);
+
+	catalog.agentCompleted("/first");
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/first", "/second"],
+	);
+});
+
+Deno.test("session catalog keeps completion order after sessions are opened", () => {
+	const state = new AppStore();
+	const statuses = new Map<string, "running" | "completed">();
+	const catalog = new SessionCatalog(state, (sessions) =>
+		mergeBackgroundSessionStatuses(sessions, statuses),
+	);
+	catalog.applyPrepared({
+		ok: true,
+		sessions: [
+			sessionInfo("/first", "First"),
+			sessionInfo("/second", "Second"),
+			sessionInfo("/third", "Third"),
+		],
+	});
+
+	statuses.set("/third", "completed");
+	catalog.mergeCurrentStatuses();
+	catalog.touch("/second");
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/third", "/first", "/second"],
+	);
+
+	statuses.set("/second", "completed");
+	catalog.mergeCurrentStatuses();
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/second", "/third", "/first"],
+	);
+
+	statuses.delete("/second");
+	catalog.mergeCurrentStatuses();
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/third", "/second", "/first"],
+	);
+
+	statuses.delete("/third");
+	catalog.mergeCurrentStatuses();
+	assertEquals(
+		state.sessions.map((session) => session.path),
+		["/second", "/third", "/first"],
+	);
 });
 
 Deno.test("session catalog keeps every recent workspace", () => {

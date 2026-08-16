@@ -1495,6 +1495,8 @@ export class RuntimeController {
 				);
 				this.updateSessionCatalogFromEvent(event, this.runtime);
 				if (outcome.agentCompleted) {
+					const path = this.runtime.session.sessionManager.getSessionFile();
+					if (path) this.catalog.agentCompleted(path);
 					this.syncUsage();
 					this.refreshCodexUsage(true);
 					this.notifyRuntimeDone(this.runtime, false);

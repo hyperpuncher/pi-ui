@@ -440,12 +440,11 @@ export class AppStore {
 		update: (session: AppSessionSummary) => AppSessionSummary,
 	): boolean {
 		const catalog = this.getSessionCatalog();
-		const session = catalog.find((candidate) => candidate.path === path);
-		if (!session) return false;
-		const sessions = [
-			update(session),
-			...catalog.filter((candidate) => candidate.path !== path),
-		];
+		const index = catalog.findIndex((candidate) => candidate.path === path);
+		if (index < 0) return false;
+		const sessions = catalog.map((session, candidateIndex) =>
+			candidateIndex === index ? update(session) : session,
+		);
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
 		this.presentation?.sessionsChanged();
