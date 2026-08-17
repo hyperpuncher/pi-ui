@@ -1,7 +1,10 @@
 import { disableServerAutostart, enableServerAutostart } from "./server-autostart.ts";
 import { parseServerOptions, serverUsage } from "./server-options.ts";
+import { isVersionRequest, version } from "./version.ts";
 
-if (Deno.args[0] === "autostart") {
+if (isVersionRequest(Deno.args)) {
+	console.log(version);
+} else if (Deno.args[0] === "autostart") {
 	if (Deno.args.length !== 2 || !["enable", "disable"].includes(Deno.args[1])) {
 		throw new Error("usage: pi-ui-server autostart enable|disable");
 	}

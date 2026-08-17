@@ -1,5 +1,11 @@
 import { setApplicationFocused } from "./desktop-notifications.ts";
 import { hasPrimaryModifier } from "./utils/keyboard.ts";
+import { isVersionRequest, version } from "./version.ts";
+
+if (isVersionRequest(Deno.args)) {
+	console.log(version);
+	Deno.exit(0);
+}
 
 const hideApplicationMenuId = "hide-application";
 const openWorkspaceMenuId = "change-workspace";

@@ -60,6 +60,7 @@ export const serverUsage = `usage: pi-ui-server [options]
 options:
       --host <hostname>  listen hostname (default: ${defaultServerHostname}; env: PI_UI_HOST)
       --port <port>      listen port (default: ${defaultServerPort}; env: PI_UI_PORT)
+      --version          show the version
   -h, --help             show this help`;
 
 function parseHostname(value: string | undefined, source: string): string {
