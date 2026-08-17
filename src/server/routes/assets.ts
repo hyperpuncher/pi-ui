@@ -11,7 +11,7 @@ export function registerAssetRoutes(router: ExactRouter<RouteContext>): void {
 		async (_request, context) =>
 			new Response(
 				renderPage(
-					context.store.snapshot(),
+					context.renderer.projectState(context.store.snapshot()),
 					await readWorkspaceReviewAvailability(
 						context.resources.host?.getWorkspacePath() ??
 							context.store.workspacePath,

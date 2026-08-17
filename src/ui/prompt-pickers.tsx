@@ -7,13 +7,14 @@ import {
 	toggleWorkspaceDialogAction,
 } from "../commands/actions.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppRenderSnapshot, AppThinkingLevel } from "../state/app-store.ts";
+import type { AppThinkingLevel } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-export function renderWorkspacePicker(state: AppRenderSnapshot): string {
+export function renderWorkspacePicker(state: AppStateSnapshot): string {
 	const label = workspaceDisplayName(state.workspacePath);
 	return syncHtml(
 		<button
@@ -40,7 +41,7 @@ export function renderWorkspacePicker(state: AppRenderSnapshot): string {
 	);
 }
 
-export function renderThinkingPicker(state: AppRenderSnapshot): string {
+export function renderThinkingPicker(state: AppStateSnapshot): string {
 	const current = state.thinkingLevel;
 	return syncHtml(
 		<div id="thinking-picker" class="hidden min-w-0 sm:block">
@@ -146,7 +147,7 @@ function thinkingDescription(level: AppThinkingLevel): string {
 	}
 }
 
-export function renderModelPicker(state: AppRenderSnapshot): string {
+export function renderModelPicker(state: AppStateSnapshot): string {
 	const current = state.models.find(
 		(model) => `${model.provider}/${model.id}` === state.currentModel,
 	);
@@ -341,6 +342,6 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 	);
 }
 
-function modelTriggerLabel(model: AppRenderSnapshot["models"][number]): string {
+function modelTriggerLabel(model: AppStateSnapshot["models"][number]): string {
 	return model.id;
 }

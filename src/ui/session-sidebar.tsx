@@ -1,5 +1,6 @@
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppRenderSnapshot, AppSessionSummary } from "../state/app-store.ts";
+import type { AppSessionSummary } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
@@ -14,7 +15,7 @@ import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
 
 type SessionSidebarState = Pick<
-	AppRenderSnapshot,
+	AppStateSnapshot,
 	"activityText" | "currentSessionPath" | "sessionCatalogLoading" | "sessions"
 >;
 

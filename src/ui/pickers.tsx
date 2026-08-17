@@ -1,11 +1,8 @@
 import type { FileSuggestion } from "../server/file-search.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { WorkspaceSuggestion } from "../server/workspace-search.ts";
-import type {
-	AppRenderSnapshot,
-	AppSessionSummary,
-	AppSlashCommand,
-} from "../state/app-store.ts";
+import type { AppSessionSummary, AppSlashCommand } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
 import { StopIcon } from "./icon.tsx";
@@ -25,7 +22,7 @@ import { syncHtml } from "./sync-html.ts";
 const bottomAnchoredPickerClass =
 	"flex max-h-72 list-none flex-col-reverse overflow-y-auto p-1";
 
-export function slashPickerOpenExpression(state: AppRenderSnapshot): string {
+export function slashPickerOpenExpression(state: AppStateSnapshot): string {
 	const haystacks = state.slashCommands.map(slashCommandHaystack);
 	return `$prompt.startsWith('/') &&
 		!$prompt.includes(' ') &&
@@ -34,7 +31,7 @@ export function slashPickerOpenExpression(state: AppRenderSnapshot): string {
 		)`;
 }
 
-export function renderSlashPicker(state: AppRenderSnapshot): string {
+export function renderSlashPicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div id="slash-picker">
 			<PickerList id="slash-picker-list" class={bottomAnchoredPickerClass}>
@@ -101,7 +98,7 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 	);
 }
 
-export function renderWorkspaceDialogMenu(state: AppRenderSnapshot): string {
+export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
 	return syncHtml(
 		<div role="menu" id="workspace-menu" aria-orientation="vertical">
@@ -212,7 +209,7 @@ function uniqueWorkspaces(workspaces: readonly string[]): string[] {
 	return unique;
 }
 
-export function renderSessionPicker(state: AppRenderSnapshot): string {
+export function renderSessionPicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div
 			role="menu"
@@ -228,7 +225,7 @@ export function renderSessionPicker(state: AppRenderSnapshot): string {
 }
 
 type SessionPickerState = Pick<
-	AppRenderSnapshot,
+	AppStateSnapshot,
 	"activityText" | "currentSessionPath" | "sessions"
 >;
 

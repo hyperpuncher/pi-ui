@@ -1,13 +1,14 @@
 import { zstdCompressSync } from "node:zlib";
 
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
-import { type AppMessage, type AppMessageInput, AppStore } from "../state/app-store.ts";
+import { type AppMessageInput, AppStore } from "../state/app-store.ts";
 import {
 	StreamingFrameScheduler,
 	type StreamingFrameSchedulerClock,
 } from "../state/streaming-frame-scheduler.ts";
 import { renderMarkdownStreamingMeasured } from "../ui/markdown.tsx";
 import { renderMessage } from "../ui/messages.tsx";
+import type { AppMessage } from "../ui/render-state.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { sessionPerformance } from "./session-performance.ts";
 

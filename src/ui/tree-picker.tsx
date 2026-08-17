@@ -1,9 +1,10 @@
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppRenderSnapshot, AppTreeEntry } from "../state/app-store.ts";
+import type { AppTreeEntry } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { DateTime } from "./date-time.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-export function renderTreePicker(state: AppRenderSnapshot): string {
+export function renderTreePicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div id="tree-picker">
 			<div class="flex items-center gap-3 border-b border-border px-3 py-2 text-xs">

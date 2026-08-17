@@ -1,7 +1,8 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { assertEquals } from "@std/assert";
 
-import type { AppMessage, AppMessageOptions } from "../state/app-store.ts";
+import type { AppMessageOptions } from "../state/app-store.ts";
+import type { TranscriptMessage } from "../state/transcript-state.ts";
 import {
 	reduceSessionEvent,
 	type SessionEventReducerContext,
@@ -13,13 +14,13 @@ import { agentSessionEventStub } from "./test-fixtures.ts";
 class FakeState implements SessionEventStateSink {
 	readonly appended: Array<{
 		id: string;
-		role: AppMessage["role"];
+		role: TranscriptMessage["role"];
 		text: string;
 		options: AppMessageOptions;
 	}> = [];
 	readonly updates: Array<{
 		id: string;
-		patch: Partial<Omit<AppMessage, "id">>;
+		patch: Partial<Omit<TranscriptMessage, "id">>;
 	}> = [];
 	readonly thoughts: string[] = [];
 	readonly assistant: string[] = [];
@@ -29,7 +30,7 @@ class FakeState implements SessionEventStateSink {
 	finishCount = 0;
 
 	appendMessage(
-		role: AppMessage["role"],
+		role: TranscriptMessage["role"],
 		text: string,
 		options: AppMessageOptions = {},
 	): string {
@@ -38,7 +39,7 @@ class FakeState implements SessionEventStateSink {
 		return id;
 	}
 
-	updateMessage(id: string, patch: Partial<Omit<AppMessage, "id">>): void {
+	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void {
 		this.updates.push({ id, patch });
 	}
 

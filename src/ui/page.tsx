@@ -1,7 +1,6 @@
 import { getPierreThemes } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
-import type { AppRenderSnapshot } from "../state/app-store.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
@@ -12,6 +11,7 @@ import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
+import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { syncHtml } from "./sync-html.ts";

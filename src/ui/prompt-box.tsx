@@ -1,5 +1,5 @@
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppRenderSnapshot } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
@@ -14,7 +14,7 @@ import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import { syncHtml } from "./sync-html.ts";
 
 export function renderPromptBox(
-	state: AppRenderSnapshot,
+	state: AppStateSnapshot,
 	reviewAvailable = false,
 ): string {
 	return syncHtml(
@@ -162,7 +162,7 @@ export function renderPromptBox(
 	);
 }
 
-export function renderPromptQueue(state: AppRenderSnapshot): string {
+export function renderPromptQueue(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div
 			id="prompt-queue"
@@ -210,7 +210,7 @@ function renderLatestButton() {
 	);
 }
 
-function renderQueuedMessages(state: AppRenderSnapshot): string {
+function renderQueuedMessages(state: AppStateSnapshot): string {
 	const items = [
 		...state.queuedSteeringMessages.map((text, index) => ({
 			behavior: "steer" as const,

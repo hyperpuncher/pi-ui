@@ -3,7 +3,7 @@ import {
 	openSessionDialogAction,
 	toggleWorkspaceReviewAction,
 } from "../commands/actions.ts";
-import type { AppRenderSnapshot } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { Icon } from "./icon.tsx";
 import { ShortcutTooltip } from "./keyboard.tsx";
@@ -18,7 +18,7 @@ type PromptToolbarAction =
 	| "sessions";
 
 export function renderPromptToolbar(
-	state: AppRenderSnapshot,
+	state: AppStateSnapshot,
 	reviewAvailable = false,
 ): string {
 	return syncHtml(

@@ -13,15 +13,10 @@ import {
 	type TranscriptSnapshot,
 } from "./transcript-state.ts";
 
-export type AppMessage = TranscriptMessage & {
-	renderedHtml?: string;
-	presentationState: "plain" | "streaming" | "deferred" | "enhancing" | "final";
-	presentationVersion: number;
-};
 export type AppMessageTitlePart = TranscriptMessageTitlePart;
 export type AppMessageOptions = TranscriptMessageOptions;
 export type AppChatSnapshot = TranscriptSnapshot;
-export type AppMessageInput = TranscriptMessageInput & { renderedHtml?: string };
+export type AppMessageInput = TranscriptMessageInput;
 export type AppModel = {
 	id: string;
 	provider: string;
@@ -141,11 +136,10 @@ export interface AppStorePresentation {
 		activeIds: readonly (string | undefined)[],
 		enhancementIds: readonly string[],
 	): void;
-	projectMessages(messages: readonly TranscriptMessage[]): AppMessage[];
 }
 
-export type AppRenderSnapshot = Readonly<{
-	messages: readonly AppMessage[];
+export type AppStateSnapshot = Readonly<{
+	messages: readonly TranscriptMessage[];
 	models: readonly AppModel[];
 	sessions: readonly AppSessionSummary[];
 	sessionCatalogLoading: boolean;
@@ -231,15 +225,8 @@ export class AppStore {
 		if (this.presentation) throw new Error("AppStore presentation already attached");
 		this.presentation = presentation;
 	}
-	get messages(): AppMessage[] {
-		return (
-			this.presentation?.projectMessages(this.transcript.messages) ??
-			this.transcript.messages.map((message) => ({
-				...message,
-				presentationState: "plain",
-				presentationVersion: 0,
-			}))
-		);
+	get messages(): readonly TranscriptMessage[] {
+		return this.transcript.messages;
 	}
 	get hasOlderMessages(): boolean {
 		return this.transcript.hasOlderMessages;
@@ -268,7 +255,7 @@ export class AppStore {
 		return [...this.transcript.queuedFollowUpMessages];
 	}
 
-	snapshot(): AppRenderSnapshot {
+	snapshot(): AppStateSnapshot {
 		return Object.freeze({
 			messages: this.messages.map((message) => ({ ...message })),
 			models: this.models.map((model) => ({ ...model })),
@@ -322,7 +309,7 @@ export class AppStore {
 	}
 
 	appendMessage(
-		role: AppMessage["role"],
+		role: TranscriptMessage["role"],
 		text: string,
 		options: AppMessageOptions = {},
 	): string {
@@ -331,14 +318,8 @@ export class AppStore {
 		this.commit();
 		return id;
 	}
-	updateMessage(id: string, patch: Partial<Omit<AppMessage, "id">>): void {
-		const {
-			renderedHtml: _,
-			presentationState: __,
-			presentationVersion: ___,
-			...domain
-		} = patch;
-		if (!this.transcript.updateMessage(id, domain)) return;
+	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void {
+		if (!this.transcript.updateMessage(id, patch)) return;
 		this.presentation?.messageUpdated(id);
 		this.commit();
 	}
@@ -390,7 +371,7 @@ export class AppStore {
 		const end = sessionPerformance.startSpan("transcriptProjection");
 		this.presentation?.transcriptReplacing();
 		this.transcript.replaceMessages(
-			messages.map(({ renderedHtml: _, ...message }) => message),
+			messages,
 			messages.length === 0 ? randomEmptyChatHint() : undefined,
 		);
 		end();

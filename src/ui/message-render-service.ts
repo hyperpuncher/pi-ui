@@ -1,5 +1,5 @@
 import { sessionPerformance } from "../perf/session-performance.ts";
-import type { AppMessage, AppStore } from "../state/app-store.ts";
+import type { AppStore } from "../state/app-store.ts";
 import { shouldDeferEnhancement } from "../state/enhancement-policy.ts";
 import { EnhancementQueue } from "../state/enhancement-queue.ts";
 import { StreamingFrameScheduler } from "../state/streaming-frame-scheduler.ts";
@@ -12,6 +12,7 @@ import {
 	renderMarkdownStreaming,
 } from "./markdown.tsx";
 import { renderMessage, renderMessages, renderOlderMessagesPatch } from "./messages.tsx";
+import type { AppMessage } from "./render-state.ts";
 
 type MessagePresentation = Pick<
 	AppMessage,
@@ -95,7 +96,7 @@ export class MessageRenderService {
 	}
 	renderMessagesElement(): string {
 		return renderMessages(
-			this.store.messages,
+			this.projectMessages(this.store.messages),
 			this.store.emptyChatHint,
 			this.store.hasOlderMessages,
 			this.store.sessions,
@@ -105,7 +106,7 @@ export class MessageRenderService {
 	}
 	renderOlderMessagesPatch(ids: readonly string[]): string {
 		return renderOlderMessagesPatch(
-			this.store.messages,
+			this.projectMessages(this.store.messages),
 			ids,
 			this.store.hasOlderMessages,
 		);

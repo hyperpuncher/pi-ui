@@ -1,7 +1,6 @@
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import type {
-	AppMessage,
-	AppRenderSnapshot,
+	AppStateSnapshot,
 	AppStore,
 	AppStorePresentation,
 	UiCommitEffect,
@@ -31,6 +30,8 @@ import {
 } from "./prompt-pickers.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import { renderPromptToolbar } from "./prompt-toolbar.tsx";
+import type { AppMessage } from "./render-state.ts";
+import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebarContent } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
@@ -79,7 +80,7 @@ export class UiRenderer implements AppStorePresentation {
 		try {
 			return this.hub.createStream(
 				signal,
-				() => this.renderView({}, this.store.snapshot()),
+				() => this.renderView({}, this.projectState(this.store.snapshot())),
 				{ onDisconnect: disconnect },
 			);
 		} catch (error) {
@@ -131,16 +132,17 @@ export class UiRenderer implements AppStorePresentation {
 		this.pendingEffects = [];
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
-		const snapshot = this.store.snapshot();
+		const state = this.store.snapshot();
 		const pickerScripts = this.pickerEffectScripts(effects);
 		if (this.pickersHub.clientCount > 0) {
-			const elements = this.renderPickerElements(snapshot);
+			const elements = this.renderPickerElements(state);
 			if (elements !== this.pickerHtml || pickerScripts.length > 0) {
 				this.pickerHtml = elements;
 				this.pickersHub.patchView(elements, "{}", pickerScripts);
 			}
 		}
 		if (this.hub.clientCount > 0) {
+			const snapshot = this.projectState(state);
 			const regions = this.renderElementRegions(snapshot, false);
 			const replaceTranscript =
 				this.replaceTranscriptOnCommit && Boolean(regions[0]);
@@ -153,7 +155,7 @@ export class UiRenderer implements AppStorePresentation {
 		}
 		this.replaceTranscriptOnCommit = false;
 		if (this.sessionHub.clientCount > 0) {
-			const elements = renderSessionPickerContent(snapshot);
+			const elements = renderSessionPickerContent(state);
 			if (elements !== this.sessionPickerHtml) {
 				this.sessionPickerHtml = elements;
 				this.sessionHub.patchElement(elements, "#session-menu-content");
@@ -236,8 +238,11 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
 		return true;
 	}
-	projectMessages(messages: Parameters<MessageRenderService["projectMessages"]>[0]) {
-		return this.messages.projectMessages(messages);
+	projectState(snapshot: AppStateSnapshot): AppRenderSnapshot {
+		return {
+			...snapshot,
+			messages: this.messages.projectMessages(snapshot.messages),
+		};
 	}
 	renderMessagesElement(): string {
 		return this.messages.renderMessagesElement();
@@ -275,7 +280,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderDebugOverlay(snapshot),
 		];
 	}
-	renderPickerElements(snapshot: AppRenderSnapshot): string {
+	renderPickerElements(snapshot: AppStateSnapshot): string {
 		return (
 			renderAuthDialogContent(snapshot.authDialog) +
 			renderLlamaDialogContent(snapshot.llamaDialog) +
@@ -286,7 +291,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderTreePicker(snapshot)
 		);
 	}
-	renderSignals(snapshot: AppRenderSnapshot, overrides: JsonObject = {}): string {
+	renderSignals(snapshot: AppStateSnapshot, overrides: JsonObject = {}): string {
 		return JSON.stringify({
 			...projectBackendSignals(snapshot),
 			...overrides,
@@ -294,7 +299,7 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	private renderView(
 		overrides: JsonObject = {},
-		snapshot = this.store.snapshot(),
+		snapshot = this.projectState(this.store.snapshot()),
 		includeFinalMessageHtml = true,
 	): RenderedView {
 		return {

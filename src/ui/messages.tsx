@@ -9,7 +9,6 @@ import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	AppKeybindHint,
-	AppMessage,
 	AppMessageTitlePart,
 	AppSessionSummary,
 } from "../state/app-store.ts";
@@ -18,6 +17,7 @@ import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderMarkdownStreaming } from "./markdown.tsx";
+import type { AppMessage } from "./render-state.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
 import { shikiTokenStyle } from "./shiki-token-style.ts";

@@ -1,5 +1,5 @@
 import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
-import type { AppRenderSnapshot } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 
 export type BackendSignals = {
 	_promptHistory: readonly string[];
@@ -9,7 +9,7 @@ export type BackendSignals = {
 	_sessionTransitionVisible: boolean;
 };
 
-export function projectBackendSignals(state: AppRenderSnapshot): BackendSignals {
+export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 	return {
 		_promptHistory: state.promptHistory,
 		_isBusy: Boolean(state.activityText),

@@ -1,5 +1,5 @@
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppRenderSnapshot } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { Icon, StopIcon } from "./icon.tsx";
 import { ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
@@ -12,7 +12,7 @@ function SendIcon() {
 	);
 }
 
-export function renderPromptAction(state: AppRenderSnapshot): string {
+export function renderPromptAction(state: AppStateSnapshot): string {
 	if (state.activityText) {
 		return syncHtml(
 			<button

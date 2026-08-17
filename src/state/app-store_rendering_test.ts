@@ -92,7 +92,7 @@ Deno.test("fat patches preserve finalized message DOM without resending its HTML
 		state.replaceMessages([markdownMessage("lightweight source")]);
 		while (!resolveEnhancement) await Promise.resolve();
 		resolveEnhancement("<p>large finalized HTML</p>");
-		await waitFor(() => state.messages[0].presentationState === "final");
+		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
 		const patches = await collectElementPatches(response, 5);
 
@@ -122,7 +122,7 @@ Deno.test("fat patches resend finalized tool HTML that the client may morph", as
 				format: "diff",
 			},
 		]);
-		await waitFor(() => state.messages[0].presentationState === "final");
+		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
 		const patches = await collectElementPatches(response, 5);
 
@@ -300,8 +300,8 @@ Deno.test("replacement discards stale enhancement completion", async () => {
 
 	assertEqual(state.messages.length, 1);
 	assertEqual(state.messages[0].text, "session B");
-	assertEqual(state.messages[0].renderedHtml, "<p>final B</p>");
-	assertEqual(state.messages[0].presentationState, "final");
+	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>final B</p>");
+	assertEqual(projectedMessages(state)[0].presentationState, "final");
 });
 
 Deno.test("oversized enhancement retains fallback until explicitly requested", async () => {
@@ -315,12 +315,12 @@ Deno.test("oversized enhancement retains fallback until explicitly requested", a
 	state.replaceMessages([markdownMessage("large fallback ".repeat(2_000))]);
 	await settleMicrotasks();
 	assertEqual(renderCount, 0);
-	assertEqual(state.messages[0].presentationState, "deferred");
+	assertEqual(projectedMessages(state)[0].presentationState, "deferred");
 	assertIncludes(state.renderer.renderMessagesElement(), "Enhance formatting");
 	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), true);
 	await waitFor(() => renderCount === 1);
 	await settleMicrotasks();
-	assertEqual(state.messages[0].presentationState, "final");
+	assertEqual(projectedMessages(state)[0].presentationState, "final");
 });
 
 Deno.test("skill and compaction instructions render Markdown without enhancement work", async () => {
@@ -338,8 +338,8 @@ Deno.test("skill and compaction instructions render Markdown without enhancement
 	await settleMicrotasks();
 
 	assertEqual(renderCount, 0);
-	assertIncludes(state.messages[0].renderedHtml ?? "", "<strong>");
-	assertIncludes(state.messages[1].renderedHtml ?? "", "<strong>");
+	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
+	assertIncludes(projectedMessages(state)[1].renderedHtml ?? "", "<strong>");
 	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), false);
 	assertEqual(state.renderer.enhanceMessage(state.messages[1].id), false);
 	assertNotIncludes(state.renderer.renderMessagesElement(), "Enhance formatting");
@@ -350,7 +350,10 @@ Deno.test("assistant completion immediately flushes newest streaming content", (
 	state.appendMessage("assistant", "first");
 	state.appendAssistantDelta(" **latest**");
 	state.finishAssistant();
-	assertIncludes(state.messages[0].renderedHtml ?? "", "<strong>latest</strong>");
+	assertIncludes(
+		projectedMessages(state)[0].renderedHtml ?? "",
+		"<strong>latest</strong>",
+	);
 });
 
 Deno.test("running background transcript stays headless until activation", async () => {
@@ -379,8 +382,8 @@ Deno.test("running background transcript stays headless until activation", async
 	await settleMicrotasks();
 
 	assertEqual(enhancementCount, 1);
-	assertEqual(foreground.messages[0].presentationState, "streaming");
-	assertIncludes(foreground.messages[0].renderedHtml ?? "", "partial");
+	assertEqual(projectedMessages(foreground)[0].presentationState, "streaming");
+	assertIncludes(projectedMessages(foreground)[0].renderedHtml ?? "", "partial");
 	assertEqual(foreground.messages[1].state, "running");
 	assertEqual(foreground.queuedSteeringMessages.join(","), "steer");
 	assertEqual(foreground.queuedFollowUpMessages.join(","), "follow");
@@ -420,7 +423,7 @@ Deno.test("completed background transcript enhances only after activation", asyn
 		},
 	});
 	foreground.restoreChat(background.snapshot());
-	await waitFor(() => foreground.messages[0]?.presentationState === "final");
+	await waitFor(() => projectedMessages(foreground)[0]?.presentationState === "final");
 	assertEqual(enhancementCount, 1);
 });
 
@@ -433,8 +436,11 @@ Deno.test("enhancement errors retain the rendered Markdown fallback", async () =
 		});
 		state.replaceMessages([markdownMessage("<b>**fallback**</b>")]);
 		await settleMicrotasks();
-		assertEqual(state.messages[0].renderedHtml, "<p><strong>fallback</strong></p>\n");
-		assertEqual(state.messages[0].presentationState, "plain");
+		assertEqual(
+			projectedMessages(state)[0].renderedHtml,
+			"<p><strong>fallback</strong></p>\n",
+		);
+		assertEqual(projectedMessages(state)[0].presentationState, "plain");
 		assertIncludes(
 			state.renderer.renderMessagesElement(),
 			"<p><strong>fallback</strong></p>",
@@ -613,6 +619,17 @@ Deno.test("dedicated session stream refreshes current and background statuses", 
 	}
 });
 
+Deno.test("state snapshots contain domain messages only", () => {
+	const state = createState();
+	state.appendMessage("assistant", "**answer**");
+
+	const message = state.snapshot().messages[0];
+	assertEqual("renderedHtml" in message, false);
+	assertEqual("presentationState" in message, false);
+	assertEqual("presentationVersion" in message, false);
+	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
+});
+
 Deno.test("initial and live backend-owned signals share exact projections", () => {
 	const state = createState();
 	const cases = [
@@ -664,7 +681,7 @@ Deno.test("primary and picker fat views contain every server-owned dynamic root"
 		const store = new AppStore();
 		const renderer = new UiRenderer(store, new DatastarClientHub());
 		const snapshot = store.snapshot();
-		const primary = renderer.renderElements(snapshot);
+		const primary = renderer.renderElements(renderer.projectState(snapshot));
 		const pickers = renderer.renderPickerElements(snapshot);
 		assertNotIncludes(primary + pickers, 'id="session-menu-content"');
 		assertIncludes(primary, 'id="debug-fps" data-ignore-morph');
@@ -718,7 +735,7 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 		},
 	]);
 	state.flush();
-	const html = renderPage(state.snapshot());
+	const html = renderPage(state.renderer.projectState(state.snapshot()));
 
 	assertIncludes(html, 'id="prompt-input"');
 	assertIncludes(html, 'data-native-file-picker="false"');
@@ -780,6 +797,10 @@ function createState(options: MessageRenderServiceOptions = {}): TestStore {
 		renderer,
 		createStream: (signal: AbortSignal) => renderer.createStream(signal),
 	});
+}
+
+function projectedMessages(state: TestStore) {
+	return state.renderer.projectState(state.snapshot()).messages;
 }
 
 function markdownMessage(text: string): AppMessageInput {

@@ -1,7 +1,7 @@
 import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppRenderSnapshot } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { syncHtml } from "./sync-html.ts";
 
@@ -25,7 +25,7 @@ export function resumeSessionShortcutAction(path: string, index: number): string
 	}`;
 }
 
-export function renderSessionTransition(state: AppRenderSnapshot): string {
+export function renderSessionTransition(state: AppStateSnapshot): string {
 	const transition = state.sessionTransition;
 	const visible = sessionTransitionOverlayVisible(transition);
 	const targetPath = transition.status === "idle" ? "" : transition.targetPath;

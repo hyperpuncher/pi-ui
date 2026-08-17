@@ -1,7 +1,7 @@
-import type { AppRenderSnapshot } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { syncHtml } from "./sync-html.ts";
 
-export function renderDebugOverlay(state: AppRenderSnapshot): string {
+export function renderDebugOverlay(state: AppStateSnapshot): string {
 	if (!state.debugUi) return "";
 
 	return syncHtml(

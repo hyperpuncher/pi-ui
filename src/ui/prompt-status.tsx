@@ -1,8 +1,9 @@
-import type { AppRenderSnapshot, AppUsage, AppUsageLimits } from "../state/app-store.ts";
+import type { AppUsage, AppUsageLimits } from "../state/app-store.ts";
+import type { AppStateSnapshot } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
 import { syncHtml } from "./sync-html.ts";
 
-export function renderPromptStatus(state: AppRenderSnapshot): string {
+export function renderPromptStatus(state: AppStateSnapshot): string {
 	return syncHtml(
 		<span
 			id="prompt-status"

@@ -1,8 +1,9 @@
 import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 
-import { type AppMessage, AppStore } from "../state/app-store.ts";
+import { AppStore } from "../state/app-store.ts";
 import { MessageRenderService } from "./message-render-service.ts";
 import { renderMessage, renderMessages } from "./messages.tsx";
+import type { AppMessage } from "./render-state.ts";
 
 function tool(overrides: Partial<AppMessage> = {}): AppMessage {
 	return {
