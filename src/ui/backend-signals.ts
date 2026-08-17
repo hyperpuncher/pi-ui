@@ -2,9 +2,6 @@ import { sessionTransitionOverlayVisible } from "../agent/session-transition-con
 import type { AppRenderSnapshot } from "../state/app-store.ts";
 
 export type BackendSignals = {
-	model: string;
-	thinkingLevel: string;
-	workspacePath: string;
 	_promptHistory: readonly string[];
 	_isBusy: boolean;
 	_isSessionReady: boolean;
@@ -14,9 +11,6 @@ export type BackendSignals = {
 
 export function projectBackendSignals(state: AppRenderSnapshot): BackendSignals {
 	return {
-		model: state.currentModel ?? "",
-		thinkingLevel: state.thinkingLevel,
-		workspacePath: state.workspacePath,
 		_promptHistory: state.promptHistory,
 		_isBusy: Boolean(state.activityText),
 		_isSessionReady: state.sessionTransition.status !== "loading",

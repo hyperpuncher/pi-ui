@@ -21,6 +21,13 @@ export function renderPromptBox(
 		<div
 			id="prompt-box"
 			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-(--pi-prompt-max-width) overflow-visible text-sm"
+			data-signals__ifmissing={JSON.stringify({
+				prompt: "",
+				_filePickerOpen: false,
+				_fileSearchController: "",
+				_slashPickerOpen: false,
+				fileQuery: "",
+			})}
 		>
 			<div
 				id="prompt-slash-popover"
@@ -72,7 +79,7 @@ export function renderPromptBox(
 						$_fileSearchController = new AbortController();
 						$fileQuery = evt.detail.query;
 						@get('${endpoints.filesSearch}', {
-						filterSignals: { include: /^fileQuery$/ },
+						payload: { fileQuery: $fileQuery },
 						requestCancellation: $_fileSearchController,
 					});
 					`}
@@ -107,7 +114,7 @@ export function renderPromptBox(
 						}
 						if (evt.altKey && evt.code === 'ArrowUp') {
 							evt.preventDefault();
-							@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } });
+							@post('${endpoints.promptDequeue}', { payload: {} });
 						}
 						if (
 							evt.key === 'Enter' &&
@@ -247,7 +254,7 @@ function renderQueuedMessages(state: AppRenderSnapshot): string {
 						<button
 							type="button"
 							class="-my-1 flex h-7 shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-							data-on:click={`@post('${endpoints.promptDequeue}', { filterSignals: { include: /^$/ } })`}
+							data-on:click={`@post('${endpoints.promptDequeue}', { payload: {} })`}
 							aria-label="Restore all queued messages to the prompt"
 						>
 							<span>Restore all</span>

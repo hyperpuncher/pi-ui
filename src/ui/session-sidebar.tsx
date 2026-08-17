@@ -32,6 +32,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			data-side="right"
 			data-initial-open={state.sessions.length === 0 && "false"}
 			aria-keyshortcuts="Control+B Meta+B"
+			data-signals:session-delete-hover__ifmissing="''"
 		>
 			<div
 				id="session-sidebar-separator"
@@ -115,7 +116,7 @@ function renderSessionPageTrigger(loadedCount: number) {
 		<div
 			class="flex min-h-8 items-center justify-center text-muted-foreground"
 			data-indicator:_session-page-loading
-			data-on-intersect__once={`@get('${endpoints.sessionsMore}?limit=${nextLimit}', { filterSignals: { include: /^$/ } })`}
+			data-on-intersect__once={`@get('${endpoints.sessionsMore}?limit=${nextLimit}', { payload: {} })`}
 		>
 			<span
 				data-show="$_sessionPageLoading"

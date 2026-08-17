@@ -51,10 +51,13 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			data-filter={haystack}
 			data-keywords={haystack}
 			data-active-tree-row={entry.active}
-			data-on:click={`
-				$treeEntryId = ${JSON.stringify(entry.id)};
-				@post('${endpoints.treeNavigate}', { filterSignals: { include: /^tree(EntryId|Summarize|SummaryInstructions)$/ } });
-			`}
+			data-on:click={`@post('${endpoints.treeNavigate}', {
+			payload: {
+			treeEntryId: ${JSON.stringify(entry.id)},
+			treeSummarize: $treeSummarize,
+			treeSummaryInstructions: $treeSummaryInstructions,
+			},
+			})`}
 		>
 			<span
 				class="col-start-1 row-start-1 whitespace-pre text-muted-foreground"

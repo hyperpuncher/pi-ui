@@ -9,7 +9,8 @@ export function renderLlamaDialog(dialog: AppLlamaDialog | undefined): string {
 			class="dialog"
 			aria-labelledby="llama-dialog-title"
 			onclick="if (event.target === this) this.close()"
-			data-on:close={`@post('${endpoints.llamaClose}', { filterSignals: { include: /^$/ } })`}
+			data-on:close={`@post('${endpoints.llamaClose}', { payload: {} })`}
+			data-signals:_llama-search__ifmissing="''"
 		>
 			{renderLlamaDialogContent(dialog)}
 		</dialog>,
@@ -42,7 +43,6 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 								autocorrect="off"
 								spellcheck="false"
 								data-bind:_llama-search
-								data-init="$_llamaSearch = ''"
 								autofocus
 							/>
 						</div>
@@ -138,10 +138,9 @@ function renderModel(model: AppLlamaModel, dialog: AppLlamaDialog): string {
 			data-variant="ghost"
 			disabled={busy}
 			data-show={`${JSON.stringify(model.id.toLowerCase())}.includes($_llamaSearch.trim().toLowerCase())`}
-			data-on:click={`
-				$llamaModel = ${JSON.stringify(model.id)};
-				@post('${endpoints.llamaToggle}', { filterSignals: { include: /^llamaModel$/ } });
-			`}
+			data-on:click={`@post('${endpoints.llamaToggle}', {
+			payload: { llamaModel: ${JSON.stringify(model.id)} },
+			})`}
 		>
 			<span class="min-w-0 truncate font-mono text-sm" safe>
 				{model.id}

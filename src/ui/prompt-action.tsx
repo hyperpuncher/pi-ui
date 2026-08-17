@@ -21,7 +21,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 				data-variant="destructive"
 				data-size="icon"
 				type="button"
-				data-on:click={`@post('${endpoints.abort}', { filterSignals: { include: /^$/ } })`}
+				data-on:click={`@post('${endpoints.abort}', { payload: {} })`}
 				data-on:keydown__window={`if (
 					evt.code === 'Escape' &&
 					!evt.ctrlKey &&
@@ -31,7 +31,7 @@ export function renderPromptAction(state: AppRenderSnapshot): string {
 					window.piUi.shouldAbortOnEscape(evt)
 				) {
 					evt.preventDefault();
-					@post('${endpoints.abort}', { filterSignals: { include: /^$/ } });
+					@post('${endpoints.abort}', { payload: {} });
 				}`}
 				data-tooltip="Abort"
 				data-align="end"

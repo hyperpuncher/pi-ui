@@ -195,8 +195,9 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 
 function openWorkspaceAction(valueExpression: string): string {
 	return `if (!$_sessionTransitionLoading) {
-		$workspacePath = ${valueExpression};
-		@post('${endpoints.workspaceOpen}', { filterSignals: { include: /^workspacePath$/ } });
+		@post('${endpoints.workspaceOpen}', {
+			payload: { workspacePath: ${valueExpression} },
+		});
 	}`;
 }
 
@@ -309,13 +310,13 @@ function renderSessionRow(
 							current
 								? `
 						evt.stopPropagation();
-						@post('${endpoints.abort}', { filterSignals: { include: /^$/ } });
+						@post('${endpoints.abort}', { payload: {} });
 						`
 								: `
 						evt.stopPropagation();
 						$backgroundSessionPath = ${JSON.stringify(session.path)};
 						@post('${endpoints.sessionsBackgroundAbort}', {
-						filterSignals: { include: /^backgroundSessionPath$/ },
+						payload: { backgroundSessionPath: $backgroundSessionPath },
 						});
 						`
 						}

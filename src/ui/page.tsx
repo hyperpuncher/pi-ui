@@ -69,32 +69,7 @@ export function renderPage(
 	const displayClientId = crypto.randomUUID();
 	const gateStartupLayout =
 		desktop && Boolean(Deno.env.get("HYPRLAND_INSTANCE_SIGNATURE"));
-	const initialSignals = JSON.stringify({
-		prompt: "",
-		...projectBackendSignals(state),
-		modelCycleDirection: "forward",
-		thinkingCycleDirection: "forward",
-		_sessionLoading: false,
-		_newSessionPending: false,
-		workspaceDraft: "",
-		_filePickerOpen: false,
-		_fileSearchController: "",
-		_slashPickerOpen: false,
-		_workspaceReviewOpen: false,
-		fileQuery: "",
-		isDraggingFile: false,
-		sessionDeletePath: "",
-		sessionDeleteTitle: "",
-		sessionDeleteHover: "",
-		_workspacePickerError: "",
-		treeEntryId: "",
-		treeSummarize: false,
-		treeSummaryInstructions: "",
-		authProvider: "",
-		authType: "",
-		authInput: "",
-		llamaModel: "",
-	});
+	const initialSignals = JSON.stringify(projectBackendSignals(state));
 
 	return syncHtml(
 		"<!doctype html>" +
@@ -142,12 +117,19 @@ export function renderPage(
 					data-code-theme-light={codeThemes.light}
 					data-code-theme-dark={codeThemes.dark}
 					data-signals={initialSignals}
+					data-signals__ifmissing={JSON.stringify({
+						_isDraggingFile: false,
+						_sessionLoading: false,
+						_newSessionPending: false,
+						sessionDeletePath: "",
+						sessionDeleteTitle: "",
+					})}
 					data-on:dragenter__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 						evt.preventDefault();
-						$isDraggingFile = window.piUi.fileTransfer.enterDrag();
+						$_isDraggingFile = window.piUi.fileTransfer.enterDrag();
 					}`}
 					data-on:dragleave__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
-						$isDraggingFile = window.piUi.fileTransfer.leaveDrag();
+						$_isDraggingFile = window.piUi.fileTransfer.leaveDrag();
 					}`}
 					data-on:dragover__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 						evt.preventDefault();
@@ -155,7 +137,7 @@ export function renderPage(
 					}`}
 					data-on:drop__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 						evt.preventDefault();
-						$isDraggingFile = false;
+						$_isDraggingFile = false;
 						window.piUi.fileTransfer.resetDrag();
 						window.piUi.fileTransfer.insert(evt.dataTransfer);
 					}`}
@@ -174,13 +156,13 @@ export function renderPage(
 						id="file-drop-overlay"
 						class="pointer-events-none fixed inset-0 z-50 items-center justify-center bg-background/55 opacity-0 backdrop-blur-sm transition-[opacity,display] transition-discrete duration-100 ease-out motion-reduce:duration-100 [&.file-drop-active]:opacity-100 starting:[&.file-drop-active]:opacity-0"
 						style="display: none;"
-						data-class:file-drop-active="$isDraggingFile"
-						data-style:display="$isDraggingFile ? 'flex' : 'none'"
+						data-class:file-drop-active="$_isDraggingFile"
+						data-style:display="$_isDraggingFile ? 'flex' : 'none'"
 						aria-hidden="true"
 					>
 						<div
 							class="flex scale-95 items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card/95 px-5 py-4 text-sm text-card-foreground shadow-lg transition-[scale] duration-100 ease-out motion-reduce:scale-100 motion-reduce:transition-none [&.file-drop-card-active]:scale-100 starting:[&.file-drop-card-active]:scale-95"
-							data-class:file-drop-card-active="$isDraggingFile"
+							data-class:file-drop-card-active="$_isDraggingFile"
 						>
 							<svg
 								class="size-8 text-muted-foreground"
@@ -210,7 +192,8 @@ export function renderPage(
 						data-class:pi-review-open="$_workspaceReviewOpen"
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
-						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}')`}
+						data-signals:_workspace-review-open__ifmissing="false"
+						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}', { payload: {} })`}
 					>
 						{renderSessionSidebar(state)}
 						<div
@@ -241,7 +224,7 @@ export function renderPage(
 						id="pickers-stream"
 						class="hidden"
 						data-init={`@get('${endpoints.pickersStream}', {
-						filterSignals: { include: /^$/ },
+						payload: {},
 						openWhenHidden: true,
 						requestCancellation: 'cleanup',
 					})`}
@@ -256,6 +239,10 @@ export function renderPage(
 						id="workspace-dialog"
 						class="command-dialog"
 						aria-label="Change workspace"
+						data-signals__ifmissing={JSON.stringify({
+							workspaceDraft: "",
+							_workspacePickerError: "",
+						})}
 						onclick="if (event.target === this) this.close()"
 					>
 						<div class="command sm:max-w-2xl">
@@ -274,7 +261,7 @@ export function renderPage(
 									data-bind:workspace-draft
 									attrs={{
 										"data-on:input__debounce.50ms": `@get('${endpoints.workspaceSearch}', {
-										filterSignals: { include: /^workspaceDraft$/ },
+										payload: { workspaceDraft: $workspaceDraft },
 										requestCancellation: 'cleanup',
 									})`,
 									}}
@@ -291,7 +278,7 @@ export function renderPage(
 									data-on:click={`
 										$_workspacePickerError = '';
 										@post('${endpoints.workspacePick}', {
-										filterSignals: { include: /^$/ },
+										payload: {},
 									});
 									`}
 									aria-label="Browse for workspace folder"
@@ -329,6 +316,10 @@ export function renderPage(
 						id="tree-dialog"
 						class="command-dialog"
 						aria-label="Session tree"
+						data-signals__ifmissing={JSON.stringify({
+							treeSummarize: false,
+							treeSummaryInstructions: "",
+						})}
 						data-preserve-attr="open"
 						onclick="if (event.target === this) this.close()"
 					>
@@ -356,8 +347,9 @@ export function renderPage(
 						id="session-dialog"
 						class="command-dialog"
 						aria-label="Resume session"
+						data-signals:session-search__ifmissing="''"
 						data-init={`@get('${endpoints.sessionsStream}', {
-						filterSignals: { include: /^$/ },
+						payload: {},
 						openWhenHidden: true,
 						requestCancellation: 'cleanup',
 					})`}
@@ -379,7 +371,7 @@ export function renderPage(
 									data-bind:session-search=""
 									attrs={{
 										"data-on:input__debounce.100ms": `@get('${endpoints.sessionsSearch}', {
-										filterSignals: { include: /^sessionSearch$/ },
+										payload: { sessionSearch: $sessionSearch },
 										requestCancellation: 'cleanup',
 									})`,
 									}}
@@ -425,7 +417,7 @@ export function renderPage(
 									data-on:click={`
 										evt.target.closest('dialog').close();
 										@post('${endpoints.sessionsDelete}', {
-									filterSignals: { include: /^sessionDeletePath$/ },
+									payload: { sessionDeletePath: $sessionDeletePath },
 								});
 									`}
 								>

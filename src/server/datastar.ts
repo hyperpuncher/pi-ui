@@ -45,7 +45,13 @@ export function datastarStream(
 	return ds.stream((stream) => onStart(new DatastarStream(stream)), options);
 }
 
-/** Builds a finite Datastar response and preserves the supplied event order. */
+/**
+ * Builds a finite Datastar response and preserves event order.
+ *
+ * State-only commands normally return an empty response (204) and let the main
+ * stream confirm backend state. Query routes may return finite element patches.
+ * Signal patches are reserved for restoring or clearing browser-owned drafts.
+ */
 export function datastarResponse(
 	events: readonly DatastarEvent[] = [],
 	init: ResponseInit = {},

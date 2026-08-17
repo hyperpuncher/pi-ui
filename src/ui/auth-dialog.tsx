@@ -9,7 +9,13 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 			class="dialog"
 			aria-labelledby="auth-dialog-title"
 			onclick="if (event.target === this) this.close()"
-			data-on:close={`@post('${endpoints.authClose}', { filterSignals: { include: /^$/ } })`}
+			data-on:close={`@post('${endpoints.authClose}', { payload: {} })`}
+			data-signals__ifmissing={JSON.stringify({
+				_authSearch: "",
+				authProvider: "",
+				authType: "",
+				authInput: "",
+			})}
 		>
 			{renderAuthDialogContent(dialog)}
 		</dialog>,
@@ -62,7 +68,6 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 						spellcheck="false"
 						aria-controls="auth-provider-list"
 						data-bind:_auth-search
-						data-init="$_authSearch = ''"
 						autofocus
 					/>
 				</div>
@@ -120,7 +125,9 @@ function renderProviderButton(
 			data-on:click={`
 				$authProvider = ${JSON.stringify(provider.id)};
 				$authType = ${JSON.stringify(provider.authType)};
-				@post('${action}', { filterSignals: { include: /^auth(Provider|Type)$/ } });
+				@post('${action}', {
+					payload: { authProvider: $authProvider, authType: $authType },
+				});
 			`}
 		>
 			<span class="min-w-0">
@@ -208,7 +215,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					<button
 						type="button"
 						class="btn"
-						data-on:click={`@post('${endpoints.authInput}', { filterSignals: { include: /^authInput$/ } })`}
+						data-on:click={`@post('${endpoints.authInput}', { payload: { authInput: $authInput } })`}
 					>
 						Continue
 					</button>
@@ -233,7 +240,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 						data-variant="outline"
 						data-on:click={`
 							$authInput = ${JSON.stringify(option.id)};
-							@post('${endpoints.authInput}', { filterSignals: { include: /^authInput$/ } });
+							@post('${endpoints.authInput}', { payload: { authInput: $authInput } });
 						`}
 						safe
 					>
@@ -260,7 +267,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 				data-on:keydown={`if (evt.code === 'Enter') {
 					evt.preventDefault();
 					@post('${endpoints.authInput}', {
-						filterSignals: { include: /^authInput$/ },
+						payload: { authInput: $authInput },
 					});
 				}`}
 			/>

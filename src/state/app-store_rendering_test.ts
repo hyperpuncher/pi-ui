@@ -472,9 +472,10 @@ Deno.test("nested state updates commit one fat morph and one signal patch", asyn
 
 		assertEqual(count(output, "event: datastar-patch-elements"), 1);
 		assertEqual(count(output, "event: datastar-patch-signals"), 1);
-		assertIncludes(output, '"workspacePath":"/tmp/workspace"');
-		assertNotIncludes(output, '"treeEntryId"');
-		assertNotIncludes(output, '"modelCycleDirection"');
+		assertIncludes(output, '"_isBusy":true');
+		assertNotIncludes(output, '"workspacePath"');
+		assertNotIncludes(output, '"thinkingLevel"');
+		assertNotIncludes(output, '"model"');
 	} finally {
 		controller.abort();
 	}
@@ -496,8 +497,11 @@ Deno.test("a thrown update still commits its completed mutations", async () => {
 		} catch {
 			// The mutator error is expected; already-applied state remains authoritative.
 		}
-		const output = await readUntil(reader, (text) =>
-			text.includes('"workspacePath":"/tmp/committed-before-throw"'),
+		const output = await readUntil(
+			reader,
+			(text) =>
+				text.includes("event: datastar-patch-elements") &&
+				text.includes("event: datastar-patch-signals"),
 		);
 		assertEqual(count(output, "event: datastar-patch-elements"), 1);
 		assertEqual(count(output, "event: datastar-patch-signals"), 1);
@@ -513,8 +517,11 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 	const response = state.createStream(controller.signal);
 	const reader = response.body?.getReader();
 	if (!reader) throw new Error("Missing response body");
-	const output = await readUntil(reader, (text) =>
-		text.includes('"workspacePath":"/tmp/headless"'),
+	const output = await readUntil(
+		reader,
+		(text) =>
+			text.includes("event: datastar-patch-elements") &&
+			text.includes("event: datastar-patch-signals"),
 	);
 	assertEqual(count(output, "event: datastar-patch-elements"), 1);
 	assertEqual(count(output, "event: datastar-patch-signals"), 1);
@@ -541,7 +548,7 @@ Deno.test("component morphs need no server refresh script", async () => {
 			{ flush: true },
 		);
 		const output = await readUntil(reader, (text) =>
-			text.includes('"thinkingLevel":"high"'),
+			text.includes("event: datastar-patch-signals"),
 		);
 		assertEqual(count(output, '<script data-effect="el.remove()">'), 0);
 	} finally {
@@ -646,9 +653,6 @@ Deno.test("server-owned view signals are transport-private", () => {
 			"_promptHistory",
 			"_sessionTransitionLoading",
 			"_sessionTransitionVisible",
-			"model",
-			"thinkingLevel",
-			"workspacePath",
 		]),
 	);
 });
@@ -721,7 +725,24 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	const displayClientId = html.match(/data-display-client-id="([^"]+)"/)?.[1];
 	if (!displayClientId) throw new Error("Display client ID is missing");
 	assertIncludes(html, `/stream?clientId=${displayClientId}`);
-	assertIncludes(html, "&#34;_fileSearchController&#34;:&#34;&#34;");
+	assertIncludes(html, "payload: {}");
+	assertNotIncludes(html, "filterSignals");
+	const globalSignals = html.match(/<body[^>]*data-signals="([^"]+)"/)?.[1] ?? "";
+	assertIncludes(globalSignals, "_isBusy");
+	assertNotIncludes(globalSignals, "&#34;prompt&#34;");
+	assertNotIncludes(globalSignals, "workspacePath");
+	assertNotIncludes(globalSignals, "thinkingLevel");
+	assertNotIncludes(globalSignals, "&#34;model&#34;");
+	assertIncludes(html, "data-signals:session-search__ifmissing");
+	assertIncludes(html, "data-signals__ifmissing");
+	for (const signal of [
+		"prompt",
+		"workspaceDraft",
+		"authInput",
+		"_fileSearchController",
+	]) {
+		assertIncludes(html, `&#34;${signal}&#34;:&#34;&#34;`);
+	}
 	assertIncludes(html, "$_fileSearchController.abort()");
 	assertIncludes(html, "requestCancellation: $_fileSearchController");
 	assertIncludes(html, 'id="messages"');

@@ -200,7 +200,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 }
 
 function renderOlderMessagesTrigger() {
-	const loadOlderMessages = `window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { filterSignals: { include: /^$/ } })`;
+	const loadOlderMessages = `window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { payload: {} })`;
 	return (
 		<div
 			id="older-messages-trigger"
@@ -362,7 +362,7 @@ function renderDeferredEnhancement(message: AppMessage) {
 			data-variant="ghost"
 			data-size="sm"
 			data-on:click={`@post('${endpoints.messagesEnhance}?id=${encodeURIComponent(message.id)}', {
-				filterSignals: { include: /^$/ },
+				payload: {},
 			})`}
 		>
 			Enhance formatting

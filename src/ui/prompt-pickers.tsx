@@ -98,10 +98,9 @@ export function renderThinkingPicker(state: AppRenderSnapshot): string {
 								<div
 									role="menuitemradio"
 									aria-checked={level === current ? "true" : "false"}
-									data-on:click={`
-										$thinkingLevel = ${JSON.stringify(level)};
-										@post('${endpoints.thinking}', { filterSignals: { include: /^thinkingLevel$/ } });
-									`}
+									data-on:click={`@post('${endpoints.thinking}', {
+									payload: { thinkingLevel: ${JSON.stringify(level)} },
+									});`}
 								>
 									<span data-ignore data-indicator>
 										•
@@ -258,9 +257,10 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 											data-keywords={model.name}
 											data-model-search-order={index}
 											data-on:click={`
-												$model = ${JSON.stringify(value)};
 												document.getElementById('model-select-trigger')?.click();
-												@post('${endpoints.model}', { filterSignals: { include: /^model$/ } });
+												@post('${endpoints.model}', {
+												payload: { model: ${JSON.stringify(value)} },
+											});
 												requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
 											`}
 										>
@@ -302,8 +302,9 @@ export function renderModelPicker(state: AppRenderSnapshot): string {
 												aria-label="Toggle scoped model"
 												data-on:click={`
 													evt.stopPropagation();
-													$model = ${JSON.stringify(value)};
-													@post('${endpoints.modelsScopeToggle}', { filterSignals: { include: /^model$/ } });
+													@post('${endpoints.modelsScopeToggle}', {
+													payload: { model: ${JSON.stringify(value)} },
+												});
 												`}
 											>
 												<svg

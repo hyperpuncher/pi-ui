@@ -1,11 +1,9 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppCommandId } from "./catalog.ts";
 
-const emptySignals = "filterSignals: { include: /^$/ }";
-
 export function newSessionAction(temporary = false): string {
 	const endpoint = temporary ? endpoints.sessionsNewTemporary : endpoints.sessionsNew;
-	return `if (!$_newSessionPending && !$_sessionTransitionLoading) { @post('${endpoint}', { ${emptySignals} }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }`;
+	return `if (!$_newSessionPending && !$_sessionTransitionLoading) { @post('${endpoint}', { payload: {} }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }`;
 }
 
 export function openSessionDialogAction(): string {
@@ -21,21 +19,21 @@ function cycleDirectionExpression(direction: CycleDirection): string {
 }
 
 export function cycleModelAction(direction: CycleDirection): string {
-	return `$modelCycleDirection = ${cycleDirectionExpression(direction)}; @post('${endpoints.modelCycle}', { filterSignals: { include: /^modelCycleDirection$/ } })`;
+	return `@post('${endpoints.modelCycle}', { payload: { modelCycleDirection: ${cycleDirectionExpression(direction)} } })`;
 }
 
 export function cycleThinkingAction(direction: CycleDirection): string {
-	return `$thinkingCycleDirection = ${cycleDirectionExpression(direction)}; @post('${endpoints.thinkingCycle}', { filterSignals: { include: /^thinkingCycleDirection$/ } })`;
+	return `@post('${endpoints.thinkingCycle}', { payload: { thinkingCycleDirection: ${cycleDirectionExpression(direction)} } })`;
 }
 
 export function authDialogAction(mode: "login" | "logout"): string {
 	const endpoint =
 		mode === "login" ? endpoints.authOpenLogin : endpoints.authOpenLogout;
-	return `document.getElementById('command-dialog')?.close(); @post('${endpoint}', { ${emptySignals} })`;
+	return `document.getElementById('command-dialog')?.close(); @post('${endpoint}', { payload: {} })`;
 }
 
 export function openTreeAction(): string {
-	return `window.piUi.dialogs.openTree(); @post('${endpoints.treeOpen}', { ${emptySignals} })`;
+	return `window.piUi.dialogs.openTree(); @post('${endpoints.treeOpen}', { payload: {} })`;
 }
 
 export function openWorkspaceDialogAction(closeCommandDialog = false): string {

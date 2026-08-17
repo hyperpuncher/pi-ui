@@ -5,6 +5,7 @@ import { endpoints } from "./endpoints.ts";
 const typescriptActionSources = [
 	"../../commands/actions.ts",
 	"../../ui/auth-dialog.tsx",
+	"../../ui/llama-dialog.tsx",
 	"../../ui/messages.tsx",
 	"../../ui/page.tsx",
 	"../../ui/pickers.tsx",
@@ -13,6 +14,7 @@ const typescriptActionSources = [
 	"../../ui/prompt-pickers.tsx",
 	"../../ui/prompt-status.tsx",
 	"../../ui/prompt-toolbar.tsx",
+	"../../ui/session-sidebar.tsx",
 	"../../ui/session-transition.tsx",
 	"../../ui/tree-picker.tsx",
 ];
@@ -73,6 +75,19 @@ Deno.test("each literal browser action references a registered endpoint", async 
 		[],
 	);
 });
+
+Deno.test("Datastar actions declare narrow request contracts", async () => {
+	const source = (await readActionSources(typescriptActionSources)).join("\n");
+	const actionCount = countMatches(source, /@(get|post|put|patch|delete)\(/g);
+	const payloadCount = countMatches(source, /\bpayload\s*:/g);
+	const filterCount = countMatches(source, /\bfilterSignals\s*:/g);
+	assertEquals(actionCount, payloadCount + filterCount);
+	assertEquals(source.includes("include: /^$/"), false);
+});
+
+function countMatches(source: string, pattern: RegExp): number {
+	return [...source.matchAll(pattern)].length;
+}
 
 function extractLiteralWriteActionPaths(source: string): string[] {
 	const paths = source.matchAll(/@(?:post|put|patch|delete)\(\s*(["'])(\/[^"']*)\1/g);
