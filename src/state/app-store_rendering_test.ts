@@ -154,7 +154,7 @@ Deno.test("normal commits send the complete stable view for Datastar to morph", 
 		assertIncludes(loading, 'id="session-transition"');
 		assertIncludes(loading, 'id="messages"');
 		assertIncludes(loading, 'id="prompt-toolbar"');
-		assertIncludes(loading, 'id="session-sidebar-content"');
+		assertNotIncludes(loading, 'id="session-sidebar-content"');
 
 		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
 		state.flush();
@@ -172,7 +172,7 @@ Deno.test("normal commits send the complete stable view for Datastar to morph", 
 		assertIncludes(idle, 'id="session-transition"');
 		assertIncludes(idle, 'id="messages"');
 		assertIncludes(idle, 'id="prompt-toolbar"');
-		assertIncludes(idle, 'id="session-sidebar-content"');
+		assertNotIncludes(idle, 'id="session-sidebar-content"');
 	} finally {
 		controller.abort();
 	}
@@ -538,6 +538,51 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 	assertEqual(state.activityText, "disconnected");
 });
 
+Deno.test("normal commits preserve expanded session pagination", async () => {
+	const state = createState();
+	const sessions = Array.from({ length: 40 }, (_, index) => ({
+		path: `/sessions/${index}.jsonl`,
+		cwd: "/workspace",
+		title: `Session ${index}`,
+		subtitle: `${index} messages`,
+		modified: "now",
+	}));
+	state.setSessions(sessions);
+	state.setSessionCatalogLoading(false);
+	state.flush();
+	await settleMicrotasks();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		const initial = await readUntil(reader, (text) =>
+			text.includes("/sessions/more?limit=60"),
+		);
+		assertIncludes(initial, 'id="session-sidebar-content"');
+
+		state.setUsage({ text: "$2.000 • 2 tokens", costText: "$2.000" });
+		state.flush();
+		const unrelated = await readUntil(reader, (text) => text.includes("$2.000"));
+		assertNotIncludes(unrelated, 'id="session-sidebar-content"');
+		assertNotIncludes(unrelated, "/sessions/more");
+
+		state.updateSessionSummary(sessions[0].path, (session) => ({
+			...session,
+			title: "Updated active session",
+		}));
+		await settleMicrotasks();
+		const targeted = await readUntil(reader, (text) =>
+			text.includes("Updated active session"),
+		);
+		assertIncludes(targeted, 'data: selector [id="session-sidebar-row-');
+		assertNotIncludes(targeted, 'id="session-sidebar-content"');
+		assertNotIncludes(targeted, "/sessions/more");
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("component morphs need no server refresh script", async () => {
 	const state = createState();
 	const controller = new AbortController();
@@ -693,7 +738,6 @@ Deno.test("primary and picker fat views contain every server-owned dynamic root"
 			"prompt-status",
 			"workspace-picker",
 			"session-transition",
-			"session-sidebar-content",
 			"debug-overlay",
 		])
 			assertIncludes(primary, `id="${id}"`);

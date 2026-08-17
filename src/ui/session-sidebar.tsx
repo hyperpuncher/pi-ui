@@ -111,6 +111,27 @@ export function renderSessionSidebarContent(
 	);
 }
 
+export function renderSessionSidebarRowForPath(
+	state: SessionSidebarState,
+	path: string,
+): string | undefined {
+	for (const group of groupSessionsByDate(state.sessions)) {
+		const match = group.sessions.find(({ session }) => session.path === path);
+		if (match) {
+			return renderSessionSidebarRow(
+				match.session,
+				match.index,
+				state,
+				group.showRowDate,
+			);
+		}
+	}
+}
+
+export function sessionSidebarRowSelector(path: string): string {
+	return `[id="session-sidebar-row-${encodeURIComponent(path)}"]`;
+}
+
 function renderSessionPageTrigger(loadedCount: number) {
 	const nextLimit = loadedCount + sessionSidebarPageSize;
 	return (
@@ -208,7 +229,10 @@ function renderSessionSidebarRow(
 	const shortcut = index < 9 ? `ctrl ${index + 1}` : undefined;
 	const deletable = status !== "running";
 	return syncHtml(
-		<li class="group relative">
+		<li
+			id={`session-sidebar-row-${encodeURIComponent(session.path)}`}
+			class="group relative"
+		>
 			<button
 				type="button"
 				class="absolute! inset-0 h-full! p-0!"

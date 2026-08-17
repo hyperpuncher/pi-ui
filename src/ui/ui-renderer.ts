@@ -32,7 +32,11 @@ import { renderPromptStatus } from "./prompt-status.tsx";
 import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import type { AppMessage } from "./render-state.ts";
 import type { AppRenderSnapshot } from "./render-state.ts";
-import { renderSessionSidebarContent } from "./session-sidebar.tsx";
+import {
+	renderSessionSidebarContent,
+	renderSessionSidebarRowForPath,
+	sessionSidebarRowSelector,
+} from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 
@@ -53,6 +57,8 @@ export class UiRenderer implements AppStorePresentation {
 	private readonly sessionHub = new DatastarClientHub(undefined, false);
 	private sessionPickerHtml: string | undefined;
 	private sessionCommitScheduled = false;
+	private replaceSessionSidebar = false;
+	private pendingSessionRows = new Set<string>();
 	private replaceTranscriptOnCommit = false;
 
 	constructor(
@@ -189,17 +195,32 @@ export class UiRenderer implements AppStorePresentation {
 	streamingMessageChanged(): void {
 		this.messages.streamingMessageChanged();
 	}
-	sessionsChanged(): void {
+	sessionsChanged(path?: string): void {
+		if (path) this.pendingSessionRows.add(path);
+		else this.replaceSessionSidebar = true;
 		if (this.sessionCommitScheduled) return;
 		this.sessionCommitScheduled = true;
 		queueMicrotask(() => {
 			this.sessionCommitScheduled = false;
+			const replaceSidebar = this.replaceSessionSidebar;
+			this.replaceSessionSidebar = false;
+			const rowPaths = [...this.pendingSessionRows];
+			this.pendingSessionRows.clear();
 			const snapshot = this.store.snapshot();
 			if (this.hub.clientCount > 0) {
-				this.hub.patchElement(
-					renderSessionSidebarContent(snapshot),
-					"#session-sidebar-content",
-				);
+				if (replaceSidebar) {
+					this.hub.patchElement(
+						renderSessionSidebarContent(snapshot),
+						"#session-sidebar-content",
+					);
+				} else {
+					for (const path of rowPaths) {
+						const row = renderSessionSidebarRowForPath(snapshot, path);
+						if (row) {
+							this.hub.patchElement(row, sessionSidebarRowSelector(path));
+						}
+					}
+				}
 			}
 			if (this.sessionHub.clientCount === 0) return;
 			const elements = renderSessionPickerContent(snapshot);
@@ -276,7 +297,6 @@ export class UiRenderer implements AppStorePresentation {
 			renderPromptStatus(snapshot),
 			renderWorkspacePicker(snapshot),
 			renderSessionTransition(snapshot),
-			renderSessionSidebarContent(snapshot),
 			renderDebugOverlay(snapshot),
 		];
 	}
@@ -303,7 +323,9 @@ export class UiRenderer implements AppStorePresentation {
 		includeFinalMessageHtml = true,
 	): RenderedView {
 		return {
-			elements: this.renderElements(snapshot, includeFinalMessageHtml),
+			elements:
+				this.renderElements(snapshot, includeFinalMessageHtml) +
+				renderSessionSidebarContent(snapshot),
 			signals: this.renderSignals(snapshot, overrides),
 		};
 	}

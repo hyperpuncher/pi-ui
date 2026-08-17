@@ -129,7 +129,7 @@ export interface AppStorePresentation {
 	messageUpdated(id: string): void;
 	streamingMessageStarted(id: string): void;
 	streamingMessageChanged(): void;
-	sessionsChanged(): void;
+	sessionsChanged(path?: string): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
 	transcriptReplacing(): void;
 	transcriptReplaced(
@@ -401,16 +401,19 @@ export class AppStore {
 	}
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setSessionCatalogLoading(loading: boolean): void {
 		if (this.sessionCatalogLoading === loading) return;
 		this.sessionCatalogLoading = loading;
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setSessionCatalog(sessions: AppSessionSummary[]): void {
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
@@ -428,7 +431,7 @@ export class AppStore {
 		);
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
-		this.presentation?.sessionsChanged();
+		this.presentation?.sessionsChanged(path);
 		return true;
 	}
 	searchSessions(query: string): AppSessionSummary[] {
@@ -497,6 +500,9 @@ export class AppStore {
 	}
 	setActivityText(value: string | undefined): void {
 		this.transcript.setActivityText(value);
+		if (this.currentSessionPath) {
+			this.presentation?.sessionsChanged(this.currentSessionPath);
+		}
 		this.commit();
 	}
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void {
@@ -504,7 +510,10 @@ export class AppStore {
 		this.commit();
 	}
 	setCurrentSessionPath(value: string | undefined): void {
+		const previous = this.currentSessionPath;
 		this.currentSessionPath = value;
+		if (previous) this.presentation?.sessionsChanged(previous);
+		if (value) this.presentation?.sessionsChanged(value);
 		this.commit();
 	}
 	setTemporarySession(value: boolean): void {
