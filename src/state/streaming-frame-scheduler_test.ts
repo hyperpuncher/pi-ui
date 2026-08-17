@@ -98,6 +98,29 @@ Deno.test("streaming scheduler follows 60 through 240 Hz monotonic cadence", () 
 	}
 });
 
+Deno.test("streaming scheduler reports skipped and late deadlines", () => {
+	let now = 0;
+	let timer: (() => void) | undefined;
+	const scheduler = new StreamingFrameScheduler<number>(() => {}, {
+		now: () => now,
+		setTimer: (callback) => {
+			timer = callback;
+			return 1;
+		},
+		clearTimer: () => {
+			timer = undefined;
+		},
+	});
+
+	scheduler.setDisplayHz(60);
+	now = 40;
+	scheduler.schedule(1);
+	assertEqual(scheduler.stats.skippedDeadlines, 2);
+	now = 60;
+	timer?.();
+	assertNear(scheduler.stats.maximumTimerLatenessMs, 10, 0.001);
+});
+
 class FakeClock {
 	private time = 0;
 	private sequence = 0;

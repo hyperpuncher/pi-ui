@@ -1,15 +1,32 @@
+import { zstdCompressSync } from "node:zlib";
+
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { type AppMessage, type AppMessageInput, AppStore } from "../state/app-store.ts";
+import {
+	StreamingFrameScheduler,
+	type StreamingFrameSchedulerClock,
+} from "../state/streaming-frame-scheduler.ts";
 import { renderMarkdownStreamingMeasured } from "../ui/markdown.tsx";
 import { renderMessage } from "../ui/messages.tsx";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { sessionPerformance } from "./session-performance.ts";
+
+const architectureBenchmarkSchemaVersion = 1;
+const supportedDisplayRates = [60, 75, 90, 100, 120, 144, 165, 240] as const;
+const utf8Encoder = new TextEncoder();
 
 export type PatchSummary = {
 	fullPatchCount: number;
 	targetedPatchCount: number;
 	patches: string[];
 	patchElapsedMs: number[];
+	uncompressedBytes: number;
+};
+
+export type ArchitectureBenchmarkOptions = {
+	samples?: number;
+	messageCounts?: readonly number[];
+	clientCounts?: readonly number[];
 };
 
 export function generatedSessionFixture(count: number): AppMessageInput[] {
@@ -107,35 +124,69 @@ export async function collectElementPatches(
 			.length,
 		patches,
 		patchElapsedMs,
+		uncompressedBytes: patches.reduce(
+			(total, patch) => total + utf8Encoder.encode(`${patch}\n\n`).byteLength,
+			0,
+		),
 	};
 }
 
-async function runFixture(messages: AppMessageInput[], concurrency: number) {
+async function runFixture(
+	messages: AppMessageInput[],
+	concurrency: number,
+	clientCount: number,
+) {
 	sessionPerformance.reset();
 	const state = new AppStore();
 	const renderer = new UiRenderer(state, new DatastarClientHub(), {
 		enhancementConcurrency: concurrency,
 	});
-	const controller = new AbortController();
-	const response = renderer.createStream(controller.signal);
+	const controllers = Array.from({ length: clientCount }, () => new AbortController());
+	const responses = controllers.map((controller) =>
+		renderer.createStream(controller.signal),
+	);
 	const expectedPatches = 2 + enhancementMessageCount(messages.slice(-50));
 	const startedAt = performance.now();
 	state.replaceMessages(messages);
-	const patches = await collectElementPatches(response, expectedPatches, startedAt);
+	let summaries: PatchSummary[];
+	try {
+		summaries = await Promise.all(
+			responses.map((response) =>
+				collectElementPatches(response, expectedPatches, startedAt),
+			),
+		);
+	} finally {
+		for (const controller of controllers) controller.abort();
+	}
 	const enhancementCompleteMs = performance.now() - startedAt;
-	controller.abort();
 	const snapshot = sessionPerformance.snapshot();
+	const elementPatchBytes = summaries.reduce(
+		(total, summary) => total + summary.uncompressedBytes,
+		0,
+	);
 	return {
-		firstContentMs: patches.patchElapsedMs[1],
+		firstContentMs: Math.max(
+			...summaries.map((summary) => summary.patchElapsedMs[1]),
+		),
 		enhancementCompleteMs,
-		outputBytes: snapshot.bytesRendered,
-		fullPatchCount: patches.fullPatchCount,
-		targetedPatchCount: patches.targetedPatchCount,
+		renderedHtmlBytes: snapshot.bytesRendered,
+		elementPatchBytes,
+		batchZstdElementPatchBytes: batchZstdSize(
+			summaries.flatMap((summary) => summary.patches).join("\n\n"),
+		),
+		fullPatchCount: summaries.reduce(
+			(total, summary) => total + summary.fullPatchCount,
+			0,
+		),
+		targetedPatchCount: summaries.reduce(
+			(total, summary) => total + summary.targetedPatchCount,
+			0,
+		),
 	};
 }
 
-function percentile(values: number[], fraction: number): number {
-	const sorted = values.toSorted((a, b) => a - b);
+export function percentile(values: readonly number[], fraction: number): number {
+	const sorted = values.toSorted((left, right) => left - right);
 	return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * fraction) - 1)];
 }
 
@@ -151,8 +202,14 @@ function streamingFixtures(): Array<{ name: string; markdown: string }> {
 	const prose = "Growing prose with **formatting**, links, and punctuation. ";
 	return [
 		{ name: "growing-prose-1kb", markdown: prose.repeat(20).slice(0, 1024) },
-		{ name: "growing-prose-10kb", markdown: prose.repeat(200).slice(0, 10 * 1024) },
-		{ name: "growing-prose-50kb", markdown: prose.repeat(1000).slice(0, 50 * 1024) },
+		{
+			name: "growing-prose-10kb",
+			markdown: prose.repeat(200).slice(0, 10 * 1024),
+		},
+		{
+			name: "growing-prose-50kb",
+			markdown: prose.repeat(1000).slice(0, 50 * 1024),
+		},
 		{
 			name: "incomplete-markdown",
 			markdown: `${prose.repeat(40)}\n\n[unfinished](https://example`,
@@ -195,7 +252,7 @@ function benchmarkStreamingFrames() {
 			const element = renderMessage(message);
 			const kitaRenderMs = performance.now() - kitaStartedAt;
 			const encodeStartedAt = performance.now();
-			new TextEncoder().encode(
+			utf8Encoder.encode(
 				`event: datastar-patch-elements\ndata: elements ${element}\n\n`,
 			);
 			const sseEncodeMs = performance.now() - encodeStartedAt;
@@ -224,7 +281,7 @@ function benchmarkStreamingFrames() {
 		});
 		return {
 			name: fixture.name,
-			bytes: new TextEncoder().encode(fixture.markdown).byteLength,
+			bytes: utf8Encoder.encode(fixture.markdown).byteLength,
 			frameCount: samples.length,
 			stages: {
 				markdownParse: stage("markdownParseMs"),
@@ -234,73 +291,216 @@ function benchmarkStreamingFrames() {
 				browserMorph: null,
 				total: stage("totalMs"),
 			},
-			droppedAt60Hz: samples.filter((sample) => sample.totalMs > 1000 / 60).length,
-			droppedAt144Hz: samples.filter((sample) => sample.totalMs > 1000 / 144)
-				.length,
-			coalescedFrameCount: 0,
-			maximumQueuedFrames: 1,
+			deadlineMisses: Object.fromEntries(
+				supportedDisplayRates.map((hz) => [
+					hz,
+					samples.filter((sample) => sample.totalMs > 1000 / hz).length,
+				]),
+			),
 		};
 	});
 }
 
+function benchmarkScheduler() {
+	return supportedDisplayRates.flatMap((hz) =>
+		[1, 4, 8].map((renderCostMs) => {
+			const clock = new BenchmarkClock();
+			const scheduler = new StreamingFrameScheduler<number>(
+				() => clock.consume(renderCostMs),
+				clock,
+				0,
+			);
+			scheduler.setDisplayHz(hz);
+			const sourceIntervalMs = 1000 / (hz * 2);
+			for (let update = 0; update < hz * 2; update += 1) {
+				clock.advanceTo(update * sourceIntervalMs);
+				scheduler.schedule(update);
+			}
+			clock.advanceTo(1000);
+			scheduler.flush();
+			return {
+				hz,
+				renderCostMs,
+				targetIntervalMs: scheduler.targetIntervalMs,
+				sourceUpdates: hz * 2,
+				maximumQueuedFrames: 1,
+				...scheduler.stats,
+			};
+		}),
+	);
+}
+
+async function benchmarkSessionRestores(
+	samplesPerFixture: number,
+	messageCounts: readonly number[],
+	clientCounts: readonly number[],
+) {
+	const fixtures = [];
+	for (const clientCount of clientCounts) {
+		for (const concurrency of [1, 2, 4]) {
+			for (const messageCount of messageCounts) {
+				const samples = [];
+				for (let sample = 0; sample < samplesPerFixture; sample += 1) {
+					samples.push(
+						await runFixture(
+							generatedSessionFixture(messageCount),
+							concurrency,
+							clientCount,
+						),
+					);
+				}
+				fixtures.push({
+					clientCount,
+					concurrency,
+					messageCount,
+					firstContentP50Ms: percentile(
+						samples.map((sample) => sample.firstContentMs),
+						0.5,
+					),
+					firstContentP95Ms: percentile(
+						samples.map((sample) => sample.firstContentMs),
+						0.95,
+					),
+					enhancementCompleteP50Ms: percentile(
+						samples.map((sample) => sample.enhancementCompleteMs),
+						0.5,
+					),
+					enhancementCompleteP95Ms: percentile(
+						samples.map((sample) => sample.enhancementCompleteMs),
+						0.95,
+					),
+					renderedHtmlBytes: Math.max(
+						...samples.map((sample) => sample.renderedHtmlBytes),
+					),
+					elementPatchBytes: Math.max(
+						...samples.map((sample) => sample.elementPatchBytes),
+					),
+					batchZstdElementPatchBytes: Math.max(
+						...samples.map((sample) => sample.batchZstdElementPatchBytes),
+					),
+					fullPatchCount: Math.max(
+						...samples.map((sample) => sample.fullPatchCount),
+					),
+					targetedPatchCount: Math.max(
+						...samples.map((sample) => sample.targetedPatchCount),
+					),
+				});
+			}
+		}
+	}
+	return fixtures;
+}
+
 async function fixtureSizes(): Promise<number[]> {
 	const sessionPath = Deno.env.get("PI_UI_BENCH_SESSION");
-	if (!sessionPath) return [10, 50, 200];
+	if (!sessionPath) return [10, 50, 100, 200];
 	const text = await Deno.readTextFile(sessionPath);
 	return [Math.max(1, text.split("\n").filter((line) => line.trim()).length)];
 }
 
-if (import.meta.main) {
+export async function runArchitectureBenchmark(
+	options: ArchitectureBenchmarkOptions = {},
+) {
+	const samples = options.samples ?? 3;
+	const messageCounts = options.messageCounts ?? (await fixtureSizes());
+	const clientCounts = options.clientCounts ?? [1, 2];
 	Deno.env.set("PI_UI_PERF", "1");
-	const fixtures = [];
-	for (const concurrency of [1, 2, 4]) {
-		for (const messageCount of await fixtureSizes()) {
-			const samples = [];
-			for (let sample = 0; sample < 3; sample += 1) {
-				samples.push(
-					await runFixture(generatedSessionFixture(messageCount), concurrency),
-				);
+	return {
+		type: "pi-ui-architecture-benchmark",
+		schemaVersion: architectureBenchmarkSchemaVersion,
+		generatedAt: new Date().toISOString(),
+		runtime: {
+			deno: Deno.version.deno,
+			v8: Deno.version.v8,
+			os: Deno.build.os,
+			arch: Deno.build.arch,
+		},
+		configuration: {
+			samples,
+			messageCounts,
+			clientCounts,
+			supportedDisplayRates,
+		},
+		streamingFrames: benchmarkStreamingFrames(),
+		scheduler: benchmarkScheduler(),
+		sessionLoading: {
+			logicalOpenCountInstrumented: true,
+			sdkInternalReadsPerSessionOpenEstimate:
+				sessionPerformance.snapshot().sdkInternalReadsPerSessionOpenEstimate,
+			fixtures: await benchmarkSessionRestores(
+				samples,
+				messageCounts,
+				clientCounts,
+			),
+		},
+	};
+}
+
+function batchZstdSize(value: string): number {
+	return zstdCompressSync(value).byteLength;
+}
+
+class BenchmarkClock implements StreamingFrameSchedulerClock {
+	private time = 0;
+	private sequence = 0;
+	private timers = new Map<number, { at: number; callback: () => void }>();
+
+	readonly now = (): number => this.time;
+	readonly setTimer = (callback: () => void, delayMs: number): number => {
+		const id = ++this.sequence;
+		this.timers.set(id, { at: this.time + delayMs, callback });
+		return id;
+	};
+	readonly clearTimer = (id: number): void => {
+		this.timers.delete(id);
+	};
+
+	advanceTo(target: number): void {
+		while (true) {
+			const next = [...this.timers.entries()].toSorted(
+				(left, right) => left[1].at - right[1].at,
+			)[0];
+			if (!next || next[1].at > target || this.time > target) break;
+			this.time = Math.max(this.time, next[1].at);
+			this.timers.delete(next[0]);
+			next[1].callback();
+		}
+		this.time = Math.max(this.time, target);
+	}
+
+	consume(durationMs: number): void {
+		this.time += durationMs;
+	}
+}
+
+type ArchitectureBenchmarkCliOptions = {
+	benchmark: ArchitectureBenchmarkOptions;
+	output?: string;
+};
+
+function readCliOptions(args: readonly string[]): ArchitectureBenchmarkCliOptions {
+	let samples: number | undefined;
+	let output: string | undefined;
+	for (let index = 0; index < args.length; index += 1) {
+		if (args[index] === "--samples") {
+			samples = Number(args[++index]);
+			if (!Number.isInteger(samples) || samples < 1) {
+				throw new Error("--samples must be a positive integer");
 			}
-			fixtures.push({
-				concurrency,
-				messageCount,
-				firstContentP50Ms: percentile(
-					samples.map((sample) => sample.firstContentMs),
-					0.5,
-				),
-				firstContentP95Ms: percentile(
-					samples.map((sample) => sample.firstContentMs),
-					0.95,
-				),
-				enhancementCompleteP50Ms: percentile(
-					samples.map((sample) => sample.enhancementCompleteMs),
-					0.5,
-				),
-				enhancementCompleteP95Ms: percentile(
-					samples.map((sample) => sample.enhancementCompleteMs),
-					0.95,
-				),
-				outputBytes: Math.max(...samples.map((sample) => sample.outputBytes)),
-				fullPatchCount: Math.max(
-					...samples.map((sample) => sample.fullPatchCount),
-				),
-				targetedPatchCount: Math.max(
-					...samples.map((sample) => sample.targetedPatchCount),
-				),
-			});
+		} else if (args[index] === "--output") {
+			output = args[++index];
+			if (!output) throw new Error("--output requires a path");
+		} else {
+			throw new Error(`Unknown argument: ${args[index]}`);
 		}
 	}
-	console.log(
-		JSON.stringify({
-			type: "pi-ui-session-benchmark",
-			samples: 3,
-			streamingFrames: benchmarkStreamingFrames(),
-			sessionLoading: {
-				logicalOpenCountInstrumented: true,
-				sdkInternalReadsPerSessionOpenEstimate:
-					sessionPerformance.snapshot().sdkInternalReadsPerSessionOpenEstimate,
-			},
-			fixtures,
-		}),
-	);
+	return { benchmark: { samples }, output };
+}
+
+if (import.meta.main) {
+	const options = readCliOptions(Deno.args);
+	const result = await runArchitectureBenchmark(options.benchmark);
+	const json = `${JSON.stringify(result)}\n`;
+	if (options.output) await Deno.writeTextFile(options.output, json);
+	else await Deno.stdout.write(utf8Encoder.encode(json));
 }

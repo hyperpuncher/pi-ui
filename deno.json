@@ -23,7 +23,8 @@
 		"lint:fix": "NODE_PATH=$PWD/tools/node_modules deno run --config tools/deno.json -A oxlint --fix",
 		"check": "deno check --conditions browser src/main.ts src/server-main.ts scripts/release.ts scripts/sync-client-dependencies.ts && deno check --config tools/deno.json rolldown.config.ts && deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
 		"test": "deno test --conditions browser -A",
-		"perf:session": "deno run --conditions browser -A src/perf/session-benchmark.ts"
+		"perf:architecture": "deno run --conditions browser -A src/perf/session-benchmark.ts",
+		"perf:compare": "deno run -A src/perf/compare-architecture-benchmarks.ts"
 	},
 	"compilerOptions": {
 		"jsx": "react-jsx",
