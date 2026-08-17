@@ -1,5 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
+import { assertStringExcludes } from "../testing/assertions.ts";
 import { DatastarClientHub, type DatastarClient } from "./datastar-client-hub.ts";
 import { DatastarStream } from "./datastar.ts";
 
@@ -41,7 +42,7 @@ Deno.test("hub broadcasts to multiple clients and disconnects them independently
 	hub.patchView('<main id="app">second only</main>', "{}", []);
 	secondController.abort();
 
-	assertEquals((await first.text()).includes("second only"), false);
+	assertStringExcludes(await first.text(), "second only");
 	assertStringIncludes(await second.text(), "second only");
 });
 

@@ -1,4 +1,5 @@
 import {
+	assert,
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
 } from "@std/assert";
@@ -724,16 +725,13 @@ Deno.test("initial and live backend-owned signals share exact projections", () =
 
 Deno.test("server-owned view signals are transport-private", () => {
 	const signals = projectBackendSignals(createState().snapshot());
-	assertEqual(
-		JSON.stringify(Object.keys(signals).sort()),
-		JSON.stringify([
-			"_isBusy",
-			"_isSessionReady",
-			"_promptHistory",
-			"_sessionTransitionLoading",
-			"_sessionTransitionVisible",
-		]),
-	);
+	assertEqual(Object.keys(signals).sort(), [
+		"_isBusy",
+		"_isSessionReady",
+		"_promptHistory",
+		"_sessionTransitionLoading",
+		"_sessionTransitionVisible",
+	]);
 });
 
 Deno.test("primary and picker fat views contain every server-owned dynamic root", () => {
@@ -801,7 +799,7 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'id="prompt-input"');
 	assertIncludes(html, 'data-native-file-picker="false"');
 	const displayClientId = html.match(/data-display-client-id="([^"]+)"/)?.[1];
-	if (!displayClientId) throw new Error("Display client ID is missing");
+	assert(displayClientId, "Display client ID is missing");
 	assertIncludes(html, `/stream?clientId=${displayClientId}`);
 	assertIncludes(html, "payload: {}");
 	assertNotIncludes(html, "filterSignals");
@@ -831,9 +829,10 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'data-side="right"');
 	assertIncludes(html, 'id="workspace-shell"');
 	assertIncludes(html, 'id="model-select"');
-	if (html.indexOf("/app/main.js") > html.indexOf("/vendor/datastar.js")) {
-		throw new Error("window.piUi must initialize before Datastar");
-	}
+	assert(
+		html.indexOf("/app/main.js") < html.indexOf("/vendor/datastar.js"),
+		"window.piUi must initialize before Datastar",
+	);
 	const app = html.match(/<div[^>]*id="app"[^>]*>/)?.[0] ?? "";
 	assertIncludes(app, 'data-class:pi-review-open="$_workspaceReviewOpen"');
 	assertIncludes(app, "window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)");

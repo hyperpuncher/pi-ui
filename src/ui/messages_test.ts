@@ -1,6 +1,7 @@
-import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 
 import { AppStore } from "../state/app-store.ts";
+import { assertStringExcludes } from "../testing/assertions.ts";
 import { MessageRenderService } from "./message-render-service.ts";
 import { renderMessage, renderMessages } from "./messages.tsx";
 import type { AppMessage } from "./render-state.ts";
@@ -72,7 +73,7 @@ Deno.test("user messages render attached images without placeholder text", () =>
 	assertStringIncludes(html, "bg-card");
 	assertStringIncludes(html, "rounded-lg border bg-muted");
 	assertStringIncludes(html, "check this");
-	assertFalse(html.includes("[image:"));
+	assertStringExcludes(html, "[image:");
 });
 
 Deno.test("message projection replaces inline image data with stable URLs", () => {
@@ -121,7 +122,7 @@ Deno.test("narrative fallback still renders markdown structure", () => {
 		timestamp: new Date(0),
 	});
 	assertStringIncludes(html, "<strong>Planning full validation tests</strong>");
-	assertFalse(html.includes("**Planning"));
+	assertStringExcludes(html, "**Planning");
 });
 
 Deno.test("cache miss notices have a dedicated spacing class", () => {
@@ -165,7 +166,7 @@ Deno.test("skills use the tool timeline without enhancement controls", () => {
 	assertStringIncludes(html, ">skill</span>");
 	assertStringIncludes(html, "kita-html");
 	assert(html.indexOf("skill") < html.indexOf("kita-html"));
-	assertEquals(html.includes("Enhance formatting"), false);
+	assertStringExcludes(html, "Enhance formatting");
 });
 
 Deno.test("compactions use the tool timeline without enhancement controls", () => {
@@ -182,8 +183,8 @@ Deno.test("compactions use the tool timeline without enhancement controls", () =
 	assertStringIncludes(html, "pi-tool-output-surface");
 	assertStringIncludes(html, ">compaction</span>");
 	assertStringIncludes(html, "compacted from 57,053 tokens");
-	assertEquals(html.includes("click to expand"), false);
-	assertEquals(html.includes("Enhance formatting"), false);
+	assertStringExcludes(html, "click to expand");
+	assertStringExcludes(html, "Enhance formatting");
 });
 
 Deno.test("bodyless tools use timeline markup without an output surface", () => {
@@ -192,8 +193,8 @@ Deno.test("bodyless tools use timeline markup without an output surface", () => 
 	assertStringIncludes(html, "pi-tool-state-dot");
 	assertStringIncludes(html, "min-w-[6ch]");
 	assertStringIncludes(html, 'aria-hidden="true"');
-	assertEquals(html.includes("pi-tool-output-surface"), false);
-	assertEquals(html.includes("data-ignore-morph"), false);
+	assertStringExcludes(html, "pi-tool-output-surface");
+	assertStringExcludes(html, "data-ignore-morph");
 });
 
 Deno.test("consecutive tools mark every continuing timeline segment", () => {
@@ -219,7 +220,7 @@ Deno.test("shell tools preserve wrapped title, metadata, and escaped output", ()
 	assertStringIncludes(html, "printf &#39;a very long command&#39;");
 	assertStringIncludes(html, "42ms");
 	assertStringIncludes(html, "&lt;script>");
-	assertEquals(html.includes("<script>"), false);
+	assertStringExcludes(html, "<script>");
 });
 
 Deno.test("tool formats retain specific hooks inside the shared output surface", () => {
@@ -243,7 +244,7 @@ Deno.test("running and error tools preserve state semantics", () => {
 	assertStringIncludes(running, 'aria-label="Running"');
 	assertStringIncludes(running, 'role="status"');
 	assertEquals(running.match(/pi-tool-status-ball/g)?.length, 3);
-	assertEquals(running.includes("animate-spin"), false);
+	assertStringExcludes(running, "animate-spin");
 	assertStringIncludes(running, "working");
 	const error = renderMessage(tool({ state: "error" }));
 	assertStringIncludes(error, "pi-tool-status-ball");
@@ -251,12 +252,12 @@ Deno.test("running and error tools preserve state semantics", () => {
 	assertStringIncludes(error, "opacity-100");
 	assertStringIncludes(error, 'aria-label="Failed"');
 	assertEquals(error.match(/pi-tool-status-ball/g)?.length, 3);
-	assertEquals(error.includes("animate-ping"), false);
+	assertStringExcludes(error, "animate-ping");
 });
 
 Deno.test("plain tool titles remain escaped", () => {
 	const html = renderMessage(tool({ title: '<img src=x onerror="bad">' }));
-	assertEquals(html.includes("<img"), false);
+	assertStringExcludes(html, "<img");
 	assertStringIncludes(html, "&lt;img");
 });
 
@@ -265,8 +266,8 @@ Deno.test("empty messages center within the padded chat area", () => {
 	assertStringIncludes(html, "messages-stack relative mx-auto min-h-full");
 	assertStringIncludes(html, "grid flex-1 place-items-center");
 	assertStringIncludes(html, "pt-8 pb-32");
-	assertEquals(html.includes("messages-prompt-spacer"), false);
-	assertEquals(html.includes("100vh"), false);
+	assertStringExcludes(html, "messages-prompt-spacer");
+	assertStringExcludes(html, "100vh");
 	const populated = renderMessages(
 		[
 			{
@@ -305,7 +306,7 @@ Deno.test("older messages use one wrapper with prefetch and top triggers", () =>
 	assertEquals(html.match(/data-on-intersect/g)?.length, 2);
 	assertStringIncludes(html, "h-[min(50vh,100%)]");
 	assertStringIncludes(html, "top: min(250vh, calc(100% - 1px))");
-	assertFalse(html.includes("data-on:scroll"));
+	assertStringExcludes(html, "data-on:scroll");
 });
 
 Deno.test("recent session loading reserves exactly three rows", () => {
@@ -340,5 +341,5 @@ Deno.test("partial recent sessions stay visible during full catalog loading", ()
 		true,
 	);
 	assertStringIncludes(loading, "Recent session");
-	assertFalse(loading.includes('aria-label="Loading recent sessions"'));
+	assertStringExcludes(loading, 'aria-label="Loading recent sessions"');
 });

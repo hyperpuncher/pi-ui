@@ -1,5 +1,11 @@
-import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import {
+	assertEquals,
+	assertRejects,
+	assertStringIncludes,
+	assertThrows,
+} from "@std/assert";
 
+import { assertStringExcludes } from "../testing/assertions.ts";
 import {
 	ActionInputError,
 	booleanField,
@@ -46,14 +52,13 @@ Deno.test("action input readers validate required and optional field types", () 
 
 Deno.test("action input errors redact signal values including secrets", () => {
 	const secret = "sk-secret-value";
-	try {
-		requiredString({ authInput: { secret } }, "authInput");
-		throw new Error("Expected validation to fail");
-	} catch (error) {
-		assertEquals(error instanceof ActionInputError, true);
-		assertEquals(String(error).includes(secret), false);
-		assertStringIncludes(String(error), "authInput");
-	}
+	const error = assertThrows(
+		() => requiredString({ authInput: { secret } }, "authInput"),
+		ActionInputError,
+		"authInput",
+	);
+	assertStringExcludes(error.message, secret);
+	assertStringIncludes(error.message, "authInput");
 });
 
 function actionRequest(body: string): Request {

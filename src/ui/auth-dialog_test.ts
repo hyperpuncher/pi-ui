@@ -1,6 +1,7 @@
-import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { assert, assertStringIncludes } from "@std/assert";
 
 import type { AppAuthDialog } from "../state/app-store.ts";
+import { assertStringExcludes } from "../testing/assertions.ts";
 import { renderAuthDialogContent } from "./auth-dialog.tsx";
 
 Deno.test("provider picker includes client-side search", () => {
@@ -39,7 +40,7 @@ Deno.test("authentication prompts keep actions in the dialog footer", () => {
 	};
 	const html = renderAuthDialogContent(dialog);
 
-	assertEquals(html.includes("Starting authentication"), false);
+	assertStringExcludes(html, "Starting authentication");
 	assertStringIncludes(html, 'type="password"');
 	assertStringIncludes(html, "Enter OpenRouter API key");
 	assert(html.indexOf("Continue") > html.indexOf("<footer>"));

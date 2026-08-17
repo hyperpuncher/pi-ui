@@ -4,6 +4,7 @@ import { toFileUrl } from "@std/path";
 
 import { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
+import { assertStringExcludes } from "../../testing/assertions.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
 import { createRouter, isLoopbackAddress } from "../app.ts";
 import { DatastarClientHub } from "../datastar-client-hub.ts";
@@ -208,7 +209,7 @@ Deno.test("older sessions load as a cumulative sidebar page", async () => {
 
 	assertEquals(response.status, 200);
 	assertStringIncludes(body, "Session 51");
-	assertEquals(body.includes("data-on-intersect__once"), false);
+	assertStringExcludes(body, "data-on-intersect__once");
 });
 
 Deno.test("session images are served separately from transcript HTML", async () => {
@@ -567,7 +568,7 @@ Deno.test("tree navigation state follows mutable host ownership", async () => {
 	const cancelled = await first;
 	assertEquals(cancelled.status, 204);
 	const cancelledBody = await cancelled.text();
-	assertEquals(cancelledBody.includes('"prompt"'), false);
+	assertStringExcludes(cancelledBody, '"prompt"');
 });
 
 Deno.test("file links open locally and download remotely", async () => {

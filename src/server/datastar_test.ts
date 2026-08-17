@@ -1,5 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
+import { assertStringExcludes } from "../testing/assertions.ts";
 import { datastarResponse, datastarStream } from "./datastar.ts";
 
 Deno.test("element patches normalize carriage returns into valid SSE data lines", async () => {
@@ -8,7 +9,7 @@ Deno.test("element patches normalize carriage returns into valid SSE data lines"
 	});
 	const body = await response.text();
 
-	assertEquals(body.includes("\r"), false);
+	assertStringExcludes(body, "\r");
 	assertStringIncludes(body, 'data: elements <div id="output">first\n');
 	assertStringIncludes(body, "data: elements second\n");
 	assertStringIncludes(body, "data: elements third</div>\n\n");

@@ -1,5 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
+import { assertStringExcludes } from "../testing/assertions.ts";
 import { ExactRouter } from "./router.ts";
 
 Deno.test("exact router matches method and pathname and reports 404/405", async () => {
@@ -26,7 +27,7 @@ Deno.test("exact router turns thrown handlers into generic 500 responses", async
 	const response = await router.fetch(request("GET", "/throw"));
 	assertEquals(response.status, 500);
 	assertEquals(reported.length, 1);
-	assertEquals((await response.text()).includes("local details"), false);
+	assertStringExcludes(await response.text(), "local details");
 });
 
 Deno.test("exact router silently handles aborted requests", async () => {

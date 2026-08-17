@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
 
 import {
 	defaultServerHostname,
@@ -39,8 +39,8 @@ Deno.test("server options support help", () => {
 		port: defaultServerPort,
 		help: true,
 	});
-	assertEquals(serverUsage.includes("PI_UI_HOST"), true);
-	assertEquals(serverUsage.includes("PI_UI_PORT"), true);
+	assertStringIncludes(serverUsage, "PI_UI_HOST");
+	assertStringIncludes(serverUsage, "PI_UI_PORT");
 });
 
 Deno.test("server options reject invalid input", () => {

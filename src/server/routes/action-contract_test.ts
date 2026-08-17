@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 
+import { assertStringExcludes } from "../../testing/assertions.ts";
 import { endpoints } from "./endpoints.ts";
 
 const typescriptActionSources = [
@@ -82,7 +83,7 @@ Deno.test("Datastar actions declare narrow request contracts", async () => {
 	const payloadCount = countMatches(source, /\bpayload\s*:/g);
 	const filterCount = countMatches(source, /\bfilterSignals\s*:/g);
 	assertEquals(actionCount, payloadCount + filterCount);
-	assertEquals(source.includes("include: /^$/"), false);
+	assertStringExcludes(source, "include: /^$/");
 });
 
 function countMatches(source: string, pattern: RegExp): number {

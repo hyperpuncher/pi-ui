@@ -183,11 +183,6 @@ Deno.test("reduces agent, message, queue, and completion events", () => {
 	assertEquals(outcome, { agentCompleted: true });
 });
 
-Deno.test("background mode does not synchronize foreground usage", () => {
-	const { context } = fixture();
-	reduceSessionEvent(event({ type: "message_end", message: userMessage() }), context);
-});
-
 Deno.test("skips tool-result message starts", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(

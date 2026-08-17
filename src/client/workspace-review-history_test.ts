@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertNotMatch, assertStringIncludes } from "@std/assert";
 
 import { formatCommitDate, formatCommitDetailDate } from "./workspace-review-history.ts";
 
@@ -25,6 +25,6 @@ Deno.test("commit detail times honor the configured time locale", () => {
 	const value = new Date(2026, 6, 22, 20, 25).toISOString();
 	const formatted = formatCommitDetailDate(value, "en-IE");
 
-	assertEquals(formatted.includes("20:25"), true);
-	assertEquals(/[AP]M/i.test(formatted), false);
+	assertStringIncludes(formatted, "20:25");
+	assertNotMatch(formatted, /[AP]M/i);
 });

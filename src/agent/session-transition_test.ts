@@ -1,9 +1,10 @@
-import { assertEquals as assertEvents } from "@std/assert";
+import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 
 import { newSessionAction } from "../commands/actions.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { sessionTransitionResponse } from "../server/routes/sessions.ts";
 import { AppStore } from "../state/app-store.ts";
+import { assertStringExcludes } from "../testing/assertions.ts";
 import { renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker } from "../ui/pickers.tsx";
 import { renderPromptToolbar } from "../ui/prompt-toolbar.tsx";
@@ -66,10 +67,7 @@ Deno.test("classify session leave policy", async (t) => {
 	];
 	for (const testCase of cases) {
 		await t.step(testCase.name, () => {
-			const actual = classifySessionLeave(testCase);
-			if (actual !== testCase.expected) {
-				throw new Error(`Expected ${testCase.expected}, received ${actual}`);
-			}
+			assertEquals(classifySessionLeave(testCase), testCase.expected);
 		});
 	}
 });
@@ -110,16 +108,14 @@ function lifecycle(action: SessionLeaveAction, options: { rejectAbort?: boolean 
 Deno.test("discard orders unsubscribe, abort, dispose, and replacement bind", async () => {
 	const fake = lifecycle("discard");
 	await fake.run();
-	assertEvents(fake.events, ["unsubscribe", "abort", "dispose", "bind"]);
-	if (fake.backgroundCount !== 0) {
-		throw new Error("temporary runtime was backgrounded");
-	}
+	assertEquals(fake.events, ["unsubscribe", "abort", "dispose", "bind"]);
+	assertEquals(fake.backgroundCount, 0);
 });
 
 Deno.test("abort rejection still disposes and binds replacement", async () => {
 	const fake = lifecycle("discard", { rejectAbort: true });
 	await fake.run();
-	assertEvents(fake.events, ["unsubscribe", "abort", "abort-error", "dispose", "bind"]);
+	assertEquals(fake.events, ["unsubscribe", "abort", "abort-error", "dispose", "bind"]);
 });
 
 Deno.test("replacement bind waits for delayed disposal", async () => {
@@ -145,10 +141,10 @@ Deno.test("replacement bind waits for delayed disposal", async () => {
 		},
 	});
 	await Promise.resolve();
-	assertEvents(events, ["unsubscribe", "abort", "dispose"]);
+	assertEquals(events, ["unsubscribe", "abort", "dispose"]);
 	releaseDispose();
 	await transition;
-	assertEvents(events, ["unsubscribe", "abort", "dispose", "bind"]);
+	assertEquals(events, ["unsubscribe", "abort", "dispose", "bind"]);
 });
 
 Deno.test("disposal rejection prevents replacement binding", async () => {
@@ -167,27 +163,20 @@ Deno.test("disposal rejection prevents replacement binding", async () => {
 				fake.events.push("bind");
 			},
 		});
-	try {
-		await fake.run();
-		throw new Error("Expected disposal rejection");
-	} catch (error) {
-		if (!(error instanceof Error) || error.message !== "dispose failed") {
-			throw error;
-		}
-	}
-	assertEvents(fake.events, ["unsubscribe", "dispose"]);
+	await assertRejects(fake.run, Error, "dispose failed");
+	assertEquals(fake.events, ["unsubscribe", "dispose"]);
 });
 
 Deno.test("running persisted runtime is only backgrounded", async () => {
 	const fake = lifecycle("background");
 	await fake.run();
-	assertEvents(fake.events, ["background", "bind"]);
+	assertEquals(fake.events, ["background", "bind"]);
 });
 
 Deno.test("idle replacement is disposed once", async () => {
 	const fake = lifecycle("dispose");
 	await fake.run();
-	assertEvents(fake.events, ["unsubscribe", "dispose", "bind"]);
+	assertEquals(fake.events, ["unsubscribe", "dispose", "bind"]);
 });
 
 Deno.test("session transition renderer escapes targets and renders loading and errors", () => {
@@ -202,15 +191,9 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 			},
 		}),
 	);
-	if (!loading.includes('role="status"')) {
-		throw new Error("Missing loading status");
-	}
-	if (!loading.includes("&lt;session name=&#34;bad&#34;>")) {
-		throw new Error("Target path was not escaped");
-	}
-	if (loading.includes(targetPath)) {
-		throw new Error("Unsafe target path rendered");
-	}
+	assertStringIncludes(loading, 'role="status"');
+	assertStringIncludes(loading, "&lt;session name=&#34;bad&#34;>");
+	assertStringExcludes(loading, targetPath);
 
 	const quiet = renderSessionTransition(
 		appRenderSnapshot({
@@ -222,9 +205,7 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 			},
 		}),
 	);
-	if (!quiet.includes('style="display: none"')) {
-		throw new Error("Non-overlay transition should remain hidden");
-	}
+	assertStringIncludes(quiet, 'style="display: none"');
 
 	const error = renderSessionTransition(
 		appRenderSnapshot({
@@ -236,42 +217,27 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 			},
 		}),
 	);
-	if (!error.includes('role="alert"') || !error.includes("Try another session.")) {
-		throw new Error("Missing recoverable transition error");
-	}
+	assertStringIncludes(error, 'role="alert"');
+	assertStringIncludes(error, "Try another session.");
 });
 
 Deno.test("new session actions lock without driving the transition overlay", () => {
 	const action = newSessionAction();
-	if (!action.includes("$_newSessionPending")) {
-		throw new Error("Missing immediate new-session guard");
-	}
+	assertStringIncludes(action, "$_newSessionPending");
 	const toolbar = renderPromptToolbar(appRenderSnapshot({ isTemporarySession: false }));
-	if (!toolbar.includes("data-indicator:_new-session-pending")) {
-		throw new Error("Missing dedicated new-session indicator");
-	}
-	if (toolbar.includes("data-indicator:_session-loading")) {
-		throw new Error("New-session controls should not drive the overlay indicator");
-	}
+	assertStringIncludes(toolbar, "data-indicator:_new-session-pending");
+	assertStringExcludes(toolbar, "data-indicator:_session-loading");
 });
 
 Deno.test("session request indicators lock controls without hiding the transcript", () => {
 	const state = new AppStore();
 	const transition = renderSessionTransition(state.snapshot());
 	const messages = renderMessages([], { keys: "/", description: "Commands" });
-	if (transition.includes("$_sessionLoading || $_sessionTransitionVisible")) {
-		throw new Error("Request indicator should not show the transition overlay");
-	}
-	if (messages.includes("$_sessionLoading || $_sessionTransitionVisible")) {
-		throw new Error("Request indicator should not hide the transcript");
-	}
-	if (
-		!messages.includes("data-class:opacity-50") ||
-		!messages.includes("$_sessionLoading") ||
-		!messages.includes("$_sessionTransitionLoading")
-	) {
-		throw new Error("Request indicator should mute the retained transcript");
-	}
+	assertStringExcludes(transition, "$_sessionLoading || $_sessionTransitionVisible");
+	assertStringExcludes(messages, "$_sessionLoading || $_sessionTransitionVisible");
+	assertStringIncludes(messages, "data-class:opacity-50");
+	assertStringIncludes(messages, "$_sessionLoading");
+	assertStringIncludes(messages, "$_sessionTransitionLoading");
 });
 
 Deno.test("shared resume action drives every immediate loading signal", () => {
@@ -285,7 +251,7 @@ Deno.test("shared resume action drives every immediate loading signal", () => {
 		"/sessions/resume",
 		"session-dialog",
 	]) {
-		if (!action.includes(expected)) throw new Error(`Missing ${expected}`);
+		assertStringIncludes(action, expected);
 	}
 });
 
@@ -305,12 +271,10 @@ Deno.test("empty chat shows login instead of recent sessions without auth", () =
 		],
 		false,
 	);
-	if (!html.includes("/login") || !html.includes("/auth/open-login")) {
-		throw new Error("Missing login action");
-	}
-	if (html.includes("Recent sessions") || html.includes("/sessions/resume")) {
-		throw new Error("Recent sessions should be hidden without auth");
-	}
+	assertStringIncludes(html, "/login");
+	assertStringIncludes(html, "/auth/open-login");
+	assertStringExcludes(html, "Recent sessions");
+	assertStringExcludes(html, "/sessions/resume");
 });
 
 Deno.test("resume renderers share loading behavior and disable controls", () => {
@@ -331,13 +295,9 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 		}),
 	);
 	for (const html of [recent, picker]) {
-		if (!html.includes("/sessions/resume")) {
-			throw new Error("Missing resume action");
-		}
-		if (!html.includes("_sessionLoading")) throw new Error("Missing indicator");
-		if (!html.includes("$_sessionTransitionLoading")) {
-			throw new Error("Missing disabled transition guard");
-		}
+		assertStringIncludes(html, "/sessions/resume");
+		assertStringIncludes(html, "_sessionLoading");
+		assertStringIncludes(html, "$_sessionTransitionLoading");
 	}
 	const shortcuts = renderSessionSidebar({
 		sessions: [session],
@@ -345,9 +305,7 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 		activityText: undefined,
 		sessionCatalogLoading: false,
 	});
-	if (!shortcuts.includes("evt.ctrlKey")) {
-		throw new Error("Missing keyboard resume");
-	}
+	assertStringIncludes(shortcuts, "evt.ctrlKey");
 });
 
 Deno.test("session picker command state morphs on its dedicated stream", async () => {
@@ -376,9 +334,7 @@ Deno.test("session picker command state morphs on its dedicated stream", async (
 		const output = await readUntil(response, (text) =>
 			text.includes("Fresh session"),
 		);
-		if (output.includes("component.refresh")) {
-			throw new Error("Server emitted a legacy Basecoat refresh script");
-		}
+		assertStringExcludes(output, "component.refresh");
 	} finally {
 		controller.abort();
 	}
@@ -414,10 +370,7 @@ Deno.test("session transition responses use meaningful statuses", () => {
 		["error", 500],
 	] as const;
 	for (const [status, expected] of cases) {
-		const response = sessionTransitionResponse({ status });
-		if (response.status !== expected) {
-			throw new Error(`Expected ${expected}, received ${response.status}`);
-		}
+		assertEquals(sessionTransitionResponse({ status }).status, expected);
 	}
 });
 
