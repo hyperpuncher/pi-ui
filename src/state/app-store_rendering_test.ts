@@ -540,14 +540,14 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 
 Deno.test("normal commits preserve expanded session pagination", async () => {
 	const state = createState();
-	const sessions = Array.from({ length: 40 }, (_, index) => ({
+	const sessions = Array.from({ length: 70 }, (_, index) => ({
 		path: `/sessions/${index}.jsonl`,
 		cwd: "/workspace",
 		title: `Session ${index}`,
 		subtitle: `${index} messages`,
 		modified: "now",
 	}));
-	state.setSessions(sessions);
+	state.setSessionCatalog(sessions);
 	state.setSessionCatalogLoading(false);
 	state.flush();
 	await settleMicrotasks();
@@ -578,6 +578,23 @@ Deno.test("normal commits preserve expanded session pagination", async () => {
 		assertIncludes(targeted, 'data: selector [id="session-sidebar-row-');
 		assertNotIncludes(targeted, 'id="session-sidebar-content"');
 		assertNotIncludes(targeted, "/sessions/more");
+
+		state.setCurrentSessionPath(sessions[60].path);
+		await settleMicrotasks();
+		const deepSelection = await readUntil(reader, (text) =>
+			text.includes("Session 60"),
+		);
+		assertIncludes(deepSelection, 'data: selector [id="session-sidebar-row-');
+		assertNotIncludes(deepSelection, 'id="session-sidebar-content"');
+
+		state.promoteSession(sessions[10].path);
+		await settleMicrotasks();
+		const promoted = await readUntil(reader, (text) =>
+			text.includes("sessionSidebar.promoteRow"),
+		);
+		assertIncludes(promoted, 'data: selector [id="session-sidebar-row-');
+		assertNotIncludes(promoted, 'id="session-sidebar-content"');
+		assertNotIncludes(promoted, "/sessions/more");
 	} finally {
 		controller.abort();
 	}
@@ -820,6 +837,7 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	const app = html.match(/<div[^>]*id="app"[^>]*>/)?.[0] ?? "";
 	assertIncludes(app, 'data-class:pi-review-open="$_workspaceReviewOpen"');
 	assertIncludes(app, "window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)");
+	assertIncludes(app, "openWhenHidden: true");
 	const chat = html.match(/<section[^>]*id="chat-pane"[^>]*>/)?.[0] ?? "";
 	assertIncludes(chat, " absolute ");
 	const review = html.match(/<section[^>]*id="workspace-review"[^>]*>/)?.[0] ?? "";

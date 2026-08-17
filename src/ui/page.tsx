@@ -193,7 +193,11 @@ export function renderPage(
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
-						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}', { payload: {} })`}
+						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}', {
+						payload: {},
+						openWhenHidden: true,
+						requestCancellation: 'cleanup',
+					})`}
 					>
 						{renderSessionSidebar(state)}
 						<div

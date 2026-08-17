@@ -1,7 +1,7 @@
 import os from "node:os";
 
 import type { SessionTreeNode } from "@earendil-works/pi-coding-agent";
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertStrictEquals, assertStringIncludes } from "@std/assert";
 
 import { AppStore } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
@@ -399,7 +399,7 @@ Deno.test("session catalog updates a streaming session incrementally", () => {
 	assertEquals(state.sessions[0]?.subtitle, "1 message");
 });
 
-Deno.test("session catalog reorders only for user-relevant activity", () => {
+Deno.test("session catalog promotes user-relevant activity", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
 	catalog.applyPrepared({
@@ -427,7 +427,7 @@ Deno.test("session catalog reorders only for user-relevant activity", () => {
 	);
 });
 
-Deno.test("session catalog keeps completion order after sessions are opened", () => {
+Deno.test("session catalog status changes preserve live row order", () => {
 	const state = new AppStore();
 	const statuses = new Map<string, "running" | "completed">();
 	const catalog = new SessionCatalog(state, (sessions) =>
@@ -442,33 +442,27 @@ Deno.test("session catalog keeps completion order after sessions are opened", ()
 		],
 	});
 
+	const unchangedCatalog = state.getSessionCatalog();
+	catalog.mergeCurrentStatuses();
+	assertStrictEquals(state.getSessionCatalog(), unchangedCatalog);
+
 	statuses.set("/third", "completed");
 	catalog.mergeCurrentStatuses();
 	catalog.touch("/second");
 	assertEquals(
 		state.sessions.map((session) => session.path),
-		["/third", "/first", "/second"],
+		["/first", "/second", "/third"],
 	);
 
 	statuses.set("/second", "completed");
 	catalog.mergeCurrentStatuses();
-	assertEquals(
-		state.sessions.map((session) => session.path),
-		["/second", "/third", "/first"],
-	);
-
 	statuses.delete("/second");
 	catalog.mergeCurrentStatuses();
-	assertEquals(
-		state.sessions.map((session) => session.path),
-		["/third", "/second", "/first"],
-	);
-
 	statuses.delete("/third");
 	catalog.mergeCurrentStatuses();
 	assertEquals(
 		state.sessions.map((session) => session.path),
-		["/second", "/third", "/first"],
+		["/first", "/second", "/third"],
 	);
 });
 

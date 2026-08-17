@@ -128,8 +128,12 @@ export function renderSessionSidebarRowForPath(
 	}
 }
 
+export function sessionSidebarRowId(path: string): string {
+	return `session-sidebar-row-${encodeURIComponent(path)}`;
+}
+
 export function sessionSidebarRowSelector(path: string): string {
-	return `[id="session-sidebar-row-${encodeURIComponent(path)}"]`;
+	return `[id="${sessionSidebarRowId(path)}"]`;
 }
 
 function renderSessionPageTrigger(loadedCount: number) {
@@ -229,10 +233,7 @@ function renderSessionSidebarRow(
 	const shortcut = index < 9 ? `ctrl ${index + 1}` : undefined;
 	const deletable = status !== "running";
 	return syncHtml(
-		<li
-			id={`session-sidebar-row-${encodeURIComponent(session.path)}`}
-			class="group relative"
-		>
+		<li id={sessionSidebarRowId(session.path)} class="group relative">
 			<button
 				type="button"
 				class="absolute! inset-0 h-full! p-0!"

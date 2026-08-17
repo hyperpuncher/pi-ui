@@ -117,6 +117,7 @@ export type UiCommitEffect =
 	| { type: "reopen-model-picker" }
 	| { type: "dialog"; id: "auth-dialog" | "llama-dialog"; open: boolean }
 	| { type: "scroll-messages-to-bottom" }
+	| { type: "promote-session-row"; path: string }
 	| { type: "signal-overrides"; values: JsonObject };
 
 export interface AppStorePresentation {
@@ -418,6 +419,19 @@ export class AppStore {
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
 		return this.sessionIndex ?? this.sessions;
+	}
+	promoteSession(path: string): boolean {
+		const catalog = this.getSessionCatalog();
+		const session = catalog.find((candidate) => candidate.path === path);
+		if (!session || catalog[0]?.path === path) return false;
+		this.sessionIndex = [
+			session,
+			...catalog.filter((candidate) => candidate.path !== path),
+		];
+		this.sessions = this.sessionIndex.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.presentation?.sessionsChanged(path);
+		this.commit({ type: "promote-session-row", path });
+		return true;
 	}
 	updateSessionSummary(
 		path: string,

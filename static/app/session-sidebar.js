@@ -17,6 +17,42 @@ export function isSessionSidebarToggleShortcut(event, mac = isMac()) {
 	return mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
 }
 
+export function promoteSessionRow(rowId) {
+	const row = document.getElementById(rowId);
+	const content = document.getElementById("session-sidebar-content");
+	const section = content?.closest("section");
+	if (
+		!(row instanceof HTMLLIElement) ||
+		!(content instanceof HTMLElement) ||
+		!(section instanceof HTMLElement)
+	)
+		return;
+
+	let target = content.querySelector("[data-session-promotions] > ul");
+	if (!(target instanceof HTMLUListElement)) {
+		const group = document.createElement("div");
+		group.dataset.sessionPromotions = "";
+		target = document.createElement("ul");
+		group.append(target);
+		content.prepend(group);
+	}
+	if (target.firstElementChild === row) return;
+
+	const previousList = row.parentElement;
+	const previousGroup = previousList?.parentElement;
+	const sectionTop = section.getBoundingClientRect().top;
+	const anchor = [...content.querySelectorAll("li[id]")].find(
+		(candidate) =>
+			candidate !== row && candidate.getBoundingClientRect().bottom > sectionTop,
+	);
+	const anchorTop = anchor?.getBoundingClientRect().top;
+	target.prepend(row);
+	if (previousList?.childElementCount === 0) previousGroup?.remove();
+	if (section.scrollTop > 0 && anchorTop !== undefined && anchor) {
+		section.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
+	}
+}
+
 export function bindSessionSidebarResize() {
 	const sidebar = document.getElementById("session-sidebar");
 	const nav = document.querySelector("#session-sidebar nav");

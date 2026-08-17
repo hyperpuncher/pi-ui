@@ -35,6 +35,7 @@ import type { AppRenderSnapshot } from "./render-state.ts";
 import {
 	renderSessionSidebarContent,
 	renderSessionSidebarRowForPath,
+	sessionSidebarRowId,
 	sessionSidebarRowSelector,
 } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
@@ -198,6 +199,9 @@ export class UiRenderer implements AppStorePresentation {
 	sessionsChanged(path?: string): void {
 		if (path) this.pendingSessionRows.add(path);
 		else this.replaceSessionSidebar = true;
+		this.scheduleSessionCommit();
+	}
+	private scheduleSessionCommit(): void {
 		if (this.sessionCommitScheduled) return;
 		this.sessionCommitScheduled = true;
 		queueMicrotask(() => {
@@ -214,8 +218,14 @@ export class UiRenderer implements AppStorePresentation {
 						"#session-sidebar-content",
 					);
 				} else {
+					const rowState = {
+						activityText: snapshot.activityText,
+						currentSessionPath: snapshot.currentSessionPath,
+						sessionCatalogLoading: snapshot.sessionCatalogLoading,
+						sessions: this.store.getSessionCatalog(),
+					};
 					for (const path of rowPaths) {
-						const row = renderSessionSidebarRowForPath(snapshot, path);
+						const row = renderSessionSidebarRowForPath(rowState, path);
 						if (row) {
 							this.hub.patchElement(row, sessionSidebarRowSelector(path));
 						}
@@ -338,9 +348,18 @@ export class UiRenderer implements AppStorePresentation {
 		);
 	}
 	private mainEffectScripts(effects: readonly UiCommitEffect[]): string[] {
-		return effects.some((effect) => effect.type === "scroll-messages-to-bottom")
-			? ["window.piUi.messageScroll.scrollBottom()"]
-			: [];
+		const scripts: string[] = [];
+		for (const effect of effects) {
+			if (effect.type === "scroll-messages-to-bottom") {
+				scripts.push("window.piUi.messageScroll.scrollBottom()");
+			}
+			if (effect.type === "promote-session-row") {
+				scripts.push(
+					`window.piUi.sessionSidebar.promoteRow(${JSON.stringify(sessionSidebarRowId(effect.path))})`,
+				);
+			}
+		}
+		return scripts;
 	}
 	private pickerEffectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts: string[] = [];

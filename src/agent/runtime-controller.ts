@@ -345,7 +345,8 @@ export class RuntimeController {
 		this.state.setQueuedMessages([], []);
 		this.loadCurrentSessionMessages();
 		this.syncUsage();
-		await this.refreshSessions();
+		const path = this.runtime.session.sessionManager.getSessionFile();
+		if (path) await this.catalog.refreshPath(path);
 	}
 
 	async abortBackgroundSession(sessionPath: string): Promise<boolean> {
@@ -355,7 +356,7 @@ export class RuntimeController {
 		session.status = "completed";
 		session.observedRunning = false;
 		this.syncBackgroundStatuses();
-		await this.refreshSessions();
+		await this.catalog.refreshPath(sessionPath);
 		return true;
 	}
 
@@ -1178,7 +1179,7 @@ export class RuntimeController {
 		this.backgroundSessions.register(sessionFile, backgroundSession);
 		this.state.setCurrentSessionPath(undefined);
 		this.syncBackgroundStatuses();
-		void this.refreshSessions();
+		void this.catalog.refreshPath(sessionFile);
 	}
 
 	private handleBackgroundEvent(
@@ -1214,7 +1215,12 @@ export class RuntimeController {
 			backgroundSession.status = "completed";
 			this.syncBackgroundStatuses();
 			this.notifyRuntimeDone(backgroundSession.runtime, true);
-			void this.refreshSessions();
+			const path =
+				backgroundSession.runtime.session.sessionManager.getSessionFile();
+			if (path) {
+				this.catalog.agentCompleted(path);
+				void this.catalog.refreshPath(path);
+			}
 			return;
 		}
 	}
@@ -1500,7 +1506,7 @@ export class RuntimeController {
 					this.syncUsage();
 					this.refreshCodexUsage(true);
 					this.notifyRuntimeDone(this.runtime, false);
-					void this.refreshSessions();
+					if (path) void this.catalog.refreshPath(path);
 				}
 			},
 			// Streaming deltas use the documented targeted-message patch path.

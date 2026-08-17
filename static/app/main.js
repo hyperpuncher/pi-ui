@@ -18,7 +18,7 @@ import {
 	bindSessionPerformance,
 	startSessionPerformanceMeasurement,
 } from "./session-performance.js";
-import { bindSessionSidebarResize } from "./session-sidebar.js";
+import { bindSessionSidebarResize, promoteSessionRow } from "./session-sidebar.js";
 import { bindVimScroll } from "./vim-scroll.js";
 import { windowFocus } from "./window-focus.js";
 
@@ -33,6 +33,7 @@ window.piUi = {
 	prompt: { clear: () => setPromptValue("") },
 	promptHistory,
 	sessionPerformance: { start: startSessionPerformanceMeasurement },
+	sessionSidebar: { promoteRow: promoteSessionRow },
 	windowFocus,
 	workspaceReview: { applyOpen: () => {} },
 	shouldAbortOnEscape(event) {

@@ -32,7 +32,6 @@ const SESSION_INDEX_CONCURRENCY = 4;
 export class SessionCatalog {
 	private refreshGeneration = 0;
 	private readonly pathRefreshGenerations = new Map<string, number>();
-	private baseOrder: string[] = [];
 
 	constructor(
 		private readonly state: AppStore,
@@ -82,12 +81,18 @@ export class SessionCatalog {
 		this.applyPrepared(prepared, options);
 	}
 
-	mergeCurrentStatuses(): void {
-		this.applyOrdered(this.mergeStatuses(this.state.getSessionCatalog()));
+	agentCompleted(path: string): void {
+		this.state.promoteSession(path);
 	}
 
-	agentCompleted(path: string): void {
-		this.promote(path);
+	mergeCurrentStatuses(): void {
+		const current = this.state.getSessionCatalog();
+		const merged = this.mergeStatuses(current);
+		for (const [index, session] of merged.entries()) {
+			if (session.backgroundStatus !== current[index]?.backgroundStatus) {
+				this.state.updateSessionSummary(session.path, () => session);
+			}
+		}
 	}
 
 	messageStarted(path: string, firstUserMessage?: string): void {
@@ -106,7 +111,7 @@ export class SessionCatalog {
 				modifiedAt: modified.toISOString(),
 			};
 		});
-		if (firstUserMessage !== undefined) this.promote(path);
+		if (firstUserMessage !== undefined) this.state.promoteSession(path);
 	}
 
 	touch(path: string): void {
@@ -149,12 +154,11 @@ export class SessionCatalog {
 		])[0];
 		if (!summary) return;
 		const sessions = this.state.getSessionCatalog();
-		const exists = sessions.some((session) => session.path === path);
-		this.applyOrdered(
-			exists
-				? sessions.map((session) => (session.path === path ? summary : session))
-				: [summary, ...sessions],
-		);
+		if (sessions.some((session) => session.path === path)) {
+			this.state.updateSessionSummary(path, () => summary);
+			return;
+		}
+		this.applyOrdered([summary, ...sessions]);
 	}
 
 	private apply(sessions: SessionInfo[], options: SessionCatalogOptions = {}): void {
@@ -166,53 +170,25 @@ export class SessionCatalog {
 
 	private applyOrdered(sessions: readonly AppSessionSummary[]): void {
 		const paths = new Set(sessions.map((session) => session.path));
-		const knownPaths = new Set(this.baseOrder);
-		this.baseOrder = [
+		const currentOrder = this.state
+			.getSessionCatalog()
+			.map((session) => session.path);
+		const knownPaths = new Set(currentOrder);
+		const order = [
 			...sessions
 				.filter((session) => !knownPaths.has(session.path))
 				.map((session) => session.path),
-			...this.baseOrder.filter((path) => paths.has(path)),
+			...currentOrder.filter((path) => paths.has(path)),
 		];
-
-		const previousStatuses = new Map(
-			this.state
-				.getSessionCatalog()
-				.map((session) => [session.path, session.backgroundStatus]),
-		);
-		const newlyCompleted = sessions.filter(
-			(session) =>
-				session.backgroundStatus === "completed" &&
-				previousStatuses.has(session.path) &&
-				previousStatuses.get(session.path) !== "completed",
-		);
-		for (const session of newlyCompleted.toReversed()) {
-			this.promoteBase(session.path);
-		}
-
 		const sessionsByPath = new Map(
 			sessions.map((session) => [session.path, session]),
 		);
-		const stable = this.baseOrder.flatMap((path) => {
-			const session = sessionsByPath.get(path);
-			return session ? [session] : [];
-		});
-		this.state.setSessionCatalog([
-			...stable.filter((session) => session.backgroundStatus === "completed"),
-			...stable.filter((session) => session.backgroundStatus !== "completed"),
-		]);
-	}
-
-	private promote(path: string): void {
-		if (!this.baseOrder.includes(path)) return;
-		this.promoteBase(path);
-		this.applyOrdered(this.state.getSessionCatalog());
-	}
-
-	private promoteBase(path: string): void {
-		this.baseOrder = [
-			path,
-			...this.baseOrder.filter((candidate) => candidate !== path),
-		];
+		this.state.setSessionCatalog(
+			order.flatMap((path) => {
+				const session = sessionsByPath.get(path);
+				return session ? [session] : [];
+			}),
+		);
 	}
 }
 
