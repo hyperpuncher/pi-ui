@@ -146,7 +146,7 @@ async function runFixture(
 	const responses = controllers.map((controller) =>
 		renderer.createStream(controller.signal),
 	);
-	const expectedPatches = 2 + enhancementMessageCount(messages.slice(-50));
+	const expectedPatches = 3 + enhancementMessageCount(messages.slice(-50));
 	const startedAt = performance.now();
 	state.replaceMessages(messages);
 	let summaries: PatchSummary[];

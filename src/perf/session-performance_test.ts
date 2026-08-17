@@ -301,11 +301,11 @@ Deno.test("20-message restore emits fallback once and targets enhancements", asy
 		state.replaceMessages(messages);
 		const markdownPatches = markdownMessageCount(messages);
 		const enhancementPatches = enhancementMessageCount(messages);
-		const summary = await collectElementPatches(response, 2 + enhancementPatches);
+		const summary = await collectElementPatches(response, 3 + enhancementPatches);
 
 		assertEqual(markdownPatches, 8);
 		assertEqual(enhancementPatches, 16);
-		assertEqual(summary.fullPatchCount, 1);
+		assertEqual(summary.fullPatchCount, 2);
 		assertEqual(summary.targetedPatchCount, 17);
 		assertIncludes(summary.patches[1], "data: selector #messages");
 		assertIncludes(summary.patches[1], "data: mode replace");
@@ -314,7 +314,7 @@ Deno.test("20-message restore emits fallback once and targets enhancements", asy
 		assertNotIncludes(summary.patches[1], 'class="pierre-code"');
 
 		const snapshot = sessionPerformance.snapshot();
-		assertEqual(snapshot.fatMorphCount, 2);
+		assertEqual(snapshot.fatMorphCount, 3);
 		assertEqual(snapshot.targetedMessagePatchCount, 16);
 		assertEqual(snapshot.spans.toolEnhancement.count, 8);
 		assertEqual(snapshot.spans.markdownEnhancement.count, 8);

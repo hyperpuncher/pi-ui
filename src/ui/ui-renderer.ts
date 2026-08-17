@@ -52,7 +52,6 @@ export class UiRenderer implements AppStorePresentation {
 	private readonly sessionHub = new DatastarClientHub(undefined, false);
 	private sessionPickerHtml: string | undefined;
 	private sessionCommitScheduled = false;
-	private mainRegionHtml: string[] | undefined;
 	private replaceTranscriptOnCommit = false;
 
 	constructor(
@@ -80,13 +79,7 @@ export class UiRenderer implements AppStorePresentation {
 		try {
 			return this.hub.createStream(
 				signal,
-				() => {
-					const snapshot = this.store.snapshot();
-					const view = this.renderView({}, snapshot);
-					// Live commits omit finalized Markdown that the browser already owns.
-					this.mainRegionHtml = this.renderElementRegions(snapshot, false);
-					return view;
-				},
+				() => this.renderView({}, this.store.snapshot()),
 				{ onDisconnect: disconnect },
 			);
 		} catch (error) {
@@ -151,15 +144,9 @@ export class UiRenderer implements AppStorePresentation {
 			const regions = this.renderElementRegions(snapshot, false);
 			const replaceTranscript =
 				this.replaceTranscriptOnCommit && Boolean(regions[0]);
-			const changedRegions = regions.filter(
-				(region, index) =>
-					!(replaceTranscript && index === 0) &&
-					region !== this.mainRegionHtml?.[index],
-			);
-			this.mainRegionHtml = regions;
 			if (replaceTranscript) this.hub.replaceElement(regions[0], "#messages");
 			this.hub.patchView(
-				changedRegions.join(""),
+				(replaceTranscript ? regions.slice(1) : regions).join(""),
 				this.renderSignals(snapshot, this.effectSignalOverrides(effects)),
 				this.mainEffectScripts(effects),
 			);
@@ -238,12 +225,6 @@ export class UiRenderer implements AppStorePresentation {
 			mode: "replace",
 			scripts: ["window.piUi.messageScroll.restoreAnchor()"],
 		});
-		if (this.mainRegionHtml) {
-			this.mainRegionHtml[0] = this.renderElementRegions(
-				this.store.snapshot(),
-				false,
-			)[0];
-		}
 		// Newly revealed messages nearest the retained scroll anchor finish first.
 		for (const id of ids.toReversed()) this.messages.enqueueEnhancement(id);
 	}

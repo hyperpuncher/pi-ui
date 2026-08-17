@@ -54,7 +54,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 				format: "code",
 			},
 		]);
-		const patchesPromise = collectElementPatches(response, 4);
+		const patchesPromise = collectElementPatches(response, 5);
 		while (gates.length < 2) await Promise.resolve();
 		for (const [index, gate] of gates.entries()) {
 			gate.resolve(`<div data-enhanced="${index}">safe</div>`);
@@ -63,7 +63,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 
 		assertEqual(maximum, 2);
 		assertEqual(order.join(","), "tool,markdown");
-		assertEqual(summary.fullPatchCount, 1);
+		assertEqual(summary.fullPatchCount, 2);
 		assertEqual(summary.targetedPatchCount, 3);
 		assertIncludes(summary.patches[1], "data: selector #messages");
 		assertIncludes(summary.patches[1], "data: mode replace");
@@ -74,7 +74,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 			"&lt;script&gt;alert(&quot;tool&quot;)&lt;/script&gt;",
 		);
 		assertNotIncludes(summary.patches[1], "data-enhanced");
-		assertIncludes(summary.patches[2] + summary.patches[3], "data-enhanced");
+		assertIncludes(summary.patches[3] + summary.patches[4], "data-enhanced");
 	} finally {
 		controller.abort();
 	}
@@ -94,13 +94,13 @@ Deno.test("fat patches preserve finalized message DOM without resending its HTML
 		resolveEnhancement("<p>large finalized HTML</p>");
 		await waitFor(() => state.messages[0].presentationState === "final");
 		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
-		const patches = await collectElementPatches(response, 4);
+		const patches = await collectElementPatches(response, 5);
 
-		assertIncludes(patches.patches[2], "large finalized HTML");
-		assertIncludes(patches.patches[2], "data-ignore-morph");
-		assertNotIncludes(patches.patches[3], "large finalized HTML");
-		assertIncludes(patches.patches[3], "lightweight source");
+		assertIncludes(patches.patches[3], "large finalized HTML");
 		assertIncludes(patches.patches[3], "data-ignore-morph");
+		assertNotIncludes(patches.patches[4], "large finalized HTML");
+		assertIncludes(patches.patches[4], "lightweight source");
+		assertIncludes(patches.patches[4], "data-ignore-morph");
 	} finally {
 		controller.abort();
 	}
@@ -124,16 +124,16 @@ Deno.test("fat patches resend finalized tool HTML that the client may morph", as
 		]);
 		await waitFor(() => state.messages[0].presentationState === "final");
 		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
-		const patches = await collectElementPatches(response, 4);
+		const patches = await collectElementPatches(response, 5);
 
-		assertIncludes(patches.patches[2], "highlighted edit");
 		assertIncludes(patches.patches[3], "highlighted edit");
+		assertIncludes(patches.patches[4], "highlighted edit");
 	} finally {
 		controller.abort();
 	}
 });
 
-Deno.test("session transitions morph only changed stable regions", async () => {
+Deno.test("normal commits send the complete stable view for Datastar to morph", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -152,9 +152,9 @@ Deno.test("session transitions morph only changed stable regions", async () => {
 			text.includes('"_sessionTransitionLoading":true'),
 		);
 		assertIncludes(loading, 'id="session-transition"');
-		assertNotIncludes(loading, 'id="messages"');
-		assertNotIncludes(loading, 'id="prompt-toolbar"');
-		assertNotIncludes(loading, 'id="session-sidebar-content"');
+		assertIncludes(loading, 'id="messages"');
+		assertIncludes(loading, 'id="prompt-toolbar"');
+		assertIncludes(loading, 'id="session-sidebar-content"');
 
 		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
 		state.flush();
@@ -164,15 +164,15 @@ Deno.test("session transitions morph only changed stable regions", async () => {
 		assertIncludes(restored, 'id="messages"');
 		assertIncludes(restored, "data: selector #messages");
 		assertIncludes(restored, "data: mode replace");
-		assertNotIncludes(restored, 'id="prompt-toolbar"');
-		assertNotIncludes(restored, 'id="session-sidebar-content"');
 
 		state.setSessionTransition({ status: "idle", generation: 1 });
 		const idle = await readUntil(reader, (text) =>
 			text.includes('"_sessionTransitionLoading":false'),
 		);
 		assertIncludes(idle, 'id="session-transition"');
-		assertNotIncludes(idle, 'id="messages"');
+		assertIncludes(idle, 'id="messages"');
+		assertIncludes(idle, 'id="prompt-toolbar"');
+		assertIncludes(idle, 'id="session-sidebar-content"');
 	} finally {
 		controller.abort();
 	}
