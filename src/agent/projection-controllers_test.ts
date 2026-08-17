@@ -5,7 +5,6 @@ import { assertEquals, assertStrictEquals, assertStringIncludes } from "@std/ass
 
 import { AppStore } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
-import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import {
 	modelMatchesPattern,
 	parseScopedModelPattern,
@@ -19,6 +18,7 @@ import {
 	SessionCatalog,
 } from "./session-catalog.ts";
 import {
+	agentSessionEventStub,
 	agentSessionRuntimeStub,
 	sessionEntryStub,
 	sessionStatsStub,
@@ -347,7 +347,7 @@ Deno.test("session discovery indexes every candidate in newest-first order", asy
 
 Deno.test("session catalog ignores an older refresh that finishes last", async () => {
 	const state = new AppStore();
-	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const catalog = new SessionCatalog(state);
 	let finishOlder = (_value: PreparedSessionList) => {};
 	const older = catalog.refresh(
 		() =>
@@ -387,13 +387,26 @@ function sessionInfo(
 
 Deno.test("session catalog updates a streaming session incrementally", () => {
 	const state = new AppStore();
-	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const catalog = new SessionCatalog(state);
 	const empty = sessionInfo("/session", "Untitled session");
 	empty.messageCount = 0;
 	catalog.applyPrepared({ ok: true, sessions: [empty] });
 
-	catalog.messageStarted("/session", "A newly submitted prompt");
-	catalog.touch("/session");
+	catalog.handleEvent(
+		"/session",
+		agentSessionEventStub({
+			type: "message_start",
+			message: { role: "user", content: "A newly submitted prompt" },
+		}),
+	);
+	catalog.handleEvent(
+		"/session",
+		agentSessionEventStub({
+			type: "message_update",
+			message: { role: "assistant", content: [] },
+			assistantMessageEvent: undefined,
+		}),
+	);
 
 	assertEquals(state.sessions[0]?.title, "A newly submitted prompt");
 	assertEquals(state.sessions[0]?.subtitle, "1 message");
@@ -401,7 +414,7 @@ Deno.test("session catalog updates a streaming session incrementally", () => {
 
 Deno.test("session catalog promotes user-relevant activity", () => {
 	const state = new AppStore();
-	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const catalog = new SessionCatalog(state);
 	catalog.applyPrepared({
 		ok: true,
 		sessions: [sessionInfo("/first", "First"), sessionInfo("/second", "Second")],
@@ -430,9 +443,10 @@ Deno.test("session catalog promotes user-relevant activity", () => {
 Deno.test("session catalog status changes preserve live row order", () => {
 	const state = new AppStore();
 	const statuses = new Map<string, "running" | "completed">();
-	const catalog = new SessionCatalog(state, (sessions) =>
-		mergeBackgroundSessionStatuses(sessions, statuses),
-	);
+	const catalog = new SessionCatalog(state, {
+		agentDir: "",
+		backgroundStatuses: () => statuses,
+	});
 	catalog.applyPrepared({
 		ok: true,
 		sessions: [
@@ -466,9 +480,35 @@ Deno.test("session catalog status changes preserve live row order", () => {
 	);
 });
 
+Deno.test("session catalog owns watcher activation and cleanup", () => {
+	const state = new AppStore();
+	let watchCount = 0;
+	let stopCount = 0;
+	let changed = (_path: string) => {};
+	const catalog = new SessionCatalog(state, {
+		agentDir: "/agent",
+		watch: (_agentDir, onChange) => {
+			watchCount += 1;
+			changed = onChange;
+			return () => {
+				stopCount += 1;
+			};
+		},
+	});
+
+	catalog.activate();
+	catalog.activate();
+	changed("/agent/sessions/session.jsonl");
+	catalog.dispose();
+	catalog.dispose();
+
+	assertEquals(watchCount, 1);
+	assertEquals(stopCount, 1);
+});
+
 Deno.test("session catalog keeps every recent workspace", () => {
 	const state = new AppStore();
-	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const catalog = new SessionCatalog(state);
 	const sessions = Array.from({ length: 12 }, (_, index) => {
 		const session = sessionInfo(`/session-${index}`, `Session ${index}`);
 		session.cwd = `/work/project-${index}`;
@@ -487,7 +527,7 @@ Deno.test("session catalog keeps every recent workspace", () => {
 
 Deno.test("session catalog keeps recent rows small while searching every session", () => {
 	const state = new AppStore();
-	const catalog = new SessionCatalog(state, (sessions) => [...sessions]);
+	const catalog = new SessionCatalog(state);
 	const sessions = Array.from({ length: 51 }, (_, index) =>
 		sessionInfo(`/session-${index}`, `Session ${index}`),
 	);

@@ -1,9 +1,20 @@
-import { getAgentDir, type SessionInfo } from "@earendil-works/pi-coding-agent";
+import {
+	type AgentSessionEvent,
+	getAgentDir,
+	type SessionInfo,
+} from "@earendil-works/pi-coding-agent";
 import { join } from "@std/path";
 
-import type { AppSessionSummary, AppStore } from "../state/app-store.ts";
+import type {
+	AppSessionSummary,
+	AppStore,
+	BackgroundSessionStatus,
+} from "../state/app-store.ts";
 import { errorMessage } from "../utils/errors.ts";
 import { formatDateTime } from "../utils/locale.ts";
+import { isRecord, isString } from "../utils/type-guards.ts";
+import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
+import type { SessionCatalogWatch } from "./session-catalog-watcher.ts";
 import {
 	loadSessionSummary,
 	readSessionSummaryCache,
@@ -28,16 +39,31 @@ type SessionCandidate = {
 };
 
 const SESSION_INDEX_CONCURRENCY = 4;
+const noBackgroundStatuses = new Map<string, BackgroundSessionStatus>();
+
+export type SessionCatalogLifecycle = {
+	agentDir: string;
+	backgroundStatuses?: () => ReadonlyMap<string, BackgroundSessionStatus>;
+	watch?: SessionCatalogWatch;
+};
 
 export class SessionCatalog {
 	private refreshGeneration = 0;
 	private readonly pathRefreshGenerations = new Map<string, number>();
+	private readonly sessionTouchTimers = new Map<
+		string,
+		ReturnType<typeof setTimeout>
+	>();
+	private readonly sessionTouchTimes = new Map<string, number>();
+	private readonly sessionFileRefreshTimers = new Map<
+		string,
+		ReturnType<typeof setTimeout>
+	>();
+	private stopWatch: (() => void) | undefined;
 
 	constructor(
 		private readonly state: AppStore,
-		private readonly mergeStatuses: (
-			sessions: readonly AppSessionSummary[],
-		) => AppSessionSummary[],
+		private readonly lifecycle?: SessionCatalogLifecycle,
 	) {}
 
 	static prepare(): Promise<PreparedSessionList> {
@@ -45,6 +71,48 @@ export class SessionCatalog {
 			(sessions) => ({ ok: true as const, sessions }),
 			(error: ErrorOptions["cause"]) => ({ ok: false as const, error }),
 		);
+	}
+
+	activate(): void {
+		if (this.stopWatch || !this.lifecycle?.watch) return;
+		this.stopWatch = this.lifecycle.watch(this.lifecycle.agentDir, (path) =>
+			this.scheduleFileRefresh(path),
+		);
+	}
+
+	dispose(): void {
+		this.stopWatch?.();
+		this.stopWatch = undefined;
+		for (const timer of this.sessionTouchTimers.values()) clearTimeout(timer);
+		for (const timer of this.sessionFileRefreshTimers.values()) clearTimeout(timer);
+		this.sessionTouchTimers.clear();
+		this.sessionTouchTimes.clear();
+		this.sessionFileRefreshTimers.clear();
+	}
+
+	handleEvent(path: string, event: AgentSessionEvent): void {
+		if (event.type === "message_start") {
+			this.messageStarted(
+				path,
+				event.message.role === "user"
+					? sessionEventMessageText(event.message.content)
+					: undefined,
+			);
+			return;
+		}
+		if (event.type === "message_end") {
+			this.flushTouch(path);
+			void this.refreshPath(path);
+			return;
+		}
+		if (
+			event.type === "message_update" ||
+			event.type === "tool_execution_start" ||
+			event.type === "tool_execution_update" ||
+			event.type === "tool_execution_end"
+		) {
+			this.scheduleTouch(path);
+		}
 	}
 
 	applyPrepared(
@@ -161,6 +229,47 @@ export class SessionCatalog {
 		this.applyOrdered([summary, ...sessions]);
 	}
 
+	private scheduleTouch(path: string): void {
+		const elapsed = Date.now() - (this.sessionTouchTimes.get(path) ?? 0);
+		if (elapsed >= 1_000) {
+			this.flushTouch(path);
+			return;
+		}
+		if (this.sessionTouchTimers.has(path)) return;
+		this.sessionTouchTimers.set(
+			path,
+			setTimeout(() => this.flushTouch(path), 1_000 - elapsed),
+		);
+	}
+
+	private flushTouch(path: string): void {
+		const timer = this.sessionTouchTimers.get(path);
+		if (timer) clearTimeout(timer);
+		this.sessionTouchTimers.delete(path);
+		this.sessionTouchTimes.set(path, Date.now());
+		this.touch(path);
+	}
+
+	private scheduleFileRefresh(path: string): void {
+		const pending = this.sessionFileRefreshTimers.get(path);
+		if (pending) clearTimeout(pending);
+		this.sessionFileRefreshTimers.set(
+			path,
+			setTimeout(() => {
+				this.sessionFileRefreshTimers.delete(path);
+				void this.refreshPath(path);
+			}, 200),
+		);
+	}
+
+	private mergeStatuses(sessions: readonly AppSessionSummary[]): AppSessionSummary[] {
+		return mergeBackgroundSessionStatuses(
+			sessions,
+			this.lifecycle?.backgroundStatuses?.() ?? noBackgroundStatuses,
+			this.state.currentSessionPath,
+		);
+	}
+
 	private apply(sessions: SessionInfo[], options: SessionCatalogOptions = {}): void {
 		if (options.refreshWorkspaces !== false) {
 			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
@@ -190,6 +299,18 @@ export class SessionCatalog {
 			}),
 		);
 	}
+}
+
+function sessionEventMessageText<Content>(content: Content): string {
+	if (isString(content)) return content;
+	if (!Array.isArray(content)) return "";
+	return content
+		.flatMap((block) =>
+			isRecord(block) && block.type === "text" && isString(block.text)
+				? [block.text]
+				: [],
+		)
+		.join(" ");
 }
 
 export async function listCachedSessions(

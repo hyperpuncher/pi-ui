@@ -1,7 +1,6 @@
 import {
 	type AgentSessionEvent,
 	type AgentSessionRuntime,
-	type PromptOptions,
 	createAgentSessionFromServices,
 	createAgentSessionRuntime,
 	type CreateAgentSessionRuntimeFactory,
@@ -16,12 +15,11 @@ import {
 	type SessionDoneNotification,
 } from "../desktop-notifications.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
-import { type AppSessionSummary, AppStore } from "../state/app-store.ts";
+import { AppStore } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
 import { errorMessage } from "../utils/errors.ts";
 import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
 import { moveToTrash } from "../utils/trash.ts";
-import { isRecord, isString } from "../utils/type-guards.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 import { AuthController } from "./auth-controller.ts";
 import {
@@ -32,11 +30,15 @@ import {
 	type BackgroundSession,
 	BackgroundSessionController,
 } from "./background-session-controller.ts";
-import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "./cache-miss.ts";
 import { LlamaController } from "./llama-controller.ts";
 import { llamaProviderExtension } from "./llama-provider-extension.ts";
 import { ModelController, resolveScopedModels } from "./model-controller.ts";
+import {
+	PromptLifecycle,
+	type PromptStreamingBehavior,
+	type RuntimePromptOptions,
+} from "./prompt-lifecycle.ts";
 import {
 	type SessionCatalogWatch,
 	watchSessionCatalog,
@@ -68,14 +70,6 @@ import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
 
 const extensionFactories = [llamaProviderExtension];
-
-type PromptStreamingBehavior = NonNullable<PromptOptions["streamingBehavior"]>;
-type RuntimePromptOptions = Pick<PromptOptions, "images" | "streamingBehavior">;
-type CompactionQueuedPrompt = {
-	text: string;
-	images?: RuntimePromptOptions["images"];
-	streamingBehavior: PromptStreamingBehavior;
-};
 
 export type RuntimeControllerDependencies = Readonly<{
 	createRuntime: typeof createAgentSessionRuntime;
@@ -120,11 +114,7 @@ export class RuntimeController {
 	>();
 	private readonly toolCallArgs = new Map<string, ToolArguments>();
 	private readonly toolStartedAt = new Map<string, number>();
-	private readonly pendingPrompts = new Map<AgentSessionRuntime, number>();
-	private readonly compactionQueuedPrompts = new Map<
-		AgentSessionRuntime,
-		CompactionQueuedPrompt[]
-	>();
+	private readonly prompts: PromptLifecycle;
 	private readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
 	private readonly backgroundSessions = new BackgroundSessionController();
@@ -140,16 +130,6 @@ export class RuntimeController {
 	private resetChatOnInvalidation = false;
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
-	private readonly sessionTouchTimers = new Map<
-		string,
-		ReturnType<typeof setTimeout>
-	>();
-	private readonly sessionTouchTimes = new Map<string, number>();
-	private readonly sessionFileRefreshTimers = new Map<
-		string,
-		ReturnType<typeof setTimeout>
-	>();
-	private stopSessionCatalogWatch: (() => void) | undefined;
 	private readonly dependencies: RuntimeControllerDependencies;
 
 	private constructor(
@@ -180,9 +160,23 @@ export class RuntimeController {
 			() => this.loadCurrentSessionMessages(),
 			() => this.foregroundGeneration,
 		);
-		this.catalog = new SessionCatalog(state, (sessions) =>
-			this.mergeBackgroundStatuses(sessions),
-		);
+		this.catalog = new SessionCatalog(state, {
+			agentDir: this.dependencies.getAgentDir(),
+			backgroundStatuses: () =>
+				new Map(
+					[...this.backgroundSessions.entries()].map(([path, session]) => [
+						path,
+						session.status,
+					]),
+				),
+			watch: this.dependencies.watchSessionCatalog,
+		});
+		this.prompts = new PromptLifecycle((runtime) => {
+			if (runtime === this.runtime) return this.state;
+			for (const session of this.backgroundSessions.values()) {
+				if (session.runtime === runtime) return session.state;
+			}
+		});
 		this.auth = new AuthController(
 			() => this.runtime,
 			state,
@@ -276,10 +270,7 @@ export class RuntimeController {
 	activate(): void {
 		this.bindSessionState({ syncSessions: false });
 		this.initialCatalogLoad = this.loadInitialCatalog();
-		this.stopSessionCatalogWatch = this.dependencies.watchSessionCatalog?.(
-			this.dependencies.getAgentDir(),
-			(path) => this.scheduleSessionFileRefresh(path),
-		);
+		this.catalog.activate();
 	}
 
 	async prompt(text: string, options: RuntimePromptOptions = {}): Promise<boolean> {
@@ -324,7 +315,7 @@ export class RuntimeController {
 
 		const runtime = this.runtime;
 		if (runtime.session.isCompacting) {
-			this.queuePromptAfterCompaction(
+			this.prompts.queueAfterCompaction(
 				runtime,
 				trimmed,
 				options.streamingBehavior ?? "steer",
@@ -333,13 +324,13 @@ export class RuntimeController {
 			return true;
 		}
 
-		return await this.submitRuntimePrompt(runtime, trimmed, options);
+		return await this.prompts.submit(runtime, trimmed, options);
 	}
 
 	async abort(): Promise<void> {
 		this.tree.cancelNavigation();
 		await this.runtime.session.abort();
-		this.compactionQueuedPrompts.delete(this.runtime);
+		this.prompts.clear(this.runtime);
 		this.foregroundObservedRunning = false;
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
@@ -355,69 +346,20 @@ export class RuntimeController {
 		await session.runtime.session.abort();
 		session.status = "completed";
 		session.observedRunning = false;
-		this.syncBackgroundStatuses();
+		this.catalog.mergeCurrentStatuses();
 		await this.catalog.refreshPath(sessionPath);
 		return true;
 	}
 
 	restoreQueuedMessages(): string {
-		const runtime = this.runtime;
-		const compactionQueued = this.compactionQueuedPrompts.get(runtime) ?? [];
-		this.compactionQueuedPrompts.delete(runtime);
-		const { steering, followUp } = runtime.session.clearQueue();
-		this.state.setQueuedMessages([], []);
-		return [
-			...steering,
-			...compactionQueued
-				.filter((prompt) => prompt.streamingBehavior === "steer")
-				.map((prompt) => prompt.text),
-			...followUp,
-			...compactionQueued
-				.filter((prompt) => prompt.streamingBehavior === "followUp")
-				.map((prompt) => prompt.text),
-		].join("\n\n");
+		return this.prompts.restore(this.runtime);
 	}
 
 	async removeQueuedMessage(
 		streamingBehavior: PromptStreamingBehavior,
 		index: number,
 	): Promise<boolean> {
-		const runtime = this.runtime;
-		const runtimeQueued =
-			streamingBehavior === "steer"
-				? runtime.session.getSteeringMessages()
-				: runtime.session.getFollowUpMessages();
-		const compactionQueued = this.compactionQueuedPrompts.get(runtime) ?? [];
-		const matchingCompactionIndexes = compactionQueued.flatMap((prompt, index) =>
-			prompt.streamingBehavior === streamingBehavior ? [index] : [],
-		);
-		if (index >= runtimeQueued.length + matchingCompactionIndexes.length) {
-			return false;
-		}
-
-		if (index >= runtimeQueued.length) {
-			compactionQueued.splice(
-				matchingCompactionIndexes[index - runtimeQueued.length],
-				1,
-			);
-			if (compactionQueued.length === 0) {
-				this.compactionQueuedPrompts.delete(runtime);
-			}
-			this.syncRuntimeQueuedMessages(runtime);
-			return true;
-		}
-
-		// AgentSession has no single-item removal API, so rebuild its tracked queues.
-		const queued = runtime.session.clearQueue();
-		queued[streamingBehavior === "steer" ? "steering" : "followUp"].splice(index, 1);
-		try {
-			for (const text of queued.steering) await runtime.session.steer(text);
-			for (const text of queued.followUp) await runtime.session.followUp(text);
-		} catch (error) {
-			this.reportPromptError(runtime, error);
-		}
-		this.syncRuntimeQueuedMessages(runtime);
-		return true;
+		return await this.prompts.remove(this.runtime, streamingBehavior, index);
 	}
 
 	async newSession(): Promise<SessionTransitionResult> {
@@ -907,13 +849,7 @@ export class RuntimeController {
 	private async disposeOwnedRuntimes(): Promise<void> {
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
-		this.stopSessionCatalogWatch?.();
-		this.stopSessionCatalogWatch = undefined;
-		for (const timer of this.sessionTouchTimers.values()) clearTimeout(timer);
-		for (const timer of this.sessionFileRefreshTimers.values()) clearTimeout(timer);
-		this.sessionTouchTimers.clear();
-		this.sessionTouchTimes.clear();
-		this.sessionFileRefreshTimers.clear();
+		this.catalog.dispose();
 		this.auth.dispose();
 		this.llama.dispose();
 		this.usage.dispose();
@@ -923,7 +859,7 @@ export class RuntimeController {
 			runtimes.push(session.runtime);
 		}
 		this.backgroundSessions.clear();
-		this.compactionQueuedPrompts.clear();
+		this.prompts.dispose();
 
 		const results = await Promise.allSettled(
 			runtimes.map((runtime) => Promise.resolve().then(() => runtime.dispose())),
@@ -941,128 +877,8 @@ export class RuntimeController {
 			this.runtime.session.isStreaming ||
 			this.runtime.session.isCompacting ||
 			this.foregroundObservedRunning ||
-			(this.pendingPrompts.get(this.runtime) ?? 0) > 0
+			this.prompts.hasPending(this.runtime)
 		);
-	}
-
-	private async submitRuntimePrompt(
-		runtime: AgentSessionRuntime,
-		text: string,
-		options: RuntimePromptOptions = {},
-	): Promise<boolean> {
-		let resolveAccepted: (accepted: boolean) => void = () => {};
-		let settled = false;
-		const accepted = new Promise<boolean>((resolve) => {
-			resolveAccepted = (value) => {
-				if (settled) return;
-				settled = true;
-				resolve(value);
-			};
-		});
-
-		this.markPromptPending(runtime);
-		runtime.session
-			.prompt(text, {
-				images: options.images,
-				streamingBehavior: runtime.session.isStreaming
-					? (options.streamingBehavior ?? "steer")
-					: undefined,
-				preflightResult: resolveAccepted,
-			})
-			.catch((error: ErrorOptions["cause"]) => {
-				resolveAccepted(false);
-				this.reportPromptError(runtime, error);
-			})
-			.finally(() => this.markPromptSettled(runtime));
-
-		return await accepted;
-	}
-
-	private queuePromptAfterCompaction(
-		runtime: AgentSessionRuntime,
-		text: string,
-		streamingBehavior: PromptStreamingBehavior,
-		images?: RuntimePromptOptions["images"],
-	): void {
-		const queued = this.compactionQueuedPrompts.get(runtime) ?? [];
-		queued.push({ text, images, streamingBehavior });
-		this.compactionQueuedPrompts.set(runtime, queued);
-		this.syncRuntimeQueuedMessages(runtime);
-	}
-
-	private syncRuntimeQueuedMessages(runtime: AgentSessionRuntime): void {
-		const compactionQueued = this.compactionQueuedPrompts.get(runtime) ?? [];
-		const steering = [
-			...runtime.session.getSteeringMessages(),
-			...compactionQueued
-				.filter((prompt) => prompt.streamingBehavior === "steer")
-				.map((prompt) => prompt.text),
-		];
-		const followUp = [
-			...runtime.session.getFollowUpMessages(),
-			...compactionQueued
-				.filter((prompt) => prompt.streamingBehavior === "followUp")
-				.map((prompt) => prompt.text),
-		];
-		if (runtime === this.runtime) {
-			this.state.setQueuedMessages(steering, followUp);
-			return;
-		}
-		for (const session of this.backgroundSessions.values()) {
-			if (session.runtime === runtime) {
-				session.state.setQueuedMessages(steering, followUp);
-				return;
-			}
-		}
-	}
-
-	private async flushCompactionQueue(runtime: AgentSessionRuntime): Promise<void> {
-		const queued = this.compactionQueuedPrompts.get(runtime);
-		if (!queued?.length) return;
-		this.compactionQueuedPrompts.delete(runtime);
-		this.syncRuntimeQueuedMessages(runtime);
-
-		for (let index = 0; index < queued.length; index += 1) {
-			const prompt = queued[index];
-			if (
-				await this.submitRuntimePrompt(runtime, prompt.text, {
-					images: prompt.images,
-					streamingBehavior: prompt.streamingBehavior,
-				})
-			)
-				continue;
-
-			this.compactionQueuedPrompts.set(runtime, queued.slice(index));
-			this.syncRuntimeQueuedMessages(runtime);
-			return;
-		}
-	}
-
-	private markPromptPending(runtime: AgentSessionRuntime): void {
-		this.pendingPrompts.set(runtime, (this.pendingPrompts.get(runtime) ?? 0) + 1);
-	}
-
-	private markPromptSettled(runtime: AgentSessionRuntime): void {
-		const pending = (this.pendingPrompts.get(runtime) ?? 1) - 1;
-		if (pending > 0) this.pendingPrompts.set(runtime, pending);
-		else this.pendingPrompts.delete(runtime);
-	}
-
-	private reportPromptError(
-		runtime: AgentSessionRuntime,
-		error: ErrorOptions["cause"],
-	): void {
-		const message = errorMessage(error);
-		if (runtime === this.runtime) {
-			this.state.appendMessage("system", message);
-			return;
-		}
-		for (const session of this.backgroundSessions.values()) {
-			if (session.runtime === runtime) {
-				session.state.appendMessage("system", message);
-				return;
-			}
-		}
 	}
 
 	private currentRuntimeLeaveAction(): "background" | "discard" | "dispose" {
@@ -1122,7 +938,7 @@ export class RuntimeController {
 
 	private async discardTemporaryRuntime(): Promise<void> {
 		const runtime = this.runtime;
-		this.compactionQueuedPrompts.delete(runtime);
+		this.prompts.clear(runtime);
 		await transitionRuntime({
 			action: "discard",
 			unsubscribe: () => this.unbindSession(),
@@ -1178,7 +994,7 @@ export class RuntimeController {
 		);
 		this.backgroundSessions.register(sessionFile, backgroundSession);
 		this.state.setCurrentSessionPath(undefined);
-		this.syncBackgroundStatuses();
+		this.catalog.mergeCurrentStatuses();
 		void this.catalog.refreshPath(sessionFile);
 	}
 
@@ -1205,15 +1021,15 @@ export class RuntimeController {
 		);
 		this.updateSessionCatalogFromEvent(event, backgroundSession.runtime);
 		if (event.type === "queue_update") {
-			this.syncRuntimeQueuedMessages(backgroundSession.runtime);
+			this.prompts.sync(backgroundSession.runtime);
 		}
 		if (event.type === "compaction_end") {
-			void this.flushCompactionQueue(backgroundSession.runtime);
+			void this.prompts.flushCompactionQueue(backgroundSession.runtime);
 		}
 		if (outcome.agentCompleted) {
 			this.unsubscribeBackgroundSession(backgroundSession);
 			backgroundSession.status = "completed";
-			this.syncBackgroundStatuses();
+			this.catalog.mergeCurrentStatuses();
 			this.notifyRuntimeDone(backgroundSession.runtime, true);
 			const path =
 				backgroundSession.runtime.session.sessionManager.getSessionFile();
@@ -1280,7 +1096,7 @@ export class RuntimeController {
 		this.bindRuntimeCallbacks(this.runtime);
 		this.bindSessionState({ resetToolState: false, syncSessions: false });
 		this.state.restoreChat(backgroundSession.state.snapshot());
-		this.syncBackgroundStatuses();
+		this.catalog.mergeCurrentStatuses();
 	}
 
 	private async bindSession(
@@ -1333,7 +1149,7 @@ export class RuntimeController {
 			this.syncUsage();
 			this.refreshCodexUsage(true);
 			if (options.syncSessions !== false) {
-				this.syncBackgroundStatuses();
+				this.catalog.mergeCurrentStatuses();
 			}
 			if (options.refreshSessions === true) {
 				void this.refreshSessions();
@@ -1393,81 +1209,7 @@ export class RuntimeController {
 		runtime: AgentSessionRuntime,
 	): void {
 		const path = runtime.session.sessionManager.getSessionFile();
-		if (!path) return;
-		if (event.type === "message_start") {
-			this.catalog.messageStarted(
-				path,
-				event.message.role === "user"
-					? sessionEventMessageText(event.message.content)
-					: undefined,
-			);
-			return;
-		}
-		if (event.type === "message_end") {
-			this.flushSessionTouch(path);
-			void this.catalog.refreshPath(path);
-			return;
-		}
-		if (
-			event.type === "message_update" ||
-			event.type === "tool_execution_start" ||
-			event.type === "tool_execution_update" ||
-			event.type === "tool_execution_end"
-		) {
-			this.scheduleSessionTouch(path);
-		}
-	}
-
-	private scheduleSessionTouch(path: string): void {
-		const elapsed = Date.now() - (this.sessionTouchTimes.get(path) ?? 0);
-		if (elapsed >= 1_000) {
-			this.flushSessionTouch(path);
-			return;
-		}
-		if (this.sessionTouchTimers.has(path)) return;
-		this.sessionTouchTimers.set(
-			path,
-			setTimeout(() => this.flushSessionTouch(path), 1_000 - elapsed),
-		);
-	}
-
-	private flushSessionTouch(path: string): void {
-		const timer = this.sessionTouchTimers.get(path);
-		if (timer) clearTimeout(timer);
-		this.sessionTouchTimers.delete(path);
-		this.sessionTouchTimes.set(path, Date.now());
-		this.catalog.touch(path);
-	}
-
-	private scheduleSessionFileRefresh(path: string): void {
-		const pending = this.sessionFileRefreshTimers.get(path);
-		if (pending) clearTimeout(pending);
-		this.sessionFileRefreshTimers.set(
-			path,
-			setTimeout(() => {
-				this.sessionFileRefreshTimers.delete(path);
-				void this.catalog.refreshPath(path);
-			}, 200),
-		);
-	}
-
-	private syncBackgroundStatuses(): void {
-		this.catalog.mergeCurrentStatuses();
-	}
-
-	private mergeBackgroundStatuses(
-		sessions: readonly AppSessionSummary[],
-	): AppSessionSummary[] {
-		return mergeBackgroundSessionStatuses(
-			sessions,
-			new Map(
-				[...this.backgroundSessions.entries()].map(([path, session]) => [
-					path,
-					session.status,
-				]),
-			),
-			this.state.currentSessionPath,
-		);
+		if (path) this.catalog.handleEvent(path, event);
 	}
 
 	private afterModelChange(): void {
@@ -1513,10 +1255,10 @@ export class RuntimeController {
 			{ commit: false },
 		);
 		if (event.type === "queue_update") {
-			this.syncRuntimeQueuedMessages(this.runtime);
+			this.prompts.sync(this.runtime);
 		}
 		if (event.type === "compaction_end") {
-			void this.flushCompactionQueue(this.runtime);
+			void this.prompts.flushCompactionQueue(this.runtime);
 		}
 	}
 
@@ -1681,16 +1423,4 @@ export class RuntimeController {
 	): void {
 		this.transcript.load(runtime, state);
 	}
-}
-
-function sessionEventMessageText<Content>(content: Content): string {
-	if (isString(content)) return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.flatMap((block) =>
-			isRecord(block) && block.type === "text" && isString(block.text)
-				? [block.text]
-				: [],
-		)
-		.join(" ");
 }
