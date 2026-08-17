@@ -6,6 +6,7 @@ import { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
 import { createRouter, isLoopbackAddress } from "../app.ts";
+import { DatastarClientHub } from "../datastar-client-hub.ts";
 import { SessionImageStore } from "../session-image-store.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
@@ -75,6 +76,49 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		new Set(Object.values(endpoints)),
 		new Set(expected.map((route) => route.slice(route.indexOf(" ") + 1))),
 	);
+});
+
+Deno.test("page assets use the current immutable content version", async () => {
+	const context = fakeContext();
+	context.renderer = new UiRenderer(context.store, new DatastarClientHub());
+	const response = await createRouter(context).fetch(new Request("http://localhost/"));
+	const html = await response.text();
+	assertEquals(response.headers.get("cache-control"), "no-store");
+	assertStringIncludes(html, `/static/${context.appVersion}/app.css`);
+	assertStringIncludes(html, `appVersion=${context.appVersion}`);
+
+	const basecoat = await createRouter(context).fetch(
+		new Request("http://localhost/basecoat.js"),
+	);
+	assertEquals(basecoat.headers.get("cache-control"), "no-cache, must-revalidate");
+});
+
+Deno.test("stale main streams reload the page before connecting", async () => {
+	let connected = false;
+	const context = fakeContext({
+		renderer: uiRendererStub({
+			createStream: () => {
+				connected = true;
+				return new Response("stream");
+			},
+		}),
+	});
+	const clientId = crypto.randomUUID();
+	const router = createRouter(context);
+	const stale = await router.fetch(
+		new Request(`http://localhost/stream?clientId=${clientId}&appVersion=old`),
+	);
+	assertEquals(stale.headers.get("content-type"), "text/javascript; charset=utf-8");
+	assertEquals(await stale.text(), "location.reload();");
+	assertEquals(connected, false);
+
+	const current = await router.fetch(
+		new Request(
+			`http://localhost/stream?clientId=${clientId}&appVersion=${context.appVersion}`,
+		),
+	);
+	assertEquals(await current.text(), "stream");
+	assertEquals(connected, true);
 });
 
 Deno.test("session favicons use workspace assets and fall back to a folder", async () => {
@@ -422,8 +466,13 @@ Deno.test("main stream binds a validated display client identity", async () => {
 	});
 	const router = createRouter(context);
 	assertEquals(
-		(await router.fetch(new Request(`http://localhost/stream?clientId=${clientId}`)))
-			.status,
+		(
+			await router.fetch(
+				new Request(
+					`http://localhost/stream?clientId=${clientId}&appVersion=${context.appVersion}`,
+				),
+			)
+		).status,
 		200,
 	);
 	assertEquals(connectedClientId, clientId);
@@ -579,6 +628,7 @@ function fakeContext(
 ): RouteContext {
 	const store = new AppStore();
 	return {
+		appVersion: "test-version",
 		store,
 		renderer:
 			overrides.renderer ??

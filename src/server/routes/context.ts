@@ -42,6 +42,7 @@ export interface RouteResources {
 }
 
 export interface RouteContext {
+	appVersion: string;
 	store: AppStore;
 	renderer: UiRenderer;
 	resources: RouteResources;

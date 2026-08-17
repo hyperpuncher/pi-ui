@@ -726,7 +726,9 @@ function createWorkerPool() {
 			poolSize: 1,
 			totalASTLRUCacheSize: 100,
 			workerFactory: () =>
-				new Worker("/build/pierre-worker.js", { type: "module" }),
+				new Worker(new URL("./pierre-worker.js", import.meta.url), {
+					type: "module",
+				}),
 		},
 	});
 }

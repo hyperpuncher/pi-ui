@@ -63,8 +63,10 @@ const startupLayoutGateScript = `(() => {
 export function renderPage(
 	state: AppRenderSnapshot,
 	workspaceReview: WorkspaceReviewSnapshot = emptyWorkspaceReview(),
+	appVersion = "development",
 ): string {
 	const desktop = Deno.BrowserWindow instanceof Function;
+	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
 	const displayClientId = crypto.randomUUID();
 	const gateStartupLayout =
@@ -83,17 +85,30 @@ export function renderPage(
 					<meta charset="utf-8" />
 					<meta name="viewport" content="width=device-width, initial-scale=1" />
 					<title>pi-ui</title>
-					<link rel="icon" type="image/png" href="/favicon.png" />
-					<script src="/theme.js"></script>
+					<link
+						rel="icon"
+						type="image/png"
+						href={`${staticBase}/favicon.png`}
+					/>
+					<script src={`${staticBase}/theme.js`}></script>
 					<script>{sessionSidebarStartupScript}</script>
-					<link rel="stylesheet" href="/app.css" />
+					<link rel="stylesheet" href={`${staticBase}/app.css`} />
 					{gateStartupLayout && <script>{startupLayoutGateScript}</script>}
 					{desktop && <script>{desktopStartupReadyScript}</script>}
 					<script src="/basecoat.js" defer></script>
-					<script type="module" src="/app/main.js"></script>
-					<script type="module" src="/vendor/datastar.js"></script>
-					<script type="module" src="/build/workspace-review.js"></script>
-					<script type="module" src="/build/code-theme.js"></script>
+					<script type="module" src={`${staticBase}/app/main.js`}></script>
+					<script
+						type="module"
+						src={`${staticBase}/vendor/datastar.js`}
+					></script>
+					<script
+						type="module"
+						src={`${staticBase}/build/workspace-review.js`}
+					></script>
+					<script
+						type="module"
+						src={`${staticBase}/build/code-theme.js`}
+					></script>
 					{state.datastarInspector && (
 						<script
 							type="module"
@@ -192,7 +207,7 @@ export function renderPage(
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
-						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}', {
+						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
 						payload: {},
 						openWhenHidden: true,
 						requestCancellation: 'cleanup',

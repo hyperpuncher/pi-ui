@@ -1,4 +1,3 @@
-import { serveDir } from "@std/http/file-server";
 import { fromFileUrl } from "@std/path";
 
 import { AgentHost } from "../agent/host.ts";
@@ -28,6 +27,7 @@ import { registerTreeRoutes } from "./routes/tree.ts";
 import { registerWorkspaceReviewRoutes } from "./routes/workspace-review.ts";
 import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { SessionImageStore } from "./session-image-store.ts";
+import { createStaticAssetServer } from "./static-assets.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 
 const basecoatJsPath = fromFileUrl(
@@ -36,6 +36,7 @@ const basecoatJsPath = fromFileUrl(
 const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
+	const staticAssets = await createStaticAssetServer(staticRoot);
 	const codeTheme = await readCodeThemePreference();
 	setActiveCodeTheme(codeTheme);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
@@ -82,9 +83,10 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		renderer,
 		resources,
 		transferredFiles,
+		appVersion: staticAssets.version,
 		readBasecoat: async () =>
 			new Uint8Array(await Deno.readFile(basecoatJsPath)).buffer,
-		serveStatic: (request) => serveDir(request, { fsRoot: staticRoot }),
+		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) => openWorkspace(path, store, resources, transitions),
 		openPath: openWithDefaultApp,
 		isLocalRequest: (request) => localRequests.has(request),

@@ -16,8 +16,14 @@ export function registerAssetRoutes(router: ExactRouter<RouteContext>): void {
 						context.resources.host?.getWorkspacePath() ??
 							context.store.workspacePath,
 					),
+					context.appVersion,
 				),
-				{ headers: { "content-type": "text/html; charset=utf-8" } },
+				{
+					headers: {
+						"cache-control": "no-store",
+						"content-type": "text/html; charset=utf-8",
+					},
+				},
 			),
 	);
 	router.register(
@@ -25,7 +31,10 @@ export function registerAssetRoutes(router: ExactRouter<RouteContext>): void {
 		endpoints.basecoat,
 		async (_request, context) =>
 			new Response(await context.readBasecoat(), {
-				headers: { "content-type": "text/javascript; charset=utf-8" },
+				headers: {
+					"cache-control": "no-cache, must-revalidate",
+					"content-type": "text/javascript; charset=utf-8",
+				},
 			}),
 	);
 	router.register("GET", endpoints.inspector, (request, context) => {
