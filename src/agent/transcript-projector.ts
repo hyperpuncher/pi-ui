@@ -251,7 +251,7 @@ function mimeTypeFromName(name: string): string | undefined {
 	return extension ? types.get(extension) : undefined;
 }
 
-export function toolResultToAppMessage(
+function toolResultToAppMessage(
 	message: AgentMessage & { role: "toolResult" },
 	timestamp: Date,
 	toolCall?: { name: string; args: ToolArguments },
@@ -277,7 +277,7 @@ export function toolResultToAppMessage(
 	};
 }
 
-export function extractToolCalls<Content>(
+function extractToolCalls<Content>(
 	content: Content,
 ): Array<Pick<AgentToolCall, "id" | "name" | "arguments">> {
 	if (!Array.isArray(content)) return [];

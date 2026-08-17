@@ -37,7 +37,7 @@ export async function updateAppConfig(
 	await write;
 }
 
-export function appConfigPath(): string {
+function appConfigPath(): string {
 	const home = os.homedir();
 	if (Deno.build.os === "windows") {
 		return join(

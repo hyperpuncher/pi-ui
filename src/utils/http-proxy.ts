@@ -5,7 +5,7 @@ import * as undici from "undici";
 
 import { isString } from "./type-guards.ts";
 
-export const defaultHttpIdleTimeoutMs = 300_000;
+const defaultHttpIdleTimeoutMs = 300_000;
 
 const originalFetch = globalThis.fetch;
 const proxyClients = new Map<string, Deno.HttpClient>();
@@ -38,7 +38,7 @@ export function configureHttpDispatcher(
 	undici.setGlobalDispatcher(withUndiciErrorListener(dispatcher));
 }
 
-export function createProxyClient(targetUrl: string): Deno.HttpClient | undefined {
+function createProxyClient(targetUrl: string): Deno.HttpClient | undefined {
 	const proxyUrl = proxyUrlForTarget(targetUrl);
 	if (!proxyUrl) {
 		return undefined;

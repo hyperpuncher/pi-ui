@@ -1,7 +1,7 @@
 import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
-export const recordSchema = Type.Record(Type.String(), Type.Unknown());
+const recordSchema = Type.Record(Type.String(), Type.Unknown());
 const recordValidator = Compile(recordSchema);
 const stringValidator = Compile(Type.String());
 const numberValidator = Compile(Type.Number());

@@ -6,7 +6,7 @@ import type { JsonValue } from "../utils/json-types.ts";
 const maxLogBytes = 5 * 1024 * 1024;
 let pendingWrite = Promise.resolve();
 
-export function sessionPerformanceLogPath(): string | undefined {
+function sessionPerformanceLogPath(): string | undefined {
 	const configured = Deno.env.get("PI_UI_PERF_FILE")?.trim();
 	if (configured?.toLowerCase() === "off") return undefined;
 	return configured || appCachePath("session-performance.jsonl");

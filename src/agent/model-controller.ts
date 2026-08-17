@@ -192,6 +192,6 @@ export function modelMatchesPattern(
 	return refs.some((value) => regex.test(value));
 }
 
-export function isThinkingLevel(level: string): level is AppThinkingLevel {
+function isThinkingLevel(level: string): level is AppThinkingLevel {
 	return ["off", "minimal", "low", "medium", "high", "xhigh", "max"].includes(level);
 }

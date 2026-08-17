@@ -5,9 +5,9 @@ import { appendSessionPerformanceRecord } from "./session-performance-log.ts";
 const utf8Encoder = new TextEncoder();
 
 // SDK 0.80.6 loads entries once for the header and again for manager state.
-export const sdkInternalReadsPerSessionOpenEstimate = 2;
+const sdkInternalReadsPerSessionOpenEstimate = 2;
 
-export const sessionPerformanceSpanNames = [
+const sessionPerformanceSpanNames = [
 	"sessionOpen",
 	"sessionManagerOpen",
 	"runtimeSwitchCreate",
@@ -24,7 +24,7 @@ export const sessionPerformanceSpanNames = [
 	"markdownEnhancement",
 ] as const;
 
-export type SessionPerformanceSpanName = (typeof sessionPerformanceSpanNames)[number];
+type SessionPerformanceSpanName = (typeof sessionPerformanceSpanNames)[number];
 
 type SpanSummary = { count: number; totalMs: number; maxMs: number };
 type SpanSnapshot = Record<SessionPerformanceSpanName, SpanSummary>;
@@ -60,13 +60,13 @@ export type SessionOwnershipDiagnostics = {
 	duplicateKeyInvariantFailures: number;
 };
 
-export type SessionPerformanceSnapshot = PerformanceCounters & {
+type SessionPerformanceSnapshot = PerformanceCounters & {
 	enabled: boolean;
 	spans: SpanSnapshot;
 	sdkInternalReadsPerSessionOpenEstimate: number;
 };
 
-export type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
+type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
 	id: number;
 	generation?: number;
 	elapsedMs: number;
@@ -74,7 +74,7 @@ export type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
 	ownership: SessionOwnershipDiagnostics;
 };
 
-export type SessionPerformanceRecord = {
+type SessionPerformanceRecord = {
 	type: "pi-ui-session-performance";
 	transition: SessionTransitionPerformanceSnapshot;
 	cumulative: SessionPerformanceSnapshot;

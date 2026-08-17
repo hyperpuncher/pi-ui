@@ -12,22 +12,12 @@ import {
 	reviewSidebarWidthMin,
 } from "../workspace-review-types.ts";
 
-export {
-	changesRatioDefault,
-	changesRatioMax,
-	changesRatioMin,
-	gitPaneRatioDefault,
-	gitPaneRatioMax,
-	gitPaneRatioMin,
-	reviewSidebarWidthDefault,
-	reviewSidebarWidthMax,
-	reviewSidebarWidthMin,
-};
+export { changesRatioDefault, gitPaneRatioDefault, reviewSidebarWidthDefault };
 export const workspaceGap = 4;
 export const workspaceInset = 4;
 export const workspaceStructuralGap = workspaceGap;
-export const resizeKeyboardStep = 16;
-export const resizeKeyboardLargeStep = 48;
+const resizeKeyboardStep = 16;
+const resizeKeyboardLargeStep = 48;
 
 const minimumPaneSize = 320;
 const minimumReviewColumnSize = 320;
@@ -36,7 +26,7 @@ const minimumSidebarSectionSize = 96;
 type GitSplit = { chat: number; git: number; ratio: number };
 type ChangesSplit = { changes: number; history: number; ratio: number };
 
-export function clamp(value: number, minimum: number, maximum: number): number {
+function clamp(value: number, minimum: number, maximum: number): number {
 	return Math.min(Math.max(value, minimum), maximum);
 }
 

@@ -84,7 +84,7 @@ export async function readSessionSummaryCache(
 	}
 }
 
-export async function writeSessionSummaryCache(
+async function writeSessionSummaryCache(
 	cache: SessionSummaryCache,
 	path = sessionSummaryCachePath(),
 ): Promise<void> {

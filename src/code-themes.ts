@@ -120,10 +120,10 @@ function option(name: string, appearance: CodeThemeAppearance): CodeThemeOption 
 	};
 }
 
-export const LIGHT_CODE_THEMES: readonly CodeThemeOption[] = lightThemeNames
+const LIGHT_CODE_THEMES: readonly CodeThemeOption[] = lightThemeNames
 	.map((name) => option(name, "light"))
 	.toSorted((a, b) => a.label.localeCompare(b.label));
-export const DARK_CODE_THEMES: readonly CodeThemeOption[] = darkThemeNames
+const DARK_CODE_THEMES: readonly CodeThemeOption[] = darkThemeNames
 	.map((name) => option(name, "dark"))
 	.toSorted((a, b) => a.label.localeCompare(b.label));
 export const CODE_THEMES: readonly CodeThemeOption[] = [

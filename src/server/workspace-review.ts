@@ -13,7 +13,6 @@ export type {
 	WorkspaceCommit,
 	WorkspaceCommitDetail,
 	WorkspaceFileChange,
-	WorkspaceFileStatus,
 	WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
 

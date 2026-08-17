@@ -1,7 +1,7 @@
 type KeyboardModifiers = Pick<KeyboardEvent, "ctrlKey" | "metaKey">;
 type OperatingSystem = typeof Deno.build.os;
 
-export const primaryModifierKey = Deno.build.os === "darwin" ? "⌘" : "ctrl";
+const primaryModifierKey = Deno.build.os === "darwin" ? "⌘" : "ctrl";
 
 export function hasPrimaryModifier(
 	event: KeyboardModifiers,

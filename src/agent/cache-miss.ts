@@ -4,7 +4,7 @@ import type { SessionEntry } from "@earendil-works/pi-coding-agent";
 import { formatTokens } from "../utils/format.ts";
 
 /** Anthropic's default prompt-cache lifetime. */
-export const cacheTtlMs = 5 * 60 * 1000;
+const cacheTtlMs = 5 * 60 * 1000;
 
 const noiseFloorTokens = 1_024;
 const noticeTokenThreshold = 20_000;

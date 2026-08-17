@@ -12,10 +12,7 @@ import {
 	type ReviewCommentMetadata,
 } from "./workspace-review-comment-state.ts";
 
-export type {
-	ReviewAnnotation,
-	ReviewCommentMetadata,
-} from "./workspace-review-comment-state.ts";
+export type { ReviewCommentMetadata } from "./workspace-review-comment-state.ts";
 
 type ReviewCommentItem = Readonly<{ fileDiff: FileDiffMetadata }>;
 

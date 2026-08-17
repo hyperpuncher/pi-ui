@@ -32,7 +32,7 @@ export function authDialogAction(mode: "login" | "logout"): string {
 	return `document.getElementById('command-dialog')?.close(); @post('${endpoint}', { payload: {} })`;
 }
 
-export function openTreeAction(): string {
+function openTreeAction(): string {
 	return `window.piUi.dialogs.openTree(); @post('${endpoints.treeOpen}', { payload: {} })`;
 }
 
