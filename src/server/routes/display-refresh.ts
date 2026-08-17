@@ -8,7 +8,7 @@ export function registerDisplayRefreshRoutes(router: ExactRouter<RouteContext>):
 	router.register("POST", endpoints.displayRefresh, async (request, context) => {
 		const update = await readDisplayRefreshUpdate(request);
 		if (!update) throw new RouteError(400, "Invalid display refresh rate.");
-		context.renderer.setDisplayRefreshHz(update.hz);
+		context.renderer.setDisplayRefreshHz(update.clientId, update.hz);
 		return datastarResponse();
 	});
 }

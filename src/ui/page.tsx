@@ -66,6 +66,7 @@ export function renderPage(
 ): string {
 	const desktop = Deno.BrowserWindow instanceof Function;
 	const codeThemes = getPierreThemes();
+	const displayClientId = crypto.randomUUID();
 	const gateStartupLayout =
 		desktop && Boolean(Deno.env.get("HYPRLAND_INSTANCE_SIGNATURE"));
 	const initialSignals = JSON.stringify({
@@ -135,6 +136,7 @@ export function renderPage(
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-display-refresh-endpoint={endpoints.displayRefresh}
+					data-display-client-id={displayClientId}
 					data-workspace-review-endpoint={endpoints.workspaceReview}
 					data-code-theme-endpoint={endpoints.codeTheme}
 					data-code-theme-light={codeThemes.light}
@@ -208,7 +210,7 @@ export function renderPage(
 						data-class:pi-review-open="$_workspaceReviewOpen"
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
-						data-init="@get('/stream')"
+						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}')`}
 					>
 						{renderSessionSidebar(state)}
 						<div

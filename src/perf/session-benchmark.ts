@@ -13,6 +13,7 @@ import { sessionPerformance } from "./session-performance.ts";
 
 const architectureBenchmarkSchemaVersion = 1;
 const supportedDisplayRates = [60, 75, 90, 100, 120, 144, 165, 240] as const;
+const streamingSamplesPerFrame = 8;
 const utf8Encoder = new TextEncoder();
 
 export type PatchSummary = {
@@ -237,37 +238,45 @@ function benchmarkStreamingFrames() {
 				0,
 				Math.max(1, Math.ceil((fixture.markdown.length * frame) / 6)),
 			);
-			const measured = renderMarkdownStreamingMeasured(markdown);
-			const message: AppMessage = {
-				id: `benchmark-${fixture.name}`,
-				role:
-					fixture.name === "mixed-thought-assistant" ? "thought" : "assistant",
-				text: markdown,
-				timestamp: new Date(0),
-				renderedHtml: measured.html,
-				presentationState: "streaming",
-				presentationVersion: frame,
-			};
-			const kitaStartedAt = performance.now();
-			const element = renderMessage(message);
-			const kitaRenderMs = performance.now() - kitaStartedAt;
-			const encodeStartedAt = performance.now();
-			utf8Encoder.encode(
-				`event: datastar-patch-elements\ndata: elements ${element}\n\n`,
-			);
-			const sseEncodeMs = performance.now() - encodeStartedAt;
-			const totalMs =
-				measured.markdownParseMs +
-				measured.codeBlockRenderMs +
-				kitaRenderMs +
-				sseEncodeMs;
-			samples.push({
-				markdownParseMs: measured.markdownParseMs,
-				codeBlockRenderMs: measured.codeBlockRenderMs,
-				kitaRenderMs,
-				sseEncodeMs,
-				totalMs,
-			});
+			for (
+				let repetition = 0;
+				repetition < streamingSamplesPerFrame;
+				repetition += 1
+			) {
+				const measured = renderMarkdownStreamingMeasured(markdown);
+				const message: AppMessage = {
+					id: `benchmark-${fixture.name}`,
+					role:
+						fixture.name === "mixed-thought-assistant"
+							? "thought"
+							: "assistant",
+					text: markdown,
+					timestamp: new Date(0),
+					renderedHtml: measured.html,
+					presentationState: "streaming",
+					presentationVersion: frame * streamingSamplesPerFrame + repetition,
+				};
+				const kitaStartedAt = performance.now();
+				const element = renderMessage(message);
+				const kitaRenderMs = performance.now() - kitaStartedAt;
+				const encodeStartedAt = performance.now();
+				utf8Encoder.encode(
+					`event: datastar-patch-elements\ndata: elements ${element}\n\n`,
+				);
+				const sseEncodeMs = performance.now() - encodeStartedAt;
+				const totalMs =
+					measured.markdownParseMs +
+					measured.codeBlockRenderMs +
+					kitaRenderMs +
+					sseEncodeMs;
+				samples.push({
+					markdownParseMs: measured.markdownParseMs,
+					codeBlockRenderMs: measured.codeBlockRenderMs,
+					kitaRenderMs,
+					sseEncodeMs,
+					totalMs,
+				});
+			}
 		}
 		const stage = (key: keyof StreamingFrameSample) => ({
 			p50Ms: percentile(
@@ -401,7 +410,7 @@ async function fixtureSizes(): Promise<number[]> {
 export async function runArchitectureBenchmark(
 	options: ArchitectureBenchmarkOptions = {},
 ) {
-	const samples = options.samples ?? 3;
+	const samples = options.samples ?? 5;
 	const messageCounts = options.messageCounts ?? (await fixtureSizes());
 	const clientCounts = options.clientCounts ?? [1, 2];
 	Deno.env.set("PI_UI_PERF", "1");
@@ -420,6 +429,7 @@ export async function runArchitectureBenchmark(
 			messageCounts,
 			clientCounts,
 			supportedDisplayRates,
+			streamingSamplesPerFrame,
 		},
 		streamingFrames: benchmarkStreamingFrames(),
 		scheduler: benchmarkScheduler(),

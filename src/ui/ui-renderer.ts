@@ -10,6 +10,7 @@ import type { JsonObject } from "../utils/json-types.ts";
 import { renderAuthDialogContent } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderDebugOverlay } from "./debug.tsx";
+import { DisplayRefreshClients } from "./display-refresh-clients.ts";
 import { renderLlamaDialogContent } from "./llama-dialog.tsx";
 import {
 	MessageRenderService,
@@ -39,6 +40,7 @@ type RenderedView = { elements: string; signals: string };
 
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
+	private readonly displayClients = new DisplayRefreshClients();
 	private updateDepth = 0;
 	private commitPending = false;
 	private commitScheduled = false;
@@ -67,15 +69,30 @@ export class UiRenderer implements AppStorePresentation {
 		store.attachPresentation(this);
 	}
 
-	createStream(signal: AbortSignal): Response {
+	createStream(signal: AbortSignal, clientId: string = crypto.randomUUID()): Response {
 		this.flush();
-		return this.hub.createStream(signal, () => {
-			const snapshot = this.store.snapshot();
-			const view = this.renderView({}, snapshot);
-			// Live commits omit finalized Markdown that the browser already owns.
-			this.mainRegionHtml = this.renderElementRegions(snapshot, false);
-			return view;
-		});
+		this.displayClients.connect(clientId);
+		this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
+		const disconnect = () => {
+			this.displayClients.disconnect(clientId);
+			this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
+		};
+		try {
+			return this.hub.createStream(
+				signal,
+				() => {
+					const snapshot = this.store.snapshot();
+					const view = this.renderView({}, snapshot);
+					// Live commits omit finalized Markdown that the browser already owns.
+					this.mainRegionHtml = this.renderElementRegions(snapshot, false);
+					return view;
+				},
+				{ onDisconnect: disconnect },
+			);
+		} catch (error) {
+			disconnect();
+			throw error;
+		}
 	}
 	createPickersStream(signal: AbortSignal): Response {
 		this.flush();
@@ -233,8 +250,10 @@ export class UiRenderer implements AppStorePresentation {
 	enhanceMessage(id: string): boolean {
 		return this.messages.enhanceMessage(id);
 	}
-	setDisplayRefreshHz(hz: number): boolean {
-		return this.messages.setDisplayRefreshHz(hz);
+	setDisplayRefreshHz(clientId: string, hz: number): boolean {
+		if (!this.displayClients.setHz(clientId, hz)) return false;
+		this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
+		return true;
 	}
 	projectMessages(messages: Parameters<MessageRenderService["projectMessages"]>[0]) {
 		return this.messages.projectMessages(messages);

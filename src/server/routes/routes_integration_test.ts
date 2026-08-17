@@ -409,11 +409,40 @@ Deno.test("multipart prompts pass image attachments directly to pi", async () =>
 	});
 });
 
-Deno.test("display refresh updates presentation owner directly", async () => {
-	let measured = 0;
+Deno.test("main stream binds a validated display client identity", async () => {
+	const clientId = "123e4567-e89b-42d3-a456-426614174000";
+	let connectedClientId: string | undefined;
 	const context = fakeContext({
 		renderer: uiRendererStub({
-			setDisplayRefreshHz: (hz: number) => ((measured = hz), true),
+			createStream: (_signal: AbortSignal, receivedClientId: string) => {
+				connectedClientId = receivedClientId;
+				return new Response();
+			},
+		}),
+	});
+	const router = createRouter(context);
+	assertEquals(
+		(await router.fetch(new Request(`http://localhost/stream?clientId=${clientId}`)))
+			.status,
+		200,
+	);
+	assertEquals(connectedClientId, clientId);
+	assertEquals(
+		(await router.fetch(new Request("http://localhost/stream?clientId=invalid")))
+			.status,
+		400,
+	);
+});
+
+Deno.test("display refresh updates its connected presentation owner", async () => {
+	const clientId = "123e4567-e89b-42d3-a456-426614174000";
+	let measured: { clientId: string; hz: number } | undefined;
+	const context = fakeContext({
+		renderer: uiRendererStub({
+			setDisplayRefreshHz: (receivedClientId: string, hz: number) => {
+				measured = { clientId: receivedClientId, hz };
+				return true;
+			},
 		}),
 	});
 	const router = createRouter(context);
@@ -421,18 +450,18 @@ Deno.test("display refresh updates presentation owner directly", async () => {
 		new Request("http://localhost/display-refresh", {
 			method: "POST",
 			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ hz: 120 }),
+			body: JSON.stringify({ clientId, hz: 120 }),
 		}),
 	);
 	assertEquals(response.status, 204);
-	assertEquals(measured, 120);
+	assertEquals(measured, { clientId, hz: 120 });
 	assertEquals(
 		(
 			await router.fetch(
 				new Request("http://localhost/display-refresh", {
 					method: "POST",
 					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ hz: 1 }),
+					body: JSON.stringify({ clientId, hz: 1 }),
 				}),
 			)
 		).status,

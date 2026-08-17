@@ -44,6 +44,7 @@ const architectureBenchmarkSchema = Type.Object({
 		messageCounts: Type.Array(Type.Number()),
 		clientCounts: Type.Array(Type.Number()),
 		supportedDisplayRates: Type.Array(Type.Number()),
+		streamingSamplesPerFrame: Type.Number(),
 	}),
 	streamingFrames: Type.Array(streamingFrameSchema),
 	scheduler: Type.Array(schedulerSchema),
@@ -187,6 +188,7 @@ function assertCompatible(
 		"messageCounts",
 		"clientCounts",
 		"supportedDisplayRates",
+		"streamingSamplesPerFrame",
 	] as const) {
 		const baselineValue = JSON.stringify(baseline.configuration[key]);
 		const candidateValue = JSON.stringify(candidate.configuration[key]);

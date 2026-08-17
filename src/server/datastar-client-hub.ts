@@ -6,10 +6,14 @@ export type DatastarClient = Pick<
 	"patchElements" | "patchSignals" | "executeScript" | "close"
 >;
 export type DatastarStreamFactory = typeof datastarStream;
+export type DatastarClientStreamOptions = {
+	onDisconnect?: () => void;
+};
 
 /** Owns long-lived Datastar clients and accepts only rendered presentation data. */
 export class DatastarClientHub {
 	private readonly clients = new Map<string, DatastarClient>();
+	private readonly disconnectCallbacks = new Map<string, () => void>();
 
 	constructor(
 		private readonly streamFactory: DatastarStreamFactory = datastarStream,
@@ -23,11 +27,15 @@ export class DatastarClientHub {
 	createStream(
 		signal: AbortSignal,
 		initial: () => { elements: string; signals: string },
+		options: DatastarClientStreamOptions = {},
 	): Response {
 		const id = crypto.randomUUID();
 		return this.streamFactory(
 			(stream) => {
 				this.clients.set(id, stream);
+				if (options.onDisconnect) {
+					this.disconnectCallbacks.set(id, options.onDisconnect);
+				}
 				try {
 					const view = initial();
 					this.patchClient(stream, view.elements, view.signals, []);
@@ -41,9 +49,7 @@ export class DatastarClientHub {
 			},
 			{
 				keepalive: true,
-				onAbort: () => {
-					this.clients.delete(id);
-				},
+				onAbort: () => this.disconnectById(id),
 			},
 		);
 	}
@@ -125,8 +131,16 @@ export class DatastarClientHub {
 		if (scripts.length > 0) client.executeScript(scripts.join(";"));
 	}
 
+	private disconnectById(id: string): void {
+		const client = this.clients.get(id);
+		if (client) this.disconnect(id, client);
+	}
+
 	private disconnect(id: string, client: DatastarClient): void {
-		this.clients.delete(id);
+		if (!this.clients.delete(id)) return;
+		const onDisconnect = this.disconnectCallbacks.get(id);
+		this.disconnectCallbacks.delete(id);
+		onDisconnect?.();
 		try {
 			client.close();
 		} catch {

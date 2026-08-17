@@ -45,8 +45,24 @@ Deno.test("hub broadcasts to multiple clients and disconnects them independently
 	assertStringIncludes(await second.text(), "second only");
 });
 
+Deno.test("hub runs disconnect lifecycle once across overlapping close signals", () => {
+	const hub = new DatastarClientHub();
+	const controller = new AbortController();
+	let disconnects = 0;
+	const response = hub.createStream(
+		controller.signal,
+		() => ({ elements: "", signals: "{}" }),
+		{ onDisconnect: () => (disconnects += 1) },
+	);
+	controller.abort();
+	controller.abort();
+	assertEquals(disconnects, 1);
+	return response.body?.cancel();
+});
+
 Deno.test("hub removes a client after a failed send", () => {
 	let closed = false;
+	let disconnects = 0;
 	const client: DatastarClient = {
 		patchElements: () => {
 			throw new Error("disconnected");
@@ -64,10 +80,12 @@ Deno.test("hub removes a client after a failed send", () => {
 	};
 	const hub = new DatastarClientHub(factory);
 
-	hub.createStream(new AbortController().signal, () => ({
-		elements: "initial",
-		signals: "{}",
-	}));
+	hub.createStream(
+		new AbortController().signal,
+		() => ({ elements: "initial", signals: "{}" }),
+		{ onDisconnect: () => (disconnects += 1) },
+	);
 	assertEquals(hub.clientCount, 0);
+	assertEquals(disconnects, 1);
 	assertEquals(closed, true);
 });
