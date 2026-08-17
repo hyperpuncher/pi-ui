@@ -428,7 +428,6 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					aria-label="Copy code"
 				>
 					<svg
-						data-copy-icon
 						class="transition-[opacity,scale] duration-100 ease-out group-data-[copy-state=copied]:scale-95 group-data-[copy-state=copied]:opacity-0 motion-reduce:transform-none motion-reduce:transition-opacity"
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
@@ -448,7 +447,6 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 						</g>
 					</svg>
 					<svg
-						data-copied-icon
 						class="absolute scale-95 opacity-0 transition-[opacity,scale] duration-100 ease-out group-data-[copy-state=copied]:scale-100 group-data-[copy-state=copied]:opacity-100 motion-reduce:transform-none motion-reduce:transition-opacity"
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"

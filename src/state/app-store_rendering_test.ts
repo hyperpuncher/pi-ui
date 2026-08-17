@@ -656,7 +656,7 @@ Deno.test("dedicated session stream refreshes current and background statuses", 
 			{ flush: true },
 		);
 		const running = await readUntil(reader, (text) =>
-			text.includes('data-background-status="running"'),
+			text.includes('aria-label="Current session running"'),
 		);
 		assertIncludes(running, 'id="session-menu-content"');
 		assertIncludes(running, 'aria-current="true"');
@@ -671,11 +671,11 @@ Deno.test("dedicated session stream refreshes current and background statuses", 
 			{ flush: true },
 		);
 		const completed = await readUntil(reader, (text) =>
-			text.includes('data-background-status="completed"'),
+			text.includes('aria-label="Background session completed"'),
 		);
 		assertIncludes(completed, 'id="session-menu-content"');
 		assertIncludes(completed, 'aria-current="true"');
-		assertNotIncludes(completed, 'data-background-status="running"');
+		assertNotIncludes(completed, 'aria-label="Current session running"');
 	} finally {
 		controller.abort();
 	}

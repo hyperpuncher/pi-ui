@@ -379,10 +379,7 @@ function renderUserFileAttachment(
 	const kind = attachmentFileKind(attachment.name, attachment.mimeType);
 	return (
 		<div class="flex h-16 max-w-60 min-w-0 items-center gap-2 rounded-xl border bg-card p-2 pr-3 text-card-foreground shadow-sm">
-			<span
-				class="pi-fine-print flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border bg-muted"
-				data-file-kind={kind}
-			>
+			<span class="pi-fine-print flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border bg-muted">
 				<AttachmentFileIcon kind={kind} />
 				{extension && (
 					<span class="font-mono text-[9px] leading-none uppercase" safe>

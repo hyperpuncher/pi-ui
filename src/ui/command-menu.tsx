@@ -52,7 +52,6 @@ function renderCommandRow(item: AppCommandMetadata): string {
 		<div
 			role="menuitem"
 			tabindex="-1"
-			data-command-row
 			data-filter={item.title}
 			data-keywords={`${item.description} ${item.id}`}
 			data-on:click={commandActions[item.id]}

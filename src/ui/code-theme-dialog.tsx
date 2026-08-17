@@ -57,9 +57,6 @@ export function renderCodeThemeDialog(): string {
 				<div
 					id="code-theme-gallery"
 					class="grid min-h-0 flex-1 auto-rows-max grid-cols-2 content-start gap-2 overflow-y-auto p-5 max-sm:grid-cols-1"
-					data-appearance="light"
-					data-active-light={active.light}
-					data-active-dark={active.dark}
 				>
 					{(["light", "dark"] as const).flatMap((appearance) =>
 						codeThemesFor(appearance).map((theme) =>

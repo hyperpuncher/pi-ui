@@ -49,8 +49,8 @@ Deno.test("session picker escapes titles and renders background controls", () =>
 	);
 
 	assertIncludes(html, "&lt;script>alert(&#34;x&#34;)&lt;/script>");
-	assertIncludes(html, 'data-background-status="running"');
-	assertIncludes(html, 'data-background-status="completed"');
+	assertIncludes(html, 'aria-label="Background session running"');
+	assertIncludes(html, 'aria-label="Background session completed"');
 	assertIncludes(html, "Abort background session");
 	assertIncludes(html, "/sessions/background/abort");
 	assertNotIncludes(html, escapedTitle);

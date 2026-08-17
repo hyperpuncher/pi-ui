@@ -48,7 +48,6 @@ function renderTreeRow(entry: AppTreeEntry): string {
 				"grid grid-cols-[auto_auto_minmax(0,1fr)_auto] gap-x-0 font-mono text-xs",
 				entry.inPath ? "text-foreground" : "text-muted-foreground",
 			]}
-			data-tree-row
 			data-filter={haystack}
 			data-keywords={haystack}
 			data-active-tree-row={entry.active}

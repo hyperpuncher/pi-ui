@@ -68,7 +68,6 @@ function setAppearance(
 	next: CodeThemeAppearance,
 ): void {
 	appearance = next;
-	gallery.dataset.appearance = next;
 	for (const button of document.querySelectorAll<HTMLButtonElement>(
 		"[data-code-theme-mode]",
 	)) {
@@ -179,8 +178,6 @@ async function selectTheme(card: HTMLButtonElement): Promise<void> {
 }
 
 function updateSelection(mode: CodeThemeAppearance, name: string): void {
-	const gallery = document.getElementById("code-theme-gallery");
-	if (gallery) gallery.dataset[mode === "light" ? "activeLight" : "activeDark"] = name;
 	for (const card of document.querySelectorAll<HTMLButtonElement>(
 		`[data-theme-appearance="${mode}"]`,
 	)) {

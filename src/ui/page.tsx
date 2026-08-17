@@ -104,7 +104,6 @@ export function renderPage(
 				<body
 					class="h-full overflow-hidden"
 					spellcheck="false"
-					data-workspace-path={state.workspacePath}
 					data-time-locale={systemTimeLocale}
 					data-native-file-picker={desktop ? "true" : "false"}
 					data-files-pick-endpoint={endpoints.filesPick}

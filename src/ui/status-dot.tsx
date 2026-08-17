@@ -3,7 +3,6 @@ import { syncHtml } from "./sync-html.ts";
 export function StatusDot(props: {
 	state: "running" | "success" | "error";
 	label: string;
-	dataStatus?: string;
 	class?: string;
 	runningClass?: string;
 }): string {
@@ -15,7 +14,6 @@ export function StatusDot(props: {
 			class={["inline-grid size-2 shrink-0 *:[grid-area:1/1]", props.class]}
 			aria-label={props.label}
 			role="status"
-			data-background-status={props.dataStatus}
 		>
 			<span
 				class={[

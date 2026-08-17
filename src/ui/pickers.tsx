@@ -267,7 +267,6 @@ function renderSessionRow(
 			class={["group block!", current && "bg-foreground! text-background!"]}
 			aria-current={current ? "true" : undefined}
 			data-keep-command-open
-			data-session-row
 			data-filter={haystack}
 			data-keywords={haystack}
 			data-indicator:_session-loading
@@ -284,7 +283,6 @@ function renderSessionRow(
 						class="ml-0.75"
 						state={displayStatus === "running" ? "running" : "success"}
 						label={sessionStatusLabel(displayStatus, current)}
-						dataStatus={displayStatus}
 						runningClass={current ? "pi-inverse-fine-print" : undefined}
 					/>
 				)}

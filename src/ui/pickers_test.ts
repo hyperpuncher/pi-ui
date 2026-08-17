@@ -105,7 +105,7 @@ Deno.test("current running session is live but does not resume itself", () => {
 	assertStringIncludes(html, 'aria-current="true"');
 	assertStringIncludes(html, 'class="group block! bg-foreground! text-background!"');
 	assertFalse(html.includes("data-current-session-indicator"));
-	assertStringIncludes(html, 'data-background-status="running"');
+	assertStringIncludes(html, 'aria-label="Current session running"');
 	assertStringIncludes(html, "pi-tool-status-ball");
 	assertStringIncludes(
 		html,
@@ -146,8 +146,8 @@ Deno.test("background session statuses use shared semantic dots", () => {
 		}),
 	);
 
-	assertStringIncludes(html, 'data-background-status="running"');
-	assertStringIncludes(html, 'data-background-status="completed"');
+	assertStringIncludes(html, 'aria-label="Background session running"');
+	assertStringIncludes(html, 'aria-label="Background session completed"');
 	assertStringIncludes(html, "animate-ping");
 	assertStringIncludes(html, "pi-tool-status-success");
 	assertStringIncludes(html, '<kbd class="kbd">1</kbd>');

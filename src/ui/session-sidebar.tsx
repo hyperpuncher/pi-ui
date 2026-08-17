@@ -257,7 +257,6 @@ function renderSessionSidebarRow(
 							class="ml-0.75"
 							state={status === "running" ? "running" : "success"}
 							label={sessionStatusLabel(status, current)}
-							dataStatus={status}
 						/>
 					)}
 					<span

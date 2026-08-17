@@ -49,8 +49,8 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 	assertStringIncludes(html, 'id="session-sidebar-content"');
 	assertStringIncludes(html, 'data-active="true"');
 	assertStringIncludes(html, 'aria-current="true"');
-	assertStringIncludes(html, 'data-background-status="running"');
-	assertStringIncludes(html, 'data-background-status="completed"');
+	assertStringIncludes(html, 'aria-label="Current session running"');
+	assertStringIncludes(html, 'aria-label="Background session completed"');
 	assertStringIncludes(html, "pi-tool-status-ball");
 	assertFalse(html.includes('class="badge'));
 	assertStringIncludes(html, "@post('/sessions/resume'");

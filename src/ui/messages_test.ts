@@ -71,7 +71,6 @@ Deno.test("user messages render attached images without placeholder text", () =>
 	assertStringIncludes(html, "h-16");
 	assertStringIncludes(html, "bg-card");
 	assertStringIncludes(html, "rounded-lg border bg-muted");
-	assertStringIncludes(html, 'data-file-kind="text"');
 	assertStringIncludes(html, "check this");
 	assertFalse(html.includes("[image:"));
 });
