@@ -23,7 +23,7 @@ export class AgentHost {
 		return host;
 	}
 
-	static async prepare(
+	private static async prepare(
 		state: AppStore,
 		cwd = defaultWorkspacePath(),
 		options: RuntimeControllerActivationOptions = {},
@@ -31,7 +31,7 @@ export class AgentHost {
 		return new AgentHost(await RuntimeController.prepare(state, cwd, options));
 	}
 
-	activate(): void {
+	private activate(): void {
 		this.runtime.activate();
 	}
 
@@ -106,10 +106,6 @@ export class AgentHost {
 
 	cycleThinkingLevel(direction: "forward" | "backward" = "forward"): boolean {
 		return this.runtime.cycleThinkingLevel(direction);
-	}
-
-	compact(customInstructions?: string): Promise<boolean> {
-		return this.runtime.compact(customInstructions);
 	}
 
 	openLogin(providerRef?: string): void {

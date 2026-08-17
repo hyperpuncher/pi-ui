@@ -46,10 +46,6 @@ export class BackgroundRuntimeOwnership<T extends OwnedBackgroundRuntime> {
 		return this.failures;
 	}
 
-	get size(): number {
-		return this.runtimes.size;
-	}
-
 	get(path: string): T | undefined {
 		return this.runtimes.get(path);
 	}

@@ -125,7 +125,6 @@ export interface AppStorePresentation {
 	endUpdate(commit: boolean, flush: boolean): void;
 	requestCommit(effect?: UiCommitEffect): void;
 	flush(): void;
-	suppressMessages<T>(callback: () => Promise<T>): Promise<T>;
 	messageAppended(id: string): void;
 	messageUpdated(id: string): void;
 	streamingMessageStarted(id: string): void;
@@ -286,11 +285,6 @@ export class AppStore {
 		});
 	}
 
-	async suppressMessagePatches<T>(callback: () => Promise<T>): Promise<T> {
-		return this.presentation
-			? await this.presentation.suppressMessages(callback)
-			: await callback();
-	}
 	update<T>(mutator: () => T, options: AppStoreUpdateOptions = {}): T {
 		this.presentation?.beginUpdate();
 		try {

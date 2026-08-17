@@ -50,7 +50,6 @@ export class UiRenderer implements AppStorePresentation {
 	private updateDepth = 0;
 	private commitPending = false;
 	private commitScheduled = false;
-	private suppressMessagesDepth = 0;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
 	private readonly pickersHub = new DatastarClientHub(undefined, false);
@@ -170,15 +169,6 @@ export class UiRenderer implements AppStorePresentation {
 		}
 		for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
-	async suppressMessages<T>(callback: () => Promise<T>): Promise<T> {
-		this.suppressMessagesDepth += 1;
-		try {
-			return await callback();
-		} finally {
-			this.flush();
-			this.suppressMessagesDepth -= 1;
-		}
-	}
 	messageAppended(id: string): void {
 		this.messages.messageAppended(id);
 	}
@@ -286,19 +276,16 @@ export class UiRenderer implements AppStorePresentation {
 		snapshot: AppRenderSnapshot,
 		includeFinalMessageHtml: boolean,
 	): string[] {
-		const messages =
-			this.suppressMessagesDepth > 0
-				? ""
-				: renderMessages(
-						includeFinalMessageHtml
-							? snapshot.messages
-							: snapshot.messages.map(omitPreservedMessageHtml),
-						snapshot.emptyChatHint,
-						snapshot.hasOlderMessages,
-						snapshot.sessions,
-						snapshot.models.some((model) => model.configured),
-						snapshot.sessionCatalogLoading,
-					);
+		const messages = renderMessages(
+			includeFinalMessageHtml
+				? snapshot.messages
+				: snapshot.messages.map(omitPreservedMessageHtml),
+			snapshot.emptyChatHint,
+			snapshot.hasOlderMessages,
+			snapshot.sessions,
+			snapshot.models.some((model) => model.configured),
+			snapshot.sessionCatalogLoading,
+		);
 		return [
 			messages,
 			renderPromptAction(snapshot),
