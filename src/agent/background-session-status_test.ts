@@ -4,10 +4,7 @@ import type { AppSessionSummary } from "../state/app-store.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { renderSessionPicker } from "../ui/pickers.tsx";
 import { appRenderSnapshot } from "../ui/test-fixtures.ts";
-import {
-	abortRunningBackgroundSession,
-	mergeBackgroundSessionStatuses,
-} from "./background-session-status.ts";
+import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 
 const ordinary = summary("/sessions/ordinary.json", "Ordinary");
 const running = summary("/sessions/running.json", "Running");
@@ -37,33 +34,6 @@ Deno.test("foreground session takes precedence over background status", () => {
 	);
 
 	assertEquals(merged, [running]);
-});
-
-Deno.test("background abort targets only an exact running path", async () => {
-	const sessions = new Map<string, { name: string; status: "running" | "completed" }>([
-		["/sessions/one.json", { name: "one", status: "completed" as const }],
-		["/sessions/two.json", { name: "two", status: "running" }],
-	]);
-	const aborted: string[] = [];
-	const abort = (session: { name: string }) => {
-		aborted.push(session.name);
-		return Promise.resolve();
-	};
-
-	assertEquals(
-		await abortRunningBackgroundSession(sessions, "/sessions/two.json", abort),
-		true,
-	);
-	assertEquals(sessions.get("/sessions/two.json")?.status, "completed");
-	assertEquals(
-		await abortRunningBackgroundSession(sessions, "/sessions/one.json", abort),
-		false,
-	);
-	assertEquals(
-		await abortRunningBackgroundSession(sessions, "/sessions/unknown.json", abort),
-		false,
-	);
-	assertEquals(aborted, ["two"]);
 });
 
 Deno.test("session picker escapes titles and renders background controls", () => {

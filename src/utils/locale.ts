@@ -4,14 +4,6 @@ export const systemTimeLocale = posixLocaleToBcp47(
 	Deno.env.get("LC_ALL") || Deno.env.get("LC_TIME") || Deno.env.get("LANG"),
 );
 
-export function formatTime(date: Date): string {
-	return date.toLocaleTimeString(systemTimeLocale, {
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-	});
-}
-
 export function formatDateTime(
 	date: Date,
 	now = new Date(),

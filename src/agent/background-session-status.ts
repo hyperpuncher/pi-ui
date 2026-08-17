@@ -12,17 +12,3 @@ export function mergeBackgroundSessionStatuses(
 		return backgroundStatus ? { ...summary, backgroundStatus } : summary;
 	});
 }
-
-export async function abortRunningBackgroundSession<
-	T extends { status: BackgroundSessionStatus },
->(
-	sessions: ReadonlyMap<string, T>,
-	path: string,
-	abort: (session: T) => Promise<void>,
-): Promise<boolean> {
-	const session = sessions.get(path);
-	if (session?.status !== "running") return false;
-	await abort(session);
-	session.status = "completed";
-	return true;
-}
