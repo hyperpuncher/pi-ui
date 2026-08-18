@@ -832,6 +832,7 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'id="messages"');
 	assertIncludes(html, 'id="workspace-dialog"');
 	assertIncludes(html, 'id="session-dialog"');
+	assertIncludes(html, 'class="command sm:max-w-xl" data-filter="manual"');
 	assertIncludes(html, 'id="session-sidebar"');
 	assertIncludes(html, 'class="sidebar"');
 	assertIncludes(html, 'data-side="right"');

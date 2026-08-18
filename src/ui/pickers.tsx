@@ -12,6 +12,7 @@ import {
 	PickerMetadata,
 	PickerRow,
 } from "./picker-components.tsx";
+import { SessionRenameTitle } from "./session-rename.tsx";
 import { SessionRowAction } from "./session-row-action.tsx";
 import { sessionStatusLabel } from "./session-status.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
@@ -249,6 +250,18 @@ function sessionRowId(path: string): string {
 	return `session-row-${encodeURIComponent(path)}`;
 }
 
+const currentSessionPickerClickAction = `
+	const title = evt.target.closest('[data-session-rename-title]');
+	if (title) {
+		clearTimeout(Number(title.dataset.sessionPickerCloseTimer));
+		title.dataset.sessionPickerCloseTimer = setTimeout(() => {
+			document.getElementById('session-dialog')?.close();
+		}, 300);
+	} else {
+		document.getElementById('session-dialog')?.close();
+	}
+`;
+
 function renderSessionRow(
 	session: AppSessionSummary,
 	index: number,
@@ -264,7 +277,11 @@ function renderSessionRow(
 			id={sessionRowId(session.path)}
 			role="menuitem"
 			tabindex="-1"
-			class={["group block!", current && "bg-foreground! text-background!"]}
+			class={[
+				"group block!",
+				"[&.active]:bg-sidebar-accent! [&.active]:text-sidebar-accent-foreground!",
+				current && "bg-sidebar-accent! text-sidebar-accent-foreground!",
+			]}
 			aria-current={current ? "true" : undefined}
 			data-keep-command-open
 			data-filter={haystack}
@@ -273,7 +290,7 @@ function renderSessionRow(
 			data-attr:aria-disabled="$_sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={
 				current
-					? "document.getElementById('session-dialog')?.close()"
+					? currentSessionPickerClickAction
 					: resumeSessionAction(session.path, { closeDialog: true })
 			}
 		>
@@ -283,17 +300,19 @@ function renderSessionRow(
 						class="ml-0.75"
 						state={displayStatus === "running" ? "running" : "success"}
 						label={sessionStatusLabel(displayStatus, current)}
-						runningClass={current ? "pi-inverse-fine-print" : undefined}
 					/>
 				)}
-				<span class="min-w-0 flex-1 truncate font-medium" safe>
-					{session.title}
-				</span>
-				<DateTime
-					class={current && "pi-date-inverse"}
-					dateTime={session.modifiedAt}
-					label={session.modified}
-				/>
+				{current ? (
+					<SessionRenameTitle session={session} />
+				) : (
+					<span
+						class="min-w-0 flex-1 truncate text-[13px] text-muted-foreground"
+						safe
+					>
+						{session.title}
+					</span>
+				)}
+				<DateTime dateTime={session.modifiedAt} label={session.modified} />
 				{displayStatus === "running" && (
 					<button
 						type="button"
@@ -323,10 +342,7 @@ function renderSessionRow(
 			<span class="flex h-6 items-center gap-2">
 				<SessionSubtitle
 					session={session}
-					class={[
-						"min-w-0 flex-1 text-xs",
-						current ? "pi-inverse-fine-print" : "text-muted-foreground",
-					]}
+					class="min-w-0 flex-1 text-xs text-muted-foreground"
 				/>
 				<SessionRowAction
 					session={session}

@@ -82,6 +82,8 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
 	assertStringIncludes(html, 'aria-hidden="true"');
 	assertStringIncludes(html, "No matching sessions.");
+	assertFalse(html.includes("data-session-rename-title"));
+	assertStringIncludes(html, "text-[13px] text-muted-foreground");
 });
 
 Deno.test("current running session is live but does not resume itself", () => {
@@ -103,7 +105,8 @@ Deno.test("current running session is live but does not resume itself", () => {
 	);
 
 	assertStringIncludes(html, 'aria-current="true"');
-	assertStringIncludes(html, 'class="group block! bg-foreground! text-background!"');
+	assertStringIncludes(html, "bg-sidebar-accent!");
+	assertStringIncludes(html, "text-sidebar-accent-foreground!");
 	assertFalse(html.includes("data-current-session-indicator"));
 	assertStringIncludes(html, 'aria-label="Current session running"');
 	assertStringIncludes(html, "pi-tool-status-ball");
@@ -111,12 +114,17 @@ Deno.test("current running session is live but does not resume itself", () => {
 		html,
 		'class="inline-grid size-2 shrink-0 *:[grid-area:1/1] ml-0.75"',
 	);
-	assertStringIncludes(html, "pi-inverse-fine-print");
+	assertFalse(html.includes("pi-inverse-fine-print"));
 	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
-	assertStringIncludes(html, 'class="pi-date pi-date-inverse"');
+	assertStringIncludes(html, 'class="pi-date"');
+	assertStringIncludes(html, "data-session-rename-title");
+	assertStringIncludes(html, "data-on:dblclick");
+	assertStringIncludes(html, "@post('/sessions/rename'");
 	assertStringIncludes(html, 'class="size-3 text-destructive!"');
 	assertStringIncludes(html, "@post('/abort'");
 	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
+	assertStringIncludes(html, "dataset.sessionPickerCloseTimer");
+	assertStringIncludes(html, "setTimeout");
 	assertFalse(html.includes('disabled=""'));
 	assertFalse(html.includes("/sessions/resume"));
 });

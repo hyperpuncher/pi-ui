@@ -6,7 +6,9 @@ function startSessionRenameAction(session: AppSessionSummary): string {
 	return `
 		evt.preventDefault();
 		evt.stopPropagation();
-		const title = evt.currentTarget.parentElement;
+		const title = evt.currentTarget;
+		clearTimeout(Number(title?.dataset.sessionPickerCloseTimer));
+		if (title) delete title.dataset.sessionPickerCloseTimer;
 		$sessionRenamePath = ${JSON.stringify(session.path)};
 		$sessionRenameTitle = ${JSON.stringify(session.title)};
 		queueMicrotask(() => {
@@ -41,13 +43,12 @@ function finishSessionRenameAction(session: AppSessionSummary): string {
 export function SessionRenameTitle(props: { session: AppSessionSummary }): string {
 	const editing = `$sessionRenamePath === ${JSON.stringify(props.session.path)}`;
 	return syncHtml(
-		<span class="pointer-events-auto min-w-0 flex-1 cursor-text text-[13px] font-medium text-foreground">
-			<span
-				class="block truncate"
-				data-show={`!(${editing})`}
-				data-on:dblclick={startSessionRenameAction(props.session)}
-				safe
-			>
+		<span
+			class="pointer-events-auto min-w-0 flex-1 cursor-text text-[13px] font-medium text-foreground"
+			data-session-rename-title
+			data-on:dblclick={startSessionRenameAction(props.session)}
+		>
+			<span class="block truncate" data-show={`!(${editing})`} safe>
 				{props.session.title}
 			</span>
 			<input

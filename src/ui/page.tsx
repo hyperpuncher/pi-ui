@@ -375,7 +375,7 @@ export function renderPage(
 					})`}
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="command sm:max-w-2xl" data-filter="manual">
+						<div class="command sm:max-w-xl" data-filter="manual">
 							<header>
 								<input
 									id="session-input"
