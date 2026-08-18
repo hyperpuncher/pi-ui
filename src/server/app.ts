@@ -8,6 +8,7 @@ import { loadPierreLanguage } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 import { expandHomePath } from "../utils/workspace.ts";
+import { readAutoTitleConfig } from "./auto-title-config.ts";
 import { readCodeThemePreference } from "./code-theme-preferences.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
 import { ExactRouter } from "./router.ts";
@@ -37,7 +38,10 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const staticAssets = await createStaticAssetServer(staticRoot);
-	const codeTheme = await readCodeThemePreference();
+	const [codeTheme, autoTitle] = await Promise.all([
+		readCodeThemePreference(),
+		readAutoTitleConfig(),
+	]);
 	setActiveCodeTheme(codeTheme);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
 	const localRequests = new WeakSet<Request>();
@@ -52,6 +56,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	);
 	installUnhandledErrorReporter();
 	const host = await AgentHost.create(store, undefined, {
+		autoTitle,
 		transitionController: transitions,
 	}).catch((error: ErrorOptions["cause"]) => {
 		console.error("Failed to start pi SDK runtime", error);
@@ -87,7 +92,8 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		readBasecoat: async () =>
 			new Uint8Array(await Deno.readFile(basecoatJsPath)).buffer,
 		serveStatic: (request) => staticAssets.serve(request),
-		openWorkspace: (path) => openWorkspace(path, store, resources, transitions),
+		openWorkspace: (path) =>
+			openWorkspace(path, store, resources, transitions, autoTitle),
 		openPath: openWithDefaultApp,
 		isLocalRequest: (request) => localRequests.has(request),
 	};
@@ -139,6 +145,7 @@ async function openWorkspace(
 	store: AppStore,
 	resources: RouteResources,
 	transitions: SessionTransitionController,
+	autoTitle: Awaited<ReturnType<typeof readAutoTitleConfig>>,
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
 	const transition = await transitions.run(requestedPath, async () => {
@@ -148,6 +155,7 @@ async function openWorkspace(
 		}
 		if (!resources.host) {
 			resources.host = await AgentHost.create(store, realPath, {
+				autoTitle,
 				refreshWorkspaces: false,
 				transitionController: transitions,
 			});

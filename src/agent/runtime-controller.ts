@@ -22,6 +22,7 @@ import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-pr
 import { moveToTrash } from "../utils/trash.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 import { AuthController } from "./auth-controller.ts";
+import { type AutoTitleConfig, generateAutoTitle } from "./auto-title.ts";
 import {
 	ownsForegroundGeneration,
 	RuntimeOwnershipInvariantError,
@@ -103,6 +104,7 @@ export type RuntimeControllerActivationOptions = {
 	dependencies?: RuntimeControllerDependencies;
 	isApplicationFocused?: () => boolean | Promise<boolean>;
 	notifySessionDone?: (details: SessionDoneNotification) => Promise<void>;
+	autoTitle?: AutoTitleConfig;
 };
 
 export class RuntimeController {
@@ -131,6 +133,7 @@ export class RuntimeController {
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
 	private readonly dependencies: RuntimeControllerDependencies;
+	private readonly autoTitlesInFlight = new Set<string>();
 
 	private constructor(
 		private runtime: AgentSessionRuntime,
@@ -1036,6 +1039,7 @@ export class RuntimeController {
 				),
 		);
 		this.updateSessionCatalogFromEvent(event, backgroundSession.runtime);
+		this.scheduleAutoTitleAfterUserMessage(backgroundSession.runtime, event);
 		if (event.type === "queue_update") {
 			this.prompts.sync(backgroundSession.runtime);
 		}
@@ -1258,6 +1262,7 @@ export class RuntimeController {
 					() => this.syncUsage(),
 				);
 				this.updateSessionCatalogFromEvent(event, this.runtime);
+				this.scheduleAutoTitleAfterUserMessage(this.runtime, event);
 				if (outcome.agentCompleted) {
 					const path = this.runtime.session.sessionManager.getSessionFile();
 					if (path) this.catalog.agentCompleted(path);
@@ -1276,6 +1281,39 @@ export class RuntimeController {
 		if (event.type === "compaction_end") {
 			void this.prompts.flushCompactionQueue(this.runtime);
 		}
+	}
+
+	private scheduleAutoTitleAfterUserMessage(
+		runtime: AgentSessionRuntime,
+		event: AgentSessionEvent,
+	): void {
+		if (event.type !== "message_end" || event.message.role !== "user") return;
+		// Pi persists message_end after notifying subscribers.
+		queueMicrotask(() => this.maybeGenerateAutoTitle(runtime));
+	}
+
+	private maybeGenerateAutoTitle(runtime: AgentSessionRuntime): void {
+		const config = this.activationOptions.autoTitle;
+		const path = runtime.session.sessionManager.getSessionFile();
+		if (
+			!config?.enabled ||
+			!path ||
+			runtime.session.sessionManager.getSessionName() ||
+			this.autoTitlesInFlight.has(path)
+		) {
+			return;
+		}
+		this.autoTitlesInFlight.add(path);
+		void generateAutoTitle(runtime, config)
+			.then(async (title) => {
+				if (!title || runtime.session.sessionManager.getSessionName()) return;
+				runtime.session.setSessionName(title);
+				await this.catalog.refreshPath(path);
+			})
+			.catch((error: ErrorOptions["cause"]) =>
+				console.warn("Failed to generate session title", error),
+			)
+			.finally(() => this.autoTitlesInFlight.delete(path));
 	}
 
 	private reduceEvent(

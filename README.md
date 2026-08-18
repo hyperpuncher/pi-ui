@@ -106,6 +106,14 @@ chmod +x pi-ui-linux-*.AppImage
 brew install --cask hyperpuncher/tap/pi-ui
 ```
 
+## configuration
+
+pi-ui stores its configuration in:
+
+- linux: `~/.config/pi-ui/config.json`
+- macos: `~/Library/Application Support/pi-ui/config.json`
+- windows: `%APPDATA%\\pi-ui\\config.json`
+
 ## keybinds
 
 | key                                             | action                    |
