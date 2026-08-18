@@ -448,6 +448,32 @@ export class RuntimeController {
 		this.syncUsage();
 	}
 
+	async renameSession(sessionPath: string, name: string): Promise<boolean> {
+		const nextName = name.replace(/[\r\n]+/g, " ").trim();
+		if (!nextName) return false;
+		try {
+			const manager = this.dependencies.openSessionManager(sessionPath);
+			const target = manager.getSessionFile();
+			if (!target) return false;
+			const current = this.runtime.session;
+			if (current.sessionManager.getSessionFile() === target) {
+				current.setSessionName(nextName);
+			} else {
+				const background = this.backgroundSessions.get(target);
+				if (background) background.runtime.session.setSessionName(nextName);
+				else manager.appendSessionInfo(nextName);
+			}
+			await this.catalog.refreshPath(target);
+			return true;
+		} catch (error) {
+			this.state.appendMessage(
+				"system",
+				`Failed to rename session: ${errorMessage(error)}`,
+			);
+			return false;
+		}
+	}
+
 	async deleteSession(sessionPath: string): Promise<boolean> {
 		const targetSessionFile = this.dependencies
 			.openSessionManager(sessionPath)

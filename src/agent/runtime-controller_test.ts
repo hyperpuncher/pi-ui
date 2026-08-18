@@ -36,6 +36,7 @@ type RuntimeFake = {
 		text: string;
 		streamingBehavior: "steer" | "followUp" | undefined;
 	}>;
+	setSessionNames: string[];
 	emit(event: AgentSessionEvent): void;
 	setCompacting(value: boolean): void;
 	setStreaming(value: boolean): void;
@@ -85,6 +86,7 @@ function fakeRuntime(
 		disposeResult: Promise.resolve(),
 		promptResult: Promise.resolve(),
 		promptInputs: [],
+		setSessionNames: [],
 		emit: (event) => {
 			if (event.type === "queue_update") {
 				steeringMessages.splice(0, steeringMessages.length, ...event.steering);
@@ -171,6 +173,7 @@ function fakeRuntime(
 			followUpMessages.push(text);
 			return Promise.resolve();
 		},
+		setSessionName: (name: string) => fake.setSessionNames.push(name),
 		subscribe: (callback: (event: AgentSessionEvent) => void) => {
 			calls.push("subscribe");
 			events.push(callback);
@@ -331,6 +334,21 @@ Deno.test("RuntimeController treats the current session as an immediate no-op", 
 		status: "success",
 	});
 	assertEquals(fake.calls, calls);
+	await controller.dispose();
+});
+
+Deno.test("RuntimeController renames the active pi session", async () => {
+	const fake = fakeRuntime("/sessions/current.jsonl");
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+
+	assertEquals(
+		await controller.renameSession("/sessions/current.jsonl", "  lowercase title  "),
+		true,
+	);
+	assertEquals(fake.setSessionNames, ["lowercase title"]);
 	await controller.dispose();
 });
 

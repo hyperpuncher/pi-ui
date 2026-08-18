@@ -73,6 +73,10 @@ export class AgentHost {
 		return this.runtime.listSessions();
 	}
 
+	renameSession(sessionPath: string, name: string): Promise<boolean> {
+		return this.runtime.renameSession(sessionPath, name);
+	}
+
 	deleteSession(sessionPath: string): Promise<boolean> {
 		return this.runtime.deleteSession(sessionPath);
 	}

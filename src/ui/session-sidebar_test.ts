@@ -62,6 +62,14 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 	assertStringIncludes(html, "flex h-6 min-w-0 items-center gap-2");
 	assertStringIncludes(html, "*:[grid-area:1/1]");
 	assertStringIncludes(html, "group-hover:opacity-0");
+	assertStringIncludes(html, "pointer-events-auto");
+	assertStringIncludes(html, "cursor-text");
+	assertStringIncludes(html, "data-on:dblclick");
+	assertStringIncludes(html, "data-session-rename-input");
+	assertStringIncludes(html, "evt.currentTarget.blur()");
+	assertStringIncludes(html, "@post('/sessions/rename'");
+	assertStringIncludes(html, "Rename session Current session");
+	assertStringIncludes(html, "$sessionRenamePath");
 	assertStringIncludes(html, "Delete session Background session");
 	assertStringIncludes(html, "$sessionDeletePath");
 });

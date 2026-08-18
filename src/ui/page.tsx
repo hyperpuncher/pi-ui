@@ -137,6 +137,8 @@ export function renderPage(
 						_newSessionPending: false,
 						sessionDeletePath: "",
 						sessionDeleteTitle: "",
+						sessionRenamePath: "",
+						sessionRenameTitle: "",
 					})}
 					data-on:dragenter__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 						evt.preventDefault();

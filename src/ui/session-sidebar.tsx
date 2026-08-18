@@ -4,6 +4,7 @@ import type { AppStateSnapshot } from "../state/app-store.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
+import { SessionRenameTitle } from "./session-rename.tsx";
 import { SessionRowAction } from "./session-row-action.tsx";
 import { sessionStatusLabel } from "./session-status.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
@@ -259,17 +260,16 @@ function renderSessionSidebarRow(
 							label={sessionStatusLabel(status, current)}
 						/>
 					)}
-					<span
-						class={[
-							"min-w-0 flex-1 truncate text-[13px]",
-							current
-								? "font-medium text-foreground"
-								: "text-muted-foreground",
-						]}
-						safe
-					>
-						{session.title}
-					</span>
+					{current ? (
+						<SessionRenameTitle session={session} />
+					) : (
+						<span
+							class="min-w-0 flex-1 truncate text-[13px] text-muted-foreground"
+							safe
+						>
+							{session.title}
+						</span>
+					)}
 					{showDate && (
 						<DateTime
 							dateTime={session.modifiedAt}

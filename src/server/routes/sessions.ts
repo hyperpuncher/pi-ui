@@ -98,6 +98,15 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 			return signalsResponse({ backgroundSessionPath: "" });
 		},
 	);
+	router.register("POST", endpoints.sessionsRename, async (request, context) => {
+		const signals = await readActionSignals(request);
+		const path = requiredString(signals, "sessionRenamePath");
+		const title = requiredString(signals, "sessionRenameTitle");
+		if (!(await requireHost(context).renameSession(path, title))) {
+			throw new RouteError(409, "Session could not be renamed.");
+		}
+		return signalsResponse({ sessionRenamePath: "", sessionRenameTitle: "" });
+	});
 	router.register("POST", endpoints.sessionsDelete, async (request, context) => {
 		const path = requiredString(
 			await readActionSignals(request),

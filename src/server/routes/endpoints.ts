@@ -21,6 +21,7 @@ export const endpoints = {
 	sessionsImage: "/sessions/image",
 	sessionsBackgroundAbort: "/sessions/background/abort",
 	sessionsDelete: "/sessions/delete",
+	sessionsRename: "/sessions/rename",
 	sessionsResume: "/sessions/resume",
 	workspaceOpen: "/workspace/open",
 	workspacePick: "/workspace/pick",
