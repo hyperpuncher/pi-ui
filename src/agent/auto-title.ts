@@ -18,7 +18,7 @@ export type AutoTitleConfig = Readonly<{
 export const defaultAutoTitleConfig: AutoTitleConfig = {
 	enabled: true,
 	models: ["openai-codex/gpt-5.6-luna:minimal", "opencode-go/deepseek-v4-flash:off"],
-	prompt: "",
+	prompt: "use lowercase",
 };
 
 const conversationLimit = 6_000;
@@ -36,7 +36,9 @@ export function parseAutoTitleConfig(value: JsonValue | undefined): AutoTitleCon
 			? value.enabled
 			: defaultAutoTitleConfig.enabled,
 		models,
-		prompt: isString(value.prompt) ? value.prompt.trim() : "",
+		prompt: isString(value.prompt)
+			? value.prompt.trim()
+			: defaultAutoTitleConfig.prompt,
 	};
 }
 
