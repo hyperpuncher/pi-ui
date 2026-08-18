@@ -3,6 +3,7 @@ import os from "node:os";
 import { dirname, join } from "@std/path";
 import { Compile } from "typebox/compile";
 
+import { appConfigSchemaUrl } from "../config-schema.ts";
 import { type JsonObject, JsonObjectSchema } from "../utils/json-types.ts";
 
 export type AppConfig = JsonObject;
@@ -30,6 +31,7 @@ export async function updateAppConfig(
 	const write = pendingWrite.then(async () => {
 		const config = await readAppConfig(path);
 		update(config);
+		config.$schema = appConfigSchemaUrl;
 		await Deno.mkdir(dirname(path), { recursive: true });
 		await Deno.writeTextFile(path, `${JSON.stringify(config, null, "\t")}\n`);
 	});

@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 
+import { appConfigSchemaUrl } from "../config-schema.ts";
 import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
 import {
 	readWorkspaceReviewPreferences,
@@ -89,6 +90,7 @@ Deno.test("workspace review preferences persist without replacing future config"
 		assertEquals(JSON.parse(await Deno.readTextFile(path)), {
 			futureSetting: true,
 			gitView: preferences,
+			$schema: appConfigSchemaUrl,
 		});
 	} finally {
 		await Deno.remove(directory, { recursive: true });

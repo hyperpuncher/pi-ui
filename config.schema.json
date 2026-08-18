@@ -1,0 +1,195 @@
+{
+	"type": "object",
+	"properties": {
+		"$schema": {
+			"type": "string",
+			"format": "uri",
+			"description": "JSON Schema used to validate this file."
+		},
+		"autoTitle": {
+			"type": "object",
+			"properties": {
+				"enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Generate a title after the first user message."
+				},
+				"models": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"minLength": 1,
+						"description": "Model in provider/model:thinking-level format."
+					},
+					"default": [
+						"openai-codex/gpt-5.6-luna:minimal",
+						"opencode-go/deepseek-v4-flash:off"
+					],
+					"description": "Models to try in order."
+				},
+				"prompt": {
+					"type": "string",
+					"default": "use lowercase",
+					"description": "Additional title style instructions."
+				}
+			},
+			"description": "Automatic session title generation.",
+			"additionalProperties": false
+		},
+		"codeTheme": {
+			"type": "object",
+			"required": [
+				"dark",
+				"light"
+			],
+			"properties": {
+				"dark": {
+					"type": "string",
+					"enum": [
+						"andromeeda",
+						"aurora-x",
+						"ayu-dark",
+						"ayu-mirage",
+						"catppuccin-frappe",
+						"catppuccin-macchiato",
+						"catppuccin-mocha",
+						"dark-plus",
+						"dracula",
+						"dracula-soft",
+						"everforest-dark",
+						"github-dark",
+						"github-dark-default",
+						"github-dark-dimmed",
+						"github-dark-high-contrast",
+						"gruvbox-dark-hard",
+						"gruvbox-dark-medium",
+						"gruvbox-dark-soft",
+						"horizon",
+						"houston",
+						"kanagawa-dragon",
+						"kanagawa-wave",
+						"laserwave",
+						"material-theme",
+						"material-theme-darker",
+						"material-theme-ocean",
+						"material-theme-palenight",
+						"min-dark",
+						"monokai",
+						"night-owl",
+						"nord",
+						"one-dark-pro",
+						"pierre-dark",
+						"pierre-dark-protanopia-deuteranopia",
+						"pierre-dark-soft",
+						"pierre-dark-tritanopia",
+						"pierre-dark-vibrant",
+						"plastic",
+						"poimandres",
+						"red",
+						"rose-pine",
+						"rose-pine-moon",
+						"slack-dark",
+						"solarized-dark",
+						"synthwave-84",
+						"tokyo-night",
+						"vesper",
+						"vitesse-black",
+						"vitesse-dark"
+					],
+					"default": "pierre-dark"
+				},
+				"light": {
+					"type": "string",
+					"enum": [
+						"ayu-light",
+						"catppuccin-latte",
+						"everforest-light",
+						"github-light",
+						"github-light-default",
+						"github-light-high-contrast",
+						"gruvbox-light-hard",
+						"gruvbox-light-medium",
+						"gruvbox-light-soft",
+						"horizon-bright",
+						"kanagawa-lotus",
+						"light-plus",
+						"material-theme-lighter",
+						"min-light",
+						"night-owl-light",
+						"one-light",
+						"pierre-light",
+						"pierre-light-protanopia-deuteranopia",
+						"pierre-light-soft",
+						"pierre-light-tritanopia",
+						"pierre-light-vibrant",
+						"rose-pine-dawn",
+						"slack-ochin",
+						"snazzy-light",
+						"solarized-light",
+						"vitesse-light"
+					],
+					"default": "pierre-light-soft"
+				}
+			},
+			"description": "Code themes selected for each appearance.",
+			"additionalProperties": false
+		},
+		"gitView": {
+			"type": "object",
+			"properties": {
+				"changesRatio": {
+					"type": "number",
+					"minimum": 0.3,
+					"maximum": 0.7,
+					"default": 0.5
+				},
+				"gitPaneRatio": {
+					"type": "number",
+					"minimum": 0.35,
+					"maximum": 0.65,
+					"default": 0.5
+				},
+				"layout": {
+					"anyOf": [
+						{
+							"type": "string",
+							"const": "split"
+						},
+						{
+							"type": "string",
+							"const": "unified"
+						}
+					]
+				},
+				"mode": {
+					"anyOf": [
+						{
+							"type": "string",
+							"const": "all"
+						},
+						{
+							"type": "string",
+							"const": "selected"
+						}
+					]
+				},
+				"reviewSidebarWidth": {
+					"type": "number",
+					"minimum": 224,
+					"maximum": 480,
+					"default": 272
+				},
+				"wrap": {
+					"type": "boolean"
+				}
+			},
+			"description": "Git review layout preferences.",
+			"additionalProperties": false
+		}
+	},
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://pi-ui.app/config.schema.json",
+	"title": "pi-ui configuration",
+	"description": "Configuration for pi-ui.",
+	"additionalProperties": true
+}

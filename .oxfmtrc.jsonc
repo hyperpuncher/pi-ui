@@ -8,6 +8,7 @@
 		"stylesheet": "./src/ui/styles.css",
 	},
 	"ignorePatterns": [
+		"config.schema.json",
 		"node_modules/**",
 		"public/**",
 		"static/app.css",
