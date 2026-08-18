@@ -412,6 +412,44 @@ Deno.test("session catalog updates a streaming session incrementally", () => {
 	assertEquals(state.sessions[0]?.subtitle, "1 message");
 });
 
+Deno.test("session catalog shows a new session before pi creates its file", () => {
+	const state = new AppStore();
+	const catalog = new SessionCatalog(state);
+
+	catalog.handleEvent(
+		"/sessions/new.jsonl",
+		agentSessionEventStub({
+			type: "message_start",
+			message: { role: "user", content: "Investigate delayed session rows" },
+		}),
+		"/workspace",
+	);
+	catalog.handleEvent(
+		"/sessions/new.jsonl",
+		agentSessionEventStub({
+			type: "message_end",
+			message: { role: "user", content: "Investigate delayed session rows" },
+		}),
+		"/workspace",
+	);
+
+	const session = state.sessions[0];
+	assertEquals(
+		session && {
+			path: session.path,
+			cwd: session.cwd,
+			title: session.title,
+			subtitle: session.subtitle,
+		},
+		{
+			path: "/sessions/new.jsonl",
+			cwd: "/workspace",
+			title: "Investigate delayed session rows",
+			subtitle: "1 message",
+		},
+	);
+});
+
 Deno.test("session catalog promotes user-relevant activity", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);

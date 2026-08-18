@@ -90,19 +90,22 @@ export class SessionCatalog {
 		this.sessionFileRefreshTimers.clear();
 	}
 
-	handleEvent(path: string, event: AgentSessionEvent): void {
+	handleEvent(path: string, event: AgentSessionEvent, cwd?: string): void {
 		if (event.type === "message_start") {
 			this.messageStarted(
 				path,
 				event.message.role === "user"
 					? sessionEventMessageText(event.message.content)
 					: undefined,
+				cwd,
 			);
 			return;
 		}
 		if (event.type === "message_end") {
 			this.flushTouch(path);
-			void this.refreshPath(path);
+			void this.refreshPath(path, {
+				preserveMissing: event.message.role === "user",
+			});
 			return;
 		}
 		if (
@@ -163,23 +166,41 @@ export class SessionCatalog {
 		}
 	}
 
-	messageStarted(path: string, firstUserMessage?: string): void {
-		this.state.updateSessionSummary(path, (session) => {
+	messageStarted(path: string, firstUserMessage?: string, cwd?: string): void {
+		const modified = new Date();
+		const message = firstUserMessage?.trim();
+		const updated = this.state.updateSessionSummary(path, (session) => {
 			const count = sessionMessageCount(session.subtitle) + 1;
-			const modified = new Date();
-			const title =
-				count === 1 && firstUserMessage?.trim()
-					? truncate(firstUserMessage.trim(), 96)
-					: session.title;
 			return {
 				...session,
-				title,
+				title: count === 1 && message ? truncate(message, 96) : session.title,
 				subtitle: `${count} message${count === 1 ? "" : "s"}`,
 				modified: formatDateTime(modified),
 				modifiedAt: modified.toISOString(),
 			};
 		});
-		if (firstUserMessage !== undefined) this.state.promoteSession(path);
+		if (updated) {
+			if (message !== undefined) this.state.promoteSession(path);
+			return;
+		}
+		if (!message || !cwd) return;
+		this.applyOrdered(
+			this.mergeStatuses([
+				{
+					path,
+					cwd,
+					title: truncate(message, 96),
+					subtitle: "1 message",
+					modified: formatDateTime(modified),
+					modifiedAt: modified.toISOString(),
+				},
+				...this.state.getSessionCatalog(),
+			]),
+		);
+	}
+
+	rename(path: string, title: string): void {
+		this.state.updateSessionSummary(path, (session) => ({ ...session, title }));
 	}
 
 	touch(path: string): void {
@@ -191,7 +212,10 @@ export class SessionCatalog {
 		}));
 	}
 
-	async refreshPath(path: string): Promise<void> {
+	async refreshPath(
+		path: string,
+		options: { preserveMissing?: boolean } = {},
+	): Promise<void> {
 		const generation = (this.pathRefreshGenerations.get(path) ?? 0) + 1;
 		this.pathRefreshGenerations.set(path, generation);
 		let candidate: SessionCandidate;
@@ -206,7 +230,7 @@ export class SessionCatalog {
 		} catch (error) {
 			if (!(error instanceof Deno.errors.NotFound)) return;
 			if (this.pathRefreshGenerations.get(path) !== generation) return;
-			this.state.removeSession(path);
+			if (!options.preserveMissing) this.state.removeSession(path);
 			return;
 		}
 		const cachePath = sessionSummaryCachePath();
@@ -274,7 +298,17 @@ export class SessionCatalog {
 		if (options.refreshWorkspaces !== false) {
 			this.state.setRecentWorkspaces(recentSessionWorkspaces(sessions));
 		}
-		this.applyOrdered(this.mergeStatuses(sessions.map(formatSessionSummary)));
+		const summaries = sessions.map(formatSessionSummary);
+		const currentPath = this.state.currentSessionPath;
+		const provisional =
+			currentPath && !summaries.some((session) => session.path === currentPath)
+				? this.state
+						.getSessionCatalog()
+						.find((session) => session.path === currentPath)
+				: undefined;
+		this.applyOrdered(
+			this.mergeStatuses(provisional ? [provisional, ...summaries] : summaries),
+		);
 	}
 
 	private applyOrdered(sessions: readonly AppSessionSummary[]): void {

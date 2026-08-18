@@ -1228,8 +1228,9 @@ export class RuntimeController {
 		event: AgentSessionEvent,
 		runtime: AgentSessionRuntime,
 	): void {
-		const path = runtime.session.sessionManager.getSessionFile();
-		if (path) this.catalog.handleEvent(path, event);
+		const manager = runtime.session.sessionManager;
+		const path = manager.getSessionFile();
+		if (path) this.catalog.handleEvent(path, event, manager.getCwd());
 	}
 
 	private afterModelChange(): void {
@@ -1305,10 +1306,10 @@ export class RuntimeController {
 		}
 		this.autoTitlesInFlight.add(path);
 		void generateAutoTitle(runtime, config)
-			.then(async (title) => {
+			.then((title) => {
 				if (!title || runtime.session.sessionManager.getSessionName()) return;
 				runtime.session.setSessionName(title);
-				await this.catalog.refreshPath(path);
+				this.catalog.rename(path, title);
 			})
 			.catch((error: ErrorOptions["cause"]) =>
 				console.warn("Failed to generate session title", error),
