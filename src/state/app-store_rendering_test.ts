@@ -596,6 +596,14 @@ Deno.test("normal commits preserve expanded session pagination", async () => {
 		assertIncludes(promoted, 'data: selector [id="session-sidebar-row-');
 		assertNotIncludes(promoted, 'id="session-sidebar-content"');
 		assertNotIncludes(promoted, "/sessions/more");
+
+		state.promoteSession(sessions[10].path, { regroup: true });
+		await settleMicrotasks();
+		const regrouped = await readUntil(reader, (text) =>
+			text.includes('id="session-sidebar-content"'),
+		);
+		assertIncludes(regrouped, "/sessions/more?limit=60");
+		assertNotIncludes(regrouped, "sessionSidebar.promoteRow");
 	} finally {
 		controller.abort();
 	}

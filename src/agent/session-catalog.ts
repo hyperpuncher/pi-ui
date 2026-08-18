@@ -180,7 +180,7 @@ export class SessionCatalog {
 			};
 		});
 		if (updated) {
-			if (message !== undefined) this.state.promoteSession(path);
+			if (message !== undefined) this.state.promoteSession(path, { regroup: true });
 			return;
 		}
 		if (!message || !cwd) return;

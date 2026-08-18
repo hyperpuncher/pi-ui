@@ -414,17 +414,21 @@ export class AppStore {
 	getSessionCatalog(): readonly AppSessionSummary[] {
 		return this.sessionIndex ?? this.sessions;
 	}
-	promoteSession(path: string): boolean {
+	promoteSession(path: string, options: { regroup?: boolean } = {}): boolean {
 		const catalog = this.getSessionCatalog();
 		const session = catalog.find((candidate) => candidate.path === path);
-		if (!session || catalog[0]?.path === path) return false;
+		if (!session) return false;
+		if (catalog[0]?.path === path) {
+			if (options.regroup) this.presentation?.sessionsChanged();
+			return false;
+		}
 		this.sessionIndex = [
 			session,
 			...catalog.filter((candidate) => candidate.path !== path),
 		];
 		this.sessions = this.sessionIndex.slice(0, SESSION_PICKER_RECENT_LIMIT);
-		this.presentation?.sessionsChanged(path);
-		this.commit({ type: "promote-session-row", path });
+		this.presentation?.sessionsChanged(options.regroup ? undefined : path);
+		this.commit(options.regroup ? undefined : { type: "promote-session-row", path });
 		return true;
 	}
 	updateSessionSummary(
