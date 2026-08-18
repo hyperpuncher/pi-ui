@@ -49,6 +49,11 @@ function hasOpenDismissible() {
 	return Boolean(document.querySelector('[aria-haspopup][aria-expanded="true"]'));
 }
 
+// Register delegated file-link handling as soon as this module evaluates. Waiting for
+// DOMContentLoaded makes it vulnerable to another initializer failing first and leaves
+// the browser to attempt the forbidden file:// navigation itself.
+bindFileLinks();
+
 window.addEventListener("DOMContentLoaded", () => {
 	focusPromptEnd();
 	dialogs.bindDialogs();
@@ -60,7 +65,6 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindCodeCopy();
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();
-	bindFileLinks();
 	bindDebugFps();
 });
 
