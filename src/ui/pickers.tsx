@@ -102,7 +102,7 @@ function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
 export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
 	return syncHtml(
-		<div role="menu" id="workspace-menu" aria-orientation="vertical">
+		<div role="menu" id="workspace-menu" class="mt-1" aria-orientation="vertical">
 			{renderWorkspaceSearchResults(workspaces, [], state.workspacePath)}
 		</div>,
 	);
@@ -157,7 +157,7 @@ function renderWorkspaceGroup(
 			: "workspace-search-heading";
 	return syncHtml(
 		<div role="group" aria-labelledby={id}>
-			<span role="heading" id={id}>
+			<span role="heading" id={id} class="py-1!">
 				{heading}
 			</span>
 			{workspaces.map((workspacePath) =>
@@ -169,10 +169,11 @@ function renderWorkspaceGroup(
 
 function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	const label = formatHomePath(workspacePath);
+	const faviconUrl = `${endpoints.sessionsFavicon}?cwd=${encodeURIComponent(workspacePath)}`;
 	return syncHtml(
 		<div
 			role="menuitem"
-			class="items-start gap-3"
+			class="px-2 py-2!"
 			tabindex="-1"
 			aria-current={current ? "true" : undefined}
 			data-filter={`${label} ${workspacePath}`}
@@ -181,10 +182,19 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-attr:aria-disabled="$_sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
-			<span class="mt-0.5 w-4 shrink-0 text-center text-primary" aria-hidden="true">
-				{current ? "•" : ""}
-			</span>
-			<span class="min-w-0 truncate font-mono text-sm" safe>
+			<img
+				class="size-4 shrink-0 rounded-[3px]"
+				src={faviconUrl}
+				alt=""
+				aria-hidden="true"
+			/>
+			<span
+				class={[
+					"min-w-0 truncate font-mono text-[13px] leading-none",
+					current ? "font-semibold text-foreground" : "text-muted-foreground",
+				]}
+				safe
+			>
 				{label}
 			</span>
 		</div>,

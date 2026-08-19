@@ -276,6 +276,24 @@
 		box-shadow: none;
 	}
 
+	:where([role="menu"], [role="listbox"], [role="group"], #session-sidebar ul)
+		> :where(
+			[role="menuitem"],
+			[role="menuitemradio"],
+			[role="menuitemcheckbox"],
+			[role="option"],
+			li
+		)
+		+ :where(
+			[role="menuitem"],
+			[role="menuitemradio"],
+			[role="menuitemcheckbox"],
+			[role="option"],
+			li
+		) {
+		margin-block-start: 1px;
+	}
+
 	#chat-pane {
 		inset-block: var(--pi-workspace-inset);
 		width: calc(100% - 2 * var(--pi-workspace-inset));

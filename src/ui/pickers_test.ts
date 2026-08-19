@@ -218,6 +218,13 @@ Deno.test("workspace rows show each collapsed path once", () => {
 
 	assertStringIncludes(html, ">~<");
 	assertStringIncludes(html, ">~/projects/pi-ui<");
+	assertStringIncludes(html, "truncate font-mono text-[13px]");
+	assertStringIncludes(
+		html,
+		`src="/sessions/favicon?cwd=${encodeURIComponent(`${home}/projects/pi-ui`)}"`,
+	);
+	assertStringIncludes(html, 'aria-current="true"');
+	assertStringIncludes(html, "font-semibold text-foreground");
 	assertFalse(
 		new RegExp(`>\\s*${escapeRegExp(home)}(?:/projects/pi-ui)?\\s*<`).test(html),
 	);

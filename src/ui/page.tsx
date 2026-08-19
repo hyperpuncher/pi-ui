@@ -265,7 +265,7 @@ export function renderPage(
 						})}
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="command sm:max-w-2xl">
+						<div class="command sm:max-w-md">
 							<header class="pr-1">
 								<input
 									id="workspace-input"
