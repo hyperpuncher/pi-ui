@@ -519,16 +519,21 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 	}
 
 	if (message.role === "system" || message.role === "notice") {
+		const isError = message.state === "error";
 		return syncHtml(
 			<article
 				class={[
 					"message message-narrative max-w-3xl self-start",
-					message.role === "notice"
-						? "message-notice pi-warning-foreground"
-						: "message-system text-muted-foreground",
+					isError
+						? "message-system pi-error-foreground"
+						: message.role === "notice"
+							? "message-notice pi-warning-foreground"
+							: "message-system text-muted-foreground",
 				]}
 				data-message-id={message.id}
-				role={message.role === "notice" ? "status" : undefined}
+				role={
+					isError ? "alert" : message.role === "notice" ? "status" : undefined
+				}
 			>
 				<p class="m-0 whitespace-pre-wrap">
 					{renderPlainTextLinks(message.text)}

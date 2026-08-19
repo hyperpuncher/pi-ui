@@ -151,6 +151,21 @@ Deno.test("system messages make share URLs actionable and escape text", () => {
 	assertStringIncludes(html, 'target="_blank"');
 });
 
+Deno.test("provider errors use error styling and alert semantics", () => {
+	const html = renderMessage({
+		id: "provider-error",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "system",
+		state: "error",
+		text: 'Error: 403: {"type":"RegionError"}',
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "pi-error-foreground");
+	assertStringIncludes(html, 'role="alert"');
+	assertStringIncludes(html, "Error: 403:");
+});
+
 Deno.test("skills use the tool timeline without enhancement controls", () => {
 	const html = renderMessage({
 		id: "skill-1",

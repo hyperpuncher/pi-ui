@@ -183,6 +183,49 @@ Deno.test("reduces agent, message, queue, and completion events", () => {
 	assertEquals(outcome, { agentCompleted: true });
 });
 
+Deno.test("surfaces the provider error when an assistant message fails", () => {
+	const { state, context } = fixture();
+	reduceSessionEvent(
+		event({
+			type: "message_end",
+			message: {
+				role: "assistant",
+				content: [],
+				stopReason: "error",
+				errorMessage:
+					'403: {"type":"RegionError","message":"This model requires explicit opt in."}',
+			},
+		}),
+		context,
+	);
+
+	assertEquals(state.finishCount, 1);
+	assertEquals(state.appended, [
+		{
+			id: "message-1",
+			role: "system",
+			text: `Error 403: {
+	"type": "RegionError",
+	"message": "This model requires explicit opt in."
+}`,
+			options: { state: "error" },
+		},
+	]);
+});
+
+Deno.test("uses a fallback when a provider omits its error message", () => {
+	const { state, context } = fixture();
+	reduceSessionEvent(
+		event({
+			type: "message_end",
+			message: { role: "assistant", content: [], stopReason: "error" },
+		}),
+		context,
+	);
+
+	assertEquals(state.appended[0]?.text, "Error: Unknown error");
+});
+
 Deno.test("skips tool-result message starts", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(

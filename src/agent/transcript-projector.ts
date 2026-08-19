@@ -13,6 +13,7 @@ import {
 } from "../utils/attachment-references.ts";
 import { isRecord, isString } from "../utils/type-guards.ts";
 import { collectCacheMisses, formatCacheMissNotice } from "./cache-miss.ts";
+import { formatProviderErrorMessage } from "./provider-error-message.ts";
 import type { ToolArguments } from "./session-event-reducer.ts";
 import {
 	compactToolOutput,
@@ -95,7 +96,11 @@ export class TranscriptProjector {
 		return [];
 	}
 
-	message(message: AgentMessage, timestamp: Date): AppMessageInput[] {
+	message(
+		message: AgentMessage,
+		timestamp: Date,
+		options: { includeAssistantError?: boolean } = {},
+	): AppMessageInput[] {
 		switch (message.role) {
 			case "user": {
 				const text = userContentRawText(message.content);
@@ -106,8 +111,21 @@ export class TranscriptProjector {
 					userContentAttachments(paths, message.content),
 				);
 			}
-			case "assistant":
-				return assistantContentToMessages(message.content, timestamp);
+			case "assistant": {
+				const messages = assistantContentToMessages(message.content, timestamp);
+				if (
+					options.includeAssistantError !== false &&
+					message.stopReason === "error"
+				) {
+					messages.push({
+						role: "system",
+						text: formatProviderErrorMessage(message.errorMessage),
+						timestamp,
+						state: "error",
+					});
+				}
+				return messages;
+			}
 			case "toolResult":
 				return [toolResultToAppMessage(message, timestamp)];
 			case "bashExecution":

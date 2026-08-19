@@ -20,6 +20,7 @@ import {
 import {
 	agentSessionEventStub,
 	agentSessionRuntimeStub,
+	assistantMessageStub,
 	sessionEntryStub,
 	sessionStatsStub,
 } from "./test-fixtures.ts";
@@ -120,6 +121,30 @@ Deno.test("transcript projection preserves user, skill, thought, and assistant r
 			{ role: "thought", text: "reason" },
 			{ role: "assistant", text: "answer" },
 		],
+	);
+});
+
+Deno.test("transcript projection restores persisted provider errors", () => {
+	const timestamp = new Date(0);
+	const projector = new TranscriptProjector();
+	const message = assistantMessageStub({
+		role: "assistant",
+		content: [],
+		stopReason: "error",
+		errorMessage: "Provider unavailable",
+	});
+
+	assertEquals(projector.message(message, timestamp), [
+		{
+			role: "system",
+			text: "Error: Provider unavailable",
+			timestamp,
+			state: "error",
+		},
+	]);
+	assertEquals(
+		projector.message(message, timestamp, { includeAssistantError: false }),
+		[],
 	);
 });
 

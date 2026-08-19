@@ -7,6 +7,7 @@ import type {
 } from "../state/transcript-state.ts";
 import type { JsonValue } from "../utils/json-types.ts";
 import { isString } from "../utils/type-guards.ts";
+import { formatProviderErrorMessage } from "./provider-error-message.ts";
 
 type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 	AgentSessionEvent,
@@ -193,6 +194,13 @@ export function reduceSessionEvent(
 		case "message_end":
 			if (event.message.role === "assistant") {
 				state.finishAssistant();
+				if (event.message.stopReason === "error") {
+					state.appendMessage(
+						"system",
+						formatProviderErrorMessage(event.message.errorMessage),
+						{ state: "error" },
+					);
+				}
 				const cacheMissNotice = context.cacheMissNotice?.(event.message);
 				if (cacheMissNotice) state.appendMessage("notice", cacheMissNotice);
 				for (const preview of tools.previewMessages.values()) {

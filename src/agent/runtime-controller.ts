@@ -1328,7 +1328,9 @@ export class RuntimeController {
 			state,
 			tools,
 			convertMessage: (message, timestamp) =>
-				this.transcript.message(message, timestamp),
+				this.transcript.message(message, timestamp, {
+					includeAssistantError: false,
+				}),
 			formatToolStart: (toolEvent) =>
 				this.formatRunningTool(toolEvent.toolName, toolEvent.args),
 			formatToolPreview: (toolName, args) =>
