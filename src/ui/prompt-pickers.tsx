@@ -303,6 +303,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												aria-label="Toggle scoped model"
 												data-on:click={`
 													evt.stopPropagation();
+													window.piUi.modelSearch.preserve();
 													@post('${endpoints.modelsScopeToggle}', {
 													payload: { model: ${JSON.stringify(value)} },
 												});

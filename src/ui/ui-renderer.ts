@@ -353,7 +353,7 @@ export class UiRenderer implements AppStorePresentation {
 		for (const effect of effects) {
 			if (effect.type === "reopen-model-picker")
 				scripts.push(
-					"window.piUi.basecoat.refresh(document.getElementById('model-select')); requestAnimationFrame(() => document.getElementById('model-select-trigger')?.click())",
+					"window.piUi.basecoat.refresh(document.getElementById('model-select')); requestAnimationFrame(() => { document.getElementById('model-select-trigger')?.click(); window.piUi.modelSearch.restore(); })",
 				);
 			if (effect.type === "dialog")
 				scripts.push(

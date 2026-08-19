@@ -73,15 +73,7 @@ export class ModelController {
 				(model) =>
 					model.configured || `${model.provider}/${model.id}` === current,
 			)
-			.sort((a, b) => {
-				const aCurrent = `${a.provider}/${a.id}` === current;
-				const bCurrent = `${b.provider}/${b.id}` === current;
-				return aCurrent === bCurrent
-					? a.provider.localeCompare(b.provider)
-					: aCurrent
-						? -1
-						: 1;
-			});
+			.sort((a, b) => compareModelPickerOrder(a, b, current));
 		this.state.setModels(models, current, options);
 	}
 
@@ -137,6 +129,19 @@ export class ModelController {
 		}
 		return model;
 	}
+}
+
+export function compareModelPickerOrder(
+	a: ScopedModelCandidate & { scoped: boolean },
+	b: ScopedModelCandidate & { scoped: boolean },
+	current: string | undefined,
+): number {
+	if (a.scoped !== b.scoped) return a.scoped ? -1 : 1;
+	const aCurrent = `${a.provider}/${a.id}` === current;
+	const bCurrent = `${b.provider}/${b.id}` === current;
+	if (aCurrent !== bCurrent) return aCurrent ? -1 : 1;
+	const providerOrder = a.provider.localeCompare(b.provider);
+	return providerOrder || a.id.localeCompare(b.id);
 }
 
 export function resolveScopedModels<T extends ScopedModelCandidate>(

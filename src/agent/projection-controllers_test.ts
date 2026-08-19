@@ -6,6 +6,7 @@ import { assertEquals, assertStrictEquals, assertStringIncludes } from "@std/ass
 import { AppStore } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
 import {
+	compareModelPickerOrder,
 	modelMatchesPattern,
 	parseScopedModelPattern,
 	resolveScopedModels,
@@ -181,6 +182,21 @@ Deno.test("user projection keeps image data and hides transfer implementation te
 			},
 		],
 	});
+});
+
+Deno.test("model picker keeps scoped models above the current model", () => {
+	const models = [
+		{ id: "current", provider: "anthropic", scoped: false },
+		{ id: "starred-z", provider: "zeta", scoped: true },
+		{ id: "starred-a", provider: "alpha", scoped: true },
+	];
+
+	assertEquals(
+		models
+			.toSorted((a, b) => compareModelPickerOrder(a, b, "anthropic/current"))
+			.map((model) => model.id),
+		["starred-a", "starred-z", "current"],
+	);
 });
 
 Deno.test("model patterns preserve wildcards, thinking suffixes, and first-match ordering", () => {

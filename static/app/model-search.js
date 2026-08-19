@@ -1,5 +1,30 @@
 import { fuzzyFilter } from "@earendil-works/pi-tui/dist/fuzzy.js";
 
+let preservedState;
+
+export function preserveModelSearch() {
+	const input = document.getElementById("model-select-input");
+	const menu = document.getElementById("model-select-menu");
+	preservedState = {
+		query: input instanceof HTMLInputElement ? input.value : "",
+		scrollTop: menu instanceof HTMLElement ? menu.scrollTop : 0,
+	};
+}
+
+export function restoreModelSearch() {
+	if (!preservedState) return;
+	const state = preservedState;
+	preservedState = undefined;
+	const input = document.getElementById("model-select-input");
+	const menu = document.getElementById("model-select-menu");
+	if (input instanceof HTMLInputElement) {
+		input.value = state.query;
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		input.focus();
+	}
+	if (menu instanceof HTMLElement) menu.scrollTop = state.scrollTop;
+}
+
 export function bindModelSearch() {
 	document.addEventListener("input", (event) => {
 		const input = event.target;

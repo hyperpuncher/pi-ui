@@ -44,6 +44,10 @@ interface PiUiNamespace {
 		restoreAnchor(): void;
 		scrollBottom(behavior?: "auto" | "smooth"): void;
 	};
+	modelSearch: {
+		preserve(): void;
+		restore(): void;
+	};
 	pickers: {
 		isFileOpen(): boolean;
 		isOpen(): boolean;

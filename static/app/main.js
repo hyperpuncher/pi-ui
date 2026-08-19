@@ -1,4 +1,8 @@
-import { bindModelSearch } from "../build/model-search.js";
+import {
+	bindModelSearch,
+	preserveModelSearch,
+	restoreModelSearch,
+} from "../build/model-search.js";
 import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
 import * as dialogs from "./dialogs.js";
@@ -29,6 +33,7 @@ window.piUi = {
 	dialogs,
 	fileTransfer,
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
+	modelSearch: { preserve: preserveModelSearch, restore: restoreModelSearch },
 	pickers: { isFileOpen, isOpen: isPickerOpen },
 	prompt: { clear: () => setPromptValue("") },
 	promptHistory,
