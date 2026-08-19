@@ -280,6 +280,8 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet anthropic"');
 	assertStringIncludes(withoutSelection, 'data-keywords="Claude Sonnet"');
 	assertStringIncludes(withoutSelection, 'data-model-search-order="0"');
+	assertStringIncludes(withoutSelection, "[content-visibility:auto]");
+	assertStringIncludes(withoutSelection, "[contain-intrinsic-block-size:auto_3rem]");
 });
 
 Deno.test("thinking picker describes every supported maximum level", () => {

@@ -249,6 +249,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 									return (
 										<div
 											role="menuitem"
+											class="[contain-intrinsic-block-size:auto_3rem] [content-visibility:auto]"
 											aria-current={
 												value === state.currentModel
 													? "true"
