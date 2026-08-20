@@ -275,7 +275,7 @@ export class RuntimeController {
 			return false;
 		}
 		if (trimmed === "/tree") {
-			this.loadTreeEntries();
+			this.tree.open();
 			return true;
 		}
 
@@ -331,7 +331,7 @@ export class RuntimeController {
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
 		this.loadCurrentSessionMessages();
-		this.syncUsage();
+		this.usage.sync();
 		const path = this.runtime.session.sessionManager.getSessionFile();
 		if (path) await this.catalog.refreshPath(path);
 	}
@@ -435,7 +435,7 @@ export class RuntimeController {
 
 	async listSessions(): Promise<void> {
 		await this.initialCatalogLoad;
-		this.syncUsage();
+		this.usage.sync();
 	}
 
 	async renameSession(sessionPath: string, name: string): Promise<boolean> {
@@ -1045,10 +1045,7 @@ export class RuntimeController {
 				startedAt: backgroundSession.toolStartedAt,
 			},
 			() =>
-				this.loadRuntimeMessages(
-					backgroundSession.runtime,
-					backgroundSession.state,
-				),
+				this.transcript.load(backgroundSession.runtime, backgroundSession.state),
 		);
 		this.updateSessionCatalogFromEvent(event, backgroundSession.runtime);
 		this.scheduleAutoTitleAfterUserMessage(backgroundSession.runtime, event);
@@ -1134,7 +1131,7 @@ export class RuntimeController {
 		this.extensionUi.cancelAll();
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
-		this.resetCodexUsage();
+		this.usage.suspend();
 	}
 
 	private bindSessionState(
@@ -1168,10 +1165,10 @@ export class RuntimeController {
 				.catch((error: ErrorOptions["cause"]) =>
 					console.warn("Failed to refresh model catalogs", error),
 				);
-			this.syncThinking();
+			this.models.syncThinking();
 			this.syncSlashCommands();
-			this.syncUsage();
-			this.refreshCodexUsage(true);
+			this.usage.sync();
+			this.usage.refresh(true);
 			if (options.syncSessions !== false) {
 				this.catalog.mergeCurrentStatuses();
 			}
@@ -1270,15 +1267,15 @@ export class RuntimeController {
 						startedAt: this.toolStartedAt,
 					},
 					() => this.loadCurrentSessionMessages(),
-					() => this.syncUsage(),
+					() => this.usage.sync(),
 				);
 				this.updateSessionCatalogFromEvent(event, this.runtime);
 				this.scheduleAutoTitleAfterUserMessage(this.runtime, event);
 				if (outcome.agentCompleted) {
 					const path = this.runtime.session.sessionManager.getSessionFile();
 					if (path) this.catalog.agentCompleted(path);
-					this.syncUsage();
-					this.refreshCodexUsage(true);
+					this.usage.sync();
+					this.usage.refresh(true);
 					this.notifyRuntimeDone(this.runtime, false);
 					if (path) void this.catalog.refreshPath(path);
 				}
@@ -1407,22 +1404,6 @@ export class RuntimeController {
 		};
 	}
 
-	private syncThinking(): void {
-		this.models.syncThinking();
-	}
-
-	private syncUsage(): void {
-		this.usage.sync();
-	}
-
-	private resetCodexUsage(): void {
-		this.usage.suspend();
-	}
-
-	private refreshCodexUsage(force = false): void {
-		this.usage.refresh(force);
-	}
-
 	private syncSlashCommands(): void {
 		const prompts = this.runtime.session.promptTemplates.map((template) => ({
 			name: template.name,
@@ -1475,19 +1456,8 @@ export class RuntimeController {
 		]);
 	}
 
-	private loadTreeEntries(): void {
-		this.tree.open();
-	}
-
 	private loadCurrentSessionMessages(): void {
-		this.loadRuntimeMessages(this.runtime, this.state);
-		this.syncUsage();
-	}
-
-	private loadRuntimeMessages(
-		runtime: AgentSessionRuntime,
-		state: AppStore | TranscriptState,
-	): void {
-		this.transcript.load(runtime, state);
+		this.transcript.load(this.runtime, this.state);
+		this.usage.sync();
 	}
 }
