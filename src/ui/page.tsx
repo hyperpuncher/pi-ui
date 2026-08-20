@@ -337,14 +337,30 @@ export function renderPage(
 						class="command-dialog"
 						aria-label="Session tree"
 						data-signals__ifmissing={JSON.stringify({
-							treeSummarize: false,
+							treeSelectedId: "",
+							treeCustomSummary: false,
 							treeSummaryInstructions: "",
 						})}
 						data-preserve-attr="open"
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="command sm:max-w-4xl">
-							<header>
+						<div
+							class="command sm:max-w-6xl"
+							style="height: calc(100% - 2rem)"
+							data-style:height="$treeSelectedId ? 'auto' : 'calc(100% - 2rem)'"
+							data-style:max-width="$treeSelectedId ? '24rem' : '72rem'"
+						>
+							<header data-class:sr-only="$treeSelectedId">
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									aria-hidden="true"
+								>
+									<circle cx="11" cy="11" r="7" />
+									<path d="m20 20-3.5-3.5" />
+								</svg>
 								<input
 									id="tree-input"
 									type="text"

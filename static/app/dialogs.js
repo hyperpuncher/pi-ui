@@ -54,6 +54,7 @@ export function toggleSession() {
 }
 
 export function openTree() {
+	resetBoundInput(document.getElementById("tree-selected-id"));
 	openAndFocus("tree-dialog", "tree-input", {
 		activeSelector: "[data-active-tree-row]",
 	});
@@ -126,10 +127,15 @@ export function toggleWorkspace() {
 	return true;
 }
 
-function resetSearchInput(input) {
+function resetBoundInput(input) {
 	if (!(input instanceof HTMLInputElement)) return;
 	input.value = "";
 	input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function resetSearchInput(input) {
+	if (!(input instanceof HTMLInputElement)) return;
+	resetBoundInput(input);
 	const menuId = input.getAttribute("aria-controls");
 	const menu = menuId ? document.getElementById(menuId) : undefined;
 	if (menu instanceof HTMLElement) menu.scrollTop = 0;

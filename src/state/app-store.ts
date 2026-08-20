@@ -82,8 +82,8 @@ export type AppTreeEntry = {
 	id: string;
 	parentId: string | null;
 	prefix: string;
-	continuationPrefix: string;
 	label?: string;
+	kind: "user" | "assistant" | "tool" | "summary" | "other";
 	role: string;
 	text: string;
 	meta: string;

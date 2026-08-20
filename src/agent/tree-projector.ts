@@ -5,7 +5,7 @@ import type {
 
 import type { AppStore, AppTreeEntry } from "../state/app-store.ts";
 import { formatDateTime } from "../utils/locale.ts";
-import { isRecord, isString } from "../utils/type-guards.ts";
+import { type JsonRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
 
 type TreeState = Pick<AppStore, "setTreeEntries">;
 type TreeOwnerToken = PropertyKey | object;
@@ -82,6 +82,7 @@ export function flattenTree(
 	pathIds: Set<string>,
 ): AppTreeEntry[] {
 	const rows: AppTreeEntry[] = [];
+	const toolCalls = collectToolCalls(roots);
 	const containsActive = new Map<SessionTreeNode, boolean>();
 	const visitPostOrder = (node: SessionTreeNode): boolean => {
 		const contains = node.entry.id === activeId || node.children.some(visitPostOrder);
@@ -112,22 +113,17 @@ export function flattenTree(
 	while (stack.length > 0) {
 		const { node, indent, justBranched, showConnector, isLast, gutters } =
 			stack.pop()!;
-		rows.push({
-			id: node.entry.id,
-			parentId: node.entry.parentId,
-			prefix: buildTreePrefix(indent, showConnector, isLast, gutters),
-			continuationPrefix: buildTreePrefix(
-				indent,
-				showConnector,
-				isLast,
-				gutters,
-				true,
-			),
-			label: node.label,
-			active: node.entry.id === activeId,
-			inPath: pathIds.has(node.entry.id),
-			...formatTreeEntry(node),
-		});
+		if (shouldDisplayTreeNode(node, activeId)) {
+			rows.push({
+				id: node.entry.id,
+				parentId: node.entry.parentId,
+				prefix: buildTreePrefix(indent, showConnector, isLast, gutters),
+				label: node.label,
+				active: node.entry.id === activeId,
+				inPath: pathIds.has(node.entry.id),
+				...formatTreeEntry(node, toolCalls),
+			});
+		}
 
 		const children = orderActiveFirst(node.children, containsActive);
 		const multipleChildren = children.length > 1;
@@ -168,14 +164,12 @@ function buildTreePrefix(
 	showConnector: boolean,
 	isLast: boolean,
 	gutters: boolean[],
-	continuation = false,
 ): string {
 	if (indent === 0 && !showConnector) return "";
 	const parts: string[] = [];
 	for (let position = 0; position < indent; position += 1) {
 		if (position === indent - 1 && showConnector) {
-			if (continuation) parts.push(isLast ? "   " : "│  ");
-			else parts.push(isLast ? "└─ " : "├─ ");
+			parts.push(isLast ? "└─ " : "├─ ");
 		} else {
 			parts.push(gutters[position] ? "│  " : "   ");
 		}
@@ -183,9 +177,56 @@ function buildTreePrefix(
 	return parts.join("");
 }
 
+type ToolCallInfo = { name: string; arguments: JsonRecord };
+
+function collectToolCalls(roots: SessionTreeNode[]): Map<string, ToolCallInfo> {
+	const calls = new Map<string, ToolCallInfo>();
+	const stack = [...roots];
+	while (stack.length > 0) {
+		const node = stack.pop()!;
+		stack.push(...node.children);
+		if (node.entry.type !== "message") continue;
+		const message = node.entry.message;
+		if (message.role !== "assistant" || !Array.isArray(message.content)) continue;
+		for (const block of message.content) {
+			if (!isRecord(block) || block.type !== "toolCall") continue;
+			if (!isString(block.id) || !isString(block.name)) continue;
+			calls.set(block.id, {
+				name: block.name,
+				arguments: isRecord(block.arguments) ? block.arguments : {},
+			});
+		}
+	}
+	return calls;
+}
+
+function shouldDisplayTreeNode(node: SessionTreeNode, activeId: string | null): boolean {
+	const entry = node.entry;
+	if (
+		entry.type === "label" ||
+		entry.type === "custom" ||
+		entry.type === "model_change" ||
+		entry.type === "thinking_level_change" ||
+		entry.type === "session_info"
+	)
+		return false;
+	if (
+		entry.type === "message" &&
+		entry.message.role === "assistant" &&
+		entry.id !== activeId &&
+		!normalizeTreeText(extractTreeText(entry.message.content)) &&
+		(entry.message.stopReason === "stop" ||
+			entry.message.stopReason === "toolUse" ||
+			!entry.message.stopReason)
+	)
+		return false;
+	return true;
+}
+
 function formatTreeEntry(
 	node: SessionTreeNode,
-): Pick<AppTreeEntry, "role" | "text" | "meta" | "metaTimestamp"> {
+	toolCalls: Map<string, ToolCallInfo>,
+): Pick<AppTreeEntry, "kind" | "role" | "text" | "meta" | "metaTimestamp"> {
 	const entry = node.entry;
 	const timestamp = new Date(entry.timestamp);
 	const metadata = {
@@ -196,61 +237,130 @@ function formatTreeEntry(
 		const message = entry.message;
 		if (message.role === "user") {
 			return {
-				role: "user: ",
+				kind: "user",
+				role: "user",
 				text: normalizeTreeText(extractTreeText(message.content)),
 				...metadata,
 			};
 		}
 		if (message.role === "assistant") {
 			const text = normalizeTreeText(extractTreeText(message.content));
-			return { role: "assistant: ", text: text || "(no text)", ...metadata };
+			const fallback =
+				message.stopReason === "aborted"
+					? "(aborted)"
+					: message.errorMessage || "(no content)";
+			return {
+				kind: "assistant",
+				role: "assistant",
+				text: text || fallback,
+				...metadata,
+			};
 		}
 		if (message.role === "toolResult") {
-			return { role: "tool: ", text: message.toolName ?? "tool", ...metadata };
+			const toolCall = toolCalls.get(message.toolCallId);
+			return {
+				kind: "tool",
+				role: toolCall?.name ?? message.toolName ?? "tool",
+				text: toolCall ? formatToolDetail(toolCall.name, toolCall.arguments) : "",
+				...metadata,
+			};
 		}
 		if (message.role === "bashExecution") {
 			return {
-				role: "bash: ",
+				kind: "tool",
+				role: "bash",
 				text: normalizeTreeText(message.command),
 				...metadata,
 			};
 		}
-		return { role: `${message.role}: `, text: "", ...metadata };
+		return { kind: "other", role: message.role, text: "", ...metadata };
 	}
 	if (entry.type === "custom_message") {
 		return {
-			role: `${entry.customType}: `,
+			kind: "other",
+			role: entry.customType,
 			text: normalizeTreeText(extractTreeText(entry.content)),
 			...metadata,
 		};
 	}
 	if (entry.type === "compaction") {
 		return {
-			role: "compaction: ",
+			kind: "other",
+			role: "compaction",
 			text: `${Math.round(entry.tokensBefore / 1000)}k tokens`,
 			...metadata,
 		};
 	}
 	if (entry.type === "branch_summary") {
 		return {
-			role: "branch summary: ",
+			kind: "summary",
+			role: "summary",
 			text: normalizeTreeText(entry.summary),
 			...metadata,
 		};
 	}
 	if (entry.type === "model_change") {
-		return { role: "model: ", text: entry.modelId, ...metadata };
+		return { kind: "other", role: "model", text: entry.modelId, ...metadata };
 	}
 	if (entry.type === "thinking_level_change") {
-		return { role: "thinking: ", text: entry.thinkingLevel, ...metadata };
+		return {
+			kind: "other",
+			role: "thinking",
+			text: entry.thinkingLevel,
+			...metadata,
+		};
 	}
 	if (entry.type === "custom") {
-		return { role: "custom: ", text: entry.customType, ...metadata };
+		return { kind: "other", role: "custom", text: entry.customType, ...metadata };
 	}
 	if (entry.type === "label") {
-		return { role: "label: ", text: entry.label ?? "(cleared)", ...metadata };
+		return {
+			kind: "other",
+			role: "label",
+			text: entry.label ?? "(cleared)",
+			...metadata,
+		};
 	}
-	return { role: "title: ", text: entry.name ?? "(empty)", ...metadata };
+	return {
+		kind: "other",
+		role: "title",
+		text: entry.name ?? "(empty)",
+		...metadata,
+	};
+}
+
+function formatToolDetail(name: string, args: JsonRecord): string {
+	const path = String(args.path || args.file_path || "");
+	switch (name) {
+		case "read": {
+			const offset = isNumber(args.offset) ? args.offset : undefined;
+			const limit = isNumber(args.limit) ? args.limit : undefined;
+			const range =
+				offset !== undefined || limit !== undefined
+					? `:${offset ?? 1}${limit !== undefined ? `-${(offset ?? 1) + limit - 1}` : ""}`
+					: "";
+			return `${path}${range}`;
+		}
+		case "write":
+		case "edit":
+			return path;
+		case "bash": {
+			const command = String(args.command || "")
+				.replace(/[\n\t]+/g, " ")
+				.trim();
+			return `${command.slice(0, 80)}${command.length > 80 ? "..." : ""}`;
+		}
+		case "grep":
+			return `/${String(args.pattern || "")}/ in ${path || "."}`;
+		case "find":
+			return `${String(args.pattern || "")} in ${path || "."}`;
+		case "ls":
+			return path || ".";
+		default: {
+			const serialized = JSON.stringify(args);
+			return `${serialized.slice(0, 60)}${serialized.length > 60 ? "..." : ""}`;
+		}
+	}
 }
 
 function extractTreeText<Content>(content: Content): string {

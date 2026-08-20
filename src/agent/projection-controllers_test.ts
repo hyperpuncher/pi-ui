@@ -242,6 +242,61 @@ Deno.test("tree projection orders the active branch first", () => {
 	assertEquals(rows[1].prefix, "├─ ");
 });
 
+Deno.test("tree projection shows tool call details and hides tool-only assistants", () => {
+	const assistant = sessionEntryStub({
+		id: "assistant",
+		parentId: null,
+		timestamp: "2026-01-01T00:00:00.000Z",
+		type: "message",
+		message: {
+			role: "assistant",
+			content: [
+				{
+					type: "toolCall",
+					id: "call",
+					name: "read",
+					arguments: { path: "src/ui/page.tsx", offset: 10, limit: 5 },
+				},
+			],
+			stopReason: "toolUse",
+			timestamp: 1,
+		},
+	});
+	const result = sessionEntryStub({
+		id: "result",
+		parentId: "assistant",
+		timestamp: "2026-01-01T00:00:01.000Z",
+		type: "message",
+		message: {
+			role: "toolResult",
+			toolCallId: "call",
+			toolName: "read",
+			content: [],
+			isError: false,
+			timestamp: 2,
+		},
+	});
+	const rows = flattenTree(
+		[
+			{
+				entry: assistant,
+				children: [{ entry: result, children: [] }],
+			},
+		],
+		"result",
+		new Set(["assistant", "result"]),
+	);
+
+	assertEquals(
+		rows.map((row) => row.id),
+		["result"],
+	);
+	assertEquals(
+		{ kind: rows[0]?.kind, role: rows[0]?.role, text: rows[0]?.text },
+		{ kind: "tool", role: "read", text: "src/ui/page.tsx:10-14" },
+	);
+});
+
 Deno.test("tree navigation rejects overlap and can cancel summarization", async () => {
 	let navigateCount = 0;
 	let abortCount = 0;
