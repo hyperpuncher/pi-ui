@@ -64,6 +64,8 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /llama/open",
 		"POST /llama/toggle",
 		"POST /llama/close",
+		"POST /extensions/ui/editor",
+		"POST /extensions/ui/respond",
 		"POST /tree/open",
 		"POST /tree/navigate",
 		"GET /files/search",
@@ -455,6 +457,43 @@ Deno.test("multipart prompts pass image attachments directly to pi", async () =>
 	});
 });
 
+Deno.test("extension UI tracks the browser editor for synchronous extension reads", async () => {
+	const context = fakeContext();
+	const response = await createRouter(context).fetch(
+		signalRequest("/extensions/ui/editor", { prompt: "current draft" }),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(context.store.promptEditorText, "current draft");
+});
+
+Deno.test("extension UI responses return to the active agent backend", async () => {
+	let response:
+		| { requestId: string; value: string | undefined; cancelled: boolean }
+		| undefined;
+	const host = fakeHost({
+		respondExtensionUi: (requestId, value, cancelled) => {
+			response = { requestId, value, cancelled };
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const result = await router.fetch(
+		signalRequest("/extensions/ui/respond", {
+			extensionRequestId: "request-1",
+			extensionResponse: "selected",
+			extensionCancelled: false,
+		}),
+	);
+
+	assertEquals(result.status, 204);
+	assertEquals(response, {
+		requestId: "request-1",
+		value: "selected",
+		cancelled: false,
+	});
+});
+
 Deno.test("main stream binds a validated display client identity", async () => {
 	const clientId = "123e4567-e89b-42d3-a456-426614174000";
 	let connectedClientId: string | undefined;
@@ -676,6 +715,7 @@ function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
 		prompt: async () => true,
 		removeQueuedMessage: async () => true,
 		renameSession: async () => true,
+		respondExtensionUi: () => true,
 		restoreQueuedMessages: () => "",
 		resumeSession: async () => ({ status: "success" }),
 		setModel: async () => true,

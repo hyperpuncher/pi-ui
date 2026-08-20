@@ -17,6 +17,7 @@ import { registerAuthRoutes } from "./routes/auth.ts";
 import { registerCodeThemeRoutes } from "./routes/code-theme.ts";
 import type { RouteContext, RouteResources } from "./routes/context.ts";
 import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
+import { registerExtensionUiRoutes } from "./routes/extension-ui.ts";
 import { registerFileRoutes } from "./routes/files.ts";
 import { registerLlamaRoutes } from "./routes/llama.ts";
 import { registerModelRoutes } from "./routes/models.ts";
@@ -126,6 +127,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerAssetRoutes(router);
 	registerStreamRoutes(router);
 	registerDisplayRefreshRoutes(router);
+	registerExtensionUiRoutes(router);
 	registerCodeThemeRoutes(router);
 	registerPromptRoutes(router);
 	registerSessionRoutes(router);

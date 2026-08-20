@@ -10,6 +10,8 @@ import { renderAuthDialogContent } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderDebugOverlay } from "./debug.tsx";
 import { DisplayRefreshClients } from "./display-refresh-clients.ts";
+import { renderExtensionDialogContent } from "./extension-dialog.tsx";
+import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { renderLlamaDialogContent } from "./llama-dialog.tsx";
 import {
 	MessageRenderService,
@@ -292,6 +294,8 @@ export class UiRenderer implements AppStorePresentation {
 			renderPromptQueue(snapshot),
 			renderPromptToolbar(snapshot),
 			renderPromptStatus(snapshot),
+			renderExtensionWidgets(snapshot, "aboveEditor"),
+			renderExtensionWidgets(snapshot, "belowEditor"),
 			renderWorkspacePicker(snapshot),
 			renderSessionTransition(snapshot),
 			renderDebugOverlay(snapshot),
@@ -300,6 +304,7 @@ export class UiRenderer implements AppStorePresentation {
 	renderPickerElements(snapshot: AppStateSnapshot): string {
 		return (
 			renderAuthDialogContent(snapshot.authDialog) +
+			renderExtensionDialogContent(snapshot.extensionDialog) +
 			renderLlamaDialogContent(snapshot.llamaDialog) +
 			renderWorkspaceDialogMenu(snapshot) +
 			renderModelPicker(snapshot) +
@@ -337,6 +342,9 @@ export class UiRenderer implements AppStorePresentation {
 	private mainEffectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts: string[] = [];
 		for (const effect of effects) {
+			if (effect.type === "document-title") {
+				scripts.push(`document.title = ${JSON.stringify(effect.title)}`);
+			}
 			if (effect.type === "scroll-messages-to-bottom") {
 				scripts.push("window.piUi.messageScroll.scrollBottom()");
 			}

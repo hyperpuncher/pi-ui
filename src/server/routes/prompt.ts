@@ -21,6 +21,7 @@ import { treeOpenEvents } from "./tree.ts";
 export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("POST", endpoints.prompt, async (request, context) => {
 		const { prompt, images } = await readPrompt(request);
+		context.store.setPromptEditorText("", { broadcast: false });
 		const host = requireHost(context);
 		if (prompt.trim() === "/tree") {
 			host.openTree();
@@ -33,6 +34,7 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 
 	router.register("POST", endpoints.promptFollowUp, async (request, context) => {
 		const { prompt, images } = await readPrompt(request);
+		context.store.setPromptEditorText("", { broadcast: false });
 		if (
 			!(await requireHost(context).prompt(prompt, {
 				images,
@@ -46,7 +48,9 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 
 	router.register("POST", endpoints.promptDequeue, (_request, context) => {
 		const queued = requireHost(context).restoreQueuedMessages();
-		return queued ? signalsResponse({ prompt: queued }) : datastarResponse();
+		if (!queued) return datastarResponse();
+		context.store.setPromptEditorText(queued, { broadcast: false });
+		return signalsResponse({ prompt: queued });
 	});
 
 	router.register("POST", endpoints.promptQueueRemove, async (request, context) => {

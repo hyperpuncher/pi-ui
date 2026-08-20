@@ -4,19 +4,33 @@ import { formatTokens } from "../utils/format.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function renderPromptStatus(state: AppStateSnapshot): string {
+	const activityText = state.extensionWorkingMessage ?? state.activityText;
 	return syncHtml(
 		<span
 			id="prompt-status"
 			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
 		>
-			{state.activityText && (
+			{state.extensionWorkingVisible && activityText && (
 				<span class="inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none text-muted-foreground">
 					<span class="inline-flex items-center gap-1.5">
-						{loaderIcon()}
-						<span safe>{state.activityText}</span>
+						{state.extensionWorkingIndicator === undefined
+							? loaderIcon()
+							: state.extensionWorkingIndicator && (
+									<span safe>{state.extensionWorkingIndicator}</span>
+								)}
+						<span safe>{activityText}</span>
 					</span>
 				</span>
 			)}
+			{state.extensionStatuses.map((status) => (
+				<span
+					class="hidden max-w-40 truncate font-mono text-xs text-muted-foreground sm:inline"
+					data-extension-status={status.key}
+					safe
+				>
+					{status.text}
+				</span>
+			))}
 			<span class="inline-flex shrink-0 items-center gap-1">
 				{renderUsageIndicator(state.usage)}
 			</span>

@@ -59,6 +59,22 @@ export type AppAuthDialog = {
 	progress: string[];
 	error?: string;
 };
+export type AppExtensionDialog =
+	| { id: string; kind: "select"; title: string; options: readonly string[] }
+	| { id: string; kind: "confirm"; title: string; message: string }
+	| {
+			id: string;
+			kind: "input" | "editor";
+			title: string;
+			placeholder?: string;
+			prefill?: string;
+	  };
+export type AppExtensionStatus = { key: string; text: string };
+export type AppExtensionWidget = {
+	key: string;
+	lines: readonly string[];
+	placement: "aboveEditor" | "belowEditor";
+};
 export type AppLlamaModel = { id: string; status: string };
 export type AppLlamaDialog = {
 	models: AppLlamaModel[];
@@ -115,7 +131,12 @@ export type AppKeybindHint = { keys: string; description: string };
 
 export type UiCommitEffect =
 	| { type: "reopen-model-picker" }
-	| { type: "dialog"; id: "auth-dialog" | "llama-dialog"; open: boolean }
+	| {
+			type: "dialog";
+			id: "auth-dialog" | "extension-dialog" | "llama-dialog";
+			open: boolean;
+	  }
+	| { type: "document-title"; title: string }
 	| { type: "scroll-messages-to-bottom" }
 	| { type: "promote-session-row"; path: string }
 	| { type: "signal-overrides"; values: JsonObject };
@@ -146,6 +167,12 @@ export type AppStateSnapshot = Readonly<{
 	treeEntries: readonly AppTreeEntry[];
 	slashCommands: readonly AppSlashCommand[];
 	authDialog: AppAuthDialog | undefined;
+	extensionDialog: AppExtensionDialog | undefined;
+	extensionStatuses: readonly AppExtensionStatus[];
+	extensionWidgets: readonly AppExtensionWidget[];
+	extensionWorkingIndicator: string | undefined;
+	extensionWorkingMessage: string | undefined;
+	extensionWorkingVisible: boolean;
 	llamaDialog: AppLlamaDialog | undefined;
 	currentModel: string | undefined;
 	currentSessionPath: string | undefined;
@@ -161,8 +188,10 @@ export type AppStateSnapshot = Readonly<{
 	sessionTransition: SessionTransitionState;
 	debugUi: boolean;
 	datastarInspector: boolean;
+	documentTitle: string;
 	hasOlderMessages: boolean;
 	promptHistory: readonly string[];
+	promptEditorText: string;
 	emptyChatHint: Readonly<AppKeybindHint>;
 }>;
 
@@ -203,6 +232,8 @@ export class AppStore {
 	private presentation: AppStorePresentation | undefined;
 	readonly debugUi = debugUiEnabled();
 	readonly datastarInspector = datastarInspectorEnabled();
+	documentTitle = "pi-ui";
+	promptEditorText = "";
 	models: AppModel[] = [];
 	sessions: AppSessionSummary[] = [];
 	sessionCatalogLoading = true;
@@ -210,6 +241,12 @@ export class AppStore {
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	authDialog: AppAuthDialog | undefined;
+	extensionDialog: AppExtensionDialog | undefined;
+	extensionStatuses: AppExtensionStatus[] = [];
+	extensionWidgets: AppExtensionWidget[] = [];
+	extensionWorkingIndicator: string | undefined;
+	extensionWorkingMessage: string | undefined;
+	extensionWorkingVisible = true;
 	llamaDialog: AppLlamaDialog | undefined;
 	currentModel: string | undefined;
 	currentSessionPath: string | undefined;
@@ -264,6 +301,17 @@ export class AppStore {
 			treeEntries: this.treeEntries.map((entry) => ({ ...entry })),
 			slashCommands: this.slashCommands.map((command) => ({ ...command })),
 			authDialog: this.authDialog ? structuredClone(this.authDialog) : undefined,
+			extensionDialog: this.extensionDialog
+				? structuredClone(this.extensionDialog)
+				: undefined,
+			extensionStatuses: this.extensionStatuses.map((status) => ({ ...status })),
+			extensionWidgets: this.extensionWidgets.map((widget) => ({
+				...widget,
+				lines: [...widget.lines],
+			})),
+			extensionWorkingIndicator: this.extensionWorkingIndicator,
+			extensionWorkingMessage: this.extensionWorkingMessage,
+			extensionWorkingVisible: this.extensionWorkingVisible,
 			llamaDialog: this.llamaDialog ? structuredClone(this.llamaDialog) : undefined,
 			currentModel: this.currentModel,
 			currentSessionPath: this.currentSessionPath,
@@ -279,8 +327,10 @@ export class AppStore {
 			sessionTransition: { ...this.sessionTransition },
 			debugUi: this.debugUi,
 			datastarInspector: this.datastarInspector,
+			documentTitle: this.documentTitle,
 			hasOlderMessages: this.hasOlderMessages,
 			promptHistory: [...this.promptHistory],
+			promptEditorText: this.promptEditorText,
 			emptyChatHint: { ...this.emptyChatHint },
 		});
 	}
@@ -489,6 +539,60 @@ export class AppStore {
 				type: "signal-overrides",
 				values: { authInput: "" },
 			});
+	}
+	setExtensionDialog(dialog: AppExtensionDialog | undefined): void {
+		this.extensionDialog = dialog;
+		this.presentation?.requestCommit({
+			type: "dialog",
+			id: "extension-dialog",
+			open: Boolean(dialog),
+		});
+		if (dialog) {
+			this.presentation?.requestCommit({
+				type: "signal-overrides",
+				values: {
+					extensionRequestId: dialog.id,
+					extensionResponse:
+						dialog.kind === "input" || dialog.kind === "editor"
+							? (dialog.prefill ?? "")
+							: "",
+				},
+			});
+		}
+	}
+	setExtensionStatuses(statuses: AppExtensionStatus[]): void {
+		this.extensionStatuses = statuses.map((status) => ({ ...status }));
+		this.commit();
+	}
+	setExtensionWidgets(widgets: AppExtensionWidget[]): void {
+		this.extensionWidgets = widgets.map((widget) => ({
+			...widget,
+			lines: [...widget.lines],
+		}));
+		this.commit();
+	}
+	setExtensionWorking(options: {
+		message?: string;
+		visible: boolean;
+		indicator?: string;
+	}): void {
+		this.extensionWorkingMessage = options.message;
+		this.extensionWorkingVisible = options.visible;
+		this.extensionWorkingIndicator = options.indicator;
+		this.commit();
+	}
+	setDocumentTitle(title: string): void {
+		this.documentTitle = title;
+		this.presentation?.requestCommit({ type: "document-title", title });
+	}
+	setPromptEditorText(text: string, options: { broadcast?: boolean } = {}): void {
+		this.promptEditorText = text;
+		if (options.broadcast !== false) {
+			this.presentation?.requestCommit({
+				type: "signal-overrides",
+				values: { prompt: text },
+			});
+		}
 	}
 	setLlamaDialog(dialog: AppLlamaDialog | undefined): void {
 		this.llamaDialog = dialog;

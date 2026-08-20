@@ -45,6 +45,8 @@ export const endpoints = {
 	llamaOpen: "/llama/open",
 	llamaToggle: "/llama/toggle",
 	llamaClose: "/llama/close",
+	extensionUiResponse: "/extensions/ui/respond",
+	extensionUiEditor: "/extensions/ui/editor",
 	treeOpen: "/tree/open",
 	treeNavigate: "/tree/navigate",
 	filesSearch: "/files/search",

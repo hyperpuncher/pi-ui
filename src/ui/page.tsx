@@ -7,6 +7,7 @@ import { projectBackendSignals } from "./backend-signals.ts";
 import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
 import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
+import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
@@ -84,7 +85,7 @@ export function renderPage(
 				<head>
 					<meta charset="utf-8" />
 					<meta name="viewport" content="width=device-width, initial-scale=1" />
-					<title>pi-ui</title>
+					<title safe>{state.documentTitle}</title>
 					<link
 						rel="icon"
 						type="image/png"
@@ -253,6 +254,7 @@ export function renderPage(
 					{renderCommandMenu()}
 					{renderCodeThemeDialog()}
 					{renderAuthDialog(state.authDialog)}
+					{renderExtensionDialog(state.extensionDialog)}
 					{renderLlamaDialog(state.llamaDialog)}
 
 					<dialog

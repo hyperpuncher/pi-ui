@@ -1,5 +1,6 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
+import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
@@ -22,7 +23,7 @@ export function renderPromptBox(
 			id="prompt-box"
 			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-(--pi-prompt-max-width) overflow-visible text-sm"
 			data-signals__ifmissing={JSON.stringify({
-				prompt: "",
+				prompt: state.promptEditorText,
 				_filePickerOpen: false,
 				_fileSearchController: "",
 				_slashPickerOpen: false,
@@ -57,6 +58,7 @@ export function renderPromptBox(
 					data-ignore-morph
 					hidden
 				/>
+				{renderExtensionWidgets(state, "aboveEditor")}
 				<textarea
 					id="prompt-input"
 					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 text-[15px]"
@@ -64,6 +66,9 @@ export function renderPromptBox(
 					aria-label="Message"
 					rows="1"
 					data-bind:prompt
+					attrs={{
+						"data-on:input__debounce.150ms": `@post('${endpoints.extensionUiEditor}', { payload: { prompt: $prompt } })`,
+					}}
 					data-on:input="
 						window.piUi.promptHistory.handleInput();
 						$_slashPickerOpen = $prompt.startsWith('/') &&
@@ -136,6 +141,7 @@ export function renderPromptBox(
 						};
 					`}
 				></textarea>
+				{renderExtensionWidgets(state, "belowEditor")}
 				<footer
 					class="flex flex-wrap items-center justify-between gap-2 p-0"
 					data-align="end"

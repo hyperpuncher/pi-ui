@@ -27,6 +27,7 @@ export type RouteAgentHost = Pick<
 	| "prompt"
 	| "removeQueuedMessage"
 	| "renameSession"
+	| "respondExtensionUi"
 	| "restoreQueuedMessages"
 	| "resumeSession"
 	| "setModel"

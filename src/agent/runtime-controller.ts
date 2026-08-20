@@ -32,6 +32,7 @@ import {
 	BackgroundSessionController,
 } from "./background-session-controller.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "./cache-miss.ts";
+import { ExtensionUiController } from "./extension-ui-controller.ts";
 import { LlamaController } from "./llama-controller.ts";
 import { llamaProviderExtension } from "./llama-provider-extension.ts";
 import { ModelController, resolveScopedModels } from "./model-controller.ts";
@@ -124,6 +125,7 @@ export class RuntimeController {
 	private readonly llama: LlamaController;
 	private readonly models: ModelController;
 	private readonly usage: UsageController;
+	private readonly extensionUi: ExtensionUiController;
 	private readonly transcript = new TranscriptProjector();
 	private readonly tree: TreeProjector;
 	private foregroundGeneration: number;
@@ -144,6 +146,7 @@ export class RuntimeController {
 	) {
 		this.dependencies =
 			activationOptions.dependencies ?? runtimeControllerDependencies;
+		this.extensionUi = new ExtensionUiController(state);
 		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
 		this.foregroundObservedRunning = runtime.session.isStreaming;
 		this.models = new ModelController(
@@ -540,7 +543,10 @@ export class RuntimeController {
 			sessionManager: this.dependencies.createSessionManager(cwd),
 		});
 		try {
-			await replacement.session.bindExtensions({ mode: "rpc" });
+			await replacement.session.bindExtensions({
+				mode: "rpc",
+				uiContext: this.extensionUi.context(() => replacement === this.runtime),
+			});
 		} catch (error) {
 			await replacement.dispose();
 			throw error;
@@ -848,6 +854,14 @@ export class RuntimeController {
 		this.llama.close();
 	}
 
+	respondExtensionUi(
+		requestId: string,
+		response: string | undefined,
+		cancelled: boolean,
+	): boolean {
+		return this.extensionUi.respond(requestId, response, cancelled);
+	}
+
 	async setModel(modelRef: string): Promise<boolean> {
 		return await this.models.set(modelRef);
 	}
@@ -866,6 +880,7 @@ export class RuntimeController {
 	}
 
 	private async disposeOwnedRuntimes(): Promise<void> {
+		this.extensionUi.cancelAll();
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.catalog.dispose();
@@ -1128,6 +1143,7 @@ export class RuntimeController {
 	}
 
 	private unbindSession(): void {
+		this.extensionUi.cancelAll();
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.resetCodexUsage();
@@ -1179,10 +1195,16 @@ export class RuntimeController {
 
 	private async bindSessionExtensions(): Promise<void> {
 		const runtime = this.runtime;
+		const generation = this.foregroundGeneration;
 		const session = runtime.session;
 		await sessionPerformance.measure("extensionBind", () =>
 			session.bindExtensions({
 				mode: "rpc",
+				uiContext: this.extensionUi.context(
+					() =>
+						runtime === this.runtime &&
+						generation === this.foregroundGeneration,
+				),
 				commandContextActions: {
 					waitForIdle: () => session.waitForIdle(),
 					newSession: (options) => runtime.newSession(options),

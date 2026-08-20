@@ -148,6 +148,14 @@ export class AgentHost {
 		this.runtime.closeLlama();
 	}
 
+	respondExtensionUi(
+		requestId: string,
+		response: string | undefined,
+		cancelled: boolean,
+	): boolean {
+		return this.runtime.respondExtensionUi(requestId, response, cancelled);
+	}
+
 	setModel(modelRef: string): Promise<boolean> {
 		return this.runtime.setModel(modelRef);
 	}

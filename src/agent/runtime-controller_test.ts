@@ -231,6 +231,8 @@ Deno.test("RuntimeController production path binds callbacks before activation",
 		dependencies: dependencies([fake]),
 	});
 	assertEquals(fake.calls, ["create", "bindExtensions"]);
+	assertEquals(fake.extensionBindings[0]?.mode, "rpc");
+	assertEquals(Boolean(fake.extensionBindings[0]?.uiContext), true);
 	assertEquals(fake.beforeInvalidate.length, 1);
 	assertEquals(fake.rebind.length, 1);
 	controller.activate();
