@@ -49,6 +49,7 @@ interface PiUiNamespace {
 		restore(): void;
 	};
 	pickers: {
+		fuzzyMatch(query: string, text: string): { matches: boolean; score: number };
 		isFileOpen(): boolean;
 		isOpen(): boolean;
 	};

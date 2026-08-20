@@ -23,7 +23,7 @@
 		"fmt": "deno task schema:build && ~/projects/dsfmt/target/release/dsfmt --write . && deno run --config tools/deno.json -A oxfmt",
 		"lint": "NODE_PATH=$PWD/tools/node_modules deno run --config tools/deno.json -A oxlint",
 		"lint:fix": "NODE_PATH=$PWD/tools/node_modules deno run --config tools/deno.json -A oxlint --fix",
-		"check": "deno task schema:check && deno check --conditions browser src/main.ts src/server-main.ts scripts/generate-config-schema.ts scripts/release.ts scripts/sync-client-dependencies.ts && deno check --config tools/deno.json rolldown.config.ts && deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
+		"check": "deno task schema:check && deno check --conditions browser src/main.ts src/server-main.ts scripts/generate-config-schema.ts scripts/release.ts scripts/sync-client-dependencies.ts && deno check --config tools/deno.json rolldown.config.ts && deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/pi-fuzzy.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
 		"test": "deno test --conditions browser -A",
 		"perf:architecture": "deno run --conditions browser -A src/perf/session-benchmark.ts",
 		"perf:compare": "deno run -A src/perf/compare-architecture-benchmarks.ts"
@@ -58,6 +58,7 @@
 		"@earendil-works/pi-ai": "npm:@earendil-works/pi-ai@^0.84.2",
 		"@earendil-works/pi-coding-agent": "npm:@earendil-works/pi-coding-agent@^0.84.2",
 		"@earendil-works/pi-tui": "npm:@earendil-works/pi-tui@^0.84.2",
+		"@earendil-works/pi-tui/dist/fuzzy.js": "npm:@earendil-works/pi-tui@0.84.2/dist/fuzzy.js",
 		"@kitajs/html": "npm:@kitajs/html@5.0.0-next.1",
 		"@pierre/diffs": "npm:@pierre/diffs@1.3.5",
 		"@pierre/trees": "npm:@pierre/trees@1.0.0-beta.6",

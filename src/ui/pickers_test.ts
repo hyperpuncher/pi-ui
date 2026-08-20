@@ -28,12 +28,14 @@ Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	assertStringIncludes(html, 'id="slash-picker-list"');
 	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'aria-selected="true"');
+	assertStringIncludes(html, 'data-slash-order="0"');
+	assertStringIncludes(html, 'data-slash-name="login"');
 	assertStringIncludes(html, "$prompt = '';");
 	assertStringIncludes(html, "@post('/prompt'");
 	assertStringIncludes(html, "payload: { prompt: &#34;/login&#34; }");
 });
 
-Deno.test("slash picker only opens while a command or skill matches", () => {
+Deno.test("slash picker uses pi fuzzy matching on command names", () => {
 	const expression = slashPickerOpenExpression(
 		appRenderSnapshot({
 			slashCommands: [
@@ -45,14 +47,13 @@ Deno.test("slash picker only opens while a command or skill matches", () => {
 
 	assertStringIncludes(expression, "$prompt.startsWith('/')");
 	assertStringIncludes(expression, "!$prompt.includes(' ')");
+	assertStringIncludes(expression, '["login","skill:review"].some');
 	assertStringIncludes(
 		expression,
-		'["login log in system","skill:review review code skill"].some',
+		"window.piUi.pickers.fuzzyMatch($prompt.slice(1), name).matches",
 	);
-	assertStringIncludes(
-		expression,
-		"candidate.includes($prompt.slice(1).toLowerCase())",
-	);
+	assertFalse(expression.includes("log in system"));
+	assertFalse(expression.includes("review code skill"));
 
 	const emptyExpression = slashPickerOpenExpression(
 		appRenderSnapshot({

@@ -24,11 +24,11 @@ const bottomAnchoredPickerClass =
 	"flex max-h-72 list-none flex-col-reverse overflow-y-auto p-1";
 
 export function slashPickerOpenExpression(state: AppStateSnapshot): string {
-	const haystacks = state.slashCommands.map(slashCommandHaystack);
+	const names = state.slashCommands.map(slashCommandName);
 	return `$prompt.startsWith('/') &&
 		!$prompt.includes(' ') &&
-		${JSON.stringify(haystacks)}.some((candidate) =>
-			candidate.includes($prompt.slice(1).toLowerCase())
+		${JSON.stringify(names)}.some((name) =>
+			window.piUi.pickers.fuzzyMatch($prompt.slice(1), name).matches
 		)`;
 }
 
@@ -39,32 +39,32 @@ export function renderSlashPicker(state: AppStateSnapshot): string {
 				{state.slashCommands.length === 0 ? (
 					<PickerEmpty>No prompts or skills found.</PickerEmpty>
 				) : (
-					state.slashCommands.map((item, index) =>
-						renderSlashRow(item, index === 0),
-					)
+					state.slashCommands.map((item, index) => renderSlashRow(item, index))
 				)}
 			</PickerList>
 		</div>,
 	);
 }
 
-function slashCommandHaystack(item: AppSlashCommand): string {
-	return `${item.name} ${item.description} ${item.source}`.toLowerCase();
+function slashCommandName(item: AppSlashCommand): string {
+	return item.name.toLowerCase();
 }
 
-function renderSlashRow(item: AppSlashCommand, selected: boolean): string {
+function renderSlashRow(item: AppSlashCommand, index: number): string {
 	const label = `/${item.name}`;
-	const haystack = slashCommandHaystack(item);
+	const name = slashCommandName(item);
 	return syncHtml(
 		<li
 			role="option"
 			tabindex="-1"
 			class="rounded-md aria-selected:bg-muted"
-			aria-selected={selected ? "true" : "false"}
+			aria-selected={index === 0 ? "true" : "false"}
 			data-slash-row
+			data-slash-name={name}
+			data-slash-order={index}
 			data-show={`
 				$_slashPickerOpen &&
-				(${JSON.stringify(haystack)}.includes($prompt.slice(1).toLowerCase()))
+				window.piUi.pickers.fuzzyMatch($prompt.slice(1), ${JSON.stringify(name)}).matches
 			`}
 		>
 			<button

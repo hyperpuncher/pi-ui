@@ -3,6 +3,7 @@ import {
 	preserveModelSearch,
 	restoreModelSearch,
 } from "../build/model-search.js";
+import { fuzzyFilter, fuzzyMatch } from "../build/pi-fuzzy.js";
 import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
 import * as dialogs from "./dialogs.js";
@@ -34,7 +35,7 @@ window.piUi = {
 	fileTransfer,
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
 	modelSearch: { preserve: preserveModelSearch, restore: restoreModelSearch },
-	pickers: { isFileOpen, isOpen: isPickerOpen },
+	pickers: { fuzzyMatch, isFileOpen, isOpen: isPickerOpen },
 	prompt: { clear: () => setPromptValue("") },
 	promptHistory,
 	sessionPerformance: { start: startSessionPerformanceMeasurement },
@@ -63,7 +64,7 @@ window.addEventListener("DOMContentLoaded", () => {
 	focusPromptEnd();
 	dialogs.bindDialogs();
 	bindPromptInteractions();
-	bindPickers();
+	bindPickers({ fuzzyFilter });
 	bindMessageScroll();
 	bindModelSearch();
 	bindSessionPerformance();

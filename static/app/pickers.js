@@ -12,6 +12,7 @@ let filePickerSuppressUntilInput = false;
 let filePickerObserver;
 let filePickerResetFrame;
 let searchTimer;
+let slashCommandFilter;
 let slashPickerResetFrame;
 
 export function extractFilePrefix(value, cursor) {
@@ -42,7 +43,8 @@ export function isOpen() {
 	return isFileOpen() || isSlashOpen();
 }
 
-export function bindPickers() {
+export function bindPickers(options) {
+	slashCommandFilter = options.fuzzyFilter;
 	document.addEventListener("input", syncFromPrompt);
 	document.addEventListener("keyup", syncFromPrompt);
 	document.addEventListener("click", handleClick);
@@ -58,6 +60,7 @@ export function bindPickers() {
 			subtree: true,
 		});
 	}
+	rankSlashCommands(promptValue());
 }
 
 function syncFromPrompt(event) {
@@ -70,6 +73,7 @@ function syncFromPrompt(event) {
 	if (filePickerSuppressUntilInput && event.type === "keyup") return;
 	if (event.type === "input") filePickerSuppressUntilInput = false;
 	queueFileSearch(event.target);
+	rankSlashCommands(event.target.value);
 	queueSlashPickerSelectionReset();
 }
 
@@ -257,6 +261,23 @@ function resetPicker(listId, rowSelector) {
 	const list = document.getElementById(listId);
 	if (list instanceof HTMLElement) list.scrollTop = 0;
 	selectDefaultPickerRow(rowSelector);
+}
+
+function rankSlashCommands(prompt) {
+	if (!prompt.startsWith("/") || prompt.includes(" ")) return;
+	const list = document.getElementById("slash-picker-list");
+	if (!(list instanceof HTMLElement)) return;
+	const rows = [...list.querySelectorAll("[data-slash-row]")].sort(
+		(left, right) =>
+			Number(left.dataset.slashOrder) - Number(right.dataset.slashOrder),
+	);
+	const ranked = slashCommandFilter(
+		rows,
+		prompt.slice(1),
+		(row) => row.dataset.slashName ?? "",
+	);
+	const matches = new Set(ranked);
+	list.append(...ranked, ...rows.filter((row) => !matches.has(row)));
 }
 
 function queueSlashPickerSelectionReset() {

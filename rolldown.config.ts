@@ -6,6 +6,7 @@ export default defineConfig((commandLineArgs) => {
 		input: {
 			"code-theme": "src/client/code-theme.ts",
 			"model-search": "static/app/model-search.js",
+			"pi-fuzzy": "src/client/pi-fuzzy.ts",
 			"pierre-worker": "src/client/pierre-worker.ts",
 			"workspace-review": "src/client/workspace-review.ts",
 		},
