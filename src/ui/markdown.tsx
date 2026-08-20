@@ -143,7 +143,10 @@ const safeLinksAndImages = defineHastPlugin({
 					return;
 				}
 				if (new URL(href, "http://pi-ui.local").protocol === "file:") {
-					ctx.setProperty(node, "data-pi-file-link", "");
+					// Keep the local URI out of href so the browser cannot attempt a
+					// forbidden file:// navigation when client-side handling is unavailable.
+					ctx.setProperty(node, "href", "#");
+					ctx.setProperty(node, "data-pi-file-link", href);
 				} else {
 					ctx.setProperty(node, "target", "_blank");
 					ctx.setProperty(node, "rel", "noreferrer");

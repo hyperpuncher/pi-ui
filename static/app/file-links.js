@@ -6,14 +6,14 @@ export function bindFileLinks() {
 			const link =
 				event.target instanceof Element ? event.target.closest("a[href]") : null;
 			if (!(link instanceof HTMLAnchorElement)) return;
-			if (!link.hasAttribute("data-pi-file-link") && !isFileUri(link.href)) {
-				return;
-			}
+			const markedUri = link.getAttribute("data-pi-file-link") ?? "";
+			const uri = isFileUri(markedUri) ? markedUri : link.href;
+			if (!isFileUri(uri)) return;
 
 			// File navigation is forbidden from the HTTP UI. Claim the click even if
 			// another client handler already prevented it, then delegate to the backend.
 			event.preventDefault();
-			void followFileLink(link.href);
+			void followFileLink(uri);
 		},
 		{ capture: true },
 	);
