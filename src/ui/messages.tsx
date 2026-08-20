@@ -452,160 +452,177 @@ function renderPlainTextLinks(text: string): string {
 }
 
 export function renderMessage(message: AppMessage, toolContinues = false): string {
-	if (message.role === "user") {
-		const imageAttachments =
-			message.attachments?.filter((attachment) => attachment.image) ?? [];
-		const fileAttachments =
-			message.attachments?.filter((attachment) => !attachment.image) ?? [];
-		return syncHtml(
-			<article
-				class="message message-user flex max-w-[min(32rem,72%)] flex-col items-end gap-2 self-end"
-				data-message-id={message.id}
-			>
-				{imageAttachments.length ? (
-					<div class="flex max-w-full flex-wrap justify-end gap-2">
-						{imageAttachments.map((attachment, index) => (
-							<div class="overflow-clip rounded-xl bg-primary p-1.5">
-								<img
-									class="max-h-72 max-w-full rounded-lg object-contain"
-									src={
-										attachment.image!.url ??
-										`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`
-									}
-									alt={attachment.name || `Attached image ${index + 1}`}
-									style="overflow-clip-margin: unset;"
-								/>
-							</div>
-						))}
-					</div>
-				) : (
-					""
-				)}
-				{fileAttachments.length ? (
-					<div class="flex max-w-full flex-wrap justify-end gap-2">
-						{fileAttachments.map(renderUserFileAttachment)}
-					</div>
-				) : (
-					""
-				)}
-				{message.text && (
-					<p
-						class="m-0 max-w-full rounded-xl bg-primary px-3.5 py-2.5 wrap-anywhere whitespace-pre-wrap text-primary-foreground"
-						safe
-					>
-						{message.text}
-					</p>
-				)}
-			</article>,
-		);
-	}
-
+	if (message.role === "user") return renderUserMessage(message);
 	if (message.role === "assistant" || message.role === "thought") {
-		return syncHtml(
-			<article
-				class={[
-					"message message-narrative markdown-content w-full self-start",
-					message.role === "assistant"
-						? "message-assistant"
-						: "message-thought pi-thought-foreground text-sm italic",
-				]}
-				data-message-id={message.id}
-				data-ignore-morph={preservesFinalizedMessageDom(message)}
-			>
-				<div>{message.renderedHtml ?? renderMarkdownStreaming(message.text)}</div>
-				{renderDeferredEnhancement(message)}
-			</article>,
-		);
+		return renderNarrativeMessage(message);
 	}
-
 	if (message.role === "system" || message.role === "notice") {
-		const isError = message.state === "error";
-		return syncHtml(
-			<article
-				class={[
-					"message message-narrative max-w-3xl self-start",
-					isError
-						? "message-system pi-error-foreground"
-						: message.role === "notice"
-							? "message-notice pi-warning-foreground"
-							: "message-system text-muted-foreground",
-				]}
-				data-message-id={message.id}
-				role={
-					isError ? "alert" : message.role === "notice" ? "status" : undefined
-				}
-			>
-				<p class="m-0 whitespace-pre-wrap">
-					{renderPlainTextLinks(message.text)}
-				</p>
-			</article>,
-		);
+		return renderSystemMessage(message);
 	}
-
 	if (message.role === "compaction" || message.role === "skill") {
-		const label = message.role === "compaction" ? "compaction" : "skill";
-		return syncHtml(
-			<article
-				class={[
-					"message pi-tool-timeline-item w-full self-start",
-					message.role === "compaction"
-						? "message-compaction"
-						: "message-skill",
-				]}
-				data-message-id={message.id}
-			>
-				<details class="group" data-preserve-attr="open">
-					<summary class="flex min-h-4.5 cursor-pointer list-none items-start gap-2 font-mono text-sm outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-						<span
-							class="pi-tool-state-dot inline-grid size-2"
+		return renderContextMessage(message);
+	}
+	return renderToolMessage(message, toolContinues);
+}
+
+function renderUserMessage(message: AppMessage): string {
+	const imageAttachments =
+		message.attachments?.filter((attachment) => attachment.image) ?? [];
+	const fileAttachments =
+		message.attachments?.filter((attachment) => !attachment.image) ?? [];
+	return syncHtml(
+		<article
+			class="message message-user flex max-w-[min(32rem,72%)] flex-col items-end gap-2 self-end"
+			data-message-id={message.id}
+		>
+			{imageAttachments.length ? (
+				<div class="flex max-w-full flex-wrap justify-end gap-2">
+					{imageAttachments.map((attachment, index) => (
+						<div class="overflow-clip rounded-xl bg-primary p-1.5">
+							<img
+								class="max-h-72 max-w-full rounded-lg object-contain"
+								src={
+									attachment.image!.url ??
+									`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`
+								}
+								alt={attachment.name || `Attached image ${index + 1}`}
+								style="overflow-clip-margin: unset;"
+							/>
+						</div>
+					))}
+				</div>
+			) : (
+				""
+			)}
+			{fileAttachments.length ? (
+				<div class="flex max-w-full flex-wrap justify-end gap-2">
+					{fileAttachments.map(renderUserFileAttachment)}
+				</div>
+			) : (
+				""
+			)}
+			{message.text && (
+				<p
+					class="m-0 max-w-full rounded-xl bg-primary px-3.5 py-2.5 wrap-anywhere whitespace-pre-wrap text-primary-foreground"
+					safe
+				>
+					{message.text}
+				</p>
+			)}
+		</article>,
+	);
+}
+
+function renderNarrativeMessage(message: AppMessage): string {
+	return syncHtml(
+		<article
+			class={[
+				"message message-narrative markdown-content w-full self-start",
+				message.role === "assistant"
+					? "message-assistant"
+					: "message-thought pi-thought-foreground text-sm italic",
+			]}
+			data-message-id={message.id}
+			data-ignore-morph={preservesFinalizedMessageDom(message)}
+		>
+			<div>{message.renderedHtml ?? renderMarkdownStreaming(message.text)}</div>
+			{renderDeferredEnhancement(message)}
+		</article>,
+	);
+}
+
+function renderSystemMessage(message: AppMessage): string {
+	const isError = message.state === "error";
+	return syncHtml(
+		<article
+			class={[
+				"message message-narrative max-w-3xl self-start",
+				isError
+					? "message-system pi-error-foreground"
+					: message.role === "notice"
+						? "message-notice pi-warning-foreground"
+						: "message-system text-muted-foreground",
+			]}
+			data-message-id={message.id}
+			role={isError ? "alert" : message.role === "notice" ? "status" : undefined}
+		>
+			<p class="m-0 whitespace-pre-wrap">{renderPlainTextLinks(message.text)}</p>
+		</article>,
+	);
+}
+
+function renderContextMessage(message: AppMessage): string {
+	const label = message.role === "compaction" ? "compaction" : "skill";
+	return syncHtml(
+		<article
+			class={[
+				"message pi-tool-timeline-item w-full self-start",
+				message.role === "compaction" ? "message-compaction" : "message-skill",
+			]}
+			data-message-id={message.id}
+		>
+			<details class="group" data-preserve-attr="open">
+				<summary class="flex min-h-4.5 cursor-pointer list-none items-start gap-2 font-mono text-sm outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+					<span class="pi-tool-state-dot inline-grid size-2" aria-hidden="true">
+						<span class="pi-tool-status-ball pi-tool-status-success" />
+					</span>
+					<span class="min-w-0 flex-1 leading-4.5 font-medium">
+						<span safe>{label}</span>
+						{message.meta && (
+							<span class="ml-2 font-normal text-muted-foreground" safe>
+								{message.meta}
+							</span>
+						)}
+					</span>
+					<span class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs text-muted-foreground">
+						<svg
+							class="size-3.5 rotate-180 transition-transform duration-150 ease-(--pi-ease-out) group-open:rotate-90 motion-reduce:transition-none"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
 							aria-hidden="true"
 						>
-							<span class="pi-tool-status-ball pi-tool-status-success" />
-						</span>
-						<span class="min-w-0 flex-1 leading-4.5 font-medium">
-							<span safe>{label}</span>
-							{message.meta && (
-								<span class="ml-2 font-normal text-muted-foreground" safe>
-									{message.meta}
-								</span>
-							)}
-						</span>
-						<span class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs text-muted-foreground">
-							<svg
-								class="size-3.5 rotate-180 transition-transform duration-150 ease-(--pi-ease-out) group-open:rotate-90 motion-reduce:transition-none"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								aria-hidden="true"
-							>
-								<path d="m9 18 6-6-6-6" />
-							</svg>
-						</span>
-					</summary>
-					<div class="pi-tool-output-surface p-3 text-sm text-muted-foreground">
-						<div class="markdown-content">
-							<div>
-								{message.renderedHtml ??
-									renderMarkdownStreaming(message.text)}
-							</div>
+							<path d="m9 18 6-6-6-6" />
+						</svg>
+					</span>
+				</summary>
+				<div class="pi-tool-output-surface p-3 text-sm text-muted-foreground">
+					<div class="markdown-content">
+						<div>
+							{message.renderedHtml ??
+								renderMarkdownStreaming(message.text)}
 						</div>
 					</div>
-				</details>
-			</article>,
-		);
-	}
+				</div>
+			</details>
+		</article>,
+	);
+}
 
-	const title = message.title ?? "Tool";
-	const hasToolBody = message.text.trim().length > 0;
-	const statusLabel =
-		message.state === "running"
-			? "Running"
-			: message.state === "error"
-				? "Failed"
-				: "Completed";
+function renderToolOutput(message: AppMessage) {
+	if (!message.text.trim()) return "";
+	if (message.format === "diff") return renderDiffOutput(message);
+	if (message.format === "code") return renderCodeOutput(message);
+	if (message.format === "output") return renderPlainOutput(message.text);
+	return renderPreOutput(message.text);
+}
+
+type ToolMessageStatus = {
+	state: "running" | "error" | "success";
+	label: "Running" | "Failed" | "Completed";
+};
+
+function toolMessageStatus(message: AppMessage): ToolMessageStatus {
+	if (message.state === "running") return { state: "running", label: "Running" };
+	if (message.state === "error") return { state: "error", label: "Failed" };
+	return { state: "success", label: "Completed" };
+}
+
+function renderToolMessage(message: AppMessage, toolContinues: boolean): string {
+	const status = toolMessageStatus(message);
 	return syncHtml(
 		<article
 			class="message message-tool pi-tool-timeline-item w-full self-start"
@@ -615,17 +632,11 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
 				<StatusDot
 					class="pi-tool-state-dot"
-					state={
-						message.state === "running"
-							? "running"
-							: message.state === "error"
-								? "error"
-								: "success"
-					}
-					label={statusLabel}
+					state={status.state}
+					label={status.label}
 				/>
 				<span class="min-w-0 flex-1 leading-4.5 font-medium wrap-anywhere">
-					{renderToolTitle(title, message.titleParts)}
+					{renderToolTitle(message.title ?? "Tool", message.titleParts)}
 				</span>
 				<span
 					class="ml-auto inline-flex h-4.5 min-w-[6ch] shrink-0 items-center justify-end text-xs font-normal text-muted-foreground tabular-nums"
@@ -635,15 +646,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 					{message.meta ?? ""}
 				</span>
 			</header>
-			{hasToolBody
-				? message.format === "diff"
-					? renderDiffOutput(message)
-					: message.format === "code"
-						? renderCodeOutput(message)
-						: message.format === "output"
-							? renderPlainOutput(message.text)
-							: renderPreOutput(message.text)
-				: ""}
+			{renderToolOutput(message)}
 			{renderDeferredEnhancement(message)}
 		</article>,
 	);
