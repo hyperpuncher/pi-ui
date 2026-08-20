@@ -372,14 +372,7 @@ export class RuntimeController {
 		const active = this.isCurrentRuntimeActive();
 		if (active || !persisted) {
 			const cwd = session.sessionManager.getCwd();
-			if (active && persisted) {
-				this.backgroundCurrentRuntime();
-			} else if (active) {
-				await this.discardTemporaryRuntime();
-			} else {
-				this.unbindSession();
-				await this.runtime.dispose();
-			}
+			await this.leaveCurrentRuntimeForReplacement();
 			this.state.resetChat();
 			const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
 				cwd,
@@ -420,16 +413,7 @@ export class RuntimeController {
 	private async createNewTemporarySession(): Promise<boolean> {
 		const previousSessionFile = this.runtime.session.sessionManager.getSessionFile();
 		const cwd = this.runtime.session.sessionManager.getCwd();
-		if (this.isCurrentRuntimeActive()) {
-			if (this.runtime.session.sessionManager.isPersisted()) {
-				this.backgroundCurrentRuntime();
-			} else {
-				await this.discardTemporaryRuntime();
-			}
-		} else {
-			this.unbindSession();
-			await this.runtime.dispose();
-		}
+		await this.leaveCurrentRuntimeForReplacement();
 
 		this.state.resetChat();
 		const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
@@ -970,6 +954,19 @@ export class RuntimeController {
 		});
 	}
 
+	private async leaveCurrentRuntimeForReplacement(): Promise<void> {
+		if (!this.isCurrentRuntimeActive()) {
+			this.unbindSession();
+			await this.runtime.dispose();
+			return;
+		}
+		if (this.runtime.session.sessionManager.isPersisted()) {
+			this.backgroundCurrentRuntime();
+			return;
+		}
+		await this.discardTemporaryRuntime();
+	}
+
 	private async discardTemporaryRuntime(): Promise<void> {
 		const runtime = this.runtime;
 		this.prompts.clear(runtime);
@@ -1098,16 +1095,7 @@ export class RuntimeController {
 	}
 
 	private async activateRuntime(backgroundSession: BackgroundSession): Promise<void> {
-		if (this.isCurrentRuntimeActive()) {
-			if (this.runtime.session.sessionManager.isPersisted()) {
-				this.backgroundCurrentRuntime();
-			} else {
-				await this.discardTemporaryRuntime();
-			}
-		} else {
-			this.unbindSession();
-			await this.runtime.dispose();
-		}
+		await this.leaveCurrentRuntimeForReplacement();
 		this.unsubscribeBackgroundSession(backgroundSession);
 		this.runtime = backgroundSession.runtime;
 		this.foregroundGeneration = backgroundSession.generation;
