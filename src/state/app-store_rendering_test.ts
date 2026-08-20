@@ -138,10 +138,7 @@ Deno.test("normal commits send the complete stable view for Datastar to morph", 
 	const state = createState();
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
-		const reader = response.body?.getReader();
-		if (!reader) throw new Error("Missing response body");
-		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		const reader = await openInitializedStateStream(state, controller.signal);
 
 		state.setSessionTransition({
 			status: "loading",
@@ -260,10 +257,7 @@ Deno.test("older messages use one targeted patch before restoring the anchor", a
 	);
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
-		const reader = response.body?.getReader();
-		if (!reader) throw new Error("Missing response body");
-		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		const reader = await openInitializedStateStream(state, controller.signal);
 
 		const ids = state.loadOlderMessages();
 		assertEqual(ids.length, 50);
@@ -455,10 +449,7 @@ Deno.test("nested state updates commit one fat morph and one signal patch", asyn
 	const state = createState();
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
-		const reader = response.body?.getReader();
-		if (!reader) throw new Error("Missing response body");
-		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		const reader = await openInitializedStateStream(state, controller.signal);
 		state.update(
 			() => {
 				state.setActivityText("Working...");
@@ -492,10 +483,7 @@ Deno.test("a thrown update still commits its completed mutations", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
-		const reader = response.body?.getReader();
-		if (!reader) throw new Error("Missing response body");
-		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		const reader = await openInitializedStateStream(state, controller.signal);
 		try {
 			state.update(() => {
 				state.workspacePath = "/tmp/committed-before-throw";
@@ -613,10 +601,7 @@ Deno.test("component morphs need no server refresh script", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
-		const reader = response.body?.getReader();
-		if (!reader) throw new Error("Missing response body");
-		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+		const reader = await openInitializedStateStream(state, controller.signal);
 		state.update(
 			() => {
 				state.setThinking("high", ["off", "high"]);
@@ -887,6 +872,16 @@ async function waitFor(complete: () => boolean): Promise<void> {
 		await Promise.resolve();
 	}
 	throw new Error("Expected asynchronous work did not complete");
+}
+
+async function openInitializedStateStream(
+	state: TestStore,
+	signal: AbortSignal,
+): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+	const reader = state.createStream(signal).body?.getReader();
+	if (!reader) throw new Error("Missing response body");
+	await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+	return reader;
 }
 
 async function readUntil(
