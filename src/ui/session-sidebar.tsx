@@ -1,6 +1,6 @@
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppSessionSummary } from "../state/app-store.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
+import type { AppSessionSummary, AppStateSnapshot } from "../state/app-store.ts";
+import { calendarDayDifference } from "../utils/date-time-format.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
@@ -198,12 +198,6 @@ function sessionDate(dateTime: string | undefined): Date | undefined {
 
 function localDateKey(date: Date): string {
 	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-}
-
-function calendarDayDifference(date: Date, now: Date): number {
-	const dateDay = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-	const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-	return Math.round((nowDay - dateDay) / 86_400_000);
 }
 
 function sessionGroupLabel(

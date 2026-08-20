@@ -30,7 +30,7 @@ export function formatExpandedDateTime(date: Date, locale?: string): string {
 	}).format(date);
 }
 
-function calendarDayDifference(date: Date, now: Date): number {
+export function calendarDayDifference(date: Date, now: Date): number {
 	const dateDay = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
 	const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
 	return Math.round((nowDay - dateDay) / 86_400_000);
