@@ -18,7 +18,7 @@ const components = [
 	["Textarea", "textarea"],
 	["Tooltip", "tooltip"],
 ] as const;
-const selectedSections = new Set(components.map(([section]) => section));
+const selectedSections = new Set<string>(components.map(([section]) => section));
 const source = await Deno.readTextFile(sourcePath);
 const sectionPattern = /^\s*\/\* ([^*]+) \*\/\s*$/gm;
 const sections = [...source.matchAll(sectionPattern)];

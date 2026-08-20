@@ -23,7 +23,10 @@
 		"fmt": "deno task schema:build && ~/projects/dsfmt/target/release/dsfmt --write . && deno run --config tools/deno.json -A oxfmt",
 		"lint": "NODE_PATH=$PWD/tools/node_modules deno run --config tools/deno.json -A oxlint",
 		"lint:fix": "NODE_PATH=$PWD/tools/node_modules deno run --config tools/deno.json -A oxlint --fix",
-		"check": "deno task schema:check && deno check --conditions browser src/main.ts src/server-main.ts scripts/generate-config-schema.ts scripts/release.ts scripts/sync-client-dependencies.ts && deno check --config tools/deno.json rolldown.config.ts && deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/pi-fuzzy.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
+		"check": "deno task schema:check && deno task check:app && deno task check:tools && deno task check:client",
+		"check:app": "deno check --conditions browser src/main.ts src/server-main.ts scripts/generate-config-schema.ts scripts/release.ts scripts/sync-client-dependencies.ts",
+		"check:tools": "deno check --config tools/deno.json rolldown.config.ts scripts/generate-basecoat-css.ts",
+		"check:client": "deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/pi-fuzzy.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
 		"test": "deno test --conditions browser -A",
 		"perf:architecture": "deno run --conditions browser -A src/perf/session-benchmark.ts",
 		"perf:compare": "deno run -A src/perf/compare-architecture-benchmarks.ts"
