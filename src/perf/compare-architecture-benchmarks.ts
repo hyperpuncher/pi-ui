@@ -36,6 +36,20 @@ const sessionFixtureSchema = Type.Object({
 	fullPatchCount: Type.Number(),
 	targetedPatchCount: Type.Number(),
 });
+const streamTopologyFixtureSchema = Type.Object({
+	clientCount: Type.Number(),
+	sessionCount: Type.Number(),
+	initialCompleteP50Ms: Type.Number(),
+	initialCompleteP95Ms: Type.Number(),
+	initialPatchCount: Type.Number(),
+	initialBytes: Type.Number(),
+	initialBatchZstdBytes: Type.Number(),
+	updateCompleteP50Ms: Type.Number(),
+	updateCompleteP95Ms: Type.Number(),
+	updatePatchCount: Type.Number(),
+	updateBytes: Type.Number(),
+	updateBatchZstdBytes: Type.Number(),
+});
 const architectureBenchmarkSchema = Type.Object({
 	type: Type.Literal("pi-ui-architecture-benchmark"),
 	schemaVersion: Type.Number(),
@@ -48,6 +62,10 @@ const architectureBenchmarkSchema = Type.Object({
 	}),
 	streamingFrames: Type.Array(streamingFrameSchema),
 	scheduler: Type.Array(schedulerSchema),
+	streamTopology: Type.Object({
+		fixtureStreamCount: Type.Number(),
+		fixtures: Type.Array(streamTopologyFixtureSchema),
+	}),
 	sessionLoading: Type.Object({ fixtures: Type.Array(sessionFixtureSchema) }),
 });
 const architectureBenchmarkValidator = Compile(architectureBenchmarkSchema);
@@ -221,6 +239,24 @@ function collectMetrics(benchmark: ArchitectureBenchmark): Map<string, number> {
 		const prefix = `scheduler/${scheduler.hz}Hz/${scheduler.renderCostMs}ms`;
 		metrics.set(`${prefix}/skippedDeadlines`, scheduler.skippedDeadlines);
 		metrics.set(`${prefix}/maximumTimerLatenessMs`, scheduler.maximumTimerLatenessMs);
+	}
+	for (const fixture of benchmark.streamTopology.fixtures) {
+		const prefix =
+			`topology/${fixture.clientCount}clients/` + `${fixture.sessionCount}sessions`;
+		for (const field of [
+			"initialCompleteP50Ms",
+			"initialCompleteP95Ms",
+			"initialPatchCount",
+			"initialBytes",
+			"initialBatchZstdBytes",
+			"updateCompleteP50Ms",
+			"updateCompleteP95Ms",
+			"updatePatchCount",
+			"updateBytes",
+			"updateBatchZstdBytes",
+		] as const) {
+			metrics.set(`${prefix}/${field}`, fixture[field]);
+		}
 	}
 	for (const fixture of benchmark.sessionLoading.fixtures) {
 		const prefix =

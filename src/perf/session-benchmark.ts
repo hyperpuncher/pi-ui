@@ -12,7 +12,7 @@ import type { AppMessage } from "../ui/render-state.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { sessionPerformance } from "./session-performance.ts";
 
-const architectureBenchmarkSchemaVersion = 1;
+const architectureBenchmarkSchemaVersion = 2;
 const supportedDisplayRates = [60, 75, 90, 100, 120, 144, 165, 240] as const;
 const streamingSamplesPerFrame = 8;
 const utf8Encoder = new TextEncoder();
@@ -401,6 +401,174 @@ async function benchmarkSessionRestores(
 	return fixtures;
 }
 
+type StreamPatchReader = {
+	reader: ReadableStreamDefaultReader<Uint8Array>;
+	decoder: TextDecoder;
+	buffer: string;
+};
+
+function patchReader(response: Response): StreamPatchReader {
+	const reader = response.body?.getReader();
+	if (!reader) throw new Error("Datastar response has no body");
+	return { reader, decoder: new TextDecoder(), buffer: "" };
+}
+
+async function nextElementPatch(stream: StreamPatchReader): Promise<string> {
+	while (true) {
+		const frames = stream.buffer.split("\n\n");
+		stream.buffer = frames.pop() ?? "";
+		const patch = frames.find((frame) =>
+			frame.startsWith("event: datastar-patch-elements\n"),
+		);
+		if (patch) return patch;
+		const chunk = await stream.reader.read();
+		if (chunk.done) throw new Error("Datastar stream ended before its next patch");
+		stream.buffer += stream.decoder.decode(chunk.value, { stream: true });
+	}
+}
+
+function generatedSessionCatalog(count: number) {
+	return Array.from({ length: count }, (_, index) => ({
+		path: `/sessions/${index}.jsonl`,
+		cwd: `/workspace/${index % 20}`,
+		title: `Session ${index}`,
+		subtitle: `${index + 1} messages`,
+		modified: `${index + 1} minutes ago`,
+	}));
+}
+
+type StreamTopologySample = {
+	initialCompleteMs: number;
+	initialPatchCount: number;
+	initialBytes: number;
+	initialBatchZstdBytes: number;
+	updateCompleteMs: number;
+	updatePatchCount: number;
+	updateBytes: number;
+	updateBatchZstdBytes: number;
+};
+
+async function benchmarkStreamTopology(samplesPerFixture: number) {
+	const fixtures = [];
+	for (const clientCount of [1, 2]) {
+		for (const sessionCount of [10, 100, 1_000]) {
+			const samples: StreamTopologySample[] = [];
+			for (let sample = 0; sample < samplesPerFixture; sample += 1) {
+				const state = new AppStore();
+				const sessions = generatedSessionCatalog(sessionCount);
+				state.setSessionCatalog(sessions);
+				const renderer = new UiRenderer(state, new DatastarClientHub());
+				const controllers = Array.from(
+					{ length: clientCount },
+					() => new AbortController(),
+				);
+				const initialStartedAt = performance.now();
+				const clients = controllers.map((controller) => ({
+					main: patchReader(renderer.createStream(controller.signal)),
+					pickers: patchReader(renderer.createPickersStream(controller.signal)),
+					sessions: patchReader(
+						renderer.createSessionStream(controller.signal),
+					),
+				}));
+				try {
+					const initialPatches = await Promise.all(
+						clients.flatMap((client) => [
+							nextElementPatch(client.main),
+							nextElementPatch(client.pickers),
+							nextElementPatch(client.sessions),
+						]),
+					);
+					const initialCompleteMs = performance.now() - initialStartedAt;
+
+					const updateStartedAt = performance.now();
+					state.update(
+						() => {
+							state.setActivityText("Benchmarking...");
+							state.setAuthDialog({
+								mode: "login",
+								phase: "providers",
+								providers: [
+									{
+										id: "fixture",
+										name: "Fixture",
+										authType: "api_key",
+									},
+								],
+								progress: [],
+							});
+							state.setSessionCatalog(
+								sessions.map((session, index) =>
+									index === 0
+										? {
+												...session,
+												backgroundStatus: "running" as const,
+											}
+										: session,
+								),
+							);
+						},
+						{ flush: true },
+					);
+					const updatePatches = await Promise.all(
+						clients.flatMap((client) => [
+							nextElementPatch(client.main),
+							nextElementPatch(client.main),
+							nextElementPatch(client.pickers),
+							nextElementPatch(client.sessions),
+						]),
+					);
+					const updateCompleteMs = performance.now() - updateStartedAt;
+					const bytes = (patches: readonly string[]) =>
+						utf8Encoder.encode(patches.join("\n\n")).byteLength;
+					samples.push({
+						initialCompleteMs,
+						initialPatchCount: initialPatches.length,
+						initialBytes: bytes(initialPatches),
+						initialBatchZstdBytes: batchZstdSize(initialPatches.join("\n\n")),
+						updateCompleteMs,
+						updatePatchCount: updatePatches.length,
+						updateBytes: bytes(updatePatches),
+						updateBatchZstdBytes: batchZstdSize(updatePatches.join("\n\n")),
+					});
+				} finally {
+					for (const controller of controllers) controller.abort();
+				}
+			}
+			const percentileField = (
+				key: "initialCompleteMs" | "updateCompleteMs",
+				fraction: number,
+			) =>
+				percentile(
+					samples.map((sample) => sample[key]),
+					fraction,
+				);
+			fixtures.push({
+				clientCount,
+				sessionCount,
+				initialCompleteP50Ms: percentileField("initialCompleteMs", 0.5),
+				initialCompleteP95Ms: percentileField("initialCompleteMs", 0.95),
+				initialPatchCount: Math.max(
+					...samples.map((sample) => sample.initialPatchCount),
+				),
+				initialBytes: Math.max(...samples.map((sample) => sample.initialBytes)),
+				initialBatchZstdBytes: Math.max(
+					...samples.map((sample) => sample.initialBatchZstdBytes),
+				),
+				updateCompleteP50Ms: percentileField("updateCompleteMs", 0.5),
+				updateCompleteP95Ms: percentileField("updateCompleteMs", 0.95),
+				updatePatchCount: Math.max(
+					...samples.map((sample) => sample.updatePatchCount),
+				),
+				updateBytes: Math.max(...samples.map((sample) => sample.updateBytes)),
+				updateBatchZstdBytes: Math.max(
+					...samples.map((sample) => sample.updateBatchZstdBytes),
+				),
+			});
+		}
+	}
+	return fixtures;
+}
+
 async function fixtureSizes(): Promise<number[]> {
 	const sessionPath = Deno.env.get("PI_UI_BENCH_SESSION");
 	if (!sessionPath) return [10, 50, 100, 200];
@@ -434,6 +602,10 @@ export async function runArchitectureBenchmark(
 		},
 		streamingFrames: benchmarkStreamingFrames(),
 		scheduler: benchmarkScheduler(),
+		streamTopology: {
+			fixtureStreamCount: 3,
+			fixtures: await benchmarkStreamTopology(samples),
+		},
 		sessionLoading: {
 			logicalOpenCountInstrumented: true,
 			sdkInternalReadsPerSessionOpenEstimate:
