@@ -7,8 +7,8 @@
 		"concurrently": "npm:concurrently@10.0.5",
 		"oxfmt": "npm:oxfmt@0.64.0",
 		"oxlint": "npm:oxlint@1.79.0",
-		"oxlint-tailwindcss": "npm:oxlint-tailwindcss@1.9.0",
-		"rolldown": "npm:rolldown@1.2.4",
+		"oxlint-tailwindcss": "npm:oxlint-tailwindcss@1.10.0",
+		"rolldown": "npm:rolldown@1.2.5",
 		"tailwindcss": "npm:tailwindcss@4.3.3"
 	},
 	"allowScripts": ["npm:@parcel/watcher@2.5.1"]
