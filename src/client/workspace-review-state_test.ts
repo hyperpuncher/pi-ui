@@ -4,6 +4,7 @@ import type { WorkspaceCommit, WorkspaceFileChange } from "../workspace-review-t
 import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
+	reconcileReviewAvailability,
 	reconcileSelection,
 	selectionForReviewOpen,
 } from "./workspace-review-state.ts";
@@ -22,6 +23,23 @@ function commit(hash: string): WorkspaceCommit {
 function change(path: string): WorkspaceFileChange {
 	return { additions: 1, deletions: 0, path, status: "modified" };
 }
+
+Deno.test("loading another workspace preserves Git view availability", () => {
+	assertEquals(
+		reconcileReviewAvailability(true, {
+			isGitRepository: false,
+			revision: "git-unloaded",
+		}),
+		true,
+	);
+	assertEquals(
+		reconcileReviewAvailability(true, {
+			isGitRepository: false,
+			revision: "non-git",
+		}),
+		false,
+	);
+});
 
 Deno.test("same-head refresh preserves unique older commits", () => {
 	const firstPage = Array.from({ length: 50 }, (_, index) => commit(`h${index}`));

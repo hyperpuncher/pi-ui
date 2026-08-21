@@ -42,6 +42,7 @@ import {
 import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
+	reconcileReviewAvailability,
 	reconcileSelection,
 	selectionForReviewOpen,
 	type Selection,
@@ -300,7 +301,9 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		historyGeneration++;
 		historyLoading = false;
 	}
-	visibility.setAvailable(snapshot.isGitRepository);
+	visibility.setAvailable(
+		reconcileReviewAvailability(visibility.isAvailable(), snapshot),
+	);
 	const nextWorkingItems = createItems(snapshot.changes, snapshot.patch, "working");
 	comments.reconcileItems(nextWorkingItems);
 	workingItems = withWorkingAnnotations(nextWorkingItems);
@@ -735,6 +738,7 @@ function createVisibility(
 	applyOpen(app.classList.contains("pi-review-open"));
 	return {
 		applyOpen,
+		isAvailable: () => available,
 		isOpen: () => open,
 		setAvailable(next: boolean) {
 			available = next;
