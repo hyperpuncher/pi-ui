@@ -756,6 +756,7 @@ Deno.test("server-owned view signals are transport-private", () => {
 		"_promptHistory",
 		"_sessionTransitionLoading",
 		"_sessionTransitionVisible",
+		"_workspaceReviewPreferences",
 	]);
 });
 
@@ -824,7 +825,7 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assert(displayClientId, "Display client ID is missing");
 	assertIncludes(html, `clientId: '${displayClientId}'`);
 	assertIncludes(html, "payload: {}");
-	assertNotIncludes(html, "filterSignals");
+	assertIncludes(html, "filterSignals");
 	const globalSignals = html.match(/<body[^>]*data-signals="([^"]+)"/)?.[1] ?? "";
 	assertIncludes(globalSignals, "_isBusy");
 	assertNotIncludes(globalSignals, "&#34;prompt&#34;");

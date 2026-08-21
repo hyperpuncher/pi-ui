@@ -12,12 +12,14 @@ import {
 import { FileTree } from "@pierre/trees";
 
 import { getPierreThemes, isPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
+import { isRecord } from "../utils/type-guards.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommitDetail,
 	type WorkspaceFileChange,
 	workspaceReviewHistoryPageSize,
 	isWorkspaceReviewSnapshot,
+	normalizeWorkspaceReviewPreferences,
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
@@ -57,7 +59,6 @@ if (codeThemeLight && codeThemeDark) {
 }
 const endpoint = document.body.dataset.workspaceReviewEndpoint ?? "";
 const api = createWorkspaceReviewApi(endpoint);
-const preferences = await api.readPreferences();
 
 window.addEventListener("pi-ui-code-theme-changed", (event) => {
 	if (!(event instanceof CustomEvent) || !isPierreThemes(event.detail)) return;
@@ -103,11 +104,12 @@ const submitCommentsButton = requiredButton("review-submit-comments");
 const commentStatus = requiredElement("review-comment-status");
 const data = requiredElement("workspace-review-data");
 
-const initialSnapshot = JSON.parse(data.textContent ?? "");
-if (!isWorkspaceReviewSnapshot(initialSnapshot)) {
-	throw new Error("Invalid initial workspace review snapshot");
+const initialData = JSON.parse(data.textContent ?? "");
+if (!isRecord(initialData) || !isWorkspaceReviewSnapshot(initialData.snapshot)) {
+	throw new Error("Invalid initial workspace review state");
 }
-let snapshot: WorkspaceReviewSnapshot = initialSnapshot;
+const preferences = normalizeWorkspaceReviewPreferences(initialData.preferences);
+let snapshot: WorkspaceReviewSnapshot = initialData.snapshot;
 let historyCommits = [...snapshot.commits];
 let historyHasMore = snapshot.commits.length === workspaceReviewHistoryPageSize;
 let historyLoading = false;
@@ -153,7 +155,8 @@ const reviewLayout = bindWorkspaceReviewLayout({
 	chat,
 	gitSeparator,
 	hasChanges: () => snapshot.changes.length > 0,
-	onCommit: (values) => api.writePreferences({ layout, mode, wrap, ...values }),
+	onCommit: (values) =>
+		writeWorkspaceReviewPreferences({ layout, mode, wrap, ...values }),
 	preferences,
 	reviewBody,
 	root,
@@ -247,7 +250,9 @@ const reviewData = new MutationObserver(() => {
 	if (!element) return;
 	try {
 		const value = JSON.parse(element.textContent ?? "");
-		if (isWorkspaceReviewSnapshot(value)) applySnapshot(value);
+		if (isRecord(value) && isWorkspaceReviewSnapshot(value.snapshot)) {
+			applySnapshot(value.snapshot);
+		}
 	} catch {
 		// A later stream morph can replace an incomplete payload.
 	}
@@ -771,7 +776,18 @@ function showEmpty(message?: string): void {
 }
 
 function writePreferences(): void {
-	api.writePreferences({ layout, mode, wrap, ...reviewLayout.values() });
+	writeWorkspaceReviewPreferences({
+		layout,
+		mode,
+		wrap,
+		...reviewLayout.values(),
+	});
+}
+
+function writeWorkspaceReviewPreferences(value: WorkspaceReviewPreferences): void {
+	document.body.dispatchEvent(
+		new CustomEvent("pi-ui-workspace-review-preferences", { detail: value }),
+	);
 }
 
 function updateWorkingAnnotations(path: string): void {

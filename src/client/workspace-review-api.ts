@@ -2,16 +2,11 @@ import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import {
 	isWorkspaceCommitDetail,
 	isWorkspaceCommitHistory,
-	normalizeWorkspaceReviewPreferences,
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
-	type WorkspaceReviewPreferences,
 } from "../workspace-review-types.ts";
 
 export function createWorkspaceReviewApi(endpoint: string) {
-	const preferencesEndpoint = `${endpoint}/preferences`;
-	let preferenceWrites = Promise.resolve();
-
 	return {
 		async loadCommit(hash: string): Promise<WorkspaceCommitDetail | undefined> {
 			try {
@@ -40,20 +35,6 @@ export function createWorkspaceReviewApi(endpoint: string) {
 			}
 		},
 
-		async readPreferences(): Promise<WorkspaceReviewPreferences> {
-			try {
-				const response = await fetch(preferencesEndpoint, {
-					cache: "no-store",
-					headers: { accept: "application/json" },
-					signal: AbortSignal.timeout(2_000),
-				});
-				if (!response.ok) return {};
-				return normalizeWorkspaceReviewPreferences(await response.json());
-			} catch {
-				return {};
-			}
-		},
-
 		async submitComments(
 			comments: readonly WorkspaceReviewComment[],
 		): Promise<boolean> {
@@ -67,23 +48,6 @@ export function createWorkspaceReviewApi(endpoint: string) {
 			} catch {
 				return false;
 			}
-		},
-
-		writePreferences(preferences: WorkspaceReviewPreferences): void {
-			const body = JSON.stringify(preferences);
-			preferenceWrites = preferenceWrites
-				.then(async () => {
-					const response = await fetch(preferencesEndpoint, {
-						body,
-						headers: { "content-type": "application/json" },
-						keepalive: true,
-						method: "POST",
-					});
-					if (!response.ok) {
-						throw new Error("Unable to save Git view preferences");
-					}
-				})
-				.catch(() => {});
 		},
 	};
 }

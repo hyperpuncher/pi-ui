@@ -3,32 +3,27 @@ import {
 	parseWorkspaceReviewComments,
 } from "../../workspace-review-comments.ts";
 import { normalizeWorkspaceReviewPreferences } from "../../workspace-review-types.ts";
+import { readActionSignals } from "../action-input.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
-import {
-	readWorkspaceReviewPreferences,
-	writeWorkspaceReviewPreferences,
-} from "../workspace-review-preferences.ts";
+import { writeWorkspaceReviewPreferences } from "../workspace-review-preferences.ts";
 import { readWorkspaceCommit, readWorkspaceHistory } from "../workspace-review.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>): void {
-	router.register("GET", endpoints.workspaceReviewPreferences, async () =>
-		Response.json(await readWorkspaceReviewPreferences(), {
-			headers: { "cache-control": "no-cache" },
-		}),
+	router.register(
+		"POST",
+		endpoints.workspaceReviewPreferences,
+		async (request, context) => {
+			const signals = await readActionSignals(request);
+			const preferences = normalizeWorkspaceReviewPreferences(
+				signals._workspaceReviewPreferences,
+			);
+			await writeWorkspaceReviewPreferences(preferences);
+			context.store.setWorkspaceReviewPreferences(preferences);
+			return new Response(null, { status: 204 });
+		},
 	);
-	router.register("POST", endpoints.workspaceReviewPreferences, async (request) => {
-		let value: unknown;
-		try {
-			value = await request.json();
-		} catch {
-			throw new RouteError(400, "Malformed Git view preferences.");
-		}
-		const preferences = normalizeWorkspaceReviewPreferences(value);
-		await writeWorkspaceReviewPreferences(preferences);
-		return new Response(null, { status: 204 });
-	});
 	router.register("POST", endpoints.workspaceReviewSubmit, async (request, context) => {
 		let value: unknown;
 		try {

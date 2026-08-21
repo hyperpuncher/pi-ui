@@ -32,6 +32,7 @@ import { SessionImageStore } from "./session-image-store.ts";
 import { createStaticAssetServer } from "./static-assets.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
+import { readWorkspaceReviewPreferences } from "./workspace-review-preferences.ts";
 
 const basecoatJsPath = fromFileUrl(
 	new URL("../../static/basecoat.vendor.js", import.meta.url),
@@ -40,14 +41,16 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const staticAssets = await createStaticAssetServer(staticRoot);
-	const [codeTheme, autoTitle] = await Promise.all([
+	const [codeTheme, autoTitle, workspaceReviewPreferences] = await Promise.all([
 		readCodeThemePreference(),
 		readAutoTitleConfig(),
+		readWorkspaceReviewPreferences(),
 	]);
 	setActiveCodeTheme(codeTheme);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
 	const localRequests = new WeakSet<Request>();
 	const store = new AppStore();
+	store.setWorkspaceReviewPreferences(workspaceReviewPreferences);
 	const sessionImages = new SessionImageStore();
 	const renderer = new UiRenderer(store, new DatastarClientHub(), {
 		registerImage: (image) => sessionImages.register(image),

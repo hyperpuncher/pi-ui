@@ -224,7 +224,10 @@ export class UiRenderer implements AppStorePresentation {
 			this.renderPickerElements(snapshot),
 			renderSessionPickerContent(snapshot),
 			renderSessionSidebarContent(snapshot),
-			renderWorkspaceReviewData(snapshot.workspaceReview),
+			renderWorkspaceReviewData(
+				snapshot.workspaceReview,
+				snapshot.workspaceReviewPreferences,
+			),
 		];
 	}
 	renderPickerElements(snapshot: AppStateSnapshot): string {

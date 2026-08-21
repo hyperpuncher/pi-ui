@@ -5,6 +5,7 @@ import type { JsonObject } from "../utils/json-types.ts";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
 import {
+	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 	unloadedWorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
@@ -190,6 +191,7 @@ export type AppStateSnapshot = Readonly<{
 	queuedFollowUpMessages: readonly string[];
 	workspacePath: string;
 	workspaceReview: WorkspaceReviewSnapshot;
+	workspaceReviewPreferences: WorkspaceReviewPreferences;
 	recentWorkspaces: readonly string[];
 	sessionTransition: SessionTransitionState;
 	debugUi: boolean;
@@ -264,6 +266,7 @@ export class AppStore {
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
 	workspaceReview = unloadedWorkspaceReviewSnapshot;
+	workspaceReviewPreferences: WorkspaceReviewPreferences = {};
 	recentWorkspaces: string[] = [];
 	private workspacePathListener: ((path: string) => void) | undefined;
 	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };
@@ -345,6 +348,7 @@ export class AppStore {
 			queuedFollowUpMessages: [...this.queuedFollowUpMessages],
 			workspacePath: this.workspacePath,
 			workspaceReview: structuredClone(this.workspaceReview),
+			workspaceReviewPreferences: { ...this.workspaceReviewPreferences },
 			recentWorkspaces: [...this.recentWorkspaces],
 			sessionTransition: { ...this.sessionTransition },
 			debugUi: this.debugUi,
@@ -665,6 +669,10 @@ export class AppStore {
 	setWorkspaceReview(value: WorkspaceReviewSnapshot): void {
 		if (this.workspaceReview.revision === value.revision) return;
 		this.workspaceReview = value;
+		this.commit();
+	}
+	setWorkspaceReviewPreferences(value: WorkspaceReviewPreferences): void {
+		this.workspaceReviewPreferences = value;
 		this.commit();
 	}
 	setSessionTransition(value: SessionTransitionState): void {

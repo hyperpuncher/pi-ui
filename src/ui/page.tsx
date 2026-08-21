@@ -133,6 +133,12 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 						payload: { clientId: '${displayClientId}', hz: evt.detail.hz },
 					})`}
 					data-on:pi-ui-session-performance={`@post('${endpoints.sessionPerformanceClient}', { payload: evt.detail })`}
+					data-on:pi-ui-workspace-review-preferences={`
+						$_workspaceReviewPreferences = evt.detail;
+						@post('${endpoints.workspaceReviewPreferences}', {
+							filterSignals: { include: /^_workspaceReviewPreferences$/ },
+						});
+					`}
 					data-signals__ifmissing={JSON.stringify({
 						_isDraggingFile: false,
 						_sessionLoading: false,
@@ -241,7 +247,10 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 									state.workspaceReview.isGitRepository,
 								)}
 							</section>
-							{renderWorkspaceReview(state.workspaceReview)}
+							{renderWorkspaceReview(
+								state.workspaceReview,
+								state.workspaceReviewPreferences,
+							)}
 						</div>
 					</div>
 

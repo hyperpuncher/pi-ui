@@ -1,10 +1,16 @@
 import { preloadFileTree, serializeFileTreeSsrPayload } from "@pierre/trees";
 
-import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
+import type {
+	WorkspaceReviewPreferences,
+	WorkspaceReviewSnapshot,
+} from "../workspace-review-types.ts";
 import { syncHtml } from "./sync-html.ts";
 
-export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string {
+export function renderWorkspaceReview(
+	snapshot: WorkspaceReviewSnapshot,
+	preferences: WorkspaceReviewPreferences,
+): string {
 	const tree = preloadFileTree({
 		...workspaceReviewTreeOptions,
 		gitStatus: snapshot.changes,
@@ -256,15 +262,18 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 				aria-label="Resize Git and chat"
 				aria-orientation="vertical"
 			/>
-			{renderWorkspaceReviewData(snapshot)}
+			{renderWorkspaceReviewData(snapshot, preferences)}
 		</section>,
 	);
 }
 
-export function renderWorkspaceReviewData(snapshot: WorkspaceReviewSnapshot): string {
+export function renderWorkspaceReviewData(
+	snapshot: WorkspaceReviewSnapshot,
+	preferences: WorkspaceReviewPreferences,
+): string {
 	return syncHtml(
 		<script id="workspace-review-data" type="application/json">
-			{JSON.stringify(snapshot).replaceAll("<", "\\u003c")}
+			{JSON.stringify({ preferences, snapshot }).replaceAll("<", "\\u003c")}
 		</script>,
 	);
 }
