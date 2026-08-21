@@ -125,13 +125,15 @@ export function renderPage(
 					data-files-pick-endpoint={endpoints.filesPick}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
-					data-display-refresh-endpoint={endpoints.displayRefresh}
-					data-display-client-id={displayClientId}
 					data-workspace-review-endpoint={endpoints.workspaceReview}
 					data-code-theme-endpoint={endpoints.codeTheme}
 					data-code-theme-light={codeThemes.light}
 					data-code-theme-dark={codeThemes.dark}
 					data-signals={initialSignals}
+					data-on:pi-ui-display-refresh={`@post('${endpoints.displayRefresh}', {
+						payload: { clientId: '${displayClientId}', hz: evt.detail.hz },
+					})`}
+					data-on:pi-ui-session-performance={`@post('${endpoints.sessionPerformanceClient}', { payload: evt.detail })`}
 					data-signals__ifmissing={JSON.stringify({
 						_isDraggingFile: false,
 						_sessionLoading: false,

@@ -1,4 +1,3 @@
-const endpoint = "/session-performance/client";
 let pending;
 
 export function bindSessionPerformance() {
@@ -63,12 +62,9 @@ function waitForTranscriptPaint(measurement, generation, morphAt) {
 					clickToMorphMs: morphAt - measurement.startedAt,
 					clickToPaintMs: performance.now() - measurement.startedAt,
 				};
-				void fetch(endpoint, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify(metrics),
-					keepalive: true,
-				});
+				document.body.dispatchEvent(
+					new CustomEvent("pi-ui-session-performance", { detail: metrics }),
+				);
 			});
 			return;
 		}

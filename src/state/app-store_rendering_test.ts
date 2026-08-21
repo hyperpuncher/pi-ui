@@ -791,9 +791,9 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 
 	assertIncludes(html, 'id="prompt-input"');
 	assertIncludes(html, 'data-native-file-picker="false"');
-	const displayClientId = html.match(/data-display-client-id="([^"]+)"/)?.[1];
+	const displayClientId = html.match(/\/stream\?clientId=([0-9a-f-]{36})/)?.[1];
 	assert(displayClientId, "Display client ID is missing");
-	assertIncludes(html, `/stream?clientId=${displayClientId}`);
+	assertIncludes(html, `clientId: '${displayClientId}'`);
 	assertIncludes(html, "payload: {}");
 	assertNotIncludes(html, "filterSignals");
 	const globalSignals = html.match(/<body[^>]*data-signals="([^"]+)"/)?.[1] ?? "";

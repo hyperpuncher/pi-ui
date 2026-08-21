@@ -95,9 +95,6 @@ export function createDisplayRefreshMonitor(options) {
 }
 
 export function bindDisplayRefreshMeasurement() {
-	const endpoint = document.body.dataset.displayRefreshEndpoint;
-	const clientId = document.body.dataset.displayClientId;
-	if (!endpoint || !clientId) return;
 	const monitor = createDisplayRefreshMonitor({
 		requestFrame: (callback) => requestAnimationFrame(callback),
 		cancelFrame: (id) => cancelAnimationFrame(id),
@@ -105,11 +102,9 @@ export function bindDisplayRefreshMeasurement() {
 		setTimer: (callback, delay) => setTimeout(callback, delay),
 		clearTimer: (id) => clearTimeout(id),
 		send: (hz) => {
-			void fetch(endpoint, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ clientId, hz }),
-			}).catch(() => undefined);
+			document.body.dispatchEvent(
+				new CustomEvent("pi-ui-display-refresh", { detail: { hz } }),
+			);
 		},
 	});
 	monitor.restart();
