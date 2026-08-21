@@ -242,16 +242,6 @@ export function renderPage(
 						</div>
 					</div>
 
-					<div
-						id="pickers-stream"
-						class="hidden"
-						data-init={`@get('${endpoints.pickersStream}', {
-						payload: {},
-						openWhenHidden: true,
-						requestCancellation: 'cleanup',
-					})`}
-					/>
-
 					{renderCommandMenu()}
 					{renderCodeThemeDialog()}
 					{renderAuthDialog(state.authDialog)}
@@ -387,11 +377,6 @@ export function renderPage(
 						class="command-dialog"
 						aria-label="Resume session"
 						data-signals:session-search__ifmissing="''"
-						data-init={`@get('${endpoints.sessionsStream}', {
-						payload: {},
-						openWhenHidden: true,
-						requestCancellation: 'cleanup',
-					})`}
 						onclick="if (event.target === this) this.close()"
 					>
 						<div class="command sm:max-w-xl" data-filter="manual">

@@ -1,7 +1,6 @@
 export const endpoints = {
 	root: "/",
 	stream: "/stream",
-	pickersStream: "/pickers/stream",
 	displayRefresh: "/display-refresh",
 	codeTheme: "/code-theme",
 	sessionPerformanceClient: "/session-performance/client",
@@ -14,7 +13,6 @@ export const endpoints = {
 	messagesEnhance: "/messages/enhance",
 	sessionsNew: "/sessions/new",
 	sessionsNewTemporary: "/sessions/new-temporary",
-	sessionsStream: "/sessions/stream",
 	sessionsSearch: "/sessions/search",
 	sessionsMore: "/sessions/more",
 	sessionsFavicon: "/sessions/favicon",

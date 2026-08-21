@@ -20,7 +20,4 @@ export function registerStreamRoutes(router: ExactRouter<RouteContext>): void {
 		}
 		return context.renderer.createStream(request.signal, clientId);
 	});
-	router.register("GET", endpoints.pickersStream, (request, context) =>
-		context.renderer.createPickersStream(request.signal),
-	);
 }

@@ -150,7 +150,6 @@ export interface AppStorePresentation {
 	messageUpdated(id: string): void;
 	streamingMessageStarted(id: string): void;
 	streamingMessageChanged(): void;
-	sessionsChanged(path?: string): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
 	transcriptReplacing(): void;
 	transcriptReplaced(
@@ -163,6 +162,8 @@ export type AppStateSnapshot = Readonly<{
 	messages: readonly TranscriptMessage[];
 	models: readonly AppModel[];
 	sessions: readonly AppSessionSummary[];
+	sessionSidebarSessions: readonly AppSessionSummary[];
+	sessionSidebarHasMore: boolean;
 	sessionCatalogLoading: boolean;
 	treeEntries: readonly AppTreeEntry[];
 	slashCommands: readonly AppSlashCommand[];
@@ -198,6 +199,7 @@ export type AppStateSnapshot = Readonly<{
 type AppStoreUpdateOptions = { flush?: boolean; commit?: boolean };
 
 const SESSION_PICKER_RECENT_LIMIT = 50;
+export const sessionSidebarPageSize = 30;
 
 const emptyChatHints: AppKeybindHint[] = [
 	...appCommandCatalog
@@ -238,6 +240,7 @@ export class AppStore {
 	sessions: AppSessionSummary[] = [];
 	sessionCatalogLoading = true;
 	private sessionIndex: AppSessionSummary[] | undefined;
+	private sessionSidebarLimit = sessionSidebarPageSize;
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	authDialog: AppAuthDialog | undefined;
@@ -297,6 +300,12 @@ export class AppStore {
 			messages: this.messages.map((message) => ({ ...message })),
 			models: this.models.map((model) => ({ ...model })),
 			sessions: this.sessions.map((session) => ({ ...session })),
+			sessionSidebarSessions: this.getSessionCatalog()
+				.slice(0, this.sessionSidebarLimit)
+				.map((session) => ({ ...session })),
+			sessionSidebarHasMore:
+				!this.sessionCatalogLoading &&
+				this.sessionSidebarLimit < this.getSessionCatalog().length,
 			sessionCatalogLoading: this.sessionCatalogLoading,
 			treeEntries: this.treeEntries.map((entry) => ({ ...entry })),
 			slashCommands: this.slashCommands.map((command) => ({ ...command })),
@@ -446,19 +455,23 @@ export class AppStore {
 	}
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
-		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setSessionCatalogLoading(loading: boolean): void {
 		if (this.sessionCatalogLoading === loading) return;
 		this.sessionCatalogLoading = loading;
-		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setSessionCatalog(sessions: AppSessionSummary[]): void {
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
-		this.presentation?.sessionsChanged();
+		this.commit();
+	}
+	loadMoreSessions(): void {
+		this.sessionSidebarLimit = Math.min(
+			this.sessionSidebarLimit + sessionSidebarPageSize,
+			this.getSessionCatalog().length,
+		);
 		this.commit();
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
@@ -469,7 +482,7 @@ export class AppStore {
 		const session = catalog.find((candidate) => candidate.path === path);
 		if (!session) return false;
 		if (catalog[0]?.path === path) {
-			if (options.regroup) this.presentation?.sessionsChanged();
+			if (options.regroup) this.commit();
 			return false;
 		}
 		this.sessionIndex = [
@@ -477,7 +490,6 @@ export class AppStore {
 			...catalog.filter((candidate) => candidate.path !== path),
 		];
 		this.sessions = this.sessionIndex.slice(0, SESSION_PICKER_RECENT_LIMIT);
-		this.presentation?.sessionsChanged(options.regroup ? undefined : path);
 		this.commit(options.regroup ? undefined : { type: "promote-session-row", path });
 		return true;
 	}
@@ -493,7 +505,7 @@ export class AppStore {
 		);
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
-		this.presentation?.sessionsChanged(path);
+		this.commit();
 		return true;
 	}
 	searchSessions(query: string): AppSessionSummary[] {
@@ -616,9 +628,6 @@ export class AppStore {
 	}
 	setActivityText(value: string | undefined): void {
 		this.transcript.setActivityText(value);
-		if (this.currentSessionPath) {
-			this.presentation?.sessionsChanged(this.currentSessionPath);
-		}
 		this.commit();
 	}
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void {
@@ -626,10 +635,7 @@ export class AppStore {
 		this.commit();
 	}
 	setCurrentSessionPath(value: string | undefined): void {
-		const previous = this.currentSessionPath;
 		this.currentSessionPath = value;
-		if (previous) this.presentation?.sessionsChanged(previous);
-		if (value) this.presentation?.sessionsChanged(value);
 		this.commit();
 	}
 	setTemporarySession(value: boolean): void {

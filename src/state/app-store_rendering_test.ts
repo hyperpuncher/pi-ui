@@ -152,7 +152,7 @@ Deno.test("normal commits send the complete stable view for Datastar to morph", 
 		assertIncludes(loading, 'id="session-transition"');
 		assertIncludes(loading, 'id="messages"');
 		assertIncludes(loading, 'id="prompt-toolbar"');
-		assertNotIncludes(loading, 'id="session-sidebar-content"');
+		assertIncludes(loading, 'id="session-sidebar-content"');
 
 		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
 		state.flush();
@@ -170,7 +170,7 @@ Deno.test("normal commits send the complete stable view for Datastar to morph", 
 		assertIncludes(idle, 'id="session-transition"');
 		assertIncludes(idle, 'id="messages"');
 		assertIncludes(idle, 'id="prompt-toolbar"');
-		assertNotIncludes(idle, 'id="session-sidebar-content"');
+		assertIncludes(idle, 'id="session-sidebar-content"');
 	} finally {
 		controller.abort();
 	}
@@ -527,7 +527,7 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 	assertEqual(state.activityText, "disconnected");
 });
 
-Deno.test("normal commits preserve expanded session pagination", async () => {
+Deno.test("normal commits preserve backend-owned session pagination", async () => {
 	const state = createState();
 	const sessions = Array.from({ length: 70 }, (_, index) => ({
 		path: `/sessions/${index}.jsonl`,
@@ -538,60 +538,37 @@ Deno.test("normal commits preserve expanded session pagination", async () => {
 	}));
 	state.setSessionCatalog(sessions);
 	state.setSessionCatalogLoading(false);
+	state.loadMoreSessions();
 	state.flush();
-	await settleMicrotasks();
+	assertEqual(state.snapshot().sessionSidebarSessions.length, 60);
+	assertEqual(state.snapshot().sessionSidebarHasMore, true);
+
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
-		const reader = response.body?.getReader();
-		if (!reader) throw new Error("Missing response body");
-		const initial = await readUntil(reader, (text) =>
-			text.includes("/sessions/more?limit=60"),
-		);
-		assertIncludes(initial, 'id="session-sidebar-content"');
-
+		const reader = await openInitializedStateStream(state, controller.signal);
 		state.setUsage({ text: "$2.000 • 2 tokens", costText: "$2.000" });
 		state.flush();
 		const unrelated = await readUntil(reader, (text) => text.includes("$2.000"));
-		assertNotIncludes(unrelated, 'id="session-sidebar-content"');
-		assertNotIncludes(unrelated, "/sessions/more");
+		assertIncludes(unrelated, 'id="session-sidebar-content"');
+		assertIncludes(unrelated, "Session 59");
+		assertNotIncludes(unrelated, "Session 60");
+		assertIncludes(unrelated, "@post('/sessions/more'");
 
 		state.updateSessionSummary(sessions[0].path, (session) => ({
 			...session,
 			title: "Updated active session",
 		}));
-		await settleMicrotasks();
-		const targeted = await readUntil(reader, (text) =>
+		state.flush();
+		const updated = await readUntil(reader, (text) =>
 			text.includes("Updated active session"),
 		);
-		assertIncludes(targeted, 'data: selector [id="session-sidebar-row-');
-		assertNotIncludes(targeted, 'id="session-sidebar-content"');
-		assertNotIncludes(targeted, "/sessions/more");
+		assertIncludes(updated, 'id="session-sidebar-content"');
 
-		state.setCurrentSessionPath(sessions[60].path);
-		await settleMicrotasks();
-		const deepSelection = await readUntil(reader, (text) =>
-			text.includes("Session 60"),
-		);
-		assertIncludes(deepSelection, 'data: selector [id="session-sidebar-row-');
-		assertNotIncludes(deepSelection, 'id="session-sidebar-content"');
-
-		state.promoteSession(sessions[10].path);
-		await settleMicrotasks();
-		const promoted = await readUntil(reader, (text) =>
-			text.includes("sessionSidebar.promoteRow"),
-		);
-		assertIncludes(promoted, 'data: selector [id="session-sidebar-row-');
-		assertNotIncludes(promoted, 'id="session-sidebar-content"');
-		assertNotIncludes(promoted, "/sessions/more");
-
-		state.promoteSession(sessions[10].path, { regroup: true });
-		await settleMicrotasks();
-		const regrouped = await readUntil(reader, (text) =>
-			text.includes('id="session-sidebar-content"'),
-		);
-		assertIncludes(regrouped, "/sessions/more?limit=60");
-		assertNotIncludes(regrouped, "sessionSidebar.promoteRow");
+		state.loadMoreSessions();
+		state.flush();
+		const complete = await readUntil(reader, (text) => text.includes("Session 69"));
+		assertNotIncludes(complete, "@post('/sessions/more'");
+		assertEqual(state.snapshot().sessionSidebarHasMore, false);
 	} finally {
 		controller.abort();
 	}
@@ -618,7 +595,7 @@ Deno.test("component morphs need no server refresh script", async () => {
 	}
 });
 
-Deno.test("dedicated session stream refreshes current and background statuses", async () => {
+Deno.test("app stream refreshes current and background session statuses", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	const first = {
@@ -636,7 +613,7 @@ Deno.test("dedicated session stream refreshes current and background statuses", 
 		modified: "earlier",
 	};
 	try {
-		const response = state.renderer.createSessionStream(controller.signal);
+		const response = state.renderer.createStream(controller.signal);
 		const reader = response.body?.getReader();
 		if (!reader) throw new Error("Missing response body");
 		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
@@ -669,7 +646,10 @@ Deno.test("dedicated session stream refreshes current and background statuses", 
 		);
 		assertIncludes(completed, 'id="session-menu-content"');
 		assertIncludes(completed, 'aria-current="true"');
-		assertNotIncludes(completed, 'aria-label="Current session running"');
+		assertNotIncludes(
+			completed.slice(completed.lastIndexOf('id="session-menu-content"')),
+			'aria-label="Current session running"',
+		);
 	} finally {
 		controller.abort();
 	}
@@ -727,17 +707,15 @@ Deno.test("server-owned view signals are transport-private", () => {
 	]);
 });
 
-Deno.test("primary and picker fat views contain every server-owned dynamic root", () => {
+Deno.test("one fat view contains every server-owned dynamic root", () => {
 	const previous = Deno.env.get("PI_UI_DEBUG");
 	Deno.env.set("PI_UI_DEBUG", "1");
 	try {
 		const store = new AppStore();
 		const renderer = new UiRenderer(store, new DatastarClientHub());
 		const snapshot = store.snapshot();
-		const primary = renderer.renderElements(renderer.projectState(snapshot));
-		const pickers = renderer.renderPickerElements(snapshot);
-		assertNotIncludes(primary + pickers, 'id="session-menu-content"');
-		assertIncludes(primary, 'id="debug-fps" data-ignore-morph');
+		const view = renderer.renderElements(renderer.projectState(snapshot));
+		assertIncludes(view, 'id="debug-fps" data-ignore-morph');
 		for (const id of [
 			"messages",
 			"prompt-action",
@@ -747,18 +725,17 @@ Deno.test("primary and picker fat views contain every server-owned dynamic root"
 			"workspace-picker",
 			"session-transition",
 			"debug-overlay",
-		])
-			assertIncludes(primary, `id="${id}"`);
-		for (const id of [
 			"auth-dialog-content",
+			"extension-dialog-content",
 			"llama-dialog-content",
 			"workspace-menu",
 			"model-picker",
 			"thinking-picker",
 			"slash-picker",
 			"tree-picker",
+			"session-menu-content",
 		])
-			assertIncludes(pickers, `id="${id}"`);
+			assertIncludes(view, `id="${id}"`);
 	} finally {
 		if (previous === undefined) Deno.env.delete("PI_UI_DEBUG");
 		else Deno.env.set("PI_UI_DEBUG", previous);

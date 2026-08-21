@@ -186,7 +186,7 @@ Deno.test("session sidebar initially renders 30 sessions and an infinite-scroll 
 	assertStringIncludes(html, "Session 30");
 	assertFalse(html.includes("Session 31"));
 	assertStringIncludes(html, "data-on-intersect__once");
-	assertStringIncludes(html, "/sessions/more?limit=60");
+	assertStringIncludes(html, "@post('/sessions/more'");
 	assertStringIncludes(html, "data-indicator:_session-page-loading");
 });
 

@@ -19,7 +19,6 @@ Deno.test("all server endpoints are registered through domain route modules", as
 	const expected = [
 		"GET /",
 		"GET /stream",
-		"GET /pickers/stream",
 		"POST /display-refresh",
 		"POST /code-theme",
 		"POST /session-performance/client",
@@ -32,9 +31,8 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /messages/enhance",
 		"POST /sessions/new",
 		"POST /sessions/new-temporary",
-		"GET /sessions/stream",
 		"GET /sessions/search",
-		"GET /sessions/more",
+		"POST /sessions/more",
 		"GET /sessions/favicon",
 		"GET /sessions/image",
 		"POST /sessions/background/abort",
@@ -194,7 +192,7 @@ Deno.test("older messages use a targeted persistent-stream patch", async () => {
 	assertEquals(revealedIds.length, 30);
 });
 
-Deno.test("older sessions load as a cumulative sidebar page", async () => {
+Deno.test("older sessions expand backend-owned sidebar state", async () => {
 	const context = fakeContext();
 	context.store.setSessionCatalog(
 		Array.from({ length: 51 }, (_, index) => ({
@@ -205,14 +203,15 @@ Deno.test("older sessions load as a cumulative sidebar page", async () => {
 			modified: "Today",
 		})),
 	);
-	const response = await createRouter(context).fetch(
-		new Request("http://localhost/sessions/more?limit=100"),
-	);
-	const body = await response.text();
+	assertEquals(context.store.snapshot().sessionSidebarSessions.length, 30);
 
-	assertEquals(response.status, 200);
-	assertStringIncludes(body, "Session 51");
-	assertStringExcludes(body, "data-on-intersect__once");
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/sessions/more", { method: "POST" }),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(context.store.snapshot().sessionSidebarSessions.length, 51);
+	assertEquals(context.store.snapshot().sessionSidebarHasMore, false);
 });
 
 Deno.test("session images are served separately from transcript HTML", async () => {

@@ -463,20 +463,12 @@ async function benchmarkStreamTopology(samplesPerFixture: number) {
 					() => new AbortController(),
 				);
 				const initialStartedAt = performance.now();
-				const clients = controllers.map((controller) => ({
-					main: patchReader(renderer.createStream(controller.signal)),
-					pickers: patchReader(renderer.createPickersStream(controller.signal)),
-					sessions: patchReader(
-						renderer.createSessionStream(controller.signal),
-					),
-				}));
+				const clients = controllers.map((controller) =>
+					patchReader(renderer.createStream(controller.signal)),
+				);
 				try {
 					const initialPatches = await Promise.all(
-						clients.flatMap((client) => [
-							nextElementPatch(client.main),
-							nextElementPatch(client.pickers),
-							nextElementPatch(client.sessions),
-						]),
+						clients.map(nextElementPatch),
 					);
 					const initialCompleteMs = performance.now() - initialStartedAt;
 
@@ -510,12 +502,7 @@ async function benchmarkStreamTopology(samplesPerFixture: number) {
 						{ flush: true },
 					);
 					const updatePatches = await Promise.all(
-						clients.flatMap((client) => [
-							nextElementPatch(client.main),
-							nextElementPatch(client.main),
-							nextElementPatch(client.pickers),
-							nextElementPatch(client.sessions),
-						]),
+						clients.map(nextElementPatch),
 					);
 					const updateCompleteMs = performance.now() - updateStartedAt;
 					const bytes = (patches: readonly string[]) =>
@@ -603,7 +590,7 @@ export async function runArchitectureBenchmark(
 		streamingFrames: benchmarkStreamingFrames(),
 		scheduler: benchmarkScheduler(),
 		streamTopology: {
-			fixtureStreamCount: 3,
+			fixtureStreamCount: 1,
 			fixtures: await benchmarkStreamTopology(samples),
 		},
 		sessionLoading: {

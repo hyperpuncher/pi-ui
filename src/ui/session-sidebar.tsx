@@ -17,14 +17,13 @@ import { syncHtml } from "./sync-html.ts";
 
 type SessionSidebarState = Pick<
 	AppStateSnapshot,
-	"activityText" | "currentSessionPath" | "sessionCatalogLoading" | "sessions"
+	| "activityText"
+	| "currentSessionPath"
+	| "sessionCatalogLoading"
+	| "sessionSidebarHasMore"
+	| "sessionSidebarSessions"
+	| "sessions"
 >;
-
-type SessionSidebarContentOptions = {
-	hasMoreSessions?: boolean;
-};
-
-export const sessionSidebarPageSize = 30;
 
 export function renderSessionSidebar(state: SessionSidebarState): string {
 	return syncHtml(
@@ -62,18 +61,9 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 	);
 }
 
-export function renderSessionSidebarContent(
-	state: SessionSidebarState,
-	options: SessionSidebarContentOptions = {},
-): string {
-	const sessions =
-		options.hasMoreSessions === undefined
-			? state.sessions.slice(0, sessionSidebarPageSize)
-			: state.sessions;
+export function renderSessionSidebarContent(state: SessionSidebarState): string {
+	const sessions = state.sessionSidebarSessions;
 	const groups = groupSessionsByDate(sessions);
-	const hasMoreSessions =
-		options.hasMoreSessions ??
-		(!state.sessionCatalogLoading && state.sessions.length >= sessionSidebarPageSize);
 	return syncHtml(
 		<div id="session-sidebar-content">
 			{groups.map((group) => (
@@ -107,43 +97,21 @@ export function renderSessionSidebarContent(
 					{loaderIcon()}
 				</div>
 			)}
-			{hasMoreSessions && renderSessionPageTrigger(sessions.length)}
+			{state.sessionSidebarHasMore && renderSessionPageTrigger()}
 		</div>,
 	);
-}
-
-export function renderSessionSidebarRowForPath(
-	state: SessionSidebarState,
-	path: string,
-): string | undefined {
-	for (const group of groupSessionsByDate(state.sessions)) {
-		const match = group.sessions.find(({ session }) => session.path === path);
-		if (match) {
-			return renderSessionSidebarRow(
-				match.session,
-				match.index,
-				state,
-				group.showRowDate,
-			);
-		}
-	}
 }
 
 export function sessionSidebarRowId(path: string): string {
 	return `session-sidebar-row-${encodeURIComponent(path)}`;
 }
 
-export function sessionSidebarRowSelector(path: string): string {
-	return `[id="${sessionSidebarRowId(path)}"]`;
-}
-
-function renderSessionPageTrigger(loadedCount: number) {
-	const nextLimit = loadedCount + sessionSidebarPageSize;
+function renderSessionPageTrigger() {
 	return (
 		<div
 			class="flex min-h-8 items-center justify-center text-muted-foreground"
 			data-indicator:_session-page-loading
-			data-on-intersect__once={`@get('${endpoints.sessionsMore}?limit=${nextLimit}', { payload: {} })`}
+			data-on-intersect__once={`@post('${endpoints.sessionsMore}', { payload: {} })`}
 		>
 			<span
 				data-show="$_sessionPageLoading"

@@ -301,6 +301,8 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	}
 	const shortcuts = renderSessionSidebar({
 		sessions: [session],
+		sessionSidebarSessions: [session],
+		sessionSidebarHasMore: false,
 		currentSessionPath: undefined,
 		activityText: undefined,
 		sessionCatalogLoading: false,
@@ -308,12 +310,12 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	assertStringIncludes(shortcuts, "evt.ctrlKey");
 });
 
-Deno.test("session picker command state morphs on its dedicated stream", async () => {
+Deno.test("session picker command state morphs on the app stream", async () => {
 	const state = new AppStore();
 	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const controller = new AbortController();
 	try {
-		const response = renderer.createSessionStream(controller.signal);
+		const response = renderer.createStream(controller.signal);
 		state.setSessionTransition({
 			status: "loading",
 			generation: 1,

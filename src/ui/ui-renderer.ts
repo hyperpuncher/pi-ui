@@ -34,12 +34,7 @@ import { renderPromptStatus } from "./prompt-status.tsx";
 import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import type { AppMessage } from "./render-state.ts";
 import type { AppRenderSnapshot } from "./render-state.ts";
-import {
-	renderSessionSidebarContent,
-	renderSessionSidebarRowForPath,
-	sessionSidebarRowId,
-	sessionSidebarRowSelector,
-} from "./session-sidebar.tsx";
+import { renderSessionSidebarContent, sessionSidebarRowId } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 
@@ -54,13 +49,6 @@ export class UiRenderer implements AppStorePresentation {
 	private commitScheduled = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
-	private readonly pickersHub = new DatastarClientHub(undefined, false);
-	private pickerHtml: string | undefined;
-	private readonly sessionHub = new DatastarClientHub(undefined, false);
-	private sessionPickerHtml: string | undefined;
-	private sessionCommitScheduled = false;
-	private replaceSessionSidebar = false;
-	private pendingSessionRows = new Set<string>();
 	private replaceTranscriptOnCommit = false;
 
 	constructor(
@@ -96,22 +84,6 @@ export class UiRenderer implements AppStorePresentation {
 			throw error;
 		}
 	}
-	createPickersStream(signal: AbortSignal): Response {
-		this.flush();
-		return this.pickersHub.createStream(signal, () => {
-			const elements = this.renderPickerElements(this.store.snapshot());
-			this.pickerHtml = elements;
-			return { elements, signals: "{}" };
-		});
-	}
-	createSessionStream(signal: AbortSignal): Response {
-		this.flush();
-		return this.sessionHub.createStream(signal, () => {
-			const elements = renderSessionPickerContent(this.store.snapshot());
-			this.sessionPickerHtml = elements;
-			return { elements, signals: "{}" };
-		});
-	}
 	beginUpdate(): void {
 		this.updateDepth += 1;
 	}
@@ -141,14 +113,6 @@ export class UiRenderer implements AppStorePresentation {
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
 		const state = this.store.snapshot();
-		const pickerScripts = this.pickerEffectScripts(effects);
-		if (this.pickersHub.clientCount > 0) {
-			const elements = this.renderPickerElements(state);
-			if (elements !== this.pickerHtml || pickerScripts.length > 0) {
-				this.pickerHtml = elements;
-				this.pickersHub.patchView(elements, "{}", pickerScripts);
-			}
-		}
 		if (this.hub.clientCount > 0) {
 			const snapshot = this.projectState(state);
 			const regions = this.renderElementRegions(snapshot, false);
@@ -158,17 +122,13 @@ export class UiRenderer implements AppStorePresentation {
 			this.hub.patchView(
 				(replaceTranscript ? regions.slice(1) : regions).join(""),
 				this.renderSignals(snapshot, this.effectSignalOverrides(effects)),
-				this.mainEffectScripts(effects),
+				[
+					...this.mainEffectScripts(effects),
+					...this.pickerEffectScripts(effects),
+				],
 			);
 		}
 		this.replaceTranscriptOnCommit = false;
-		if (this.sessionHub.clientCount > 0) {
-			const elements = renderSessionPickerContent(state);
-			if (elements !== this.sessionPickerHtml) {
-				this.sessionPickerHtml = elements;
-				this.sessionHub.patchElement(elements, "#session-menu-content");
-			}
-		}
 		for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
 	messageAppended(id: string): void {
@@ -187,49 +147,6 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	streamingMessageChanged(): void {
 		this.messages.streamingMessageChanged();
-	}
-	sessionsChanged(path?: string): void {
-		if (path) this.pendingSessionRows.add(path);
-		else this.replaceSessionSidebar = true;
-		this.scheduleSessionCommit();
-	}
-	private scheduleSessionCommit(): void {
-		if (this.sessionCommitScheduled) return;
-		this.sessionCommitScheduled = true;
-		queueMicrotask(() => {
-			this.sessionCommitScheduled = false;
-			const replaceSidebar = this.replaceSessionSidebar;
-			this.replaceSessionSidebar = false;
-			const rowPaths = [...this.pendingSessionRows];
-			this.pendingSessionRows.clear();
-			const snapshot = this.store.snapshot();
-			if (this.hub.clientCount > 0) {
-				if (replaceSidebar) {
-					this.hub.patchElement(
-						renderSessionSidebarContent(snapshot),
-						"#session-sidebar-content",
-					);
-				} else {
-					const rowState = {
-						activityText: snapshot.activityText,
-						currentSessionPath: snapshot.currentSessionPath,
-						sessionCatalogLoading: snapshot.sessionCatalogLoading,
-						sessions: this.store.getSessionCatalog(),
-					};
-					for (const path of rowPaths) {
-						const row = renderSessionSidebarRowForPath(rowState, path);
-						if (row) {
-							this.hub.patchElement(row, sessionSidebarRowSelector(path));
-						}
-					}
-				}
-			}
-			if (this.sessionHub.clientCount === 0) return;
-			const elements = renderSessionPickerContent(snapshot);
-			if (elements === this.sessionPickerHtml) return;
-			this.sessionPickerHtml = elements;
-			this.sessionHub.patchElement(elements, "#session-menu-content");
-		});
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
 		this.messages.assistantFinished(ids);
@@ -299,6 +216,9 @@ export class UiRenderer implements AppStorePresentation {
 			renderWorkspacePicker(snapshot),
 			renderSessionTransition(snapshot),
 			renderDebugOverlay(snapshot),
+			this.renderPickerElements(snapshot),
+			renderSessionPickerContent(snapshot),
+			renderSessionSidebarContent(snapshot),
 		];
 	}
 	renderPickerElements(snapshot: AppStateSnapshot): string {
@@ -325,9 +245,7 @@ export class UiRenderer implements AppStorePresentation {
 		includeFinalMessageHtml = true,
 	): RenderedView {
 		return {
-			elements:
-				this.renderElements(snapshot, includeFinalMessageHtml) +
-				renderSessionSidebarContent(snapshot),
+			elements: this.renderElements(snapshot, includeFinalMessageHtml),
 			signals: this.renderSignals(snapshot, overrides),
 		};
 	}
