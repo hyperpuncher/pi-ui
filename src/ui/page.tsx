@@ -126,7 +126,6 @@ export function renderPage(
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-workspace-review-endpoint={endpoints.workspaceReview}
-					data-code-theme-endpoint={endpoints.codeTheme}
 					data-code-theme-light={codeThemes.light}
 					data-code-theme-dark={codeThemes.dark}
 					data-signals={initialSignals}

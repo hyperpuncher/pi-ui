@@ -14,6 +14,11 @@ let appearance: CodeThemeAppearance = "light";
 
 window.addEventListener("pi-ui-open-code-theme", open);
 window.addEventListener("DOMContentLoaded", bind);
+window.piUi.codeTheme = {
+	apply: applyThemeSelection,
+	begin: beginThemeSelection,
+	fail: failThemeSelection,
+};
 
 function bind(): void {
 	const dialog = themeDialog();
@@ -26,11 +31,6 @@ function bind(): void {
 	)
 		return;
 
-	gallery.addEventListener("click", (event) => {
-		if (!(event.target instanceof Element)) return;
-		const card = event.target.closest<HTMLButtonElement>("[data-theme-name]");
-		if (card) void selectTheme(card);
-	});
 	search.addEventListener("input", () => filterCards(gallery, search.value));
 	for (const button of dialog.querySelectorAll<HTMLButtonElement>(
 		"[data-code-theme-mode]",
@@ -141,40 +141,45 @@ function renderPreview(
 	preview.append(code);
 }
 
-async function selectTheme(card: HTMLButtonElement): Promise<void> {
-	if (saving || card.getAttribute("aria-pressed") === "true") return;
+function beginThemeSelection(card: CodeThemeCard): boolean {
+	if (saving || card.getAttribute("aria-pressed") === "true") return false;
 	const name = card.dataset.themeName;
 	const mode = themeAppearance(card.dataset.themeAppearance);
-	const endpoint = document.body.dataset.codeThemeEndpoint;
-	if (!name || !mode || !endpoint) return;
+	if (!name || !mode) return false;
 
 	saving = true;
 	setCardsDisabled(true);
 	setStatus(`Applying ${card.dataset.themeLabel ?? name}…`);
-	try {
-		const response = await fetch(endpoint, {
-			body: JSON.stringify({ appearance: mode, name }),
-			headers: { "content-type": "application/json" },
-			method: "POST",
-		});
-		if (!response.ok) throw new Error("Theme was not saved");
-		const themes = await response.json();
-		if (!isPierreThemes(themes)) throw new Error("Invalid theme response");
-		document.body.dataset.codeThemeLight = themes.light;
-		document.body.dataset.codeThemeDark = themes.dark;
-		updateSelection(mode, name);
-		window.dispatchEvent(
-			new CustomEvent("pi-ui-code-theme-changed", {
-				detail: themes,
-			}),
-		);
-		setStatus(`Applied ${card.dataset.themeLabel ?? name}`);
-	} catch {
-		setStatus("Could not apply theme. Try again.");
-	} finally {
-		saving = false;
-		setCardsDisabled(false);
-	}
+	return true;
+}
+
+function applyThemeSelection(
+	light: string,
+	dark: string,
+	appearanceValue: string,
+	name: string,
+): void {
+	const mode = themeAppearance(appearanceValue);
+	const themes = { light, dark };
+	if (!mode || !name || !isPierreThemes(themes)) return;
+
+	document.body.dataset.codeThemeLight = themes.light;
+	document.body.dataset.codeThemeDark = themes.dark;
+	updateSelection(mode, name);
+	window.dispatchEvent(new CustomEvent("pi-ui-code-theme-changed", { detail: themes }));
+	const card = document.querySelector<HTMLButtonElement>(
+		`[data-theme-appearance="${mode}"][data-theme-name="${CSS.escape(name)}"]`,
+	);
+	setStatus(`Applied ${card?.dataset.themeLabel ?? name}`);
+	saving = false;
+	setCardsDisabled(false);
+}
+
+function failThemeSelection(): void {
+	if (!saving) return;
+	saving = false;
+	setCardsDisabled(false);
+	setStatus("Could not apply theme. Try again.");
 }
 
 function updateSelection(mode: CodeThemeAppearance, name: string): void {

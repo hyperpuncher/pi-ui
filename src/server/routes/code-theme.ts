@@ -2,26 +2,22 @@ import { preloadHighlighter } from "@pierre/diffs";
 
 import { findCodeTheme } from "../../code-themes.ts";
 import { getPierreThemes, setActiveCodeTheme } from "../../pierre-theme.ts";
-import { isRecord } from "../../utils/type-guards.ts";
+import { enumField, readActionSignals, requiredString } from "../action-input.ts";
 import { writeCodeThemePreference } from "../code-theme-preferences.ts";
+import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 export function registerCodeThemeRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("POST", endpoints.codeTheme, async (request, context) => {
-		let value: Parameters<typeof isRecord>[0];
-		try {
-			value = await request.json();
-		} catch {
-			throw new RouteError(400, "Malformed code theme preference.");
-		}
-		const record = isRecord(value) ? value : undefined;
-		const appearance = record?.appearance;
-		if (appearance !== "light" && appearance !== "dark") {
-			throw new RouteError(400, "Unknown code theme appearance.");
-		}
-		const theme = findCodeTheme(appearance, record?.name);
+		const signals = await readActionSignals(request);
+		const appearance = enumField(signals, "codeThemeAppearance", [
+			"light",
+			"dark",
+		] as const);
+		const name = requiredString(signals, "codeThemeName");
+		const theme = findCodeTheme(appearance, name);
 		if (!theme) throw new RouteError(400, "Unknown code theme.");
 
 		await preloadHighlighter({ langs: [], themes: [theme.name] });
@@ -29,6 +25,16 @@ export function registerCodeThemeRoutes(router: ExactRouter<RouteContext>): void
 		await writeCodeThemePreference(themes);
 		setActiveCodeTheme(themes);
 		context.renderer.codeThemeChanged();
-		return Response.json(themes);
+		return datastarResponse([
+			{
+				type: "signals",
+				signals: {
+					_codeThemeLight: themes.light,
+					_codeThemeDark: themes.dark,
+					_codeThemeAppliedAppearance: appearance,
+					_codeThemeAppliedName: theme.name,
+				},
+			},
+		]);
 	});
 }
