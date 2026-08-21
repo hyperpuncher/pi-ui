@@ -330,8 +330,8 @@ Deno.test("workspace review comments are sent to the current agent session", asy
 		}),
 	});
 	const response = await createRouter(context).fetch(
-		new Request("http://localhost/workspace/review/submit", {
-			body: JSON.stringify({
+		signalRequest("/workspace/review/submit", {
+			_workspaceReviewComments: {
 				comments: [
 					{
 						body: "handle this case",
@@ -342,12 +342,11 @@ Deno.test("workspace review comments are sent to the current agent session", asy
 						startSide: "additions",
 					},
 				],
-			}),
-			headers: { "content-type": "application/json" },
-			method: "POST",
+			},
 		}),
 	);
-	assertEquals(response.status, 204);
+	assertEquals(response.status, 200);
+	assertStringIncludes(await response.text(), "pi-ui-workspace-review-submitted");
 	assertEquals(
 		prompt,
 		"address the following review comments:\n\n" +
@@ -357,10 +356,8 @@ Deno.test("workspace review comments are sent to the current agent session", asy
 
 Deno.test("workspace review comments reject malformed input", async () => {
 	const response = await createRouter(fakeContext()).fetch(
-		new Request("http://localhost/workspace/review/submit", {
-			body: JSON.stringify({ comments: [] }),
-			headers: { "content-type": "application/json" },
-			method: "POST",
+		signalRequest("/workspace/review/submit", {
+			_workspaceReviewComments: { comments: [] },
 		}),
 	);
 	assertEquals(response.status, 400);

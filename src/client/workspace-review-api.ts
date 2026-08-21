@@ -1,4 +1,3 @@
-import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import {
 	isWorkspaceCommitDetail,
 	isWorkspaceCommitHistory,
@@ -32,21 +31,6 @@ export function createWorkspaceReviewApi(endpoint: string) {
 				return isWorkspaceCommitHistory(value) ? value : undefined;
 			} catch {
 				return undefined;
-			}
-		},
-
-		async submitComments(
-			comments: readonly WorkspaceReviewComment[],
-		): Promise<boolean> {
-			try {
-				const response = await fetch(`${endpoint}/submit`, {
-					body: JSON.stringify({ comments }),
-					headers: { "content-type": "application/json" },
-					method: "POST",
-				});
-				return response.ok;
-			} catch {
-				return false;
 			}
 		},
 	};

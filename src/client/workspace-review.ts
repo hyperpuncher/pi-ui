@@ -13,6 +13,7 @@ import { FileTree } from "@pierre/trees";
 
 import { getPierreThemes, isPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
 import { isRecord } from "../utils/type-guards.ts";
+import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommitDetail,
@@ -135,7 +136,7 @@ const comments = createWorkspaceReviewComments({
 		window.piUi.messageScroll.scrollBottom();
 	},
 	status: commentStatus,
-	submit: api.submitComments,
+	submit: submitWorkspaceReviewComments,
 	submitButton: submitCommentsButton,
 });
 let workingItems = withWorkingAnnotations(
@@ -781,6 +782,27 @@ function writePreferences(): void {
 		mode,
 		wrap,
 		...reviewLayout.values(),
+	});
+}
+
+function submitWorkspaceReviewComments(
+	comments: readonly WorkspaceReviewComment[],
+): Promise<boolean> {
+	return new Promise((resolve) => {
+		const timeout = setTimeout(() => resolve(false), 10_000);
+		window.addEventListener(
+			"pi-ui-workspace-review-submitted",
+			() => {
+				clearTimeout(timeout);
+				resolve(true);
+			},
+			{ once: true },
+		);
+		document.body.dispatchEvent(
+			new CustomEvent("pi-ui-workspace-review-submit", {
+				detail: { comments },
+			}),
+		);
 	});
 }
 

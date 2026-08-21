@@ -27,7 +27,8 @@ export type ClientEffect =
 	| { type: "refresh-session-picker" }
 	| { type: "refresh-workspace-picker" }
 	| { type: "close-workspace-picker" }
-	| { type: "session-deleted" };
+	| { type: "session-deleted" }
+	| { type: "workspace-review-submitted" };
 
 export type DatastarEvent =
 	| {
@@ -101,6 +102,8 @@ function clientEffectScript(effect: ClientEffect): string {
 			return "document.getElementById('workspace-dialog')?.close()";
 		case "session-deleted":
 			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.basecoat.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
+		case "workspace-review-submitted":
+			return "window.dispatchEvent(new CustomEvent('pi-ui-workspace-review-submitted'))";
 	}
 }
 

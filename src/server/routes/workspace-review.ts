@@ -4,6 +4,7 @@ import {
 } from "../../workspace-review-comments.ts";
 import { normalizeWorkspaceReviewPreferences } from "../../workspace-review-types.ts";
 import { readActionSignals } from "../action-input.ts";
+import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import { writeWorkspaceReviewPreferences } from "../workspace-review-preferences.ts";
 import { readWorkspaceCommit, readWorkspaceHistory } from "../workspace-review.ts";
@@ -25,15 +26,10 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 		},
 	);
 	router.register("POST", endpoints.workspaceReviewSubmit, async (request, context) => {
-		let value: unknown;
-		try {
-			value = await request.json();
-		} catch {
-			throw new RouteError(400, "Malformed review comments.");
-		}
+		const signals = await readActionSignals(request);
 		let comments;
 		try {
-			comments = parseWorkspaceReviewComments(value);
+			comments = parseWorkspaceReviewComments(signals._workspaceReviewComments);
 		} catch (error) {
 			throw new RouteError(
 				400,
@@ -43,7 +39,9 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 		if (!(await requireHost(context).prompt(formatWorkspaceReviewPrompt(comments)))) {
 			throw new RouteError(409, "Review comments were not accepted.");
 		}
-		return new Response(null, { status: 204 });
+		return datastarResponse([
+			{ type: "effect", effect: { type: "workspace-review-submitted" } },
+		]);
 	});
 	router.register("GET", endpoints.workspaceReviewCommit, async (request, context) => {
 		const hash = new URL(request.url).searchParams.get("hash") ?? "";
