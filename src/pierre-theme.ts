@@ -12,8 +12,8 @@ export function isPierreThemes<Value>(value: Value): value is Value & PierreThem
 }
 
 export const DEFAULT_PIERRE_THEMES: PierreThemes = {
-	dark: "pierre-dark",
-	light: "pierre-light-soft",
+	dark: "pierre-dark-soft",
+	light: "pierre-light",
 };
 
 let activeThemes = DEFAULT_PIERRE_THEMES;

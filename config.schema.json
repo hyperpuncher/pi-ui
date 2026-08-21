@@ -96,7 +96,7 @@
 						"vitesse-black",
 						"vitesse-dark"
 					],
-					"default": "pierre-dark"
+					"default": "pierre-dark-soft"
 				},
 				"light": {
 					"type": "string",
@@ -128,7 +128,7 @@
 						"solarized-light",
 						"vitesse-light"
 					],
-					"default": "pierre-light-soft"
+					"default": "pierre-light"
 				}
 			},
 			"description": "Code themes selected for each appearance.",
