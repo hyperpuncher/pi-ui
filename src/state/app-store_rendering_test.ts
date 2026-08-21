@@ -574,6 +574,30 @@ Deno.test("normal commits preserve backend-owned session pagination", async () =
 	}
 });
 
+Deno.test("initial streams reopen active backend dialogs", async () => {
+	const state = createState();
+	state.setAuthDialog({
+		mode: "login",
+		phase: "providers",
+		providers: [],
+		progress: [],
+	});
+	state.flush();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		const output = await readUntil(
+			reader,
+			(text) => text.includes("auth-dialog") && text.includes("showModal"),
+		);
+		assertIncludes(output, "if (dialog && !dialog.open) dialog.showModal()");
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("component morphs need no server refresh script", async () => {
 	const state = createState();
 	const controller = new AbortController();

@@ -26,7 +26,11 @@ export class DatastarClientHub {
 
 	createStream(
 		signal: AbortSignal,
-		initial: () => { elements: string; signals: string },
+		initial: () => {
+			elements: string;
+			signals: string;
+			scripts?: readonly string[];
+		},
 		options: DatastarClientStreamOptions = {},
 	): Response {
 		const id = crypto.randomUUID();
@@ -38,7 +42,12 @@ export class DatastarClientHub {
 				}
 				try {
 					const view = initial();
-					this.patchClient(stream, view.elements, view.signals, []);
+					this.patchClient(
+						stream,
+						view.elements,
+						view.signals,
+						view.scripts ?? [],
+					);
 				} catch {
 					this.disconnect(id, stream);
 					return;

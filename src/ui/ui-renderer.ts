@@ -39,7 +39,11 @@ import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 
 /** Complete-view renderer and logical commit scheduler. */
-type RenderedView = { elements: string; signals: string };
+type RenderedView = {
+	elements: string;
+	signals: string;
+	scripts: readonly string[];
+};
 
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
@@ -247,6 +251,7 @@ export class UiRenderer implements AppStorePresentation {
 		return {
 			elements: this.renderElements(snapshot, includeFinalMessageHtml),
 			signals: this.renderSignals(snapshot, overrides),
+			scripts: this.initialDialogScripts(snapshot),
 		};
 	}
 	private effectSignalOverrides(effects: readonly UiCommitEffect[]): JsonObject {
@@ -285,10 +290,22 @@ export class UiRenderer implements AppStorePresentation {
 				scripts.push(
 					effect.open
 						? `{ const dialog = document.getElementById('${effect.id}'); if (dialog && !dialog.open) dialog.showModal(); }`
-						: `document.getElementById('${effect.id}')?.close?.()`,
+						: `{ const dialog = document.getElementById('${effect.id}'); if (dialog?.open) dialog.close(); }`,
 				);
 		}
 		return [...new Set(scripts)];
+	}
+	private initialDialogScripts(snapshot: AppStateSnapshot): string[] {
+		return [
+			["auth-dialog", snapshot.authDialog],
+			["extension-dialog", snapshot.extensionDialog],
+			["llama-dialog", snapshot.llamaDialog],
+		]
+			.filter((entry) => Boolean(entry[1]))
+			.map(
+				([id]) =>
+					`{ const dialog = document.getElementById('${id}'); if (dialog && !dialog.open) dialog.showModal(); }`,
+			);
 	}
 }
 
