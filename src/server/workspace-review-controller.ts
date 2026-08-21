@@ -30,6 +30,7 @@ export class WorkspaceReviewController {
 	private async watch(path: string, generation: number): Promise<void> {
 		let refreshing = false;
 		let refreshAgain = false;
+		let initialized = false;
 		const active = () => generation === this.generation;
 		const refresh = async () => {
 			if (refreshing) {
@@ -40,8 +41,18 @@ export class WorkspaceReviewController {
 			try {
 				do {
 					refreshAgain = false;
-					const snapshot = await readWorkspaceReview(path);
-					if (active()) this.store.setWorkspaceReview(snapshot);
+					const snapshot = await readWorkspaceReview(
+						path,
+						initialized
+							? undefined
+							: (summary) => {
+									if (active()) this.store.setWorkspaceReview(summary);
+								},
+					);
+					if (active()) {
+						this.store.setWorkspaceReview(snapshot);
+						initialized = true;
+					}
 				} while (refreshAgain && active());
 			} finally {
 				refreshing = false;

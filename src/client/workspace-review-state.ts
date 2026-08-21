@@ -4,6 +4,10 @@ import {
 	workspaceReviewHistoryPageSize,
 } from "../workspace-review-types.ts";
 
+export function workspaceReviewLoading(revision: string): boolean {
+	return revision === "git-unloaded" || revision.startsWith("git-summary:");
+}
+
 export function workspaceReviewStateChanged(
 	current: { workspacePath: string; revision: string },
 	next: { workspacePath: string; revision: string },

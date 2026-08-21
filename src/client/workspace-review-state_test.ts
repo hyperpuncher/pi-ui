@@ -7,6 +7,7 @@ import {
 	reconcileReviewAvailability,
 	reconcileSelection,
 	selectionForReviewOpen,
+	workspaceReviewLoading,
 	workspaceReviewStateChanged,
 } from "./workspace-review-state.ts";
 
@@ -24,6 +25,12 @@ function commit(hash: string): WorkspaceCommit {
 function change(path: string): WorkspaceFileChange {
 	return { additions: 1, deletions: 0, path, status: "modified" };
 }
+
+Deno.test("summary and unloaded revisions represent loading state", () => {
+	assertEquals(workspaceReviewLoading("git-unloaded"), true);
+	assertEquals(workspaceReviewLoading("git-summary:abc"), true);
+	assertEquals(workspaceReviewLoading("abc"), false);
+});
 
 Deno.test("workspace changes reconcile equal Git revisions", () => {
 	assertEquals(

@@ -46,6 +46,7 @@ import {
 	reconcileSelection,
 	selectionForReviewOpen,
 	type Selection,
+	workspaceReviewLoading,
 	workspaceReviewStateChanged,
 } from "./workspace-review-state.ts";
 
@@ -303,7 +304,8 @@ function applyWorkspaceReview(
 }
 
 function applySnapshot(next: WorkspaceReviewSnapshot): void {
-	const wasUnloaded = snapshot.revision === "git-unloaded" || !initializedSelection;
+	const wasUnloaded =
+		workspaceReviewLoading(snapshot.revision) || !initializedSelection;
 	const historyState = reconcileFirstHistoryPage(
 		historyCommits,
 		historyHasMore,
@@ -330,6 +332,13 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	additions.textContent = `+${sum("additions")}`;
 	deletions.textContent = `-${sum("deletions")}`;
 	syncChangesSection();
+	if (workspaceReviewLoading(snapshot.revision)) {
+		initializedSelection = false;
+		renderHistory();
+		viewer?.setItems([]);
+		showEmpty("Loading Git data…");
+		return;
+	}
 
 	selection = reconcileSelection(
 		selection,
@@ -784,7 +793,7 @@ function sum(key: "additions" | "deletions"): number {
 }
 
 function emptyMessage(): string {
-	if (snapshot.revision === "git-unloaded") return "Loading Git data…";
+	if (workspaceReviewLoading(snapshot.revision)) return "Loading Git data…";
 	if (!snapshot.isGitRepository) return "Open a Git repository";
 	if (selection.kind === "commit") return "This commit has no file changes";
 	if (snapshot.changes.length === 0) return "Working tree clean";

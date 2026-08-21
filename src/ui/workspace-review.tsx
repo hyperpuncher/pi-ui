@@ -126,7 +126,7 @@ export function renderWorkspaceReview(
 						>
 							{snapshot.branch ?? ""}
 						</span>
-						<div class="pi-review-controls flex shrink-0 items-center gap-1">
+						<div class="pi-review-controls ml-auto flex shrink-0 items-center gap-1">
 							<div
 								class="flex rounded-md bg-(--pi-control-well) p-0.5"
 								aria-label="Diff scope"

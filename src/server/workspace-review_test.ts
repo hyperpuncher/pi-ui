@@ -1,5 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 
+import type { WorkspaceReviewSnapshot } from "../workspace-review-types.ts";
 import {
 	findGitRoot,
 	findGitWatchPaths,
@@ -67,7 +68,13 @@ Deno.test("workspace review combines repository files with tracked and untracked
 		const nestedWorkspace = `${repository}/src`;
 		assertEquals(await findGitRoot(nestedWorkspace), repository);
 		assertEquals(await findGitWatchPaths(nestedWorkspace), [repository]);
-		const snapshot = await readWorkspaceReview(nestedWorkspace);
+		let summary: WorkspaceReviewSnapshot | undefined;
+		const snapshot = await readWorkspaceReview(nestedWorkspace, (value) => {
+			summary = value;
+		});
+		assertEquals(summary?.commits.length, 1);
+		assertEquals(summary?.patch, "");
+		assertEquals(summary?.revision.startsWith("git-summary:"), true);
 		assertEquals(snapshot.isGitRepository, true);
 		assertEquals(snapshot.commits.length, 1);
 		assertEquals(Boolean(snapshot.branch), true);

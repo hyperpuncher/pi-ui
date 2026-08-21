@@ -68,31 +68,68 @@ export async function readWorkspaceReviewAvailability(
 
 export async function readWorkspaceReview(
 	workspacePath: string,
+	onSummary?: (snapshot: WorkspaceReviewSnapshot) => void,
 ): Promise<WorkspaceReviewSnapshot> {
 	const root = await findGitRoot(workspacePath);
 	if (!root) return emptyWorkspaceReviewSnapshot;
-	const [statusResult, headResult, logResult, upstreamResult, branchResult] =
-		await Promise.all([
-			git(root, "status", "--porcelain=v1", "--untracked-files=all", "-z"),
-			git(root, "rev-parse", "--verify", "HEAD"),
-			git(
-				root,
-				"log",
-				"-n",
-				String(workspaceReviewHistoryPageSize),
-				commitLogFormat,
-			),
-			git(
-				root,
-				"rev-list",
-				`--max-count=${workspaceReviewHistoryPageSize}`,
-				"@{upstream}..HEAD",
-			),
-			git(root, "symbolic-ref", "--quiet", "--short", "HEAD"),
-		]);
+	const statusPromise = git(
+		root,
+		"status",
+		"--porcelain=v1",
+		"--untracked-files=all",
+		"-z",
+	);
+	const [headResult, logResult, upstreamResult, branchResult] = await Promise.all([
+		git(root, "rev-parse", "--verify", "HEAD"),
+		git(root, "log", "-n", String(workspaceReviewHistoryPageSize), commitLogFormat),
+		git(
+			root,
+			"rev-list",
+			`--max-count=${workspaceReviewHistoryPageSize}`,
+			"@{upstream}..HEAD",
+		),
+		git(root, "symbolic-ref", "--quiet", "--short", "HEAD"),
+	]);
+	const branch =
+		branchResult.code === 0
+			? branchResult.stdout.trim()
+			: headResult.code === 0
+				? `detached@${headResult.stdout.trim().slice(0, 7)}`
+				: null;
+	const commits =
+		logResult.code === 0
+			? parseCommitLog(logResult.stdout, unpushedHashes(upstreamResult))
+			: [];
+	const metadataRevisionInputs = [
+		headResult.stdout,
+		upstreamResult.code,
+		upstreamResult.stdout,
+		branchResult.stdout,
+	];
+	if (onSummary) {
+		onSummary({
+			branch,
+			changes: [],
+			commits,
+			isGitRepository: true,
+			patch: "",
+			revision: `git-summary:${await hash(JSON.stringify(metadataRevisionInputs))}`,
+		});
+	}
+	const statusResult = await statusPromise;
 	assertGit(statusResult, "read repository status");
-
 	let changes = sortWorkspaceReviewEntries(parsePorcelainStatus(statusResult.stdout));
+	const revisionInputs = [statusResult.stdout, ...metadataRevisionInputs];
+	if (changes.length === 0) {
+		return {
+			branch,
+			changes,
+			commits,
+			isGitRepository: true,
+			patch: "",
+			revision: await hash(JSON.stringify([revisionInputs, ""])),
+		};
+	}
 	const tracked = await git(
 		root,
 		"diff",
@@ -136,29 +173,12 @@ export async function readWorkspaceReview(
 		.join("\n");
 	changes = addStats(changes, patch);
 	return {
-		branch:
-			branchResult.code === 0
-				? branchResult.stdout.trim()
-				: headResult.code === 0
-					? `detached@${headResult.stdout.trim().slice(0, 7)}`
-					: null,
+		branch,
 		changes,
-		commits:
-			logResult.code === 0
-				? parseCommitLog(logResult.stdout, unpushedHashes(upstreamResult))
-				: [],
+		commits,
 		isGitRepository: true,
 		patch,
-		revision: await hash(
-			JSON.stringify([
-				statusResult.stdout,
-				patch,
-				headResult.stdout,
-				upstreamResult.code,
-				upstreamResult.stdout,
-				branchResult.stdout,
-			]),
-		),
+		revision: await hash(JSON.stringify([revisionInputs, patch])),
 	};
 }
 
