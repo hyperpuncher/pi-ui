@@ -1,6 +1,5 @@
 import { getPierreThemes } from "../pierre-theme.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { WorkspaceReviewSnapshot } from "../server/workspace-review.ts";
+import { endpoints, workspaceReviewBase } from "../server/routes/endpoints.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
@@ -61,11 +60,7 @@ const startupLayoutGateScript = `(() => {
 	globalThis.piUiStartupLayoutGate = { arm: () => { armed = true; } };
 })();`;
 
-export function renderPage(
-	state: AppRenderSnapshot,
-	workspaceReview: WorkspaceReviewSnapshot = emptyWorkspaceReview(),
-	appVersion = "development",
-): string {
+export function renderPage(state: AppRenderSnapshot, appVersion = "development"): string {
 	const desktop = Deno.BrowserWindow instanceof Function;
 	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
@@ -125,7 +120,7 @@ export function renderPage(
 					data-files-pick-endpoint={endpoints.filesPick}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
-					data-workspace-review-endpoint={endpoints.workspaceReview}
+					data-workspace-review-endpoint={workspaceReviewBase}
 					data-code-theme-light={codeThemes.light}
 					data-code-theme-dark={codeThemes.dark}
 					data-signals={initialSignals}
@@ -241,9 +236,12 @@ export function renderPage(
 									state.sessionCatalogLoading,
 								)}
 								{renderSessionTransition(state)}
-								{renderPromptBox(state, workspaceReview.isGitRepository)}
+								{renderPromptBox(
+									state,
+									state.workspaceReview.isGitRepository,
+								)}
 							</section>
-							{renderWorkspaceReview(workspaceReview)}
+							{renderWorkspaceReview(state.workspaceReview)}
 						</div>
 					</div>
 
@@ -459,15 +457,4 @@ export function renderPage(
 			</html>
 		),
 	);
-}
-
-function emptyWorkspaceReview(): WorkspaceReviewSnapshot {
-	return {
-		branch: null,
-		changes: [],
-		commits: [],
-		isGitRepository: false,
-		patch: "",
-		revision: "non-git",
-	};
 }

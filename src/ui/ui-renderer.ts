@@ -37,6 +37,7 @@ import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebarContent, sessionSidebarRowId } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
+import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 
 /** Complete-view renderer and logical commit scheduler. */
 type RenderedView = {
@@ -223,6 +224,7 @@ export class UiRenderer implements AppStorePresentation {
 			this.renderPickerElements(snapshot),
 			renderSessionPickerContent(snapshot),
 			renderSessionSidebarContent(snapshot),
+			renderWorkspaceReviewData(snapshot.workspaceReview),
 		];
 	}
 	renderPickerElements(snapshot: AppStateSnapshot): string {

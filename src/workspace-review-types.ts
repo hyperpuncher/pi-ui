@@ -100,6 +100,20 @@ export type WorkspaceReviewSnapshot = Readonly<{
 	revision: string;
 }>;
 
+export const emptyWorkspaceReviewSnapshot: WorkspaceReviewSnapshot = {
+	branch: null,
+	changes: [],
+	commits: [],
+	isGitRepository: false,
+	patch: "",
+	revision: "non-git",
+};
+
+export const unloadedWorkspaceReviewSnapshot: WorkspaceReviewSnapshot = {
+	...emptyWorkspaceReviewSnapshot,
+	revision: "git-unloaded",
+};
+
 const workspaceFileChangeSchema = Type.Object({
 	additions: Type.Number(),
 	deletions: Type.Number(),

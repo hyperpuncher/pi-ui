@@ -1,3 +1,5 @@
+export const workspaceReviewBase = "/workspace/review";
+
 export const endpoints = {
 	root: "/",
 	stream: "/stream",
@@ -24,7 +26,6 @@ export const endpoints = {
 	workspaceOpen: "/workspace/open",
 	workspacePick: "/workspace/pick",
 	workspaceSearch: "/workspace/search",
-	workspaceReview: "/workspace/review",
 	workspaceReviewCommit: "/workspace/review/commit",
 	workspaceReviewHistory: "/workspace/review/history",
 	workspaceReviewPreferences: "/workspace/review/preferences",

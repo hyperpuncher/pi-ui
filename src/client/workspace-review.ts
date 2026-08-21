@@ -21,10 +21,7 @@ import {
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
-import {
-	createWorkspaceReviewApi,
-	type WorkspaceReviewUpdateMode,
-} from "./workspace-review-api.ts";
+import { createWorkspaceReviewApi } from "./workspace-review-api.ts";
 import {
 	createWorkspaceReviewComments,
 	type ReviewCommentMetadata,
@@ -120,6 +117,7 @@ let selection: Selection = { kind: "working", path: snapshot.changes[0]?.path };
 let layout: DiffLayout | undefined = preferences.layout;
 let wrap = preferences.wrap ?? true;
 let version = 0;
+const itemRevisions = new Map<string, { content: string; version: number }>();
 let viewer: CodeView<ReviewCommentMetadata> | undefined;
 const comments = createWorkspaceReviewComments({
 	clearSelection: () => viewer?.clearSelectedLines(),
@@ -172,8 +170,6 @@ const visibility = createVisibility(app, snapshot.isGitRepository, (open) => {
 		if (nextSelection !== selection && nextSelection.kind === "working") {
 			selectWorking(nextSelection.path);
 		}
-		cancelSnapshotPrefetch();
-		connectUpdates("live");
 		if (snapshot.revision === "git-unloaded") showEmpty("Loading Git data…");
 		else {
 			requestAnimationFrame(() => {
@@ -181,9 +177,6 @@ const visibility = createVisibility(app, snapshot.isGitRepository, (open) => {
 				maybeLoadOlderHistory();
 			});
 		}
-	} else {
-		disconnectUpdates();
-		scheduleSnapshotPrefetch();
 	}
 });
 window.piUi.workspaceReview = visibility;
@@ -226,9 +219,6 @@ theme.observe(document.documentElement, {
 	attributes: true,
 });
 
-let prefetchIdle: number | undefined;
-let prefetchTimer: ReturnType<typeof setTimeout> | undefined;
-let updates: EventSource | undefined;
 let workspaceLabel = currentWorkspaceLabel();
 const workspace = new MutationObserver(() => {
 	const nextLabel = currentWorkspaceLabel();
@@ -241,10 +231,10 @@ const workspace = new MutationObserver(() => {
 	historyLoading = false;
 	commitCache.clear();
 	commitRequests.clear();
+	itemRevisions.clear();
 	comments.reset();
 	initializedSelection = false;
 	selection = { kind: "working" };
-	connectUpdates(visibility.isOpen() ? "live" : "availability");
 });
 workspace.observe(app, {
 	attributeFilter: ["aria-label"],
@@ -252,19 +242,28 @@ workspace.observe(app, {
 	childList: true,
 	subtree: true,
 });
+const reviewData = new MutationObserver(() => {
+	const element = document.getElementById("workspace-review-data");
+	if (!element) return;
+	try {
+		const value = JSON.parse(element.textContent ?? "");
+		if (isWorkspaceReviewSnapshot(value)) applySnapshot(value);
+	} catch {
+		// A later stream morph can replace an incomplete payload.
+	}
+});
+reviewData.observe(app, { childList: true, subtree: true });
 
 syncModeButtons();
 syncLayoutButtons();
 wrapButton.setAttribute("aria-pressed", String(wrap));
 renderHistory();
 syncChangesSection();
-scheduleSnapshotPrefetch();
 
 window.addEventListener(
 	"pagehide",
 	() => {
-		cancelSnapshotPrefetch();
-		disconnectUpdates();
+		reviewData.disconnect();
 		workspace.disconnect();
 		resize.disconnect();
 		theme.disconnect();
@@ -275,50 +274,6 @@ window.addEventListener(
 	},
 	{ once: true },
 );
-
-function connectUpdates(mode: WorkspaceReviewUpdateMode): void {
-	disconnectUpdates();
-	updates = api.subscribe(mode, (next) => {
-		applySnapshot(next);
-		if (mode !== "live") {
-			disconnectUpdates();
-			if (mode === "availability") scheduleSnapshotPrefetch();
-		}
-	});
-}
-
-function disconnectUpdates(): void {
-	updates?.close();
-	updates = undefined;
-}
-
-function scheduleSnapshotPrefetch(): void {
-	cancelSnapshotPrefetch();
-	if (
-		visibility.isOpen() ||
-		!snapshot.isGitRepository ||
-		snapshot.revision !== "git-unloaded"
-	) {
-		return;
-	}
-	prefetchTimer = setTimeout(() => {
-		prefetchTimer = undefined;
-		prefetchIdle = requestIdleCallback(
-			() => {
-				prefetchIdle = undefined;
-				if (!visibility.isOpen()) connectUpdates("snapshot");
-			},
-			{ timeout: 2_000 },
-		);
-	}, 500);
-}
-
-function cancelSnapshotPrefetch(): void {
-	if (prefetchTimer !== undefined) clearTimeout(prefetchTimer);
-	if (prefetchIdle !== undefined) cancelIdleCallback(prefetchIdle);
-	prefetchTimer = undefined;
-	prefetchIdle = undefined;
-}
 
 function currentWorkspaceLabel(): string {
 	return document.getElementById("workspace-picker")?.getAttribute("aria-label") ?? "";
@@ -528,21 +483,27 @@ function createItems(
 	patch: string,
 	source: string,
 ): ReviewItem[] {
-	const itemVersion = ++version;
 	const parsed = new Map<string, FileDiffMetadata>();
-	// Pierre 1.3.5 otherwise derives cache keys from file names, allowing a
-	// newer working-tree diff to receive an older highlighted AST.
-	for (const patchFile of parsePatchFiles(patch, `${source}:${itemVersion}`)) {
+	for (const patchFile of parsePatchFiles(patch)) {
 		for (const file of patchFile.files) parsed.set(file.name, file);
 	}
-	return changes.map((change) => ({
-		fileDiff: parsed.get(change.path) ?? emptyDiff(change),
-		// A new diff must get a new renderer. Reusing one lets an older async
-		// highlight overwrite the latest working-tree snapshot.
-		id: `diff:${source}:${itemVersion}:${change.path}`,
-		type: "diff",
-		version: itemVersion,
-	}));
+	return changes.map((change) => {
+		const parsedFile = parsed.get(change.path) ?? emptyDiff(change);
+		const key = `${source}:${change.path}`;
+		const content = JSON.stringify({ ...parsedFile, cacheKey: undefined });
+		const previous = itemRevisions.get(key);
+		const itemVersion = previous?.content === content ? previous.version : ++version;
+		itemRevisions.set(key, { content, version: itemVersion });
+		return {
+			// Pierre 1.3.5 incorrectly invents cache identity from filenames. An
+			// explicit content revision avoids stale highlights without remounting
+			// every unchanged file whenever the working tree changes.
+			fileDiff: { ...parsedFile, cacheKey: `pi-ui:${key}:${itemVersion}` },
+			id: `diff:${key}`,
+			type: "diff",
+			version: itemVersion,
+		};
+	});
 }
 
 function withWorkingAnnotations(value: readonly ReviewItem[]): ReviewItem[] {

@@ -4,6 +4,7 @@ import { sortWorkspaceReviewEntries } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
+	emptyWorkspaceReviewSnapshot,
 	type WorkspaceFileChange,
 	type WorkspaceFileStatus,
 	workspaceReviewHistoryPageSize,
@@ -62,14 +63,14 @@ export async function readWorkspaceReviewAvailability(
 				patch: "",
 				revision: "git-unloaded",
 			}
-		: emptySnapshot;
+		: emptyWorkspaceReviewSnapshot;
 }
 
 export async function readWorkspaceReview(
 	workspacePath: string,
 ): Promise<WorkspaceReviewSnapshot> {
 	const root = await findGitRoot(workspacePath);
-	if (!root) return emptySnapshot;
+	if (!root) return emptyWorkspaceReviewSnapshot;
 	const [statusResult, headResult, logResult, upstreamResult, branchResult] =
 		await Promise.all([
 			git(root, "status", "--porcelain=v1", "--untracked-files=all", "-z"),
@@ -370,12 +371,3 @@ async function git(cwd: string, ...args: string[]): Promise<GitResult> {
 		return { code: 127, stderr: "Git executable not found.", stdout: "" };
 	}
 }
-
-const emptySnapshot: WorkspaceReviewSnapshot = {
-	branch: null,
-	changes: [],
-	commits: [],
-	isGitRepository: false,
-	patch: "",
-	revision: "non-git",
-};

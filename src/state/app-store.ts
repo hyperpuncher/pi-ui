@@ -5,6 +5,10 @@ import type { JsonObject } from "../utils/json-types.ts";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
 import {
+	type WorkspaceReviewSnapshot,
+	unloadedWorkspaceReviewSnapshot,
+} from "../workspace-review-types.ts";
+import {
 	TranscriptState,
 	type TranscriptMessage,
 	type TranscriptMessageInput,
@@ -185,6 +189,7 @@ export type AppStateSnapshot = Readonly<{
 	queuedSteeringMessages: readonly string[];
 	queuedFollowUpMessages: readonly string[];
 	workspacePath: string;
+	workspaceReview: WorkspaceReviewSnapshot;
 	recentWorkspaces: readonly string[];
 	sessionTransition: SessionTransitionState;
 	debugUi: boolean;
@@ -258,12 +263,19 @@ export class AppStore {
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
+	workspaceReview = unloadedWorkspaceReviewSnapshot;
 	recentWorkspaces: string[] = [];
+	private workspacePathListener: ((path: string) => void) | undefined;
 	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };
 
 	attachPresentation(presentation: AppStorePresentation): void {
 		if (this.presentation) throw new Error("AppStore presentation already attached");
 		this.presentation = presentation;
+	}
+	listenForWorkspacePath(listener: (path: string) => void): void {
+		if (this.workspacePathListener)
+			throw new Error("AppStore workspace path listener already attached");
+		this.workspacePathListener = listener;
 	}
 	get messages(): readonly TranscriptMessage[] {
 		return this.transcript.messages;
@@ -332,6 +344,7 @@ export class AppStore {
 			queuedSteeringMessages: [...this.queuedSteeringMessages],
 			queuedFollowUpMessages: [...this.queuedFollowUpMessages],
 			workspacePath: this.workspacePath,
+			workspaceReview: structuredClone(this.workspaceReview),
 			recentWorkspaces: [...this.recentWorkspaces],
 			sessionTransition: { ...this.sessionTransition },
 			debugUi: this.debugUi,
@@ -643,7 +656,15 @@ export class AppStore {
 		this.commit();
 	}
 	setWorkspacePath(value: string): void {
+		if (this.workspacePath === value) return;
 		this.workspacePath = value;
+		this.workspaceReview = unloadedWorkspaceReviewSnapshot;
+		this.commit();
+		this.workspacePathListener?.(value);
+	}
+	setWorkspaceReview(value: WorkspaceReviewSnapshot): void {
+		if (this.workspaceReview.revision === value.revision) return;
+		this.workspaceReview = value;
 		this.commit();
 	}
 	setSessionTransition(value: SessionTransitionState): void {

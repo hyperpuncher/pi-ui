@@ -574,6 +574,32 @@ Deno.test("normal commits preserve backend-owned session pagination", async () =
 	}
 });
 
+Deno.test("workspace review snapshots travel through the app stream", async () => {
+	const state = createState();
+	state.setWorkspaceReview({
+		branch: "main",
+		changes: [],
+		commits: [],
+		isGitRepository: true,
+		patch: "",
+		revision: "review-1",
+	});
+	state.flush();
+	const controller = new AbortController();
+	try {
+		const response = state.createStream(controller.signal);
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		const output = await readUntil(
+			reader,
+			(text) => text.includes("workspace-review-data") && text.includes("review-1"),
+		);
+		assertIncludes(output, '"branch":"main"');
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("initial streams reopen active backend dialogs", async () => {
 	const state = createState();
 	state.setAuthDialog({

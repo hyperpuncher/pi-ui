@@ -42,7 +42,6 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /workspace/open",
 		"POST /workspace/pick",
 		"GET /workspace/search",
-		"GET /workspace/review",
 		"GET /workspace/review/commit",
 		"GET /workspace/review/history",
 		"GET /workspace/review/preferences",
@@ -317,29 +316,6 @@ Deno.test("workspace search returns matching directories", async () => {
 		assertEquals(response.status, 200);
 		assertStringIncludes(await response.text(), "alpha");
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
-	}
-});
-
-Deno.test("workspace review streams isolated snapshot events", async () => {
-	const workspace = await Deno.makeTempDir();
-	const abort = new AbortController();
-	try {
-		const context = fakeContext();
-		context.store.setWorkspacePath(workspace);
-		const response = await createRouter(context).fetch(
-			new Request("http://localhost/workspace/review", {
-				signal: abort.signal,
-			}),
-		);
-		assertEquals(response.status, 200);
-		assertEquals(response.headers.get("content-type"), "text/event-stream");
-		const chunk = await response.body?.getReader().read();
-		const event = new TextDecoder().decode(chunk?.value);
-		assertStringIncludes(event, "data: ");
-		assertStringIncludes(event, '"isGitRepository":false');
-	} finally {
-		abort.abort();
 		await Deno.remove(workspace, { recursive: true });
 	}
 });

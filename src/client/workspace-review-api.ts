@@ -2,15 +2,11 @@ import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import {
 	isWorkspaceCommitDetail,
 	isWorkspaceCommitHistory,
-	isWorkspaceReviewSnapshot,
 	normalizeWorkspaceReviewPreferences,
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
 	type WorkspaceReviewPreferences,
-	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
-
-export type WorkspaceReviewUpdateMode = "availability" | "live" | "snapshot";
 
 export function createWorkspaceReviewApi(endpoint: string) {
 	const preferencesEndpoint = `${endpoint}/preferences`;
@@ -71,19 +67,6 @@ export function createWorkspaceReviewApi(endpoint: string) {
 			} catch {
 				return false;
 			}
-		},
-
-		subscribe(
-			mode: WorkspaceReviewUpdateMode,
-			onSnapshot: (snapshot: WorkspaceReviewSnapshot) => void,
-		): EventSource {
-			const suffix = mode === "live" ? "" : `?${mode}`;
-			const source = new EventSource(`${endpoint}${suffix}`);
-			source.addEventListener("message", (event) => {
-				const value = JSON.parse(event.data);
-				if (isWorkspaceReviewSnapshot(value)) onSnapshot(value);
-			});
-			return source;
 		},
 
 		writePreferences(preferences: WorkspaceReviewPreferences): void {

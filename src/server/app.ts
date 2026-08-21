@@ -31,6 +31,7 @@ import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { SessionImageStore } from "./session-image-store.ts";
 import { createStaticAssetServer } from "./static-assets.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
+import { WorkspaceReviewController } from "./workspace-review-controller.ts";
 
 const basecoatJsPath = fromFileUrl(
 	new URL("../../static/basecoat.vendor.js", import.meta.url),
@@ -66,11 +67,14 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	if (!(await preloadShellHighlighterPromise)) {
 		console.error("Failed to preload shell highlighter");
 	}
+	const workspaceReview = new WorkspaceReviewController(store);
+	workspaceReview.open(store.workspacePath);
 	const resources: RouteResources = { host, sessionImages };
 	const transferredFiles = await TransferredFileStore.create();
 	addEventListener(
 		"unload",
 		() => {
+			workspaceReview.dispose();
 			try {
 				transferredFiles.disposeSync();
 			} catch {

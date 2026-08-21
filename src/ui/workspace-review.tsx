@@ -18,8 +18,6 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 		(total, change) => total + change.deletions,
 		0,
 	);
-	const initialData = JSON.stringify(snapshot).replaceAll("<", "\\u003c");
-
 	return syncHtml(
 		<section
 			id="workspace-review"
@@ -258,9 +256,15 @@ export function renderWorkspaceReview(snapshot: WorkspaceReviewSnapshot): string
 				aria-label="Resize Git and chat"
 				aria-orientation="vertical"
 			/>
-			<script id="workspace-review-data" type="application/json">
-				{initialData}
-			</script>
+			{renderWorkspaceReviewData(snapshot)}
 		</section>,
+	);
+}
+
+export function renderWorkspaceReviewData(snapshot: WorkspaceReviewSnapshot): string {
+	return syncHtml(
+		<script id="workspace-review-data" type="application/json">
+			{JSON.stringify(snapshot).replaceAll("<", "\\u003c")}
+		</script>,
 	);
 }
