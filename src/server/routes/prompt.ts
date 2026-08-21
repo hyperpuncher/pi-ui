@@ -25,7 +25,7 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 		const host = requireHost(context);
 		if (prompt.trim() === "/tree") {
 			host.openTree();
-			return datastarResponse(treeOpenEvents(context));
+			return datastarResponse(treeOpenEvents());
 		}
 		if (!(await host.prompt(prompt, { images })))
 			throw new RouteError(409, "Prompt was not accepted.");

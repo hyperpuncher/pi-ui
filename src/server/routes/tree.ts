@@ -1,6 +1,5 @@
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 
-import { renderTreePicker } from "../../ui/tree-picker.tsx";
 import {
 	booleanField,
 	optionalString,
@@ -15,7 +14,7 @@ import { endpoints } from "./endpoints.ts";
 export function registerTreeRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("POST", endpoints.treeOpen, (_request, context) => {
 		requireHost(context).openTree();
-		return datastarResponse(treeOpenEvents(context));
+		return datastarResponse(treeOpenEvents());
 	});
 	router.register("POST", endpoints.treeNavigate, async (request, context) => {
 		const signals = await readActionSignals(request);
@@ -41,15 +40,9 @@ export function registerTreeRoutes(router: ExactRouter<RouteContext>): void {
 }
 
 export function treeOpenEvents(
-	context: Pick<RouteContext, "store">,
 	signals: Record<string, Jsonifiable> = {},
 ): DatastarEvent[] {
-	const events: DatastarEvent[] = [
-		{
-			type: "elements",
-			elements: renderTreePicker(context.store.snapshot()),
-		},
-	];
+	const events: DatastarEvent[] = [];
 	if (Object.keys(signals).length > 0) events.push({ type: "signals", signals });
 	events.push({ type: "effect", effect: { type: "open-tree" } });
 	return events;
