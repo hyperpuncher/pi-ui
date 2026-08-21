@@ -51,6 +51,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 			<div
 				id="thinking-select"
 				class="dropdown-menu"
+				data-preserve-attr="data-dropdown-menu-initialized data-basecoat-component"
 				data-on:keydown="if (evt.code === 'Escape') evt.stopPropagation()"
 				data-on:keydown__window={`if (evt.altKey && evt.code === 'KeyT') {
 				evt.preventDefault();
@@ -66,6 +67,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					aria-haspopup="menu"
 					aria-expanded="false"
 					aria-controls="thinking-select-menu"
+					data-preserve-attr="aria-expanded aria-activedescendant"
 					data-tooltip="Thinking"
 					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
@@ -79,6 +81,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					data-side="top"
 					data-align="center"
 					aria-hidden="true"
+					data-preserve-attr="aria-hidden"
 					class="min-w-48"
 				>
 					<div
@@ -99,6 +102,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 								<div
 									role="menuitemradio"
 									aria-checked={level === current ? "true" : "false"}
+									data-preserve-attr="class"
 									data-on:click={`@post('${endpoints.thinking}', {
 									payload: { thinkingLevel: ${JSON.stringify(level)} },
 									});`}
@@ -178,6 +182,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			<div
 				id="model-select"
 				class="popover"
+				data-preserve-attr="data-popover-initialized data-basecoat-component"
 				data-on:keydown__window={`if (${primaryModifierExpression()} && evt.code === 'KeyL') {
 				evt.preventDefault();
 				${togglePopoverAction("model-select-trigger")};
@@ -195,6 +200,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					aria-haspopup="menu"
 					aria-expanded="false"
 					aria-controls="model-select-menu"
+					data-preserve-attr="aria-expanded"
 					data-tooltip="Model"
 					data-tooltip-delay
 				>
@@ -207,15 +213,22 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-side="top"
 					data-align="center"
 					aria-hidden="true"
+					data-preserve-attr="aria-hidden"
 					class="w-80 max-w-[calc(100vw-2rem)] p-0"
 				>
-					<div class="command" aria-label="Models" data-filter="manual">
+					<div
+						class="command"
+						aria-label="Models"
+						data-filter="manual"
+						data-preserve-attr="data-command-initialized data-basecoat-component"
+					>
 						<header>
 							<input
 								id="model-select-input"
 								type="text"
 								placeholder="Search models..."
 								autocomplete="off"
+								data-preserve-attr="aria-activedescendant"
 								autocorrect="off"
 								spellcheck="false"
 								aria-autocomplete="list"
@@ -248,8 +261,10 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 										: " • no auth";
 									return (
 										<div
+											id={`model-option-${encodeURIComponent(value)}`}
 											role="menuitem"
 											class="[contain-intrinsic-block-size:auto_3rem] [content-visibility:auto]"
+											data-preserve-attr="class aria-hidden"
 											aria-current={
 												value === state.currentModel
 													? "true"

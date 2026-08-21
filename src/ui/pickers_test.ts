@@ -82,6 +82,8 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
 	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
 	assertStringIncludes(html, 'aria-hidden="true"');
+	assertStringIncludes(html, 'data-preserve-attr="class aria-hidden"');
+	assertStringIncludes(html, "aria-current:bg-sidebar-accent!");
 	assertStringIncludes(html, "No matching sessions.");
 	assertFalse(html.includes("data-session-rename-title"));
 	assertStringIncludes(html, "text-[13px] text-muted-foreground");
@@ -272,11 +274,14 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	);
 	assertStringIncludes(withoutSelection, "choose model");
 	assertStringIncludes(withoutSelection, 'class="popover"');
-	assertStringIncludes(
-		withoutSelection,
-		'class="command" aria-label="Models" data-filter="manual"',
-	);
+	assertStringIncludes(withoutSelection, 'class="command"');
+	assertStringIncludes(withoutSelection, 'aria-label="Models"');
+	assertStringIncludes(withoutSelection, 'data-filter="manual"');
+	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-expanded"');
+	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-hidden"');
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
+	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-activedescendant"');
+	assertStringIncludes(withoutSelection, 'data-preserve-attr="class aria-hidden"');
 	assertStringIncludes(withoutSelection, "autofocus");
 	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet anthropic"');
 	assertStringIncludes(withoutSelection, 'data-keywords="Claude Sonnet"');
@@ -295,6 +300,10 @@ Deno.test("thinking picker describes every supported maximum level", () => {
 
 	assertStringIncludes(html, "Extra-high reasoning");
 	assertStringIncludes(html, "Maximum reasoning");
+	assertStringIncludes(
+		html,
+		'data-preserve-attr="aria-expanded aria-activedescendant"',
+	);
 });
 
 Deno.test("file picker fragments escape dynamic values and expose list semantics", () => {

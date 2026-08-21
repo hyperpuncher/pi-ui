@@ -55,10 +55,12 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 	const name = slashCommandName(item);
 	return syncHtml(
 		<li
+			id={`slash-option-${encodeURIComponent(name)}`}
 			role="option"
 			tabindex="-1"
 			class="rounded-md aria-selected:bg-muted"
 			aria-selected={index === 0 ? "true" : "false"}
+			data-preserve-attr="aria-selected"
 			data-slash-row
 			data-slash-name={name}
 			data-slash-order={index}
@@ -172,8 +174,10 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	const faviconUrl = `${endpoints.sessionsFavicon}?cwd=${encodeURIComponent(workspacePath)}`;
 	return syncHtml(
 		<div
+			id={`workspace-option-${encodeURIComponent(workspacePath)}`}
 			role="menuitem"
 			class="px-2 py-2!"
+			data-preserve-attr="class"
 			tabindex="-1"
 			aria-current={current ? "true" : undefined}
 			data-filter={`${label} ${workspacePath}`}
@@ -287,12 +291,9 @@ function renderSessionRow(
 			id={sessionRowId(session.path)}
 			role="menuitem"
 			tabindex="-1"
-			class={[
-				"group block!",
-				"[&.active]:bg-sidebar-accent! [&.active]:text-sidebar-accent-foreground!",
-				current && "bg-sidebar-accent! text-sidebar-accent-foreground!",
-			]}
+			class="group block! aria-current:bg-sidebar-accent! aria-current:text-sidebar-accent-foreground! [&.active]:bg-sidebar-accent! [&.active]:text-sidebar-accent-foreground!"
 			aria-current={current ? "true" : undefined}
+			data-preserve-attr="class aria-hidden"
 			data-keep-command-open
 			data-filter={haystack}
 			data-keywords={haystack}

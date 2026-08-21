@@ -272,6 +272,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 						id="workspace-dialog"
 						class="command-dialog"
 						aria-label="Change workspace"
+						data-preserve-attr="open"
 						data-signals__ifmissing={JSON.stringify({
 							workspaceDraft: "",
 							_workspacePickerError: "",
@@ -396,6 +397,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 						id="session-dialog"
 						class="command-dialog"
 						aria-label="Resume session"
+						data-preserve-attr="open"
 						data-signals:session-search__ifmissing="''"
 						onclick="if (event.target === this) this.close()"
 					>
@@ -412,6 +414,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 									role="combobox"
 									aria-expanded="true"
 									aria-controls="session-menu"
+									data-preserve-attr="aria-activedescendant"
 									data-bind:session-search=""
 									attrs={{
 										"data-on:input__debounce.100ms": `@get('${endpoints.sessionsSearch}', {
