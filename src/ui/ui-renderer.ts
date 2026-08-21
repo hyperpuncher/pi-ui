@@ -225,6 +225,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderSessionPickerContent(snapshot),
 			renderSessionSidebarContent(snapshot),
 			renderWorkspaceReviewData(
+				snapshot.workspacePath,
 				snapshot.workspaceReview,
 				snapshot.workspaceReviewPreferences,
 			),

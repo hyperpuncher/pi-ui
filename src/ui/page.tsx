@@ -255,6 +255,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 								)}
 							</section>
 							{renderWorkspaceReview(
+								state.workspacePath,
 								state.workspaceReview,
 								state.workspaceReviewPreferences,
 							)}

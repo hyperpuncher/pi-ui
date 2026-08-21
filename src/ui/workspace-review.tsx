@@ -8,6 +8,7 @@ import type {
 import { syncHtml } from "./sync-html.ts";
 
 export function renderWorkspaceReview(
+	workspacePath: string,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): string {
@@ -262,18 +263,22 @@ export function renderWorkspaceReview(
 				aria-label="Resize Git and chat"
 				aria-orientation="vertical"
 			/>
-			{renderWorkspaceReviewData(snapshot, preferences)}
+			{renderWorkspaceReviewData(workspacePath, snapshot, preferences)}
 		</section>,
 	);
 }
 
 export function renderWorkspaceReviewData(
+	workspacePath: string,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): string {
 	return syncHtml(
 		<script id="workspace-review-data" type="application/json">
-			{JSON.stringify({ preferences, snapshot }).replaceAll("<", "\\u003c")}
+			{JSON.stringify({ preferences, snapshot, workspacePath }).replaceAll(
+				"<",
+				"\\u003c",
+			)}
 		</script>,
 	);
 }

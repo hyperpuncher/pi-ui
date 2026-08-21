@@ -4,6 +4,15 @@ import {
 	workspaceReviewHistoryPageSize,
 } from "../workspace-review-types.ts";
 
+export function workspaceReviewStateChanged(
+	current: { workspacePath: string; revision: string },
+	next: { workspacePath: string; revision: string },
+): boolean {
+	return (
+		current.workspacePath !== next.workspacePath || current.revision !== next.revision
+	);
+}
+
 export function reconcileReviewAvailability(
 	current: boolean,
 	next: { isGitRepository: boolean; revision: string },

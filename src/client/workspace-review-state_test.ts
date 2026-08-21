@@ -7,6 +7,7 @@ import {
 	reconcileReviewAvailability,
 	reconcileSelection,
 	selectionForReviewOpen,
+	workspaceReviewStateChanged,
 } from "./workspace-review-state.ts";
 
 function commit(hash: string): WorkspaceCommit {
@@ -23,6 +24,23 @@ function commit(hash: string): WorkspaceCommit {
 function change(path: string): WorkspaceFileChange {
 	return { additions: 1, deletions: 0, path, status: "modified" };
 }
+
+Deno.test("workspace changes reconcile equal Git revisions", () => {
+	assertEquals(
+		workspaceReviewStateChanged(
+			{ revision: "same", workspacePath: "/first" },
+			{ revision: "same", workspacePath: "/second" },
+		),
+		true,
+	);
+	assertEquals(
+		workspaceReviewStateChanged(
+			{ revision: "same", workspacePath: "/first" },
+			{ revision: "same", workspacePath: "/first" },
+		),
+		false,
+	);
+});
 
 Deno.test("loading another workspace preserves Git view availability", () => {
 	assertEquals(

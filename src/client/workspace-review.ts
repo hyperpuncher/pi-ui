@@ -12,7 +12,7 @@ import {
 import { FileTree } from "@pierre/trees";
 
 import { getPierreThemes, isPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
-import { isRecord } from "../utils/type-guards.ts";
+import { isRecord, isString } from "../utils/type-guards.ts";
 import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
@@ -46,6 +46,7 @@ import {
 	reconcileSelection,
 	selectionForReviewOpen,
 	type Selection,
+	workspaceReviewStateChanged,
 } from "./workspace-review-state.ts";
 
 type ReviewMode = NonNullable<WorkspaceReviewPreferences["mode"]>;
@@ -107,10 +108,15 @@ const commentStatus = requiredElement("review-comment-status");
 const data = requiredElement("workspace-review-data");
 
 const initialData = JSON.parse(data.textContent ?? "");
-if (!isRecord(initialData) || !isWorkspaceReviewSnapshot(initialData.snapshot)) {
+if (
+	!isRecord(initialData) ||
+	!isString(initialData.workspacePath) ||
+	!isWorkspaceReviewSnapshot(initialData.snapshot)
+) {
 	throw new Error("Invalid initial workspace review state");
 }
 const preferences = normalizeWorkspaceReviewPreferences(initialData.preferences);
+let workspacePath = initialData.workspacePath;
 let snapshot: WorkspaceReviewSnapshot = initialData.snapshot;
 let historyCommits = [...snapshot.commits];
 let historyHasMore = snapshot.commits.length === workspaceReviewHistoryPageSize;
@@ -224,42 +230,27 @@ theme.observe(document.documentElement, {
 	attributes: true,
 });
 
-let workspaceLabel = currentWorkspaceLabel();
-const workspace = new MutationObserver(() => {
-	const nextLabel = currentWorkspaceLabel();
-	if (nextLabel === workspaceLabel) return;
-	workspaceLabel = nextLabel;
-	workspaceVersion++;
-	historyGeneration++;
-	historyCommits = [];
-	historyHasMore = false;
-	historyLoading = false;
-	commitCache.clear();
-	commitRequests.clear();
-	itemRevisions.clear();
-	comments.reset();
-	initializedSelection = false;
-	selection = { kind: "working" };
-});
-workspace.observe(app, {
-	attributeFilter: ["aria-label"],
-	attributes: true,
-	childList: true,
-	subtree: true,
-});
 const reviewData = new MutationObserver(() => {
 	const element = document.getElementById("workspace-review-data");
 	if (!element) return;
 	try {
 		const value = JSON.parse(element.textContent ?? "");
-		if (isRecord(value) && isWorkspaceReviewSnapshot(value.snapshot)) {
-			applySnapshot(value.snapshot);
+		if (
+			isRecord(value) &&
+			isString(value.workspacePath) &&
+			isWorkspaceReviewSnapshot(value.snapshot)
+		) {
+			applyWorkspaceReview(value.workspacePath, value.snapshot);
 		}
 	} catch {
 		// A later stream morph can replace an incomplete payload.
 	}
 });
-reviewData.observe(app, { childList: true, subtree: true });
+reviewData.observe(app, {
+	characterData: true,
+	childList: true,
+	subtree: true,
+});
 
 syncModeButtons();
 syncLayoutButtons();
@@ -271,7 +262,6 @@ window.addEventListener(
 	"pagehide",
 	() => {
 		reviewData.disconnect();
-		workspace.disconnect();
 		resize.disconnect();
 		theme.disconnect();
 		reviewLayout.cleanUp();
@@ -282,12 +272,37 @@ window.addEventListener(
 	{ once: true },
 );
 
-function currentWorkspaceLabel(): string {
-	return document.getElementById("workspace-picker")?.getAttribute("aria-label") ?? "";
+function applyWorkspaceReview(
+	nextWorkspacePath: string,
+	next: WorkspaceReviewSnapshot,
+): void {
+	if (
+		!workspaceReviewStateChanged(
+			{ revision: snapshot.revision, workspacePath },
+			{ revision: next.revision, workspacePath: nextWorkspacePath },
+		)
+	) {
+		return;
+	}
+	const workspaceChanged = nextWorkspacePath !== workspacePath;
+	if (workspaceChanged) {
+		workspacePath = nextWorkspacePath;
+		workspaceVersion++;
+		historyGeneration++;
+		historyCommits = [];
+		historyHasMore = false;
+		historyLoading = false;
+		commitCache.clear();
+		commitRequests.clear();
+		itemRevisions.clear();
+		comments.reset();
+		initializedSelection = false;
+		selection = { kind: "working" };
+	}
+	applySnapshot(next);
 }
 
 function applySnapshot(next: WorkspaceReviewSnapshot): void {
-	if (next.revision === snapshot.revision) return;
 	const wasUnloaded = snapshot.revision === "git-unloaded" || !initializedSelection;
 	const historyState = reconcileFirstHistoryPage(
 		historyCommits,
@@ -769,6 +784,7 @@ function sum(key: "additions" | "deletions"): number {
 }
 
 function emptyMessage(): string {
+	if (snapshot.revision === "git-unloaded") return "Loading Git data…";
 	if (!snapshot.isGitRepository) return "Open a Git repository";
 	if (selection.kind === "commit") return "This commit has no file changes";
 	if (snapshot.changes.length === 0) return "Working tree clean";

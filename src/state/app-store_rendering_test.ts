@@ -471,7 +471,6 @@ Deno.test("nested state updates commit one fat morph and one signal patch", asyn
 		assertEqual(count(output, "event: datastar-patch-elements"), 1);
 		assertEqual(count(output, "event: datastar-patch-signals"), 1);
 		assertIncludes(output, '"_isBusy":true');
-		assertNotIncludes(output, '"workspacePath"');
 		assertNotIncludes(output, '"thinkingLevel"');
 		assertNotIncludes(output, '"model"');
 	} finally {
