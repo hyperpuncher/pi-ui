@@ -14,19 +14,10 @@ export function renderCodeThemeDialog(): string {
 			id="code-theme-dialog"
 			class="dialog code-theme-dialog"
 			aria-labelledby="code-theme-title"
-			data-signals={JSON.stringify({
-				_codeThemeLight: active.light,
-				_codeThemeDark: active.dark,
-				_codeThemeAppliedAppearance: "",
-				_codeThemeAppliedName: "",
-			})}
-			data-effect="window.piUi.codeTheme.apply(
-				$_codeThemeLight,
-				$_codeThemeDark,
-				$_codeThemeAppliedAppearance,
-				$_codeThemeAppliedName,
-			)"
-			data-on:datastar-fetch="if (evt.detail.type === 'error') window.piUi.codeTheme.fail()"
+			data-on:datastar-fetch={`if (evt.detail.type === 'error') {
+				document.getElementById('code-theme-status').textContent =
+					'Could not apply theme. Try again.';
+			}`}
 			onclick="if (event.target === this) this.close()"
 		>
 			<div class="flex h-[min(48rem,calc(100vh-2rem))] w-[min(48rem,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
@@ -104,7 +95,12 @@ function renderThemeCard(theme: CodeThemeOption, active: string): string {
 			data-theme-name={theme.name}
 			data-theme-label={theme.label.toLowerCase()}
 			data-theme-appearance={theme.appearance}
-			data-on:click={`if (window.piUi.codeTheme.begin(el)) { @post('${endpoints.codeTheme}', { payload: { codeThemeAppearance: ${JSON.stringify(theme.appearance)}, codeThemeName: ${JSON.stringify(theme.name)} } }) }`}
+			data-indicator:_code-theme-saving
+			data-attr:disabled="$_codeThemeSaving"
+			data-on:click={`
+				document.getElementById('code-theme-status').textContent = ${JSON.stringify(`Applying ${theme.label}…`)};
+				@post('${endpoints.codeTheme}', { payload: { codeThemeAppearance: ${JSON.stringify(theme.appearance)}, codeThemeName: ${JSON.stringify(theme.name)} } });
+			`}
 			aria-pressed={theme.name === active ? "true" : "false"}
 			hidden={theme.appearance === "dark"}
 		>

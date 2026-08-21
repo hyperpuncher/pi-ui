@@ -1,7 +1,10 @@
 import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
+import { getPierreThemes } from "../pierre-theme.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 
 export type BackendSignals = {
+	_codeThemeDark: string;
+	_codeThemeLight: string;
 	_promptHistory: readonly string[];
 	_isBusy: boolean;
 	_isSessionReady: boolean;
@@ -10,7 +13,10 @@ export type BackendSignals = {
 };
 
 export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
+	const codeThemes = getPierreThemes();
 	return {
+		_codeThemeDark: codeThemes.dark,
+		_codeThemeLight: codeThemes.light,
 		_promptHistory: state.promptHistory,
 		_isBusy: Boolean(state.activityText),
 		_isSessionReady: state.sessionTransition.status !== "loading",

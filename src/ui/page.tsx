@@ -129,6 +129,11 @@ export function renderPage(
 					data-code-theme-light={codeThemes.light}
 					data-code-theme-dark={codeThemes.dark}
 					data-signals={initialSignals}
+					data-effect={`window.dispatchEvent(
+						new CustomEvent('pi-ui-code-theme-changed', {
+							detail: { light: $_codeThemeLight, dark: $_codeThemeDark },
+						}),
+					)`}
 					data-on:pi-ui-display-refresh={`@post('${endpoints.displayRefresh}', {
 						payload: { clientId: '${displayClientId}', hz: evt.detail.hz },
 					})`}

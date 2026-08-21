@@ -11,23 +11,9 @@ interface FileTransferData {
 	readonly types?: readonly string[];
 }
 
-interface CodeThemeCard {
-	readonly dataset: {
-		readonly themeAppearance?: string;
-		readonly themeLabel?: string;
-		readonly themeName?: string;
-	};
-	getAttribute(name: string): string | null;
-}
-
 interface PiUiNamespace {
 	basecoat: {
 		refresh(root?: BasecoatRefreshRoot): void;
-	};
-	codeTheme: {
-		apply(light: string, dark: string, appearance: string, name: string): void;
-		begin(card: CodeThemeCard): boolean;
-		fail(): void;
 	};
 	dialogs: {
 		toggleSession(): boolean;

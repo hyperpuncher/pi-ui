@@ -31,7 +31,6 @@ const promptHistory = createPromptHistory();
 
 window.piUi = {
 	basecoat: { refresh },
-	codeTheme: { apply: () => {}, begin: () => false, fail: () => {} },
 	dialogs,
 	fileTransfer,
 	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },

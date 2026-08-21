@@ -699,6 +699,8 @@ Deno.test("initial and live backend-owned signals share exact projections", () =
 Deno.test("server-owned view signals are transport-private", () => {
 	const signals = projectBackendSignals(createState().snapshot());
 	assertEqual(Object.keys(signals).sort(), [
+		"_codeThemeDark",
+		"_codeThemeLight",
 		"_isBusy",
 		"_isSessionReady",
 		"_promptHistory",

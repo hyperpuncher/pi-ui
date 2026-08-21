@@ -25,16 +25,6 @@ export function registerCodeThemeRoutes(router: ExactRouter<RouteContext>): void
 		await writeCodeThemePreference(themes);
 		setActiveCodeTheme(themes);
 		context.renderer.codeThemeChanged();
-		return datastarResponse([
-			{
-				type: "signals",
-				signals: {
-					_codeThemeLight: themes.light,
-					_codeThemeDark: themes.dark,
-					_codeThemeAppliedAppearance: appearance,
-					_codeThemeAppliedName: theme.name,
-				},
-			},
-		]);
+		return datastarResponse();
 	});
 }
