@@ -296,12 +296,10 @@ export function bindMessageResize() {
 	const stack = document.querySelector("#messages > .messages-stack");
 	if (!(stack instanceof HTMLElement) || stack === observedMessageStack) return;
 	messageResizeObserver ??= new ResizeObserver(() => {
-		requestAnimationFrame(() => {
-			const messages = document.getElementById("messages");
-			if (messages instanceof HTMLElement && state.pinnedToBottom)
-				messages.scrollTop = messages.scrollHeight;
-			updateScrollControl();
-		});
+		const messages = document.getElementById("messages");
+		if (messages instanceof HTMLElement && state.pinnedToBottom)
+			messages.scrollTop = messages.scrollHeight;
+		updateScrollControl();
 	});
 	if (observedMessageStack) messageResizeObserver.unobserve(observedMessageStack);
 	observedMessageStack = stack;
