@@ -55,7 +55,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 				format: "code",
 			},
 		]);
-		const patchesPromise = collectElementPatches(response, 5);
+		const patchesPromise = collectElementPatches(response, 4);
 		while (gates.length < 2) await Promise.resolve();
 		for (const [index, gate] of gates.entries()) {
 			gate.resolve(`<div data-enhanced="${index}">safe</div>`);
@@ -64,7 +64,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 
 		assertEqual(maximum, 2);
 		assertEqual(order.join(","), "tool,markdown");
-		assertEqual(summary.fullPatchCount, 2);
+		assertEqual(summary.fullPatchCount, 1);
 		assertEqual(summary.targetedPatchCount, 3);
 		assertIncludes(summary.patches[1], "data: selector #messages");
 		assertIncludes(summary.patches[1], "data: mode replace");
@@ -75,7 +75,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 			"&lt;script&gt;alert(&quot;tool&quot;)&lt;/script&gt;",
 		);
 		assertNotIncludes(summary.patches[1], "data-enhanced");
-		assertIncludes(summary.patches[3] + summary.patches[4], "data-enhanced");
+		assertIncludes(summary.patches[2] + summary.patches[3], "data-enhanced");
 	} finally {
 		controller.abort();
 	}
@@ -95,13 +95,13 @@ Deno.test("fat patches preserve finalized message DOM without resending its HTML
 		resolveEnhancement("<p>large finalized HTML</p>");
 		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
-		const patches = await collectElementPatches(response, 5);
+		const patches = await collectElementPatches(response, 4);
 
-		assertIncludes(patches.patches[3], "large finalized HTML");
+		assertIncludes(patches.patches[2], "large finalized HTML");
+		assertIncludes(patches.patches[2], "data-ignore-morph");
+		assertNotIncludes(patches.patches[3], "large finalized HTML");
+		assertIncludes(patches.patches[3], "lightweight source");
 		assertIncludes(patches.patches[3], "data-ignore-morph");
-		assertNotIncludes(patches.patches[4], "large finalized HTML");
-		assertIncludes(patches.patches[4], "lightweight source");
-		assertIncludes(patches.patches[4], "data-ignore-morph");
 	} finally {
 		controller.abort();
 	}
@@ -125,16 +125,16 @@ Deno.test("fat patches resend finalized tool HTML that the client may morph", as
 		]);
 		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 		state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
-		const patches = await collectElementPatches(response, 5);
+		const patches = await collectElementPatches(response, 4);
 
+		assertIncludes(patches.patches[2], "highlighted edit");
 		assertIncludes(patches.patches[3], "highlighted edit");
-		assertIncludes(patches.patches[4], "highlighted edit");
 	} finally {
 		controller.abort();
 	}
 });
 
-Deno.test("normal commits send the complete stable view for Datastar to morph", async () => {
+Deno.test("session transitions patch signals and replace only the transcript", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -149,10 +149,7 @@ Deno.test("normal commits send the complete stable view for Datastar to morph", 
 		const loading = await readUntil(reader, (text) =>
 			text.includes('"_sessionTransitionLoading":true'),
 		);
-		assertIncludes(loading, 'id="session-transition"');
-		assertIncludes(loading, 'id="messages"');
-		assertIncludes(loading, 'id="prompt-toolbar"');
-		assertIncludes(loading, 'id="session-sidebar-content"');
+		assertNotIncludes(loading, "datastar-patch-elements");
 
 		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
 		state.flush();
@@ -162,15 +159,13 @@ Deno.test("normal commits send the complete stable view for Datastar to morph", 
 		assertIncludes(restored, 'id="messages"');
 		assertIncludes(restored, "data: selector #messages");
 		assertIncludes(restored, "data: mode replace");
+		assertNotIncludes(restored, 'id="session-sidebar-content"');
 
 		state.setSessionTransition({ status: "idle", generation: 1 });
 		const idle = await readUntil(reader, (text) =>
 			text.includes('"_sessionTransitionLoading":false'),
 		);
-		assertIncludes(idle, 'id="session-transition"');
-		assertIncludes(idle, 'id="messages"');
-		assertIncludes(idle, 'id="prompt-toolbar"');
-		assertIncludes(idle, 'id="session-sidebar-content"');
+		assertNotIncludes(idle, "datastar-patch-elements");
 	} finally {
 		controller.abort();
 	}
@@ -526,7 +521,7 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 	assertEqual(state.activityText, "disconnected");
 });
 
-Deno.test("normal commits preserve backend-owned session pagination", async () => {
+Deno.test("session pagination patches only session-owned regions", async () => {
 	const state = createState();
 	const sessions = Array.from({ length: 70 }, (_, index) => ({
 		path: `/sessions/${index}.jsonl`,
@@ -548,10 +543,7 @@ Deno.test("normal commits preserve backend-owned session pagination", async () =
 		state.setUsage({ text: "$2.000 • 2 tokens", costText: "$2.000" });
 		state.flush();
 		const unrelated = await readUntil(reader, (text) => text.includes("$2.000"));
-		assertIncludes(unrelated, 'id="session-sidebar-content"');
-		assertIncludes(unrelated, "Session 59");
-		assertNotIncludes(unrelated, "Session 60");
-		assertIncludes(unrelated, "@post('/sessions/more'");
+		assertNotIncludes(unrelated, 'id="session-sidebar-content"');
 
 		state.updateSessionSummary(sessions[0].path, (session) => ({
 			...session,
@@ -759,7 +751,7 @@ Deno.test("server-owned view signals are transport-private", () => {
 	]);
 });
 
-Deno.test("one fat view contains every server-owned dynamic root", () => {
+Deno.test("hot app views exclude independently owned regions", () => {
 	const previous = Deno.env.get("PI_UI_DEBUG");
 	Deno.env.set("PI_UI_DEBUG", "1");
 	try {
@@ -777,6 +769,9 @@ Deno.test("one fat view contains every server-owned dynamic root", () => {
 			"workspace-picker",
 			"session-transition",
 			"debug-overlay",
+		])
+			assertIncludes(view, `id="${id}"`);
+		for (const id of [
 			"auth-dialog-content",
 			"extension-dialog-content",
 			"llama-dialog-content",
@@ -786,8 +781,10 @@ Deno.test("one fat view contains every server-owned dynamic root", () => {
 			"slash-picker",
 			"tree-picker",
 			"session-menu-content",
+			"session-sidebar-content",
+			"workspace-review-data",
 		])
-			assertIncludes(view, `id="${id}"`);
+			assertNotIncludes(view, `id="${id}"`);
 	} finally {
 		if (previous === undefined) Deno.env.delete("PI_UI_DEBUG");
 		else Deno.env.set("PI_UI_DEBUG", previous);

@@ -46,6 +46,12 @@ type RenderedView = {
 	scripts: readonly string[];
 };
 
+type DirtyRegions = {
+	pickers: boolean;
+	sessions: boolean;
+	workspaceReview: boolean;
+};
+
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
 	private readonly displayClients = new DisplayRefreshClients();
@@ -54,6 +60,9 @@ export class UiRenderer implements AppStorePresentation {
 	private commitScheduled = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
+	private pickersDirty = false;
+	private sessionsDirty = false;
+	private workspaceReviewDirty = false;
 	private replaceTranscriptOnCommit = false;
 
 	constructor(
@@ -117,6 +126,14 @@ export class UiRenderer implements AppStorePresentation {
 		this.pendingEffects = [];
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
+		const dirtyRegions: DirtyRegions = {
+			pickers: this.pickersDirty,
+			sessions: this.sessionsDirty,
+			workspaceReview: this.workspaceReviewDirty,
+		};
+		this.pickersDirty = false;
+		this.sessionsDirty = false;
+		this.workspaceReviewDirty = false;
 		const state = this.store.snapshot();
 		if (this.hub.clientCount > 0) {
 			const snapshot = this.projectState(state);
@@ -125,22 +142,62 @@ export class UiRenderer implements AppStorePresentation {
 				this.replaceTranscriptOnCommit && Boolean(regions[0]);
 			if (replaceTranscript) this.hub.replaceElement(regions[0], "#messages");
 			this.hub.patchView(
-				(replaceTranscript ? regions.slice(1) : regions).join(""),
+				replaceTranscript ? "" : regions.join(""),
 				this.renderSignals(snapshot, this.effectSignalOverrides(effects)),
-				[
-					...this.mainEffectScripts(effects),
-					...this.pickerEffectScripts(effects),
-				],
+				this.mainEffectScripts(effects),
 			);
+			this.patchDirtyRegions(snapshot, effects, dirtyRegions);
 		}
 		this.replaceTranscriptOnCommit = false;
 		for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
+	private patchDirtyRegions(
+		snapshot: AppRenderSnapshot,
+		effects: readonly UiCommitEffect[],
+		dirty: DirtyRegions,
+	): void {
+		if (dirty.pickers) {
+			this.hub.patchView(
+				this.renderPickerElements(snapshot),
+				"{}",
+				this.pickerEffectScripts(effects),
+			);
+		}
+		if (dirty.sessions) {
+			this.hub.patchView(
+				renderSessionPickerContent(snapshot) +
+					renderSessionSidebarContent(snapshot),
+				"{}",
+				[],
+			);
+		}
+		if (dirty.workspaceReview) {
+			this.hub.patchView(
+				renderWorkspaceReviewData(
+					snapshot.workspacePath,
+					snapshot.workspaceReview,
+					snapshot.workspaceReviewPreferences,
+				),
+				"{}",
+				[],
+			);
+		}
+	}
 	messageAppended(id: string): void {
 		this.messages.messageAppended(id);
+		this.hub.patchElement(this.messages.renderMessagesElement(), "#messages");
 	}
 	messageUpdated(id: string): void {
 		this.messages.messageUpdated(id);
+	}
+	pickersChanged(): void {
+		this.pickersDirty = true;
+	}
+	sessionsChanged(): void {
+		this.sessionsDirty = true;
+	}
+	workspaceReviewChanged(): void {
+		this.workspaceReviewDirty = true;
 	}
 	codeThemeChanged(): void {
 		this.messages.codeThemeChanged();
@@ -152,6 +209,13 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	streamingMessageChanged(): void {
 		this.messages.streamingMessageChanged();
+	}
+	sessionTransitionChanged(scrollToBottom: boolean): void {
+		this.hub.patchView(
+			"",
+			this.renderSignals(this.store.snapshot()),
+			scrollToBottom ? ["window.piUi.messageScroll.scrollBottom()"] : [],
+		);
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
 		this.messages.assistantFinished(ids);
@@ -221,14 +285,6 @@ export class UiRenderer implements AppStorePresentation {
 			renderWorkspacePicker(snapshot),
 			renderSessionTransition(snapshot),
 			renderDebugOverlay(snapshot),
-			this.renderPickerElements(snapshot),
-			renderSessionPickerContent(snapshot),
-			renderSessionSidebarContent(snapshot),
-			renderWorkspaceReviewData(
-				snapshot.workspacePath,
-				snapshot.workspaceReview,
-				snapshot.workspaceReviewPreferences,
-			),
 		];
 	}
 	renderPickerElements(snapshot: AppStateSnapshot): string {
@@ -255,7 +311,16 @@ export class UiRenderer implements AppStorePresentation {
 		includeFinalMessageHtml = true,
 	): RenderedView {
 		return {
-			elements: this.renderElements(snapshot, includeFinalMessageHtml),
+			elements:
+				this.renderElements(snapshot, includeFinalMessageHtml) +
+				this.renderPickerElements(snapshot) +
+				renderSessionPickerContent(snapshot) +
+				renderSessionSidebarContent(snapshot) +
+				renderWorkspaceReviewData(
+					snapshot.workspacePath,
+					snapshot.workspaceReview,
+					snapshot.workspaceReviewPreferences,
+				),
 			signals: this.renderSignals(snapshot, overrides),
 			scripts: this.initialDialogScripts(snapshot),
 		};
@@ -273,9 +338,6 @@ export class UiRenderer implements AppStorePresentation {
 		for (const effect of effects) {
 			if (effect.type === "document-title") {
 				scripts.push(`document.title = ${JSON.stringify(effect.title)}`);
-			}
-			if (effect.type === "scroll-messages-to-bottom") {
-				scripts.push("window.piUi.messageScroll.scrollBottom()");
 			}
 		}
 		return scripts;

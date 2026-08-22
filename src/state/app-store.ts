@@ -142,7 +142,6 @@ export type UiCommitEffect =
 			open: boolean;
 	  }
 	| { type: "document-title"; title: string }
-	| { type: "scroll-messages-to-bottom" }
 	| { type: "signal-overrides"; values: JsonObject };
 
 export interface AppStorePresentation {
@@ -152,8 +151,12 @@ export interface AppStorePresentation {
 	flush(): void;
 	messageAppended(id: string): void;
 	messageUpdated(id: string): void;
+	pickersChanged(): void;
+	sessionsChanged(): void;
+	workspaceReviewChanged(): void;
 	streamingMessageStarted(id: string): void;
 	streamingMessageChanged(): void;
+	sessionTransitionChanged(scrollToBottom: boolean): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
 	transcriptReplacing(): void;
 	transcriptReplaced(
@@ -385,13 +388,11 @@ export class AppStore {
 	): string {
 		const id = this.transcript.appendMessage(role, text, options);
 		this.presentation?.messageAppended(id);
-		this.commit();
 		return id;
 	}
 	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void {
 		if (!this.transcript.updateMessage(id, patch)) return;
 		this.presentation?.messageUpdated(id);
-		this.commit();
 	}
 	appendThoughtDelta(delta: string): void {
 		const previousId = this.transcript.activeThoughtMessageId;
@@ -462,25 +463,30 @@ export class AppStore {
 	): void {
 		this.models = models;
 		this.currentModel = currentModel;
+		this.presentation?.pickersChanged();
 		this.commit(options.reopenPicker ? { type: "reopen-model-picker" } : undefined);
 	}
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
+		this.presentation?.pickersChanged();
 		this.commit();
 	}
 	setSessions(sessions: AppSessionSummary[]): void {
 		this.sessions = sessions;
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setSessionCatalogLoading(loading: boolean): void {
 		if (this.sessionCatalogLoading === loading) return;
 		this.sessionCatalogLoading = loading;
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setSessionCatalog(sessions: AppSessionSummary[]): void {
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	loadMoreSessions(): void {
@@ -488,6 +494,7 @@ export class AppStore {
 			this.sessionSidebarLimit + sessionSidebarPageSize,
 			this.getSessionCatalog().length,
 		);
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
@@ -498,7 +505,10 @@ export class AppStore {
 		const session = catalog.find((candidate) => candidate.path === path);
 		if (!session) return false;
 		if (catalog[0]?.path === path) {
-			if (options.regroup) this.commit();
+			if (options.regroup) {
+				this.presentation?.sessionsChanged();
+				this.commit();
+			}
 			return false;
 		}
 		this.sessionIndex = [
@@ -506,6 +516,7 @@ export class AppStore {
 			...catalog.filter((candidate) => candidate.path !== path),
 		];
 		this.sessions = this.sessionIndex.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.presentation?.sessionsChanged();
 		this.commit();
 		return true;
 	}
@@ -521,6 +532,7 @@ export class AppStore {
 		);
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.presentation?.sessionsChanged();
 		this.commit();
 		return true;
 	}
@@ -546,10 +558,12 @@ export class AppStore {
 			...values,
 			...this.recentWorkspaces,
 		]);
+		this.presentation?.pickersChanged();
 		this.commit();
 	}
 	setSlashCommands(commands: AppSlashCommand[]): void {
 		this.slashCommands = commands;
+		this.presentation?.pickersChanged();
 		this.commit();
 	}
 	setAuthDialog(
@@ -557,6 +571,7 @@ export class AppStore {
 		options: { resetInput?: boolean } = {},
 	): void {
 		this.authDialog = dialog;
+		this.presentation?.pickersChanged();
 		this.presentation?.requestCommit({
 			type: "dialog",
 			id: "auth-dialog",
@@ -570,6 +585,7 @@ export class AppStore {
 	}
 	setExtensionDialog(dialog: AppExtensionDialog | undefined): void {
 		this.extensionDialog = dialog;
+		this.presentation?.pickersChanged();
 		this.presentation?.requestCommit({
 			type: "dialog",
 			id: "extension-dialog",
@@ -624,6 +640,7 @@ export class AppStore {
 	}
 	setLlamaDialog(dialog: AppLlamaDialog | undefined): void {
 		this.llamaDialog = dialog;
+		this.presentation?.pickersChanged();
 		this.presentation?.requestCommit({
 			type: "dialog",
 			id: "llama-dialog",
@@ -632,10 +649,12 @@ export class AppStore {
 	}
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
+		this.presentation?.pickersChanged();
 		this.commit();
 	}
 	setCurrentModel(value: string | undefined): void {
 		this.currentModel = value;
+		this.presentation?.pickersChanged();
 		this.commit();
 	}
 	setUsage(value: AppUsage): void {
@@ -644,6 +663,7 @@ export class AppStore {
 	}
 	setActivityText(value: string | undefined): void {
 		this.transcript.setActivityText(value);
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void {
@@ -652,6 +672,7 @@ export class AppStore {
 	}
 	setCurrentSessionPath(value: string | undefined): void {
 		this.currentSessionPath = value;
+		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	setTemporarySession(value: boolean): void {
@@ -662,25 +683,27 @@ export class AppStore {
 		if (this.workspacePath === value) return;
 		this.workspacePath = value;
 		this.workspaceReview = unloadedWorkspaceReviewSnapshot;
+		this.presentation?.pickersChanged();
+		this.presentation?.workspaceReviewChanged();
 		this.commit();
 		this.workspacePathListener?.(value);
 	}
 	setWorkspaceReview(value: WorkspaceReviewSnapshot): void {
 		if (this.workspaceReview.revision === value.revision) return;
 		this.workspaceReview = value;
+		this.presentation?.workspaceReviewChanged();
 		this.commit();
 	}
 	setWorkspaceReviewPreferences(value: WorkspaceReviewPreferences): void {
 		this.workspaceReviewPreferences = value;
+		this.presentation?.workspaceReviewChanged();
 		this.commit();
 	}
 	setSessionTransition(value: SessionTransitionState): void {
 		const loaded =
 			this.sessionTransition.status === "loading" && value.status === "idle";
-		if (this.sessionTransition.status === "loading" && value.status !== "loading")
-			this.flush();
-		this.sessionTransition = value;
-		this.commit(loaded ? { type: "scroll-messages-to-bottom" } : undefined);
 		this.flush();
+		this.sessionTransition = value;
+		this.presentation?.sessionTransitionChanged(loaded);
 	}
 }

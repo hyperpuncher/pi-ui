@@ -87,7 +87,7 @@ export class MessageRenderService {
 		this.registerImage = options.registerImage;
 		this.clearImages = options.clearImages;
 		this.streaming = new StreamingFrameScheduler((ids) => {
-			for (const id of ids) this.patchStreaming(id);
+			for (const id of ids) this.patchScheduledMessage(id);
 		});
 	}
 
@@ -122,15 +122,19 @@ export class MessageRenderService {
 			presentationState: rendersMarkdown(message.role) ? "streaming" : "plain",
 			presentationVersion: 0,
 		});
-		if (message.role === "tool") this.deferEnhancement(id);
+		if (message.role === "tool" && message.state !== "running") {
+			this.enqueueEnhancement(id);
+		}
 	}
 	messageUpdated(id: string): void {
+		const message = this.store.transcript.getMessage(id);
+		if (!message) return;
 		releaseMarkdownStreamingState(id);
 		const value = this.ensure(id);
 		value.renderedHtml = undefined;
 		value.presentationState = "plain";
 		value.presentationVersion += 1;
-		this.deferEnhancement(id);
+		this.streaming.schedule([id]);
 	}
 	codeThemeChanged(): void {
 		const streamingIds = new Set(this.streamingIds());
@@ -270,13 +274,18 @@ export class MessageRenderService {
 			presentationVersion: 0,
 		});
 	}
-	private patchStreaming(id: string): void {
+	private patchScheduledMessage(id: string): void {
 		const message = this.store.transcript.getMessage(id);
-		if (!message || !rendersMarkdown(message.role) || !message.text.trim()) return;
-		const value = this.ensure(id);
-		value.renderedHtml = renderMarkdownStreaming(message.text, { cacheKey: id });
-		value.presentationState = "streaming";
+		if (!message) return;
+		if (rendersMarkdown(message.role) && message.text.trim()) {
+			const value = this.ensure(id);
+			value.renderedHtml = renderMarkdownStreaming(message.text, { cacheKey: id });
+			value.presentationState = "streaming";
+		}
 		this.broadcast(message);
+		if (message.role === "tool" && message.state !== "running") {
+			this.enqueueEnhancement(id);
+		}
 	}
 	private project(message: TranscriptMessage): AppMessage {
 		const presentation = this.ensure(message.id);
