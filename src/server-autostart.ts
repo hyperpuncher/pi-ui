@@ -144,12 +144,12 @@ async function enableWindowsAutostart(config: ServerAutostartConfig): Promise<vo
 		windowsRunCommand(config),
 		"/F",
 	]);
-	const child = new Deno.Command(config.executable, {
-		stdin: "null",
-		stdout: "null",
-		stderr: "null",
-	}).spawn();
-	child.unref();
+	await command("powershell.exe", [
+		"-NoProfile",
+		"-NonInteractive",
+		"-Command",
+		`Start-Process -FilePath '${powershellString(config.executable)}' -WindowStyle Hidden`,
+	]);
 }
 
 async function disableWindowsAutostart(config: ServerAutostartConfig): Promise<void> {
