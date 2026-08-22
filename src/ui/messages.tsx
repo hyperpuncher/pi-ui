@@ -62,8 +62,8 @@ export function renderMessages(
 			data-init="window.piUi.messageScroll.bindResize()"
 		>
 			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
-				{hasOlderMessages ? renderOlderMessagesTrigger() : ""}
 				<div id="message-list" class="contents">
+					{hasOlderMessages ? renderOlderMessagesTrigger() : ""}
 					{messages.length === 0
 						? renderEmptyMessages(
 								emptyHint,

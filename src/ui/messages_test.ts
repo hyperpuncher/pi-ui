@@ -316,9 +316,10 @@ Deno.test("older messages use one wrapper with prefetch and top triggers", () =>
 		{ description: "Send", keys: "enter" },
 		true,
 	);
+	const listIndex = html.indexOf('id="message-list"');
 	const triggerIndex = html.indexOf('id="older-messages-trigger"');
 	const messageIndex = html.indexOf('data-message-id="user-1"');
-	assert(triggerIndex >= 0 && triggerIndex < messageIndex);
+	assert(listIndex >= 0 && listIndex < triggerIndex && triggerIndex < messageIndex);
 	assertEquals(html.match(/data-on-intersect/g)?.length, 2);
 	assertStringIncludes(html, "h-[min(50vh,100%)]");
 	assertStringIncludes(html, "top: min(250vh, calc(100% - 1px))");
