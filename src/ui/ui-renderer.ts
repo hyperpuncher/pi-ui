@@ -17,7 +17,7 @@ import {
 	MessageRenderService,
 	type MessageRenderServiceOptions,
 } from "./message-render-service.ts";
-import { preservesFinalizedMessageDom, renderMessages } from "./messages.tsx";
+import { renderMessages } from "./messages.tsx";
 import {
 	renderSessionPickerContent,
 	renderSlashPicker,
@@ -32,7 +32,6 @@ import {
 } from "./prompt-pickers.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import { renderPromptToolbar } from "./prompt-toolbar.tsx";
-import type { AppMessage } from "./render-state.ts";
 import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebarContent } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
@@ -137,12 +136,11 @@ export class UiRenderer implements AppStorePresentation {
 		const state = this.store.snapshot();
 		if (this.hub.clientCount > 0) {
 			const snapshot = this.projectState(state);
-			const regions = this.renderElementRegions(snapshot, false);
-			const replaceTranscript =
-				this.replaceTranscriptOnCommit && Boolean(regions[0]);
-			if (replaceTranscript) this.hub.replaceElement(regions[0], "#messages");
+			if (this.replaceTranscriptOnCommit) {
+				this.hub.replaceElement(this.renderTranscript(snapshot), "#messages");
+			}
 			this.hub.patchView(
-				replaceTranscript ? "" : regions.join(""),
+				this.replaceTranscriptOnCommit ? "" : this.renderAppElements(snapshot),
 				this.renderSignals(snapshot, this.effectSignalOverrides(effects)),
 				this.mainEffectScripts(effects),
 			);
@@ -266,35 +264,31 @@ export class UiRenderer implements AppStorePresentation {
 		return this.messages.renderMessagesElement();
 	}
 
-	renderElements(snapshot: AppRenderSnapshot, includeFinalMessageHtml = true): string {
-		return this.renderElementRegions(snapshot, includeFinalMessageHtml).join("");
+	renderElements(snapshot: AppRenderSnapshot): string {
+		return this.renderTranscript(snapshot) + this.renderAppElements(snapshot);
 	}
-	private renderElementRegions(
-		snapshot: AppRenderSnapshot,
-		includeFinalMessageHtml: boolean,
-	): string[] {
-		const messages = renderMessages(
-			includeFinalMessageHtml
-				? snapshot.messages
-				: snapshot.messages.map(omitPreservedMessageHtml),
+	private renderTranscript(snapshot: AppRenderSnapshot): string {
+		return renderMessages(
+			snapshot.messages,
 			snapshot.emptyChatHint,
 			snapshot.hasOlderMessages,
 			snapshot.sessions,
 			snapshot.models.some((model) => model.configured),
 			snapshot.sessionCatalogLoading,
 		);
-		return [
-			messages,
-			renderPromptAction(snapshot),
-			renderPromptQueue(snapshot),
-			renderPromptToolbar(snapshot),
-			renderPromptStatus(snapshot),
-			renderExtensionWidgets(snapshot, "aboveEditor"),
-			renderExtensionWidgets(snapshot, "belowEditor"),
-			renderWorkspacePicker(snapshot),
-			renderSessionTransition(snapshot),
-			renderDebugOverlay(snapshot),
-		];
+	}
+	private renderAppElements(snapshot: AppRenderSnapshot): string {
+		return (
+			renderPromptAction(snapshot) +
+			renderPromptQueue(snapshot) +
+			renderPromptToolbar(snapshot) +
+			renderPromptStatus(snapshot) +
+			renderExtensionWidgets(snapshot, "aboveEditor") +
+			renderExtensionWidgets(snapshot, "belowEditor") +
+			renderWorkspacePicker(snapshot) +
+			renderSessionTransition(snapshot) +
+			renderDebugOverlay(snapshot)
+		);
 	}
 	renderPickerElements(snapshot: AppStateSnapshot): string {
 		return (
@@ -317,11 +311,10 @@ export class UiRenderer implements AppStorePresentation {
 	private renderView(
 		overrides: JsonObject = {},
 		snapshot = this.projectState(this.store.snapshot()),
-		includeFinalMessageHtml = true,
 	): RenderedView {
 		return {
 			elements:
-				this.renderElements(snapshot, includeFinalMessageHtml) +
+				this.renderElements(snapshot) +
 				this.renderPickerElements(snapshot) +
 				renderSessionPickerContent(snapshot) +
 				renderSessionSidebarContent(snapshot) +
@@ -379,10 +372,4 @@ export class UiRenderer implements AppStorePresentation {
 					`{ const dialog = document.getElementById('${id}'); if (dialog && !dialog.open) dialog.showModal(); }`,
 			);
 	}
-}
-
-function omitPreservedMessageHtml(message: AppMessage): AppMessage {
-	return preservesFinalizedMessageDom(message)
-		? { ...message, renderedHtml: undefined }
-		: message;
 }

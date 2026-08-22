@@ -81,7 +81,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 	}
 });
 
-Deno.test("fat patches preserve finalized message DOM without resending its HTML", async () => {
+Deno.test("ordinary commits exclude finalized assistant messages", async () => {
 	let resolveEnhancement: ((html: string) => void) | undefined;
 	const state = createState({
 		renderMarkdownFinal: () =>
@@ -100,14 +100,14 @@ Deno.test("fat patches preserve finalized message DOM without resending its HTML
 		assertIncludes(patches.patches[2], "large finalized HTML");
 		assertIncludes(patches.patches[2], "data-ignore-morph");
 		assertNotIncludes(patches.patches[3], "large finalized HTML");
-		assertIncludes(patches.patches[3], "lightweight source");
-		assertIncludes(patches.patches[3], "data-ignore-morph");
+		assertNotIncludes(patches.patches[3], "lightweight source");
+		assertNotIncludes(patches.patches[3], 'id="messages"');
 	} finally {
 		controller.abort();
 	}
 });
 
-Deno.test("fat patches resend finalized tool HTML that the client may morph", async () => {
+Deno.test("ordinary commits exclude finalized tool messages", async () => {
 	const state = createState({
 		renderDiff: () =>
 			Promise.resolve('<div data-pierre-diff="">highlighted edit</div>'),
@@ -128,7 +128,8 @@ Deno.test("fat patches resend finalized tool HTML that the client may morph", as
 		const patches = await collectElementPatches(response, 4);
 
 		assertIncludes(patches.patches[2], "highlighted edit");
-		assertIncludes(patches.patches[3], "highlighted edit");
+		assertNotIncludes(patches.patches[3], "highlighted edit");
+		assertNotIncludes(patches.patches[3], 'id="messages"');
 	} finally {
 		controller.abort();
 	}
