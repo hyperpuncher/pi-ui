@@ -40,7 +40,7 @@
 			var(--muted) 97%,
 			var(--foreground)
 		);
-		--pi-control-well: color-mix(in oklab, var(--muted) 72%, var(--border));
+		--pi-control-well: color-mix(in oklab, var(--muted) 92%, var(--foreground));
 		--pi-surface-edge: color-mix(in oklab, var(--foreground) 9%, transparent);
 		--pi-divider-handle: color-mix(
 			in oklab,
