@@ -30,12 +30,13 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 		}),
 	);
 
-	assertStringIncludes(html, 'class="sidebar"');
+	assertStringIncludes(html, 'class="sidebar group/sidebar"');
 	assertStringIncludes(html, 'data-side="right"');
 	assertFalse(html.includes('data-initial-open="false"'));
 	assertStringIncludes(html, 'aria-label="Sessions"');
 	assertStringIncludes(html, "pi-raised-surface");
 	assertStringIncludes(html, "pi-resize-handle");
+	assertStringIncludes(html, 'data-on:click__stop="true"');
 	assertStringIncludes(
 		html,
 		"right: calc(var(--sidebar-width) + var(--pi-workspace-inset) - var(--pi-workspace-gap))",

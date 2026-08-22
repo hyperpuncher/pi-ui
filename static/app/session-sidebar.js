@@ -3,7 +3,6 @@ export const sessionSidebarWidthMin = 224;
 export const sessionSidebarWidthMax = 480;
 
 const storageKey = "pi-ui-session-sidebar-width";
-const guardedSeparators = new WeakSet();
 let resizeBound = false;
 
 export function clampSessionSidebarWidth(width, viewportWidth = innerWidth) {
@@ -64,34 +63,12 @@ export function bindSessionSidebarResize() {
 	let capturedSeparator;
 	let startX = 0;
 	let startWidth = width;
-	const desktop = matchMedia("(min-width: 48rem)");
-
 	const apply = (next) => {
 		width = clampSessionSidebarWidth(next);
-		const elements = sessionSidebarElements();
-		if (!elements) return;
-		const { nav, separator, sidebar, workspaceShell } = elements;
-		separator.dataset.resizeInitialized = "true";
-		if (!guardedSeparators.has(separator)) {
-			guardedSeparators.add(separator);
-			separator.addEventListener("click", (event) => event.stopPropagation());
-		}
-		separator.setAttribute("aria-valuenow", String(width));
-		const open = sidebar.getAttribute("aria-hidden") !== "true";
-		separator.hidden = !open;
-		if (!desktop.matches || !open) {
-			workspaceShell.style.removeProperty("margin-right");
-			if (!desktop.matches) {
-				nav.style.removeProperty("width");
-				separator.style.removeProperty("right");
-			}
-			return;
-		}
-		const gap = separator.getBoundingClientRect().width || 12;
-		const rightInset = innerWidth - nav.getBoundingClientRect().right;
-		nav.style.width = `${width - gap}px`;
-		workspaceShell.style.marginRight = `${width}px`;
-		separator.style.right = `${rightInset + width - gap}px`;
+		document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
+		document
+			.getElementById("session-sidebar-separator")
+			?.setAttribute("aria-valuenow", String(width));
 	};
 	const commit = () => localStorage.setItem(storageKey, String(width));
 	const finish = (event) => {
@@ -142,15 +119,6 @@ export function bindSessionSidebarResize() {
 		event.preventDefault();
 		document.getElementById("session-sidebar")?.toggle?.();
 	});
-	const app = document.getElementById("app");
-	if (app) {
-		new MutationObserver(() => apply(width)).observe(app, {
-			attributeFilter: ["aria-hidden"],
-			attributes: true,
-			childList: true,
-			subtree: true,
-		});
-	}
 	addEventListener("resize", () => apply(width), { passive: true });
 }
 
@@ -158,19 +126,6 @@ function eventSeparator(event) {
 	return event.target instanceof Element
 		? event.target.closest("#session-sidebar-separator")
 		: null;
-}
-
-function sessionSidebarElements() {
-	const sidebar = document.getElementById("session-sidebar");
-	const nav = document.querySelector("#session-sidebar nav");
-	const separator = document.getElementById("session-sidebar-separator");
-	const workspaceShell = document.getElementById("workspace-shell");
-	return sidebar instanceof HTMLElement &&
-		nav instanceof HTMLElement &&
-		separator instanceof HTMLElement &&
-		workspaceShell instanceof HTMLElement
-		? { nav, separator, sidebar, workspaceShell }
-		: undefined;
 }
 
 function isMac() {

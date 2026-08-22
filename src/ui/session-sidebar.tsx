@@ -29,7 +29,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 	return syncHtml(
 		<aside
 			id="session-sidebar"
-			class="sidebar"
+			class="sidebar group/sidebar"
 			data-side="right"
 			data-initial-open={state.sessions.length === 0 && "false"}
 			aria-keyshortcuts="Control+B Meta+B"
@@ -37,7 +37,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 		>
 			<div
 				id="session-sidebar-separator"
-				class="pi-resize-handle fixed! inset-y-(--pi-workspace-inset)! z-50 w-(--pi-workspace-gap)! max-md:hidden"
+				class="pi-resize-handle fixed! inset-y-(--pi-workspace-inset)! z-50 w-(--pi-workspace-gap)! max-md:hidden group-aria-[hidden=true]/sidebar:hidden!"
 				style="right: calc(var(--sidebar-width) + var(--pi-workspace-inset) - var(--pi-workspace-gap));"
 				role="separator"
 				tabindex="0"
@@ -46,6 +46,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 				aria-valuemin="224"
 				aria-valuemax="480"
 				aria-valuenow="288"
+				data-on:click__stop="true"
 			></div>
 			<nav
 				class="pi-raised-surface inset-y-(--pi-workspace-inset)! right-(--pi-workspace-inset)! w-[calc(var(--sidebar-mobile-width)-var(--pi-workspace-gap))] transition-transform duration-150 ease-(--pi-ease-out) motion-reduce:transition-none md:w-[calc(var(--sidebar-width)-var(--pi-workspace-gap))]"
