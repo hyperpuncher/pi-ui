@@ -193,14 +193,30 @@ export function renderWorkspaceReview(
 									</svg>
 								</button>
 							</div>
-							<button
-								id="review-wrap"
-								type="button"
-								class="rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-(--pi-control-well) aria-pressed:text-foreground"
-								aria-pressed="true"
-							>
-								Wrap
-							</button>
+							<div class="flex rounded-md bg-(--pi-control-well) p-0.5">
+								<button
+									id="review-wrap"
+									type="button"
+									class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+									aria-pressed="true"
+									aria-label="Wrap long lines"
+									data-tooltip="Wrap long lines"
+								>
+									<svg
+										class="size-3.5"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<path d="m16 16-3 3 3 3" />
+										<path d="M3 12h14.5a1 1 0 0 1 0 7H13M3 19h6M3 5h18" />
+									</svg>
+								</button>
+							</div>
 							<span
 								id="review-comment-status"
 								class="pi-error-foreground hidden text-xs"
