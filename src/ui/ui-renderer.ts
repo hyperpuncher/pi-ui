@@ -164,7 +164,10 @@ export class UiRenderer implements AppStorePresentation {
 		if (dirty.sessions) {
 			this.hub.patchView(
 				renderSessionPickerContent(snapshot) +
-					renderSessionSidebarContent(snapshot),
+					renderSessionSidebarContent(snapshot) +
+					(snapshot.messages.length === 0
+						? this.renderTranscript(snapshot)
+						: ""),
 				"{}",
 				[],
 			);
