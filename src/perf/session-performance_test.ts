@@ -6,15 +6,10 @@ import {
 
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { parseClientTransitionPaint } from "../server/routes/session-performance.ts";
-import { AppStore } from "../state/app-store.ts";
+import { type AppMessageInput, AppStore } from "../state/app-store.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
+import { collectElementPatches } from "../testing/element-patches.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
-import {
-	collectElementPatches,
-	enhancementMessageCount,
-	generatedSessionFixture,
-	markdownMessageCount,
-} from "./session-benchmark.ts";
 import {
 	appendSessionPerformanceRecord,
 	flushSessionPerformanceLog,
@@ -297,14 +292,8 @@ Deno.test("20-message restore emits fallback once and targets enhancements", asy
 	const controller = new AbortController();
 	try {
 		const response = renderer.createStream(controller.signal);
-		const messages = generatedSessionFixture(20);
-		state.replaceMessages(messages);
-		const markdownPatches = markdownMessageCount(messages);
-		const enhancementPatches = enhancementMessageCount(messages);
-		const summary = await collectElementPatches(response, 2 + enhancementPatches);
-
-		assertEqual(markdownPatches, 8);
-		assertEqual(enhancementPatches, 16);
+		state.replaceMessages(generatedSessionFixture(20));
+		const summary = await collectElementPatches(response, 18);
 		assertEqual(summary.fullPatchCount, 1);
 		assertEqual(summary.targetedPatchCount, 17);
 		assertIncludes(summary.patches[1], "data: selector #messages");
@@ -325,6 +314,44 @@ Deno.test("20-message restore emits fallback once and targets enhancements", asy
 		sessionPerformance.reset();
 	}
 });
+
+function generatedSessionFixture(count: number): AppMessageInput[] {
+	const timestamp = new Date("2026-01-01T00:00:00.000Z");
+	return Array.from({ length: count }, (_, index) => {
+		switch (index % 5) {
+			case 0:
+				return { role: "user", text: `Question ${index}`, timestamp };
+			case 1:
+				return {
+					role: "assistant",
+					text: `Answer ${index}\n\n\`\`\`ts\nconst value${index} = ${index};\n\`\`\``,
+					timestamp,
+				};
+			case 2:
+				return {
+					role: "thought",
+					text: `Reasoning about fixture ${index}.`,
+					timestamp,
+				};
+			case 3:
+				return {
+					role: "tool",
+					text: `printf 'fixture-${index}\\n'`,
+					timestamp,
+					format: "code",
+					state: "success",
+				};
+			default:
+				return {
+					role: "tool",
+					text: "@@ -1 +1 @@\n-old\n+new",
+					timestamp,
+					format: "diff",
+					state: "success",
+				};
+		}
+	});
+}
 
 function completeTransition(transitionId: number | undefined): void {
 	const previous = Deno.env.get("PI_UI_PERF_FILE");

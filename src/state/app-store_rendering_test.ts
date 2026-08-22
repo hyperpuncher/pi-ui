@@ -4,9 +4,9 @@ import {
 	assertStringIncludes as assertIncludes,
 } from "@std/assert";
 
-import { collectElementPatches } from "../perf/session-benchmark.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
+import { collectElementPatches } from "../testing/element-patches.ts";
 import { projectBackendSignals } from "../ui/backend-signals.ts";
 import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
 import { renderPage } from "../ui/page.tsx";
