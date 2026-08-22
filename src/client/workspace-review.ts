@@ -690,15 +690,6 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 				min-width: 0;
 			}
 
-			[data-gutter-utility-slot] {
-				right: auto;
-				left: 4px;
-				justify-content: flex-start;
-			}
-
-			[data-utility-button] {
-				margin-right: 0;
-			}
 		`,
 	};
 }
