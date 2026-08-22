@@ -8,6 +8,7 @@ import { loadPierreLanguage } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 import { expandHomePath } from "../utils/workspace.ts";
+import { ensureAppConfig } from "./app-config.ts";
 import { readAutoTitleConfig } from "./auto-title-config.ts";
 import { readCodeThemePreference } from "./code-theme-preferences.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
@@ -41,6 +42,7 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const staticAssets = await createStaticAssetServer(staticRoot);
+	await ensureAppConfig();
 	const [codeTheme, autoTitle, workspaceReviewPreferences] = await Promise.all([
 		readCodeThemePreference(),
 		readAutoTitleConfig(),

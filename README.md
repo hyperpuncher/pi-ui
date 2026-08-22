@@ -111,7 +111,7 @@ brew install --cask hyperpuncher/tap/pi-ui
 pi-ui stores its configuration in:
 
 - linux: `~/.config/pi-ui/config.json`
-- macos: `~/Library/Application Support/pi-ui/config.json`
+- macos: `~/.config/pi-ui/config.json`
 - windows: `%APPDATA%\\pi-ui\\config.json`
 
 ## keybinds

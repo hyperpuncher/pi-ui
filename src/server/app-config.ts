@@ -24,6 +24,20 @@ export async function readAppConfig(path = appConfigPath()): Promise<AppConfig> 
 	}
 }
 
+export async function ensureAppConfig(path = appConfigPath()): Promise<AppConfig> {
+	await Deno.mkdir(dirname(path), { recursive: true });
+	const config: AppConfig = { $schema: appConfigSchemaUrl };
+	try {
+		await Deno.writeTextFile(path, serializeAppConfig(config), {
+			createNew: true,
+		});
+		return config;
+	} catch (error) {
+		if (!(error instanceof Deno.errors.AlreadyExists)) throw error;
+		return await readAppConfig(path);
+	}
+}
+
 export async function updateAppConfig(
 	update: (config: AppConfig) => void,
 	path = appConfigPath(),
@@ -33,13 +47,17 @@ export async function updateAppConfig(
 		update(config);
 		config.$schema = appConfigSchemaUrl;
 		await Deno.mkdir(dirname(path), { recursive: true });
-		await Deno.writeTextFile(path, `${JSON.stringify(config, null, "\t")}\n`);
+		await Deno.writeTextFile(path, serializeAppConfig(config));
 	});
 	pendingWrite = write.catch(() => {});
 	await write;
 }
 
-function appConfigPath(): string {
+function serializeAppConfig(config: AppConfig): string {
+	return `${JSON.stringify(config, null, "\t")}\n`;
+}
+
+export function appConfigPath(): string {
 	const home = os.homedir();
 	if (Deno.build.os === "windows") {
 		return join(
@@ -47,9 +65,6 @@ function appConfigPath(): string {
 			"pi-ui",
 			"config.json",
 		);
-	}
-	if (Deno.build.os === "darwin") {
-		return join(home, "Library", "Application Support", "pi-ui", "config.json");
 	}
 	return join(
 		Deno.env.get("XDG_CONFIG_HOME") ?? join(home, ".config"),
