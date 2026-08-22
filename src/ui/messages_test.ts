@@ -212,12 +212,12 @@ Deno.test("bodyless tools use timeline markup without an output surface", () => 
 	assertStringExcludes(html, "data-ignore-morph");
 });
 
-Deno.test("consecutive tools mark every continuing timeline segment", () => {
+Deno.test("consecutive tools need no backend connector markers", () => {
 	const html = renderMessages(
 		[tool(), tool({ id: "tool-2" }), tool({ id: "tool-3" })],
 		{ description: "Send", keys: "enter" },
 	);
-	assertEquals(html.match(/data-tool-continues/g)?.length, 2);
+	assertStringExcludes(html, "data-tool-continues");
 });
 
 Deno.test("shell tools preserve wrapped title, metadata, and escaped output", () => {

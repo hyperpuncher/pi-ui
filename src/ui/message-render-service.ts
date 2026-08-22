@@ -104,6 +104,11 @@ export class MessageRenderService {
 			this.store.sessionCatalogLoading,
 		);
 	}
+	renderMessageElement(id: string): string | undefined {
+		const message = this.store.transcript.getMessage(id);
+		if (!message) return undefined;
+		return renderMessage(this.project(message));
+	}
 	renderOlderMessagesPatch(ids: readonly string[]): string {
 		return renderOlderMessagesPatch(
 			this.projectMessages(this.store.messages),
@@ -324,12 +329,8 @@ export class MessageRenderService {
 		};
 	}
 	private broadcast(message: TranscriptMessage): void {
-		const projected = this.project(message);
-		const messages = this.store.transcript.allMessages;
-		const index = messages.indexOf(message);
-		const toolContinues = messages[index + 1]?.role === "tool";
 		this.patchMessage(
-			renderMessage(projected, toolContinues),
+			renderMessage(this.project(message)),
 			`[data-message-id="${message.id}"]`,
 		);
 	}

@@ -63,16 +63,16 @@ export function renderMessages(
 		>
 			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
 				{hasOlderMessages ? renderOlderMessagesTrigger() : ""}
-				{messages.length === 0
-					? renderEmptyMessages(
-							emptyHint,
-							sessions.slice(0, 3),
-							authenticated,
-							sessionCatalogLoading,
-						)
-					: messages.map((message, index) =>
-							renderMessage(message, messages[index + 1]?.role === "tool"),
-						)}
+				<div id="message-list" class="contents">
+					{messages.length === 0
+						? renderEmptyMessages(
+								emptyHint,
+								sessions.slice(0, 3),
+								authenticated,
+								sessionCatalogLoading,
+							)
+						: messages.map(renderMessage)}
+				</div>
 				{messages.length > 0 && (
 					<div
 						id="messages-prompt-spacer"
@@ -96,11 +96,7 @@ export function renderOlderMessagesPatch(
 	return (
 		(hasOlderMessages ? renderOlderMessagesTrigger() : "") +
 		messages
-			.map((message, index) =>
-				ids.has(message.id)
-					? renderMessage(message, messages[index + 1]?.role === "tool")
-					: "",
-			)
+			.map((message) => (ids.has(message.id) ? renderMessage(message) : ""))
 			.join("")
 	);
 }
@@ -455,7 +451,7 @@ function renderPlainTextLinks(text: string): string {
 	);
 }
 
-export function renderMessage(message: AppMessage, toolContinues = false): string {
+export function renderMessage(message: AppMessage): string {
 	if (message.role === "user") return renderUserMessage(message);
 	if (message.role === "assistant" || message.role === "thought") {
 		return renderNarrativeMessage(message);
@@ -466,7 +462,7 @@ export function renderMessage(message: AppMessage, toolContinues = false): strin
 	if (message.role === "compaction" || message.role === "skill") {
 		return renderContextMessage(message);
 	}
-	return renderToolMessage(message, toolContinues);
+	return renderToolMessage(message);
 }
 
 function renderUserMessage(message: AppMessage): string {
@@ -625,13 +621,12 @@ function toolMessageStatus(message: AppMessage): ToolMessageStatus {
 	return { state: "success", label: "Completed" };
 }
 
-function renderToolMessage(message: AppMessage, toolContinues: boolean): string {
+function renderToolMessage(message: AppMessage): string {
 	const status = toolMessageStatus(message);
 	return syncHtml(
 		<article
 			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
-			data-tool-continues={toolContinues}
 		>
 			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
 				<StatusDot

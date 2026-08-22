@@ -185,7 +185,15 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	messageAppended(id: string): void {
 		this.messages.messageAppended(id);
-		this.hub.patchElement(this.messages.renderMessagesElement(), "#messages");
+		this.appendMessage(id);
+	}
+	private appendMessage(id: string): void {
+		if (this.store.messages.length === 1) {
+			this.hub.patchElement(this.messages.renderMessagesElement(), "#messages");
+			return;
+		}
+		const html = this.messages.renderMessageElement(id);
+		if (html) this.hub.patchElement(html, "#message-list", { mode: "append" });
 	}
 	messageUpdated(id: string): void {
 		this.messages.messageUpdated(id);
@@ -206,6 +214,7 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	streamingMessageStarted(id: string): void {
 		this.messages.streamingMessageStarted(id);
+		this.appendMessage(id);
 	}
 	streamingMessageChanged(): void {
 		this.messages.streamingMessageChanged();

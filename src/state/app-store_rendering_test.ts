@@ -134,6 +134,29 @@ Deno.test("fat patches resend finalized tool HTML that the client may morph", as
 	}
 });
 
+Deno.test("new messages append to the stable message list", async () => {
+	const state = createState();
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+		state.appendMessage("user", "first");
+		const first = await readUntil(reader, (text) => text.includes("first"));
+		assertIncludes(first, "data: selector #messages");
+
+		state.appendMessage("tool", "one", { format: "output", state: "running" });
+		state.appendMessage("tool", "two", { format: "output", state: "running" });
+		const tools = await readUntil(
+			reader,
+			(text) => text.includes("one") && text.includes("two"),
+		);
+		assertEqual(count(tools, "data: selector #message-list"), 2);
+		assertEqual(count(tools, "data: mode append"), 2);
+		assertNotIncludes(tools, '<main id="messages"');
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("session transitions patch signals and replace only the transcript", async () => {
 	const state = createState();
 	const controller = new AbortController();

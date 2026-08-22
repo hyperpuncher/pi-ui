@@ -397,23 +397,18 @@ export class AppStore {
 	appendThoughtDelta(delta: string): void {
 		const previousId = this.transcript.activeThoughtMessageId;
 		const id = this.transcript.appendThoughtDelta(delta);
-		if (!previousId) {
-			this.presentation?.streamingMessageStarted(id);
-			this.commit();
-		} else this.presentation?.streamingMessageChanged();
+		if (!previousId) this.presentation?.streamingMessageStarted(id);
+		else this.presentation?.streamingMessageChanged();
 	}
 	appendAssistantDelta(delta: string): void {
 		const previousId = this.transcript.activeAssistantMessageId;
 		const id = this.transcript.appendAssistantDelta(delta);
-		if (!previousId) {
-			this.presentation?.streamingMessageStarted(id);
-			this.commit();
-		} else this.presentation?.streamingMessageChanged();
+		if (!previousId) this.presentation?.streamingMessageStarted(id);
+		else this.presentation?.streamingMessageChanged();
 	}
 	finishAssistant(): void {
 		const ids = this.transcript.finishAssistant();
 		this.presentation?.assistantFinished(ids);
-		this.commit();
 	}
 	snapshotChat(): AppChatSnapshot {
 		return this.transcript.snapshot();
