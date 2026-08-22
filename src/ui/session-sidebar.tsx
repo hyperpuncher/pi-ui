@@ -1,6 +1,7 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppSessionSummary, AppStateSnapshot } from "../state/app-store.ts";
 import { calendarDayDifference } from "../utils/date-time-format.ts";
+import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
@@ -14,6 +15,20 @@ import {
 } from "./session-transition.tsx";
 import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
+
+const sidebarWidth = { min: 224, default: 288, max: 384 } as const;
+const sidebarWidthCss =
+	"clamp(var(--pi-session-sidebar-min-width), ${$_sessionSidebarWidth}px, min(var(--pi-session-sidebar-max-width), 50vw))";
+export const sessionSidebarMarginRightExpression = `\`${sidebarWidthCss}\``;
+export const sessionSidebarStorageKey = "pi-ui-session-sidebar-width";
+const sidebarHandleRightExpression = `\`calc(${sidebarWidthCss} + var(--pi-workspace-inset) - var(--pi-workspace-gap))\``;
+const sidebarNavWidthExpression = `\`calc(${sidebarWidthCss} - var(--pi-workspace-gap))\``;
+const sidebarPointerWidthExpression = `Math.round(Math.min(
+	Math.max(${sidebarWidth.min}, Math.min(${sidebarWidth.max}, innerWidth * 0.5)),
+	Math.max(${sidebarWidth.min}, $_sessionSidebarWidth + $_sessionSidebarPointerX - evt.clientX),
+))`;
+const sidebarResizeFinish = `document.documentElement.classList.remove('pi-resizing');
+localStorage.setItem('${sessionSidebarStorageKey}', String($_sessionSidebarWidth));`;
 
 type SessionSidebarState = Pick<
 	AppStateSnapshot,
@@ -29,28 +44,49 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 	return syncHtml(
 		<aside
 			id="session-sidebar"
-			class="sidebar group/sidebar"
+			class="sidebar peer/sidebar group/sidebar"
 			data-side="right"
 			data-initial-open={state.sessions.length === 0 && "false"}
 			aria-keyshortcuts="Control+B Meta+B"
+			data-signals:_session-sidebar-width__ifmissing={`
+				Number(localStorage.getItem('${sessionSidebarStorageKey}')) ||
+				${sidebarWidth.default}
+			`}
+			data-signals:_session-sidebar-pointer-x__ifmissing="0"
 			data-signals:session-delete-hover__ifmissing="''"
+			data-on:keydown__window={`if (evt.code === 'KeyB' && !evt.altKey && !evt.shiftKey && ${primaryModifierExpression()}) {
+			evt.preventDefault();
+			el.toggle?.();
+			}`}
 		>
 			<div
 				id="session-sidebar-separator"
 				class="pi-resize-handle fixed! inset-y-(--pi-workspace-inset)! z-50 w-(--pi-workspace-gap)! max-md:hidden group-aria-[hidden=true]/sidebar:hidden!"
-				style="right: calc(var(--sidebar-width) + var(--pi-workspace-inset) - var(--pi-workspace-gap));"
-				role="separator"
-				tabindex="0"
-				aria-label="Resize sessions and chat"
-				aria-orientation="vertical"
-				aria-valuemin="224"
-				aria-valuemax="480"
-				aria-valuenow="288"
+				aria-hidden="true"
+				data-style:right={sidebarHandleRightExpression}
 				data-on:click__stop="true"
+				data-on:pointerdown__prevent={`if (evt.button === 0) {
+					$_sessionSidebarPointerX = evt.clientX;
+					el.setPointerCapture(evt.pointerId);
+					document.documentElement.classList.add('pi-resizing');
+				}`}
+				{...{
+					"data-on:pointermove__throttle.8ms": `if (el.hasPointerCapture(evt.pointerId)) {
+						$_sessionSidebarWidth = ${sidebarPointerWidthExpression};
+						$_sessionSidebarPointerX = evt.clientX;
+					}`,
+				}}
+				data-on:pointerup={sidebarResizeFinish}
+				data-on:pointercancel={sidebarResizeFinish}
+				data-on:dblclick={`
+					$_sessionSidebarWidth = ${sidebarWidth.default};
+					localStorage.setItem('${sessionSidebarStorageKey}', '${sidebarWidth.default}');
+				`}
 			></div>
 			<nav
-				class="pi-raised-surface inset-y-(--pi-workspace-inset)! right-(--pi-workspace-inset)! w-[calc(var(--sidebar-mobile-width)-var(--pi-workspace-gap))] transition-transform duration-150 ease-(--pi-ease-out) motion-reduce:transition-none md:w-[calc(var(--sidebar-width)-var(--pi-workspace-gap))]"
+				class="pi-raised-surface inset-y-(--pi-workspace-inset)! right-(--pi-workspace-inset)! max-md:w-[calc(var(--sidebar-mobile-width)-var(--pi-workspace-gap))]! transition-transform duration-150 ease-(--pi-ease-out) motion-reduce:transition-none md:w-[calc(var(--sidebar-width)-var(--pi-workspace-gap))]"
 				aria-label="Sessions"
+				data-style:width={sidebarNavWidthExpression}
 			>
 				<section>
 					<div role="group" aria-label="Recent sessions">

@@ -34,7 +34,7 @@ import { renderPromptStatus } from "./prompt-status.tsx";
 import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import type { AppMessage } from "./render-state.ts";
 import type { AppRenderSnapshot } from "./render-state.ts";
-import { renderSessionSidebarContent, sessionSidebarRowId } from "./session-sidebar.tsx";
+import { renderSessionSidebarContent } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReviewData } from "./workspace-review.tsx";
@@ -276,11 +276,6 @@ export class UiRenderer implements AppStorePresentation {
 			}
 			if (effect.type === "scroll-messages-to-bottom") {
 				scripts.push("window.piUi.messageScroll.scrollBottom()");
-			}
-			if (effect.type === "promote-session-row") {
-				scripts.push(
-					`window.piUi.sessionSidebar.promoteRow(${JSON.stringify(sessionSidebarRowId(effect.path))})`,
-				);
 			}
 		}
 		return scripts;

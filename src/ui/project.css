@@ -18,6 +18,9 @@
 		--pi-workspace-inset: 0.25rem;
 		--pi-workspace-structural-gap: var(--pi-workspace-gap);
 		--pi-review-toolbar-height: 2.125rem;
+		--pi-session-sidebar-min-width: 14rem;
+		--pi-session-sidebar-default-width: 18rem;
+		--pi-session-sidebar-max-width: 24rem;
 
 		/* Motion */
 		--pi-ease-out: cubic-bezier(0.23, 1, 0.32, 1);

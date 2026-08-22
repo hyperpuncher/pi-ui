@@ -30,17 +30,20 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 		}),
 	);
 
-	assertStringIncludes(html, 'class="sidebar group/sidebar"');
+	assertStringIncludes(html, 'class="sidebar peer/sidebar group/sidebar"');
 	assertStringIncludes(html, 'data-side="right"');
 	assertFalse(html.includes('data-initial-open="false"'));
 	assertStringIncludes(html, 'aria-label="Sessions"');
 	assertStringIncludes(html, "pi-raised-surface");
 	assertStringIncludes(html, "pi-resize-handle");
 	assertStringIncludes(html, 'data-on:click__stop="true"');
-	assertStringIncludes(
-		html,
-		"right: calc(var(--sidebar-width) + var(--pi-workspace-inset) - var(--pi-workspace-gap))",
-	);
+	assertStringIncludes(html, "$_sessionSidebarWidth");
+	assertStringIncludes(html, "data-on:pointerdown__prevent");
+	assertStringIncludes(html, "data-on:pointermove__throttle.8ms");
+	assertStringIncludes(html, "data-on:dblclick");
+	assertFalse(html.includes('tabindex="0"'));
+	assertFalse(html.includes('role="separator"'));
+	assertStringIncludes(html, "data-style:right");
 	assertStringIncludes(html, "absolute! inset-0 h-full! p-0!");
 	assertStringIncludes(html, "flex min-w-0 flex-col gap-1 p-2");
 	assertStringIncludes(html, 'class="pi-date"');

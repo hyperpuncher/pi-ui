@@ -12,7 +12,11 @@ import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
-import { renderSessionSidebar } from "./session-sidebar.tsx";
+import {
+	renderSessionSidebar,
+	sessionSidebarMarginRightExpression,
+	sessionSidebarStorageKey,
+} from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { syncHtml } from "./sync-html.ts";
 import { renderTreePicker } from "./tree-picker.tsx";
@@ -23,15 +27,15 @@ const desktopStartupReadyScript = `addEventListener("load", () => {
 	void bindings.piUiStartupReady();
 }, { once: true });`;
 
-// Restore the persisted sidebar width before CSS can paint. The resize binding
-// applies the same value later, but waiting for that module causes the workspace
-// margin to visibly transition from its default width on every reload.
+// Restore the persisted width before CSS can paint. Datastar takes ownership
+// after initialization, avoiding a transition from the default on every reload.
 const sessionSidebarStartupScript = `try {
-	const stored = Number(localStorage.getItem("pi-ui-session-sidebar-width"));
+	const stored = Number(localStorage.getItem("${sessionSidebarStorageKey}"));
 	if (Number.isFinite(stored) && stored > 0) {
-		const maximum = Math.max(224, Math.min(480, innerWidth * 0.5));
-		const width = Math.round(Math.min(maximum, Math.max(224, stored)));
-		document.documentElement.style.setProperty("--sidebar-width", width + "px");
+		document.documentElement.style.setProperty(
+			"--sidebar-width",
+			"clamp(var(--pi-session-sidebar-min-width), " + stored + "px, min(var(--pi-session-sidebar-max-width), 50vw))",
+		);
 	}
 } catch {}`;
 
@@ -75,7 +79,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 			<html
 				lang="en"
 				class="h-full overflow-hidden"
-				style="--sidebar-width: 18rem;"
+				style="--sidebar-width: var(--pi-session-sidebar-default-width);"
 			>
 				<head>
 					<meta charset="utf-8" />
@@ -235,7 +239,8 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 						{renderSessionSidebar(state)}
 						<div
 							id="workspace-shell"
-							class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
+							class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none peer-aria-[hidden=true]/sidebar:mr-0!"
+							data-style:margin-right={sessionSidebarMarginRightExpression}
 						>
 							<section
 								id="chat-pane"

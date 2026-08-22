@@ -143,7 +143,6 @@ export type UiCommitEffect =
 	  }
 	| { type: "document-title"; title: string }
 	| { type: "scroll-messages-to-bottom" }
-	| { type: "promote-session-row"; path: string }
 	| { type: "signal-overrides"; values: JsonObject };
 
 export interface AppStorePresentation {
@@ -507,7 +506,7 @@ export class AppStore {
 			...catalog.filter((candidate) => candidate.path !== path),
 		];
 		this.sessions = this.sessionIndex.slice(0, SESSION_PICKER_RECENT_LIMIT);
-		this.commit(options.regroup ? undefined : { type: "promote-session-row", path });
+		this.commit();
 		return true;
 	}
 	updateSessionSummary(
