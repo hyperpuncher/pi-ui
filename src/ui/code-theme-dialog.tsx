@@ -9,11 +9,34 @@ import { syncHtml } from "./sync-html.ts";
 
 export function renderCodeThemeDialog(): string {
 	const active = getPierreThemes();
+	const themeLabels = Object.fromEntries(
+		(["light", "dark"] as const).map((appearance) => [
+			appearance,
+			codeThemesFor(appearance).map((theme) => theme.label.toLowerCase()),
+		]),
+	);
 	return syncHtml(
 		<dialog
 			id="code-theme-dialog"
 			class="dialog code-theme-dialog"
 			aria-labelledby="code-theme-title"
+			data-signals__ifmissing={JSON.stringify({
+				codeThemeAppearance: "light",
+				codeThemeSearch: "",
+			})}
+			data-on:pi-ui-open-code-theme__window={`
+				$codeThemeAppearance = document.documentElement.classList.contains('dark')
+					? 'dark'
+					: 'light';
+				$codeThemeSearch = '';
+				if (!el.open) el.showModal();
+				window.piUi.codeTheme.loadPreviews();
+				requestAnimationFrame(() =>
+					document.getElementById('code-theme-search')?.focus({ preventScroll: true })
+				);
+			`}
+			data-on:pi-ui-code-theme-changed__window={`document.getElementById('code-theme-status').textContent =
+				'Applied ' + ($codeThemeAppearance === 'dark' ? $_codeThemeDark : $_codeThemeLight)`}
 			data-on:datastar-fetch={`if (evt.detail.type === 'error') {
 				document.getElementById('code-theme-status').textContent =
 					'Could not apply theme. Try again.';
@@ -41,6 +64,8 @@ export function renderCodeThemeDialog(): string {
 									type="button"
 									class="rounded-sm px-2.5 py-1 text-xs text-muted-foreground"
 									data-code-theme-mode={appearance}
+									data-on:click={`$codeThemeAppearance = ${JSON.stringify(appearance)}`}
+									data-attr:aria-pressed={`$codeThemeAppearance === ${JSON.stringify(appearance)} ? 'true' : 'false'`}
 									aria-pressed={
 										appearance === "light" ? "true" : "false"
 									}
@@ -57,6 +82,7 @@ export function renderCodeThemeDialog(): string {
 						placeholder="Search themes…"
 						autocomplete="off"
 						spellcheck="false"
+						data-bind:code-theme-search=""
 					/>
 				</header>
 				<div
@@ -70,7 +96,14 @@ export function renderCodeThemeDialog(): string {
 					)}
 				</div>
 				<footer class="flex min-h-11 shrink-0 items-center justify-between border-t border-border px-5 py-2 text-xs text-muted-foreground">
-					<span id="code-theme-status" role="status">
+					<span
+						id="code-theme-status"
+						role="status"
+						data-text={`$codeThemeSearch
+						? ${JSON.stringify(themeLabels)}[$codeThemeAppearance]
+						.filter((label) => label.includes($codeThemeSearch.trim().toLocaleLowerCase())).length + ' matching themes'
+						: ${JSON.stringify(themeLabels)}[$codeThemeAppearance].length + ' ' + $codeThemeAppearance + ' themes'`}
+					>
 						Choose a light theme
 					</span>
 					<button
@@ -95,14 +128,25 @@ function renderThemeCard(theme: CodeThemeOption, active: string): string {
 			data-theme-name={theme.name}
 			data-theme-label={theme.label.toLowerCase()}
 			data-theme-appearance={theme.appearance}
+			data-show={`
+				$codeThemeAppearance === ${JSON.stringify(theme.appearance)} &&
+				(
+					!$codeThemeSearch.trim() ||
+					${JSON.stringify(theme.label.toLowerCase())}.includes(
+						$codeThemeSearch.trim().toLocaleLowerCase()
+					)
+				)
+			`}
 			data-indicator:_code-theme-saving
 			data-attr:disabled="$_codeThemeSaving"
 			data-on:click={`
 				document.getElementById('code-theme-status').textContent = ${JSON.stringify(`Applying ${theme.label}…`)};
 				@post('${endpoints.codeTheme}', { payload: { codeThemeAppearance: ${JSON.stringify(theme.appearance)}, codeThemeName: ${JSON.stringify(theme.name)} } });
 			`}
+			data-attr:aria-pressed={`${theme.appearance === "light" ? "$_codeThemeLight" : "$_codeThemeDark"} === ${JSON.stringify(theme.name)}
+			? 'true'
+			: 'false'`}
 			aria-pressed={theme.name === active ? "true" : "false"}
-			hidden={theme.appearance === "dark"}
 		>
 			<pre class="code-theme-preview m-0 block h-24 overflow-hidden p-3 text-[11px] leading-[1.55]">
 				<code safe>{sampleCode(theme.name, theme.appearance)}</code>

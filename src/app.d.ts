@@ -15,6 +15,9 @@ interface PiUiNamespace {
 	basecoat: {
 		refresh(root?: BasecoatRefreshRoot): void;
 	};
+	codeTheme: {
+		loadPreviews(): void;
+	};
 	dialogs: {
 		toggleSession(): boolean;
 		openTree(): void;

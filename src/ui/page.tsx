@@ -123,6 +123,8 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 					data-workspace-review-endpoint={workspaceReviewBase}
 					data-code-theme-light={codeThemes.light}
 					data-code-theme-dark={codeThemes.dark}
+					data-attr:data-code-theme-light="$_codeThemeLight"
+					data-attr:data-code-theme-dark="$_codeThemeDark"
 					data-signals={initialSignals}
 					data-effect={`window.dispatchEvent(
 						new CustomEvent('pi-ui-code-theme-changed', {

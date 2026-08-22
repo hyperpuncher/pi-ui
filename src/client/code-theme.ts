@@ -4,75 +4,16 @@ import {
 	type ThemedToken,
 } from "@pierre/diffs";
 
-import { CODE_THEMES, codeThemesFor, type CodeThemeAppearance } from "../code-themes.ts";
-import { isPierreThemes } from "../pierre-theme.ts";
+import { CODE_THEMES, type CodeThemeAppearance } from "../code-themes.ts";
 
 const themeNames = CODE_THEMES.map((theme) => theme.name);
 let previewsPromise: Promise<void> | undefined;
-let appearance: CodeThemeAppearance = "light";
 
-window.addEventListener("pi-ui-open-code-theme", open);
-window.addEventListener("pi-ui-code-theme-changed", applyThemeSelection);
-window.addEventListener("DOMContentLoaded", bind);
-
-function bind(): void {
-	const dialog = themeDialog();
-	const gallery = document.getElementById("code-theme-gallery");
-	const search = document.getElementById("code-theme-search");
-	if (
-		!dialog ||
-		!(gallery instanceof HTMLElement) ||
-		!(search instanceof HTMLInputElement)
-	)
-		return;
-
-	search.addEventListener("input", () => filterCards(gallery, search.value));
-	for (const button of dialog.querySelectorAll<HTMLButtonElement>(
-		"[data-code-theme-mode]",
-	)) {
-		button.addEventListener("click", () => {
-			setAppearance(
-				gallery,
-				search,
-				button.dataset.codeThemeMode === "dark" ? "dark" : "light",
-			);
-		});
-	}
-}
-
-function open(): void {
-	const dialog = themeDialog();
-	if (!dialog) return;
-	if (!dialog.open) dialog.showModal();
-	const gallery = document.getElementById("code-theme-gallery");
-	const search = document.getElementById("code-theme-search");
-	if (gallery instanceof HTMLElement && search instanceof HTMLInputElement) {
-		appearance = document.documentElement.classList.contains("dark")
-			? "dark"
-			: "light";
-		search.value = "";
-		setAppearance(gallery, search, appearance);
-		requestAnimationFrame(() => search.focus({ preventScroll: true }));
-	}
-	previewsPromise ??= loadPreviews();
-}
-
-function setAppearance(
-	gallery: HTMLElement,
-	search: HTMLInputElement,
-	next: CodeThemeAppearance,
-): void {
-	appearance = next;
-	for (const button of document.querySelectorAll<HTMLButtonElement>(
-		"[data-code-theme-mode]",
-	)) {
-		button.setAttribute(
-			"aria-pressed",
-			String(button.dataset.codeThemeMode === next),
-		);
-	}
-	filterCards(gallery, search.value);
-}
+window.piUi.codeTheme = {
+	loadPreviews() {
+		previewsPromise ??= loadPreviews();
+	},
+};
 
 async function loadPreviews(): Promise<void> {
 	setStatus("Loading theme previews…");
@@ -97,7 +38,7 @@ async function loadPreviews(): Promise<void> {
 			renderPreview(preview, result.tokens, result.fg ?? "inherit");
 			if (index > 0 && index % 8 === 0) await nextFrame();
 		}
-		setStatus(statusText());
+		setStatus("Theme previews ready.");
 	} catch {
 		previewsPromise = undefined;
 		setStatus("Could not load theme previews.");
@@ -136,48 +77,9 @@ function renderPreview(
 	preview.append(code);
 }
 
-function applyThemeSelection(event: Event): void {
-	if (!(event instanceof CustomEvent) || !isPierreThemes(event.detail)) return;
-	const themes = event.detail;
-	document.body.dataset.codeThemeLight = themes.light;
-	document.body.dataset.codeThemeDark = themes.dark;
-	updateSelection("light", themes.light);
-	updateSelection("dark", themes.dark);
-	setStatus(`Applied ${themes[appearance]}`);
-}
-
-function updateSelection(mode: CodeThemeAppearance, name: string): void {
-	for (const card of document.querySelectorAll<HTMLButtonElement>(
-		`[data-theme-appearance="${mode}"]`,
-	)) {
-		card.setAttribute("aria-pressed", String(card.dataset.themeName === name));
-	}
-}
-
-function filterCards(gallery: HTMLElement, value: string): void {
-	const query = value.trim().toLocaleLowerCase();
-	let visible = 0;
-	for (const card of gallery.querySelectorAll<HTMLButtonElement>("[data-theme-name]")) {
-		const matchesMode = card.dataset.themeAppearance === appearance;
-		const matchesQuery = !query || card.dataset.themeLabel?.includes(query) === true;
-		card.hidden = !(matchesMode && matchesQuery);
-		if (matchesMode && matchesQuery) visible += 1;
-	}
-	setStatus(query ? `${visible} matching themes` : statusText());
-}
-
-function statusText(): string {
-	return `${codeThemesFor(appearance).length} ${appearance} themes`;
-}
-
 function setStatus(message: string): void {
 	const status = document.getElementById("code-theme-status");
 	if (status) status.textContent = message;
-}
-
-function themeDialog(): HTMLDialogElement | undefined {
-	const dialog = document.getElementById("code-theme-dialog");
-	return dialog instanceof HTMLDialogElement ? dialog : undefined;
 }
 
 function nextFrame(): Promise<void> {
