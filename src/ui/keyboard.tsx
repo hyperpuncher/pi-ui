@@ -13,7 +13,7 @@ export function ShortcutKbd(props: { shortcut: string; shortcutSlot?: boolean })
 
 export function ShortcutTooltip(props: { label: string; shortcut: string }) {
 	return (
-		<span role="tooltip" data-slot="tooltip-content">
+		<span class="font-sans" role="tooltip" data-slot="tooltip-content">
 			<span>{props.label}</span>
 			<ShortcutKbd shortcut={props.shortcut} />
 		</span>
