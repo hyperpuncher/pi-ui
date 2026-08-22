@@ -142,13 +142,13 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 					data-on:pi-ui-workspace-review-preferences={`
 						$workspaceReviewPreferences = evt.detail;
 						@post('${endpoints.workspaceReviewPreferences}', {
-							filterSignals: { include: /^workspaceReviewPreferences\./ },
+							filterSignals: { include: /^workspaceReviewPreferences\\./ },
 						});
 					`}
 					data-on:pi-ui-workspace-review-submit={`
 						$workspaceReviewComments = evt.detail;
 						@post('${endpoints.workspaceReviewSubmit}', {
-							filterSignals: { include: /^workspaceReviewComments\./ },
+							filterSignals: { include: /^workspaceReviewComments\\./ },
 						});
 					`}
 					data-signals__ifmissing={JSON.stringify({
@@ -240,7 +240,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 						{renderSessionSidebar(state)}
 						<div
 							id="workspace-shell"
-							class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none peer-aria-[hidden=true]/sidebar:mr-0!"
+							class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) peer-aria-[hidden=true]/sidebar:mr-0! motion-reduce:transition-none"
 							data-style:margin-right={sessionSidebarMarginRightExpression}
 						>
 							<section

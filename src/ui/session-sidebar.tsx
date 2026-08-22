@@ -61,7 +61,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 		>
 			<div
 				id="session-sidebar-separator"
-				class="pi-resize-handle fixed! inset-y-(--pi-workspace-inset)! z-50 w-(--pi-workspace-gap)! max-md:hidden group-aria-[hidden=true]/sidebar:hidden!"
+				class="pi-resize-handle fixed! inset-y-(--pi-workspace-inset)! z-50 w-(--pi-workspace-gap)! group-aria-[hidden=true]/sidebar:hidden! max-md:hidden"
 				aria-hidden="true"
 				data-style:right={sidebarHandleRightExpression}
 				data-on:click__stop="true"
@@ -84,7 +84,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 				`}
 			></div>
 			<nav
-				class="pi-raised-surface inset-y-(--pi-workspace-inset)! right-(--pi-workspace-inset)! max-md:w-[calc(var(--sidebar-mobile-width)-var(--pi-workspace-gap))]! transition-transform duration-150 ease-(--pi-ease-out) motion-reduce:transition-none md:w-[calc(var(--sidebar-width)-var(--pi-workspace-gap))]"
+				class="pi-raised-surface inset-y-(--pi-workspace-inset)! right-(--pi-workspace-inset)! transition-transform duration-150 ease-(--pi-ease-out) motion-reduce:transition-none max-md:w-[calc(var(--sidebar-mobile-width)-var(--pi-workspace-gap))]! md:w-[calc(var(--sidebar-width)-var(--pi-workspace-gap))]"
 				aria-label="Sessions"
 				data-style:width={sidebarNavWidthExpression}
 			>

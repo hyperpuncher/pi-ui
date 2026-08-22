@@ -86,7 +86,7 @@ Deno.test("Datastar actions declare narrow request contracts", async () => {
 	assertStringExcludes(source, "include: /^$/");
 	assertEquals(countMatches(source, /filterSignals\s*:\s*\{\s*include:\s*\/\^_/g), 0);
 	for (const signal of ["workspaceReviewPreferences", "workspaceReviewComments"]) {
-		assertEquals(source.includes(`include: /^${signal}\\./`), true);
+		assertEquals(source.includes(`include: /^${signal}\\\\./`), true);
 	}
 });
 
