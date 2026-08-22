@@ -97,7 +97,7 @@ export function renderWorkspaceReview(
 						</header>
 						<div
 							id="review-history"
-							class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-1"
+							class="min-h-0 flex-1 space-y-px overflow-y-auto overscroll-contain px-1 pb-1"
 							aria-label="Commit history"
 						>
 							<p class="px-2 py-1 text-xs text-muted-foreground">

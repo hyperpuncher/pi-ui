@@ -246,7 +246,7 @@ type SessionPickerState = Pick<
 
 export function renderSessionPickerContent(state: SessionPickerState): string {
 	return syncHtml(
-		<div id="session-menu-content" class="px-1">
+		<div id="session-menu-content" class="space-y-px px-1">
 			{state.sessions.map((session, index) => {
 				const current = session.path === state.currentSessionPath;
 				return renderSessionRow(
