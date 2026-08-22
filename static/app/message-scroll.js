@@ -15,6 +15,7 @@ let anchor;
 let historyLoading = false;
 let observedMessageStack;
 let messageResizeObserver;
+let pointerStart;
 
 export function bindMessageScroll() {
 	document.addEventListener(
@@ -25,7 +26,10 @@ export function bindMessageScroll() {
 			// changes alone never re-arm following; reaching the end during an active
 			// downward wheel or scrollbar gesture does.
 			if (!(messages instanceof HTMLElement) || event.target !== messages) return;
-			if (state.middleScrolling && messages.scrollTop < state.scrollTop)
+			if (
+				(state.middleScrolling || state.pointerScrolling) &&
+				messages.scrollTop < state.scrollTop
+			)
 				markUnpinned();
 			const distance =
 				messages.scrollHeight - messages.scrollTop - messages.clientHeight;
@@ -52,26 +56,51 @@ export function bindMessageScroll() {
 	// position changes alone: streamed tables, code, and other blocks can resize.
 	const releasePointerScroll = (event) => {
 		// Native CEF autoscroll can begin outside the transcript's DOM event path,
-		// so middle-button intent is global. Primary presses inside the transcript
-		// cover scrollbar drags, selection, links, and expanding interactive rows.
+		// so middle-button intent is global. Primary drags inside the transcript
+		// cover scrollbar movement and text selection without treating clicks as scrolls.
 		if (event.button === 1) {
 			state.middleScrolling = true;
 			markUnpinned();
 		} else if (event.button === 0 && isMessageInteraction(event.target)) {
 			state.middleScrolling = false;
 			state.pointerScrolling = true;
-			markUnpinned();
+			pointerStart = { x: event.clientX, y: event.clientY };
+			const messages = document.getElementById("messages");
+			if (messages instanceof HTMLElement) state.scrollTop = messages.scrollTop;
 		}
 	};
 	document.addEventListener("pointerdown", releasePointerScroll, {
 		capture: true,
 		passive: true,
 	});
+	document.addEventListener(
+		"pointermove",
+		(event) => {
+			if (
+				state.pointerScrolling &&
+				pointerStart &&
+				hasPointerDragIntent(
+					pointerStart.x,
+					pointerStart.y,
+					event.clientX,
+					event.clientY,
+				)
+			) {
+				pointerStart = undefined;
+				markUnpinned();
+			}
+		},
+		{ capture: true, passive: true },
+	);
 	for (const type of ["pointerup", "pointercancel"]) {
-		document.addEventListener(type, () => (state.pointerScrolling = false), {
-			capture: true,
-			passive: true,
-		});
+		document.addEventListener(
+			type,
+			() => {
+				state.pointerScrolling = false;
+				pointerStart = undefined;
+			},
+			{ capture: true, passive: true },
+		);
 	}
 	for (const type of ["mousedown", "auxclick"]) {
 		document.addEventListener(
@@ -214,6 +243,10 @@ export function restoreAnchor() {
 
 export function retainedAnchorScrollTop(scrollTop, currentOffset, savedOffset) {
 	return scrollTop + currentOffset - savedOffset;
+}
+
+export function hasPointerDragIntent(startX, startY, currentX, currentY) {
+	return Math.hypot(currentX - startX, currentY - startY) >= 8;
 }
 
 export function shouldRearmAfterScroll(
