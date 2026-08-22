@@ -84,6 +84,10 @@ Deno.test("Datastar actions declare narrow request contracts", async () => {
 	const filterCount = countMatches(source, /\bfilterSignals\s*:/g);
 	assertEquals(actionCount, payloadCount + filterCount);
 	assertStringExcludes(source, "include: /^$/");
+	assertEquals(countMatches(source, /filterSignals\s*:\s*\{\s*include:\s*\/\^_/g), 0);
+	for (const signal of ["workspaceReviewPreferences", "workspaceReviewComments"]) {
+		assertEquals(source.includes(`include: /^${signal}\\./`), true);
+	}
 });
 
 function countMatches(source: string, pattern: RegExp): number {

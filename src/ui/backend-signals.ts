@@ -11,7 +11,6 @@ export type BackendSignals = {
 	_thinkingHidden: boolean;
 	_sessionTransitionLoading: boolean;
 	_sessionTransitionVisible: boolean;
-	_workspaceReviewPreferences: AppStateSnapshot["workspaceReviewPreferences"];
 };
 
 export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
@@ -27,6 +26,5 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 		_sessionTransitionVisible: sessionTransitionOverlayVisible(
 			state.sessionTransition,
 		),
-		_workspaceReviewPreferences: state.workspaceReviewPreferences,
 	};
 }

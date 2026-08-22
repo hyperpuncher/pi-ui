@@ -18,7 +18,7 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 		async (request, context) => {
 			const signals = await readActionSignals(request);
 			const preferences = normalizeWorkspaceReviewPreferences(
-				signals._workspaceReviewPreferences,
+				signals.workspaceReviewPreferences,
 			);
 			await writeWorkspaceReviewPreferences(preferences);
 			context.store.setWorkspaceReviewPreferences(preferences);
@@ -29,7 +29,7 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 		const signals = await readActionSignals(request);
 		let comments;
 		try {
-			comments = parseWorkspaceReviewComments(signals._workspaceReviewComments);
+			comments = parseWorkspaceReviewComments(signals.workspaceReviewComments);
 		} catch (error) {
 			throw new RouteError(
 				400,

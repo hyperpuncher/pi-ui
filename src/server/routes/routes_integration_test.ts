@@ -332,7 +332,7 @@ Deno.test("workspace review comments are sent to the current agent session", asy
 	});
 	const response = await createRouter(context).fetch(
 		signalRequest("/workspace/review/submit", {
-			_workspaceReviewComments: {
+			workspaceReviewComments: {
 				comments: [
 					{
 						body: "handle this case",
@@ -358,7 +358,7 @@ Deno.test("workspace review comments are sent to the current agent session", asy
 Deno.test("workspace review comments reject malformed input", async () => {
 	const response = await createRouter(fakeContext()).fetch(
 		signalRequest("/workspace/review/submit", {
-			_workspaceReviewComments: { comments: [] },
+			workspaceReviewComments: { comments: [] },
 		}),
 	);
 	assertEquals(response.status, 400);

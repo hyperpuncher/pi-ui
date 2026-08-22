@@ -140,22 +140,23 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 					})`}
 					data-on:pi-ui-session-performance={`@post('${endpoints.sessionPerformanceClient}', { payload: evt.detail })`}
 					data-on:pi-ui-workspace-review-preferences={`
-						$_workspaceReviewPreferences = evt.detail;
+						$workspaceReviewPreferences = evt.detail;
 						@post('${endpoints.workspaceReviewPreferences}', {
-							filterSignals: { include: /^_workspaceReviewPreferences$/ },
+							filterSignals: { include: /^workspaceReviewPreferences\./ },
 						});
 					`}
 					data-on:pi-ui-workspace-review-submit={`
-						$_workspaceReviewComments = evt.detail;
+						$workspaceReviewComments = evt.detail;
 						@post('${endpoints.workspaceReviewSubmit}', {
-							filterSignals: { include: /^_workspaceReviewComments$/ },
+							filterSignals: { include: /^workspaceReviewComments\./ },
 						});
 					`}
 					data-signals__ifmissing={JSON.stringify({
 						_isDraggingFile: false,
 						_sessionLoading: false,
 						_newSessionPending: false,
-						_workspaceReviewComments: { comments: [] },
+						workspaceReviewComments: { comments: [] },
+						workspaceReviewPreferences: {},
 						sessionDeletePath: "",
 						sessionDeleteTitle: "",
 						sessionRenamePath: "",
