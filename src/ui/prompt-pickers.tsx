@@ -53,7 +53,12 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 				class="dropdown-menu"
 				data-preserve-attr="data-dropdown-menu-initialized data-basecoat-component"
 				data-on:keydown="if (evt.code === 'Escape') evt.stopPropagation()"
-				data-on:keydown__window={`if (evt.altKey && evt.code === 'KeyT') {
+				data-on:keydown__window={`if (
+				evt.altKey &&
+				!evt.ctrlKey &&
+				!evt.metaKey &&
+				evt.code === 'KeyT'
+				) {
 				evt.preventDefault();
 				${cycleThinkingAction("event-shift")};
 				}`}

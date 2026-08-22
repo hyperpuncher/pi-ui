@@ -36,6 +36,7 @@ export type RouteAgentHost = Pick<
 	| "submitAuthInput"
 	| "toggleLlamaModel"
 	| "toggleScopedModel"
+	| "toggleThinkingBlockVisibility"
 >;
 
 export interface RouteResources {

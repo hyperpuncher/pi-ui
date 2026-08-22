@@ -13,6 +13,7 @@ import type {
 	AppSessionSummary,
 } from "../state/app-store.ts";
 import { escapeHtml } from "../utils/html.ts";
+import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
@@ -60,6 +61,15 @@ export function renderMessages(
 			"
 			aria-live="polite"
 			data-init="window.piUi.messageScroll.bindResize()"
+			data-on:keydown__window={`if (
+			${primaryModifierExpression()} &&
+			evt.altKey &&
+			!evt.shiftKey &&
+			evt.code === 'KeyT'
+			) {
+			evt.preventDefault();
+			@post('${endpoints.thinkingVisibilityToggle}', { payload: {} });
+			}`}
 		>
 			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
 				<div id="message-list" class="contents">
@@ -514,18 +524,31 @@ function renderUserMessage(message: AppMessage): string {
 }
 
 function renderNarrativeMessage(message: AppMessage): string {
+	const content = message.renderedHtml ?? renderMarkdownStreaming(message.text);
+	if (message.role === "thought") {
+		return syncHtml(
+			<article
+				class="message message-narrative message-thought pi-thought-foreground w-full self-start text-sm italic"
+				data-message-id={message.id}
+				data-ignore-morph={preservesFinalizedMessageDom(message)}
+			>
+				<p class="m-0 leading-[1.7] font-semibold" data-show="$_thinkingHidden">
+					Thinking...
+				</p>
+				<div data-show="!$_thinkingHidden">
+					<div class="markdown-content">{content}</div>
+					{renderDeferredEnhancement(message)}
+				</div>
+			</article>,
+		);
+	}
 	return syncHtml(
 		<article
-			class={[
-				"message message-narrative markdown-content w-full self-start",
-				message.role === "assistant"
-					? "message-assistant"
-					: "message-thought pi-thought-foreground text-sm italic",
-			]}
+			class="message message-narrative message-assistant markdown-content w-full self-start"
 			data-message-id={message.id}
 			data-ignore-morph={preservesFinalizedMessageDom(message)}
 		>
-			<div>{message.renderedHtml ?? renderMarkdownStreaming(message.text)}</div>
+			<div>{content}</div>
 			{renderDeferredEnhancement(message)}
 		</article>,
 	);

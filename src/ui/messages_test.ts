@@ -112,7 +112,7 @@ Deno.test("message projection replaces inline image data with stable URLs", () =
 	assertEquals(registrations, 1);
 });
 
-Deno.test("narrative fallback still renders markdown structure", () => {
+Deno.test("thinking blocks render expanded content and a collapsed label", () => {
 	const html = renderMessage({
 		id: "thought-1",
 		presentationState: "plain",
@@ -122,6 +122,10 @@ Deno.test("narrative fallback still renders markdown structure", () => {
 		timestamp: new Date(0),
 	});
 	assertStringIncludes(html, "<strong>Planning full validation tests</strong>");
+	assertStringIncludes(html, "Thinking...");
+	assertStringIncludes(html, 'class="m-0 leading-[1.7] font-semibold"');
+	assertStringIncludes(html, 'data-show="$_thinkingHidden"');
+	assertStringIncludes(html, 'data-show="!$_thinkingHidden"');
 	assertStringExcludes(html, "**Planning");
 });
 

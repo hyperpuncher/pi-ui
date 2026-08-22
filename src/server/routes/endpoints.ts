@@ -35,6 +35,7 @@ export const endpoints = {
 	modelsScopeToggle: "/models/scope/toggle",
 	thinking: "/thinking",
 	thinkingCycle: "/thinking/cycle",
+	thinkingVisibilityToggle: "/thinking/visibility/toggle",
 	authOpenLogin: "/auth/open-login",
 	authOpenLogout: "/auth/open-logout",
 	authLoginStart: "/auth/login/start",

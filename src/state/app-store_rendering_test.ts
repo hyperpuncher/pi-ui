@@ -804,6 +804,7 @@ Deno.test("server-owned view signals are transport-private", () => {
 		"_promptHistory",
 		"_sessionTransitionLoading",
 		"_sessionTransitionVisible",
+		"_thinkingHidden",
 		"_workspaceReviewPreferences",
 	]);
 });

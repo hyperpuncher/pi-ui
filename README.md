@@ -131,6 +131,7 @@ pi-ui stores its configuration in:
 | <kbd>ctrl/⌘</kbd> <kbd>shift</kbd> <kbd>p</kbd> | cycle favorite model back |
 | <kbd>alt</kbd> <kbd>t</kbd>                     | cycle thinking level      |
 | <kbd>alt</kbd> <kbd>shift</kbd> <kbd>t</kbd>    | cycle thinking back       |
+| <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>t</kbd>   | toggle thinking blocks    |
 | <kbd>/</kbd>                                    | slash commands            |
 | <kbd>@</kbd>                                    | file picker               |
 | <kbd>alt</kbd> <kbd>enter</kbd>                 | queue follow-up           |

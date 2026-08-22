@@ -112,6 +112,10 @@ export class AgentHost {
 		return this.runtime.cycleThinkingLevel(direction);
 	}
 
+	toggleThinkingBlockVisibility(): boolean {
+		return this.runtime.toggleThinkingBlockVisibility();
+	}
+
 	openLogin(providerRef?: string): void {
 		this.runtime.openLogin(providerRef);
 	}

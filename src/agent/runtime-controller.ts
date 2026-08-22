@@ -761,6 +761,15 @@ export class RuntimeController {
 		return this.models.cycleThinking(direction);
 	}
 
+	toggleThinkingBlockVisibility(): boolean {
+		const settings = this.runtime.session.settingsManager;
+		if (!settings) return false;
+		const hidden = !settings.getHideThinkingBlock();
+		settings.setHideThinkingBlock(hidden);
+		this.state.setThinkingHidden(hidden);
+		return true;
+	}
+
 	async compact(customInstructions?: string): Promise<boolean> {
 		try {
 			await this.runtime.session.compact(customInstructions);
@@ -1166,6 +1175,9 @@ export class RuntimeController {
 					console.warn("Failed to refresh model catalogs", error),
 				);
 			this.models.syncThinking();
+			this.state.setThinkingHidden(
+				session.settingsManager?.getHideThinkingBlock() ?? false,
+			);
 			this.syncSlashCommands();
 			this.usage.sync();
 			this.usage.refresh(true);

@@ -187,6 +187,7 @@ export type AppStateSnapshot = Readonly<{
 	isTemporarySession: boolean;
 	thinkingLevel: AppThinkingLevel;
 	thinkingLevels: readonly AppThinkingLevel[];
+	thinkingHidden: boolean;
 	usage: Readonly<AppUsage>;
 	activityText: string | undefined;
 	queuedSteeringMessages: readonly string[];
@@ -265,6 +266,7 @@ export class AppStore {
 	isTemporarySession = false;
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
+	thinkingHidden = false;
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
 	workspaceReview = unloadedWorkspaceReviewSnapshot;
@@ -344,6 +346,7 @@ export class AppStore {
 			isTemporarySession: this.isTemporarySession,
 			thinkingLevel: this.thinkingLevel,
 			thinkingLevels: [...this.thinkingLevels],
+			thinkingHidden: this.thinkingHidden,
 			usage: { ...this.usage },
 			activityText: this.activityText,
 			queuedSteeringMessages: [...this.queuedSteeringMessages],
@@ -465,6 +468,11 @@ export class AppStore {
 		this.thinkingLevel = level;
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
 		this.presentation?.pickersChanged();
+		this.commit();
+	}
+	setThinkingHidden(hidden: boolean): void {
+		if (this.thinkingHidden === hidden) return;
+		this.thinkingHidden = hidden;
 		this.commit();
 	}
 	setSessions(sessions: AppSessionSummary[]): void {

@@ -9,6 +9,7 @@ export type AppCommandId =
 	| "cycle-model"
 	| "cycle-thinking"
 	| "cycle-thinking-backward"
+	| "toggle-thinking"
 	| "change-workspace"
 	| "toggle-review"
 	| "login"
@@ -85,6 +86,16 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Cycle thinking backward",
 		description: "Cycle backward through available thinking levels.",
 		shortcut: { display: "alt shift T", native: "Alt+Shift+T", keys: [] },
+	},
+	{
+		id: "toggle-thinking",
+		title: "Toggle thinking blocks",
+		description: "Collapse or expand thinking blocks.",
+		shortcut: {
+			display: "ctrl alt T",
+			native: "CmdOrCtrl+Alt+T",
+			keys: [],
+		},
 	},
 	{
 		id: "toggle-review",

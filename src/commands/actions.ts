@@ -64,6 +64,7 @@ export const commandActions = {
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),
+	"toggle-thinking": `document.getElementById('command-dialog')?.close(); @post('${endpoints.thinkingVisibilityToggle}', { payload: {} })`,
 	"change-workspace": openWorkspaceDialogAction(true),
 	"toggle-review": toggleWorkspaceReviewAction(),
 	login: authDialogAction("login"),

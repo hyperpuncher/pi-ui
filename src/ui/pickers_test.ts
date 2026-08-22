@@ -300,6 +300,8 @@ Deno.test("thinking picker describes every supported maximum level", () => {
 
 	assertStringIncludes(html, "Extra-high reasoning");
 	assertStringIncludes(html, "Maximum reasoning");
+	assertStringIncludes(html, "!evt.ctrlKey");
+	assertStringIncludes(html, "!evt.metaKey");
 	assertStringIncludes(
 		html,
 		'data-preserve-attr="aria-expanded aria-activedescendant"',

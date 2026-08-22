@@ -50,4 +50,10 @@ export function registerModelRoutes(router: ExactRouter<RouteContext>): void {
 		}
 		return datastarResponse();
 	});
+	router.register("POST", endpoints.thinkingVisibilityToggle, (_request, context) => {
+		if (!requireHost(context).toggleThinkingBlockVisibility()) {
+			throw new RouteError(409, "Thinking block visibility could not be toggled.");
+		}
+		return datastarResponse();
+	});
 }
