@@ -1,5 +1,3 @@
-import { collectAddedElementRoots } from "../mutation-roots.js";
-
 const liveEdgeThresholdPx = 8;
 const promptSpacerClearancePx = 48;
 const scrollControlThresholdPx = 48;
@@ -143,34 +141,6 @@ export function bindMessageScroll() {
 		true,
 	);
 
-	let frame;
-	const affectedRoots = new Set();
-	const observer = new MutationObserver((records) => {
-		for (const root of collectAddedElementRoots(records)) affectedRoots.add(root);
-		if (frame) return;
-		frame = requestAnimationFrame(() => {
-			frame = undefined;
-			bindMessageResize();
-			hydratePierreDiffs(affectedRoots);
-			pinToolOutputs(affectedRoots);
-			affectedRoots.clear();
-			updatePromptSpacer();
-			const messages = document.getElementById("messages");
-			if (messages instanceof HTMLElement && state.pinnedToBottom) {
-				messages.scrollTop = messages.scrollHeight;
-			}
-			updateScrollControl();
-		});
-	});
-	const app = document.getElementById("app");
-	if (app)
-		observer.observe(app, {
-			characterData: true,
-			childList: true,
-			subtree: true,
-		});
-	hydratePierreDiffs([document]);
-	pinToolOutputs([document]);
 	bindPromptSpacer();
 	bindMessageResize();
 	scrollBottom();
@@ -322,7 +292,7 @@ function isUpwardScrollKey(event) {
 	);
 }
 
-function bindMessageResize() {
+export function bindMessageResize() {
 	const stack = document.querySelector("#messages > .messages-stack");
 	if (!(stack instanceof HTMLElement) || stack === observedMessageStack) return;
 	messageResizeObserver ??= new ResizeObserver(() => {
@@ -371,35 +341,12 @@ function updateScrollControl() {
 	button.tabIndex = active ? 0 : -1;
 }
 
-function pinToolOutputs(roots) {
-	const outputs = new Set();
-	for (const root of roots) {
-		if (root instanceof HTMLElement) {
-			const output = root.closest(".tool-output");
-			if (output) outputs.add(output);
-		}
-		for (const output of root.querySelectorAll?.(".tool-output") ?? [])
-			outputs.add(output);
-	}
-	for (const output of outputs) output.scrollTop = output.scrollHeight;
-}
-
-function hydratePierreDiffs(roots) {
-	for (const root of roots) {
-		const hosts = [
-			...(root instanceof HTMLElement && root.matches("[data-pierre-diff]")
-				? [root]
-				: []),
-			...(root.querySelectorAll?.("[data-pierre-diff]") ?? []),
-		];
-		for (const host of hosts) {
-			if (!(host instanceof HTMLElement)) continue;
-			const template = host.querySelector('template[shadowrootmode="open"]');
-			if (!(template instanceof HTMLTemplateElement)) continue;
-			// Pierre may create the shadow root before Datastar inserts its template.
-			const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
-			shadow.append(template.content.cloneNode(true));
-			template.remove();
-		}
-	}
+export function hydratePierreDiff(host) {
+	if (!(host instanceof HTMLElement)) return;
+	const template = host.querySelector('template[shadowrootmode="open"]');
+	if (!(template instanceof HTMLTemplateElement)) return;
+	// Pierre may create the shadow root before Datastar inserts its template.
+	const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+	shadow.append(template.content.cloneNode(true));
+	template.remove();
 }

@@ -235,6 +235,7 @@ Deno.test("shell tools preserve wrapped title, metadata, and escaped output", ()
 	assertStringIncludes(html, "printf &#39;a very long command&#39;");
 	assertStringIncludes(html, "42ms");
 	assertStringIncludes(html, "&lt;script>");
+	assertStringIncludes(html, 'data-init="el.scrollTop = el.scrollHeight; 1"');
 	assertStringExcludes(html, "<script>");
 });
 

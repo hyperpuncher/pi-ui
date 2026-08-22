@@ -11,8 +11,10 @@ import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
 import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
 import {
+	bindMessageResize,
 	bindMessageScroll,
 	captureAnchor,
+	hydratePierreDiff,
 	restoreAnchor,
 	scrollBottom,
 } from "./message-scroll.js";
@@ -33,7 +35,13 @@ window.piUi = {
 	codeTheme: { loadPreviews() {} },
 	dialogs,
 	fileTransfer,
-	messageScroll: { captureAnchor, restoreAnchor, scrollBottom },
+	messageScroll: {
+		bindResize: bindMessageResize,
+		captureAnchor,
+		hydratePierreDiff,
+		restoreAnchor,
+		scrollBottom,
+	},
 	modelSearch: { preserve: preserveModelSearch, restore: restoreModelSearch },
 	pickers: { fuzzyMatch, isFileOpen, isOpen: isPickerOpen },
 	prompt: { clear: () => setPromptValue("") },

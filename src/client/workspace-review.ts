@@ -232,10 +232,8 @@ theme.observe(document.documentElement, {
 });
 
 const reviewData = new MutationObserver(() => {
-	const element = document.getElementById("workspace-review-data");
-	if (!element) return;
 	try {
-		const value = JSON.parse(element.textContent ?? "");
+		const value = JSON.parse(data.textContent ?? "");
 		if (
 			isRecord(value) &&
 			isString(value.workspacePath) &&
@@ -247,11 +245,7 @@ const reviewData = new MutationObserver(() => {
 		// A later stream morph can replace an incomplete payload.
 	}
 });
-reviewData.observe(app, {
-	characterData: true,
-	childList: true,
-	subtree: true,
-});
+reviewData.observe(data, { characterData: true, childList: true, subtree: true });
 
 syncModeButtons();
 syncLayoutButtons();

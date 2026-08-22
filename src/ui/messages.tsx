@@ -59,6 +59,7 @@ export function renderMessages(
 				$_sessionTransitionLoading ? 'true' : 'false'
 			"
 			aria-live="polite"
+			data-init="window.piUi.messageScroll.bindResize()"
 		>
 			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
 				{hasOlderMessages ? renderOlderMessagesTrigger() : ""}
@@ -247,10 +248,13 @@ function renderCodeOutput(message: AppMessage) {
 	);
 }
 
-function renderPlainOutput(text: string) {
+function renderPlainOutput(message: AppMessage) {
 	return (
-		<div class="tool-output pi-tool-output-surface max-h-[calc(5lh+1px)] overflow-hidden leading-5.5">
-			{renderPendingToolOutput(text, "pl-2")}
+		<div
+			class="tool-output pi-tool-output-surface max-h-[calc(5lh+1px)] overflow-hidden leading-5.5"
+			data-init={`el.scrollTop = el.scrollHeight; ${message.presentationVersion}`}
+		>
+			{renderPendingToolOutput(message.text, "pl-2")}
 		</div>
 	);
 }
@@ -606,7 +610,7 @@ function renderToolOutput(message: AppMessage) {
 	if (!message.text.trim()) return "";
 	if (message.format === "diff") return renderDiffOutput(message);
 	if (message.format === "code") return renderCodeOutput(message);
-	if (message.format === "output") return renderPlainOutput(message.text);
+	if (message.format === "output") return renderPlainOutput(message);
 	return renderPreOutput(message.text);
 }
 
