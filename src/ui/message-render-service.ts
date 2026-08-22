@@ -60,6 +60,7 @@ export class MessageRenderService {
 	private readonly imageUrls = new Map<string, { data: string; url: string }>();
 	private readonly queue: EnhancementQueue;
 	private readonly streaming: StreamingFrameScheduler<readonly string[]>;
+	private readonly pendingStreamingIds = new Set<string>();
 	private generation = 0;
 	private readonly renderMarkdownEnhancement: (text: string) => Promise<string>;
 	private readonly renderCodeEnhancement: (
@@ -87,6 +88,7 @@ export class MessageRenderService {
 		this.registerImage = options.registerImage;
 		this.clearImages = options.clearImages;
 		this.streaming = new StreamingFrameScheduler((ids) => {
+			for (const id of ids) this.pendingStreamingIds.delete(id);
 			for (const id of ids) this.patchScheduledMessage(id);
 		});
 	}
@@ -139,11 +141,11 @@ export class MessageRenderService {
 		value.renderedHtml = undefined;
 		value.presentationState = "plain";
 		value.presentationVersion += 1;
-		this.streaming.schedule([id]);
+		this.scheduleMessages([id]);
 	}
 	codeThemeChanged(): void {
 		const streamingIds = new Set(this.streamingIds());
-		this.streaming.clear();
+		this.clearScheduledMessages();
 		this.generation += 1;
 		this.queue.cancelAll();
 		for (const message of this.store.transcript.allMessages) {
@@ -165,15 +167,15 @@ export class MessageRenderService {
 	}
 	streamingMessageChanged(): void {
 		for (const id of this.streamingIds()) this.ensure(id).presentationVersion += 1;
-		this.streaming.schedule(this.streamingIds());
+		this.scheduleMessages(this.streamingIds());
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
-		this.streaming.flush(unique([ids.thoughtId, ids.assistantId]));
+		this.flushMessages(unique([ids.thoughtId, ids.assistantId]));
 		for (const id of unique([ids.thoughtId, ids.assistantId]))
 			this.deferEnhancement(id);
 	}
 	transcriptReplacing(): void {
-		this.streaming.clear();
+		this.clearScheduledMessages();
 		this.generation += 1;
 		this.queue.cancelAll();
 		for (const message of this.store.transcript.allMessages)
@@ -267,6 +269,18 @@ export class MessageRenderService {
 			this.store.transcript.activeThoughtMessageId,
 			this.store.transcript.activeAssistantMessageId,
 		]);
+	}
+	private scheduleMessages(ids: readonly string[]): void {
+		for (const id of ids) this.pendingStreamingIds.add(id);
+		this.streaming.schedule([...this.pendingStreamingIds]);
+	}
+	private flushMessages(ids: readonly string[]): void {
+		for (const id of ids) this.pendingStreamingIds.add(id);
+		this.streaming.flush([...this.pendingStreamingIds]);
+	}
+	private clearScheduledMessages(): void {
+		this.pendingStreamingIds.clear();
+		this.streaming.clear();
 	}
 	private initializeStreaming(id: string): void {
 		const message = this.store.transcript.getMessage(id);

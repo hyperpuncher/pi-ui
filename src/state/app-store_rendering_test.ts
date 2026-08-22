@@ -158,6 +158,39 @@ Deno.test("new messages append to the stable message list", async () => {
 	}
 });
 
+Deno.test("parallel message updates all reach their final state", async () => {
+	const state = createState();
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+		state.appendMessage("user", "first");
+		await readUntil(reader, (text) => text.includes("first"));
+		const firstId = state.appendMessage("tool", "", {
+			title: "read",
+			format: "pre",
+			state: "running",
+		});
+		const secondId = state.appendMessage("tool", "", {
+			title: "read",
+			format: "pre",
+			state: "running",
+		});
+		await readUntil(reader, (text) => count(text, "data: mode append") === 2);
+
+		state.updateMessage(firstId, { title: "read first.ts", state: "success" });
+		state.updateMessage(secondId, { title: "read second.ts", state: "success" });
+		const updates = await readUntil(
+			reader,
+			(text) => text.includes("read first.ts") && text.includes("read second.ts"),
+		);
+
+		assertEqual(count(updates, "data: selector [data-message-id="), 2);
+		assertEqual(count(updates, "pi-tool-status-success"), 2);
+	} finally {
+		controller.abort();
+	}
+});
+
 Deno.test("session transitions patch signals and replace only the transcript", async () => {
 	const state = createState();
 	const controller = new AbortController();
