@@ -824,8 +824,40 @@ function renderReviewContextMenu(
 		setPanelMode("files");
 		void workspaceFiles.openFile(item.path);
 	});
-	menu.append(open);
+	const discard = document.createElement("button");
+	discard.type = "button";
+	discard.className = "workspace-tree-context-menu-item text-destructive";
+	discard.setAttribute("role", "menuitem");
+	discard.textContent = "Discard changes";
+	discard.addEventListener("click", () => {
+		context.close({ restoreFocus: false });
+		void discardReviewChange(item.path);
+	});
+	menu.append(open, discard);
 	return menu;
+}
+
+async function discardReviewChange(path: string): Promise<void> {
+	const change = snapshot.changes.find((entry) => entry.path === path);
+	if (!change) return;
+	const confirmed = await workspaceFiles.requestConfirmation({
+		title: "Discard changes?",
+		description:
+			change.status === "untracked"
+				? `${path} is untracked and will be permanently deleted. This action cannot be undone.`
+				: `All changes to ${path} will be permanently discarded. This action cannot be undone.`,
+		action: "Discard",
+	});
+	if (!confirmed) return;
+	try {
+		await api.discard(path);
+		workspaceFiles.refreshAfterDiscard(path);
+	} catch (error) {
+		await workspaceFiles.requestNotice(
+			"Could not discard changes",
+			String(error).replace(/^Error: /, ""),
+		);
+	}
 }
 
 function openGitView(): void {

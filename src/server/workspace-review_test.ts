@@ -1,7 +1,8 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 
 import type { WorkspaceReviewSnapshot } from "../workspace-review-types.ts";
 import {
+	discardWorkspaceChange,
 	findGitRoot,
 	findGitWatchPaths,
 	parseCommitLog,
@@ -116,6 +117,39 @@ Deno.test("workspace review combines repository files with tracked and untracked
 		await Deno.writeTextFile(`${repository}/notes.txt`, "changed again\n");
 		const updated = await readWorkspaceReview(repository);
 		assertEquals(updated.revision === snapshot.revision, false);
+	} finally {
+		await Deno.remove(repository, { recursive: true });
+	}
+});
+
+Deno.test("workspace review discards one tracked or untracked file at a time", async () => {
+	const repository = await Deno.makeTempDir();
+	try {
+		await git(repository, "init", "--quiet");
+		await git(repository, "config", "user.email", "pi-ui@example.invalid");
+		await git(repository, "config", "user.name", "pi-ui test");
+		await Deno.writeTextFile(`${repository}/keep.txt`, "before\n");
+		await Deno.writeTextFile(`${repository}/old.txt`, "rename me\n");
+		await git(repository, "add", ".");
+		await git(repository, "commit", "--quiet", "-m", "initial");
+
+		await Deno.writeTextFile(`${repository}/keep.txt`, "after\n");
+		await Deno.writeTextFile(`${repository}/untracked.txt`, "temporary\n");
+		await git(repository, "mv", "old.txt", "new.txt");
+
+		await discardWorkspaceChange(repository, "new.txt");
+		assertEquals(await Deno.readTextFile(`${repository}/old.txt`), "rename me\n");
+		await assertRejects(() => Deno.stat(`${repository}/new.txt`));
+		assertEquals(
+			(await readWorkspaceReview(repository)).changes.map(({ path }) => path),
+			["keep.txt", "untracked.txt"],
+		);
+
+		await discardWorkspaceChange(repository, "untracked.txt");
+		await assertRejects(() => Deno.stat(`${repository}/untracked.txt`));
+		await discardWorkspaceChange(repository, "keep.txt");
+		assertEquals(await Deno.readTextFile(`${repository}/keep.txt`), "before\n");
+		assertEquals((await readWorkspaceReview(repository)).changes, []);
 	} finally {
 		await Deno.remove(repository, { recursive: true });
 	}

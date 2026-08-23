@@ -183,6 +183,58 @@ export async function readWorkspaceReview(
 	};
 }
 
+export async function discardWorkspaceChange(
+	workspacePath: string,
+	changePath: string,
+): Promise<void> {
+	const root = await findGitRoot(workspacePath);
+	if (!root) throw new WorkspaceReviewError(404, "Git repository not found.");
+	const statusResult = await git(
+		root,
+		"status",
+		"--porcelain=v1",
+		"--untracked-files=all",
+		"-z",
+	);
+	assertGit(statusResult, "read repository status");
+	const entry = parsePorcelainEntries(statusResult.stdout).find(
+		({ path }) => path === changePath,
+	);
+	if (!entry) throw new WorkspaceReviewError(409, "This file is no longer changed.");
+
+	if (entry.code === "??") {
+		const result = await git(root, "clean", "-f", "--", entry.path);
+		assertGit(result, "discard untracked file");
+		return;
+	}
+
+	const head = await git(root, "rev-parse", "--verify", "HEAD");
+	const paths = entry.sourcePath ? [entry.path, entry.sourcePath] : [entry.path];
+	const result =
+		head.code === 0
+			? await git(
+					root,
+					"restore",
+					"--source=HEAD",
+					"--staged",
+					"--worktree",
+					"--",
+					...paths,
+				)
+			: await git(root, "rm", "-f", "--", ...paths);
+	assertGit(result, "discard file changes");
+}
+
+export class WorkspaceReviewError extends Error {
+	constructor(
+		readonly status: number,
+		message: string,
+	) {
+		super(message);
+		this.name = "WorkspaceReviewError";
+	}
+}
+
 export async function readWorkspaceCommit(
 	workspacePath: string,
 	hash: string,
@@ -290,21 +342,33 @@ export function parseCommitLog(
 }
 
 export function parsePorcelainStatus(output: string): WorkspaceFileChange[] {
+	return parsePorcelainEntries(output).map(({ code, path }) => ({
+		additions: 0,
+		deletions: 0,
+		path,
+		status: statusFromCode(code),
+	}));
+}
+
+function parsePorcelainEntries(output: string): Array<{
+	code: string;
+	path: string;
+	sourcePath?: string;
+}> {
 	const records = output.split("\0");
-	const changes: WorkspaceFileChange[] = [];
+	const entries = [];
 	for (let index = 0; index < records.length; index++) {
 		const record = records[index];
 		if (!record || record.length < 4) continue;
 		const code = record.slice(0, 2);
-		changes.push({
-			additions: 0,
-			deletions: 0,
+		const renamed = code.includes("R") || code.includes("C");
+		entries.push({
+			code,
 			path: record.slice(3),
-			status: statusFromCode(code),
+			sourcePath: renamed ? records[++index] : undefined,
 		});
-		if (code.includes("R") || code.includes("C")) index++;
 	}
-	return changes;
+	return entries;
 }
 
 export function parseNameStatus(output: string): WorkspaceFileChange[] {

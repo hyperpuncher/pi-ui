@@ -31,6 +31,7 @@ export const endpoints = {
 	workspaceFileContent: `${workspaceFilesBase}/content`,
 	workspaceFileEntry: `${workspaceFilesBase}/entry`,
 	workspaceReviewCommit: "/workspace/review/commit",
+	workspaceReviewDiscard: "/workspace/review/discard",
 	workspaceReviewHistory: "/workspace/review/history",
 	workspaceReviewPreferences: "/workspace/review/preferences",
 	workspaceReviewSubmit: "/workspace/review/submit",

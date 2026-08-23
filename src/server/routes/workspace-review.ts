@@ -1,3 +1,4 @@
+import { isRecord, isString } from "../../utils/type-guards.ts";
 import {
 	formatWorkspaceReviewPrompt,
 	parseWorkspaceReviewComments,
@@ -7,7 +8,12 @@ import { readActionSignals } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import { writeWorkspaceReviewPreferences } from "../workspace-review-preferences.ts";
-import { readWorkspaceCommit, readWorkspaceHistory } from "../workspace-review.ts";
+import {
+	discardWorkspaceChange,
+	readWorkspaceCommit,
+	readWorkspaceHistory,
+	WorkspaceReviewError,
+} from "../workspace-review.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
@@ -43,6 +49,25 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 			{ type: "effect", effect: { type: "workspace-review-submitted" } },
 		]);
 	});
+	router.register(
+		"POST",
+		endpoints.workspaceReviewDiscard,
+		async (request, context) => {
+			const value: unknown = await request.json();
+			if (!isRecord(value) || !isString(value.path)) {
+				throw new RouteError(400, "Invalid changed file.");
+			}
+			try {
+				await discardWorkspaceChange(context.store.workspacePath, value.path);
+			} catch (error) {
+				if (error instanceof WorkspaceReviewError) {
+					throw new RouteError(error.status, error.message);
+				}
+				throw error;
+			}
+			return new Response(null, { status: 204 });
+		},
+	);
 	router.register("GET", endpoints.workspaceReviewCommit, async (request, context) => {
 		const hash = new URL(request.url).searchParams.get("hash") ?? "";
 		const detail = await readWorkspaceCommit(context.store.workspacePath, hash);

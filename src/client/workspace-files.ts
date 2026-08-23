@@ -302,6 +302,14 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		void refreshFromDisk();
 	}
 
+	function refreshAfterDiscard(path: string): void {
+		if (current?.path === path) {
+			dirty = false;
+			syncSaveButton();
+		}
+		void refreshFromDisk();
+	}
+
 	async function refreshFromDisk(): Promise<void> {
 		const observed = current;
 		const observedGeneration = fileGeneration;
@@ -609,6 +617,9 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		cleanUp,
 		openFile,
 		refresh,
+		refreshAfterDiscard,
+		requestConfirmation,
+		requestNotice,
 		setGitStatus,
 		setVisible,
 		setWorkspace,
