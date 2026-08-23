@@ -391,17 +391,17 @@ function renderWorkspaceModeHeader(
 ): JSX.Element {
 	return (
 		<header
-			class="flex h-8 shrink-0 items-center px-1"
+			class="flex h-8 shrink-0 items-start"
 			data-workspace-mode-header
 			hidden={!gitAvailable}
 		>
 			<div
-				class="flex w-full rounded-md bg-(--pi-control-well) p-0.5"
+				class="flex w-full rounded-sm bg-(--pi-control-well) p-0.5"
 				aria-label="Workspace view"
 			>
 				<button
 					type="button"
-					class="flex-1 rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					class="flex-1 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 					aria-pressed={active === "files" ? "true" : "false"}
 					data-workspace-mode="files"
 				>
@@ -409,7 +409,7 @@ function renderWorkspaceModeHeader(
 				</button>
 				<button
 					type="button"
-					class="flex-1 rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					class="flex-1 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 					aria-pressed={active === "git" ? "true" : "false"}
 					data-workspace-mode="git"
 					disabled={!gitAvailable}
