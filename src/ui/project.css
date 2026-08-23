@@ -336,19 +336,13 @@
 	}
 
 	@container (width >= calc(50vw + 28rem)) {
-		#app:not(.pi-review-open) #prompt-box {
+		#app:not(.pi-review-open) :is(#prompt-box, #session-transition > *) {
 			translate: calc(50vw - var(--pi-workspace-inset) - 50cqw) 0;
 		}
 	}
 
 	@container (width >= calc(50vw + 26rem)) {
 		#app:not(.pi-review-open) #messages > .messages-stack {
-			translate: calc(50vw - var(--pi-workspace-inset) - 50cqw) 0;
-		}
-	}
-
-	@container (width >= calc(50vw + 2rem)) {
-		#app:not(.pi-review-open) #session-transition > * {
 			translate: calc(50vw - var(--pi-workspace-inset) - 50cqw) 0;
 		}
 	}
