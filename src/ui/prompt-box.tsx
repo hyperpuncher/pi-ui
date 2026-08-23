@@ -29,35 +29,39 @@ export function renderPromptBox(
 				_slashPickerOpen: false,
 				fileQuery: "",
 			})}
+			data-on:pointerdown__outside="window.piUi.pickers.close()"
 		>
-			<div
-				id="prompt-slash-popover"
-				class="absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-				style="display: none;"
-				data-show={`$_slashPickerOpen && (${slashPickerOpenExpression(state)})`}
-			>
-				{renderSlashPicker(state)}
-			</div>
-			<div
-				id="prompt-file-popover"
-				class="absolute right-0 bottom-full left-0 z-30 mb-2 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-				style="display: none;"
-				data-show="$_filePickerOpen"
-			>
-				<div id="file-picker-results" aria-live="polite" />
+			<div class="pointer-events-none absolute right-0 bottom-full left-0 z-30 flex flex-col items-center">
+				{renderLatestButton()}
+				<div
+					id="prompt-slash-popover"
+					class="pointer-events-auto mb-2 self-stretch rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+					style="display: none;"
+					data-show={`$_slashPickerOpen && (${slashPickerOpenExpression(state)})`}
+				>
+					{renderSlashPicker(state)}
+				</div>
+				<div
+					id="prompt-file-popover"
+					class="pointer-events-auto mb-2 self-stretch rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+					style="display: none;"
+					data-show="$_filePickerOpen"
+				>
+					<div id="file-picker-results" aria-live="polite" />
+				</div>
 			</div>
 			{renderPromptQueue(state)}
+			<div
+				id="prompt-attachments"
+				class="relative z-20 mx-3 mb-2 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 overflow-visible"
+				aria-label="Attachments"
+				data-ignore-morph
+				hidden
+			/>
 			<div
 				class="input-group pi-raised-surface pi-prompt-surface relative z-10 overflow-visible p-3 text-sm transition-shadow duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
 				data-orientation="vertical"
 			>
-				<div
-					id="prompt-attachments"
-					class="absolute bottom-full left-3 z-20 mb-2 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 overflow-visible"
-					aria-label="Attachments"
-					data-ignore-morph
-					hidden
-				/>
 				{renderExtensionWidgets(state, "aboveEditor")}
 				<textarea
 					id="prompt-input"
@@ -176,7 +180,6 @@ export function renderPromptQueue(state: AppStateSnapshot): string {
 			class="pointer-events-none mx-auto flex w-[calc(100%-2rem)] flex-col items-center sm:w-[calc(100%-4rem)]"
 			aria-live="polite"
 		>
-			{renderLatestButton()}
 			{renderQueuedMessages(state)}
 		</div>,
 	);
@@ -187,10 +190,10 @@ function renderLatestButton() {
 		<button
 			id="messages-latest"
 			type="button"
-			class="btn pointer-events-auto z-20 mb-4 rounded-full border-foreground/10! bg-background/40! backdrop-blur-[2px] transition-[translate,background-color] duration-150 ease-out hover:bg-muted/70! motion-reduce:transition-none dark:bg-input/30! hover:dark:bg-input/50!"
+			class="btn pointer-events-auto z-20 mb-4 rounded-full border-foreground/10! bg-background/60! backdrop-blur-[2px] transition-colors duration-150 ease-out hover:bg-muted/70! motion-reduce:transition-none dark:bg-input/65! hover:dark:bg-input/75!"
 			data-variant="outline"
 			data-size="icon"
-			data-preserve-attr="hidden inert tabindex style"
+			data-preserve-attr="hidden inert tabindex"
 			data-on:click="window.piUi.messageScroll.scrollBottom('smooth')"
 			aria-label="Jump to latest message"
 			hidden

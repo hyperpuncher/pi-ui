@@ -802,9 +802,17 @@ Deno.test("server-owned view signals are transport-private", () => {
 		"_isBusy",
 		"_isSessionReady",
 		"_promptHistory",
+		"_sessionTransitionGeneration",
 		"_sessionTransitionLoading",
+		"_sessionTransitionStatus",
 		"_sessionTransitionVisible",
 		"_thinkingHidden",
+		"_workspaceReviewAdditions",
+		"_workspaceReviewBranch",
+		"_workspaceReviewChangeCount",
+		"_workspaceReviewDeletions",
+		"_workspaceReviewGitAvailable",
+		"_workspaceReviewHasChanges",
 	]);
 });
 

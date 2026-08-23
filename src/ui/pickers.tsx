@@ -110,9 +110,16 @@ export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 	);
 }
 
-export function renderFilePickerResults(items: readonly FileSuggestion[]): string {
+export function renderFilePickerResults(
+	items: readonly FileSuggestion[],
+	query = "",
+): string {
 	return syncHtml(
-		<div id="file-picker-results" aria-live="polite">
+		<div
+			id="file-picker-results"
+			aria-live="polite"
+			data-init={`window.piUi.pickers.resetFile(${JSON.stringify(query)})`}
+		>
 			<PickerList id="file-picker-list" class={bottomAnchoredPickerClass}>
 				{items.map((item, index) => (
 					<PickerRow

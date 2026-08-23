@@ -9,11 +9,8 @@ import {
 
 let activeFilePrefix;
 let filePickerSuppressUntilInput = false;
-let filePickerObserver;
-let filePickerResetFrame;
 let searchTimer;
 let slashCommandFilter;
-let slashPickerResetFrame;
 
 export function extractFilePrefix(value, cursor) {
 	const before = value.slice(0, cursor);
@@ -48,18 +45,7 @@ export function bindPickers(options) {
 	document.addEventListener("input", syncFromPrompt);
 	document.addEventListener("keyup", syncFromPrompt);
 	document.addEventListener("click", handleClick);
-	document.addEventListener("pointerdown", handleOutsidePointer);
 	document.addEventListener("keydown", handleKeydown);
-	filePickerObserver?.disconnect();
-	const popover = document.getElementById("prompt-file-popover");
-	if (popover) {
-		filePickerObserver = new MutationObserver(queueFilePickerReset);
-		filePickerObserver.observe(popover, {
-			childList: true,
-			characterData: true,
-			subtree: true,
-		});
-	}
 	rankSlashCommands(promptValue());
 }
 
@@ -74,7 +60,9 @@ function syncFromPrompt(event) {
 	if (event.type === "input") filePickerSuppressUntilInput = false;
 	queueFileSearch(event.target);
 	rankSlashCommands(event.target.value);
-	queueSlashPickerSelectionReset();
+	if (event.target.value.startsWith("/")) {
+		resetPicker("slash-picker-list", "[data-slash-row]");
+	}
 }
 
 function queueFileSearch(input) {
@@ -88,7 +76,6 @@ function queueFileSearch(input) {
 		return;
 	}
 	activeFilePrefix = match;
-	queueFilePickerReset();
 	clearTimeout(searchTimer);
 	searchTimer = setTimeout(() => {
 		if (activeFilePrefix !== match) return;
@@ -119,13 +106,6 @@ function handleClick(event) {
 	} else if (target instanceof HTMLTextAreaElement && target.id === "prompt-input") {
 		queueFileSearch(target);
 	}
-}
-
-function handleOutsidePointer(event) {
-	const target = event.target;
-	if (!(target instanceof Node)) return;
-	if (document.getElementById("prompt-box")?.contains(target)) return;
-	closePickers(false);
 }
 
 function handleKeydown(event) {
@@ -282,19 +262,8 @@ function rankSlashCommands(prompt) {
 	list.append(...ranked, ...rows.filter((row) => !matches.has(row)));
 }
 
-function queueSlashPickerSelectionReset() {
-	if (!promptValue().startsWith("/")) return;
-	cancelAnimationFrame(slashPickerResetFrame);
-	slashPickerResetFrame = requestAnimationFrame(() => {
-		resetPicker("slash-picker-list", "[data-slash-row]");
-	});
-}
-
-function queueFilePickerReset() {
-	cancelAnimationFrame(filePickerResetFrame);
-	filePickerResetFrame = requestAnimationFrame(() => {
-		resetPicker("file-picker-list", "[data-file-row]");
-	});
+export function resetFilePicker() {
+	resetPicker("file-picker-list", "[data-file-row]");
 }
 
 export function nextPickerIndex(length, activeIndex, direction) {

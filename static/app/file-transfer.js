@@ -13,7 +13,6 @@ const MAX_TRANSFER_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
 let dragDepth = 0;
 let submitting = false;
-let attachmentResizeObserver;
 const attachments = [];
 
 export function hasFiles(data) {
@@ -265,8 +264,6 @@ function renderAttachments() {
 	if (!(tray instanceof HTMLElement)) return;
 	tray.replaceChildren(...attachments.map(renderAttachment));
 	tray.hidden = attachments.length === 0;
-	observeAttachmentTray(tray);
-	updateLatestButtonOffset(tray);
 	const send = document.querySelector("[data-send-trigger]");
 	if (send instanceof HTMLButtonElement)
 		send.disabled = !canSubmit(promptInput()?.value ?? "");
@@ -325,18 +322,6 @@ function renderAttachment(attachment) {
 	details.append(meta);
 	item.append(details, removeBadge());
 	return item;
-}
-
-function observeAttachmentTray(tray) {
-	if (attachmentResizeObserver) return;
-	attachmentResizeObserver = new ResizeObserver(() => updateLatestButtonOffset(tray));
-	attachmentResizeObserver.observe(tray);
-}
-
-function updateLatestButtonOffset(tray) {
-	const latest = document.getElementById("messages-latest");
-	if (!(latest instanceof HTMLButtonElement)) return;
-	latest.style.translate = tray.hidden ? "" : `0 -${tray.offsetHeight + 8}px`;
 }
 
 function removeBadge() {

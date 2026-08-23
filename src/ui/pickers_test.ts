@@ -281,6 +281,9 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-hidden"');
 	assertStringIncludes(withoutSelection, "w-88");
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
+	assertStringIncludes(withoutSelection, "data-signals:_model-query__ifmissing");
+	assertStringIncludes(withoutSelection, "data-bind:_model-query");
+	assertStringIncludes(withoutSelection, "window.piUi.modelSearch.filter");
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-activedescendant"');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="class aria-hidden"');
 	assertStringIncludes(withoutSelection, "autofocus");
@@ -315,15 +318,19 @@ Deno.test("thinking picker describes every supported maximum level", () => {
 });
 
 Deno.test("file picker fragments escape dynamic values and expose list semantics", () => {
-	const html = renderFilePickerResults([
-		{
-			value: `src/"<unsafe>.ts`,
-			label: `<unsafe>.ts`,
-			description: `src/<unsafe>.ts`,
-			isDirectory: false,
-		},
-	]);
+	const html = renderFilePickerResults(
+		[
+			{
+				value: `src/"<unsafe>.ts`,
+				label: `<unsafe>.ts`,
+				description: `src/<unsafe>.ts`,
+				isDirectory: false,
+			},
+		],
+		"src",
+	);
 	assertStringIncludes(html, 'id="file-picker-results"');
+	assertStringIncludes(html, "window.piUi.pickers.resetFile(&#34;src&#34;)");
 	assertStringIncludes(html, 'role="listbox"');
 	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'role="option"');

@@ -354,7 +354,7 @@ export class UiRenderer implements AppStorePresentation {
 		for (const effect of effects) {
 			if (effect.type === "restore-model-picker")
 				scripts.push(
-					"requestAnimationFrame(() => window.piUi.modelSearch.restore())",
+					"requestAnimationFrame(() => document.getElementById('model-select-input')?.focus())",
 				);
 			if (effect.type === "dialog")
 				scripts.push(

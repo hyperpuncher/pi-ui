@@ -12,6 +12,7 @@ const bottomScrollTimers = new Set();
 let anchor;
 let historyLoading = false;
 let observedMessageStack;
+let observedPrompt;
 let messageResizeObserver;
 let pointerStart;
 
@@ -141,7 +142,6 @@ export function bindMessageScroll() {
 		true,
 	);
 
-	bindPromptSpacer();
 	bindMessageResize();
 	scrollBottom();
 }
@@ -294,37 +294,30 @@ function isUpwardScrollKey(event) {
 
 export function bindMessageResize() {
 	const stack = document.querySelector("#messages > .messages-stack");
-	if (!(stack instanceof HTMLElement) || stack === observedMessageStack) return;
+	const prompt = document.getElementById("prompt-box");
+	if (!(stack instanceof HTMLElement) || !(prompt instanceof HTMLElement)) return;
+	if (stack === observedMessageStack && prompt === observedPrompt) return;
 	messageResizeObserver ??= new ResizeObserver(() => {
+		updatePromptSpacer();
 		const messages = document.getElementById("messages");
 		if (messages instanceof HTMLElement && state.pinnedToBottom)
 			messages.scrollTop = messages.scrollHeight;
 		updateScrollControl();
 	});
 	if (observedMessageStack) messageResizeObserver.unobserve(observedMessageStack);
+	if (observedPrompt) messageResizeObserver.unobserve(observedPrompt);
 	observedMessageStack = stack;
+	observedPrompt = prompt;
 	messageResizeObserver.observe(stack);
-}
-
-function bindPromptSpacer() {
-	const prompt = document.getElementById("prompt-box");
-	if (!(prompt instanceof HTMLElement)) return;
-	const sync = () => {
-		updatePromptSpacer();
-		const messages = document.getElementById("messages");
-		if (messages instanceof HTMLElement && state.pinnedToBottom)
-			messages.scrollTop = messages.scrollHeight;
-		updateScrollControl();
-	};
-	new ResizeObserver(sync).observe(prompt);
-	sync();
+	messageResizeObserver.observe(prompt);
 }
 
 function updatePromptSpacer() {
 	const prompt = document.getElementById("prompt-box");
 	const spacer = document.getElementById("messages-prompt-spacer");
 	if (!(prompt instanceof HTMLElement) || !(spacer instanceof HTMLElement)) return;
-	spacer.style.height = `${prompt.offsetHeight + promptSpacerClearancePx}px`;
+	const height = `${prompt.offsetHeight + promptSpacerClearancePx}px`;
+	if (spacer.style.height !== height) spacer.style.height = height;
 }
 
 function updateScrollControl() {

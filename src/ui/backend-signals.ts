@@ -9,8 +9,16 @@ export type BackendSignals = {
 	_isBusy: boolean;
 	_isSessionReady: boolean;
 	_thinkingHidden: boolean;
+	_sessionTransitionGeneration: number;
 	_sessionTransitionLoading: boolean;
+	_sessionTransitionStatus: AppStateSnapshot["sessionTransition"]["status"];
 	_sessionTransitionVisible: boolean;
+	_workspaceReviewAdditions: number;
+	_workspaceReviewBranch: string;
+	_workspaceReviewDeletions: number;
+	_workspaceReviewGitAvailable: boolean;
+	_workspaceReviewHasChanges: boolean;
+	_workspaceReviewChangeCount: number;
 };
 
 export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
@@ -22,9 +30,23 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 		_isBusy: Boolean(state.activityText),
 		_isSessionReady: state.sessionTransition.status !== "loading",
 		_thinkingHidden: state.thinkingHidden,
+		_sessionTransitionGeneration: state.sessionTransition.generation,
 		_sessionTransitionLoading: state.sessionTransition.status === "loading",
+		_sessionTransitionStatus: state.sessionTransition.status,
 		_sessionTransitionVisible: sessionTransitionOverlayVisible(
 			state.sessionTransition,
 		),
+		_workspaceReviewAdditions: state.workspaceReview.changes.reduce(
+			(total, change) => total + change.additions,
+			0,
+		),
+		_workspaceReviewBranch: state.workspaceReview.branch ?? "",
+		_workspaceReviewDeletions: state.workspaceReview.changes.reduce(
+			(total, change) => total + change.deletions,
+			0,
+		),
+		_workspaceReviewGitAvailable: state.workspaceReview.isGitRepository,
+		_workspaceReviewHasChanges: state.workspaceReview.changes.length > 0,
+		_workspaceReviewChangeCount: state.workspaceReview.changes.length,
 	};
 }

@@ -180,7 +180,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 	}
 	const currentLabel = current ? modelTriggerLabel(current) : "choose model";
 	return syncHtml(
-		<div id="model-picker" class="shrink-0">
+		<div id="model-picker" class="shrink-0" data-signals:_model-query__ifmissing="''">
 			<label class="sr-only" for="model-select-trigger">
 				Model
 			</label>
@@ -241,6 +241,8 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 								aria-expanded="true"
 								aria-controls="model-select-menu"
 								autofocus
+								data-bind:_model-query
+								data-effect="window.piUi.modelSearch.filter(el, $_modelQuery)"
 							/>
 						</header>
 						<div
@@ -279,6 +281,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 											data-keywords={model.name}
 											data-model-search-order={index}
 											data-on:click={`
+												$_modelQuery = '';
 												document.getElementById('model-select-trigger')?.click();
 												@post('${endpoints.model}', {
 												payload: { model: ${JSON.stringify(value)} },
@@ -329,7 +332,6 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												aria-label="Toggle scoped model"
 												data-on:click={`
 													evt.stopPropagation();
-													window.piUi.modelSearch.preserve();
 													@post('${endpoints.modelsScopeToggle}', {
 													payload: { model: ${JSON.stringify(value)} },
 												});

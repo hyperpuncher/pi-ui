@@ -32,16 +32,18 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 	return syncHtml(
 		<main
 			id="session-transition"
-			class="min-h-0 place-items-center px-6 text-center"
-			style={visible ? "display: grid" : "display: none"}
-			data-style:display="$_sessionTransitionVisible ? 'grid' : 'none'"
+			class="col-start-1 row-start-1 grid min-h-0 place-items-center px-6 text-center"
+			style={visible ? undefined : "display: none"}
+			data-show="$_sessionTransitionVisible"
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"
 			aria-busy={transition.status === "loading" ? "true" : "false"}
-			data-session-transition-status={transition.status}
-			data-session-transition-generation={transition.generation}
 			data-session-performance-enabled={
 				sessionPerformance.enabled ? "true" : "false"
+			}
+			data-effect={
+				sessionPerformance.enabled &&
+				"window.piUi.sessionPerformance.observe($_sessionTransitionStatus, $_sessionTransitionGeneration)"
 			}
 		>
 			{transition.status === "error" ? (

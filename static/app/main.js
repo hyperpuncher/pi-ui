@@ -1,8 +1,4 @@
-import {
-	bindModelSearch,
-	preserveModelSearch,
-	restoreModelSearch,
-} from "../build/model-search.js";
+import { filterModelSearch } from "../build/model-search.js";
 import { fuzzyFilter, fuzzyMatch } from "../build/pi-fuzzy.js";
 import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
@@ -18,11 +14,17 @@ import {
 	restoreAnchor,
 	scrollBottom,
 } from "./message-scroll.js";
-import { bindPickers, isFileOpen, isOpen as isPickerOpen } from "./pickers.js";
+import {
+	bindPickers,
+	closePickers,
+	isFileOpen,
+	isOpen as isPickerOpen,
+	resetFilePicker,
+} from "./pickers.js";
 import { createPromptHistory } from "./prompt-history.js";
 import { bindPromptInteractions, focusPromptEnd, setPromptValue } from "./prompt.js";
 import {
-	bindSessionPerformance,
+	readTransitionState,
 	startSessionPerformanceMeasurement,
 } from "./session-performance.js";
 import { bindVimScroll } from "./vim-scroll.js";
@@ -42,11 +44,20 @@ window.piUi = {
 		restoreAnchor,
 		scrollBottom,
 	},
-	modelSearch: { preserve: preserveModelSearch, restore: restoreModelSearch },
-	pickers: { fuzzyMatch, isFileOpen, isOpen: isPickerOpen },
+	modelSearch: { filter: filterModelSearch },
+	pickers: {
+		close: closePickers,
+		fuzzyMatch,
+		isFileOpen,
+		isOpen: isPickerOpen,
+		resetFile: resetFilePicker,
+	},
 	prompt: { clear: () => setPromptValue("") },
 	promptHistory,
-	sessionPerformance: { start: startSessionPerformanceMeasurement },
+	sessionPerformance: {
+		observe: readTransitionState,
+		start: startSessionPerformanceMeasurement,
+	},
 	windowFocus,
 	workspaceReview: { applyOpen: () => {} },
 	shouldAbortOnEscape(event) {
@@ -71,8 +82,6 @@ window.addEventListener("DOMContentLoaded", () => {
 	bindPromptInteractions();
 	bindPickers({ fuzzyFilter });
 	bindMessageScroll();
-	bindModelSearch();
-	bindSessionPerformance();
 	bindCodeCopy();
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();

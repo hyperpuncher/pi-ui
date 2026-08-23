@@ -281,7 +281,7 @@ Deno.test("plain tool titles remain escaped", () => {
 	assertStringIncludes(html, "&lt;img");
 });
 
-Deno.test("empty messages center within the padded chat area", () => {
+Deno.test("messages reserve the overlaid prompt when populated", () => {
 	const html = renderMessages([], { description: "Send", keys: "enter" });
 	assertStringIncludes(html, "messages-stack relative mx-auto min-h-full");
 	assertStringIncludes(html, "grid flex-1 place-items-center");

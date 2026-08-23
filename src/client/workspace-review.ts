@@ -82,26 +82,12 @@ window.addEventListener("pi-ui-code-theme-changed", (event) => {
 });
 
 const app = requiredElement("app");
-const filesSidebar = requiredElement("workspace-files-sidebar");
-const filesMain = requiredElement("workspace-file-main");
-const gitSidebar = requiredElement("review-git-sidebar");
-const gitMain = requiredElement("review-git-main");
 const modeButtons = document.querySelectorAll<HTMLButtonElement>("[data-workspace-mode]");
-const modeHeaders = document.querySelectorAll<HTMLElement>(
-	"[data-workspace-mode-header]",
-);
 const treeHost = requiredElement("review-tree");
-const treeEmpty = requiredElement("review-tree-empty");
-const changesSection = requiredElement("review-changes-section");
-const changesSeparator = requiredElement("review-changes-separator");
 const history = requiredElement("review-history");
 const detailHeader = requiredElement("review-detail-header");
 const diffRoot = requiredElement("review-diff-view");
 const empty = requiredElement("review-empty");
-const branch = requiredElement("review-branch");
-const count = requiredElement("review-change-count");
-const additions = requiredElement("review-total-additions");
-const deletions = requiredElement("review-total-deletions");
 const allButton = requiredButton("review-mode-all");
 const selectedButton = requiredButton("review-mode-selected");
 const splitButton = requiredButton("review-layout-split");
@@ -174,7 +160,6 @@ const visibility = createVisibility(app, true, (open) => {
 	if (open && panelMode === "git") openGitView();
 });
 window.piUi.workspaceReview = visibility;
-syncPanelMode();
 for (const button of modeButtons) {
 	button.addEventListener("click", () => {
 		const mode = button.dataset.workspaceMode;
@@ -255,7 +240,6 @@ syncModeButtons();
 syncLayoutButtons();
 wrapButton.setAttribute("aria-pressed", String(wrap));
 renderHistory();
-syncChangesSection();
 
 window.addEventListener(
 	"pagehide",
@@ -305,7 +289,7 @@ function applyWorkspaceReview(
 function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	const wasUnloaded =
 		workspaceReviewLoading(snapshot.revision) || !initializedSelection;
-	const gitBecameAvailable = !snapshot.isGitRepository && next.isGitRepository;
+	const gitWasAvailable = snapshot.isGitRepository;
 	const historyState = reconcileFirstHistoryPage(
 		historyCommits,
 		historyHasMore,
@@ -319,21 +303,14 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		historyGeneration++;
 		historyLoading = false;
 	}
-	if (panelMode === "git" && !snapshot.isGitRepository) panelMode = "files";
-	else if (gitBecameAvailable && preferredPanelMode !== "files") panelMode = "git";
-	syncPanelMode();
+	if (!snapshot.isGitRepository) panelMode = "files";
+	else if (!gitWasAvailable && preferredPanelMode !== "files") panelMode = "git";
 	workspaceFiles.setVisible(visibility.isOpen() && panelMode === "files");
 	const nextWorkingItems = createItems(snapshot.changes, snapshot.patch, "working");
 	comments.reconcileItems(nextWorkingItems);
 	workingItems = withWorkingAnnotations(nextWorkingItems);
 	tree.resetPaths(snapshot.changes.map(({ path }) => path));
 	tree.setGitStatus(snapshot.changes);
-	branch.textContent = snapshot.branch ?? "";
-	branch.style.display = snapshot.branch ? "inline" : "none";
-	count.textContent = String(snapshot.changes.length);
-	additions.textContent = `+${sum("additions")}`;
-	deletions.textContent = `-${sum("deletions")}`;
-	syncChangesSection();
 	if (workspaceReviewLoading(snapshot.revision)) {
 		initializedSelection = false;
 		renderHistory();
@@ -357,14 +334,6 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	if (selection.kind === "commit") {
 		void activateCommit(selection.hash, selection.path);
 	} else activateWorking(selection.path);
-}
-
-function syncChangesSection(): void {
-	const hasChanges = snapshot.changes.length > 0;
-	changesSection.hidden = !hasChanges;
-	changesSeparator.hidden = !hasChanges;
-	treeHost.style.display = hasChanges ? "block" : "none";
-	treeEmpty.style.display = hasChanges ? "none" : "block";
 }
 
 function setMode(next: ReviewMode): void {
@@ -743,36 +712,10 @@ function setPanelMode(next: "files" | "git"): void {
 	if (next === panelMode || (next === "git" && !snapshot.isGitRepository)) return;
 	panelMode = next;
 	preferredPanelMode = next;
-	syncPanelMode();
 	writePreferences();
 	if (!visibility.isOpen()) return;
 	workspaceFiles.setVisible(next === "files");
 	if (next === "git") openGitView();
-}
-
-function syncPanelMode(): void {
-	filesSidebar.style.display = panelMode === "files" ? "flex" : "none";
-	filesMain.style.display = panelMode === "files" ? "flex" : "none";
-	gitSidebar.style.display = panelMode === "git" ? "grid" : "none";
-	gitMain.style.display = panelMode === "git" ? "flex" : "none";
-	for (const button of modeButtons) {
-		button.setAttribute(
-			"aria-pressed",
-			String(button.dataset.workspaceMode === panelMode),
-		);
-	}
-	syncPanelModeAvailability();
-}
-
-function syncPanelModeAvailability(): void {
-	for (const header of modeHeaders) {
-		header.hidden = !snapshot.isGitRepository;
-	}
-	for (const button of modeButtons) {
-		if (button.dataset.workspaceMode === "git") {
-			button.disabled = !snapshot.isGitRepository;
-		}
-	}
 }
 
 function renderReviewContextMenu(
@@ -902,10 +845,6 @@ function syncLayoutButtons(currentLayout = effectiveLayout()): void {
 	const split = currentLayout === "split";
 	splitButton.setAttribute("aria-pressed", String(split));
 	stackedButton.setAttribute("aria-pressed", String(!split));
-}
-
-function sum(key: "additions" | "deletions"): number {
-	return snapshot.changes.reduce((total, change) => total + change[key], 0);
 }
 
 function emptyMessage(): string {

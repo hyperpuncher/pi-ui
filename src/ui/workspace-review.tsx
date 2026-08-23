@@ -96,6 +96,12 @@ export function renderWorkspaceReview(
 				<aside
 					id="workspace-files-sidebar"
 					class="pi-review-sidebar flex min-h-0 min-w-0 flex-col"
+					style={
+						snapshot.isGitRepository && preferences.tab !== "files"
+							? "display: none"
+							: undefined
+					}
+					data-show="!$_workspaceReviewGitAvailable || $workspaceReviewPreferences.tab === 'files'"
 				>
 					{renderWorkspaceModeHeader("files", snapshot.isGitRepository)}
 					<section class="pi-raised-surface flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -108,19 +114,30 @@ export function renderWorkspaceReview(
 
 				<aside
 					id="review-git-sidebar"
-					class="pi-review-sidebar hidden min-h-0 min-w-0 flex-col"
+					class="pi-review-sidebar grid min-h-0 min-w-0 flex-col"
+					style={
+						!snapshot.isGitRepository || preferences.tab === "files"
+							? "display: none"
+							: undefined
+					}
+					data-show="
+						$_workspaceReviewGitAvailable &&
+						$workspaceReviewPreferences.tab !== 'files'
+					"
 				>
 					{renderWorkspaceModeHeader("git", snapshot.isGitRepository)}
 					<section
 						id="review-changes-section"
 						class="pi-raised-surface flex min-h-0 shrink-0 flex-col overflow-hidden"
 						hidden={snapshot.changes.length === 0}
+						data-attr:hidden="!$_workspaceReviewHasChanges"
 					>
 						<header class="flex h-8 shrink-0 items-center gap-2 px-3 text-xs font-medium">
 							<span>Changes</span>
 							<span
 								id="review-change-count"
 								class="pi-fine-print rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums"
+								data-text="$_workspaceReviewChangeCount"
 							>
 								{snapshot.changes.length}
 							</span>
@@ -128,12 +145,14 @@ export function renderWorkspaceReview(
 								<span
 									id="review-total-additions"
 									class="text-(--pi-diff-addition)"
+									data-text="'+' + $_workspaceReviewAdditions"
 								>
 									+{additions}
 								</span>
 								<span
 									id="review-total-deletions"
 									class="text-(--pi-diff-deletion)"
+									data-text="'-' + $_workspaceReviewDeletions"
 								>
 									-{deletions}
 								</span>
@@ -143,6 +162,7 @@ export function renderWorkspaceReview(
 							id="review-tree"
 							class="min-h-0 flex-1 overflow-hidden pt-1 [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
 							style={workspaceTreeStyle}
+							data-show="$_workspaceReviewHasChanges"
 						/>
 						<div
 							id="review-tree-empty"
@@ -150,6 +170,7 @@ export function renderWorkspaceReview(
 							style={
 								snapshot.changes.length > 0 ? "display: none" : undefined
 							}
+							data-show="!$_workspaceReviewHasChanges"
 						>
 							Working tree clean
 						</div>
@@ -161,6 +182,7 @@ export function renderWorkspaceReview(
 						role="separator"
 						tabindex="0"
 						hidden={snapshot.changes.length === 0}
+						data-attr:hidden="!$_workspaceReviewHasChanges"
 						aria-label="Resize Changes and History"
 						aria-orientation="horizontal"
 						aria-valuemin={changesRatioMin * 100}
@@ -211,7 +233,16 @@ export function renderWorkspaceReview(
 					})}
 				/>
 
-				<div id="workspace-file-main" class="flex min-h-0 min-w-0 flex-col">
+				<div
+					id="workspace-file-main"
+					class="flex min-h-0 min-w-0 flex-col"
+					style={
+						snapshot.isGitRepository && preferences.tab !== "files"
+							? "display: none"
+							: undefined
+					}
+					data-show="!$_workspaceReviewGitAvailable || $workspaceReviewPreferences.tab === 'files'"
+				>
 					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center gap-2 px-1">
 						<div class="flex min-w-0 flex-1 items-center gap-2 font-mono text-[11px]">
 							<span
@@ -297,12 +328,23 @@ export function renderWorkspaceReview(
 					</div>
 				</div>
 
-				<div id="review-git-main" class="hidden min-h-0 min-w-0 flex-col">
+				<div
+					id="review-git-main"
+					class="flex min-h-0 min-w-0 flex-col"
+					style={
+						!snapshot.isGitRepository || preferences.tab === "files"
+							? "display: none"
+							: undefined
+					}
+					data-show="$_workspaceReviewGitAvailable && $workspaceReviewPreferences.tab !== 'files'"
+				>
 					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center justify-between gap-2 px-1">
 						<span
 							id="review-branch"
 							class="pi-fine-print min-w-0 truncate font-mono text-[11px]"
 							style={snapshot.branch ? undefined : "display: none"}
+							data-show="Boolean($_workspaceReviewBranch)"
+							data-text="$_workspaceReviewBranch"
 							safe
 						>
 							{snapshot.branch ?? ""}
@@ -565,8 +607,8 @@ function renderWorkspaceModeHeader(
 	return (
 		<header
 			class="flex h-8 shrink-0 items-start"
-			data-workspace-mode-header
-			hidden={!gitAvailable}
+			style={gitAvailable ? undefined : "display: none"}
+			data-show="$_workspaceReviewGitAvailable"
 		>
 			<div
 				class="flex w-full rounded-sm bg-(--pi-control-well) p-0.5"
@@ -576,6 +618,10 @@ function renderWorkspaceModeHeader(
 					type="button"
 					class="flex-1 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 					aria-pressed={active === "files" ? "true" : "false"}
+					data-attr:aria-pressed="
+						$workspaceReviewPreferences.tab === 'files' ||
+						!$_workspaceReviewGitAvailable ? 'true' : 'false'
+					"
 					data-workspace-mode="files"
 				>
 					Files
@@ -584,8 +630,13 @@ function renderWorkspaceModeHeader(
 					type="button"
 					class="flex-1 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 					aria-pressed={active === "git" ? "true" : "false"}
+					data-attr:aria-pressed="
+						$workspaceReviewPreferences.tab !== 'files' &&
+						$_workspaceReviewGitAvailable ? 'true' : 'false'
+					"
 					data-workspace-mode="git"
 					disabled={!gitAvailable}
+					data-attr:disabled="!$_workspaceReviewGitAvailable"
 				>
 					Git
 				</button>

@@ -26,7 +26,7 @@ export function registerFileRoutes(router: ExactRouter<RouteContext>): void {
 			request.signal,
 		);
 		return datastarResponse([
-			{ type: "elements", elements: renderFilePickerResults(items) },
+			{ type: "elements", elements: renderFilePickerResults(items, query) },
 			{ type: "signals", signals: { _filePickerOpen: items.length > 0 } },
 		]);
 	});
