@@ -176,10 +176,8 @@ const workspaceFiles = createWorkspaceFiles({
 	initialGitStatus: snapshot.changes,
 	initialWorkspacePath: workspacePath,
 });
-let panelMode: "files" | "git" = initialPanelMode(
-	preferences.tab,
-	snapshot.isGitRepository,
-);
+let preferredPanelMode: "files" | "git" | undefined = preferences.tab;
+let panelMode = initialPanelMode(preferredPanelMode, snapshot.isGitRepository);
 
 const reviewLayout = bindWorkspaceReviewLayout({
 	app: workspaceShell,
@@ -192,7 +190,7 @@ const reviewLayout = bindWorkspaceReviewLayout({
 		writeWorkspaceReviewPreferences({
 			layout,
 			mode,
-			tab: panelMode,
+			tab: preferredPanelMode,
 			wrap,
 			...values,
 		}),
@@ -340,6 +338,7 @@ function applyWorkspaceReview(
 function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	const wasUnloaded =
 		workspaceReviewLoading(snapshot.revision) || !initializedSelection;
+	const gitBecameAvailable = !snapshot.isGitRepository && next.isGitRepository;
 	const historyState = reconcileFirstHistoryPage(
 		historyCommits,
 		historyHasMore,
@@ -353,8 +352,10 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		historyGeneration++;
 		historyLoading = false;
 	}
-	syncPanelModeAvailability();
-	if (panelMode === "git" && !snapshot.isGitRepository) setPanelMode("files");
+	if (panelMode === "git" && !snapshot.isGitRepository) panelMode = "files";
+	else if (gitBecameAvailable && preferredPanelMode !== "files") panelMode = "git";
+	syncPanelMode();
+	workspaceFiles.setVisible(visibility.isOpen() && panelMode === "files");
 	const nextWorkingItems = createItems(snapshot.changes, snapshot.patch, "working");
 	comments.reconcileItems(nextWorkingItems);
 	workingItems = withWorkingAnnotations(nextWorkingItems);
@@ -766,12 +767,13 @@ function initialPanelMode(
 	preferred: WorkspaceReviewPreferences["tab"],
 	gitAvailable: boolean,
 ): "files" | "git" {
-	return preferred === "git" && gitAvailable ? "git" : "files";
+	return gitAvailable && preferred !== "files" ? "git" : "files";
 }
 
 function setPanelMode(next: "files" | "git"): void {
 	if (next === panelMode || (next === "git" && !snapshot.isGitRepository)) return;
 	panelMode = next;
+	preferredPanelMode = next;
 	syncPanelMode();
 	writePreferences();
 	if (!visibility.isOpen()) return;
@@ -922,7 +924,7 @@ function writePreferences(): void {
 	writeWorkspaceReviewPreferences({
 		layout,
 		mode,
-		tab: panelMode,
+		tab: preferredPanelMode,
 		wrap,
 		...reviewLayout.values(),
 	});
