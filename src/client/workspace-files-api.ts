@@ -23,7 +23,7 @@ const workspaceEntrySchema = Type.Object({ path: Type.String() });
 const errorSchema = Type.Object({ error: Type.String() });
 
 export type WorkspaceFileData = Static<typeof workspaceFileSchema>;
-export type WorkspaceFilesData = Static<typeof workspaceFilesSchema>;
+type WorkspaceFilesData = Static<typeof workspaceFilesSchema>;
 
 export function createWorkspaceFilesApi(endpoint: string) {
 	const contentEndpoint = `${endpoint}/content`;

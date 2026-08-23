@@ -61,7 +61,6 @@
 		--pi-inverse-fine-print-foreground: oklch(78% 0 0);
 		--pi-thought-foreground: oklch(62% 0 0);
 		--pi-error-foreground: oklch(54% 0.18 22);
-		--pi-error-fine-print-foreground: oklch(40% 0.15 22);
 		--pi-warning-foreground: var(--color-amber-700);
 		--pi-warning-fine-print-foreground: oklch(40% 0.14 60);
 		--pi-info-fine-print-foreground: oklch(40% 0.1 243);
@@ -86,7 +85,6 @@
 	--pi-inverse-fine-print-foreground: oklch(60% 0 0);
 	--pi-thought-foreground: oklch(78% 0 0);
 	--pi-error-foreground: oklch(90% 0.12 22);
-	--pi-error-fine-print-foreground: oklch(96% 0.08 22);
 	--pi-warning-foreground: var(--color-yellow-300);
 	--pi-warning-fine-print-foreground: oklch(98% 0.14 98);
 	--pi-info-fine-print-foreground: oklch(94% 0.1 230);
@@ -158,10 +156,6 @@
 		white-space: nowrap;
 	}
 
-	.pi-date-inverse {
-		color: var(--pi-inverse-fine-print-foreground);
-	}
-
 	.code-theme-dialog > div {
 		gap: 0;
 		padding: 0;
@@ -231,10 +225,6 @@
 
 	.pi-error-foreground {
 		color: var(--pi-error-foreground);
-	}
-
-	.pi-error-fine-print {
-		color: var(--pi-error-fine-print-foreground);
 	}
 
 	.pi-warning-foreground {

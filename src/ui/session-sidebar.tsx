@@ -139,7 +139,7 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 	);
 }
 
-export function sessionSidebarRowId(path: string): string {
+function sessionSidebarRowId(path: string): string {
 	return `session-sidebar-row-${encodeURIComponent(path)}`;
 }
 

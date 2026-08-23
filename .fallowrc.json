@@ -1,0 +1,49 @@
+{
+	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+	"entry": [
+		"src/main.ts",
+		"src/server-main.ts",
+		"scripts/*.ts",
+		"rolldown.config.ts",
+		"src/client/code-theme.ts",
+		"src/client/pi-fuzzy.ts",
+		"src/client/pierre-worker.ts",
+		"src/client/workspace-review.ts",
+		"src/ui/project.css",
+		"src/ui/styles.css",
+		"static/app/main.js",
+		"static/app/model-search.js",
+		"static/theme.js",
+		"tools/oxlint/anti-slop/index.ts"
+	],
+	"ignorePatterns": ["static/vendor/**"],
+	"ignoreDependencies": [
+		"@earendil-works/pi-ai",
+		"@earendil-works/pi-coding-agent",
+		"@earendil-works/pi-tui",
+		"@oxlint/plugins",
+		"@pierre/diffs",
+		"@pierre/trees",
+		"@starfederation/datastar-sdk",
+		"@std/http",
+		"rolldown",
+		"satteri",
+		"tailwindcss",
+		"typebox"
+	],
+	"ignoreUnresolvedImports": ["../static/native/windows-folder-picker.exe"],
+	"ignoreExports": [
+		{
+			"file": "static/app/dialogs.js",
+			"exports": ["*"]
+		},
+		{
+			"file": "static/app/file-transfer.js",
+			"exports": ["*"]
+		},
+		{
+			"file": "static/app/model-search.js",
+			"exports": ["bindModelSearch", "preserveModelSearch", "restoreModelSearch"]
+		}
+	]
+}

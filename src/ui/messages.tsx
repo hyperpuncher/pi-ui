@@ -28,7 +28,7 @@ import { syncHtml } from "./sync-html.ts";
 const inlineBashCache = new Map<string, string>();
 const maxInlineBashCacheEntries = 500;
 
-export function preservesFinalizedMessageDom(message: AppMessage): boolean {
+function preservesFinalizedMessageDom(message: AppMessage): boolean {
 	return (
 		message.presentationState === "final" &&
 		(message.role === "assistant" || message.role === "thought")

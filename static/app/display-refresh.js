@@ -1,6 +1,6 @@
-export const COMMON_DISPLAY_RATES = [60, 75, 90, 100, 120, 144, 165, 240];
-export const DISPLAY_HZ_MIN = 30;
-export const DISPLAY_HZ_MAX = 240;
+const COMMON_DISPLAY_RATES = [60, 75, 90, 100, 120, 144, 165, 240];
+const DISPLAY_HZ_MIN = 30;
+const DISPLAY_HZ_MAX = 240;
 
 const WARMUP_FRAMES = 6;
 const SAMPLE_FRAMES = 48;
@@ -26,7 +26,7 @@ export function estimateDisplayHz(timestamps) {
 	return classifyCommonRate(measured);
 }
 
-export function classifyCommonRate(measuredHz) {
+function classifyCommonRate(measuredHz) {
 	const nearest = COMMON_DISPLAY_RATES.reduce((best, rate) =>
 		Math.abs(rate - measuredHz) < Math.abs(best - measuredHz) ? rate : best,
 	);

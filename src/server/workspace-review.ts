@@ -52,21 +52,6 @@ export async function findGitWatchPaths(
 	return paths;
 }
 
-export async function readWorkspaceReviewAvailability(
-	workspacePath: string,
-): Promise<WorkspaceReviewSnapshot> {
-	return (await findGitRoot(workspacePath))
-		? {
-				branch: null,
-				changes: [],
-				commits: [],
-				isGitRepository: true,
-				patch: "",
-				revision: "git-unloaded",
-			}
-		: emptyWorkspaceReviewSnapshot;
-}
-
 export async function readWorkspaceReview(
 	workspacePath: string,
 	onSummary?: (snapshot: WorkspaceReviewSnapshot) => void,

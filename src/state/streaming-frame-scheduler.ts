@@ -41,10 +41,6 @@ export class StreamingFrameScheduler<T> {
 		private readonly schedulingToleranceMs = 0.5,
 	) {}
 
-	get targetIntervalMs(): number {
-		return this.intervalMs;
-	}
-
 	get stats(): StreamingFrameSchedulerStats {
 		return {
 			committedFrames: this.committedFrames,

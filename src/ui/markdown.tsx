@@ -178,7 +178,7 @@ const compileOptions = {
 	mdastPlugins: [stripRawHtml],
 } satisfies CompileOptions;
 
-export type StreamingMarkdownMeasurement = {
+type StreamingMarkdownMeasurement = {
 	html: string;
 	markdownParseMs: number;
 	codeBlockRenderMs: number;
@@ -191,7 +191,7 @@ export function renderMarkdownStreaming(
 	return renderMarkdownStreamingMeasured(markdown, options).html;
 }
 
-export function renderMarkdownStreamingMeasured(
+function renderMarkdownStreamingMeasured(
 	markdown: string,
 	options: { cacheKey?: string } = {},
 ): StreamingMarkdownMeasurement {

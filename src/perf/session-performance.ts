@@ -38,14 +38,14 @@ type PerformanceCounters = {
 	backgroundLookupMissCount: number;
 };
 
-export type RuntimeLeaveAction = "background" | "discard" | "dispose" | "keep";
-export type RuntimeOwnershipLocation =
+type RuntimeLeaveAction = "background" | "discard" | "dispose" | "keep";
+type RuntimeOwnershipLocation =
 	| "foreground"
 	| "background-running"
 	| "background-completed"
 	| "disposed";
 
-export type SessionOwnershipDiagnostics = {
+type SessionOwnershipDiagnostics = {
 	sourceGeneration?: number;
 	sourceSdkStreaming?: boolean;
 	sourceObservedRunning?: boolean;

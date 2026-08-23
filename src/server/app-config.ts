@@ -57,7 +57,7 @@ function serializeAppConfig(config: AppConfig): string {
 	return `${JSON.stringify(config, null, "\t")}\n`;
 }
 
-export function appConfigPath(): string {
+function appConfigPath(): string {
 	const home = os.homedir();
 	if (Deno.build.os === "windows") {
 		return join(
