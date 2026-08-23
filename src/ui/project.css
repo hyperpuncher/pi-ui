@@ -307,17 +307,33 @@
 		margin-block-start: 1px;
 	}
 
+	#workspace-shell {
+		grid-template-columns:
+			var(--pi-workspace-inset)
+			minmax(
+				0,
+				calc(
+					(100% - 2 * var(--pi-workspace-inset) -
+							var(--pi-workspace-structural-gap)) *
+						clamp(0.35, var(--pi-review-pane-ratio, 0.5), 0.65)
+				)
+			)
+			var(--pi-workspace-structural-gap) minmax(0, 1fr)
+			var(--pi-workspace-inset);
+	}
+
 	#chat-pane {
-		inset-block: var(--pi-workspace-inset);
-		width: calc(100% - 2 * var(--pi-workspace-inset));
-		margin-left: var(--pi-workspace-inset);
+		position: absolute;
+		inset: var(--pi-workspace-inset);
 	}
 
 	#workspace-review {
+		position: absolute;
+		inset: 0;
 		display: none;
-		width: 50%;
-		padding: var(--pi-workspace-inset) 0 var(--pi-workspace-inset)
-			var(--pi-workspace-inset);
+		grid-template-columns: minmax(0, 1fr);
+		padding: var(--pi-workspace-inset);
+		background: var(--pi-workspace-canvas-background);
 		opacity: 0;
 		transform: translateX(-100%);
 		box-shadow: var(--shadow-xl);
@@ -326,6 +342,14 @@
 			opacity 150ms var(--pi-ease-out),
 			display 150ms;
 		transition-behavior: allow-discrete;
+	}
+
+	#workspace-review #review-git-separator {
+		display: none;
+	}
+
+	#workspace-review .pi-review-controls {
+		margin-left: 1rem;
 	}
 
 	#app.pi-review-open #workspace-review {
@@ -370,9 +394,34 @@
 		outline: none;
 	}
 
-	@media (width > 80rem) {
-		#workspace-review {
+	@container workspace (width >= 88rem) {
+		#app.pi-review-open #workspace-review {
+			position: relative;
+			inset: auto;
+			grid-row: 1;
+			grid-column: 1 / 4;
+			grid-template-columns: minmax(0, 1fr) var(--pi-workspace-structural-gap);
+			padding: var(--pi-workspace-inset) 0 var(--pi-workspace-inset)
+				var(--pi-workspace-inset);
+			background: transparent;
 			box-shadow: none;
+		}
+
+		#app.pi-review-open #workspace-review #review-git-separator {
+			display: block;
+		}
+
+		#app.pi-review-open #workspace-review .pi-review-controls {
+			margin-left: auto;
+		}
+
+		#app.pi-review-open #chat-pane {
+			position: relative;
+			inset: auto;
+			grid-row: 1;
+			grid-column: 4;
+			width: auto;
+			margin: var(--pi-workspace-inset) 0;
 		}
 	}
 
@@ -384,8 +433,29 @@
 
 	.pi-review-body {
 		grid-template-columns:
-			var(--pi-review-sidebar-width, 17rem) var(--pi-workspace-structural-gap)
-			minmax(0, 1fr);
+			clamp(
+				14rem,
+				var(--pi-review-sidebar-width, 17rem),
+				min(30rem, calc(100% - var(--pi-workspace-structural-gap) - 20rem))
+			)
+			var(--pi-workspace-structural-gap) minmax(0, 1fr);
+	}
+
+	#review-git-sidebar {
+		grid-template-rows:
+			auto
+			minmax(
+				6rem,
+				calc(
+					(100% - 2rem - var(--pi-workspace-gap)) *
+						clamp(0.3, var(--pi-review-changes-ratio, 0.5), 0.7)
+				)
+			)
+			var(--pi-workspace-gap) minmax(6rem, 1fr);
+	}
+
+	#review-git-sidebar:has(#review-changes-section[hidden]) {
+		grid-template-rows: auto minmax(0, 1fr);
 	}
 
 	.pi-review-sidebar {
@@ -875,32 +945,6 @@
 		white-space: pre;
 		text-align: right;
 		text-overflow: clip;
-	}
-
-	@media (max-width: 80rem) {
-		#workspace-review {
-			grid-template-columns: minmax(0, 1fr);
-			padding-right: var(--pi-workspace-inset);
-			background: var(--pi-workspace-canvas-background);
-		}
-
-		#review-git-separator {
-			display: none;
-		}
-
-		.pi-review-body {
-			grid-template-columns:
-				var(--pi-review-sidebar-width, 17rem) var(--pi-workspace-structural-gap)
-				minmax(0, 1fr);
-		}
-
-		.pi-review-toolbar {
-			justify-content: flex-start;
-		}
-
-		.pi-review-controls {
-			margin-left: 1rem;
-		}
 	}
 
 	@media (max-width: 48rem) {

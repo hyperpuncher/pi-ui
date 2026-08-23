@@ -5,6 +5,11 @@ import {
 	workspaceReviewBase,
 } from "../server/routes/endpoints.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
+import {
+	changesRatioDefault,
+	gitPaneRatioDefault,
+	reviewSidebarWidthDefault,
+} from "../workspace-review-types.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
@@ -145,7 +150,10 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 					})`}
 					data-on:pi-ui-session-performance={`@post('${endpoints.sessionPerformanceClient}', { payload: evt.detail })`}
 					data-on:pi-ui-workspace-review-preferences={`
-						$workspaceReviewPreferences = evt.detail;
+						$workspaceReviewPreferences = {
+							...$workspaceReviewPreferences,
+							...evt.detail,
+						};
 						@post('${endpoints.workspaceReviewPreferences}', {
 							filterSignals: { include: /^workspaceReviewPreferences\\./ },
 						});
@@ -161,7 +169,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 						_sessionLoading: false,
 						_newSessionPending: false,
 						workspaceReviewComments: { comments: [] },
-						workspaceReviewPreferences: {},
+						workspaceReviewPreferences: state.workspaceReviewPreferences,
 						sessionDeletePath: "",
 						sessionDeleteTitle: "",
 						sessionRenamePath: "",
@@ -245,12 +253,17 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 						{renderSessionSidebar(state)}
 						<div
 							id="workspace-shell"
-							class="absolute inset-0 min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) peer-aria-[hidden=true]/sidebar:mr-0! motion-reduce:transition-none"
+							class="@container/workspace absolute inset-0 grid min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) peer-aria-[hidden=true]/sidebar:mr-0! motion-reduce:transition-none"
 							data-style:margin-right={sessionSidebarMarginRightExpression}
+							data-style={`{
+								'--pi-review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio ?? ${gitPaneRatioDefault},
+								'--pi-review-sidebar-width': ($workspaceReviewPreferences.reviewSidebarWidth ?? ${reviewSidebarWidthDefault}) + 'px',
+								'--pi-review-changes-ratio': $workspaceReviewPreferences.changesRatio ?? ${changesRatioDefault},
+							}`}
 						>
 							<section
 								id="chat-pane"
-								class="pi-raised-surface absolute grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
+								class="pi-raised-surface grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
 								aria-label="Chat"
 							>
 								{renderMessages(

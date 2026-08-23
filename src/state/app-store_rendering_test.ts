@@ -904,7 +904,9 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(html, 'id="session-sidebar"');
 	assertIncludes(html, 'class="sidebar peer/sidebar group/sidebar"');
 	assertIncludes(html, 'data-side="right"');
-	assertIncludes(html, 'id="workspace-shell"');
+	const workspaceShell = html.match(/<div[^>]*id="workspace-shell"[^>]*>/)?.[0] ?? "";
+	assertIncludes(workspaceShell, "@container/workspace");
+	assertIncludes(workspaceShell, " grid ");
 	assertIncludes(html, 'id="model-select"');
 	assert(
 		html.indexOf("/app/main.js") < html.indexOf("/vendor/datastar.js"),
@@ -914,8 +916,6 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(app, 'data-class:pi-review-open="$_workspaceReviewOpen"');
 	assertIncludes(app, "window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)");
 	assertIncludes(app, "openWhenHidden: true");
-	const chat = html.match(/<section[^>]*id="chat-pane"[^>]*>/)?.[0] ?? "";
-	assertIncludes(chat, " absolute ");
 	const review = html.match(/<section[^>]*id="workspace-review"[^>]*>/)?.[0] ?? "";
 	assertIncludes(review, 'data-attr:aria-hidden="$_workspaceReviewOpen');
 	assertIncludes(review, 'data-attr:inert="!$_workspaceReviewOpen"');

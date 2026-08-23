@@ -1,9 +1,72 @@
 import { workspaceTreeStyle } from "../workspace-review-tree.ts";
-import type {
-	WorkspaceReviewPreferences,
-	WorkspaceReviewSnapshot,
+import {
+	changesRatioDefault,
+	changesRatioMax,
+	changesRatioMin,
+	gitPaneRatioDefault,
+	gitPaneRatioMax,
+	gitPaneRatioMin,
+	reviewSidebarWidthDefault,
+	reviewSidebarWidthMax,
+	reviewSidebarWidthMin,
+	type WorkspaceReviewPreferences,
+	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
 import { syncHtml } from "./sync-html.ts";
+
+type ResizePreference = "changesRatio" | "gitPaneRatio" | "reviewSidebarWidth";
+
+function resizeHandleAttributes(options: {
+	axis: "horizontal" | "vertical";
+	defaultValue: number;
+	maximum: number;
+	minimum: number;
+	preference: ResizePreference;
+	scale: string;
+}) {
+	const coordinate = options.axis === "horizontal" ? "clientX" : "clientY";
+	const decrease = options.axis === "horizontal" ? "ArrowLeft" : "ArrowUp";
+	const increase = options.axis === "horizontal" ? "ArrowRight" : "ArrowDown";
+	const value = `$workspaceReviewPreferences.${options.preference}`;
+	const normalize = `${value} = Math.min(
+		${options.maximum},
+		Math.max(${options.minimum}, ${value} ?? ${options.defaultValue}),
+	);`;
+	const commit = `document.body.dispatchEvent(new CustomEvent(
+		'pi-ui-workspace-review-preferences',
+		{ detail: { ${options.preference}: ${value} } },
+	));`;
+	const finish = `if (el.hasPointerCapture(evt.pointerId)) {
+		${normalize}
+		document.documentElement.classList.remove('pi-resizing');
+		${commit}
+	}`;
+	return {
+		"data-on:pointerdown": `if (evt.button === 0) {
+			el.dataset.resizePointer = evt.${coordinate};
+			el.dataset.resizeScale = ${options.scale};
+			el.dataset.resizeStart = ${value} ?? ${options.defaultValue};
+			el.setPointerCapture(evt.pointerId);
+			document.documentElement.classList.add('pi-resizing');
+		}`,
+		"data-on:pointermove__throttle.8ms": `if (el.hasPointerCapture(evt.pointerId)) {
+			${value} = Number(el.dataset.resizeStart) +
+				(evt.${coordinate} - Number(el.dataset.resizePointer)) /
+				Number(el.dataset.resizeScale);
+		}`,
+		"data-on:pointerup": finish,
+		"data-on:pointercancel": finish,
+		"data-on:dblclick": `${value} = ${options.defaultValue}; ${commit}`,
+		"data-on:keydown": `if (evt.code === '${decrease}' || evt.code === '${increase}') {
+			evt.preventDefault();
+			const direction = evt.code === '${decrease}' ? -1 : 1;
+			${value} = (${value} ?? ${options.defaultValue}) +
+				direction * (evt.shiftKey ? 48 : 16) / (${options.scale});
+			${normalize}
+			${commit}
+		}`,
+	};
+}
 
 export function renderWorkspaceReview(
 	workspacePath: string,
@@ -22,7 +85,7 @@ export function renderWorkspaceReview(
 	return syncHtml(
 		<section
 			id="workspace-review"
-			class="absolute inset-y-0 left-0 z-30 min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_var(--pi-workspace-structural-gap)]"
+			class="z-30 min-h-0 min-w-0"
 			aria-label="Workspace"
 			aria-hidden="true"
 			inert
@@ -51,7 +114,7 @@ export function renderWorkspaceReview(
 					<section
 						id="review-changes-section"
 						class="pi-raised-surface flex min-h-0 shrink-0 flex-col overflow-hidden"
-						style={snapshot.changes.length > 0 ? undefined : "display: none"}
+						hidden={snapshot.changes.length === 0}
 					>
 						<header class="flex h-8 shrink-0 items-center gap-2 px-3 text-xs font-medium">
 							<span>Changes</span>
@@ -97,8 +160,20 @@ export function renderWorkspaceReview(
 						data-orientation="horizontal"
 						role="separator"
 						tabindex="0"
+						hidden={snapshot.changes.length === 0}
 						aria-label="Resize Changes and History"
 						aria-orientation="horizontal"
+						aria-valuemin={changesRatioMin * 100}
+						aria-valuemax={changesRatioMax * 100}
+						data-attr:aria-valuenow={`Math.round(($workspaceReviewPreferences.changesRatio ?? ${changesRatioDefault}) * 100)`}
+						attrs={resizeHandleAttributes({
+							axis: "vertical",
+							defaultValue: changesRatioDefault,
+							maximum: changesRatioMax,
+							minimum: changesRatioMin,
+							preference: "changesRatio",
+							scale: "Math.max(1, el.parentElement.clientHeight - el.parentElement.firstElementChild.offsetHeight - el.offsetHeight)",
+						})}
 					/>
 					<section class="pi-raised-surface flex min-h-0 flex-1 flex-col overflow-hidden">
 						<header class="flex h-8 shrink-0 items-center px-3 text-xs font-medium">
@@ -123,6 +198,17 @@ export function renderWorkspaceReview(
 					tabindex="0"
 					aria-label="Resize file sidebar"
 					aria-orientation="vertical"
+					aria-valuemin={reviewSidebarWidthMin}
+					aria-valuemax={reviewSidebarWidthMax}
+					data-attr:aria-valuenow={`$workspaceReviewPreferences.reviewSidebarWidth ?? ${reviewSidebarWidthDefault}`}
+					attrs={resizeHandleAttributes({
+						axis: "horizontal",
+						defaultValue: reviewSidebarWidthDefault,
+						maximum: reviewSidebarWidthMax,
+						minimum: reviewSidebarWidthMin,
+						preference: "reviewSidebarWidth",
+						scale: "1",
+					})}
 				/>
 
 				<div id="workspace-file-main" class="flex min-h-0 min-w-0 flex-col">
@@ -374,6 +460,17 @@ export function renderWorkspaceReview(
 				tabindex="0"
 				aria-label="Resize Git and chat"
 				aria-orientation="vertical"
+				aria-valuemin={gitPaneRatioMin * 100}
+				aria-valuemax={gitPaneRatioMax * 100}
+				data-attr:aria-valuenow={`Math.round(($workspaceReviewPreferences.gitPaneRatio ?? ${gitPaneRatioDefault}) * 100)`}
+				attrs={resizeHandleAttributes({
+					axis: "horizontal",
+					defaultValue: gitPaneRatioDefault,
+					maximum: gitPaneRatioMax,
+					minimum: gitPaneRatioMin,
+					preference: "gitPaneRatio",
+					scale: "Math.max(1, document.getElementById('workspace-shell').clientWidth - 12)",
+				})}
 			/>
 			{renderWorkspaceReviewData(
 				workspacePath,

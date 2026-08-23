@@ -40,11 +40,6 @@ import {
 	showWorkspaceReviewDetailHeader,
 } from "./workspace-review-history.ts";
 import {
-	bindWorkspaceReviewLayout,
-	workspaceGap,
-	workspaceStructuralGap,
-} from "./workspace-review-layout.ts";
-import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
 	reconcileSelection,
@@ -60,6 +55,7 @@ type DiffLayout = NonNullable<WorkspaceReviewPreferences["layout"]>;
 type CommitView = { detail: WorkspaceCommitDetail; items: ReviewItem[] };
 
 const diffListEndPadding = 10;
+const workspaceGap = 4;
 const codeThemeLight = document.body.dataset.codeThemeLight;
 const codeThemeDark = document.body.dataset.codeThemeDark;
 if (codeThemeLight && codeThemeDark) {
@@ -85,11 +81,7 @@ window.addEventListener("pi-ui-code-theme-changed", (event) => {
 	}
 });
 
-const root = requiredElement("workspace-review");
 const app = requiredElement("app");
-const workspaceShell = requiredElement("workspace-shell");
-const chat = requiredElement("chat-pane");
-const reviewBody = requiredElement("review-body");
 const filesSidebar = requiredElement("workspace-files-sidebar");
 const filesMain = requiredElement("workspace-file-main");
 const gitSidebar = requiredElement("review-git-sidebar");
@@ -102,8 +94,6 @@ const treeHost = requiredElement("review-tree");
 const treeEmpty = requiredElement("review-tree-empty");
 const changesSection = requiredElement("review-changes-section");
 const changesSeparator = requiredElement("review-changes-separator");
-const gitSeparator = requiredElement("review-git-separator");
-const sidebarSeparator = requiredElement("review-sidebar-separator");
 const history = requiredElement("review-history");
 const detailHeader = requiredElement("review-detail-header");
 const diffRoot = requiredElement("review-diff-view");
@@ -179,29 +169,7 @@ const workspaceFiles = createWorkspaceFiles({
 let preferredPanelMode: "files" | "git" | undefined = preferences.tab;
 let panelMode = initialPanelMode(preferredPanelMode, snapshot.isGitRepository);
 
-const reviewLayout = bindWorkspaceReviewLayout({
-	app: workspaceShell,
-	changesSection,
-	changesSeparator,
-	chat,
-	gitSeparator,
-	hasChanges: () => snapshot.changes.length > 0,
-	onCommit: (values) =>
-		writeWorkspaceReviewPreferences({
-			layout,
-			mode,
-			tab: preferredPanelMode,
-			wrap,
-			...values,
-		}),
-	preferences,
-	reviewBody,
-	root,
-	sidebarSeparator,
-});
-
 const visibility = createVisibility(app, true, (open) => {
-	reviewLayout.setOpen(open);
 	workspaceFiles.setVisible(open && panelMode === "files");
 	if (open && panelMode === "git") openGitView();
 });
@@ -295,7 +263,6 @@ window.addEventListener(
 		reviewData.disconnect();
 		resize.disconnect();
 		theme.disconnect();
-		reviewLayout.cleanUp();
 		tree.cleanUp();
 		workspaceFiles.cleanUp();
 		viewer?.cleanUp();
@@ -394,7 +361,8 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 
 function syncChangesSection(): void {
 	const hasChanges = snapshot.changes.length > 0;
-	reviewLayout.sync();
+	changesSection.hidden = !hasChanges;
+	changesSeparator.hidden = !hasChanges;
 	treeHost.style.display = hasChanges ? "block" : "none";
 	treeEmpty.style.display = hasChanges ? "none" : "block";
 }
@@ -675,7 +643,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 		layout: {
 			gap: workspaceGap,
 			paddingBottom: diffListEndPadding,
-			paddingTop: workspaceStructuralGap,
+			paddingTop: workspaceGap,
 		},
 		lineHoverHighlight: "both",
 		overflow: wrap ? "wrap" : "scroll",
@@ -785,7 +753,7 @@ function setPanelMode(next: "files" | "git"): void {
 function syncPanelMode(): void {
 	filesSidebar.style.display = panelMode === "files" ? "flex" : "none";
 	filesMain.style.display = panelMode === "files" ? "flex" : "none";
-	gitSidebar.style.display = panelMode === "git" ? "flex" : "none";
+	gitSidebar.style.display = panelMode === "git" ? "grid" : "none";
 	gitMain.style.display = panelMode === "git" ? "flex" : "none";
 	for (const button of modeButtons) {
 		button.setAttribute(
@@ -959,7 +927,6 @@ function writePreferences(): void {
 		mode,
 		tab: preferredPanelMode,
 		wrap,
-		...reviewLayout.values(),
 	});
 }
 
