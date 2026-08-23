@@ -29,6 +29,18 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	const status = requiredElement("workspace-file-status");
 	const editButton = requiredButton("workspace-file-edit");
 	const wrapButton = requiredButton("workspace-file-wrap");
+	const entryDialog = requiredDialog("workspace-entry-dialog");
+	const entryTitle = requiredElement("workspace-entry-title");
+	const entryDescription = requiredElement("workspace-entry-description");
+	const entryInput = requiredInput("workspace-entry-input");
+	const entryError = requiredElement("workspace-entry-error");
+	const entryCancel = requiredButton("workspace-entry-cancel");
+	const entryAction = requiredButton("workspace-entry-action");
+	const confirmDialog = requiredDialog("workspace-confirm-dialog");
+	const confirmTitle = requiredElement("workspace-confirm-title");
+	const confirmDescription = requiredElement("workspace-confirm-description");
+	const confirmCancel = requiredButton("workspace-confirm-cancel");
+	const confirmAction = requiredButton("workspace-confirm-action");
 	treeHost.style.cssText = workspaceTreeStyle;
 
 	let workspacePath = options.initialWorkspacePath;
@@ -151,8 +163,12 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		item: ContextMenuItem,
 		kind: "file" | "folder",
 	): Promise<void> {
-		const name = prompt(`New ${kind} name`);
-		if (!validEntryName(name)) return;
+		const name = await requestEntryName({
+			title: `New ${kind}`,
+			description: `Enter a name for the new ${kind}.`,
+			action: "Create",
+		});
+		if (!name) return;
 		const directory = item.kind === "directory" ? item.path : parentPath(item.path);
 		const target = joinPath(directory, name);
 		try {
@@ -169,12 +185,20 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	}
 
 	async function renameEntry(item: ContextMenuItem): Promise<void> {
-		const name = prompt("Rename", item.name);
-		if (!validEntryName(name) || name === item.name) return;
 		if (entryContainsCurrentFile(item.path) && dirty) {
-			alert("Save or discard your changes before renaming this item.");
+			await requestNotice(
+				"Unsaved changes",
+				"Save or discard your changes before renaming this item.",
+			);
 			return;
 		}
+		const name = await requestEntryName({
+			title: `Rename ${item.kind === "directory" ? "folder" : "file"}`,
+			description: `Enter a new name for ${item.name}.`,
+			action: "Rename",
+			initialValue: item.name,
+		});
+		if (!name || name === item.name) return;
 		const destination = joinPath(parentPath(item.path), name);
 		const currentDestination =
 			current && entryContainsCurrentFile(item.path)
@@ -192,13 +216,21 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 
 	async function deleteEntry(item: ContextMenuItem): Promise<void> {
 		if (entryContainsCurrentFile(item.path) && dirty) {
-			alert("Save or discard your changes before deleting this item.");
+			await requestNotice(
+				"Unsaved changes",
+				"Save or discard your changes before deleting this item.",
+			);
 			return;
 		}
+		const kind = item.kind === "directory" ? "folder" : "file";
 		if (
-			!confirm(
-				`Delete ${item.name}${item.kind === "directory" ? " and its contents" : ""}?`,
-			)
+			!(await requestConfirmation({
+				title: `Delete ${kind}?`,
+				description: `This will permanently delete ${item.name}${
+					item.kind === "directory" ? " and all of its contents" : ""
+				}. This action cannot be undone.`,
+				action: "Delete",
+			}))
 		)
 			return;
 		try {
@@ -364,7 +396,14 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 
 	async function selectFile(path: string): Promise<void> {
 		if (current?.path === path) return;
-		if (dirty && !confirm("Discard unsaved changes?")) {
+		if (
+			dirty &&
+			!(await requestConfirmation({
+				title: "Discard unsaved changes?",
+				description: `Your unsaved changes to ${current?.path ?? "this file"} will be lost.`,
+				action: "Discard",
+			}))
+		) {
 			tree.getItem(path)?.deselect();
 			tree.getItem(current?.path ?? "")?.select();
 			return;
@@ -475,6 +514,89 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		status.textContent = message;
 	}
 
+	function requestEntryName(options: {
+		title: string;
+		description: string;
+		action: string;
+		initialValue?: string;
+	}): Promise<string | undefined> {
+		entryTitle.textContent = options.title;
+		entryDescription.textContent = options.description;
+		entryAction.textContent = options.action;
+		entryInput.value = options.initialValue ?? "";
+		entryError.textContent = "";
+		entryError.classList.add("hidden");
+		entryDialog.returnValue = "";
+		return new Promise((resolve) => {
+			entryDialog.addEventListener(
+				"close",
+				() =>
+					resolve(
+						entryDialog.returnValue === "submit"
+							? entryInput.value
+							: undefined,
+					),
+				{ once: true },
+			);
+			entryDialog.showModal();
+			entryInput.select();
+		});
+	}
+
+	function submitEntryName(): void {
+		if (!validEntryName(entryInput.value)) {
+			entryError.textContent =
+				"Use a non-empty name without slashes, '.', or '..'.";
+			entryError.classList.remove("hidden");
+			return;
+		}
+		entryDialog.close("submit");
+	}
+
+	function requestConfirmation(options: {
+		title: string;
+		description: string;
+		action: string;
+		showCancel?: boolean;
+		destructive?: boolean;
+	}): Promise<boolean> {
+		confirmTitle.textContent = options.title;
+		confirmDescription.textContent = options.description;
+		confirmAction.textContent = options.action;
+		confirmCancel.hidden = options.showCancel === false;
+		confirmAction.dataset.variant =
+			options.destructive === false ? "default" : "destructive";
+		confirmDialog.returnValue = "";
+		return new Promise((resolve) => {
+			confirmDialog.addEventListener(
+				"close",
+				() => resolve(confirmDialog.returnValue === "confirm"),
+				{ once: true },
+			);
+			confirmDialog.showModal();
+		});
+	}
+
+	async function requestNotice(title: string, description: string): Promise<void> {
+		await requestConfirmation({
+			title,
+			description,
+			action: "OK",
+			showCancel: false,
+			destructive: false,
+		});
+	}
+
+	entryCancel.addEventListener("click", () => entryDialog.close("cancel"));
+	entryAction.addEventListener("click", submitEntryName);
+	entryInput.addEventListener("keydown", (event) => {
+		if (event.key !== "Enter" || event.isComposing) return;
+		event.preventDefault();
+		submitEntryName();
+	});
+	confirmCancel.addEventListener("click", () => confirmDialog.close("cancel"));
+	confirmAction.addEventListener("click", () => confirmDialog.close("confirm"));
+
 	function cleanUp(): void {
 		stopEditing();
 		viewer.cleanUp();
@@ -539,5 +661,17 @@ function requiredElement(id: string): HTMLElement {
 function requiredButton(id: string): HTMLButtonElement {
 	const element = document.getElementById(id);
 	if (!(element instanceof HTMLButtonElement)) throw new Error(`Missing #${id}`);
+	return element;
+}
+
+function requiredDialog(id: string): HTMLDialogElement {
+	const element = document.getElementById(id);
+	if (!(element instanceof HTMLDialogElement)) throw new Error(`Missing #${id}`);
+	return element;
+}
+
+function requiredInput(id: string): HTMLInputElement {
+	const element = document.getElementById(id);
+	if (!(element instanceof HTMLInputElement)) throw new Error(`Missing #${id}`);
 	return element;
 }

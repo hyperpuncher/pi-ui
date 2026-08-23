@@ -381,6 +381,82 @@ export function renderWorkspaceReview(
 				snapshot,
 				preferences,
 			)}
+			<dialog
+				id="workspace-entry-dialog"
+				class="dialog"
+				aria-labelledby="workspace-entry-title"
+				aria-describedby="workspace-entry-description"
+			>
+				<div class="sm:max-w-sm">
+					<header>
+						<h2 id="workspace-entry-title">Name item</h2>
+						<p id="workspace-entry-description" />
+					</header>
+					<section>
+						<label class="sr-only" for="workspace-entry-input">
+							Name
+						</label>
+						<input
+							id="workspace-entry-input"
+							class="input"
+							type="text"
+							autocomplete="off"
+							autocorrect="off"
+							spellcheck="false"
+						/>
+						<p
+							id="workspace-entry-error"
+							class="mt-2 hidden text-sm text-destructive"
+							aria-live="polite"
+						/>
+					</section>
+					<footer>
+						<button
+							id="workspace-entry-cancel"
+							type="button"
+							class="btn"
+							data-variant="outline"
+						>
+							Cancel
+						</button>
+						<button id="workspace-entry-action" type="button" class="btn">
+							Save
+						</button>
+					</footer>
+				</div>
+			</dialog>
+			<dialog
+				id="workspace-confirm-dialog"
+				class="alert-dialog"
+				data-size="sm"
+				aria-labelledby="workspace-confirm-title"
+				aria-describedby="workspace-confirm-description"
+			>
+				<div>
+					<header>
+						<h2 id="workspace-confirm-title">Confirm action</h2>
+						<p id="workspace-confirm-description" />
+					</header>
+					<footer>
+						<button
+							id="workspace-confirm-cancel"
+							type="button"
+							class="btn"
+							data-variant="outline"
+						>
+							Cancel
+						</button>
+						<button
+							id="workspace-confirm-action"
+							type="button"
+							class="btn"
+							data-variant="destructive"
+						>
+							Continue
+						</button>
+					</footer>
+				</div>
+			</dialog>
 		</section>,
 	);
 }
