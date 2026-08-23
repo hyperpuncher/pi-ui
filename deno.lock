@@ -24,8 +24,7 @@
     "npm:@pierre/trees@1.0.0-beta.6": "1.0.0-beta.6_react@19.2.8_react-dom@19.2.8__react@19.2.8",
     "npm:@starfederation/datastar-sdk@1.0.0": "1.0.0",
     "npm:satteri@~0.10.5": "0.10.5",
-    "npm:typebox@1.3.16": "1.3.16",
-    "npm:undici@^8.10.0": "8.10.0"
+    "npm:typebox@1.3.16": "1.3.16"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -461,7 +460,7 @@
         "proper-lockfile",
         "semver",
         "typebox@1.3.7",
-        "undici@8.9.0",
+        "undici",
         "yaml"
       ],
       "optionalDependencies": [
@@ -1350,9 +1349,6 @@
     "undici-types@8.3.0": {
       "integrity": "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="
     },
-    "undici@8.10.0": {
-      "integrity": "sha512-HvltHd7avK13QIw/oLe4qoOLyoVSoafqJ2jYOrtMRBkbYT31eiBQ8O0ehRKZiEZCMEyLFQNIADpgCWC5fALvYQ=="
-    },
     "undici@8.9.0": {
       "integrity": "sha512-aWZpUj7XoGonMClx4gdDRfgBjqeA+F473aDmROQQbM9n6PRfK/u1q/a0X4wMTgcHfT8H6fpbt98PFuDUwFg2YA=="
     },
@@ -1439,8 +1435,7 @@
       "npm:@pierre/trees@1.0.0-beta.6",
       "npm:@starfederation/datastar-sdk@1.0.0",
       "npm:satteri@~0.10.5",
-      "npm:typebox@1.3.16",
-      "npm:undici@^8.10.0"
+      "npm:typebox@1.3.16"
     ]
   }
 }

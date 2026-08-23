@@ -3,6 +3,7 @@ import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
 import type { AppAuthDialog, AppAuthProvider, AppStore } from "../state/app-store.ts";
 import { errorMessage } from "../utils/errors.ts";
+import { withAgentHttpProxy } from "../utils/http-proxy.ts";
 import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 
 type AuthInputResolver = (value: string | undefined) => void;
@@ -231,12 +232,14 @@ export class AuthController {
 			{ resetInput: true },
 		);
 
-		void this.getRuntime()
-			.services.modelRuntime.login(provider.id, provider.authType, {
+		const modelRuntime = this.getRuntime().services.modelRuntime;
+		void withAgentHttpProxy(modelRuntime, () =>
+			modelRuntime.login(provider.id, provider.authType, {
 				signal: run.abortController.signal,
 				prompt: (prompt) => this.promptForInput(run, prompt),
 				notify: (event) => this.notifyAuthentication(run, event),
-			})
+			}),
+		)
 			.then(() => {
 				if (!this.isCurrentRun(run)) return;
 				this.loginRun = undefined;

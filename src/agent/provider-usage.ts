@@ -1,12 +1,22 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
+import { withAgentHttpProxy } from "../utils/http-proxy.ts";
 import type { JsonValue } from "../utils/json-types.ts";
 
 const usageTimeoutMs = 15_000;
 
 export const providerUsageTtlMs = 60 * 1000;
 
-export async function fetchProviderUsagePayload(
+export function fetchProviderUsagePayload(
+	session: AgentSession,
+	url: string,
+): Promise<JsonValue | undefined> {
+	return withAgentHttpProxy(session.modelRuntime, () =>
+		fetchProviderUsagePayloadScoped(session, url),
+	);
+}
+
+async function fetchProviderUsagePayloadScoped(
 	session: AgentSession,
 	url: string,
 ): Promise<JsonValue | undefined> {
@@ -29,7 +39,10 @@ export async function fetchProviderUsagePayload(
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), usageTimeoutMs);
 	try {
-		const response = await fetch(url, { headers, signal: controller.signal });
+		const response = await fetch(url, {
+			headers,
+			signal: controller.signal,
+		});
 		return response.ok ? await response.json() : undefined;
 	} finally {
 		clearTimeout(timeout);

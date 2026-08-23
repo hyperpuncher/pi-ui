@@ -1,172 +1,86 @@
-import { EventEmitter } from "node:events";
-import process from "node:process";
+import { AsyncLocalStorage } from "node:async_hooks";
 
-import * as undici from "undici";
+import type { Models } from "@earendil-works/pi-ai";
 
 import { isString } from "./type-guards.ts";
 
-const defaultHttpIdleTimeoutMs = 300_000;
-
-const originalFetch = globalThis.fetch;
+const platformFetch = globalThis.fetch;
+const agentProxy = new AsyncLocalStorage<string>();
+const proxyByRuntime = new WeakMap<Models, string>();
 const proxyClients = new Map<string, Deno.HttpClient>();
-let proxyFetchInstalled = false;
+let scopedFetchInstalled = false;
 
-export function applyHttpProxySetting(httpProxy: string | undefined): void {
-	const proxy = httpProxy?.trim();
-	if (!proxy) {
-		return;
-	}
-
-	Deno.env.set("HTTP_PROXY", Deno.env.get("HTTP_PROXY") ?? proxy);
-	Deno.env.set("HTTPS_PROXY", Deno.env.get("HTTPS_PROXY") ?? proxy);
-	process.env.HTTP_PROXY ??= proxy;
-	process.env.HTTPS_PROXY ??= proxy;
-	installDenoFetchProxy();
-}
-
-export function configureHttpDispatcher(
-	timeoutMs: number = defaultHttpIdleTimeoutMs,
+export function configureAgentHttpProxy(
+	modelRuntime: Models,
+	httpProxy: string | undefined,
 ): void {
-	const dispatcher = new undici.EnvHttpProxyAgent({
-		allowH2: false,
-		bodyTimeout: timeoutMs,
-		headersTimeout: timeoutMs,
-		clientFactory: createUndiciClient,
-		factory: createUndiciOriginDispatcher,
-	});
+	const proxy = httpProxy?.trim();
+	if (!proxy) return;
 
-	undici.setGlobalDispatcher(withUndiciErrorListener(dispatcher));
+	installScopedFetch();
+	proxyByRuntime.set(modelRuntime, proxy);
+	const streamSimple = modelRuntime.streamSimple.bind(modelRuntime);
+	modelRuntime.streamSimple = (model, context, options) =>
+		agentProxy.run(proxy, () =>
+			streamSimple(model, context, {
+				...options,
+				env: {
+					HTTP_PROXY: proxy,
+					HTTPS_PROXY: proxy,
+					...options?.env,
+				},
+			}),
+		);
 }
 
-function createProxyClient(targetUrl: string): Deno.HttpClient | undefined {
-	const proxyUrl = proxyUrlForTarget(targetUrl);
-	if (!proxyUrl) {
-		return undefined;
-	}
-
-	return getProxyClient(proxyUrl);
+export function withAgentHttpProxy<Result>(
+	modelRuntime: Models,
+	request: () => Result,
+): Result {
+	const proxy = proxyByRuntime.get(modelRuntime);
+	return proxy ? agentProxy.run(proxy, request) : request();
 }
 
-function installDenoFetchProxy(): void {
-	if (proxyFetchInstalled) {
-		return;
-	}
-
-	proxyFetchInstalled = true;
-	// SAFETY: proxyFetch preserves the platform fetch parameters and response contract.
-	globalThis.fetch = proxyFetch as typeof fetch;
+function installScopedFetch(): void {
+	if (scopedFetchInstalled) return;
+	scopedFetchInstalled = true;
+	// SAFETY: scopedProxyFetch preserves the platform fetch parameters and response contract.
+	globalThis.fetch = scopedProxyFetch as typeof fetch;
 }
 
-function proxyFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-	if (init && "client" in init) {
-		return originalFetch(input, init);
-	}
+function scopedProxyFetch(
+	input: RequestInfo | URL,
+	init?: RequestInit,
+): Promise<Response> {
+	const proxy = agentProxy.getStore();
+	if (!proxy || (init && "client" in init)) return platformFetch(input, init);
 
 	const targetUrl = fetchTargetUrl(input);
-	if (!targetUrl) {
-		return originalFetch(input, init);
-	}
+	if (!targetUrl || !shouldProxy(targetUrl)) return platformFetch(input, init);
 
-	const client = createProxyClient(targetUrl);
-	if (!client) {
-		return originalFetch(input, init);
-	}
-
+	const client = getProxyClient(proxy);
 	// SAFETY: Deno extends RequestInit with `client`; the runtime fetch accepts it.
-	return originalFetch(input, { ...init, client } as RequestInit);
+	return platformFetch(input, { ...init, client } as RequestInit);
 }
 
-function fetchTargetUrl(input: RequestInfo | URL): string | undefined {
-	if (isString(input)) {
-		return input;
-	}
-	if (input instanceof URL) {
-		return input.href;
-	}
-	if (input instanceof Request) {
-		return input.url;
-	}
-
-	return undefined;
-}
-
-function getProxyClient(proxyUrl: string): Deno.HttpClient {
-	const existingClient = proxyClients.get(proxyUrl);
-	if (existingClient) {
-		return existingClient;
-	}
-
-	const client = Deno.createHttpClient({ proxy: { url: proxyUrl } });
-	proxyClients.set(proxyUrl, client);
-	return client;
-}
-
-function withUndiciErrorListener<T extends undici.Dispatcher>(dispatcher: T): T {
-	if (dispatcher instanceof EventEmitter) {
-		EventEmitter.prototype.on.call(dispatcher, "error", ignoreUndiciDispatcherError);
-	}
-
-	return dispatcher;
-}
-
-function ignoreUndiciDispatcherError(cause: unknown): void {
-	// Undici emits internal client errors while fetch bodies reject normally.
-	void cause;
-}
-
-function createUndiciClient(
-	origin: string | URL,
-	options: Parameters<NonNullable<undici.ProxyAgent.Options["clientFactory"]>>[1],
-): undici.Dispatcher {
-	// SAFETY: Undici erases factory options to `object`, but clientFactory supplies Client options.
-	const clientOptions = options as undici.Client.Options;
-	const client = new undici.Client(origin, clientOptions);
-	return withUndiciErrorListener(client);
-}
-
-function createUndiciOriginDispatcher(
-	origin: string | URL,
-	options: Parameters<NonNullable<undici.Pool.Options["factory"]>>[1],
-): undici.Dispatcher {
-	// SAFETY: Undici erases factory options to `object`, but Pool factory supplies Pool options.
-	const poolOptions = options as undici.Pool.Options;
-	if (poolOptions.connections === 1) {
-		return createUndiciClient(origin, poolOptions);
-	}
-
-	const pool = new undici.Pool(origin, {
-		...poolOptions,
-		factory: createUndiciClient,
-	});
-	return withUndiciErrorListener(pool);
-}
-
-function proxyUrlForTarget(targetUrl: string): string | undefined {
-	let url: URL;
+function fetchTargetUrl(input: RequestInfo | URL): URL | undefined {
 	try {
-		url = new URL(targetUrl);
+		if (isString(input)) return new URL(input);
+		if (input instanceof URL) return input;
+		if (input instanceof Request) return new URL(input.url);
+		return undefined;
 	} catch {
 		return undefined;
 	}
+}
 
-	if (!shouldProxy(url)) {
-		return undefined;
-	}
+function getProxyClient(proxy: string): Deno.HttpClient {
+	const existingClient = proxyClients.get(proxy);
+	if (existingClient) return existingClient;
 
-	const protocol = url.protocol.slice(0, -1);
-	const proxy =
-		Deno.env.get(`${protocol}_proxy`) ||
-		Deno.env.get(`${protocol}_proxy`.toUpperCase()) ||
-		Deno.env.get("all_proxy") ||
-		Deno.env.get("ALL_PROXY");
-	if (!proxy) {
-		return undefined;
-	}
-
-	if (proxy.includes("://")) {
-		return proxy;
-	}
-	return `${protocol}://${proxy}`;
+	const client = Deno.createHttpClient({ proxy: { url: proxy } });
+	proxyClients.set(proxy, client);
+	return client;
 }
 
 function shouldProxy(url: URL): boolean {
@@ -175,12 +89,8 @@ function shouldProxy(url: URL): boolean {
 		Deno.env.get("NO_PROXY") ||
 		""
 	).toLowerCase();
-	if (!noProxy) {
-		return true;
-	}
-	if (noProxy === "*") {
-		return false;
-	}
+	if (!noProxy) return true;
+	if (noProxy === "*") return false;
 
 	const hostname = url.hostname;
 	const port = Number.parseInt(url.port, 10) || defaultPort(url.protocol);
@@ -193,33 +103,16 @@ function proxyEntryDoesNotMatch(entry: string, hostname: string, port: number): 
 	let entryHost = parsed ? parsed[1]! : entry;
 	const entryPort = parsed ? Number.parseInt(parsed[2]!, 10) : 0;
 
-	if (entryPort && entryPort !== port) {
-		return true;
-	}
-
-	if (!/^[.*]/.test(entryHost)) {
-		return hostname !== entryHost;
-	}
-
-	if (entryHost.startsWith("*")) {
-		entryHost = entryHost.slice(1);
-	}
+	if (entryPort && entryPort !== port) return true;
+	if (!/^[.*]/.test(entryHost)) return hostname !== entryHost;
+	if (entryHost.startsWith("*")) entryHost = entryHost.slice(1);
 	return !hostname.endsWith(entryHost);
 }
 
 function defaultPort(protocol: string): number {
-	if (protocol === "http:" || protocol === "ws:") {
-		return 80;
-	}
-	if (protocol === "https:" || protocol === "wss:") {
-		return 443;
-	}
-	if (protocol === "ftp:") {
-		return 21;
-	}
-	if (protocol === "gopher:") {
-		return 70;
-	}
-
+	if (protocol === "http:" || protocol === "ws:") return 80;
+	if (protocol === "https:" || protocol === "wss:") return 443;
+	if (protocol === "ftp:") return 21;
+	if (protocol === "gopher:") return 70;
 	return 0;
 }

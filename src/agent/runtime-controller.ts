@@ -18,7 +18,7 @@ import { sessionPerformance } from "../perf/session-performance.ts";
 import { AppStore } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
 import { errorMessage } from "../utils/errors.ts";
-import { applyHttpProxySetting, configureHttpDispatcher } from "../utils/http-proxy.ts";
+import { configureAgentHttpProxy, withAgentHttpProxy } from "../utils/http-proxy.ts";
 import { moveToTrash } from "../utils/trash.ts";
 import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 import { AuthController } from "./auth-controller.ts";
@@ -215,9 +215,13 @@ export class RuntimeController {
 						resourceLoaderOptions: { extensionFactories },
 					}),
 			);
-			applyHttpProxySetting(services.settingsManager.getGlobalSettings().httpProxy);
-			configureHttpDispatcher(services.settingsManager.getHttpIdleTimeoutMs());
-			const availableModels = await services.modelRuntime.getAvailable();
+			configureAgentHttpProxy(
+				services.modelRuntime,
+				services.settingsManager.getGlobalSettings().httpProxy,
+			);
+			const availableModels = await withAgentHttpProxy(services.modelRuntime, () =>
+				services.modelRuntime.getAvailable(),
+			);
 			const scopedModels = sessionPerformance.measureSync(
 				"scopedModelResolution",
 				() =>
