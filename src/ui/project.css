@@ -2,7 +2,7 @@
 	:root,
 	:host {
 		--font-sans: ui-sans-serif, system-ui, sans-serif;
-		--font-mono: ui-monospace, monospace;
+		--font-mono: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
 		--pi-code-surface-light: oklch(96% 0 0);
 		--pi-code-surface-dark: oklch(17% 0 0);
 		--pi-code-surface: var(--pi-code-surface-light);
