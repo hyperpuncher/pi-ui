@@ -132,9 +132,11 @@ function handleKeydown(event) {
 	if (event.isComposing) return;
 	if (event.ctrlKey || event.metaKey || event.altKey) return;
 	if (event.code === "Escape") {
+		const pickerHadFocus = document.activeElement?.closest?.("[data-picker-kind]");
 		if (isOpen()) event.preventDefault();
 		closePickers(true);
 		if (promptValue() === "/") setPromptValue("");
+		if (pickerHadFocus) promptInput()?.focus({ preventScroll: true });
 		return;
 	}
 	if (document.activeElement?.closest?.("[data-file-row]")) {

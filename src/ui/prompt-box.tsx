@@ -112,7 +112,8 @@ export function renderPromptBox(
 							!evt.metaKey &&
 							!evt.altKey &&
 							!evt.shiftKey &&
-							!$_isBusy
+							!$_isBusy &&
+							!window.piUi.pickers.isOpen()
 						) {
 							evt.preventDefault();
 							el.blur();
