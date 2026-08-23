@@ -14,6 +14,14 @@ const pierreUnsafeCSS = `
 		--diffs-gap-style: 0 solid transparent;
 		--diffs-light-bg: var(--code-background) !important;
 		--diffs-dark-bg: var(--code-background) !important;
+		--diffs-bg-selection-override: var(--pi-selection-background);
+		--diffs-bg-selection-number-override: var(--pi-selection-background);
+		--diffs-editor-selection-bg: var(--pi-selection-background) !important;
+	}
+
+	::selection {
+		background: var(--pi-selection-background);
+		color: currentColor;
 	}
 
 	:host-context(.pi-tool-output-surface) {
@@ -127,6 +135,8 @@ const hostStyle = [
 	"--diffs-light-bg: var(--code-background)",
 	"--diffs-dark-bg: var(--code-background)",
 	"--diffs-bg-buffer-override: transparent",
+	"--diffs-bg-selection-override: var(--pi-selection-background)",
+	"--diffs-bg-selection-number-override: var(--pi-selection-background)",
 	"--diffs-bg-context-override: transparent",
 	"--diffs-bg-context-gutter-override: transparent",
 ].join("; ");

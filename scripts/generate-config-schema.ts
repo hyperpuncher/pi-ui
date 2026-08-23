@@ -108,10 +108,13 @@ const schema = Type.Object(
 							default: reviewSidebarWidthDefault,
 						}),
 					),
+					tab: Type.Optional(
+						Type.Union([Type.Literal("files"), Type.Literal("git")]),
+					),
 					wrap: Type.Optional(Type.Boolean()),
 				},
 				{
-					description: "Git review layout preferences.",
+					description: "Workspace panel preferences.",
 					additionalProperties: false,
 				},
 			),

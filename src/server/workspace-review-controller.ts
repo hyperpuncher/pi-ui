@@ -1,9 +1,12 @@
+import os from "node:os";
+import * as path from "node:path";
+
 import type { AppStore } from "../state/app-store.ts";
 import { findGitWatchPaths, readWorkspaceReview } from "./workspace-review.ts";
 
 const debounceMs = 200;
 
-/** Owns the active workspace's Git snapshot and publishes changes through AppStore. */
+/** Watches the active workspace and publishes file and Git changes through AppStore. */
 export class WorkspaceReviewController {
 	private generation = 0;
 	private timer: ReturnType<typeof setTimeout> | undefined;
@@ -18,7 +21,7 @@ export class WorkspaceReviewController {
 		this.stopWatcher();
 		void this.watch(path, generation).catch((error: ErrorOptions["cause"]) => {
 			if (generation === this.generation)
-				console.error("Failed to watch workspace Git state", error);
+				console.error("Failed to watch workspace", error);
 		});
 	}
 
@@ -61,9 +64,11 @@ export class WorkspaceReviewController {
 
 		await refresh();
 		if (!active()) return;
-		const paths = await findGitWatchPaths(path);
-		if (!paths || !active()) return;
-		const watcher = Deno.watchFs(paths, { recursive: true });
+		const gitPaths = await findGitWatchPaths(path);
+		if (!active()) return;
+		const watcher = Deno.watchFs(gitPaths ?? [path], {
+			recursive: gitPaths !== undefined || canWatchRecursively(path),
+		});
 		this.watcher = watcher;
 		try {
 			for await (const _event of watcher) {
@@ -71,6 +76,7 @@ export class WorkspaceReviewController {
 				if (this.timer !== undefined) clearTimeout(this.timer);
 				this.timer = setTimeout(() => {
 					this.timer = undefined;
+					this.store.workspaceFilesChanged();
 					void refresh();
 				}, debounceMs);
 			}
@@ -88,4 +94,13 @@ export class WorkspaceReviewController {
 		this.watcher?.close();
 		this.watcher = undefined;
 	}
+}
+
+function canWatchRecursively(workspacePath: string): boolean {
+	const workspace = path.resolve(workspacePath);
+	const home = os.homedir();
+	return (
+		workspace !== path.parse(workspace).root &&
+		(!home || workspace !== path.resolve(home))
+	);
 }

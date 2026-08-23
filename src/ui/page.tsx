@@ -1,5 +1,9 @@
 import { getPierreThemes } from "../pierre-theme.ts";
-import { endpoints, workspaceReviewBase } from "../server/routes/endpoints.ts";
+import {
+	endpoints,
+	workspaceFilesBase,
+	workspaceReviewBase,
+} from "../server/routes/endpoints.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
@@ -124,6 +128,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 					data-files-pick-endpoint={endpoints.filesPick}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
+					data-workspace-files-endpoint={workspaceFilesBase}
 					data-workspace-review-endpoint={workspaceReviewBase}
 					data-code-theme-light={codeThemes.light}
 					data-code-theme-dark={codeThemes.dark}
@@ -257,13 +262,11 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 									state.sessionCatalogLoading,
 								)}
 								{renderSessionTransition(state)}
-								{renderPromptBox(
-									state,
-									state.workspaceReview.isGitRepository,
-								)}
+								{renderPromptBox(state, true)}
 							</section>
 							{renderWorkspaceReview(
 								state.workspacePath,
+								state.workspaceFilesRevision,
 								state.workspaceReview,
 								state.workspaceReviewPreferences,
 							)}

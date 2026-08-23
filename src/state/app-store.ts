@@ -193,6 +193,7 @@ export type AppStateSnapshot = Readonly<{
 	queuedSteeringMessages: readonly string[];
 	queuedFollowUpMessages: readonly string[];
 	workspacePath: string;
+	workspaceFilesRevision: number;
 	workspaceReview: WorkspaceReviewSnapshot;
 	workspaceReviewPreferences: WorkspaceReviewPreferences;
 	recentWorkspaces: readonly string[];
@@ -269,6 +270,7 @@ export class AppStore {
 	thinkingHidden = false;
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
+	workspaceFilesRevision = 0;
 	workspaceReview = unloadedWorkspaceReviewSnapshot;
 	workspaceReviewPreferences: WorkspaceReviewPreferences = {};
 	recentWorkspaces: string[] = [];
@@ -352,6 +354,7 @@ export class AppStore {
 			queuedSteeringMessages: [...this.queuedSteeringMessages],
 			queuedFollowUpMessages: [...this.queuedFollowUpMessages],
 			workspacePath: this.workspacePath,
+			workspaceFilesRevision: this.workspaceFilesRevision,
 			workspaceReview: structuredClone(this.workspaceReview),
 			workspaceReviewPreferences: { ...this.workspaceReviewPreferences },
 			recentWorkspaces: [...this.recentWorkspaces],
@@ -685,11 +688,17 @@ export class AppStore {
 	setWorkspacePath(value: string): void {
 		if (this.workspacePath === value) return;
 		this.workspacePath = value;
+		this.workspaceFilesRevision = 0;
 		this.workspaceReview = unloadedWorkspaceReviewSnapshot;
 		this.presentation?.pickersChanged();
 		this.presentation?.workspaceReviewChanged();
 		this.commit();
 		this.workspacePathListener?.(value);
+	}
+	workspaceFilesChanged(): void {
+		this.workspaceFilesRevision += 1;
+		this.presentation?.workspaceReviewChanged();
+		this.commit();
 	}
 	setWorkspaceReview(value: WorkspaceReviewSnapshot): void {
 		if (this.workspaceReview.revision === value.revision) return;

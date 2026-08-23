@@ -176,6 +176,7 @@ export class UiRenderer implements AppStorePresentation {
 			this.hub.patchView(
 				renderWorkspaceReviewData(
 					snapshot.workspacePath,
+					snapshot.workspaceFilesRevision,
 					snapshot.workspaceReview,
 					snapshot.workspaceReviewPreferences,
 				),
@@ -323,6 +324,7 @@ export class UiRenderer implements AppStorePresentation {
 				renderSessionSidebarContent(snapshot) +
 				renderWorkspaceReviewData(
 					snapshot.workspacePath,
+					snapshot.workspaceFilesRevision,
 					snapshot.workspaceReview,
 					snapshot.workspaceReviewPreferences,
 				),

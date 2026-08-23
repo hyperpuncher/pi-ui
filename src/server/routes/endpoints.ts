@@ -1,4 +1,5 @@
 export const workspaceReviewBase = "/workspace/review";
+export const workspaceFilesBase = "/workspace/files";
 
 export const endpoints = {
 	root: "/",
@@ -26,6 +27,9 @@ export const endpoints = {
 	workspaceOpen: "/workspace/open",
 	workspacePick: "/workspace/pick",
 	workspaceSearch: "/workspace/search",
+	workspaceFiles: workspaceFilesBase,
+	workspaceFileContent: `${workspaceFilesBase}/content`,
+	workspaceFileEntry: `${workspaceFilesBase}/entry`,
 	workspaceReviewCommit: "/workspace/review/commit",
 	workspaceReviewHistory: "/workspace/review/history",
 	workspaceReviewPreferences: "/workspace/review/preferences",

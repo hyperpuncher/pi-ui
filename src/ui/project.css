@@ -35,6 +35,16 @@
 		--pi-workspace-canvas-background: var(--muted);
 		--pi-surface-raised-foreground: var(--foreground);
 		--pi-surface-subtle: color-mix(in oklab, var(--muted) 35%, transparent);
+		--pi-hover-background: color-mix(
+			in oklab,
+			var(--foreground) 7%,
+			var(--pi-surface-raised)
+		);
+		--pi-selection-background: color-mix(
+			in oklab,
+			var(--foreground) 14%,
+			var(--pi-surface-raised)
+		);
 		--pi-tool-output-background: color-mix(
 			in oklab,
 			var(--muted) 97%,
@@ -90,13 +100,13 @@
 	}
 
 	::selection {
-		background: color-mix(in oklab, var(--foreground) 85%, transparent);
-		color: var(--background);
+		background: var(--pi-selection-background);
+		color: currentColor;
 	}
 
 	.message-user ::selection {
-		background: color-mix(in oklab, var(--primary-foreground) 85%, transparent);
-		color: var(--primary);
+		background: color-mix(in oklab, var(--primary-foreground) 22%, transparent);
+		color: currentColor;
 	}
 
 	html.dark {
@@ -458,6 +468,53 @@
 
 	.pi-resizing :is(#workspace-shell, #chat-pane, #workspace-review) {
 		transition: none !important;
+	}
+
+	.workspace-tree-context-menu {
+		min-width: 10rem;
+		padding: 0.25rem;
+		border: 1px solid var(--pi-surface-edge);
+		border-radius: var(--radius-md);
+		background: var(--popover);
+		color: var(--popover-foreground);
+		box-shadow: var(--shadow-lg);
+	}
+
+	.workspace-tree-context-menu-item {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		border: 0;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		padding: 0.375rem 0.5rem;
+		font-size: 0.75rem;
+		text-align: left;
+	}
+
+	.workspace-tree-context-menu-item:is(:hover, :focus-visible) {
+		background: var(--accent);
+		color: var(--accent-foreground);
+		outline: none;
+	}
+
+	#workspace-file-view > diffs-container {
+		display: block;
+		min-width: 100%;
+		min-height: 100%;
+		background: var(--code-background);
+		--diffs-bg: var(--code-background);
+		--diffs-bg-caret-override: var(--foreground);
+		--diffs-bg-selection-number-override: var(--pi-selection-background);
+		--diffs-bg-selection-override: var(--pi-selection-background);
+		--diffs-editor-selection-bg: var(--pi-selection-background);
+		--diffs-selection-base: var(--muted-foreground);
+		--diffs-selection-color-override: var(--muted-foreground);
+		--diffs-font-family: var(--font-mono);
+		--diffs-font-features: normal;
+		--diffs-font-size: 13px;
+		--diffs-line-height: 22px;
+		--diffs-tab-size: 4;
 	}
 
 	#review-diff-view :is(diffs-container, .pierre-diff, .pierre-code) {

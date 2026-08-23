@@ -179,11 +179,23 @@
 					"maximum": 480,
 					"default": 272
 				},
+				"tab": {
+					"anyOf": [
+						{
+							"type": "string",
+							"const": "files"
+						},
+						{
+							"type": "string",
+							"const": "git"
+						}
+					]
+				},
 				"wrap": {
 					"type": "boolean"
 				}
 			},
-			"description": "Git review layout preferences.",
+			"description": "Workspace panel preferences.",
 			"additionalProperties": false
 		}
 	},

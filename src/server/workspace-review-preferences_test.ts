@@ -15,6 +15,7 @@ Deno.test("workspace review preference defaults remain undefined", () => {
 		layout: undefined,
 		mode: undefined,
 		reviewSidebarWidth: undefined,
+		tab: undefined,
 		wrap: undefined,
 	});
 });
@@ -27,6 +28,7 @@ Deno.test("workspace review preferences validate layout values", () => {
 			layout: "unified",
 			mode: "selected",
 			reviewSidebarWidth: 320,
+			tab: "git",
 			wrap: false,
 		}),
 		{
@@ -35,6 +37,7 @@ Deno.test("workspace review preferences validate layout values", () => {
 			layout: "unified",
 			mode: "selected",
 			reviewSidebarWidth: 320,
+			tab: "git",
 			wrap: false,
 		},
 	);
@@ -50,6 +53,7 @@ Deno.test("workspace review preferences validate layout values", () => {
 			layout: undefined,
 			mode: undefined,
 			reviewSidebarWidth: undefined,
+			tab: undefined,
 			wrap: undefined,
 		},
 	);
@@ -65,6 +69,7 @@ Deno.test("workspace review preferences validate layout values", () => {
 			layout: undefined,
 			mode: undefined,
 			reviewSidebarWidth: 480,
+			tab: undefined,
 			wrap: undefined,
 		},
 	);
@@ -83,6 +88,7 @@ Deno.test("workspace review preferences persist without replacing future config"
 			layout: "unified" as const,
 			mode: "selected" as const,
 			reviewSidebarWidth: 320,
+			tab: "git" as const,
 			wrap: false,
 		};
 		await writeWorkspaceReviewPreferences(preferences, path);

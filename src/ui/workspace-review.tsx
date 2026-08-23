@@ -1,6 +1,4 @@
-import { preloadFileTree, serializeFileTreeSsrPayload } from "@pierre/trees";
-
-import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
+import { workspaceTreeStyle } from "../workspace-review-tree.ts";
 import type {
 	WorkspaceReviewPreferences,
 	WorkspaceReviewSnapshot,
@@ -9,14 +7,10 @@ import { syncHtml } from "./sync-html.ts";
 
 export function renderWorkspaceReview(
 	workspacePath: string,
+	filesRevision: number,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): string {
-	const tree = preloadFileTree({
-		...workspaceReviewTreeOptions,
-		gitStatus: snapshot.changes,
-		paths: snapshot.changes.map((change) => change.path),
-	});
 	const additions = snapshot.changes.reduce(
 		(total, change) => total + change.additions,
 		0,
@@ -28,15 +22,32 @@ export function renderWorkspaceReview(
 	return syncHtml(
 		<section
 			id="workspace-review"
-			class="absolute inset-y-0 left-0 z-30 min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_var(--pi-workspace-structural-gap)] max-[80rem]:w-full"
-			aria-label="Git"
+			class="absolute inset-y-0 left-0 z-30 min-h-0 min-w-0 grid-cols-[minmax(0,1fr)_var(--pi-workspace-structural-gap)]"
+			aria-label="Workspace"
 			aria-hidden="true"
 			inert
 			data-attr:aria-hidden="$_workspaceReviewOpen ? 'false' : 'true'"
 			data-attr:inert="!$_workspaceReviewOpen"
 		>
 			<div id="review-body" class="pi-review-body grid min-h-0 min-w-0">
-				<aside class="pi-review-sidebar flex min-h-0 min-w-0 flex-col">
+				<aside
+					id="workspace-files-sidebar"
+					class="pi-review-sidebar flex min-h-0 min-w-0 flex-col"
+				>
+					{renderWorkspaceModeHeader("files", snapshot.isGitRepository)}
+					<section class="pi-raised-surface flex min-h-0 flex-1 flex-col overflow-hidden">
+						<div
+							id="workspace-file-tree"
+							class="min-h-0 flex-1 overflow-hidden pt-1 [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+						/>
+					</section>
+				</aside>
+
+				<aside
+					id="review-git-sidebar"
+					class="pi-review-sidebar hidden min-h-0 min-w-0 flex-col"
+				>
+					{renderWorkspaceModeHeader("git", snapshot.isGitRepository)}
 					<section
 						id="review-changes-section"
 						class="pi-raised-surface flex min-h-0 shrink-0 flex-col overflow-hidden"
@@ -67,11 +78,9 @@ export function renderWorkspaceReview(
 						</header>
 						<div
 							id="review-tree"
-							class="min-h-0 flex-1 overflow-hidden [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
-							style="--trees-bg-override: transparent; --trees-border-color-override: transparent; --trees-fg-override: var(--foreground); --trees-font-family-override: var(--font-sans); --trees-padding-inline-override: 8px; --trees-scrollbar-gutter-override: 4px; --trees-selected-bg-override: var(--pi-surface-subtle);"
-						>
-							{serializeFileTreeSsrPayload(tree)}
-						</div>
+							class="min-h-0 flex-1 overflow-hidden pt-1 [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+							style={workspaceTreeStyle}
+						/>
 						<div
 							id="review-tree-empty"
 							class="px-3 pb-2 text-xs text-muted-foreground"
@@ -116,7 +125,93 @@ export function renderWorkspaceReview(
 					aria-orientation="vertical"
 				/>
 
-				<div class="flex min-h-0 min-w-0 flex-col">
+				<div id="workspace-file-main" class="flex min-h-0 min-w-0 flex-col">
+					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center gap-2 px-1">
+						<div class="flex min-w-0 flex-1 items-center gap-2 font-mono text-[11px]">
+							<span
+								id="workspace-file-path"
+								class="pi-fine-print min-w-0 flex-1 truncate"
+							>
+								Select a file
+							</span>
+							<span
+								id="workspace-file-status"
+								class="pi-fine-print shrink-0 tabular-nums"
+							/>
+						</div>
+						<div class="flex rounded-md bg-(--pi-control-well) p-0.5">
+							<button
+								id="workspace-file-wrap"
+								type="button"
+								class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+								aria-pressed="true"
+								aria-label="Wrap long lines"
+								data-tooltip="Wrap long lines"
+								data-side="bottom"
+							>
+								<svg
+									class="size-3.5"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									aria-hidden="true"
+								>
+									<path d="m16 16-3 3 3 3" />
+									<path d="M3 12h14.5a1 1 0 0 1 0 7H13M3 19h6M3 5h18" />
+								</svg>
+							</button>
+						</div>
+						<button
+							id="workspace-file-edit"
+							type="button"
+							class="btn"
+							data-variant="ghost"
+							data-size="xs"
+							disabled
+						>
+							Save
+						</button>
+						<button
+							type="button"
+							class="btn text-muted-foreground hover:text-foreground"
+							data-variant="ghost"
+							data-size="icon-xs"
+							data-on:click="$_workspaceReviewOpen = false"
+							aria-label="Hide workspace"
+						>
+							<svg
+								class="size-3.5"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								aria-hidden="true"
+							>
+								<path d="M18 6 6 18M6 6l12 12" />
+							</svg>
+						</button>
+					</header>
+					<div class="pi-review-diff-canvas relative min-h-0 min-w-0 flex-1">
+						<div
+							id="workspace-file-view"
+							class="absolute inset-0 overflow-auto overscroll-contain"
+							aria-label="File contents"
+						/>
+						<div
+							id="workspace-file-empty"
+							class="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground"
+						>
+							Open a file from the workspace
+						</div>
+					</div>
+				</div>
+
+				<div id="review-git-main" class="hidden min-h-0 min-w-0 flex-col">
 					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center justify-between gap-2 px-1">
 						<span
 							id="review-branch"
@@ -201,6 +296,7 @@ export function renderWorkspaceReview(
 									aria-pressed="true"
 									aria-label="Wrap long lines"
 									data-tooltip="Wrap long lines"
+									data-side="bottom"
 								>
 									<svg
 										class="size-3.5"
@@ -236,7 +332,7 @@ export function renderWorkspaceReview(
 								data-variant="ghost"
 								data-size="icon-xs"
 								data-on:click="$_workspaceReviewOpen = false"
-								aria-label="Hide Git"
+								aria-label="Hide workspace"
 							>
 								<svg
 									class="size-3.5"
@@ -279,22 +375,66 @@ export function renderWorkspaceReview(
 				aria-label="Resize Git and chat"
 				aria-orientation="vertical"
 			/>
-			{renderWorkspaceReviewData(workspacePath, snapshot, preferences)}
+			{renderWorkspaceReviewData(
+				workspacePath,
+				filesRevision,
+				snapshot,
+				preferences,
+			)}
 		</section>,
+	);
+}
+
+function renderWorkspaceModeHeader(
+	active: "files" | "git",
+	gitAvailable: boolean,
+): JSX.Element {
+	return (
+		<header
+			class="flex h-8 shrink-0 items-center px-1"
+			data-workspace-mode-header
+			hidden={!gitAvailable}
+		>
+			<div
+				class="flex w-full rounded-md bg-(--pi-control-well) p-0.5"
+				aria-label="Workspace view"
+			>
+				<button
+					type="button"
+					class="flex-1 rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					aria-pressed={active === "files" ? "true" : "false"}
+					data-workspace-mode="files"
+				>
+					Files
+				</button>
+				<button
+					type="button"
+					class="flex-1 rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					aria-pressed={active === "git" ? "true" : "false"}
+					data-workspace-mode="git"
+					disabled={!gitAvailable}
+				>
+					Git
+				</button>
+			</div>
+		</header>
 	);
 }
 
 export function renderWorkspaceReviewData(
 	workspacePath: string,
+	filesRevision: number,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): string {
 	return syncHtml(
 		<script id="workspace-review-data" type="application/json">
-			{JSON.stringify({ preferences, snapshot, workspacePath }).replaceAll(
-				"<",
-				"\\u003c",
-			)}
+			{JSON.stringify({
+				filesRevision,
+				preferences,
+				snapshot,
+				workspacePath,
+			}).replaceAll("<", "\\u003c")}
 		</script>,
 	);
 }

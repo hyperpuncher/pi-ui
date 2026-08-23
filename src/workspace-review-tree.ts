@@ -9,6 +9,27 @@ export function sortWorkspaceReviewEntries<T extends Readonly<{ path: string }>>
 	);
 }
 
+export const workspaceTreeStyle = [
+	"--trees-bg-override: var(--pi-surface-raised)",
+	"--trees-bg-muted-override: var(--pi-hover-background)",
+	"--trees-border-color-override: transparent",
+	"--trees-fg-override: var(--foreground)",
+	"--trees-font-family-override: var(--font-sans)",
+	"--trees-focus-ring-color-override: var(--muted-foreground)",
+	"--trees-padding-inline-override: 8px",
+	"--trees-scrollbar-gutter-override: 4px",
+	"--trees-search-bg-override: var(--pi-control-well)",
+	"--trees-selected-bg-override: var(--pi-selection-background)",
+	"--trees-selected-focused-border-color-override: var(--muted-foreground)",
+].join("; ");
+
+// Pierre has no host variables for neutral labels beside colored Git badges
+// or for disabling sticky-row layer promotion, which blurs text in this panel.
+export const workspaceTreeUnsafeCss = `
+	[data-item-git-status] > [data-item-section='content'] { color: var(--trees-fg); }
+	[data-file-tree-virtualized-sticky='true'] { will-change: auto; }
+`;
+
 export const workspaceReviewTreeOptions = {
 	density: "compact" as const,
 	fileTreeSearchMode: "hide-non-matches" as const,
@@ -19,6 +40,5 @@ export const workspaceReviewTreeOptions = {
 	search: true,
 	searchBlurBehavior: "retain" as const,
 	stickyFolders: false,
-	unsafeCSS:
-		"svg[data-icon-sprite] { position: absolute; } [data-item-git-status] > [data-item-section='content'] { color: var(--trees-fg); } [data-file-tree-virtualized-sticky='true'] { will-change: auto; }",
+	unsafeCSS: workspaceTreeUnsafeCss,
 };

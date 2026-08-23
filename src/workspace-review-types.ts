@@ -49,6 +49,7 @@ export type WorkspaceReviewPreferences = Readonly<{
 	layout?: "split" | "unified";
 	mode?: "all" | "selected";
 	reviewSidebarWidth?: number;
+	tab?: "files" | "git";
 	wrap?: boolean;
 }>;
 
@@ -77,6 +78,7 @@ export function normalizeWorkspaceReviewPreferences<Value>(
 			reviewSidebarWidthMin,
 			reviewSidebarWidthMax,
 		),
+		tab: value.tab === "files" || value.tab === "git" ? value.tab : undefined,
 		wrap: isBoolean(value.wrap) ? value.wrap : undefined,
 	};
 }

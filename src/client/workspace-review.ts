@@ -9,10 +9,14 @@ import {
 	getOrCreateWorkerPoolSingleton,
 	terminateWorkerPoolSingleton,
 } from "@pierre/diffs/worker";
-import { FileTree } from "@pierre/trees";
+import {
+	type ContextMenuItem,
+	type ContextMenuOpenContext,
+	FileTree,
+} from "@pierre/trees";
 
 import { getPierreThemes, isPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
-import { isRecord, isString } from "../utils/type-guards.ts";
+import { isNumber, isRecord, isString } from "../utils/type-guards.ts";
 import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
 import {
@@ -24,6 +28,7 @@ import {
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
+import { createWorkspaceFiles } from "./workspace-files.ts";
 import { createWorkspaceReviewApi } from "./workspace-review-api.ts";
 import {
 	createWorkspaceReviewComments,
@@ -42,7 +47,6 @@ import {
 import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
-	reconcileReviewAvailability,
 	reconcileSelection,
 	selectionForReviewOpen,
 	type Selection,
@@ -62,6 +66,7 @@ if (codeThemeLight && codeThemeDark) {
 	setActiveCodeTheme({ dark: codeThemeDark, light: codeThemeLight });
 }
 const endpoint = document.body.dataset.workspaceReviewEndpoint ?? "";
+const filesEndpoint = document.body.dataset.workspaceFilesEndpoint ?? "";
 const api = createWorkspaceReviewApi(endpoint);
 
 window.addEventListener("pi-ui-code-theme-changed", (event) => {
@@ -85,7 +90,15 @@ const app = requiredElement("app");
 const workspaceShell = requiredElement("workspace-shell");
 const chat = requiredElement("chat-pane");
 const reviewBody = requiredElement("review-body");
-const treeHost = requiredElement("review-file-tree");
+const filesSidebar = requiredElement("workspace-files-sidebar");
+const filesMain = requiredElement("workspace-file-main");
+const gitSidebar = requiredElement("review-git-sidebar");
+const gitMain = requiredElement("review-git-main");
+const modeButtons = document.querySelectorAll<HTMLButtonElement>("[data-workspace-mode]");
+const modeHeaders = document.querySelectorAll<HTMLElement>(
+	"[data-workspace-mode-header]",
+);
+const treeHost = requiredElement("review-tree");
 const treeEmpty = requiredElement("review-tree-empty");
 const changesSection = requiredElement("review-changes-section");
 const changesSeparator = requiredElement("review-changes-separator");
@@ -111,6 +124,7 @@ const data = requiredElement("workspace-review-data");
 const initialData = JSON.parse(data.textContent ?? "");
 if (
 	!isRecord(initialData) ||
+	!isNumber(initialData.filesRevision) ||
 	!isString(initialData.workspacePath) ||
 	!isWorkspaceReviewSnapshot(initialData.snapshot)
 ) {
@@ -118,6 +132,7 @@ if (
 }
 const preferences = normalizeWorkspaceReviewPreferences(initialData.preferences);
 let workspacePath = initialData.workspacePath;
+let filesRevision = initialData.filesRevision;
 let snapshot: WorkspaceReviewSnapshot = initialData.snapshot;
 let historyCommits = [...snapshot.commits];
 let historyHasMore = snapshot.commits.length === workspaceReviewHistoryPageSize;
@@ -156,6 +171,15 @@ let initializedSelection = snapshot.revision !== "git-unloaded";
 const commitCache = new Map<string, CommitView>();
 const commitRequests = new Map<string, Promise<CommitView | undefined>>();
 let workspaceVersion = 0;
+const workspaceFiles = createWorkspaceFiles({
+	endpoint: filesEndpoint,
+	initialGitStatus: snapshot.changes,
+	initialWorkspacePath: workspacePath,
+});
+let panelMode: "files" | "git" = initialPanelMode(
+	preferences.tab,
+	snapshot.isGitRepository,
+);
 
 const reviewLayout = bindWorkspaceReviewLayout({
 	app: workspaceShell,
@@ -165,36 +189,44 @@ const reviewLayout = bindWorkspaceReviewLayout({
 	gitSeparator,
 	hasChanges: () => snapshot.changes.length > 0,
 	onCommit: (values) =>
-		writeWorkspaceReviewPreferences({ layout, mode, wrap, ...values }),
+		writeWorkspaceReviewPreferences({
+			layout,
+			mode,
+			tab: panelMode,
+			wrap,
+			...values,
+		}),
 	preferences,
 	reviewBody,
 	root,
 	sidebarSeparator,
 });
 
-const visibility = createVisibility(app, snapshot.isGitRepository, (open) => {
+const visibility = createVisibility(app, true, (open) => {
 	reviewLayout.setOpen(open);
-	if (open) {
-		const nextSelection = selectionForReviewOpen(
-			selection,
-			preferredWorkingChanges(),
-		);
-		if (nextSelection !== selection && nextSelection.kind === "working") {
-			selectWorking(nextSelection.path);
-		}
-		if (snapshot.revision === "git-unloaded") showEmpty("Loading Git data…");
-		else {
-			requestAnimationFrame(() => {
-				publish();
-				maybeLoadOlderHistory();
-			});
-		}
-	}
+	workspaceFiles.setVisible(open && panelMode === "files");
+	if (open && panelMode === "git") openGitView();
 });
 window.piUi.workspaceReview = visibility;
+syncPanelMode();
+for (const button of modeButtons) {
+	button.addEventListener("click", () => {
+		const mode = button.dataset.workspaceMode;
+		if (mode === "files" || (mode === "git" && snapshot.isGitRepository)) {
+			setPanelMode(mode);
+		}
+	});
+}
 
 const tree = new FileTree({
 	...workspaceReviewTreeOptions,
+	composition: {
+		contextMenu: {
+			enabled: true,
+			render: renderReviewContextMenu,
+			triggerMode: "right-click",
+		},
+	},
 	gitStatus: snapshot.changes,
 	paths: snapshot.changes.map(({ path }) => path),
 	onSelectionChange(paths) {
@@ -202,7 +234,7 @@ const tree = new FileTree({
 		if (path) selectWorking(path, true);
 	},
 });
-tree.hydrate({ fileTreeContainer: treeHost });
+tree.render({ containerWrapper: treeHost });
 
 history.addEventListener("scroll", maybeLoadOlderHistory, { passive: true });
 allButton.addEventListener("click", () => setMode("all"));
@@ -236,10 +268,16 @@ const reviewData = new MutationObserver(() => {
 		const value = JSON.parse(data.textContent ?? "");
 		if (
 			isRecord(value) &&
+			isNumber(value.filesRevision) &&
 			isString(value.workspacePath) &&
 			isWorkspaceReviewSnapshot(value.snapshot)
 		) {
+			const filesChanged =
+				value.workspacePath === workspacePath &&
+				value.filesRevision !== filesRevision;
+			filesRevision = value.filesRevision;
 			applyWorkspaceReview(value.workspacePath, value.snapshot);
+			if (filesChanged) workspaceFiles.refresh();
 		}
 	} catch {
 		// A later stream morph can replace an incomplete payload.
@@ -261,6 +299,7 @@ window.addEventListener(
 		theme.disconnect();
 		reviewLayout.cleanUp();
 		tree.cleanUp();
+		workspaceFiles.cleanUp();
 		viewer?.cleanUp();
 		terminateWorkerPoolSingleton();
 	},
@@ -282,6 +321,7 @@ function applyWorkspaceReview(
 	const workspaceChanged = nextWorkspacePath !== workspacePath;
 	if (workspaceChanged) {
 		workspacePath = nextWorkspacePath;
+		workspaceFiles.setWorkspace(workspacePath);
 		workspaceVersion++;
 		historyGeneration++;
 		historyCommits = [];
@@ -306,15 +346,15 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		next.commits,
 	);
 	snapshot = next;
+	workspaceFiles.setGitStatus(snapshot.changes);
 	historyCommits = historyState.commits;
 	historyHasMore = historyState.hasMore;
 	if (historyState.reset) {
 		historyGeneration++;
 		historyLoading = false;
 	}
-	visibility.setAvailable(
-		reconcileReviewAvailability(visibility.isAvailable(), snapshot),
-	);
+	syncPanelModeAvailability();
+	if (panelMode === "git" && !snapshot.isGitRepository) setPanelMode("files");
 	const nextWorkingItems = createItems(snapshot.changes, snapshot.patch, "working");
 	comments.reconcileItems(nextWorkingItems);
 	workingItems = withWorkingAnnotations(nextWorkingItems);
@@ -343,7 +383,9 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	if (wasUnloaded) initializedSelection = true;
 
 	renderHistory();
-	if (visibility.isOpen()) requestAnimationFrame(maybeLoadOlderHistory);
+	if (visibility.isOpen() && panelMode === "git") {
+		requestAnimationFrame(maybeLoadOlderHistory);
+	}
 	if (selection.kind === "commit") {
 		void activateCommit(selection.hash, selection.path);
 	} else activateWorking(selection.path);
@@ -643,12 +685,20 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 			:host {
 				--diffs-bg: var(--pi-code-surface);
 				--diffs-dark-bg: var(--pi-code-surface);
+				--diffs-bg-selection-override: var(--pi-selection-background);
+				--diffs-bg-selection-number-override: var(--pi-selection-background);
+				--diffs-editor-selection-bg: var(--pi-selection-background) !important;
 				--diffs-font-family: var(--font-mono);
 				--diffs-gap-block: 0px;
 				--diffs-gap-style: 0 solid transparent;
 				--diffs-header-font-family: var(--font-sans);
 				--diffs-light-bg: var(--pi-code-surface);
 				--diffs-scrollbar-gutter-override: 0px;
+			}
+
+			::selection {
+				background: var(--pi-selection-background);
+				color: currentColor;
 			}
 
 			[data-diffs-header="default"] {
@@ -710,6 +760,84 @@ function createWorkerPool() {
 				}),
 		},
 	});
+}
+
+function initialPanelMode(
+	preferred: WorkspaceReviewPreferences["tab"],
+	gitAvailable: boolean,
+): "files" | "git" {
+	return preferred === "git" && gitAvailable ? "git" : "files";
+}
+
+function setPanelMode(next: "files" | "git"): void {
+	if (next === panelMode || (next === "git" && !snapshot.isGitRepository)) return;
+	panelMode = next;
+	syncPanelMode();
+	writePreferences();
+	if (!visibility.isOpen()) return;
+	workspaceFiles.setVisible(next === "files");
+	if (next === "git") openGitView();
+}
+
+function syncPanelMode(): void {
+	filesSidebar.style.display = panelMode === "files" ? "flex" : "none";
+	filesMain.style.display = panelMode === "files" ? "flex" : "none";
+	gitSidebar.style.display = panelMode === "git" ? "flex" : "none";
+	gitMain.style.display = panelMode === "git" ? "flex" : "none";
+	for (const button of modeButtons) {
+		button.setAttribute(
+			"aria-pressed",
+			String(button.dataset.workspaceMode === panelMode),
+		);
+	}
+	syncPanelModeAvailability();
+}
+
+function syncPanelModeAvailability(): void {
+	for (const header of modeHeaders) {
+		header.hidden = !snapshot.isGitRepository;
+	}
+	for (const button of modeButtons) {
+		if (button.dataset.workspaceMode === "git") {
+			button.disabled = !snapshot.isGitRepository;
+		}
+	}
+}
+
+function renderReviewContextMenu(
+	item: ContextMenuItem,
+	context: ContextMenuOpenContext,
+): HTMLElement | null {
+	if (item.kind !== "file") return null;
+	const menu = document.createElement("div");
+	menu.className = "workspace-tree-context-menu";
+	menu.setAttribute("role", "menu");
+	const open = document.createElement("button");
+	open.type = "button";
+	open.className = "workspace-tree-context-menu-item";
+	open.setAttribute("role", "menuitem");
+	open.textContent = "Open in editor";
+	open.addEventListener("click", () => {
+		context.close({ restoreFocus: false });
+		setPanelMode("files");
+		void workspaceFiles.openFile(item.path);
+	});
+	menu.append(open);
+	return menu;
+}
+
+function openGitView(): void {
+	const nextSelection = selectionForReviewOpen(selection, preferredWorkingChanges());
+	if (nextSelection !== selection && nextSelection.kind === "working") {
+		selectWorking(nextSelection.path);
+	}
+	if (snapshot.revision === "git-unloaded") showEmpty("Loading Git data…");
+	else {
+		requestAnimationFrame(() => {
+			publish();
+			maybeLoadOlderHistory();
+		});
+	}
 }
 
 function createVisibility(
@@ -794,6 +922,7 @@ function writePreferences(): void {
 	writeWorkspaceReviewPreferences({
 		layout,
 		mode,
+		tab: panelMode,
 		wrap,
 		...reviewLayout.values(),
 	});
