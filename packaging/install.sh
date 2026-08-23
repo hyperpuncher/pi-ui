@@ -39,6 +39,32 @@ case "$(uname -s)" in
 		;;
 esac
 
+if [ -f /etc/arch-release ]; then
+	if command -v paru >/dev/null 2>&1; then
+		aur_helper="paru"
+	elif command -v yay >/dev/null 2>&1; then
+		aur_helper="yay"
+	else
+		echo "Arch Linux installs are managed through the AUR." >&2
+		echo "Install paru or yay, then rerun this installer." >&2
+		exit 1
+	fi
+
+	if [ "$mode" = "server" ]; then
+		package="pi-ui-server-bin"
+	else
+		package="pi-ui-bin"
+	fi
+
+	echo "Installing $package from the AUR with $aur_helper..."
+	"$aur_helper" -S --needed "$package" </dev/tty
+	if [ "$mode" = "server" ]; then
+		pi-ui-server autostart enable
+		echo "Open http://127.0.0.1:31415 in your browser."
+	fi
+	exit
+fi
+
 case "$(uname -m)" in
 	x86_64 | amd64) architecture="x64" ;;
 	aarch64 | arm64) architecture="arm64" ;;
