@@ -36,7 +36,8 @@ try {
 		)
 	}
 
-	$command = Start-Process $executable -ArgumentList @("autostart", "enable") -Wait -PassThru
+	$command = Start-Process $executable -ArgumentList @("autostart", "enable") -PassThru
+	$command.WaitForExit()
 	if ($command.ExitCode -ne 0) {
 		throw "Could not configure pi-ui server autostart (exit code $($command.ExitCode))."
 	}

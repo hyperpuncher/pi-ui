@@ -1,5 +1,7 @@
 import { dirname } from "@std/path";
 
+import { outputCommand } from "./utils/command.ts";
+
 const serviceName = "pi-ui-server";
 const launchAgentLabel = "dev.pi.ui.server";
 const windowsRunKey = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
@@ -206,7 +208,7 @@ async function command(
 	args: string[],
 	allowFailure = false,
 ): Promise<void> {
-	const output = await new Deno.Command(name, { args }).output();
+	const output = await outputCommand(name, { args });
 	if (output.success || allowFailure) return;
 	const message = new TextDecoder().decode(output.stderr).trim();
 	throw new Error(`${name} failed${message ? `: ${message}` : ""}`);

@@ -1,4 +1,4 @@
-import { windowsDirectoryPickerScript } from "./native-file-picker-windows.ts";
+import { windowsDirectoryPickerCommand } from "./native-file-picker-windows.ts";
 import { outputCommand } from "./utils/command.ts";
 
 const decoder = new TextDecoder();
@@ -57,10 +57,7 @@ export async function pickNativeDirectoryPath(): Promise<string | undefined> {
 			});
 			break;
 		case "windows":
-			paths = await runPicker({
-				command: "powershell.exe",
-				args: ["-NoProfile", "-STA", "-Command", windowsDirectoryPickerScript],
-			});
+			paths = await runPicker(await windowsDirectoryPickerCommand());
 			break;
 		default:
 			throw new Error(

@@ -751,6 +751,7 @@ function createWorkerPool() {
 			langs: ["text"],
 			preferredHighlighter: "shiki-js",
 			theme: getPierreThemes(),
+			useTokenTransformer: true,
 		},
 		poolOptions: {
 			poolSize: 1,

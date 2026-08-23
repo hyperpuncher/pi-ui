@@ -1,4 +1,4 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 
 import {
 	launchAgent,
@@ -45,4 +45,12 @@ Deno.test("windows startup command quotes the executable", () => {
 
 Deno.test("autostart uses the current server executable", () => {
 	assertEquals(serverAutostartConfig("linux").executable, Deno.execPath());
+});
+
+Deno.test("windows installer waits only for the autostart command", async () => {
+	const script = await Deno.readTextFile(
+		new URL("../packaging/windows/install-server.ps1", import.meta.url),
+	);
+	assertStringIncludes(script, "$command.WaitForExit()");
+	assertFalse(/Start-Process[^\r\n]+-Wait/.test(script));
 });
