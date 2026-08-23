@@ -1260,8 +1260,8 @@ export class RuntimeController {
 		this.usage.refresh(true);
 	}
 
-	private syncModels(options: { reopenPicker?: boolean } = {}): void {
-		this.models.sync(options);
+	private syncModels(): void {
+		this.models.sync();
 	}
 
 	private handleEvent(event: AgentSessionEvent): void {

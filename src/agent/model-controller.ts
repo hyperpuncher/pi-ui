@@ -46,11 +46,11 @@ export class ModelController {
 		runtime.services.settingsManager.setEnabledModels(enabled);
 		await runtime.services.settingsManager.flush();
 		session.setScopedModels(enabled === undefined ? [] : scoped);
-		this.sync({ reopenPicker: true });
+		this.sync({ restorePicker: true });
 		return true;
 	}
 
-	sync(options: { reopenPicker?: boolean } = {}): void {
+	sync(options: { restorePicker?: boolean } = {}): void {
 		const runtime = this.getRuntime();
 		const session = runtime.session;
 		const modelRuntime = runtime.services.modelRuntime;

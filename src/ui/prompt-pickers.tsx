@@ -219,7 +219,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-align="center"
 					aria-hidden="true"
 					data-preserve-attr="aria-hidden"
-					class="w-80 max-w-[calc(100vw-2rem)] p-0"
+					class="w-88 max-w-[calc(100vw-2rem)] p-0"
 				>
 					<div
 						class="command"
@@ -268,7 +268,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 										<div
 											id={`model-option-${encodeURIComponent(value)}`}
 											role="menuitem"
-											class="[contain-intrinsic-block-size:auto_3rem] [content-visibility:auto]"
+											class="group [contain-intrinsic-block-size:auto_3rem] [content-visibility:auto]"
 											data-preserve-attr="class aria-hidden"
 											aria-current={
 												value === state.currentModel
@@ -288,7 +288,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 										>
 											<span class="min-w-0 flex-1">
 												<span
-													class="block max-w-56 truncate font-medium"
+													class="block truncate font-medium"
 													safe
 												>
 													{model.id}
@@ -313,7 +313,12 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 											</span>
 											<button
 												type="button"
-												class="btn size-7 shrink-0"
+												class={[
+													"btn h-7 shrink-0 overflow-hidden p-0",
+													model.scoped
+														? "w-7"
+														: "w-0 opacity-0 group-hover:w-7 group-hover:opacity-100 focus-visible:w-7 focus-visible:opacity-100",
+												]}
 												data-variant={
 													model.scoped ? "secondary" : "ghost"
 												}

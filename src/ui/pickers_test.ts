@@ -279,6 +279,7 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	assertStringIncludes(withoutSelection, 'data-filter="manual"');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-expanded"');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-hidden"');
+	assertStringIncludes(withoutSelection, "w-88");
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-activedescendant"');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="class aria-hidden"');
@@ -288,6 +289,11 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	assertStringIncludes(withoutSelection, 'data-model-search-order="0"');
 	assertStringIncludes(withoutSelection, "[content-visibility:auto]");
 	assertStringIncludes(withoutSelection, "[contain-intrinsic-block-size:auto_3rem]");
+	assertStringIncludes(
+		withoutSelection,
+		"w-0 opacity-0 group-hover:w-7 group-hover:opacity-100 focus-visible:w-7 focus-visible:opacity-100",
+	);
+	assertFalse(withoutSelection.includes("max-w-56"));
 });
 
 Deno.test("thinking picker describes every supported maximum level", () => {

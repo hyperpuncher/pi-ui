@@ -50,6 +50,9 @@ export function bindModelSearch() {
 			: originalItems;
 
 		for (const item of orderedItems) {
+			// Basecoat 1.0.2 tracks the active item by index. Reordering before
+			// refresh() can otherwise leave the old item active as well.
+			item.classList.remove("active");
 			item.setAttribute("aria-hidden", String(!visible.has(item)));
 			item.parentElement?.append(item);
 		}

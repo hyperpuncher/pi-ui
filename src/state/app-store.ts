@@ -135,7 +135,7 @@ export type AppUsage = {
 export type AppKeybindHint = { keys: string; description: string };
 
 export type UiCommitEffect =
-	| { type: "reopen-model-picker" }
+	| { type: "restore-model-picker" }
 	| {
 			type: "dialog";
 			id: "auth-dialog" | "extension-dialog" | "llama-dialog";
@@ -457,12 +457,12 @@ export class AppStore {
 	setModels(
 		models: AppModel[],
 		currentModel: string | undefined,
-		options: { reopenPicker?: boolean } = {},
+		options: { restorePicker?: boolean } = {},
 	): void {
 		this.models = models;
 		this.currentModel = currentModel;
 		this.presentation?.pickersChanged();
-		this.commit(options.reopenPicker ? { type: "reopen-model-picker" } : undefined);
+		this.commit(options.restorePicker ? { type: "restore-model-picker" } : undefined);
 	}
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
