@@ -1,5 +1,6 @@
 import { parsePatchFiles } from "@pierre/diffs";
 
+import { outputCommand } from "../utils/command.ts";
 import { sortWorkspaceReviewEntries } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommit,
@@ -376,12 +377,10 @@ function assertGit(result: GitResult, action: string): void {
 
 async function git(cwd: string, ...args: string[]): Promise<GitResult> {
 	try {
-		const output = await new Deno.Command("git", {
+		const output = await outputCommand("git", {
 			args: ["-C", cwd, "-c", "core.quotePath=false", ...args],
 			env: { GIT_OPTIONAL_LOCKS: "0" },
-			stderr: "piped",
-			stdout: "piped",
-		}).output();
+		});
 		return {
 			code: output.code,
 			stderr: decoder.decode(output.stderr),

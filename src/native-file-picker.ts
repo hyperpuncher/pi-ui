@@ -1,3 +1,6 @@
+import { windowsDirectoryPickerScript } from "./native-file-picker-windows.ts";
+import { outputCommand } from "./utils/command.ts";
+
 const decoder = new TextDecoder();
 
 export async function pickNativeFilePaths(): Promise<string[]> {
@@ -56,18 +59,7 @@ export async function pickNativeDirectoryPath(): Promise<string | undefined> {
 		case "windows":
 			paths = await runPicker({
 				command: "powershell.exe",
-				args: [
-					"-NoProfile",
-					"-STA",
-					"-Command",
-					`Add-Type -AssemblyName System.Windows.Forms
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = "Select workspace"
-if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-	[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-	[Console]::Write($dialog.SelectedPath)
-}`,
-				],
+				args: ["-NoProfile", "-STA", "-Command", windowsDirectoryPickerScript],
 			});
 			break;
 		default:
@@ -137,11 +129,7 @@ interface PickerCommand {
 }
 
 async function runPicker(picker: PickerCommand): Promise<string[]> {
-	const output = await new Deno.Command(picker.command, {
-		args: picker.args,
-		stdout: "piped",
-		stderr: "piped",
-	}).output();
+	const output = await outputCommand(picker.command, { args: picker.args });
 	if (output.success) return parsePickedPaths(decoder.decode(output.stdout));
 	if (output.code === 1) return [];
 	const message = decoder.decode(output.stderr).trim();
