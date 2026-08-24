@@ -4,6 +4,7 @@ import { calendarDayDifference } from "../utils/date-time-format.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
+import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
 import { SessionRenameTitle } from "./session-rename.tsx";
 import { SessionRowAction } from "./session-row-action.tsx";
@@ -29,6 +30,16 @@ const sidebarPointerWidthExpression = `Math.round(Math.min(
 ))`;
 const sidebarResizeFinish = `document.documentElement.classList.remove('pi-resizing');
 localStorage.setItem('${sessionSidebarStorageKey}', String($_sessionSidebarWidth));`;
+const focusSessionSidebarShortcut = altShortcutAction(
+	"KeyS",
+	`el.open?.();
+	requestAnimationFrame(() => {
+		const target = el.querySelector(
+			'li > button[aria-current="true"], li > button[data-active="true"], li > button',
+		) ?? el.querySelector('nav');
+		target?.focus({ preventScroll: true });
+	});`,
+);
 
 type SessionSidebarState = Pick<
 	AppStateSnapshot,
@@ -57,7 +68,8 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			data-on:keydown__window={`if (evt.code === 'KeyB' && !evt.altKey && !evt.shiftKey && ${primaryModifierExpression()}) {
 			evt.preventDefault();
 			el.toggle?.();
-			}`}
+			}
+			${focusSessionSidebarShortcut}`}
 		>
 			<div
 				id="session-sidebar-separator"
@@ -86,10 +98,39 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			<nav
 				class="pi-raised-surface inset-y-(--pi-workspace-inset)! right-(--pi-workspace-inset)! transition-transform duration-150 ease-(--pi-ease-out) motion-reduce:transition-none max-md:w-[calc(var(--sidebar-mobile-width)-var(--pi-workspace-gap))]! md:w-[calc(var(--sidebar-width)-var(--pi-workspace-gap))]"
 				aria-label="Sessions"
+				aria-keyshortcuts="Alt+S"
+				tabindex="-1"
 				data-style:width={sidebarNavWidthExpression}
+				data-on:keydown={`if (
+					!evt.altKey &&
+					!evt.ctrlKey &&
+					!evt.metaKey &&
+					!evt.shiftKey &&
+					['ArrowDown', 'ArrowUp', 'KeyJ', 'KeyK'].includes(evt.code)
+				) {
+					const rows = [...el.querySelectorAll('li > button:not(:disabled)')];
+					const current = rows.indexOf(document.activeElement);
+					if (current >= 0) {
+						evt.preventDefault();
+						const direction = ['ArrowDown', 'KeyJ'].includes(evt.code) ? 1 : -1;
+						const next = Math.max(0, Math.min(rows.length - 1, current + direction));
+						rows[next]?.focus({ preventScroll: true });
+						rows[next]?.scrollIntoView({ block: 'nearest' });
+					}
+				}`}
 			>
+				<header class="px-4 text-xs font-medium" data-keybind-hint>
+					<div class="flex items-center justify-between">
+						<span>Sessions</span>
+						<ShortcutKbd shortcut="alt S" />
+					</div>
+				</header>
 				<section>
-					<div role="group" aria-label="Recent sessions">
+					<div
+						role="group"
+						class="pt-0 in-data-[keybind-hints=false]:pt-2"
+						aria-label="Recent sessions"
+					>
 						{renderSessionSidebarContent(state)}
 					</div>
 				</section>

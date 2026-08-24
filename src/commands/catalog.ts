@@ -5,6 +5,7 @@ export type AppCommandId =
 	| "session-tree"
 	| "command-palette"
 	| "change-code-theme"
+	| "toggle-keybind-hints"
 	| "switch-model"
 	| "cycle-model"
 	| "cycle-thinking"
@@ -64,6 +65,12 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		shortcut: { display: "", native: "", keys: [] },
 	},
 	{
+		id: "toggle-keybind-hints",
+		title: "Toggle keybind hints",
+		description: "Show or hide keyboard shortcut labels.",
+		shortcut: { display: "", native: "", keys: [] },
+	},
+	{
 		id: "switch-model",
 		title: "Switch model",
 		description: "Open the model picker.",
@@ -99,8 +106,8 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 	},
 	{
 		id: "toggle-review",
-		title: "Toggle Git",
-		description: "Show or hide repository changes and history.",
+		title: "Toggle workspace",
+		description: "Show or hide workspace files and Git history.",
 		shortcut: {
 			display: "ctrl G",
 			native: "CmdOrCtrl+G",

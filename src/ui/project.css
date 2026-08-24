@@ -51,6 +51,7 @@
 			var(--foreground)
 		);
 		--pi-control-well: color-mix(in oklab, var(--muted) 92%, var(--foreground));
+		--pi-tree-search-background: var(--background);
 		--pi-surface-edge: color-mix(in oklab, var(--foreground) 9%, transparent);
 		--pi-divider-handle: color-mix(
 			in oklab,
@@ -112,6 +113,7 @@
 		--pi-code-surface: var(--pi-code-surface-dark);
 		--code-background: var(--pi-code-surface);
 		--pi-control-well: color-mix(in oklab, var(--muted) 45%, var(--background));
+		--pi-tree-search-background: var(--pi-control-well);
 		--pi-prompt-surface: color-mix(in oklab, var(--card) 96%, var(--foreground));
 		--pi-success: oklch(94% 0.1 163);
 		--pi-status-success: var(--color-emerald-400);
@@ -945,5 +947,11 @@
 		.pi-review-controls {
 			margin-left: 0;
 		}
+	}
+}
+
+@layer utilities {
+	[data-keybind-hints="false"] [data-keybind-hint] {
+		display: none;
 	}
 }

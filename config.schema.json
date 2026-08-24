@@ -197,6 +197,11 @@
 			},
 			"description": "Workspace panel preferences.",
 			"additionalProperties": false
+		},
+		"keybindHints": {
+			"type": "boolean",
+			"default": true,
+			"description": "Show keyboard shortcut hints in the interface."
 		}
 	},
 	"$schema": "https://json-schema.org/draft/2020-12/schema",

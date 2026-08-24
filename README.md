@@ -114,31 +114,66 @@ pi-ui stores its configuration in:
 - macos: `~/.config/pi-ui/config.json`
 - windows: `%APPDATA%\\pi-ui\\config.json`
 
+all options with their defaults:
+
+```json
+{
+	"$schema": "https://pi-ui.app/config.schema.json",
+	"autoTitle": {
+		"enabled": true,
+		"models": [
+			"openai-codex/gpt-5.6-luna:minimal",
+			"opencode-go/deepseek-v4-flash:off"
+		],
+		"prompt": "use lowercase"
+	},
+	"codeTheme": {
+		"dark": "pierre-dark-soft",
+		"light": "pierre-light"
+	},
+	"gitView": {
+		"changesRatio": 0.5,
+		"gitPaneRatio": 0.5,
+		"layout": "split",
+		"mode": "all",
+		"reviewSidebarWidth": 272,
+		"tab": "git",
+		"wrap": true
+	},
+	"keybindHints": true
+}
+```
+
 ## keybinds
 
-| key                                             | action                    |
-| ----------------------------------------------- | ------------------------- |
-| <kbd>ctrl/⌘</kbd> <kbd>k</kbd>                  | command palette           |
-| <kbd>ctrl/⌘</kbd> <kbd>b</kbd>                  | toggle session sidebar    |
-| <kbd>ctrl/⌘</kbd> <kbd>1–9</kbd>                | switch session            |
-| <kbd>ctrl/⌘</kbd> <kbd>o</kbd>                  | new session               |
-| <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>o</kbd>   | temporary chat            |
-| <kbd>ctrl/⌘</kbd> <kbd>r</kbd>                  | session picker            |
-| <kbd>ctrl/⌘</kbd> <kbd>/</kbd>                  | workspace picker          |
-| <kbd>ctrl/⌘</kbd> <kbd>g</kbd>                  | toggle git review         |
-| <kbd>ctrl/⌘</kbd> <kbd>l</kbd>                  | model picker              |
-| <kbd>ctrl/⌘</kbd> <kbd>p</kbd>                  | cycle favorite model      |
-| <kbd>ctrl/⌘</kbd> <kbd>shift</kbd> <kbd>p</kbd> | cycle favorite model back |
-| <kbd>alt</kbd> <kbd>t</kbd>                     | cycle thinking level      |
-| <kbd>alt</kbd> <kbd>shift</kbd> <kbd>t</kbd>    | cycle thinking back       |
-| <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>t</kbd>   | toggle thinking blocks    |
-| <kbd>/</kbd>                                    | slash commands            |
-| <kbd>@</kbd>                                    | file picker               |
-| <kbd>alt</kbd> <kbd>enter</kbd>                 | queue follow-up           |
-| <kbd>alt</kbd> <kbd>↑</kbd>                     | restore queued text       |
-| <kbd>j</kbd> / <kbd>k</kbd>                     | scroll messages           |
-| <kbd>gg</kbd> / <kbd>G</kbd>                    | top / bottom              |
-| <kbd>gi</kbd>                                   | focus prompt              |
+| key                                                        | action                      |
+| ---------------------------------------------------------- | --------------------------- |
+| <kbd>ctrl/⌘</kbd> <kbd>k</kbd>                             | command palette             |
+| <kbd>ctrl/⌘</kbd> <kbd>b</kbd>                             | toggle session sidebar      |
+| <kbd>ctrl/⌘</kbd> <kbd>1–9</kbd>                           | switch session              |
+| <kbd>ctrl/⌘</kbd> <kbd>o</kbd>                             | new session                 |
+| <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>o</kbd>              | temporary chat              |
+| <kbd>ctrl/⌘</kbd> <kbd>r</kbd>                             | session picker              |
+| <kbd>ctrl/⌘</kbd> <kbd>/</kbd>                             | workspace picker            |
+| <kbd>ctrl/⌘</kbd> <kbd>g</kbd>                             | toggle workspace            |
+| <kbd>alt</kbd> <kbd>p</kbd>                                | focus prompt                |
+| <kbd>alt</kbd> <kbd>c</kbd>                                | focus conversation          |
+| <kbd>alt</kbd> <kbd>f</kbd>                                | focus workspace files       |
+| <kbd>alt</kbd> <kbd>g</kbd>                                | focus git changes           |
+| <kbd>alt</kbd> <kbd>e</kbd>                                | focus file or diff          |
+| <kbd>alt</kbd> <kbd>s</kbd>                                | focus sessions              |
+| <kbd>ctrl/⌘</kbd> <kbd>l</kbd>                             | model picker                |
+| <kbd>ctrl/⌘</kbd> <kbd>p</kbd>                             | cycle favorite model        |
+| <kbd>ctrl/⌘</kbd> <kbd>shift</kbd> <kbd>p</kbd>            | cycle favorite model back   |
+| <kbd>alt</kbd> <kbd>t</kbd>                                | cycle thinking level        |
+| <kbd>alt</kbd> <kbd>shift</kbd> <kbd>t</kbd>               | cycle thinking back         |
+| <kbd>ctrl/⌘</kbd> <kbd>alt</kbd> <kbd>t</kbd>              | toggle thinking blocks      |
+| <kbd>/</kbd>                                               | slash commands              |
+| <kbd>@</kbd>                                               | file picker                 |
+| <kbd>alt</kbd> <kbd>enter</kbd>                            | queue follow-up             |
+| <kbd>alt</kbd> <kbd>↑</kbd>                                | restore queued text         |
+| <kbd>j</kbd> / <kbd>k</kbd> or <kbd>↑</kbd> / <kbd>↓</kbd> | move or scroll focused pane |
+| <kbd>gg</kbd> / <kbd>G</kbd>                               | top / bottom                |
 
 ## license
 

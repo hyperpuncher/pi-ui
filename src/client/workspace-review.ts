@@ -87,12 +87,15 @@ const treeHost = requiredElement("review-tree");
 const history = requiredElement("review-history");
 const detailHeader = requiredElement("review-detail-header");
 const diffRoot = requiredElement("review-diff-view");
+const fileTreeHost = requiredElement("workspace-file-tree");
+const fileViewRoot = requiredElement("workspace-file-view");
 const empty = requiredElement("review-empty");
 const allButton = requiredButton("review-mode-all");
 const selectedButton = requiredButton("review-mode-selected");
 const splitButton = requiredButton("review-layout-split");
 const stackedButton = requiredButton("review-layout-stacked");
 const wrapButton = requiredButton("review-wrap");
+const workspaceReviewRoot = requiredElement("workspace-review");
 const submitCommentsButton = requiredButton("review-submit-comments");
 const commentStatus = requiredElement("review-comment-status");
 const data = requiredElement("workspace-review-data");
@@ -159,7 +162,6 @@ const visibility = createVisibility(app, true, (open) => {
 	workspaceFiles.setVisible(open && panelMode === "files");
 	if (open && panelMode === "git") openGitView();
 });
-window.piUi.workspaceReview = visibility;
 for (const button of modeButtons) {
 	button.addEventListener("click", () => {
 		const mode = button.dataset.workspaceMode;
@@ -186,6 +188,13 @@ const tree = new FileTree({
 	},
 });
 tree.render({ containerWrapper: treeHost });
+bindWorkspaceKeyboardNavigation();
+window.piUi.workspaceReview = {
+	...visibility,
+	focusEditor,
+	focusFiles,
+	focusGit,
+};
 
 history.addEventListener("scroll", maybeLoadOlderHistory, { passive: true });
 allButton.addEventListener("click", () => setMode("all"));
@@ -718,6 +727,96 @@ function setPanelMode(next: "files" | "git"): void {
 	if (next === "git") openGitView();
 }
 
+function focusFiles(): void {
+	visibility.open();
+	setPanelMode("files");
+	focusAfterOpen(() => workspaceFiles.focusTree());
+}
+
+function focusGit(): void {
+	if (!snapshot.isGitRepository) return;
+	visibility.open();
+	setPanelMode("git");
+	focusAfterOpen(() => {
+		const path =
+			tree.getSelectedPaths()[0] ??
+			tree.getFocusedPath() ??
+			snapshot.changes[0]?.path;
+		if (path) tree.scrollToPath(path, { focus: true });
+		requestAnimationFrame(() => {
+			const container = treeHost.querySelector("file-tree-container");
+			const root =
+				container?.shadowRoot?.querySelector<HTMLElement>('[role="tree"]');
+			(root ?? treeHost).focus({ preventScroll: true });
+		});
+	});
+}
+
+function focusEditor(): void {
+	visibility.open();
+	focusAfterOpen(() => {
+		if (panelMode === "files") workspaceFiles.focusEditor();
+		else diffRoot.focus({ preventScroll: true });
+	});
+}
+
+function focusAfterOpen(focus: () => void): void {
+	requestAnimationFrame(() => requestAnimationFrame(focus));
+}
+
+function bindWorkspaceKeyboardNavigation(): void {
+	workspaceReviewRoot.addEventListener("keydown", (event) => {
+		if (
+			event.defaultPrevented ||
+			event.isComposing ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey ||
+			event.shiftKey ||
+			(event.code !== "KeyJ" && event.code !== "KeyK")
+		) {
+			return;
+		}
+		const path = event.composedPath();
+		if (path.some(isTextInput)) return;
+		const arrow = event.code === "KeyJ" ? "ArrowDown" : "ArrowUp";
+
+		if (path.some((target) => target === treeHost || target === fileTreeHost)) {
+			event.preventDefault();
+			path[0]?.dispatchEvent(
+				new KeyboardEvent("keydown", {
+					bubbles: true,
+					code: arrow,
+					composed: true,
+					key: arrow,
+				}),
+			);
+			return;
+		}
+
+		const scrollPane = path.includes(fileViewRoot)
+			? fileViewRoot
+			: path.includes(diffRoot)
+				? diffRoot
+				: undefined;
+		if (!scrollPane) return;
+		event.preventDefault();
+		scrollPane.scrollBy({
+			behavior: "smooth",
+			top: event.code === "KeyJ" ? 100 : -100,
+		});
+	});
+}
+
+function isTextInput(target: EventTarget): boolean {
+	return (
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		(target instanceof HTMLElement && target.isContentEditable)
+	);
+}
+
 function renderReviewContextMenu(
 	item: ContextMenuItem,
 	context: ContextMenuOpenContext,
@@ -823,6 +922,7 @@ function createVisibility(
 		applyOpen,
 		isAvailable: () => available,
 		isOpen: () => open,
+		open: () => requestOpen(true),
 		setAvailable(next: boolean) {
 			available = next;
 			syncAvailability();

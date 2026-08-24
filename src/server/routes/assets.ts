@@ -12,6 +12,7 @@ export function registerAssetRoutes(router: ExactRouter<RouteContext>): void {
 				renderPage(
 					context.renderer.projectState(context.store.snapshot()),
 					context.appVersion,
+					context.keybindHints,
 				),
 				{
 					headers: {

@@ -6,6 +6,7 @@ export const endpoints = {
 	stream: "/stream",
 	displayRefresh: "/display-refresh",
 	codeTheme: "/code-theme",
+	keybindHints: "/keybind-hints",
 	sessionPerformanceClient: "/session-performance/client",
 	prompt: "/prompt",
 	promptFollowUp: "/prompt/follow-up",

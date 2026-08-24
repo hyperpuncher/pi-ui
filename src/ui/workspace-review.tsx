@@ -12,6 +12,7 @@ import {
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
+import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
 type ResizePreference = "changesRatio" | "gitPaneRatio" | "reviewSidebarWidth";
@@ -87,8 +88,15 @@ export function renderWorkspaceReview(
 			id="workspace-review"
 			class="z-30 min-h-0 min-w-0"
 			aria-label="Workspace"
+			aria-keyshortcuts="Alt+E Alt+F Alt+G"
 			aria-hidden="true"
 			inert
+			data-on:keydown__window={`${altShortcutAction(
+				"KeyF",
+				"window.piUi.workspaceReview.focusFiles();",
+			)}
+			${altShortcutAction("KeyG", "window.piUi.workspaceReview.focusGit();")}
+			${altShortcutAction("KeyE", "window.piUi.workspaceReview.focusEditor();")}`}
 			data-attr:aria-hidden="$_workspaceReviewOpen ? 'false' : 'true'"
 			data-attr:inert="!$_workspaceReviewOpen"
 		>
@@ -107,7 +115,9 @@ export function renderWorkspaceReview(
 					<section class="pi-raised-surface flex min-h-0 flex-1 flex-col overflow-hidden">
 						<div
 							id="workspace-file-tree"
-							class="min-h-0 flex-1 overflow-hidden pt-1 [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+							class="min-h-0 flex-1 overflow-hidden pt-1 outline-none [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+							aria-label="Workspace files"
+							tabindex="-1"
 						/>
 					</section>
 				</aside>
@@ -160,8 +170,10 @@ export function renderWorkspaceReview(
 						</header>
 						<div
 							id="review-tree"
-							class="min-h-0 flex-1 overflow-hidden pt-1 [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+							class="min-h-0 flex-1 overflow-hidden pt-1 outline-none [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
 							style={workspaceTreeStyle}
+							aria-label="Git changes"
+							tabindex="-1"
 							data-show="$_workspaceReviewHasChanges"
 						/>
 						<div
@@ -235,7 +247,10 @@ export function renderWorkspaceReview(
 
 				<div
 					id="workspace-file-main"
-					class="flex min-h-0 min-w-0 flex-col"
+					class="flex min-h-0 min-w-0 flex-col outline-none"
+					aria-label="File editor"
+					aria-keyshortcuts="Alt+E"
+					tabindex="-1"
 					style={
 						snapshot.isGitRepository && preferences.tab !== "files"
 							? "display: none"
@@ -247,7 +262,7 @@ export function renderWorkspaceReview(
 						<div class="flex min-w-0 flex-1 items-center gap-2 font-mono text-[11px]">
 							<span
 								id="workspace-file-path"
-								class="pi-fine-print min-w-0 flex-1 truncate"
+								class="pi-fine-print min-w-0 truncate"
 							>
 								Select a file
 							</span>
@@ -256,6 +271,7 @@ export function renderWorkspaceReview(
 								class="pi-fine-print shrink-0 tabular-nums"
 							/>
 						</div>
+						<ShortcutKbd shortcut="alt E" />
 						<div class="flex rounded-md bg-(--pi-control-well) p-0.5">
 							<button
 								id="workspace-file-wrap"
@@ -316,8 +332,10 @@ export function renderWorkspaceReview(
 					<div class="pi-review-diff-canvas relative min-h-0 min-w-0 flex-1">
 						<div
 							id="workspace-file-view"
-							class="absolute inset-0 overflow-auto overscroll-contain"
+							class="absolute inset-0 overflow-auto overscroll-contain outline-none"
 							aria-label="File contents"
+							aria-keyshortcuts="Alt+E"
+							tabindex="-1"
 						/>
 						<div
 							id="workspace-file-empty"
@@ -350,6 +368,7 @@ export function renderWorkspaceReview(
 							{snapshot.branch ?? ""}
 						</span>
 						<div class="pi-review-controls ml-auto flex shrink-0 items-center gap-1">
+							<ShortcutKbd shortcut="alt E" />
 							<div
 								class="flex rounded-md bg-(--pi-control-well) p-0.5"
 								aria-label="Diff scope"
@@ -481,8 +500,10 @@ export function renderWorkspaceReview(
 					<div class="pi-review-diff-canvas relative min-h-0 min-w-0 flex-1">
 						<div
 							id="review-diff-view"
-							class="absolute inset-0 overflow-x-clip overflow-y-auto overscroll-contain"
+							class="absolute inset-0 overflow-x-clip overflow-y-auto overscroll-contain outline-none"
 							aria-label="Code changes"
+							aria-keyshortcuts="Alt+E"
+							tabindex="-1"
 						/>
 						<div
 							id="review-empty"
@@ -606,7 +627,7 @@ function renderWorkspaceModeHeader(
 ): JSX.Element {
 	return (
 		<header
-			class="flex h-8 shrink-0 items-start"
+			class="mb-(--pi-workspace-gap) flex shrink-0"
 			style={gitAvailable ? undefined : "display: none"}
 			data-show="$_workspaceReviewGitAvailable"
 		>
@@ -616,19 +637,21 @@ function renderWorkspaceModeHeader(
 			>
 				<button
 					type="button"
-					class="flex-1 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					class="flex flex-1 items-center justify-center gap-2 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 					aria-pressed={active === "files" ? "true" : "false"}
 					data-attr:aria-pressed="
 						$workspaceReviewPreferences.tab === 'files' ||
 						!$_workspaceReviewGitAvailable ? 'true' : 'false'
 					"
 					data-workspace-mode="files"
+					aria-keyshortcuts="Alt+F"
 				>
-					Files
+					<span>Files</span>
+					<ShortcutKbd shortcut="alt F" />
 				</button>
 				<button
 					type="button"
-					class="flex-1 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					class="flex flex-1 items-center justify-center gap-2 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
 					aria-pressed={active === "git" ? "true" : "false"}
 					data-attr:aria-pressed="
 						$workspaceReviewPreferences.tab !== 'files' &&
@@ -637,8 +660,10 @@ function renderWorkspaceModeHeader(
 					data-workspace-mode="git"
 					disabled={!gitAvailable}
 					data-attr:disabled="!$_workspaceReviewGitAvailable"
+					aria-keyshortcuts="Alt+G"
 				>
-					Git
+					<span>Git</span>
+					<ShortcutKbd shortcut="alt G" />
 				</button>
 			</div>
 		</header>

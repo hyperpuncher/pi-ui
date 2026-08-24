@@ -1,10 +1,39 @@
-import { shortcutParts } from "../utils/keyboard.ts";
+import { formatShortcut, shortcutParts } from "../utils/keyboard.ts";
 
-export function ShortcutKbd(props: { shortcut: string; shortcutSlot?: boolean }) {
+export function altShortcutAction(code: string, action: string): string {
+	return `if (
+		evt.code === '${code}' &&
+		evt.altKey &&
+		!evt.shiftKey &&
+		!evt.ctrlKey &&
+		!evt.metaKey &&
+		!document.querySelector('dialog[open]')
+	) {
+		evt.preventDefault();
+		${action}
+	}`;
+}
+
+function shortcutGlyph(part: string): string {
+	const key = part.toLowerCase();
+	if (key === "alt") return "⌥";
+	if (key === "ctrl") return "⌃";
+	if (key === "shift") return "⇧";
+	return part;
+}
+
+export function ShortcutKbd(props: { shortcut: string }) {
+	const symbolic = Deno.build.os === "darwin";
+	const label = symbolic ? formatShortcut(props.shortcut) : undefined;
 	return (
-		<span class="flex items-center gap-1" data-shortcut={props.shortcutSlot}>
+		<span
+			class="flex items-center gap-0.5"
+			data-keybind-hint
+			aria-label={label}
+			title={label}
+		>
 			{shortcutParts(props.shortcut).map((part) => (
-				<kbd class="kbd">{part}</kbd>
+				<kbd class="kbd">{symbolic ? shortcutGlyph(part) : part}</kbd>
 			))}
 			<span class="hidden" aria-hidden="true" />
 		</span>

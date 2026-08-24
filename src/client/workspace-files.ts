@@ -23,6 +23,7 @@ type WorkspaceFilesOptions = {
 export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	const api = createWorkspaceFilesApi(options.endpoint);
 	const treeHost = requiredElement("workspace-file-tree");
+	const mainHost = requiredElement("workspace-file-main");
 	const viewHost = requiredElement("workspace-file-view");
 	const empty = requiredElement("workspace-file-empty");
 	const pathLabel = requiredElement("workspace-file-path");
@@ -605,6 +606,22 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	confirmCancel.addEventListener("click", () => confirmDialog.close("cancel"));
 	confirmAction.addEventListener("click", () => confirmDialog.close("confirm"));
 
+	function focusTree(): void {
+		const path =
+			tree.getSelectedPaths()[0] ?? tree.getFocusedPath() ?? loadedPaths[0];
+		if (path) tree.scrollToPath(path, { focus: true });
+		requestAnimationFrame(() => {
+			const container = treeHost.querySelector("file-tree-container");
+			const root =
+				container?.shadowRoot?.querySelector<HTMLElement>('[role="tree"]');
+			(root ?? treeHost).focus({ preventScroll: true });
+		});
+	}
+
+	function focusEditor(): void {
+		(current ? viewHost : mainHost).focus({ preventScroll: true });
+	}
+
 	function cleanUp(): void {
 		stopEditing();
 		viewer.cleanUp();
@@ -615,6 +632,8 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	showEmpty("Open a file from the workspace");
 	return {
 		cleanUp,
+		focusEditor,
+		focusTree,
 		openFile,
 		refresh,
 		refreshAfterDiscard,

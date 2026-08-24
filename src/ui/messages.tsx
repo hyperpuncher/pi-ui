@@ -16,7 +16,7 @@ import { escapeHtml } from "../utils/html.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
-import { ShortcutKbd } from "./keyboard.tsx";
+import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { renderMarkdownStreaming } from "./markdown.tsx";
 import type { AppMessage } from "./render-state.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
@@ -47,7 +47,7 @@ export function renderMessages(
 		<main
 			id="messages"
 			class={[
-				"min-h-0 overflow-y-auto mask-[linear-gradient(to_bottom,black_92%,transparent),linear-gradient(black,black)] mask-size-[calc(100%-var(--scrollbar-width))_100%,var(--scrollbar-width)_100%] mask-position-[left_top,right_top] mask-no-repeat px-4 sm:px-6 xl:px-8",
+				"min-h-0 overflow-y-auto mask-[linear-gradient(to_bottom,black_92%,transparent),linear-gradient(black,black)] mask-size-[calc(100%-var(--scrollbar-width))_100%,var(--scrollbar-width)_100%] mask-position-[left_top,right_top] mask-no-repeat px-4 outline-none sm:px-6 xl:px-8",
 				messages.length === 0 ? "pt-8 pb-32" : "pt-24",
 			]}
 			data-show="!$_sessionTransitionVisible"
@@ -60,6 +60,8 @@ export function renderMessages(
 				$_sessionTransitionLoading ? 'true' : 'false'
 			"
 			aria-live="polite"
+			aria-keyshortcuts="Alt+C"
+			tabindex="-1"
 			data-init="window.piUi.messageScroll.bindResize()"
 			data-on:keydown__window={`if (
 			${primaryModifierExpression()} &&
@@ -69,7 +71,8 @@ export function renderMessages(
 			) {
 			evt.preventDefault();
 			@post('${endpoints.thinkingVisibilityToggle}', { payload: {} });
-			}`}
+			}
+			${altShortcutAction("KeyC", "el.focus({ preventScroll: true });")}`}
 		>
 			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
 				<div id="message-list" class="contents">
@@ -123,7 +126,10 @@ function renderEmptyMessages(
 				<p class="m-0 text-lg font-medium text-foreground">
 					What can I help with?
 				</p>
-				<p class="m-0 mt-3 flex items-center justify-center gap-2 text-sm">
+				<p
+					class="m-0 mt-3 flex items-center justify-center gap-2 text-sm"
+					data-keybind-hint
+				>
 					<ShortcutKbd shortcut={emptyHint.keys} />
 					<span safe>{emptyHint.description}</span>
 				</p>

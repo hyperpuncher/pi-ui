@@ -1,5 +1,4 @@
 import { markUnpinned, scrollBottom } from "./message-scroll.js";
-import { focusPromptEnd } from "./prompt.js";
 
 const stepPx = 100;
 const stepDurationMs = 120;
@@ -15,7 +14,13 @@ let remainder = 0;
 export function bindVimScroll() {
 	let pendingG = false;
 	document.addEventListener("keydown", (event) => {
-		if (event.ctrlKey || event.metaKey || event.altKey || isTextInputFocused())
+		if (
+			event.defaultPrevented ||
+			event.ctrlKey ||
+			event.metaKey ||
+			event.altKey ||
+			isTextInputFocused()
+		)
 			return;
 		if (document.querySelector("dialog[open]")) return;
 		if (pendingG) {
@@ -23,11 +28,6 @@ export function bindVimScroll() {
 			if (event.code === "KeyG" && !event.shiftKey) {
 				event.preventDefault();
 				scrollTo("top");
-				return;
-			}
-			if (event.code === "KeyI" && !event.shiftKey) {
-				event.preventDefault();
-				focusPromptEnd();
 				return;
 			}
 		}

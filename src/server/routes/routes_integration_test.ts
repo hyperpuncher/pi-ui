@@ -21,6 +21,7 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"GET /stream",
 		"POST /display-refresh",
 		"POST /code-theme",
+		"POST /keybind-hints",
 		"POST /session-performance/client",
 		"POST /prompt",
 		"POST /prompt/follow-up",
@@ -94,6 +95,13 @@ Deno.test("page assets use the current immutable content version", async () => {
 	assertEquals(response.headers.get("cache-control"), "no-store");
 	assertStringIncludes(html, `/static/${context.appVersion}/app.css`);
 	assertStringIncludes(html, `appVersion=${context.appVersion}`);
+	assertStringIncludes(html, 'data-keybind-hints="true"');
+
+	context.keybindHints = false;
+	const hiddenHintsPage = await createRouter(context).fetch(
+		new Request("http://localhost/"),
+	);
+	assertStringIncludes(await hiddenHintsPage.text(), 'data-keybind-hints="false"');
 
 	const basecoat = await createRouter(context).fetch(
 		new Request("http://localhost/basecoat.js"),
@@ -644,11 +652,13 @@ function fakeContext(
 		renderer?: UiRenderer;
 		openPath?: (path: string) => Promise<void>;
 		isLocalRequest?: (request: Request) => boolean;
+		keybindHints?: boolean;
 	} = {},
 ): RouteContext {
 	const store = new AppStore();
 	return {
 		appVersion: "test-version",
+		keybindHints: overrides.keybindHints ?? true,
 		store,
 		renderer:
 			overrides.renderer ??

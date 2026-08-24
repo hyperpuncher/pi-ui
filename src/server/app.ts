@@ -20,6 +20,7 @@ import type { RouteContext, RouteResources } from "./routes/context.ts";
 import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
 import { registerExtensionUiRoutes } from "./routes/extension-ui.ts";
 import { registerFileRoutes } from "./routes/files.ts";
+import { registerKeybindHintRoutes } from "./routes/keybind-hints.ts";
 import { registerLlamaRoutes } from "./routes/llama.ts";
 import { registerModelRoutes } from "./routes/models.ts";
 import { registerPromptRoutes } from "./routes/prompt.ts";
@@ -42,7 +43,7 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const staticAssets = await createStaticAssetServer(staticRoot);
-	await ensureAppConfig();
+	const appConfig = await ensureAppConfig();
 	const [codeTheme, autoTitle, workspaceReviewPreferences] = await Promise.all([
 		readCodeThemePreference(),
 		readAutoTitleConfig(),
@@ -99,6 +100,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		resources,
 		transferredFiles,
 		appVersion: staticAssets.version,
+		keybindHints: appConfig.keybindHints !== false,
 		readBasecoat: async () =>
 			new Uint8Array(await Deno.readFile(basecoatJsPath)).buffer,
 		serveStatic: (request) => staticAssets.serve(request),
@@ -138,6 +140,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerDisplayRefreshRoutes(router);
 	registerExtensionUiRoutes(router);
 	registerCodeThemeRoutes(router);
+	registerKeybindHintRoutes(router);
 	registerPromptRoutes(router);
 	registerSessionRoutes(router);
 	registerSessionPerformanceRoutes(router);

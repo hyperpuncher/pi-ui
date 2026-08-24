@@ -73,7 +73,11 @@ const startupLayoutGateScript = `(() => {
 	globalThis.piUiStartupLayoutGate = { arm: () => { armed = true; } };
 })();`;
 
-export function renderPage(state: AppRenderSnapshot, appVersion = "development"): string {
+export function renderPage(
+	state: AppRenderSnapshot,
+	appVersion = "development",
+	keybindHints = true,
+): string {
 	const desktop = Deno.BrowserWindow instanceof Function;
 	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
@@ -128,6 +132,7 @@ export function renderPage(state: AppRenderSnapshot, appVersion = "development")
 				<body
 					class="h-full overflow-hidden"
 					spellcheck="false"
+					data-keybind-hints={keybindHints ? "true" : "false"}
 					data-time-locale={systemTimeLocale}
 					data-native-file-picker={desktop ? "true" : "false"}
 					data-files-pick-endpoint={endpoints.filesPick}

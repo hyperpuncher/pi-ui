@@ -18,7 +18,7 @@ export const workspaceTreeStyle = [
 	"--trees-focus-ring-color-override: var(--muted-foreground)",
 	"--trees-padding-inline-override: 8px",
 	"--trees-scrollbar-gutter-override: 4px",
-	"--trees-search-bg-override: var(--pi-control-well)",
+	"--trees-search-bg-override: var(--pi-tree-search-background)",
 	"--trees-selected-bg-override: var(--pi-selection-background)",
 	"--trees-selected-focused-border-color-override: var(--muted-foreground)",
 ].join("; ");

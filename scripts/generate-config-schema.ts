@@ -119,6 +119,12 @@ const schema = Type.Object(
 				},
 			),
 		),
+		keybindHints: Type.Optional(
+			Type.Boolean({
+				default: true,
+				description: "Show keyboard shortcut hints in the interface.",
+			}),
+		),
 	},
 	{
 		$schema: "https://json-schema.org/draft/2020-12/schema",

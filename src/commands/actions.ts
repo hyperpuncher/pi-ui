@@ -48,6 +48,10 @@ export function toggleWorkspaceReviewAction(): string {
 	return "$_workspaceReviewOpen = !$_workspaceReviewOpen";
 }
 
+export function toggleKeybindHintsAction(): string {
+	return `document.body.dataset.keybindHints = document.body.dataset.keybindHints === 'false' ? 'true' : 'false'; @post('${endpoints.keybindHints}', { payload: { keybindHints: document.body.dataset.keybindHints === 'true' } })`;
+}
+
 export function togglePopoverAction(triggerId: string): string {
 	return `window.piUi.dialogs.togglePopover(${JSON.stringify(triggerId)})`;
 }
@@ -60,6 +64,7 @@ export const commandActions = {
 	"command-palette": "document.getElementById('command-input')?.focus()",
 	"change-code-theme":
 		"document.getElementById('command-dialog')?.close(); window.dispatchEvent(new Event('pi-ui-open-code-theme'))",
+	"toggle-keybind-hints": toggleKeybindHintsAction(),
 	"switch-model": `setTimeout(() => ${togglePopoverAction("model-select-trigger")}, 0)`,
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),

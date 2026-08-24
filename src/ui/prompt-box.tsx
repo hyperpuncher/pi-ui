@@ -2,7 +2,7 @@ import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { Icon } from "./icon.tsx";
-import { ShortcutKbd } from "./keyboard.tsx";
+import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
 import {
@@ -62,16 +62,26 @@ export function renderPromptBox(
 				class="input-group pi-raised-surface pi-prompt-surface relative z-10 overflow-visible p-3 text-sm transition-shadow duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
 				data-orientation="vertical"
 			>
+				<div class="pointer-events-none absolute top-2 right-2 z-20">
+					<ShortcutKbd shortcut="alt P" />
+				</div>
 				{renderExtensionWidgets(state, "aboveEditor")}
 				<textarea
 					id="prompt-input"
-					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 text-[15px]"
+					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 pr-20 text-[15px] in-data-[keybind-hints=false]:pr-1"
 					placeholder="Ask pi anything..."
 					aria-label="Message"
+					aria-keyshortcuts="Alt+P"
 					rows="1"
 					data-bind:prompt
 					attrs={{
 						"data-on:input__debounce.150ms": `@post('${endpoints.extensionUiEditor}', { payload: { prompt: $prompt } })`,
+						"data-on:keydown__window": altShortcutAction(
+							"KeyP",
+							`el.focus({ preventScroll: true });
+							el.selectionStart = el.value.length;
+							el.selectionEnd = el.value.length;`,
+						),
 					}}
 					data-on:input="
 						window.piUi.promptHistory.handleInput();
