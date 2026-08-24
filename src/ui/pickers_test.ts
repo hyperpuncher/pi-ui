@@ -299,6 +299,26 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	assertFalse(withoutSelection.includes("max-w-56"));
 });
 
+Deno.test("model picker shows only the final model name in its trigger", () => {
+	const html = renderModelPicker(
+		appRenderSnapshot({
+			models: [
+				{
+					id: "deepseek-ai/DeepSeek-R1",
+					provider: "huggingface",
+					name: "DeepSeek R1",
+					configured: true,
+					scoped: false,
+				},
+			],
+			currentModel: "huggingface/deepseek-ai/DeepSeek-R1",
+		}),
+	);
+
+	assertStringIncludes(html, "<span>DeepSeek-R1</span>");
+	assertStringIncludes(html, ">deepseek-ai/DeepSeek-R1</span>");
+});
+
 Deno.test("thinking picker describes every supported maximum level", () => {
 	const html = renderThinkingPicker(
 		appRenderSnapshot({

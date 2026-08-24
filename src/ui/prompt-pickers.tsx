@@ -372,5 +372,5 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 }
 
 function modelTriggerLabel(model: AppStateSnapshot["models"][number]): string {
-	return model.id;
+	return model.id.slice(model.id.lastIndexOf("/") + 1);
 }
