@@ -326,14 +326,7 @@
 		grid-template-columns: minmax(0, 1fr);
 		padding: var(--pi-workspace-inset);
 		background: var(--pi-workspace-canvas-background);
-		opacity: 0;
-		transform: translateX(-100%);
 		box-shadow: var(--shadow-xl);
-		transition:
-			transform 150ms var(--pi-ease-out),
-			opacity 150ms var(--pi-ease-out),
-			display 150ms;
-		transition-behavior: allow-discrete;
 	}
 
 	#workspace-review #review-git-separator {
@@ -346,15 +339,6 @@
 
 	#app.pi-review-open #workspace-review {
 		display: grid;
-		opacity: 1;
-		transform: translateX(0);
-	}
-
-	@starting-style {
-		#app.pi-review-open #workspace-review {
-			opacity: 0;
-			transform: translateX(-100%);
-		}
 	}
 
 	#chat-pane {
@@ -414,12 +398,6 @@
 			grid-column: 4;
 			width: auto;
 			margin: var(--pi-workspace-inset) 0;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		#workspace-review {
-			transition: none;
 		}
 	}
 
