@@ -79,6 +79,14 @@ Deno.test("plain, fenced, and incomplete markdown preserve rendering structure",
 	const unknown = await renderMarkdownFinal("```not-a-language\nvalue\n```");
 	assertIncludes(unknown, ">text</span>");
 
+	for (const unlabeled of [
+		renderMarkdownStreaming("```\nvalue\n```"),
+		await renderMarkdownFinal("```\nvalue\n```"),
+	]) {
+		assertIncludes(unlabeled, "data-code-block");
+		assertIncludes(unlabeled, ">text</span>");
+	}
+
 	const incomplete = renderMarkdownStreaming("```ts\nconst value = 1;");
 	assertIncludes(incomplete, "data-code-block");
 	assertIncludes(incomplete, "const value = 1;");

@@ -260,7 +260,7 @@ export async function renderCodeFinal(
 function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
 	const blocks = [
 		...html.matchAll(
-			/<pre><code class="language-([^"]*)">([\s\S]*?)<\/code><\/pre>/g,
+			/<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g,
 		),
 	];
 	if (blocks.length === 0) {
@@ -291,7 +291,7 @@ async function highlightCode(
 async function highlightCodeBlocksFinal(html: string): Promise<string> {
 	const blocks = [
 		...html.matchAll(
-			/<pre><code class="language-([^"]*)">([\s\S]*?)<\/code><\/pre>/g,
+			/<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g,
 		),
 	];
 	if (blocks.length === 0) return html;
