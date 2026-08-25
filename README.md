@@ -131,6 +131,10 @@ all options with their defaults:
 		"dark": "pierre-dark-soft",
 		"light": "pierre-light"
 	},
+	"fonts": {
+		"mono": "system",
+		"sans": "system"
+	},
 	"gitView": {
 		"changesRatio": 0.5,
 		"gitPaneRatio": 0.5,

@@ -27,7 +27,7 @@
 		"check": "deno task schema:check && deno task check:app && deno task check:tools && deno task check:client",
 		"check:app": "deno check --conditions browser src/main.ts src/server-main.ts scripts/build-windows-folder-picker.ts scripts/generate-config-schema.ts scripts/release.ts scripts/sync-client-dependencies.ts",
 		"check:tools": "deno check --config tools/deno.json rolldown.config.ts scripts/generate-basecoat-css.ts",
-		"check:client": "deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/pi-fuzzy.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
+		"check:client": "deno check --config deno.client.json --conditions browser src/client/code-theme.ts src/client/fonts.ts src/client/pi-fuzzy.ts src/client/workspace-review.ts src/client/pierre-worker.ts",
 		"test": "deno test --conditions browser -A",
 		"audit": "bunx fallow audit"
 	},

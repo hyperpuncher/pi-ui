@@ -5,6 +5,7 @@ export type AppCommandId =
 	| "session-tree"
 	| "command-palette"
 	| "change-code-theme"
+	| "change-fonts"
 	| "toggle-keybind-hints"
 	| "switch-model"
 	| "cycle-model"
@@ -62,6 +63,12 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		id: "change-code-theme",
 		title: "Change code theme",
 		description: "Choose syntax colors for code and diffs.",
+		shortcut: { display: "", native: "", keys: [] },
+	},
+	{
+		id: "change-fonts",
+		title: "Change fonts",
+		description: "Choose fonts for the interface and code.",
 		shortcut: { display: "", native: "", keys: [] },
 	},
 	{

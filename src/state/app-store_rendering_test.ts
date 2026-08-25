@@ -799,6 +799,8 @@ Deno.test("server-owned view signals are transport-private", () => {
 	assertEqual(Object.keys(signals).sort(), [
 		"_codeThemeDark",
 		"_codeThemeLight",
+		"_fontMono",
+		"_fontSans",
 		"_isBusy",
 		"_isSessionReady",
 		"_promptHistory",

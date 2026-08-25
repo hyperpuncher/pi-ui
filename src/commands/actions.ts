@@ -64,6 +64,8 @@ export const commandActions = {
 	"command-palette": "document.getElementById('command-input')?.focus()",
 	"change-code-theme":
 		"document.getElementById('command-dialog')?.close(); window.dispatchEvent(new Event('pi-ui-open-code-theme'))",
+	"change-fonts":
+		"document.getElementById('command-dialog')?.close(); window.dispatchEvent(new Event('pi-ui-open-fonts'))",
 	"toggle-keybind-hints": toggleKeybindHintsAction(),
 	"switch-model": `setTimeout(() => ${togglePopoverAction("model-select-trigger")}, 0)`,
 	"cycle-model": cycleModelAction("forward"),

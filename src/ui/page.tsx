@@ -1,3 +1,4 @@
+import { activeFontStacks } from "../fonts.ts";
 import { getPierreThemes } from "../pierre-theme.ts";
 import {
 	endpoints,
@@ -16,6 +17,7 @@ import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
 import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
+import { renderFontDialog } from "./font-dialog.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
@@ -81,6 +83,7 @@ export function renderPage(
 	const desktop = Deno.BrowserWindow instanceof Function;
 	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
+	const fonts = activeFontStacks();
 	const displayClientId = crypto.randomUUID();
 	const gateStartupLayout =
 		desktop && Boolean(Deno.env.get("HYPRLAND_INSTANCE_SIGNATURE"));
@@ -92,7 +95,7 @@ export function renderPage(
 			<html
 				lang="en"
 				class="h-full overflow-hidden"
-				style="--sidebar-width: var(--pi-session-sidebar-default-width);"
+				style={`--sidebar-width: var(--pi-session-sidebar-default-width); --font-sans: ${fonts.sans}; --font-mono: ${fonts.mono};`}
 			>
 				<head>
 					<meta charset="utf-8" />
@@ -110,6 +113,7 @@ export function renderPage(
 					{desktop && <script>{desktopStartupReadyScript}</script>}
 					<script src="/basecoat.js" defer></script>
 					<script type="module" src={`${staticBase}/app/main.js`}></script>
+					<script type="module" src={`${staticBase}/build/fonts.js`}></script>
 					<script
 						type="module"
 						src={`${staticBase}/vendor/datastar.js`}
@@ -145,11 +149,14 @@ export function renderPage(
 					data-attr:data-code-theme-light="$_codeThemeLight"
 					data-attr:data-code-theme-dark="$_codeThemeDark"
 					data-signals={initialSignals}
-					data-effect={`window.dispatchEvent(
-						new CustomEvent('pi-ui-code-theme-changed', {
-							detail: { light: $_codeThemeLight, dark: $_codeThemeDark },
-						}),
-					)`}
+					data-effect={`
+						window.piUi.fonts.apply($_fontMono, $_fontSans);
+						window.dispatchEvent(
+							new CustomEvent('pi-ui-code-theme-changed', {
+								detail: { light: $_codeThemeLight, dark: $_codeThemeDark },
+							}),
+						);
+					`}
 					data-on:pi-ui-display-refresh={`@post('${endpoints.displayRefresh}', {
 						payload: { clientId: '${displayClientId}', hz: evt.detail.hz },
 					})`}
@@ -293,6 +300,7 @@ export function renderPage(
 
 					{renderCommandMenu()}
 					{renderCodeThemeDialog()}
+					{renderFontDialog()}
 					{renderAuthDialog(state.authDialog)}
 					{renderExtensionDialog(state.extensionDialog)}
 					{renderLlamaDialog(state.llamaDialog)}

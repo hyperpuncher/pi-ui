@@ -1,0 +1,419 @@
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src:
+		local("Inter Variable"),
+		local("Inter"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/inter:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "IBM Plex Sans";
+	font-style: normal;
+	font-weight: 100 700;
+	font-display: swap;
+	src:
+		local("IBM Plex Sans Variable"),
+		local("IBM Plex Sans"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-sans:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "JetBrains Mono";
+	font-style: normal;
+	font-weight: 100 800;
+	font-display: swap;
+	src:
+		local("JetBrains Mono Variable"),
+		local("JetBrains Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Fira Code";
+	font-style: normal;
+	font-weight: 300 700;
+	font-display: swap;
+	src:
+		local("Fira Code Variable"),
+		local("Fira Code"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/fira-code:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Geist";
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src:
+		local("Geist Variable"),
+		local("Geist"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/geist:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Manrope";
+	font-style: normal;
+	font-weight: 200 800;
+	font-display: swap;
+	src:
+		local("Manrope Variable"),
+		local("Manrope"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/manrope:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Source Sans 3";
+	font-style: normal;
+	font-weight: 200 900;
+	font-display: swap;
+	src:
+		local("Source Sans 3 Variable"),
+		local("Source Sans 3"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/source-sans-3:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Atkinson Hyperlegible Next";
+	font-style: normal;
+	font-weight: 200 800;
+	font-display: swap;
+	src:
+		local("Atkinson Hyperlegible Next Variable"),
+		local("Atkinson Hyperlegible Next"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/atkinson-hyperlegible-next:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Atkinson Hyperlegible Mono";
+	font-style: normal;
+	font-weight: 200 800;
+	font-display: swap;
+	src:
+		local("Atkinson Hyperlegible Mono Variable"),
+		local("Atkinson Hyperlegible Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/atkinson-hyperlegible-mono:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src:
+		local("Geist Mono Variable"),
+		local("Geist Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/geist-mono:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Source Code Pro";
+	font-style: normal;
+	font-weight: 200 900;
+	font-display: swap;
+	src:
+		local("Source Code Pro Variable"),
+		local("Source Code Pro"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/source-code-pro:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Roboto Mono";
+	font-style: normal;
+	font-weight: 100 700;
+	font-display: swap;
+	src:
+		local("Roboto Mono Variable"),
+		local("Roboto Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/roboto-mono:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Intel One Mono";
+	font-style: normal;
+	font-weight: 300 700;
+	font-display: swap;
+	src:
+		local("Intel One Mono Variable"),
+		local("Intel One Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/intel-one-mono:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Victor Mono";
+	font-style: normal;
+	font-weight: 100 700;
+	font-display: swap;
+	src:
+		local("Victor Mono Variable"),
+		local("Victor Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/victor-mono:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Cascadia Code";
+	font-style: normal;
+	font-weight: 200 700;
+	font-display: swap;
+	src:
+		local("Cascadia Code Variable"),
+		local("Cascadia Code"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/cascadia-code:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Martian Mono";
+	font-style: normal;
+	font-weight: 100 800;
+	font-display: swap;
+	src:
+		local("Martian Mono Variable"),
+		local("Martian Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/martian-mono:vf@5.3.0/latin-wght-normal.woff2")
+			format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Iosevka";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local("Iosevka Regular"),
+		local("Iosevka"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/iosevka@5.3.0/latin-400-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka";
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src:
+		local("Iosevka Medium"),
+		local("Iosevka"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/iosevka@5.3.0/latin-500-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Iosevka";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src:
+		local("Iosevka SemiBold"),
+		local("Iosevka"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/iosevka@5.3.0/latin-600-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Maple Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local("Maple Mono Regular"),
+		local("Maple Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/maple-mono@5.3.0/latin-400-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Maple Mono";
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src:
+		local("Maple Mono Medium"),
+		local("Maple Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/maple-mono@5.3.0/latin-500-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Maple Mono";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src:
+		local("Maple Mono SemiBold"),
+		local("Maple Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/maple-mono@5.3.0/latin-600-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Monaspace Neon";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local("Monaspace Neon Regular"),
+		local("Monaspace Neon"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/monaspace-neon@5.3.0/latin-400-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Monaspace Neon";
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src:
+		local("Monaspace Neon Medium"),
+		local("Monaspace Neon"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/monaspace-neon@5.3.0/latin-500-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Monaspace Neon";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src:
+		local("Monaspace Neon SemiBold"),
+		local("Monaspace Neon"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/monaspace-neon@5.3.0/latin-600-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Commit Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local("Commit Mono Regular"),
+		local("Commit Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/commit-mono@5.3.0/latin-400-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Commit Mono";
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src:
+		local("Commit Mono Medium"),
+		local("Commit Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/commit-mono@5.3.0/latin-500-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Commit Mono";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src:
+		local("Commit Mono SemiBold"),
+		local("Commit Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/commit-mono@5.3.0/latin-600-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "IBM Plex Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local("IBM Plex Mono Regular"),
+		local("IBM Plex Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@5.3.0/latin-400-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "IBM Plex Mono";
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src:
+		local("IBM Plex Mono Medium"),
+		local("IBM Plex Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@5.3.0/latin-500-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "IBM Plex Mono";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src:
+		local("IBM Plex Mono SemiBold"),
+		local("IBM Plex Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@5.3.0/latin-600-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Ubuntu Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local("Ubuntu Mono Regular"),
+		local("Ubuntu Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/ubuntu-mono@5.3.0/latin-400-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Ubuntu Mono";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src:
+		local("Ubuntu Mono Bold"),
+		local("Ubuntu Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/ubuntu-mono@5.3.0/latin-700-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Space Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local("Space Mono Regular"),
+		local("Space Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/space-mono@5.3.0/latin-400-normal.woff2")
+			format("woff2");
+}
+
+@font-face {
+	font-family: "Space Mono";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src:
+		local("Space Mono Bold"),
+		local("Space Mono"),
+		url("https://cdn.jsdelivr.net/fontsource/fonts/space-mono@5.3.0/latin-700-normal.woff2")
+			format("woff2");
+}

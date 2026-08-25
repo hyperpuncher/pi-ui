@@ -134,6 +134,54 @@
 			"description": "Code themes selected for each appearance.",
 			"additionalProperties": false
 		},
+		"fonts": {
+			"type": "object",
+			"required": [
+				"mono",
+				"sans"
+			],
+			"properties": {
+				"mono": {
+					"type": "string",
+					"enum": [
+						"system",
+						"Atkinson Hyperlegible Mono",
+						"Cascadia Code",
+						"Commit Mono",
+						"Fira Code",
+						"Geist Mono",
+						"IBM Plex Mono",
+						"Intel One Mono",
+						"Iosevka",
+						"JetBrains Mono",
+						"Maple Mono",
+						"Martian Mono",
+						"Monaspace Neon",
+						"Roboto Mono",
+						"Source Code Pro",
+						"Space Mono",
+						"Ubuntu Mono",
+						"Victor Mono"
+					],
+					"default": "system"
+				},
+				"sans": {
+					"type": "string",
+					"enum": [
+						"system",
+						"Atkinson Hyperlegible Next",
+						"Geist",
+						"IBM Plex Sans",
+						"Inter",
+						"Manrope",
+						"Source Sans 3"
+					],
+					"default": "system"
+				}
+			},
+			"description": "Fonts used for interface text and code.",
+			"additionalProperties": false
+		},
 		"gitView": {
 			"type": "object",
 			"properties": {

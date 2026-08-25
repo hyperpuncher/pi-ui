@@ -214,6 +214,9 @@ export class UiRenderer implements AppStorePresentation {
 		this.replaceTranscriptOnCommit = true;
 		this.requestCommit();
 	}
+	fontsChanged(): void {
+		this.requestCommit();
+	}
 	streamingMessageStarted(id: string): void {
 		this.messages.streamingMessageStarted(id);
 		this.appendMessage(id);

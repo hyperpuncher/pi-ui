@@ -5,6 +5,7 @@ export default defineConfig((commandLineArgs) => {
 	return {
 		input: {
 			"code-theme": "src/client/code-theme.ts",
+			fonts: "src/client/fonts.ts",
 			"model-search": "static/app/model-search.js",
 			"pi-fuzzy": "src/client/pi-fuzzy.ts",
 			"pierre-worker": "src/client/pierre-worker.ts",

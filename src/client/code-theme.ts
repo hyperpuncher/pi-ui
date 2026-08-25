@@ -10,10 +10,35 @@ const themeNames = CODE_THEMES.map((theme) => theme.name);
 let previewsPromise: Promise<void> | undefined;
 
 window.piUi.codeTheme = {
+	loadFontPreviews(light, dark) {
+		void loadFontPreviews(
+			document.documentElement.classList.contains("dark") ? dark : light,
+		);
+	},
 	loadPreviews() {
 		previewsPromise ??= loadPreviews();
 	},
 };
+
+async function loadFontPreviews(theme: string): Promise<void> {
+	const previews = [
+		...document.querySelectorAll<HTMLElement>("[data-font-code-preview]"),
+	];
+	const code = previews[0]?.textContent;
+	if (!code) return;
+
+	try {
+		await preloadHighlighter({ langs: ["typescript"], themes: [theme] });
+		const highlighter = getHighlighterIfLoaded();
+		if (!highlighter) return;
+		const result = highlighter.codeToTokens(code, { lang: "typescript", theme });
+		for (const preview of previews) {
+			renderPreview(preview, result.tokens, result.fg ?? "inherit");
+		}
+	} catch {
+		// Keep the plain server-rendered preview when highlighting is unavailable.
+	}
+}
 
 async function loadPreviews(): Promise<void> {
 	setStatus("Loading theme previews…");

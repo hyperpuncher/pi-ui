@@ -3,6 +3,7 @@ import Type from "typebox";
 import { defaultAutoTitleConfig } from "../src/agent/auto-title.ts";
 import { codeThemesFor, defaultCodeThemes } from "../src/code-themes.ts";
 import { appConfigSchemaUrl } from "../src/config-schema.ts";
+import { defaultFonts, FONT_OPTIONS } from "../src/fonts.ts";
 import {
 	changesRatioDefault,
 	changesRatioMax,
@@ -16,6 +17,7 @@ import {
 } from "../src/workspace-review-types.ts";
 
 const codeThemes = defaultCodeThemes();
+const fonts = defaultFonts();
 
 const schema = Type.Object(
 	{
@@ -74,6 +76,24 @@ const schema = Type.Object(
 				},
 				{
 					description: "Code themes selected for each appearance.",
+					additionalProperties: false,
+				},
+			),
+		),
+		fonts: Type.Optional(
+			Type.Object(
+				{
+					mono: Type.String({
+						enum: FONT_OPTIONS.mono,
+						default: fonts.mono,
+					}),
+					sans: Type.String({
+						enum: FONT_OPTIONS.sans,
+						default: fonts.sans,
+					}),
+				},
+				{
+					description: "Fonts used for interface text and code.",
 					additionalProperties: false,
 				},
 			),

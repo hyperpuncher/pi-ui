@@ -16,7 +16,11 @@ interface PiUiNamespace {
 		refresh(root?: BasecoatRefreshRoot): void;
 	};
 	codeTheme: {
+		loadFontPreviews(light: string, dark: string): void;
 		loadPreviews(): void;
+	};
+	fonts: {
+		apply(mono: string, sans: string): void;
 	};
 	dialogs: {
 		toggleSession(): boolean;

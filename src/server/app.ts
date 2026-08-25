@@ -2,6 +2,7 @@ import { fromFileUrl } from "@std/path";
 
 import { AgentHost } from "../agent/host.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
+import { setActiveFonts } from "../fonts.ts";
 import { setActiveCodeTheme } from "../pierre-theme.ts";
 import { AppStore } from "../state/app-store.ts";
 import { loadPierreLanguage } from "../ui/diffs.ts";
@@ -12,6 +13,7 @@ import { ensureAppConfig } from "./app-config.ts";
 import { readAutoTitleConfig } from "./auto-title-config.ts";
 import { readCodeThemePreference } from "./code-theme-preferences.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
+import { readFontPreferences } from "./font-preferences.ts";
 import { ExactRouter } from "./router.ts";
 import { registerAssetRoutes } from "./routes/assets.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
@@ -20,6 +22,7 @@ import type { RouteContext, RouteResources } from "./routes/context.ts";
 import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
 import { registerExtensionUiRoutes } from "./routes/extension-ui.ts";
 import { registerFileRoutes } from "./routes/files.ts";
+import { registerFontRoutes } from "./routes/fonts.ts";
 import { registerKeybindHintRoutes } from "./routes/keybind-hints.ts";
 import { registerLlamaRoutes } from "./routes/llama.ts";
 import { registerModelRoutes } from "./routes/models.ts";
@@ -44,12 +47,14 @@ const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
 export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	const staticAssets = await createStaticAssetServer(staticRoot);
 	const appConfig = await ensureAppConfig();
-	const [codeTheme, autoTitle, workspaceReviewPreferences] = await Promise.all([
+	const [codeTheme, fonts, autoTitle, workspaceReviewPreferences] = await Promise.all([
 		readCodeThemePreference(),
+		readFontPreferences(),
 		readAutoTitleConfig(),
 		readWorkspaceReviewPreferences(),
 	]);
 	setActiveCodeTheme(codeTheme);
+	setActiveFonts(fonts);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
 	const localRequests = new WeakSet<Request>();
 	const store = new AppStore();
@@ -140,6 +145,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerDisplayRefreshRoutes(router);
 	registerExtensionUiRoutes(router);
 	registerCodeThemeRoutes(router);
+	registerFontRoutes(router);
 	registerKeybindHintRoutes(router);
 	registerPromptRoutes(router);
 	registerSessionRoutes(router);
