@@ -226,6 +226,7 @@ Deno.test("new session actions lock without driving the transition overlay", () 
 	assertStringIncludes(action, "$_newSessionPending");
 	const toolbar = renderPromptToolbar(appRenderSnapshot({ isTemporarySession: false }));
 	assertStringIncludes(toolbar, "data-indicator:_new-session-pending");
+	assertStringIncludes(toolbar, "Review workspace");
 	assertStringExcludes(toolbar, "data-indicator:_session-loading");
 });
 

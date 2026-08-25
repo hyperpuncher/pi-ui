@@ -11,6 +11,7 @@ import type { AppThinkingLevel } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
+import { Icon } from "./icon.tsx";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -19,7 +20,7 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<button
 			id="workspace-picker"
-			class="btn hidden max-w-48 min-w-0 font-mono text-muted-foreground hover:text-foreground sm:inline-flex"
+			class="pi-prompt-context-trigger btn min-w-0 font-mono text-muted-foreground hover:text-foreground"
 			data-variant="ghost"
 			data-size="sm"
 			type="button"
@@ -33,7 +34,8 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 			data-tooltip="Workspace"
 			data-tooltip-delay
 		>
-			<span class="truncate" safe>
+			<WorkspaceIcon />
+			<span class="pi-prompt-wide-label truncate" safe>
 				{label}
 			</span>
 			<ShortcutTooltip label="Workspace" shortcut="ctrl /" />
@@ -44,7 +46,7 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 export function renderThinkingPicker(state: AppStateSnapshot): string {
 	const current = state.thinkingLevel;
 	return syncHtml(
-		<div id="thinking-picker" class="hidden min-w-0 sm:block">
+		<div id="thinking-picker" class="min-w-0">
 			<label class="sr-only" for="thinking-select-trigger">
 				Thinking level
 			</label>
@@ -65,26 +67,30 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn w-fit max-w-40 font-mono text-muted-foreground hover:text-foreground"
+					class="pi-prompt-context-trigger btn max-w-40 font-mono text-muted-foreground hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="thinking-select-trigger"
 					aria-haspopup="menu"
 					aria-expanded="false"
 					aria-controls="thinking-select-menu"
+					aria-label={`Thinking: ${thinkingLabel(current)}`}
 					data-preserve-attr="aria-expanded aria-activedescendant"
 					data-tooltip="Thinking"
 					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
 				>
-					<span class="truncate">{thinkingLabel(current)}</span>
+					<ThinkingIcon />
+					<span class="pi-prompt-wide-label truncate">
+						{thinkingLabel(current)}
+					</span>
 					<ShortcutTooltip label="Thinking" shortcut="alt T" />
 				</button>
 				<div
 					id="thinking-select-popover"
 					data-popover
 					data-side="top"
-					data-align="center"
+					data-align="end"
 					aria-hidden="true"
 					data-preserve-attr="aria-hidden"
 					class="min-w-48"
@@ -133,6 +139,29 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 	);
 }
 
+function ThinkingIcon() {
+	return (
+		<Icon class="pi-prompt-context-icon size-4">
+			<>
+				<path d="M12 18V5m3 8a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4m8.598-6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5" />
+				<path d="M17.997 5.125a4 4 0 0 1 2.526 5.77" />
+				<path d="M18 18a4 4 0 0 0 2-7.464" />
+				<path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517" />
+				<path d="M6 18a4 4 0 0 1-2-7.464" />
+				<path d="M6.003 5.125a4 4 0 0 0-2.526 5.77" />
+			</>
+		</Icon>
+	);
+}
+
+function WorkspaceIcon() {
+	return (
+		<Icon class="pi-prompt-context-icon size-4">
+			<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+		</Icon>
+	);
+}
+
 function thinkingLabel(level: AppThinkingLevel): string {
 	return level === "off" ? "thinking off" : level;
 }
@@ -163,10 +192,10 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 	const hasModels = state.models.length > 0;
 	if (!hasModels) {
 		return syncHtml(
-			<div id="model-picker" class="shrink-0">
+			<div id="model-picker" class="min-w-0 shrink">
 				<button
 					type="button"
-					class="btn w-fit font-mono text-muted-foreground hover:text-foreground"
+					class="pi-model-trigger btn w-fit min-w-0 font-mono text-muted-foreground hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					data-tooltip="Log in to a provider"
@@ -180,13 +209,17 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 	}
 	const currentLabel = current ? modelTriggerLabel(current) : "choose model";
 	return syncHtml(
-		<div id="model-picker" class="shrink-0" data-signals:_model-query__ifmissing="''">
+		<div
+			id="model-picker"
+			class="min-w-0 shrink"
+			data-signals:_model-query__ifmissing="''"
+		>
 			<label class="sr-only" for="model-select-trigger">
 				Model
 			</label>
 			<div
 				id="model-select"
-				class="popover"
+				class="popover min-w-0"
 				data-preserve-attr="data-popover-initialized data-basecoat-component"
 				data-on:keydown__window={`if (${primaryModifierExpression()} && evt.code === 'KeyL') {
 				evt.preventDefault();
@@ -198,7 +231,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn w-fit font-mono text-muted-foreground hover:text-foreground"
+					class="pi-model-trigger btn w-fit min-w-0 font-mono text-muted-foreground hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
@@ -209,14 +242,16 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-tooltip="Model"
 					data-tooltip-delay
 				>
-					<span safe>{currentLabel}</span>
+					<span class="min-w-0 truncate" safe>
+						{currentLabel}
+					</span>
 					<ShortcutTooltip label="Model" shortcut="ctrl L" />
 				</button>
 				<div
 					id="model-select-popover"
 					data-popover
 					data-side="top"
-					data-align="center"
+					data-align="end"
 					aria-hidden="true"
 					data-preserve-attr="aria-hidden"
 					class="w-88 max-w-[calc(100vw-2rem)] p-0"

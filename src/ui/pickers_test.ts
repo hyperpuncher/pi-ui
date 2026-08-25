@@ -199,7 +199,10 @@ Deno.test("workspace picker shows only the workspace folder name", () => {
 			workspacePath: "/home/user/Documents/Blenderanimation",
 		}),
 	);
-	assertStringIncludes(nested, 'class="truncate">Blenderanimation</span>');
+	assertStringIncludes(
+		nested,
+		'class="pi-prompt-wide-label truncate">Blenderanimation</span>',
+	);
 	assertStringIncludes(nested, 'aria-label="/home/user/Documents/Blenderanimation"');
 
 	const home = renderWorkspacePicker(
@@ -207,7 +210,7 @@ Deno.test("workspace picker shows only the workspace folder name", () => {
 			workspacePath: os.homedir(),
 		}),
 	);
-	assertStringIncludes(home, 'class="truncate">~</span>');
+	assertStringIncludes(home, 'class="pi-prompt-wide-label truncate">~</span>');
 });
 
 Deno.test("workspace rows show each collapsed path once", () => {
@@ -273,7 +276,7 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 		}),
 	);
 	assertStringIncludes(withoutSelection, "choose model");
-	assertStringIncludes(withoutSelection, 'class="popover"');
+	assertStringIncludes(withoutSelection, 'class="popover min-w-0"');
 	assertStringIncludes(withoutSelection, 'class="command"');
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
 	assertStringIncludes(withoutSelection, 'data-filter="manual"');
@@ -296,7 +299,7 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 		withoutSelection,
 		"w-0 opacity-0 group-hover:w-7 group-hover:opacity-100 focus-visible:w-7 focus-visible:opacity-100",
 	);
-	assertFalse(withoutSelection.includes("max-w-56"));
+	assertStringIncludes(withoutSelection, "pi-model-trigger");
 });
 
 Deno.test("model picker shows only the final model name in its trigger", () => {
@@ -315,7 +318,7 @@ Deno.test("model picker shows only the final model name in its trigger", () => {
 		}),
 	);
 
-	assertStringIncludes(html, "<span>DeepSeek-R1</span>");
+	assertStringIncludes(html, '<span class="min-w-0 truncate">DeepSeek-R1</span>');
 	assertStringIncludes(html, ">deepseek-ai/DeepSeek-R1</span>");
 });
 

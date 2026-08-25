@@ -57,6 +57,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			id="session-sidebar"
 			class="sidebar peer/sidebar group/sidebar"
 			data-side="right"
+			data-breakpoint="1280"
 			data-initial-open={state.sessions.length === 0 && "false"}
 			aria-keyshortcuts="Control+B Meta+B"
 			data-signals:_session-sidebar-width__ifmissing={`
@@ -119,7 +120,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					}
 				}`}
 			>
-				<header class="px-4 text-xs font-medium" data-keybind-hint>
+				<header class="px-4 text-xs font-medium">
 					<div class="flex items-center justify-between">
 						<span>Sessions</span>
 						<ShortcutKbd shortcut="alt S" />

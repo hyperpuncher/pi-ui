@@ -366,6 +366,60 @@
 		background: var(--pi-prompt-surface);
 	}
 
+	#prompt-box > .pi-prompt-surface {
+		container: prompt / inline-size;
+	}
+
+	.pi-prompt-toolbar-expanded,
+	.pi-prompt-wide-label,
+	.pi-prompt-divider {
+		display: none;
+	}
+
+	.pi-prompt-context-trigger {
+		width: 2rem;
+		max-width: 2rem;
+		padding-inline: 0;
+	}
+
+	.pi-model-trigger {
+		max-width: 7rem;
+	}
+
+	@container prompt (width >= 40rem) {
+		.pi-prompt-toolbar-expanded {
+			display: flex;
+		}
+
+		.pi-prompt-toolbar-compact {
+			display: none;
+		}
+	}
+
+	@container prompt (width >= 50rem) {
+		.pi-prompt-context-trigger {
+			width: fit-content;
+			max-width: 12rem;
+			padding-inline: 0.75rem;
+		}
+
+		.pi-prompt-context-icon {
+			display: none;
+		}
+
+		.pi-prompt-wide-label {
+			display: inline;
+		}
+
+		.pi-prompt-divider {
+			display: block;
+		}
+
+		.pi-model-trigger {
+			max-width: 14rem;
+		}
+	}
+
 	#prompt-box .input-group:is(:focus, :focus-within) {
 		@apply shadow-xl ring-0;
 
@@ -920,7 +974,38 @@
 		text-overflow: clip;
 	}
 
+	@media (width < 80rem) {
+		#session-sidebar:not([aria-hidden]),
+		#session-sidebar[aria-hidden="false"] {
+			position: fixed;
+			inset: 0;
+			z-index: 40;
+			background: rgb(0 0 0 / 50%);
+		}
+
+		#session-sidebar-separator {
+			display: none !important;
+		}
+	}
+
 	@media (max-width: 48rem) {
+		#model-select {
+			position: static;
+		}
+
+		#model-select-popover {
+			inset-inline-start: auto;
+			inset-inline-end: 0;
+			width: 22rem;
+			max-width: 100%;
+		}
+
+		[data-tooltip]::before,
+		[data-tooltip]::after,
+		[data-tooltip] > [data-slot="tooltip-content"] {
+			display: none;
+		}
+
 		#review-branch {
 			display: none !important;
 		}
@@ -934,5 +1019,17 @@
 @layer utilities {
 	[data-keybind-hints="false"] [data-keybind-hint] {
 		display: none;
+	}
+
+	@media (width < 80rem) {
+		#workspace-shell {
+			margin-right: 0 !important;
+		}
+	}
+
+	@media (max-width: 48rem) {
+		[data-keybind-hint] {
+			display: none;
+		}
 	}
 }

@@ -59,7 +59,7 @@ export function renderPromptBox(
 				hidden
 			/>
 			<div
-				class="input-group pi-raised-surface pi-prompt-surface relative z-10 overflow-visible p-3 text-sm transition-shadow duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
+				class="input-group pi-raised-surface pi-prompt-surface relative z-40 overflow-visible p-3 text-sm transition-shadow duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
 				data-orientation="vertical"
 			>
 				<div class="pointer-events-none absolute top-2 right-2 z-20">
@@ -68,7 +68,7 @@ export function renderPromptBox(
 				{renderExtensionWidgets(state, "aboveEditor")}
 				<textarea
 					id="prompt-input"
-					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 pr-20 text-[15px] in-data-[keybind-hints=false]:pr-1"
+					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 pr-20 text-[15px] in-data-[keybind-hints=false]:pr-1 max-md:pr-1"
 					placeholder="Ask pi anything..."
 					aria-label="Message"
 					aria-keyshortcuts="Alt+P"
@@ -158,7 +158,7 @@ export function renderPromptBox(
 				></textarea>
 				{renderExtensionWidgets(state, "belowEditor")}
 				<footer
-					class="flex flex-wrap items-center justify-between gap-2 p-0"
+					class="relative flex flex-wrap items-center justify-between gap-2 p-0"
 					data-align="end"
 				>
 					{renderPromptToolbar(state, reviewAvailable)}
@@ -166,12 +166,12 @@ export function renderPromptBox(
 						{renderPromptStatus(state)}
 						{renderWorkspacePicker(state)}
 						<span
-							class="hidden h-4 w-0 shrink-0 border-l border-border sm:block"
+							class="pi-prompt-divider h-4 w-0 shrink-0 border-l border-border"
 							aria-hidden="true"
 						/>
 						{renderModelPicker(state)}
 						<span
-							class="hidden h-4 w-0 shrink-0 border-l border-border sm:block"
+							class="pi-prompt-divider h-4 w-0 shrink-0 border-l border-border"
 							aria-hidden="true"
 						/>
 						{renderThinkingPicker(state)}

@@ -22,50 +22,104 @@ export function renderPromptToolbar(
 	reviewAvailable = false,
 ): string {
 	return syncHtml(
-		<div
-			id="prompt-toolbar"
-			class="flex shrink-0 items-center gap-0.5"
-			aria-label="Message tools"
-		>
-			<PromptToolbarButton
-				label="Commands"
-				action="commands"
-				shortcut="ctrl K"
-				tooltipAlign="start"
+		<div id="prompt-toolbar" class="shrink-0" aria-label="Message tools">
+			<div class="pi-prompt-toolbar-expanded items-center gap-0.5">
+				<PromptToolbarButton
+					label="Commands"
+					action="commands"
+					shortcut="ctrl K"
+					tooltipAlign="start"
+				>
+					<CommandIcon />
+				</PromptToolbarButton>
+				<PromptToolbarButton label="Files" action="files" shortcut="@">
+					<PaperclipIcon />
+				</PromptToolbarButton>
+				<PromptToolbarButton
+					label="Resume session"
+					action="sessions"
+					shortcut="ctrl R"
+				>
+					<HistoryIcon />
+				</PromptToolbarButton>
+				<PromptToolbarButton label="New chat" action="new-chat" shortcut="ctrl O">
+					<NewChatIcon />
+				</PromptToolbarButton>
+				<PromptToolbarButton
+					label="New temporary chat"
+					action="new-temporary-chat"
+					shortcut="ctrl alt O"
+					variant={state.isTemporarySession ? "secondary" : "ghost"}
+					pressed={state.isTemporarySession}
+				>
+					<TemporaryChatIcon />
+				</PromptToolbarButton>
+				<PromptToolbarButton
+					label="Review workspace"
+					action="review"
+					shortcut="ctrl G"
+					variant="ghost"
+					unavailable={!reviewAvailable}
+				>
+					<DiffIcon />
+				</PromptToolbarButton>
+			</div>
+			<div
+				class="pi-prompt-toolbar-compact dropdown-menu"
+				data-preserve-attr="data-dropdown-menu-initialized data-basecoat-component"
 			>
-				<CommandIcon />
-			</PromptToolbarButton>
-			<PromptToolbarButton label="Files" action="files" shortcut="@">
-				<PaperclipIcon />
-			</PromptToolbarButton>
-			<PromptToolbarButton
-				label="Resume session"
-				action="sessions"
-				shortcut="ctrl R"
-			>
-				<HistoryIcon />
-			</PromptToolbarButton>
-			<PromptToolbarButton label="New chat" action="new-chat" shortcut="ctrl O">
-				<NewChatIcon />
-			</PromptToolbarButton>
-			<PromptToolbarButton
-				label="New temporary chat"
-				action="new-temporary-chat"
-				shortcut="ctrl alt O"
-				variant={state.isTemporarySession ? "secondary" : "ghost"}
-				pressed={state.isTemporarySession}
-			>
-				<TemporaryChatIcon />
-			</PromptToolbarButton>
-			<PromptToolbarButton
-				label="Workspace"
-				action="review"
-				shortcut="ctrl G"
-				variant="ghost"
-				unavailable={!reviewAvailable}
-			>
-				<DiffIcon />
-			</PromptToolbarButton>
+				<button
+					type="button"
+					class="btn leading-none"
+					data-variant="ghost"
+					data-size="icon-sm"
+					aria-label="Message tools"
+					aria-haspopup="menu"
+					aria-expanded="false"
+					aria-controls="prompt-toolbar-menu"
+					data-preserve-attr="aria-expanded aria-activedescendant"
+				>
+					<MenuIcon />
+				</button>
+				<div
+					data-popover
+					data-side="top"
+					data-align="start"
+					aria-hidden="true"
+					data-preserve-attr="aria-hidden"
+					class="w-max max-w-[calc(100vw-2rem)]"
+				>
+					<div id="prompt-toolbar-menu" role="menu" aria-label="Message tools">
+						<MobilePromptToolbarItem label="Commands" action="commands">
+							<CommandIcon />
+						</MobilePromptToolbarItem>
+						<MobilePromptToolbarItem label="Attach files" action="files">
+							<PaperclipIcon />
+						</MobilePromptToolbarItem>
+						<MobilePromptToolbarItem label="Resume session" action="sessions">
+							<HistoryIcon />
+						</MobilePromptToolbarItem>
+						<MobilePromptToolbarItem label="New chat" action="new-chat">
+							<NewChatIcon />
+						</MobilePromptToolbarItem>
+						<MobilePromptToolbarItem
+							label="New temporary chat"
+							action="new-temporary-chat"
+							active={state.isTemporarySession}
+						>
+							<TemporaryChatIcon />
+						</MobilePromptToolbarItem>
+						{reviewAvailable && (
+							<MobilePromptToolbarItem
+								label="Review workspace"
+								action="review"
+							>
+								<DiffIcon />
+							</MobilePromptToolbarItem>
+						)}
+					</div>
+				</div>
+			</div>
 		</div>,
 	);
 }
@@ -122,6 +176,40 @@ function PromptToolbarButton(props: {
 				<ShortcutTooltip label={props.label} shortcut={props.shortcut} />
 			)}
 		</button>
+	);
+}
+
+function MobilePromptToolbarItem(props: {
+	label: string;
+	action: PromptToolbarAction;
+	active?: boolean;
+	children: JSX.Element;
+}) {
+	return (
+		<button
+			type="button"
+			role="menuitem"
+			aria-current={props.active ? "true" : undefined}
+			data-indicator:_new-session-pending={isSessionChangingAction(props.action)}
+			data-attr:disabled={
+				isSessionChangingAction(props.action)
+					? "$_newSessionPending || $_sessionTransitionLoading"
+					: undefined
+			}
+			data-on:click={promptToolbarClickAction(props.action)}
+		>
+			{props.children}
+			<span class="min-w-0 truncate text-left">{props.label}</span>
+			{props.active && <span class="ml-auto text-muted-foreground">•</span>}
+		</button>
+	);
+}
+
+function MenuIcon() {
+	return (
+		<Icon>
+			<path d="M4 6h16M4 12h16M4 18h16" />
+		</Icon>
 	);
 }
 
