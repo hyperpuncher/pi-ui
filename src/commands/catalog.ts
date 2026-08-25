@@ -7,6 +7,8 @@ export type AppCommandId =
 	| "change-code-theme"
 	| "change-fonts"
 	| "toggle-keybind-hints"
+	| "toggle-minimal-mode"
+	| "toggle-tool-output"
 	| "switch-model"
 	| "cycle-model"
 	| "cycle-thinking"
@@ -76,6 +78,18 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Toggle keybind hints",
 		description: "Show or hide keyboard shortcut labels.",
 		shortcut: { display: "", native: "", keys: [] },
+	},
+	{
+		id: "toggle-minimal-mode",
+		title: "Toggle minimal mode",
+		description: "Hide thinking details, keybind hints, and tool output.",
+		shortcut: { display: "alt M", native: "Alt+M", keys: [] },
+	},
+	{
+		id: "toggle-tool-output",
+		title: "Toggle tool output",
+		description: "Show tool calls as compact one-line entries.",
+		shortcut: { display: "alt O", native: "Alt+O", keys: [] },
 	},
 	{
 		id: "switch-model",

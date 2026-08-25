@@ -19,6 +19,7 @@ import { registerAssetRoutes } from "./routes/assets.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
 import { registerCodeThemeRoutes } from "./routes/code-theme.ts";
 import type { RouteContext, RouteResources } from "./routes/context.ts";
+import { registerDisplayPreferenceRoutes } from "./routes/display-preferences.ts";
 import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
 import { registerExtensionUiRoutes } from "./routes/extension-ui.ts";
 import { registerFileRoutes } from "./routes/files.ts";
@@ -106,6 +107,8 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		transferredFiles,
 		appVersion: staticAssets.version,
 		keybindHints: appConfig.keybindHints !== false,
+		minimalMode: appConfig.minimalMode === true,
+		toolOutputHidden: appConfig.toolOutputHidden === true,
 		readBasecoat: async () =>
 			new Uint8Array(await Deno.readFile(basecoatJsPath)).buffer,
 		serveStatic: (request) => staticAssets.serve(request),
@@ -152,6 +155,7 @@ export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
 	registerSessionPerformanceRoutes(router);
 	registerWorkspaceRoutes(router);
 	registerWorkspaceReviewRoutes(router);
+	registerDisplayPreferenceRoutes(router);
 	registerModelRoutes(router);
 	registerAuthRoutes(router);
 	registerLlamaRoutes(router);

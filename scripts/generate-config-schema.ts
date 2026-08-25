@@ -145,6 +145,18 @@ const schema = Type.Object(
 				description: "Show keyboard shortcut hints in the interface.",
 			}),
 		),
+		minimalMode: Type.Optional(
+			Type.Boolean({
+				default: false,
+				description: "Hide thinking details, keybind hints, and tool output.",
+			}),
+		),
+		toolOutputHidden: Type.Optional(
+			Type.Boolean({
+				default: false,
+				description: "Hide tool output and show compact one-line tool calls.",
+			}),
+		),
 	},
 	{
 		$schema: "https://json-schema.org/draft/2020-12/schema",

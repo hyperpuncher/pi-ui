@@ -54,6 +54,14 @@ function unique(values: readonly (string | undefined)[]): string[] {
 	return [...new Set(values.filter((value): value is string => value !== undefined))];
 }
 
+function formatActivityDuration(milliseconds: number): string {
+	const totalSeconds = Math.max(1, Math.round(milliseconds / 1000));
+	if (totalSeconds < 60) return `${totalSeconds}s`;
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+}
+
 /** Owns message presentation caches, frame scheduling, and bounded enhancement work. */
 export class MessageRenderService {
 	private readonly presentation = new Map<string, MessagePresentation>();
@@ -308,6 +316,7 @@ export class MessageRenderService {
 	}
 	private project(message: TranscriptMessage): AppMessage {
 		const presentation = this.ensure(message.id);
+		const activitySummary = this.activitySummary(message);
 		if (
 			rendersMarkdown(message.role) &&
 			message.text.trim() &&
@@ -319,6 +328,7 @@ export class MessageRenderService {
 		}
 		return {
 			...message,
+			activitySummary,
 			attachments: message.attachments?.map((attachment, index) => {
 				const image = attachment.image;
 				if (!image?.data || !this.registerImage) return attachment;
@@ -340,6 +350,28 @@ export class MessageRenderService {
 				};
 			}),
 			...presentation,
+		};
+	}
+	private activitySummary(message: TranscriptMessage): AppMessage["activitySummary"] {
+		if (message.role !== "assistant") return undefined;
+		const messages = this.store.transcript.allMessages;
+		const messageIndex = messages.findIndex((item) => item.id === message.id);
+		if (messageIndex < 0) return undefined;
+		let activityStart = messageIndex;
+		while (
+			activityStart > 0 &&
+			["thought", "tool"].includes(messages[activityStart - 1]!.role)
+		) {
+			activityStart -= 1;
+		}
+		const activity = messages.slice(activityStart, messageIndex);
+		const stepCount = activity.filter((item) => item.role === "tool").length;
+		if (stepCount === 0) return undefined;
+		return {
+			stepCount,
+			duration: formatActivityDuration(
+				message.timestamp.getTime() - activity[0]!.timestamp.getTime(),
+			),
 		};
 	}
 	private broadcast(message: TranscriptMessage): void {

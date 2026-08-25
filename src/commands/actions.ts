@@ -52,6 +52,14 @@ export function toggleKeybindHintsAction(): string {
 	return `document.body.dataset.keybindHints = document.body.dataset.keybindHints === 'false' ? 'true' : 'false'; @post('${endpoints.keybindHints}', { payload: { keybindHints: document.body.dataset.keybindHints === 'true' } })`;
 }
 
+export function toggleMinimalModeAction(): string {
+	return `$_minimalMode = !$_minimalMode; @post('${endpoints.minimalMode}', { payload: { minimalMode: $_minimalMode } })`;
+}
+
+export function toggleToolOutputAction(): string {
+	return `$_toolOutputHidden = !$_toolOutputHidden; @post('${endpoints.toolOutput}', { payload: { toolOutputHidden: $_toolOutputHidden } })`;
+}
+
 export function togglePopoverAction(triggerId: string): string {
 	return `window.piUi.dialogs.togglePopover(${JSON.stringify(triggerId)})`;
 }
@@ -67,6 +75,8 @@ export const commandActions = {
 	"change-fonts":
 		"document.getElementById('command-dialog')?.close(); window.dispatchEvent(new Event('pi-ui-open-fonts'))",
 	"toggle-keybind-hints": toggleKeybindHintsAction(),
+	"toggle-minimal-mode": `document.getElementById('command-dialog')?.close(); ${toggleMinimalModeAction()}`,
+	"toggle-tool-output": `document.getElementById('command-dialog')?.close(); ${toggleToolOutputAction()}`,
 	"switch-model": `setTimeout(() => ${togglePopoverAction("model-select-trigger")}, 0)`,
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),

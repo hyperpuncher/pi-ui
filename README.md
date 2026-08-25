@@ -144,7 +144,9 @@ all options with their defaults:
 		"tab": "git",
 		"wrap": true
 	},
-	"keybindHints": true
+	"keybindHints": true,
+	"minimalMode": false,
+	"toolOutputHidden": false
 }
 ```
 
@@ -166,6 +168,8 @@ all options with their defaults:
 | <kbd>alt</kbd> <kbd>g</kbd>                                | focus git changes           |
 | <kbd>alt</kbd> <kbd>e</kbd>                                | focus file or diff          |
 | <kbd>alt</kbd> <kbd>s</kbd>                                | focus sessions              |
+| <kbd>alt</kbd> <kbd>m</kbd>                                | toggle minimal mode         |
+| <kbd>alt</kbd> <kbd>o</kbd>                                | toggle tool output          |
 | <kbd>ctrl/⌘</kbd> <kbd>l</kbd>                             | model picker                |
 | <kbd>ctrl/⌘</kbd> <kbd>p</kbd>                             | cycle favorite model        |
 | <kbd>ctrl/⌘</kbd> <kbd>shift</kbd> <kbd>p</kbd>            | cycle favorite model back   |

@@ -23,6 +23,8 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /code-theme",
 		"POST /fonts",
 		"POST /keybind-hints",
+		"POST /minimal-mode",
+		"POST /tool-output",
 		"POST /session-performance/client",
 		"POST /prompt",
 		"POST /prompt/follow-up",
@@ -97,12 +99,22 @@ Deno.test("page assets use the current immutable content version", async () => {
 	assertStringIncludes(html, `/static/${context.appVersion}/app.css`);
 	assertStringIncludes(html, `appVersion=${context.appVersion}`);
 	assertStringIncludes(html, 'data-keybind-hints="true"');
+	assertStringIncludes(html, 'data-minimal-mode="false"');
+	assertStringIncludes(html, "KeyM");
+	assertStringIncludes(html, "KeyO");
+	assertStringIncludes(html, "/minimal-mode");
+	assertStringIncludes(html, "/tool-output");
+	assertStringIncludes(html, "$_toolOutputHidden");
 
 	context.keybindHints = false;
+	context.minimalMode = true;
+	context.toolOutputHidden = true;
 	const hiddenHintsPage = await createRouter(context).fetch(
 		new Request("http://localhost/"),
 	);
-	assertStringIncludes(await hiddenHintsPage.text(), 'data-keybind-hints="false"');
+	const quietPageHtml = await hiddenHintsPage.text();
+	assertStringIncludes(quietPageHtml, 'data-keybind-hints="false"');
+	assertStringIncludes(quietPageHtml, 'data-minimal-mode="true"');
 
 	const basecoat = await createRouter(context).fetch(
 		new Request("http://localhost/basecoat.js"),
@@ -654,12 +666,16 @@ function fakeContext(
 		openPath?: (path: string) => Promise<void>;
 		isLocalRequest?: (request: Request) => boolean;
 		keybindHints?: boolean;
+		minimalMode?: boolean;
+		toolOutputHidden?: boolean;
 	} = {},
 ): RouteContext {
 	const store = new AppStore();
 	return {
 		appVersion: "test-version",
 		keybindHints: overrides.keybindHints ?? true,
+		minimalMode: overrides.minimalMode ?? false,
+		toolOutputHidden: overrides.toolOutputHidden ?? false,
 		store,
 		renderer:
 			overrides.renderer ??

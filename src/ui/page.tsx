@@ -1,3 +1,4 @@
+import { toggleMinimalModeAction, toggleToolOutputAction } from "../commands/actions.ts";
 import { activeFontStacks } from "../fonts.ts";
 import { getPierreThemes } from "../pierre-theme.ts";
 import {
@@ -18,6 +19,7 @@ import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
+import { altShortcutAction } from "./keyboard.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
@@ -79,6 +81,8 @@ export function renderPage(
 	state: AppRenderSnapshot,
 	appVersion = "development",
 	keybindHints = true,
+	minimalMode = false,
+	toolOutputHidden = false,
 ): string {
 	const desktop = Deno.BrowserWindow instanceof Function;
 	const staticBase = `/static/${appVersion}`;
@@ -137,6 +141,7 @@ export function renderPage(
 					class="h-full overflow-hidden"
 					spellcheck="false"
 					data-keybind-hints={keybindHints ? "true" : "false"}
+					data-minimal-mode={minimalMode ? "true" : "false"}
 					data-time-locale={systemTimeLocale}
 					data-native-file-picker={desktop ? "true" : "false"}
 					data-files-pick-endpoint={endpoints.filesPick}
@@ -149,6 +154,11 @@ export function renderPage(
 					data-attr:data-code-theme-light="$_codeThemeLight"
 					data-attr:data-code-theme-dark="$_codeThemeDark"
 					data-signals={initialSignals}
+					data-signals:_minimal-mode__ifmissing={minimalMode ? "true" : "false"}
+					data-signals:_tool-output-hidden__ifmissing={
+						toolOutputHidden ? "true" : "false"
+					}
+					data-attr:data-minimal-mode="$_minimalMode ? 'true' : 'false'"
 					data-effect={`
 						window.piUi.fonts.apply($_fontMono, $_fontSans);
 						window.dispatchEvent(
@@ -157,6 +167,10 @@ export function renderPage(
 							}),
 						);
 					`}
+					data-on:keydown__window={`${altShortcutAction(
+						"KeyM",
+						toggleMinimalModeAction(),
+					)} ${altShortcutAction("KeyO", toggleToolOutputAction())}`}
 					data-on:pi-ui-display-refresh={`@post('${endpoints.displayRefresh}', {
 						payload: { clientId: '${displayClientId}', hz: evt.detail.hz },
 					})`}

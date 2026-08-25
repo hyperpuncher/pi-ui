@@ -17,21 +17,21 @@ export function StatusDot(props: {
 		>
 			<span
 				class={[
-					"pi-tool-status-ball transition-opacity duration-500 ease-out motion-reduce:transition-none",
+					"pi-tool-status-ball pi-tool-status-active transition-opacity duration-500 ease-out motion-reduce:transition-none",
 					props.runningClass ?? "text-muted-foreground",
 					running ? "opacity-100" : "opacity-0",
 				]}
 			/>
 			<span
 				class={[
-					"pi-tool-status-ball transition-opacity duration-500 ease-out motion-reduce:transition-none",
+					"pi-tool-status-ball pi-tool-status-result transition-opacity duration-500 ease-out motion-reduce:transition-none",
 					statusClass,
 					running ? "opacity-0" : "opacity-100",
 				]}
 			/>
 			<span
 				class={[
-					"pi-tool-status-ball transition-opacity duration-500 ease-out motion-reduce:animate-none motion-reduce:transition-none",
+					"pi-tool-status-ball pi-tool-status-pulse transition-opacity duration-500 ease-out motion-reduce:animate-none motion-reduce:transition-none",
 					running ? "animate-ping" : "opacity-0",
 				]}
 			/>

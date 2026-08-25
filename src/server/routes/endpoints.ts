@@ -8,6 +8,8 @@ export const endpoints = {
 	codeTheme: "/code-theme",
 	fonts: "/fonts",
 	keybindHints: "/keybind-hints",
+	minimalMode: "/minimal-mode",
+	toolOutput: "/tool-output",
 	sessionPerformanceClient: "/session-performance/client",
 	prompt: "/prompt",
 	promptFollowUp: "/prompt/follow-up",

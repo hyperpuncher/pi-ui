@@ -538,10 +538,27 @@ function renderNarrativeMessage(message: AppMessage): string {
 				data-message-id={message.id}
 				data-ignore-morph={preservesFinalizedMessageDom(message)}
 			>
-				<p class="m-0 leading-[1.7] font-semibold" data-show="$_thinkingHidden">
+				<p
+					class="m-0 leading-[1.7] font-semibold"
+					data-show="$_thinkingHidden && !$_minimalMode"
+				>
 					Thinking...
 				</p>
-				<div data-show="!$_thinkingHidden">
+				<div
+					class="pi-tool-timeline-item relative w-full not-italic"
+					style="display: none"
+					data-show="$_minimalMode"
+				>
+					<StatusDot
+						class="pi-tool-state-dot"
+						state="running"
+						label="Thinking"
+					/>
+					<p class="m-0 truncate font-mono text-sm leading-4.5 font-medium text-muted-foreground">
+						thinking...
+					</p>
+				</div>
+				<div data-show="!$_thinkingHidden && !$_minimalMode">
 					<div class="markdown-content">{content}</div>
 					{renderDeferredEnhancement(message)}
 				</div>
@@ -554,6 +571,24 @@ function renderNarrativeMessage(message: AppMessage): string {
 			data-message-id={message.id}
 			data-ignore-morph={preservesFinalizedMessageDom(message)}
 		>
+			{message.activitySummary && (
+				<div
+					class="pi-tool-timeline-item relative mb-4 w-full"
+					style="display: none"
+					data-show="$_minimalMode"
+				>
+					<StatusDot
+						class="pi-tool-state-dot"
+						state="success"
+						label="Completed"
+					/>
+					<p class="m-0 truncate font-mono text-sm leading-4.5 font-medium text-muted-foreground">
+						completed {message.activitySummary.stepCount}{" "}
+						{message.activitySummary.stepCount === 1 ? "step" : "steps"} in{" "}
+						{message.activitySummary.duration}
+					</p>
+				</div>
+			)}
 			<div>{content}</div>
 			{renderDeferredEnhancement(message)}
 		</article>,
@@ -657,12 +692,15 @@ function renderToolMessage(message: AppMessage): string {
 			class="message message-tool pi-tool-timeline-item w-full self-start"
 			data-message-id={message.id}
 		>
-			<header class="flex min-h-4.5 items-start gap-2 font-mono text-sm">
-				<StatusDot
-					class="pi-tool-state-dot"
-					state={status.state}
-					label={status.label}
-				/>
+			<StatusDot
+				class="pi-tool-state-dot"
+				state={status.state}
+				label={status.label}
+			/>
+			<header
+				class="flex min-h-4.5 items-start gap-2 font-mono text-sm"
+				data-show="!$_minimalMode && !$_toolOutputHidden"
+			>
 				<span class="min-w-0 flex-1 leading-4.5 font-medium wrap-anywhere">
 					{renderToolTitle(message.title ?? "Tool", message.titleParts)}
 				</span>
@@ -674,8 +712,18 @@ function renderToolMessage(message: AppMessage): string {
 					{message.meta ?? ""}
 				</span>
 			</header>
-			{renderToolOutput(message)}
-			{renderDeferredEnhancement(message)}
+			<p
+				class="m-0 flex min-w-0 overflow-hidden font-mono text-sm leading-4.5 font-medium text-muted-foreground"
+				data-show="$_minimalMode || $_toolOutputHidden"
+			>
+				<span class="block min-w-0 truncate [&_*]:inline! [&_*]:whitespace-nowrap!">
+					{renderToolTitle(message.title ?? "Tool", message.titleParts)}
+				</span>
+			</p>
+			<div data-show="!$_minimalMode && !$_toolOutputHidden">
+				{renderToolOutput(message)}
+				{renderDeferredEnhancement(message)}
+			</div>
 		</article>,
 	);
 }

@@ -112,6 +112,29 @@ Deno.test("message projection replaces inline image data with stable URLs", () =
 	assertEquals(registrations, 1);
 });
 
+Deno.test("assistant messages summarize preceding tool activity", () => {
+	const store = new AppStore();
+	const renderer = new MessageRenderService(
+		store,
+		() => {},
+		() => {},
+	);
+	store.transcript.replaceMessages([
+		{ role: "user", text: "fix it", timestamp: new Date(0) },
+		{ role: "thought", text: "planning", timestamp: new Date(1_000) },
+		{ role: "tool", text: "", timestamp: new Date(2_000), title: "read" },
+		{ role: "thought", text: "editing", timestamp: new Date(3_000) },
+		{ role: "tool", text: "", timestamp: new Date(4_000), title: "edit" },
+		{ role: "assistant", text: "done", timestamp: new Date(65_000) },
+	]);
+	const assistant = renderer.projectMessages(store.transcript.messages).at(-1)!;
+	assertEquals(assistant.activitySummary, { duration: "1m 4s", stepCount: 2 });
+	const html = renderMessage(assistant);
+	assertStringIncludes(html, "completed 2 steps in 1m 4s");
+	assertStringIncludes(html, "pi-tool-timeline-item");
+	assertStringIncludes(html, "pi-tool-state-dot");
+});
+
 Deno.test("thinking blocks render expanded content and a collapsed label", () => {
 	const html = renderMessage({
 		id: "thought-1",
@@ -124,8 +147,11 @@ Deno.test("thinking blocks render expanded content and a collapsed label", () =>
 	assertStringIncludes(html, "<strong>Planning full validation tests</strong>");
 	assertStringIncludes(html, "Thinking...");
 	assertStringIncludes(html, 'class="m-0 leading-[1.7] font-semibold"');
-	assertStringIncludes(html, 'data-show="$_thinkingHidden"');
-	assertStringIncludes(html, 'data-show="!$_thinkingHidden"');
+	assertStringIncludes(html, 'data-show="$_thinkingHidden && !$_minimalMode"');
+	assertStringIncludes(html, 'data-show="$_minimalMode"');
+	assertStringIncludes(html, "pi-tool-state-dot");
+	assertStringIncludes(html, 'aria-label="Thinking"');
+	assertStringIncludes(html, 'data-show="!$_thinkingHidden && !$_minimalMode"');
 	assertStringExcludes(html, "**Planning");
 });
 
@@ -210,6 +236,12 @@ Deno.test("bodyless tools use timeline markup without an output surface", () => 
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "pi-tool-timeline-item");
 	assertStringIncludes(html, "pi-tool-state-dot");
+	assertStringIncludes(html, 'data-show="!$_minimalMode && !$_toolOutputHidden"');
+	assertStringIncludes(html, 'data-show="$_minimalMode || $_toolOutputHidden"');
+	assertStringIncludes(html, "min-w-0 truncate");
+	assertStringIncludes(html, "Read file");
+	assertStringExcludes(html, "Working...");
+	assertStringExcludes(html, "<details");
 	assertStringIncludes(html, "min-w-[6ch]");
 	assertStringIncludes(html, 'aria-hidden="true"');
 	assertStringExcludes(html, "pi-tool-output-surface");
@@ -237,6 +269,8 @@ Deno.test("shell tools preserve wrapped title, metadata, and escaped output", ()
 		}),
 	);
 	assertStringIncludes(html, "printf &#39;a very long command&#39;");
+	assertEquals(html.match(/printf/g)?.length, 2);
+	assertStringIncludes(html, "whitespace-nowrap!");
 	assertStringIncludes(html, "42ms");
 	assertStringIncludes(html, "&lt;script>");
 	assertStringIncludes(html, 'data-init="el.scrollTop = el.scrollHeight; 1"');

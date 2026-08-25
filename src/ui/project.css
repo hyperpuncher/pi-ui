@@ -1003,7 +1003,66 @@
 }
 
 @layer utilities {
-	[data-keybind-hints="false"] [data-keybind-hint] {
+	[data-keybind-hints="false"] [data-keybind-hint],
+	[data-minimal-mode="true"] [data-keybind-hint] {
+		display: none;
+	}
+
+	[data-minimal-mode="true"] {
+		--message-tool-gap: 0.75rem;
+	}
+
+	[data-minimal-mode="true"] #message-list > .message-tool::before,
+	[data-minimal-mode="true"] #message-list > .message-tool::after {
+		display: none;
+	}
+
+	/* Hidden activity must not collapse the spacing around the visible block. */
+	[data-minimal-mode="true"]
+		#message-list
+		> :is(.message-thought, .message-tool, .message-assistant) {
+		margin-top: var(--message-gap);
+	}
+
+	/* The active block keeps running until its final assistant message arrives. */
+	[data-minimal-mode="true"]
+		#message-list
+		> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
+		.pi-tool-status-active {
+		opacity: 1;
+	}
+
+	[data-minimal-mode="true"]
+		#message-list
+		> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
+		.pi-tool-status-result {
+		opacity: 0;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		[data-minimal-mode="true"]
+			#message-list
+			> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
+			.pi-tool-status-pulse {
+			opacity: 1;
+			animation: var(--animate-ping);
+		}
+	}
+
+	/* Keep the latest tool stable while the model thinks between tool calls. */
+	[data-minimal-mode="true"]
+		#message-list
+		> .message-thought:has(+ :is(.message-thought, .message-tool)),
+	[data-minimal-mode="true"] #message-list > .message-tool:has(+ .message-tool),
+	[data-minimal-mode="true"]
+		#message-list
+		> .message-tool:has(+ .message-thought + .message-tool),
+	[data-minimal-mode="true"] #message-list > .message-tool + .message-thought,
+	[data-minimal-mode="true"] #message-list > .message-thought:has(+ .message-assistant),
+	[data-minimal-mode="true"] #message-list > .message-tool:has(+ .message-assistant),
+	[data-minimal-mode="true"]
+		#message-list
+		> .message-tool:has(+ .message-thought + .message-assistant) {
 		display: none;
 	}
 

@@ -47,6 +47,8 @@ export interface RouteResources {
 export interface RouteContext {
 	appVersion: string;
 	keybindHints: boolean;
+	minimalMode: boolean;
+	toolOutputHidden: boolean;
 	store: AppStore;
 	renderer: UiRenderer;
 	resources: RouteResources;

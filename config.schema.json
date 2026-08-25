@@ -250,6 +250,16 @@
 			"type": "boolean",
 			"default": true,
 			"description": "Show keyboard shortcut hints in the interface."
+		},
+		"minimalMode": {
+			"type": "boolean",
+			"default": false,
+			"description": "Hide thinking details, keybind hints, and tool output."
+		},
+		"toolOutputHidden": {
+			"type": "boolean",
+			"default": false,
+			"description": "Hide tool output and show compact one-line tool calls."
 		}
 	},
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
