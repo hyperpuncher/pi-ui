@@ -57,7 +57,6 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			id="session-sidebar"
 			class="sidebar peer/sidebar group/sidebar"
 			data-side="right"
-			data-breakpoint="1280"
 			data-initial-open={state.sessions.length === 0 && "false"}
 			aria-keyshortcuts="Control+B Meta+B"
 			data-signals:_session-sidebar-width__ifmissing={`
