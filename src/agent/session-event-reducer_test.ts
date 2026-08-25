@@ -64,7 +64,7 @@ class FakeState implements SessionEventStateSink {
 	}
 }
 
-function fixture(options: { syncUsage?: () => void; reload?: () => void } = {}) {
+function fixture(options: { syncUsage?: () => void } = {}) {
 	const state = new FakeState();
 	const tools = {
 		messageIds: new Map<string, string>(),
@@ -107,7 +107,6 @@ function fixture(options: { syncUsage?: () => void; reload?: () => void } = {}) 
 			},
 		}),
 		syncUsage: options.syncUsage,
-		reloadMessages: options.reload ?? (() => {}),
 		now: () => new Date(123),
 		nowMs: () => 456,
 	};
@@ -497,26 +496,35 @@ Deno.test("reduces retry and compaction lifecycle events", async (t) => {
 	}
 });
 
-Deno.test("successful compaction reloads its own runtime state", () => {
-	let reloads = 0;
-	const { state, context } = fixture({ reload: () => reloads++ });
+Deno.test("successful compaction appends its timeline entry", () => {
+	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({
 			type: "compaction_end",
 			reason: "manual",
-			result: { summary: "shorter" },
+			result: {
+				summary: "shorter",
+				firstKeptEntryId: "entry-1",
+				tokensBefore: 12_345,
+			},
 			aborted: false,
 			willRetry: false,
 		}),
 		context,
 	);
-	assertEquals(reloads, 1);
+	assertEquals(state.appended, [
+		{
+			id: "message-1",
+			role: "compaction",
+			text: "shorter",
+			options: { meta: "compacted from 12,345 tokens" },
+		},
+	]);
 	assertEquals(state.activity, [undefined]);
 });
 
-Deno.test("failed compaction appends the error without reloading", () => {
-	let reloads = 0;
-	const { state, context } = fixture({ reload: () => reloads++ });
+Deno.test("failed compaction appends the error", () => {
+	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({
 			type: "compaction_end",
@@ -527,7 +535,6 @@ Deno.test("failed compaction appends the error without reloading", () => {
 		}),
 		context,
 	);
-	assertEquals(reloads, 0);
 	assertEquals(state.appended[0], {
 		id: "message-1",
 		role: "system",

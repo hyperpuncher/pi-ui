@@ -1048,18 +1048,12 @@ export class RuntimeController {
 	): void {
 		if (event.type === "agent_start") backgroundSession.observedRunning = true;
 		if (event.type === "agent_end") backgroundSession.observedRunning = false;
-		const outcome = this.reduceEvent(
-			event,
-			backgroundSession.state,
-			{
-				messageIds: backgroundSession.toolMessageIds,
-				previewMessages: backgroundSession.toolPreviewMessages,
-				callArgs: backgroundSession.toolCallArgs,
-				startedAt: backgroundSession.toolStartedAt,
-			},
-			() =>
-				this.transcript.load(backgroundSession.runtime, backgroundSession.state),
-		);
+		const outcome = this.reduceEvent(event, backgroundSession.state, {
+			messageIds: backgroundSession.toolMessageIds,
+			previewMessages: backgroundSession.toolPreviewMessages,
+			callArgs: backgroundSession.toolCallArgs,
+			startedAt: backgroundSession.toolStartedAt,
+		});
 		this.updateSessionCatalogFromEvent(event, backgroundSession.runtime);
 		this.scheduleAutoTitleAfterUserMessage(backgroundSession.runtime, event);
 		if (event.type === "queue_update") {
@@ -1282,7 +1276,6 @@ export class RuntimeController {
 						callArgs: this.toolCallArgs,
 						startedAt: this.toolStartedAt,
 					},
-					() => this.loadCurrentSessionMessages(),
 					() => this.usage.sync(),
 				);
 				this.updateSessionCatalogFromEvent(event, this.runtime);
@@ -1344,7 +1337,6 @@ export class RuntimeController {
 		event: AgentSessionEvent,
 		state: SessionEventStateSink,
 		tools: SessionEventToolState,
-		reloadMessages: () => void,
 		syncUsage?: () => void,
 	) {
 		return reduceSessionEvent(event, {
@@ -1402,7 +1394,6 @@ export class RuntimeController {
 				return miss ? formatCacheMissNotice(miss) : undefined;
 			},
 			syncUsage,
-			reloadMessages,
 		});
 	}
 

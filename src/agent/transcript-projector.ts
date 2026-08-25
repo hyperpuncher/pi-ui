@@ -85,7 +85,6 @@ export class TranscriptProjector {
 					role: "compaction",
 					text: entry.summary,
 					timestamp,
-					title: "[compaction]",
 					meta: `compacted from ${entry.tokensBefore.toLocaleString()} tokens`,
 				},
 			];
@@ -162,7 +161,6 @@ export class TranscriptProjector {
 						role: "compaction",
 						text: message.summary,
 						timestamp,
-						title: "[compaction]",
 						meta: `compacted from ${message.tokensBefore.toLocaleString()} tokens`,
 					},
 				];
@@ -186,7 +184,6 @@ export function userContentToMessages(
 			role: "skill",
 			text: skill.content,
 			timestamp,
-			title: "[skill]",
 			meta: skill.name,
 		},
 	];

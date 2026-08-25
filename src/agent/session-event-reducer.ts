@@ -64,7 +64,6 @@ export type SessionEventReducerContext = {
 	) => ToolMessageView;
 	syncUsage?: () => void;
 	cacheMissNotice?: (message: AssistantEventMessage) => string | undefined;
-	reloadMessages: () => void;
 	now?: () => Date;
 	nowMs?: () => number;
 };
@@ -265,7 +264,11 @@ export function reduceSessionEvent(
 			break;
 		case "compaction_end":
 			state.setActivityText(undefined);
-			if (event.result) context.reloadMessages();
+			if (event.result) {
+				state.appendMessage("compaction", event.result.summary, {
+					meta: `compacted from ${event.result.tokensBefore.toLocaleString()} tokens`,
+				});
+			}
 			if (event.errorMessage) state.appendMessage("system", event.errorMessage);
 			break;
 	}
