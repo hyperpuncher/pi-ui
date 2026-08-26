@@ -107,8 +107,8 @@ export function renderPage(
 					<title safe>{state.documentTitle}</title>
 					<link
 						rel="icon"
-						type="image/png"
-						href={`${staticBase}/favicon.png`}
+						type="image/svg+xml"
+						href={`${staticBase}/favicon.svg`}
 					/>
 					<script src={`${staticBase}/theme.js`}></script>
 					<script>{sessionSidebarStartupScript}</script>
