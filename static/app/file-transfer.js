@@ -23,7 +23,7 @@ export function hasFiles(data) {
 
 export async function pick() {
 	showTransferError("");
-	if (document.body.dataset.nativeFilePicker !== "true") {
+	if (!document.body.hasAttribute("data-native-file-picker")) {
 		pickBrowserFiles();
 		return;
 	}

@@ -140,10 +140,10 @@ export function renderPage(
 				<body
 					class="h-full overflow-hidden"
 					spellcheck="false"
-					data-keybind-hints={keybindHints ? "true" : "false"}
-					data-minimal-mode={minimalMode ? "true" : "false"}
+					data-keybind-hints={keybindHints}
+					data-minimal-mode={minimalMode}
 					data-time-locale={systemTimeLocale}
-					data-native-file-picker={desktop ? "true" : "false"}
+					data-native-file-picker={desktop}
 					data-files-pick-endpoint={endpoints.filesPick}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
@@ -158,7 +158,7 @@ export function renderPage(
 					data-signals:_tool-output-hidden__ifmissing={
 						toolOutputHidden ? "true" : "false"
 					}
-					data-attr:data-minimal-mode="$_minimalMode ? 'true' : 'false'"
+					data-attr:data-minimal-mode="$_minimalMode"
 					data-effect={`
 						window.piUi.fonts.apply($_fontMono, $_fontSans);
 						window.dispatchEvent(

@@ -49,7 +49,7 @@ export function toggleWorkspaceReviewAction(): string {
 }
 
 export function toggleKeybindHintsAction(): string {
-	return `document.body.dataset.keybindHints = document.body.dataset.keybindHints === 'false' ? 'true' : 'false'; @post('${endpoints.keybindHints}', { payload: { keybindHints: document.body.dataset.keybindHints === 'true' } })`;
+	return `document.body.toggleAttribute('data-keybind-hints'); @post('${endpoints.keybindHints}', { payload: { keybindHints: document.body.hasAttribute('data-keybind-hints') } })`;
 }
 
 export function toggleMinimalModeAction(): string {

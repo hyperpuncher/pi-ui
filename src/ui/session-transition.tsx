@@ -38,9 +38,7 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"
 			aria-busy={transition.status === "loading" ? "true" : "false"}
-			data-session-performance-enabled={
-				sessionPerformance.enabled ? "true" : "false"
-			}
+			data-session-performance-enabled={sessionPerformance.enabled}
 			data-effect={
 				sessionPerformance.enabled &&
 				"window.piUi.sessionPerformance.observe($_sessionTransitionStatus, $_sessionTransitionGeneration)"

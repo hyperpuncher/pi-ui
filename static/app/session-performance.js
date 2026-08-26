@@ -2,7 +2,7 @@ let pending;
 
 export function startSessionPerformanceMeasurement() {
 	const transition = document.getElementById("session-transition");
-	if (transition?.dataset.sessionPerformanceEnabled !== "true") return;
+	if (!transition?.hasAttribute("data-session-performance-enabled")) return;
 	pending = { startedAt: performance.now() };
 }
 

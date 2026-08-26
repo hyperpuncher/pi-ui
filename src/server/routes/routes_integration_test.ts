@@ -98,8 +98,8 @@ Deno.test("page assets use the current immutable content version", async () => {
 	assertEquals(response.headers.get("cache-control"), "no-store");
 	assertStringIncludes(html, `/static/${context.appVersion}/app.css`);
 	assertStringIncludes(html, `appVersion=${context.appVersion}`);
-	assertStringIncludes(html, 'data-keybind-hints="true"');
-	assertStringIncludes(html, 'data-minimal-mode="false"');
+	assertStringIncludes(html, " data-keybind-hints ");
+	assertStringExcludes(html, " data-minimal-mode ");
 	assertStringIncludes(html, "KeyM");
 	assertStringIncludes(html, "KeyO");
 	assertStringIncludes(html, "/minimal-mode");
@@ -113,8 +113,8 @@ Deno.test("page assets use the current immutable content version", async () => {
 		new Request("http://localhost/"),
 	);
 	const quietPageHtml = await hiddenHintsPage.text();
-	assertStringIncludes(quietPageHtml, 'data-keybind-hints="false"');
-	assertStringIncludes(quietPageHtml, 'data-minimal-mode="true"');
+	assertStringExcludes(quietPageHtml, " data-keybind-hints ");
+	assertStringIncludes(quietPageHtml, " data-minimal-mode ");
 
 	const basecoat = await createRouter(context).fetch(
 		new Request("http://localhost/basecoat.js"),
