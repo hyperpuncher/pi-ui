@@ -7,11 +7,7 @@ import {
 	workspaceReviewBase,
 } from "../server/routes/endpoints.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
-import {
-	changesRatioDefault,
-	gitPaneRatioDefault,
-	reviewSidebarWidthDefault,
-} from "../workspace-review-types.ts";
+import { gitPaneRatioDefault } from "../workspace-review-types.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
@@ -283,8 +279,6 @@ export function renderPage(
 							data-style:margin-right={sessionSidebarMarginRightExpression}
 							data-style={`{
 								'--pi-review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio ?? ${gitPaneRatioDefault},
-								'--pi-review-sidebar-width': ($workspaceReviewPreferences.reviewSidebarWidth ?? ${reviewSidebarWidthDefault}) + 'px',
-								'--pi-review-changes-ratio': $workspaceReviewPreferences.changesRatio ?? ${changesRatioDefault},
 							}`}
 						>
 							<section

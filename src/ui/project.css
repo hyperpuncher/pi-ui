@@ -1,3 +1,21 @@
+@property --pi-review-pane-ratio {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0.5;
+}
+
+@property --pi-review-sidebar-width {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 272px;
+}
+
+@property --pi-review-changes-ratio {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0.5;
+}
+
 @layer theme {
 	:root,
 	:host {

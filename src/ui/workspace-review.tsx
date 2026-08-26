@@ -100,7 +100,13 @@ export function renderWorkspaceReview(
 			data-attr:aria-hidden="$_workspaceReviewOpen ? 'false' : 'true'"
 			data-attr:inert="!$_workspaceReviewOpen"
 		>
-			<div id="review-body" class="pi-review-body grid min-h-0 min-w-0">
+			<div
+				id="review-body"
+				class="pi-review-body grid min-h-0 min-w-0"
+				data-style={`{
+					'--pi-review-sidebar-width': ($workspaceReviewPreferences.reviewSidebarWidth ?? ${reviewSidebarWidthDefault}) + 'px',
+				}`}
+			>
 				<aside
 					id="workspace-files-sidebar"
 					class="pi-review-sidebar flex min-h-0 min-w-0 flex-col"
@@ -125,6 +131,9 @@ export function renderWorkspaceReview(
 				<aside
 					id="review-git-sidebar"
 					class="pi-review-sidebar grid min-h-0 min-w-0 flex-col"
+					data-style={`{
+						'--pi-review-changes-ratio': $workspaceReviewPreferences.changesRatio ?? ${changesRatioDefault},
+					}`}
 					style={
 						!snapshot.isGitRepository || preferences.tab === "files"
 							? "display: none"
