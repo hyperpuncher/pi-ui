@@ -19,9 +19,12 @@ export function bindVimScroll() {
 			event.ctrlKey ||
 			event.metaKey ||
 			event.altKey ||
-			isTextInputFocused()
-		)
+			isTextInputFocused() ||
+			isPickerTarget(event.target)
+		) {
+			pendingG = false;
 			return;
+		}
 		if (document.querySelector("dialog[open]")) return;
 		if (pendingG) {
 			pendingG = false;
@@ -45,6 +48,10 @@ export function bindVimScroll() {
 	document.addEventListener("keyup", (event) => {
 		if (event.code === "KeyJ" || event.code === "KeyK") keyHeld = false;
 	});
+}
+
+function isPickerTarget(target) {
+	return target instanceof Element && target.closest("[data-picker-kind]");
 }
 
 function isTextInputFocused() {
