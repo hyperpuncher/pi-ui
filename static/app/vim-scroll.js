@@ -2,7 +2,8 @@ import { markUnpinned, scrollBottom } from "./message-scroll.js";
 
 const stepPx = 100;
 const stepDurationMs = 120;
-const frameMs = 1000 / 144;
+const firstFrameMs = 17;
+const maxFrameElapsedMs = 1000 / 30;
 let animation;
 let target;
 let lastFrame = 0;
@@ -19,8 +20,7 @@ export function bindVimScroll() {
 			event.ctrlKey ||
 			event.metaKey ||
 			event.altKey ||
-			isTextInputFocused() ||
-			isPickerTarget(event.target)
+			isTextInputEvent(event)
 		) {
 			pendingG = false;
 			return;
@@ -42,7 +42,7 @@ export function bindVimScroll() {
 			scrollTo("bottom");
 		} else if (event.code === "KeyJ" || event.code === "KeyK") {
 			event.preventDefault();
-			scrollBy(event.code === "KeyJ" ? 100 : -100);
+			scrollBy(event.code === "KeyJ" ? stepPx : -stepPx);
 		}
 	});
 	document.addEventListener("keyup", (event) => {
@@ -50,17 +50,16 @@ export function bindVimScroll() {
 	});
 }
 
-function isPickerTarget(target) {
-	return target instanceof Element && target.closest("[data-picker-kind]");
+function isTextInputEvent(event) {
+	return isTextInput(event.composedPath()[0]);
 }
 
-function isTextInputFocused() {
-	const active = document.activeElement;
+function isTextInput(target) {
 	return (
-		active instanceof HTMLInputElement ||
-		active instanceof HTMLTextAreaElement ||
-		active instanceof HTMLSelectElement ||
-		active?.isContentEditable === true
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		(target instanceof HTMLElement && target.isContentEditable)
 	);
 }
 
@@ -75,7 +74,7 @@ function scrollBy(amount) {
 		direction = nextDirection;
 		delta = 0;
 		remainder = 0;
-		lastFrame = performance.now();
+		lastFrame = 0;
 	}
 	keyHeld = true;
 	startLineScroll();
@@ -87,16 +86,9 @@ function scrollTo(position) {
 	if (!(messages instanceof HTMLElement)) return;
 	direction = 0;
 	keyHeld = false;
-	if (position === "bottom") {
-		if (animation) cancelAnimationFrame(animation);
-		animation = undefined;
-		target = undefined;
-		scrollBottom("smooth");
-		return;
-	}
-	target = 0;
-	startTargetScroll();
-	markUnpinned();
+	target = position === "top" ? 0 : messages.scrollHeight - messages.clientHeight;
+	startTargetScroll(position);
+	if (position === "top") markUnpinned();
 }
 
 function startLineScroll() {
@@ -107,7 +99,9 @@ function startLineScroll() {
 			animation = undefined;
 			return;
 		}
-		const elapsed = Math.min(Math.max(now - lastFrame, 0), frameMs);
+		const elapsed = lastFrame
+			? Math.min(Math.max(now - lastFrame, 0), maxFrameElapsedMs)
+			: firstFrameMs;
 		lastFrame = now;
 		const max = messages.scrollHeight - messages.clientHeight;
 		const wanted = direction * ((stepPx * elapsed) / stepDurationMs) + remainder;
@@ -129,7 +123,7 @@ function startLineScroll() {
 	animation = requestAnimationFrame(tick);
 }
 
-function startTargetScroll() {
+function startTargetScroll(position) {
 	if (animation) cancelAnimationFrame(animation);
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement) || target === undefined) return;
@@ -143,7 +137,7 @@ function startTargetScroll() {
 		20 * Math.log(Math.max(Math.abs(fixedTarget - start), 1)),
 	);
 	let elapsedTotal = 0;
-	lastFrame = 0;
+	let lastFrame = 0;
 	const tick = (now) => {
 		const current = document.getElementById("messages");
 		if (!(current instanceof HTMLElement) || target === undefined) {
@@ -158,6 +152,7 @@ function startTargetScroll() {
 		if (progress >= 1) {
 			target = undefined;
 			animation = undefined;
+			if (position === "bottom") scrollBottom();
 			return;
 		}
 		animation = requestAnimationFrame(tick);
