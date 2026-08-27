@@ -52,12 +52,12 @@ export function deletePromptCharBeforeCursor() {
 }
 
 let promptLayoutFrame;
-
-const promptResizeObserver = new ResizeObserver(schedulePromptLayout);
+let promptResizeObserver;
 
 export function bindPromptLayout() {
 	const footer = document.getElementById("prompt-footer");
 	if (!(footer instanceof HTMLElement)) return;
+	promptResizeObserver ??= new ResizeObserver(schedulePromptLayout);
 	promptResizeObserver.disconnect();
 	promptResizeObserver.observe(footer);
 }
