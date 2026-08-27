@@ -14,13 +14,18 @@ export class ModelController {
 	async set(modelRef: string): Promise<boolean> {
 		const model = this.findOrReport(modelRef);
 		if (!model) return false;
-		await this.getRuntime().session.setModel(model);
+		const runtime = this.getRuntime();
+		await runtime.session.setModel(model, { persist: true });
+		await runtime.services.settingsManager.flush();
 		this.onModelChanged();
 		return true;
 	}
 
 	async cycle(direction: "forward" | "backward" = "forward"): Promise<boolean> {
-		if (!(await this.getRuntime().session.cycleModel(direction))) return false;
+		const runtime = this.getRuntime();
+		if (!(await runtime.session.cycleModel(direction, { persist: true })))
+			return false;
+		await runtime.services.settingsManager.flush();
 		this.onModelChanged();
 		return true;
 	}
