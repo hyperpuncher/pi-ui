@@ -384,60 +384,6 @@
 		background: var(--pi-prompt-surface);
 	}
 
-	#prompt-box > .pi-prompt-surface {
-		container: prompt / inline-size;
-	}
-
-	.pi-prompt-toolbar-expanded,
-	.pi-prompt-wide-label,
-	.pi-prompt-divider {
-		display: none;
-	}
-
-	.pi-prompt-context-trigger {
-		width: 2rem;
-		max-width: 2rem;
-		padding-inline: 0;
-	}
-
-	.pi-model-trigger {
-		max-width: 7rem;
-	}
-
-	@container prompt (width >= 40rem) {
-		.pi-prompt-toolbar-expanded {
-			display: flex;
-		}
-
-		.pi-prompt-toolbar-compact {
-			display: none;
-		}
-	}
-
-	@container prompt (width >= 50rem) {
-		.pi-prompt-context-trigger {
-			width: fit-content;
-			max-width: 12rem;
-			padding-inline: 0.75rem;
-		}
-
-		.pi-prompt-context-icon {
-			display: none;
-		}
-
-		.pi-prompt-wide-label {
-			display: inline;
-		}
-
-		.pi-prompt-divider {
-			display: block;
-		}
-
-		.pi-model-trigger {
-			max-width: 14rem;
-		}
-	}
-
 	#prompt-box .input-group:is(:focus, :focus-within) {
 		@apply shadow-xl ring-0;
 

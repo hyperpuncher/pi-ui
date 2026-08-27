@@ -159,20 +159,26 @@ export function renderPromptBox(
 				></textarea>
 				{renderExtensionWidgets(state, "belowEditor")}
 				<footer
-					class="relative flex flex-wrap items-center justify-between gap-2 p-0"
+					id="prompt-footer"
+					class="group/prompt-footer relative flex flex-nowrap items-center justify-between gap-2 p-0"
 					data-align="end"
+					data-init="window.piUi.prompt.bindLayout()"
+					data-preserve-attr="data-toolbar-compact data-context-compact"
 				>
 					{renderPromptToolbar(state, reviewAvailable)}
-					<div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+					<div
+						id="prompt-context"
+						class="flex min-w-0 flex-1 items-center justify-end gap-1.5 group-data-[measuring]/prompt-footer:w-max group-data-[measuring]/prompt-footer:flex-none"
+					>
 						{renderPromptStatus(state)}
 						{renderWorkspacePicker(state)}
 						<span
-							class="pi-prompt-divider h-4 w-0 shrink-0 border-l border-border"
+							class="h-4 w-0 shrink-0 border-l border-border group-data-[context-compact]/prompt-footer:hidden"
 							aria-hidden="true"
 						/>
 						{renderModelPicker(state)}
 						<span
-							class="pi-prompt-divider h-4 w-0 shrink-0 border-l border-border"
+							class="h-4 w-0 shrink-0 border-l border-border group-data-[context-compact]/prompt-footer:hidden"
 							aria-hidden="true"
 						/>
 						{renderThinkingPicker(state)}

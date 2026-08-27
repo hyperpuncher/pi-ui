@@ -51,6 +51,38 @@ export function deletePromptCharBeforeCursor() {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+let promptLayoutFrame;
+
+const promptResizeObserver = new ResizeObserver(schedulePromptLayout);
+
+export function bindPromptLayout() {
+	const footer = document.getElementById("prompt-footer");
+	if (!(footer instanceof HTMLElement)) return;
+	promptResizeObserver.disconnect();
+	promptResizeObserver.observe(footer);
+}
+
+function schedulePromptLayout() {
+	cancelAnimationFrame(promptLayoutFrame);
+	promptLayoutFrame = requestAnimationFrame(() => {
+		const footer = document.getElementById("prompt-footer");
+		if (!(footer instanceof HTMLElement)) return;
+
+		footer.removeAttribute("data-toolbar-compact");
+		footer.removeAttribute("data-context-compact");
+		footer.setAttribute("data-measuring", "");
+
+		if (footer.scrollWidth > footer.clientWidth) {
+			footer.setAttribute("data-toolbar-compact", "");
+			if (footer.scrollWidth > footer.clientWidth) {
+				footer.setAttribute("data-context-compact", "");
+			}
+		}
+
+		footer.removeAttribute("data-measuring");
+	});
+}
+
 export function bindPromptInteractions() {
 	document.addEventListener("pointerdown", (event) => {
 		const target = event.target;
