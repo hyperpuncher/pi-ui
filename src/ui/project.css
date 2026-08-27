@@ -642,6 +642,10 @@
 		height: calc(var(--message-tool-gap) + 0.5625rem);
 	}
 
+	.pi-activity-summary {
+		margin-bottom: var(--message-tool-narrative-gap);
+	}
+
 	.pi-tool-output-surface {
 		margin-top: 0.5rem;
 		border: 1px solid var(--pi-surface-edge);
@@ -981,11 +985,14 @@
 		display: none;
 	}
 
-	/* Hidden activity must not collapse the spacing around the visible block. */
-	[data-minimal-mode]
-		#message-list
-		> :is(.message-thought, .message-tool, .message-assistant) {
+	/* Keep the live activity row in the same position as hidden rows change. */
+	[data-minimal-mode] #message-list > :is(.message-thought, .message-tool) {
 		margin-top: var(--message-gap);
+	}
+
+	/* Give completed activity the same space above and below its summary. */
+	[data-minimal-mode] #message-list > .message-activity-result {
+		margin-top: var(--message-tool-narrative-gap);
 	}
 
 	/* The active block keeps running until its final assistant message arrives. */
@@ -1017,6 +1024,11 @@
 	[data-minimal-mode]
 		#message-list
 		> .message-thought:has(+ :is(.message-thought, .message-tool)),
+	[data-minimal-mode]
+		#message-list
+		> .message-thought:has(
+			+ .message-notice + :is(.message-thought, .message-tool, .message-assistant)
+		),
 	[data-minimal-mode] #message-list > .message-tool:has(+ .message-tool),
 	[data-minimal-mode]
 		#message-list

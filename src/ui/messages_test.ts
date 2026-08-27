@@ -131,6 +131,8 @@ Deno.test("assistant messages summarize preceding tool activity", () => {
 	assertEquals(assistant.activitySummary, { duration: "1m 4s", stepCount: 2 });
 	const html = renderMessage(assistant);
 	assertStringIncludes(html, "completed 2 steps in 1m 4s");
+	assertStringIncludes(html, "message-activity-result");
+	assertStringIncludes(html, "pi-activity-summary");
 	assertStringIncludes(html, "pi-tool-timeline-item");
 	assertStringIncludes(html, "pi-tool-state-dot");
 });

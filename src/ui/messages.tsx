@@ -557,13 +557,16 @@ function renderNarrativeMessage(message: AppMessage): string {
 	}
 	return syncHtml(
 		<article
-			class="message message-narrative message-assistant markdown-content w-full self-start"
+			class={[
+				"message message-narrative message-assistant w-full self-start",
+				message.activitySummary && "message-activity-result",
+			]}
 			data-message-id={message.id}
 			data-ignore-morph={preservesFinalizedMessageDom(message)}
 		>
 			{message.activitySummary && (
 				<div
-					class="pi-tool-timeline-item relative mb-4 w-full"
+					class="pi-activity-summary pi-tool-timeline-item relative w-full"
 					style="display: none"
 					data-show="$_minimalMode"
 				>
@@ -579,7 +582,7 @@ function renderNarrativeMessage(message: AppMessage): string {
 					</p>
 				</div>
 			)}
-			<div>{content}</div>
+			<div class="markdown-content">{content}</div>
 			{renderDeferredEnhancement(message)}
 		</article>,
 	);
