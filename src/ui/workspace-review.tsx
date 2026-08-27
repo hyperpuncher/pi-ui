@@ -31,7 +31,7 @@ function resizeHandleAttributes(options: {
 	const value = `$workspaceReviewPreferences.${options.preference}`;
 	const normalize = `${value} = Math.min(
 		${options.maximum},
-		Math.max(${options.minimum}, ${value} ?? ${options.defaultValue}),
+		Math.max(${options.minimum}, ${value} || ${options.defaultValue}),
 	);`;
 	const commit = `document.body.dispatchEvent(new CustomEvent(
 		'pi-ui-workspace-review-preferences',
@@ -46,7 +46,7 @@ function resizeHandleAttributes(options: {
 		"data-on:pointerdown": `if (evt.button === 0) {
 			el.dataset.resizePointer = evt.${coordinate};
 			el.dataset.resizeScale = ${options.scale};
-			el.dataset.resizeStart = ${value} ?? ${options.defaultValue};
+			el.dataset.resizeStart = ${value} || ${options.defaultValue};
 			el.setPointerCapture(evt.pointerId);
 			document.documentElement.classList.add('pi-resizing');
 		}`,
@@ -61,7 +61,7 @@ function resizeHandleAttributes(options: {
 		"data-on:keydown": `if (evt.code === '${decrease}' || evt.code === '${increase}') {
 			evt.preventDefault();
 			const direction = evt.code === '${decrease}' ? -1 : 1;
-			${value} = (${value} ?? ${options.defaultValue}) +
+			${value} = (${value} || ${options.defaultValue}) +
 				direction * (evt.shiftKey ? 48 : 16) / (${options.scale});
 			${normalize}
 			${commit}
@@ -104,7 +104,7 @@ export function renderWorkspaceReview(
 				id="review-body"
 				class="pi-review-body grid min-h-0 min-w-0"
 				data-style={`{
-					'--pi-review-sidebar-width': ($workspaceReviewPreferences.reviewSidebarWidth ?? ${reviewSidebarWidthDefault}) + 'px',
+					'--pi-review-sidebar-width': ($workspaceReviewPreferences.reviewSidebarWidth || ${reviewSidebarWidthDefault}) + 'px',
 				}`}
 			>
 				<aside
@@ -132,7 +132,7 @@ export function renderWorkspaceReview(
 					id="review-git-sidebar"
 					class="pi-review-sidebar grid min-h-0 min-w-0 flex-col"
 					data-style={`{
-						'--pi-review-changes-ratio': $workspaceReviewPreferences.changesRatio ?? ${changesRatioDefault},
+						'--pi-review-changes-ratio': $workspaceReviewPreferences.changesRatio || ${changesRatioDefault},
 					}`}
 					style={
 						!snapshot.isGitRepository || preferences.tab === "files"
@@ -208,7 +208,7 @@ export function renderWorkspaceReview(
 						aria-orientation="horizontal"
 						aria-valuemin={changesRatioMin * 100}
 						aria-valuemax={changesRatioMax * 100}
-						data-attr:aria-valuenow={`Math.round(($workspaceReviewPreferences.changesRatio ?? ${changesRatioDefault}) * 100)`}
+						data-attr:aria-valuenow={`Math.round(($workspaceReviewPreferences.changesRatio || ${changesRatioDefault}) * 100)`}
 						attrs={resizeHandleAttributes({
 							axis: "vertical",
 							defaultValue: changesRatioDefault,
@@ -243,7 +243,7 @@ export function renderWorkspaceReview(
 					aria-orientation="vertical"
 					aria-valuemin={reviewSidebarWidthMin}
 					aria-valuemax={reviewSidebarWidthMax}
-					data-attr:aria-valuenow={`$workspaceReviewPreferences.reviewSidebarWidth ?? ${reviewSidebarWidthDefault}`}
+					data-attr:aria-valuenow={`$workspaceReviewPreferences.reviewSidebarWidth || ${reviewSidebarWidthDefault}`}
 					attrs={resizeHandleAttributes({
 						axis: "horizontal",
 						defaultValue: reviewSidebarWidthDefault,
@@ -534,7 +534,7 @@ export function renderWorkspaceReview(
 				aria-orientation="vertical"
 				aria-valuemin={gitPaneRatioMin * 100}
 				aria-valuemax={gitPaneRatioMax * 100}
-				data-attr:aria-valuenow={`Math.round(($workspaceReviewPreferences.gitPaneRatio ?? ${gitPaneRatioDefault}) * 100)`}
+				data-attr:aria-valuenow={`Math.round(($workspaceReviewPreferences.gitPaneRatio || ${gitPaneRatioDefault}) * 100)`}
 				attrs={resizeHandleAttributes({
 					axis: "horizontal",
 					defaultValue: gitPaneRatioDefault,

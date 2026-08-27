@@ -278,7 +278,7 @@ export function renderPage(
 							class="@container/workspace absolute inset-0 grid min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) peer-aria-[hidden=true]/sidebar:mr-0! motion-reduce:transition-none"
 							data-style:margin-right={sessionSidebarMarginRightExpression}
 							data-style={`{
-								'--pi-review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio ?? ${gitPaneRatioDefault},
+								'--pi-review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio || ${gitPaneRatioDefault},
 							}`}
 						>
 							<section

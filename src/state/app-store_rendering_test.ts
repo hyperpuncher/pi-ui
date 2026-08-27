@@ -918,13 +918,19 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertIncludes(workspaceShell, "@container/workspace");
 	assertIncludes(workspaceShell, " grid ");
 	assertIncludes(workspaceShell, "--pi-review-pane-ratio");
+	assertIncludes(workspaceShell, "gitPaneRatio || 0.5");
+	assertNotIncludes(workspaceShell, "gitPaneRatio ??");
 	assertNotIncludes(workspaceShell, "--pi-review-sidebar-width");
 	assertNotIncludes(workspaceShell, "--pi-review-changes-ratio");
 	const reviewBody = html.match(/<div[^>]*id="review-body"[^>]*>/)?.[0] ?? "";
 	assertIncludes(reviewBody, "--pi-review-sidebar-width");
+	assertIncludes(reviewBody, "reviewSidebarWidth || 272");
+	assertNotIncludes(reviewBody, "reviewSidebarWidth ??");
 	const reviewSidebar =
 		html.match(/<aside[^>]*id="review-git-sidebar"[^>]*>/)?.[0] ?? "";
 	assertIncludes(reviewSidebar, "--pi-review-changes-ratio");
+	assertIncludes(reviewSidebar, "changesRatio || 0.5");
+	assertNotIncludes(reviewSidebar, "changesRatio ??");
 	assertIncludes(html, 'id="model-select"');
 	assert(
 		html.indexOf("/app/main.js") < html.indexOf("/vendor/datastar.js"),
