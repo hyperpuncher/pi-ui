@@ -19,6 +19,7 @@
     "npm:@earendil-works/pi-coding-agent@~0.84.3": "0.84.3",
     "npm:@earendil-works/pi-tui@0.84.3": "0.84.3",
     "npm:@earendil-works/pi-tui@~0.84.3": "0.84.3",
+    "npm:@iconify-json/lucide@^1.2.126": "1.2.126",
     "npm:@kitajs/html@5.0.0-next.1": "5.0.0-next.1",
     "npm:@pierre/diffs@1.3.6": "1.3.6_react@19.2.8_react-dom@19.2.8__react@19.2.8",
     "npm:@pierre/trees@1.0.0-beta.6": "1.0.0-beta.6_react@19.2.8_react-dom@19.2.8__react@19.2.8",
@@ -510,6 +511,15 @@
         "ws"
       ],
       "scripts": true
+    },
+    "@iconify-json/lucide@1.2.126": {
+      "integrity": "sha512-Fl3OfR71yeWLrlTLp6C4W5W3rJJDWH9/e70mjtq9VAldYDxvHh149JMNPz7foTeLLTE2Paynnp2aYKVL9rgF5Q==",
+      "dependencies": [
+        "@iconify/types"
+      ]
+    },
+    "@iconify/types@2.0.0": {
+      "integrity": "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="
     },
     "@kitajs/html@5.0.0-next.1": {
       "integrity": "sha512-jqE8KT1lPseRUGSpvd+pURp3JMYZSbqD5bJSn2T3sG5dNNFJ/OpaIc8npp7pA1mhYt35Gu4r7zju80uEjLCC5g==",
@@ -1407,6 +1417,7 @@
       "npm:@earendil-works/pi-coding-agent@~0.84.3",
       "npm:@earendil-works/pi-tui@0.84.3",
       "npm:@earendil-works/pi-tui@~0.84.3",
+      "npm:@iconify-json/lucide@^1.2.126",
       "npm:@kitajs/html@5.0.0-next.1",
       "npm:@pierre/diffs@1.3.6",
       "npm:@pierre/trees@1.0.0-beta.6",

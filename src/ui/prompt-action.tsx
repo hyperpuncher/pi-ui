@@ -1,16 +1,9 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
-import { Icon, StopIcon } from "./icon.tsx";
+import { Icon } from "./icon.tsx";
+import { ArrowUp, Square } from "./icons.ts";
 import { ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
-
-function SendIcon() {
-	return (
-		<Icon>
-			<path d="m5 12 7-7 7 7m-7 7V5" />
-		</Icon>
-	);
-}
 
 export function renderPromptAction(state: AppStateSnapshot): string {
 	if (state.activityText) {
@@ -37,7 +30,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 				data-align="end"
 				aria-label="Abort"
 			>
-				<StopIcon />
+				<Icon icon={Square} class="size-3.5 [&_rect]:fill-current" />
 				<ShortcutTooltip label="Abort" shortcut="Esc" />
 			</button>,
 		);
@@ -66,7 +59,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			data-align="end"
 			aria-label="Send"
 		>
-			<SendIcon />
+			<Icon icon={ArrowUp} />
 			<ShortcutTooltip label="Send" shortcut="Enter" />
 		</button>,
 	);

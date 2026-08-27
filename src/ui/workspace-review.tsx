@@ -12,6 +12,8 @@ import {
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
+import { Icon } from "./icon.tsx";
+import { SquareSplitHorizontal, SquareSplitVertical, TextWrap, X } from "./icons.ts";
 import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -291,19 +293,7 @@ export function renderWorkspaceReview(
 								data-tooltip="Wrap long lines"
 								data-side="bottom"
 							>
-								<svg
-									class="size-3.5"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									aria-hidden="true"
-								>
-									<path d="m16 16-3 3 3 3" />
-									<path d="M3 12h14.5a1 1 0 0 1 0 7H13M3 19h6M3 5h18" />
-								</svg>
+								<Icon icon={TextWrap} />
 							</button>
 						</div>
 						<button
@@ -324,18 +314,7 @@ export function renderWorkspaceReview(
 							data-on:click="$_workspaceReviewOpen = false"
 							aria-label="Hide workspace"
 						>
-							<svg
-								class="size-3.5"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								aria-hidden="true"
-							>
-								<path d="M18 6 6 18M6 6l12 12" />
-							</svg>
+							<Icon icon={X} />
 						</button>
 					</header>
 					<div class="pi-review-diff-canvas relative min-h-0 min-w-0 flex-1">
@@ -410,18 +389,7 @@ export function renderWorkspaceReview(
 									aria-pressed="true"
 									aria-label="Split diff layout"
 								>
-									<svg
-										class="size-3.5"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										aria-hidden="true"
-									>
-										<path d="M8 19H5c-1 0-2-1-2-2V7c0-1 1-2 2-2h3m8 0h3c1 0 2 1 2 2v10c0 1-1 2-2 2h-3M12 4v16" />
-									</svg>
+									<Icon icon={SquareSplitHorizontal} />
 								</button>
 								<button
 									id="review-layout-stacked"
@@ -430,18 +398,7 @@ export function renderWorkspaceReview(
 									aria-pressed="false"
 									aria-label="Stacked diff layout"
 								>
-									<svg
-										class="size-3.5"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										aria-hidden="true"
-									>
-										<path d="M5 8V5c0-1 1-2 2-2h10c1 0 2 1 2 2v3m0 8v3c0 1-1 2-2 2H7c-1 0-2-1-2-2v-3m-1-4h16" />
-									</svg>
+									<Icon icon={SquareSplitVertical} />
 								</button>
 							</div>
 							<div class="flex rounded-md bg-(--pi-control-well) p-0.5">
@@ -454,19 +411,7 @@ export function renderWorkspaceReview(
 									data-tooltip="Wrap long lines"
 									data-side="bottom"
 								>
-									<svg
-										class="size-3.5"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										aria-hidden="true"
-									>
-										<path d="m16 16-3 3 3 3" />
-										<path d="M3 12h14.5a1 1 0 0 1 0 7H13M3 19h6M3 5h18" />
-									</svg>
+									<Icon icon={TextWrap} />
 								</button>
 							</div>
 							<span
@@ -490,18 +435,7 @@ export function renderWorkspaceReview(
 								data-on:click="$_workspaceReviewOpen = false"
 								aria-label="Hide workspace"
 							>
-								<svg
-									class="size-3.5"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									aria-hidden="true"
-								>
-									<path d="M18 6 6 18M6 6l12 12" />
-								</svg>
+								<Icon icon={X} />
 							</button>
 						</div>
 					</header>

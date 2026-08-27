@@ -16,6 +16,7 @@ import { escapeHtml } from "../utils/html.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
+import { ChevronRight, Loader } from "./icons.ts";
 import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { renderMarkdownStreaming } from "./markdown.tsx";
 import type { AppMessage } from "./render-state.ts";
@@ -157,18 +158,7 @@ function renderEmptyMessages(
 									role="status"
 									aria-label="Loading recent sessions"
 								>
-									<svg
-										class="size-5 animate-spin"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										aria-hidden="true"
-									>
-										<path d="M12 2v4m4.2 1.8l2.9-2.9M18 12h4m-5.8 4.2l2.9 2.9M12 18v4m-7.1-2.9l2.9-2.9M2 12h4M4.9 4.9l2.9 2.9" />
-									</svg>
+									<Icon icon={Loader} class="size-5 animate-spin" />
 								</div>
 							) : (
 								<div class="flex flex-col gap-1">
@@ -639,18 +629,10 @@ function renderContextMessage(message: AppMessage): string {
 						)}
 					</span>
 					<span class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs text-muted-foreground">
-						<svg
+						<Icon
+							icon={ChevronRight}
 							class="size-3.5 rotate-180 transition-transform duration-150 ease-(--pi-ease-out) group-open:rotate-90 motion-reduce:transition-none"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							aria-hidden="true"
-						>
-							<path d="m9 18 6-6-6-6" />
-						</svg>
+						/>
 					</span>
 				</summary>
 				<div class="pi-tool-output-surface p-3 text-sm text-muted-foreground">

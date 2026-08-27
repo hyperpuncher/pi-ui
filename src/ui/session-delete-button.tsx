@@ -1,4 +1,6 @@
 import type { AppSessionSummary } from "../state/app-store.ts";
+import { Icon } from "./icon.tsx";
+import { Trash2 } from "./icons.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function SessionDeleteButton(props: {
@@ -26,23 +28,7 @@ export function SessionDeleteButton(props: {
 				document.getElementById('session-delete-dialog')?.showModal();
 			`}
 		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="text-current!"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				aria-hidden="true"
-			>
-				<path d="M10 11v6" />
-				<path d="M14 11v6" />
-				<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-				<path d="M3 6h18" />
-				<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-			</svg>
+			<Icon icon={Trash2} class="text-current!" />
 		</button>,
 	);
 }

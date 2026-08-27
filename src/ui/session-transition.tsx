@@ -3,6 +3,8 @@ import { sessionPerformance } from "../perf/session-performance.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
+import { Icon } from "./icon.tsx";
+import { Loader } from "./icons.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function resumeSessionAction(
@@ -55,18 +57,7 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 				</div>
 			) : (
 				<div class="flex flex-col items-center text-muted-foreground">
-					<svg
-						class="size-5 animate-spin"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<path d="M12 2v4m4.2 1.8l2.9-2.9M18 12h4m-5.8 4.2l2.9 2.9M12 18v4m-7.1-2.9l2.9-2.9M2 12h4M4.9 4.9l2.9 2.9" />
-					</svg>
+					<Icon icon={Loader} class="size-5 animate-spin" />
 					<span class="sr-only" safe>
 						{targetPath}
 					</span>

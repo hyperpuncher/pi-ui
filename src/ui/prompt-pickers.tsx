@@ -12,6 +12,7 @@ import type { AppStateSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
 import { Icon } from "./icon.tsx";
+import { Brain, Folder, Star } from "./icons.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -20,7 +21,7 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<button
 			id="workspace-picker"
-			class="pi-prompt-context-trigger btn min-w-0 font-mono text-muted-foreground hover:text-foreground"
+			class="btn w-fit max-w-48 min-w-0 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:w-8 group-data-[context-compact]/prompt-footer:max-w-8 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
 			data-variant="ghost"
 			data-size="sm"
 			type="button"
@@ -34,8 +35,11 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 			data-tooltip="Workspace"
 			data-tooltip-delay
 		>
-			<WorkspaceIcon />
-			<span class="pi-prompt-wide-label truncate" safe>
+			<Icon
+				icon={Folder}
+				class="hidden size-4 group-data-[context-compact]/prompt-footer:block"
+			/>
+			<span class="truncate group-data-[context-compact]/prompt-footer:hidden" safe>
 				{label}
 			</span>
 			<ShortcutTooltip label="Workspace" shortcut="ctrl /" />
@@ -67,7 +71,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="pi-prompt-context-trigger btn max-w-40 font-mono text-muted-foreground hover:text-foreground"
+					class="btn w-fit max-w-40 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:w-8 group-data-[context-compact]/prompt-footer:max-w-8 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="thinking-select-trigger"
@@ -80,8 +84,11 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
 				>
-					<ThinkingIcon />
-					<span class="pi-prompt-wide-label truncate">
+					<Icon
+						icon={Brain}
+						class="hidden size-4 group-data-[context-compact]/prompt-footer:block"
+					/>
+					<span class="truncate group-data-[context-compact]/prompt-footer:hidden">
 						{thinkingLabel(current)}
 					</span>
 					<ShortcutTooltip label="Thinking" shortcut="alt T" />
@@ -139,29 +146,6 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 	);
 }
 
-function ThinkingIcon() {
-	return (
-		<Icon class="pi-prompt-context-icon size-4">
-			<>
-				<path d="M12 18V5m3 8a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4m8.598-6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5" />
-				<path d="M17.997 5.125a4 4 0 0 1 2.526 5.77" />
-				<path d="M18 18a4 4 0 0 0 2-7.464" />
-				<path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517" />
-				<path d="M6 18a4 4 0 0 1-2-7.464" />
-				<path d="M6.003 5.125a4 4 0 0 0-2.526 5.77" />
-			</>
-		</Icon>
-	);
-}
-
-function WorkspaceIcon() {
-	return (
-		<Icon class="pi-prompt-context-icon size-4">
-			<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-		</Icon>
-	);
-}
-
 function thinkingLabel(level: AppThinkingLevel): string {
 	return level === "off" ? "thinking off" : level;
 }
@@ -195,7 +179,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			<div id="model-picker" class="min-w-0 shrink">
 				<button
 					type="button"
-					class="pi-model-trigger btn w-fit min-w-0 font-mono text-muted-foreground hover:text-foreground"
+					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-28 hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					data-tooltip="Log in to a provider"
@@ -231,7 +215,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="pi-model-trigger btn w-fit min-w-0 font-mono text-muted-foreground hover:text-foreground"
+					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-28 hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
@@ -372,27 +356,14 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												});
 												`}
 											>
-												<svg
-													class="size-4"
-													xmlns="http://www.w3.org/2000/svg"
-													width="32"
-													height="32"
-													viewBox="0 0 24 24"
-													aria-hidden="true"
-												>
-													<path
-														fill={
-															model.scoped
-																? "currentColor"
-																: "none"
-														}
-														stroke="currentColor"
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														stroke-width="2"
-														d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"
-													/>
-												</svg>
+												<Icon
+													icon={Star}
+													class={
+														model.scoped
+															? "size-4 [&_path]:fill-current"
+															: "size-4"
+													}
+												/>
 											</button>
 										</div>
 									);

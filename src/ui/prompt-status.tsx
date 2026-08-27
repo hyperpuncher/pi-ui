@@ -1,6 +1,8 @@
 import type { AppUsage, AppUsageLimits } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
+import { Icon } from "./icon.tsx";
+import { Loader } from "./icons.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function renderPromptStatus(state: AppStateSnapshot): string {
@@ -223,19 +225,6 @@ function clampPercent(value: number): number {
 
 export function loaderIcon() {
 	return (
-		<svg
-			aria-label="Loading"
-			role="status"
-			class="lucide lucide-loader size-3 animate-spin"
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="2"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-		>
-			<path d="M12 2v4m4.2 1.8l2.9-2.9M18 12h4m-5.8 4.2l2.9 2.9M12 18v4m-7.1-2.9l2.9-2.9M2 12h4M4.9 4.9l2.9 2.9" />
-		</svg>
+		<Icon icon={Loader} label="Loading" role="status" class="size-3 animate-spin" />
 	);
 }

@@ -123,7 +123,8 @@ Deno.test("current running session is live but does not resume itself", () => {
 	assertStringIncludes(html, "data-session-rename-title");
 	assertStringIncludes(html, "data-on:dblclick");
 	assertStringIncludes(html, "@post('/sessions/rename'");
-	assertStringIncludes(html, 'class="size-3 text-destructive!"');
+	assertStringIncludes(html, "size-3 text-destructive!");
+	assertStringIncludes(html, "[&_rect]:fill-current");
 	assertStringIncludes(html, "@post('/abort'");
 	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
 	assertStringIncludes(html, "dataset.sessionPickerCloseTimer");
@@ -199,10 +200,8 @@ Deno.test("workspace picker shows only the workspace folder name", () => {
 			workspacePath: "/home/user/Documents/Blenderanimation",
 		}),
 	);
-	assertStringIncludes(
-		nested,
-		'class="pi-prompt-wide-label truncate">Blenderanimation</span>',
-	);
+	assertStringIncludes(nested, ">Blenderanimation</span>");
+	assertStringIncludes(nested, "group-data-[context-compact]/prompt-footer:hidden");
 	assertStringIncludes(nested, 'aria-label="/home/user/Documents/Blenderanimation"');
 
 	const home = renderWorkspacePicker(
@@ -210,7 +209,7 @@ Deno.test("workspace picker shows only the workspace folder name", () => {
 			workspacePath: os.homedir(),
 		}),
 	);
-	assertStringIncludes(home, 'class="pi-prompt-wide-label truncate">~</span>');
+	assertStringIncludes(home, ">~</span>");
 });
 
 Deno.test("workspace rows show each collapsed path once", () => {
@@ -299,7 +298,10 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 		withoutSelection,
 		"w-0 opacity-0 group-hover:w-7 group-hover:opacity-100 focus-visible:w-7 focus-visible:opacity-100",
 	);
-	assertStringIncludes(withoutSelection, "pi-model-trigger");
+	assertStringIncludes(
+		withoutSelection,
+		"group-data-[context-compact]/prompt-footer:max-w-28",
+	);
 });
 
 Deno.test("model picker shows only the final model name in its trigger", () => {

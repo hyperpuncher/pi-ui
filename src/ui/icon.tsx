@@ -1,12 +1,14 @@
-export function StopIcon(props: { class?: string } = {}) {
-	return (
-		<Icon class={props.class}>
-			<rect width="18" height="18" x="3" y="3" rx="2" fill="currentColor" />
-		</Icon>
-	);
-}
+import type { IconData } from "./icons.ts";
 
-export function Icon(props: { children: JSX.Element; class?: string }) {
+type IconProps = {
+	icon?: IconData;
+	children?: JSX.Element;
+	class?: string;
+	label?: string;
+	role?: "img" | "status";
+};
+
+export function Icon(props: IconProps) {
 	return (
 		<svg
 			class={props.class ?? "size-3.5"}
@@ -16,9 +18,11 @@ export function Icon(props: { children: JSX.Element; class?: string }) {
 			stroke-linecap="round"
 			stroke-linejoin="round"
 			stroke-width="2"
-			aria-hidden="true"
+			aria-hidden={props.label ? undefined : "true"}
+			aria-label={props.label}
+			role={props.label ? (props.role ?? "img") : undefined}
 		>
-			{props.children}
+			{props.icon?.body ?? props.children}
 		</svg>
 	);
 }

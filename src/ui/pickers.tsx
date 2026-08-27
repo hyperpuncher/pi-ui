@@ -5,7 +5,8 @@ import type { AppSessionSummary, AppSlashCommand } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
-import { StopIcon } from "./icon.tsx";
+import { Icon } from "./icon.tsx";
+import { Square } from "./icons.ts";
 import {
 	PickerEmpty,
 	PickerList,
@@ -353,7 +354,10 @@ function renderSessionRow(
 						`
 						}
 					>
-						<StopIcon class="size-3 text-destructive!" />
+						<Icon
+							icon={Square}
+							class="size-3 text-destructive! [&_rect]:fill-current"
+						/>
 					</button>
 				)}
 			</span>

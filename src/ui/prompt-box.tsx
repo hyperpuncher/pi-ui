@@ -2,6 +2,7 @@ import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { Icon } from "./icon.tsx";
+import { ArrowDown, X } from "./icons.ts";
 import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
@@ -210,22 +211,7 @@ function renderLatestButton() {
 			inert
 			tabindex="-1"
 		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="32"
-				height="32"
-				viewBox="0 0 24 24"
-				aria-hidden="true"
-			>
-				<path
-					fill="none"
-					stroke="currentColor"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M12 5v14m7-7l-7 7l-7-7"
-				/>
-			</svg>
+			<Icon icon={ArrowDown} class="size-4" />
 		</button>
 	);
 }
@@ -289,9 +275,7 @@ function renderQueuedMessages(state: AppStateSnapshot): string {
 						data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
 						aria-label="Remove queued message"
 					>
-						<Icon>
-							<path d="m18 6-12 12M6 6l12 12" />
-						</Icon>
+						<Icon icon={X} />
 					</button>
 				</div>
 			))}

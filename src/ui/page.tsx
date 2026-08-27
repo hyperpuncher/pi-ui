@@ -15,6 +15,8 @@ import { renderCommandMenu } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
+import { Icon } from "./icon.tsx";
+import { FileUp, FolderOpen, Search } from "./icons.ts";
 import { altShortcutAction } from "./keyboard.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
@@ -237,25 +239,7 @@ export function renderPage(
 							class="flex scale-95 items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card/95 px-5 py-4 text-sm text-card-foreground shadow-lg transition-[scale] duration-100 ease-out motion-reduce:scale-100 motion-reduce:transition-none [&.file-drop-card-active]:scale-100 starting:[&.file-drop-card-active]:scale-95"
 							data-class:file-drop-card-active="$_isDraggingFile"
 						>
-							<svg
-								class="size-8 text-muted-foreground"
-								xmlns="http://www.w3.org/2000/svg"
-								width="32"
-								height="32"
-								viewBox="0 0 24 24"
-								aria-hidden="true"
-							>
-								<g
-									fill="none"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-								>
-									<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
-									<path d="M14 2v5a1 1 0 0 0 1 1h5m-8 4v6m3-3l-3-3l-3 3" />
-								</g>
-							</svg>
+							<Icon icon={FileUp} class="size-8 text-muted-foreground" />
 							<span>Drop files to attach</span>
 						</div>
 					</div>
@@ -362,21 +346,7 @@ export function renderPage(
 									`}
 									aria-label="Browse for workspace folder"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="size-3.5"
-										viewBox="0 0 24 24"
-										aria-hidden="true"
-									>
-										<path
-											fill="none"
-											stroke="currentColor"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"
-										/>
-									</svg>
+									<Icon icon={FolderOpen} />
 								</button>
 							</header>
 							<p
@@ -410,16 +380,7 @@ export function renderPage(
 							data-style:max-width="$treeSelectedId ? '24rem' : '72rem'"
 						>
 							<header data-class:sr-only="$treeSelectedId">
-								<svg
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									aria-hidden="true"
-								>
-									<circle cx="11" cy="11" r="7" />
-									<path d="m20 20-3.5-3.5" />
-								</svg>
+								<Icon icon={Search} class="size-4" />
 								<input
 									id="tree-input"
 									type="text"
