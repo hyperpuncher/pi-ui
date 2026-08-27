@@ -11,6 +11,7 @@ const FILE_REFERENCE_TYPES = [
 const MAX_TRANSFER_FILES = 10;
 const MAX_TRANSFER_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
+const AVIF_JPEG_QUALITY = 0.85;
 let dragDepth = 0;
 let submitting = false;
 const attachments = [];
@@ -33,6 +34,11 @@ export async function pick() {
 		if (!response.ok) throw new Error(`Native picker failed: ${response.status}`);
 		const result = await response.json();
 		if (Array.isArray(result.paths) && result.paths.length > 0) {
+			const unsupported = unsupportedImagePathError(result.paths);
+			if (unsupported) {
+				showTransferError(unsupported);
+				return;
+			}
 			addPathAttachments(result.paths);
 		}
 	} catch (error) {
@@ -72,16 +78,37 @@ export function resetDrag() {
 export async function insert(data) {
 	if (!data) return;
 	showTransferError("");
+	const transferred = transferredFiles(data);
+	const needsImageHandling = transferred.some(
+		(file) => isAvifImageFile(file) || isHeicImageFile(file),
+	);
 	const paths = extractTransferredFilePaths(data);
-	if (paths.length > 0) {
+	if (paths.length > 0 && !needsImageHandling) {
+		const unsupported = unsupportedImagePathError(paths);
+		if (unsupported) {
+			showTransferError(unsupported);
+			return;
+		}
 		addPathAttachments(paths);
 		return;
 	}
-	const files = transferredFiles(data);
-	if (files.length === 0) return;
-	const validationError = validateTransferredFiles(files);
+	if (transferred.length === 0) return;
+	const validationError = validateTransferredFiles(transferred);
 	if (validationError) {
 		showTransferError(validationError);
+		return;
+	}
+	let files;
+	try {
+		files = await prepareTransferredImages(transferred);
+	} catch (error) {
+		console.error(error);
+		showTransferError(error?.message || "Could not prepare the selected images.");
+		return;
+	}
+	const preparedValidationError = validateTransferredFiles(files);
+	if (preparedValidationError) {
+		showTransferError(preparedValidationError);
 		return;
 	}
 	const uploaded = await uploadTransferredFiles(files);
@@ -113,7 +140,6 @@ export async function submit(endpoint, prompt, streamingBehavior) {
 			formData.append("image", file, file.name || "pasted-image");
 	}
 	submitting = true;
-	renderAttachments();
 	try {
 		const response = await fetch(endpoint, { method: "POST", body: formData });
 		await response.text();
@@ -123,10 +149,16 @@ export async function submit(endpoint, prompt, streamingBehavior) {
 		showTransferError("");
 		return true;
 	} catch (error) {
+		restoreSubmittedPrompt(prompt);
 		showTransferError(error?.message || "Could not send the prompt.");
 		return false;
 	} finally {
 		submitting = false;
+		document
+			.getElementById("prompt-box")
+			?.dispatchEvent(
+				new CustomEvent("pi-ui-prompt-submit-finished", { bubbles: true }),
+			);
 		renderAttachments();
 	}
 }
@@ -145,6 +177,78 @@ export function extractTransferredFilePaths(data) {
 function transferredFiles(data) {
 	if (data.files) return [...data.files];
 	return Array.from(data);
+}
+
+export function isAvifImageFile(file) {
+	return file.type?.toLowerCase() === "image/avif" || /\.avif$/i.test(file.name ?? "");
+}
+
+export function isHeicImageFile(file) {
+	return (
+		/^(?:image\/)?hei[cf]$/i.test(file.type ?? "") ||
+		/\.hei[cf]$/i.test(file.name ?? "")
+	);
+}
+
+export function jpegFileName(name) {
+	return /\.avif$/i.test(name)
+		? name.replace(/\.avif$/i, ".jpg")
+		: `${name || "image"}.jpg`;
+}
+
+async function prepareTransferredImages(files) {
+	const prepared = [];
+	for (const file of files) {
+		if (isHeicImageFile(file)) {
+			throw new Error(
+				"HEIC and HEIF images are not supported. Convert them to JPEG or PNG first.",
+			);
+		}
+		prepared.push(isAvifImageFile(file) ? await convertAvifToJpeg(file) : file);
+	}
+	return prepared;
+}
+
+export async function convertAvifToJpeg(file) {
+	let bitmap;
+	try {
+		bitmap = await createImageBitmap(file);
+		const canvas = document.createElement("canvas");
+		canvas.width = bitmap.width;
+		canvas.height = bitmap.height;
+		const context = canvas.getContext("2d");
+		if (!context) throw new Error("Canvas image conversion is unavailable.");
+		context.fillStyle = "white";
+		context.fillRect(0, 0, canvas.width, canvas.height);
+		context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+		const blob = await new Promise((resolve, reject) => {
+			canvas.toBlob(
+				(result) =>
+					result ? resolve(result) : reject(new Error("JPEG encoding failed.")),
+				"image/jpeg",
+				AVIF_JPEG_QUALITY,
+			);
+		});
+		return new File([blob], jpegFileName(file.name), {
+			type: "image/jpeg",
+			lastModified: file.lastModified,
+		});
+	} catch (error) {
+		throw new Error(`Could not convert ${file.name || "the AVIF image"} to JPEG.`, {
+			cause: error,
+		});
+	} finally {
+		bitmap?.close();
+	}
+}
+
+function unsupportedImagePathError(paths) {
+	if (paths.some((path) => /\.hei[cf]$/i.test(path))) {
+		return "HEIC and HEIF images are not supported. Convert them to JPEG or PNG first.";
+	}
+	if (paths.some((path) => /\.avif$/i.test(path))) {
+		return "AVIF images must be dropped, pasted, or selected with the browser file picker so they can be converted.";
+	}
 }
 
 function fileReferenceToPath(value) {
@@ -240,6 +344,13 @@ function addAttachment({ path, file }) {
 	renderAttachments();
 	promptInput()?.focus();
 	closePickers(true);
+}
+
+function restoreSubmittedPrompt(prompt) {
+	const input = promptInput();
+	if (!input || input.value !== "" || !prompt) return;
+	input.value = prompt;
+	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function removeSubmittedAttachments(submitted) {

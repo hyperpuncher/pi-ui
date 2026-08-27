@@ -28,9 +28,11 @@ export function renderPromptBox(
 				_filePickerOpen: false,
 				_fileSearchController: "",
 				_slashPickerOpen: false,
+				_promptSubmitting: false,
 				fileQuery: "",
 			})}
 			data-on:pointerdown__outside="window.piUi.pickers.close()"
+			data-on:pi-ui-prompt-submit-finished="$_promptSubmitting = false"
 		>
 			<div class="pointer-events-none absolute right-0 bottom-full left-0 z-30 flex flex-col items-center">
 				{renderLatestButton()}
@@ -54,8 +56,11 @@ export function renderPromptBox(
 			{renderPromptQueue(state)}
 			<div
 				id="prompt-attachments"
-				class="relative z-20 mx-3 mb-2 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 overflow-visible"
+				class="relative z-20 mx-3 mb-2 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 overflow-visible transition-[filter] duration-150 motion-reduce:transition-none"
+				data-style:filter="$_promptSubmitting ? 'brightness(0.75)' : ''"
 				aria-label="Attachments"
+				data-attr:inert="$_promptSubmitting"
+				data-attr:aria-busy="$_promptSubmitting ? 'true' : 'false'"
 				data-ignore-morph
 				hidden
 			/>
@@ -88,8 +93,6 @@ export function renderPromptBox(
 						window.piUi.promptHistory.handleInput();
 						$_slashPickerOpen = $prompt.startsWith('/') &&
 						!$prompt.includes(' ');
-						const send = document.querySelector('[data-send-trigger]');
-						if (send) send.disabled = !window.piUi.fileTransfer.canSubmit($prompt);
 					"
 					data-on:pi-ui-picker-close="$_slashPickerOpen = false"
 					data-on:pi-ui-file-query={`
@@ -147,6 +150,7 @@ export function renderPromptBox(
 							evt.preventDefault();
 							window.piUi.messageScroll.scrollBottom();
 							const submittedPrompt = $prompt;
+							$_promptSubmitting = true;
 							window.piUi.prompt.clear();
 							if (submittedPrompt.trim() === '/tree') window.piUi.dialogs.openTree();
 							window.piUi.fileTransfer.submit(

@@ -12,6 +12,14 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 			id="prompt-status"
 			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
 		>
+			<span
+				class="inline-flex h-6 min-w-0 items-center gap-1.5 truncate font-mono text-xs leading-none text-muted-foreground"
+				data-show="$_promptSubmitting"
+				style="display: none"
+			>
+				{loaderIcon()}
+				<span>Sending...</span>
+			</span>
 			{state.extensionWorkingVisible && activityText && (
 				<span class="inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none text-muted-foreground">
 					<span class="inline-flex items-center gap-1.5">

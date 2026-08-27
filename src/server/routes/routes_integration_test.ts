@@ -423,7 +423,7 @@ Deno.test("accepted prompts do not clear a newer frontend draft", async () => {
 	}
 });
 
-Deno.test("multipart prompts pass image attachments directly to pi", async () => {
+Deno.test("multipart prompts resize valid image attachments before passing them to pi", async () => {
 	let submitted:
 		| {
 				text: string;
@@ -441,9 +441,13 @@ Deno.test("multipart prompts pass image attachments directly to pi", async () =>
 	});
 	const formData = new FormData();
 	formData.set("prompt", "@/tmp/screenshot.png\ninspect this");
+	const imageData =
+		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 	formData.set(
 		"image",
-		new File(["image bytes"], "screenshot.png", { type: "image/png" }),
+		new File([Uint8Array.fromBase64(imageData)], "screenshot.png", {
+			type: "image/png",
+		}),
 	);
 	const response = await createRouter(fakeContext({ host })).fetch(
 		new Request("http://localhost/prompt", { method: "POST", body: formData }),
@@ -452,9 +456,23 @@ Deno.test("multipart prompts pass image attachments directly to pi", async () =>
 	assertEquals(submitted, {
 		text: "@/tmp/screenshot.png\ninspect this",
 		options: {
-			images: [{ type: "image", data: "aW1hZ2UgYnl0ZXM=", mimeType: "image/png" }],
+			images: [{ type: "image", data: imageData, mimeType: "image/png" }],
 		},
 	});
+});
+
+Deno.test("multipart prompts reject HEIC images before provider submission", async () => {
+	const formData = new FormData();
+	formData.set("prompt", "inspect this");
+	formData.set(
+		"image",
+		new File(["image bytes"], "screenshot.heic", { type: "image/heic" }),
+	);
+	const response = await createRouter(fakeContext()).fetch(
+		new Request("http://localhost/prompt", { method: "POST", body: formData }),
+	);
+	assertEquals(response.status, 400);
+	assertStringIncludes(await response.text(), "HEIC and HEIF images are not supported");
 });
 
 Deno.test("extension UI tracks the browser editor for synchronous extension reads", async () => {

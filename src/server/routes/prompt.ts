@@ -1,4 +1,5 @@
 import type { ImageContent } from "@earendil-works/pi-ai";
+import { resizeImage } from "@earendil-works/pi-coding-agent";
 
 import {
 	ActionInputError,
@@ -105,16 +106,45 @@ async function readPrompt(
 		.filter((value): value is File => value instanceof File);
 	const validationError = validateTransferredFiles(files);
 	if (validationError) throw new TransferredFileError(validationError);
-	if (files.some((file) => !file.type.startsWith("image/"))) {
-		throw new ActionInputError("Prompt attachments must be images.");
+	if (
+		files.some(
+			(file) =>
+				/^(?:image\/)?hei[cf]$/i.test(file.type) || /\.hei[cf]$/i.test(file.name),
+		)
+	) {
+		throw new ActionInputError(
+			"HEIC and HEIF images are not supported. Convert them to JPEG or PNG first.",
+		);
 	}
-	const images = await Promise.all(
-		files.map(async (file): Promise<ImageContent> => ({
+	const supportedTypes = new Set([
+		"image/jpeg",
+		"image/png",
+		"image/gif",
+		"image/webp",
+		"image/bmp",
+	]);
+	if (files.some((file) => !supportedTypes.has(file.type.toLowerCase()))) {
+		throw new ActionInputError(
+			"Prompt attachments must be JPEG, PNG, GIF, WebP, or BMP images.",
+		);
+	}
+	const images: ImageContent[] = [];
+	for (const file of files) {
+		const resized = await resizeImage(
+			new Uint8Array(await file.arrayBuffer()),
+			file.type,
+		);
+		if (!resized) {
+			throw new ActionInputError(
+				`Could not process image attachment: ${file.name}`,
+			);
+		}
+		images.push({
 			type: "image",
-			data: new Uint8Array(await file.arrayBuffer()).toBase64(),
-			mimeType: file.type,
-		})),
-	);
+			data: resized.data,
+			mimeType: resized.mimeType,
+		});
+	}
 	return {
 		prompt: prompt.replace(/\r\n/g, "\n"),
 		images: images.length > 0 ? images : undefined,
