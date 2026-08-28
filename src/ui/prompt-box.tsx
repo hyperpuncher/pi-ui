@@ -172,7 +172,7 @@ export function renderPromptBox(
 					{renderPromptToolbar(state, reviewAvailable)}
 					<div
 						id="prompt-context"
-						class="flex min-w-0 flex-1 items-center justify-end gap-1.5 group-data-[measuring]/prompt-footer:w-max group-data-[measuring]/prompt-footer:flex-none"
+						class="flex min-w-0 flex-1 items-center justify-end gap-1.5 group-data-[context-compact]/prompt-footer:gap-1 group-data-[measuring]/prompt-footer:w-max group-data-[measuring]/prompt-footer:flex-none"
 					>
 						{renderPromptStatus(state)}
 						{renderWorkspacePicker(state)}

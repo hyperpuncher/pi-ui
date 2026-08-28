@@ -193,6 +193,7 @@ test("workspace picker shows only the workspace folder name", () => {
 	);
 	assertStringIncludes(nested, ">Blenderanimation</span>");
 	assertStringIncludes(nested, "group-data-[context-compact]/prompt-footer:hidden");
+	assertStringIncludes(nested, 'data-size="sm"');
 	assertStringIncludes(nested, 'aria-label="/home/user/Documents/Blenderanimation"');
 
 	const home = renderWorkspacePicker(
@@ -283,6 +284,10 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 		}),
 	);
 	assertStringIncludes(withoutSelection, "choose model");
+	assertStringIncludes(
+		withoutSelection,
+		"group-data-[context-compact]/prompt-footer:max-w-32",
+	);
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
 	assertStringIncludes(withoutSelection, 'data-filter="manual"');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-expanded"');
@@ -333,6 +338,7 @@ test("thinking picker describes every supported maximum level", () => {
 
 	assertStringIncludes(html, "Extra-high reasoning");
 	assertStringIncludes(html, "Maximum reasoning");
+	assertStringIncludes(html, 'data-size="sm"');
 	assertStringIncludes(html, "!evt.ctrlKey");
 	assertStringIncludes(html, "!evt.metaKey");
 	assertStringIncludes(

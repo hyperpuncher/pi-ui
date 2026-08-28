@@ -46,6 +46,7 @@ test("prompt box owns ephemeral submission state declaratively", () => {
 		html,
 		`data-style:filter="$_promptSubmitting ? 'brightness(0.75)' : ''"`,
 	);
+	assertStringIncludes(html, "group-data-[context-compact]/prompt-footer:gap-1");
 	assertStringIncludes(html, "$_promptSubmitting = true");
 	assertStringIncludes(
 		html,

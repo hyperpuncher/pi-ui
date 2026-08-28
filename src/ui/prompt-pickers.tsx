@@ -21,7 +21,7 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<button
 			id="workspace-picker"
-			class="btn w-fit max-w-48 min-w-0 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:w-8 group-data-[context-compact]/prompt-footer:max-w-8 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
+			class="btn w-fit max-w-48 min-w-0 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:size-7 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
 			data-variant="ghost"
 			data-size="sm"
 			type="button"
@@ -71,7 +71,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn w-fit max-w-40 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:w-8 group-data-[context-compact]/prompt-footer:max-w-8 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
+					class="btn w-fit max-w-40 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:size-7 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="thinking-select-trigger"
@@ -179,7 +179,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			<div id="model-picker" class="min-w-0 shrink">
 				<button
 					type="button"
-					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-28 hover:text-foreground"
+					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-32 hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					data-tooltip="Log in to a provider"
@@ -215,7 +215,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-28 hover:text-foreground"
+					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-32 hover:text-foreground"
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
