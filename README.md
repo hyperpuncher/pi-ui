@@ -34,6 +34,14 @@ built with:
 
 after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415) in your browser.
 
+### run without installing
+
+requires bun 1.4 or newer
+
+```sh
+bunx @hyperpuncher/pi-ui
+```
+
 ### quick install (linux / mac)
 
 ```sh
@@ -64,7 +72,7 @@ the windows installer starts pi-ui at login.
 
 ## development
 
-requires Bun 1.4 or newer.
+requires bun 1.4 or newer
 
 ```sh
 bun ci
