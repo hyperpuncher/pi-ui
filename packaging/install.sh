@@ -11,11 +11,18 @@ case "$(uname -s)" in
 			exit 1
 		fi
 		if brew list --formula pi-ui-server >/dev/null 2>&1; then
-			brew upgrade hyperpuncher/tap/pi-ui-server
-		else
-			brew install hyperpuncher/tap/pi-ui-server
+			brew services stop pi-ui-server || true
+			brew update
 		fi
-		brew services restart pi-ui-server
+		if brew list --cask pi-ui >/dev/null 2>&1; then
+			brew uninstall --cask pi-ui
+		fi
+		if brew list --formula pi-ui >/dev/null 2>&1; then
+			brew upgrade hyperpuncher/tap/pi-ui
+		else
+			brew install hyperpuncher/tap/pi-ui
+		fi
+		brew services restart pi-ui
 		exit
 		;;
 	Linux) ;;
@@ -36,8 +43,8 @@ if [ -f /etc/arch-release ]; then
 		exit 1
 	fi
 
-	"$aur_helper" -S --needed pi-ui-server-bin </dev/tty
-	pi-ui-server autostart enable
+	"$aur_helper" -S --needed pi-ui-bin </dev/tty
+	pi-ui autostart enable
 	echo "Open http://127.0.0.1:31415 in your browser."
 	exit
 fi
@@ -52,15 +59,16 @@ case "$(uname -m)" in
 esac
 
 mkdir -p "$install_directory"
-asset="pi-ui-server-linux-$architecture.tar.zst"
-target="$install_directory/pi-ui-server"
+asset="pi-ui-linux-$architecture.tar.zst"
+target="$install_directory/pi-ui"
+legacy_target="$install_directory/pi-ui-server"
 url="https://github.com/$repository/releases/latest/download/$asset"
-archive=$(mktemp "${TMPDIR:-/tmp}/pi-ui-server.XXXXXX.tar.zst")
+archive=$(mktemp "${TMPDIR:-/tmp}/pi-ui.XXXXXX.tar.zst")
 temporary=$(mktemp "$install_directory/.pi-ui-install.XXXXXX")
 trap 'rm -f "$archive" "$temporary"' EXIT HUP INT TERM
 
 curl -fsSL --retry 3 "$url" -o "$archive"
-tar --zstd -xOf "$archive" pi-ui-server > "$temporary"
+tar --zstd -xOf "$archive" pi-ui > "$temporary"
 chmod +x "$temporary"
 mv "$temporary" "$target"
 trap - EXIT HUP INT TERM
@@ -73,4 +81,5 @@ case ":$PATH:" in
 esac
 
 "$target" autostart enable
+rm -f "$legacy_target"
 echo "Open http://127.0.0.1:31415 in your browser."

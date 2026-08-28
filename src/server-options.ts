@@ -54,8 +54,8 @@ export function parseServerOptions(
 	return { hostname, port, help };
 }
 
-export const serverUsage = `usage: pi-ui-server [options]
-       pi-ui-server autostart enable|disable
+export const serverUsage = `usage: pi-ui [options]
+       pi-ui autostart enable|disable
 
 options:
       --host <hostname>  listen hostname (default: ${defaultServerHostname}; env: PI_UI_HOST)

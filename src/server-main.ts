@@ -12,7 +12,7 @@ async function main(): Promise<void> {
 		console.log(version);
 	} else if (args[0] === "autostart") {
 		if (args.length !== 2 || !["enable", "disable"].includes(args[1])) {
-			throw new Error("usage: pi-ui-server autostart enable|disable");
+			throw new Error("usage: pi-ui autostart enable|disable");
 		}
 		if (args[1] === "enable") {
 			await enableServerAutostart();

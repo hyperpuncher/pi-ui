@@ -18,7 +18,7 @@
 		"css:build": "bun scripts/generate-basecoat-css.ts && bunx tailwindcss -i src/ui/styles.css -o static/app.css --minify",
 		"css:watch": "bun scripts/generate-basecoat-css.ts && bunx tailwindcss -i src/ui/styles.css -o static/app.css --watch --silent",
 		"build": "bun run assets:build && bun scripts/build.ts",
-		"run": "./dist/pi-ui-server",
+		"run": "./dist/pi-ui",
 		"release": "bun scripts/release.ts",
 		"schema:build": "bun scripts/generate-config-schema.ts",
 		"schema:check": "bun scripts/generate-config-schema.ts --check",

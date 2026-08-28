@@ -11,7 +11,7 @@ const command = [
 	"./static",
 	"src/server-main.ts",
 	"--outfile",
-	"./dist/pi-ui-server",
+	"./dist/pi-ui",
 ];
 const child = Bun.spawn(command, {
 	stdin: "inherit",

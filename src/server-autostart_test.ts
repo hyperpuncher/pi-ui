@@ -28,7 +28,9 @@ test("launch agent starts at login and escapes paths", () => {
 		uid: 501,
 	});
 
+	assertStringIncludes(agent, "<string>dev.pi.ui</string>");
 	assertStringIncludes(agent, "<key>RunAtLoad</key>");
+	assertStringIncludes(agent, "/Library/Logs/pi-ui.log");
 	assertStringIncludes(agent, "<key>KeepAlive</key>");
 	assertStringIncludes(agent, "<key>SuccessfulExit</key>");
 	assertStringIncludes(agent, "/Applications/pi-ui &amp; dev.app/Contents/MacOS/pi-ui");
@@ -53,6 +55,8 @@ test("windows installer waits only for the autostart command", async () => {
 	const script = await Bun.file(
 		new URL("../packaging/windows/install.ps1", import.meta.url),
 	).text();
+	assertStringIncludes(script, '$archiveName = "pi-ui-windows-x64.zip"');
+	assertStringIncludes(script, "$legacyInstallDirectory = Join-Path");
 	assertStringIncludes(script, "$command.WaitForExit()");
 	assertFalse(/Start-Process[^\r\n]+-Wait/.test(script));
 });

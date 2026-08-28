@@ -43,15 +43,15 @@ curl -fsSL https://pi-ui.app/install | sh
 ### arch
 
 ```sh
-paru -S pi-ui-server-bin
-pi-ui-server autostart enable
+paru -S pi-ui-bin
+pi-ui autostart enable
 ```
 
 ### mac
 
 ```sh
-brew install hyperpuncher/tap/pi-ui-server
-brew services start pi-ui-server
+brew install hyperpuncher/tap/pi-ui
+brew services start pi-ui
 ```
 
 ### windows

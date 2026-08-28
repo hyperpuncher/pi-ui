@@ -41,6 +41,7 @@ test("server options support help", () => {
 		port: defaultServerPort,
 		help: true,
 	});
+	assertStringIncludes(serverUsage, "usage: pi-ui [options]");
 	assertStringIncludes(serverUsage, "PI_UI_HOST");
 	assertStringIncludes(serverUsage, "PI_UI_PORT");
 });

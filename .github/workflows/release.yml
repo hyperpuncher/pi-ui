@@ -42,20 +42,20 @@ jobs:
               run: |
                   case "${{ matrix.name }}" in
                     linux-*)
-                      ZSTD_CLEVEL=19 tar --zstd -cf "dist/pi-ui-server-${{ matrix.name }}.tar.zst" -C dist pi-ui-server
+                      ZSTD_CLEVEL=19 tar --zstd -cf "dist/pi-ui-${{ matrix.name }}.tar.zst" -C dist pi-ui
                       ;;
                     darwin-*)
-                      (cd dist && ditto -c -k --keepParent pi-ui-server "pi-ui-server-${{ matrix.name }}.zip")
+                      (cd dist && ditto -c -k --keepParent pi-ui "pi-ui-${{ matrix.name }}.zip")
                       ;;
                     windows-*)
-                      (cd dist && 7z a "pi-ui-server-${{ matrix.name }}.zip" pi-ui-server.exe)
+                      (cd dist && 7z a "pi-ui-${{ matrix.name }}.zip" pi-ui.exe)
                       ;;
                   esac
             - name: Upload artifact
               uses: actions/upload-artifact@v7
               with:
                   name: ${{ matrix.name }}
-                  path: dist/pi-ui-server-${{ matrix.name }}.*
+                  path: dist/pi-ui-${{ matrix.name }}.*
 
     publish:
         name: Publish release and packages
@@ -103,10 +103,10 @@ jobs:
               id: sha
               run: |
                   {
-                    echo "linux-x64=$(sha256sum dist/pi-ui-server-linux-x64.tar.zst | cut -d' ' -f1)"
-                    echo "linux-arm64=$(sha256sum dist/pi-ui-server-linux-arm64.tar.zst | cut -d' ' -f1)"
-                    echo "darwin-x64=$(sha256sum dist/pi-ui-server-darwin-x64.zip | cut -d' ' -f1)"
-                    echo "darwin-arm64=$(sha256sum dist/pi-ui-server-darwin-arm64.zip | cut -d' ' -f1)"
+                    echo "linux-x64=$(sha256sum dist/pi-ui-linux-x64.tar.zst | cut -d' ' -f1)"
+                    echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.tar.zst | cut -d' ' -f1)"
+                    echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)"
+                    echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)"
                   } >> "$GITHUB_OUTPUT"
             - name: Generate Homebrew formula
               run: |
@@ -114,19 +114,23 @@ jobs:
                   sed -e "s/{{VERSION}}/$V/g" \
                       -e "s/{{SHA_DARWIN_X64}}/${{ steps.sha.outputs.darwin-x64 }}/g" \
                       -e "s/{{SHA_DARWIN_ARM64}}/${{ steps.sha.outputs.darwin-arm64 }}/g" \
-                      packaging/homebrew/pi-ui-server.rb.in > /tmp/pi-ui-server.rb
+                      packaging/homebrew/pi-ui.rb.in > /tmp/pi-ui.rb
             - name: Push Homebrew formula
               env:
                   GH_PAT: ${{ secrets.GH_PAT }}
               run: |
                   git clone "https://x-access-token:${GH_PAT}@github.com/hyperpuncher/homebrew-tap.git" /tmp/homebrew-tap
                   mkdir -p /tmp/homebrew-tap/Formula
-                  cp /tmp/pi-ui-server.rb /tmp/homebrew-tap/Formula/pi-ui-server.rb
+                  cp /tmp/pi-ui.rb /tmp/homebrew-tap/Formula/pi-ui.rb
+                  rm -f /tmp/homebrew-tap/Formula/pi-ui-server.rb /tmp/homebrew-tap/Casks/pi-ui.rb
+                  test -f /tmp/homebrew-tap/formula_renames.json || echo '{}' > /tmp/homebrew-tap/formula_renames.json
+                  jq '. + {"pi-ui-server": "pi-ui"}' /tmp/homebrew-tap/formula_renames.json > /tmp/formula_renames.json
+                  mv /tmp/formula_renames.json /tmp/homebrew-tap/formula_renames.json
                   cd /tmp/homebrew-tap
                   git config user.name "github-actions"
                   git config user.email "github-actions@github.com"
-                  git add Formula/pi-ui-server.rb
-                  git diff --staged --quiet || git commit -m "pi-ui ${GITHUB_REF_NAME}"
+                  git add -A Formula Casks formula_renames.json
+                  git diff --staged --quiet || git commit -m "pi-ui: renamed from pi-ui-server"
                   git push
             - name: Generate AUR package
               run: |
@@ -136,7 +140,7 @@ jobs:
                       -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
                       -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
                       -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
-                      packaging/aur/PKGBUILD.server.in > /tmp/PKGBUILD
+                      packaging/aur/PKGBUILD.in > /tmp/PKGBUILD
                   docker run --rm --interactive archlinux:base-devel bash -c '
                     useradd --create-home builder
                     cat > /home/builder/PKGBUILD
@@ -153,7 +157,7 @@ jobs:
                   chmod 600 ~/.ssh/aur_key
                   ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts
                   export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur_key"
-                  git clone ssh://aur@aur.archlinux.org/pi-ui-server-bin.git /tmp/aur-repo
+                  git clone ssh://aur@aur.archlinux.org/pi-ui-bin.git /tmp/aur-repo
                   cp /tmp/PKGBUILD /tmp/aur-repo/PKGBUILD
                   cp /tmp/.SRCINFO /tmp/aur-repo/.SRCINFO
                   cp LICENSE /tmp/aur-repo/LICENSE
@@ -161,5 +165,5 @@ jobs:
                   git config user.name "hyperpuncher"
                   git config user.email "hyperpuncher@users.noreply.github.com"
                   git add PKGBUILD .SRCINFO LICENSE
-                  git diff --staged --quiet || git commit -m "upgpkg: pi-ui-server-bin ${GITHUB_REF_NAME#v}"
+                  git diff --staged --quiet || git commit -m "upgpkg: pi-ui-bin ${GITHUB_REF_NAME#v}"
                   git push
