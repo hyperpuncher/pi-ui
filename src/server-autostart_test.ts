@@ -36,14 +36,14 @@ test("launch agent starts at login and escapes paths", () => {
 	assertStringIncludes(agent, "/Applications/pi-ui &amp; dev.app/Contents/MacOS/pi-ui");
 });
 
-test("windows startup command quotes the executable", () => {
+test("windows startup command launches the executable without a window", () => {
 	assertEquals(
 		windowsRunCommand({
 			platform: "windows",
 			executable: "C:\\Program Files\\pi-ui\\pi-ui.exe",
 			home: "C:\\Users\\test",
 		}),
-		'"C:\\Program Files\\pi-ui\\pi-ui.exe"',
+		"powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -Command \"Start-Process -WindowStyle Hidden -FilePath 'C:\\Program Files\\pi-ui\\pi-ui.exe'\"",
 	);
 });
 

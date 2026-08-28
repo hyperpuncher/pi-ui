@@ -113,7 +113,8 @@ export function launchAgent(config: ServerAutostartConfig): string {
 }
 
 export function windowsRunCommand(config: ServerAutostartConfig): string {
-	return `"${config.executable}"`;
+	const executable = powershellString(config.executable);
+	return `powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -Command "Start-Process -WindowStyle Hidden -FilePath '${executable}'"`;
 }
 
 async function enableSystemdService(config: ServerAutostartConfig): Promise<void> {
@@ -169,6 +170,8 @@ async function enableWindowsAutostart(config: ServerAutostartConfig): Promise<vo
 		stdin: "ignore",
 		stdout: "ignore",
 		stderr: "ignore",
+		detached: true,
+		windowsHide: true,
 	});
 	child.unref();
 }
