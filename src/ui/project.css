@@ -177,13 +177,15 @@
 	}
 
 	.code-theme-dialog > div,
-	.font-dialog > div {
+	.font-dialog > div,
+	.workspace-browser-dialog > div {
 		gap: 0;
 		padding: 0;
 	}
 
 	.code-theme-dialog > div > footer,
-	.font-dialog > div > footer {
+	.font-dialog > div > footer,
+	.workspace-browser-dialog > div > footer {
 		margin: 0;
 		border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 	}

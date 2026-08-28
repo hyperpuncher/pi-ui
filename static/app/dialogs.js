@@ -116,6 +116,17 @@ export function openWorkspace() {
 	openAndFocus("workspace-dialog", "workspace-input");
 }
 
+export function openWorkspaceBrowser() {
+	const dialog = document.getElementById("workspace-browser-dialog");
+	if (!(dialog instanceof HTMLDialogElement)) return;
+	if (!dialog.open) {
+		document.getElementById("workspace-dialog")?.close();
+		restoreFocusWhenDialogCloses(dialog, document.getElementById("workspace-picker"));
+		dialog.showModal();
+	}
+	refresh(dialog);
+}
+
 export function toggleWorkspace() {
 	const dialog = document.getElementById("workspace-dialog");
 	if (!(dialog instanceof HTMLDialogElement)) return false;

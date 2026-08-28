@@ -30,6 +30,7 @@ export const endpoints = {
 	sessionsResume: "/sessions/resume",
 	workspaceOpen: "/workspace/open",
 	workspaceSearch: "/workspace/search",
+	workspaceBrowse: "/workspace/browse",
 	workspaceFiles: workspaceFilesBase,
 	workspaceFileContent: `${workspaceFilesBase}/content`,
 	workspaceFileEntry: `${workspaceFilesBase}/entry`,

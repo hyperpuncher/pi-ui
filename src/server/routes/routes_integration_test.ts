@@ -49,6 +49,7 @@ test("all server endpoints are registered through domain route modules", async (
 		"POST /sessions/resume",
 		"POST /workspace/open",
 		"GET /workspace/search",
+		"GET /workspace/browse",
 		"GET /workspace/files",
 		"GET /workspace/files/content",
 		"PUT /workspace/files/content",
@@ -108,6 +109,8 @@ test("page assets use the current immutable content version", async () => {
 	assertStringIncludes(html, "KeyO");
 	assertStringIncludes(html, "/minimal-mode");
 	assertStringIncludes(html, "/tool-output");
+	assertStringIncludes(html, 'aria-label="Browse folders"');
+	assertStringIncludes(html, "/workspace/browse");
 	assertStringIncludes(html, "$_toolOutputHidden");
 
 	context.keybindHints = false;
@@ -314,6 +317,43 @@ test("workspace search returns matching directories", async () => {
 		);
 		assertEquals(response.status, 200);
 		assertStringIncludes(await response.text(), "alpha");
+	} finally {
+		await remove(workspace, { recursive: true });
+	}
+});
+
+test("workspace browser lists server directories", async () => {
+	const workspace = await makeTempDir();
+	try {
+		await mkdir(`${workspace}/alpha`);
+		await mkdir(`${workspace}/beta`);
+		await mkdir(`${workspace}/.hidden`);
+		await writeTextFile(`${workspace}/file.txt`, "not a directory");
+		const context = fakeContext();
+		context.store.setWorkspacePath(workspace);
+		const response = await createRouter(context).fetch(
+			signalGet("/workspace/browse", {
+				workspacePath: workspace,
+				showHidden: false,
+			}),
+		);
+		assertEquals(response.status, 200);
+		const body = await response.text();
+		assertStringIncludes(body, "Select folder");
+		assertStringIncludes(body, "Open folder");
+		assertStringIncludes(body, "alpha");
+		assertStringIncludes(body, "beta");
+		assertStringExcludes(body, ".hidden");
+		assertStringExcludes(body, "file.txt");
+		assertStringExcludes(body, "workspaceDraft");
+
+		const hiddenResponse = await createRouter(context).fetch(
+			signalGet("/workspace/browse", {
+				workspacePath: workspace,
+				showHidden: true,
+			}),
+		);
+		assertStringIncludes(await hiddenResponse.text(), ".hidden");
 	} finally {
 		await remove(workspace, { recursive: true });
 	}

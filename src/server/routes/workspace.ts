@@ -1,7 +1,16 @@
-import { renderWorkspaceSearchResults } from "../../ui/pickers.tsx";
+import {
+	renderWorkspaceBrowserContent,
+	renderWorkspaceBrowserError,
+	renderWorkspaceSearchResults,
+} from "../../ui/pickers.tsx";
 import { isRecord, isString } from "../../utils/type-guards.ts";
 import { formatHomePath } from "../../utils/workspace.ts";
-import { readActionSignals, requiredString, stringField } from "../action-input.ts";
+import {
+	booleanField,
+	readActionSignals,
+	requiredString,
+	stringField,
+} from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import {
@@ -14,7 +23,7 @@ import {
 	writeWorkspaceFile,
 } from "../workspace-files.ts";
 import { findGitRoot } from "../workspace-review.ts";
-import { searchWorkspaces } from "../workspace-search.ts";
+import { browseWorkspaceDirectories, searchWorkspaces } from "../workspace-search.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
@@ -38,6 +47,25 @@ export function registerWorkspaceRoutes(router: ExactRouter<RouteContext>): void
 				),
 			},
 			{ type: "effect", effect: { type: "refresh-workspace-picker" } },
+		]);
+	});
+
+	router.register("GET", endpoints.workspaceBrowse, async (request, context) => {
+		const signals = await readActionSignals(request);
+		const value = stringField(signals, "workspacePath");
+		const showHidden = booleanField(signals, "showHidden");
+		const listing = await browseWorkspaceDirectories(
+			context.store.workspacePath,
+			value,
+			showHidden,
+		).catch(() => undefined);
+		return datastarResponse([
+			{
+				type: "elements",
+				elements: listing
+					? renderWorkspaceBrowserContent(listing)
+					: renderWorkspaceBrowserError(value),
+			},
 		]);
 	});
 

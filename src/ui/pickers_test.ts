@@ -7,6 +7,7 @@ import {
 	renderFilePickerResults,
 	renderSessionPicker,
 	renderSlashPicker,
+	renderWorkspaceBrowserContent,
 	renderWorkspaceDialogMenu,
 	slashPickerOpenExpression,
 } from "./pickers.tsx";
@@ -234,6 +235,25 @@ test("workspace rows show each collapsed path once", () => {
 	assertFalse(
 		new RegExp(`>\\s*${escapeRegExp(home)}(?:/projects/pi-ui)?\\s*<`).test(html),
 	);
+});
+
+test("workspace browser navigates folders and opens the selected directory", () => {
+	const html = renderWorkspaceBrowserContent({
+		path: "/workspace",
+		parent: "/",
+		directories: ["/workspace/alpha"],
+		showHidden: false,
+	});
+
+	assertStringIncludes(html, "Select folder");
+	assertStringIncludes(html, "Open folder");
+	assertStringIncludes(html, "workspacePath: &#34;/workspace&#34;");
+	assertStringIncludes(html, "/workspace/open");
+	assertStringIncludes(html, "/workspace/browse");
+	assertStringIncludes(html, ">alpha</span>");
+	assertFalse(html.includes("data-filter"));
+	assertStringIncludes(html, "Show hidden");
+	assertStringIncludes(html, "$_workspaceBrowserShowHidden");
 });
 
 test("workspace picker only opens existing workspace suggestions", () => {

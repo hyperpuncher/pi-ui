@@ -28,6 +28,7 @@ interface PiUiNamespace {
 		openCommand(): void;
 		toggleCommand(): boolean;
 		openWorkspace(): void;
+		openWorkspaceBrowser(): void;
 		toggleWorkspace(): boolean;
 		togglePopover(triggerId: string): boolean;
 	};

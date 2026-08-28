@@ -1,12 +1,15 @@
 import type { FileSuggestion } from "../server/file-search.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { WorkspaceSuggestion } from "../server/workspace-search.ts";
+import type {
+	WorkspaceDirectoryListing,
+	WorkspaceSuggestion,
+} from "../server/workspace-search.ts";
 import type { AppSessionSummary, AppSlashCommand } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
-import { formatHomePath } from "../utils/workspace.ts";
+import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
-import { Square } from "./icons.ts";
+import { Folder, Square } from "./icons.ts";
 import {
 	PickerEmpty,
 	PickerList,
@@ -137,6 +140,136 @@ export function renderFilePickerResults(
 	);
 }
 
+export function renderWorkspaceBrowserContent(
+	listing: WorkspaceDirectoryListing,
+): string {
+	return syncHtml(
+		<div
+			id="workspace-browser-content"
+			class="flex h-[min(36rem,calc(100vh-2rem))] w-[min(30rem,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0"
+		>
+			<header class="shrink-0 border-b border-border px-5 pt-5 pb-4">
+				<div class="flex items-center justify-between gap-4">
+					<h2 id="workspace-browser-title" class="text-base font-semibold">
+						Select folder
+					</h2>
+					<button
+						type="button"
+						class="btn"
+						data-variant={listing.showHidden ? "secondary" : "ghost"}
+						data-size="xs"
+						data-attr:data-variant="$_workspaceBrowserShowHidden ? 'secondary' : 'ghost'"
+						aria-label={
+							listing.showHidden
+								? "Hide hidden folders"
+								: "Show hidden folders"
+						}
+						aria-pressed={listing.showHidden ? "true" : "false"}
+						data-attr:aria-label="$_workspaceBrowserShowHidden ? 'Hide hidden folders' : 'Show hidden folders'"
+						data-attr:aria-pressed="$_workspaceBrowserShowHidden ? 'true' : 'false'"
+						data-on:click={`
+							$_workspaceBrowserShowHidden = !$_workspaceBrowserShowHidden;
+							${browseWorkspaceAction(JSON.stringify(listing.path))};
+						`}
+					>
+						<span data-show="!$_workspaceBrowserShowHidden">Show hidden</span>
+						<span data-show="$_workspaceBrowserShowHidden">Hide hidden</span>
+					</button>
+				</div>
+				<p
+					class="mt-1 truncate font-mono text-xs text-muted-foreground"
+					title={listing.path}
+					safe
+				>
+					{formatHomePath(listing.path)}
+				</p>
+			</header>
+			<div class="min-h-0 flex-1 overflow-y-auto p-2">
+				{listing.parent && renderWorkspaceBrowserDirectory(listing.parent, "..")}
+				{listing.directories.map((directory) =>
+					renderWorkspaceBrowserDirectory(
+						directory,
+						workspaceDisplayName(directory),
+					),
+				)}
+				{listing.directories.length === 0 && (
+					<p class="px-3 py-4 text-sm text-muted-foreground">
+						No folders found.
+					</p>
+				)}
+			</div>
+			<footer class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3">
+				<button
+					type="button"
+					class="btn"
+					data-variant="outline"
+					onclick="this.closest('dialog').close()"
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					class="btn"
+					data-attr:disabled="$_sessionTransitionLoading"
+					data-on:click={openWorkspaceFromBrowserAction(
+						JSON.stringify(listing.path),
+					)}
+				>
+					Open folder
+				</button>
+			</footer>
+		</div>,
+	);
+}
+
+export function renderWorkspaceBrowserError(path: string): string {
+	return syncHtml(
+		<div
+			id="workspace-browser-content"
+			class="flex w-[min(30rem,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0"
+		>
+			<header class="border-b border-border px-5 pt-5 pb-4">
+				<h2 id="workspace-browser-title" class="text-base font-semibold">
+					Select folder
+				</h2>
+			</header>
+			<p class="px-5 py-6 text-sm text-destructive">
+				Could not read{" "}
+				<span class="font-mono" safe>
+					{formatHomePath(path)}
+				</span>
+				.
+			</p>
+			<footer class="flex justify-end border-t border-border px-5 py-3">
+				<button
+					type="button"
+					class="btn"
+					onclick="this.closest('dialog').close()"
+				>
+					Close
+				</button>
+			</footer>
+		</div>,
+	);
+}
+
+function renderWorkspaceBrowserDirectory(path: string, label: string): string {
+	return syncHtml(
+		<button
+			type="button"
+			class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-mono text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+			data-indicator:_workspace-browser-loading
+			data-attr:disabled="$_workspaceBrowserLoading"
+			data-on:click={browseWorkspaceAction(JSON.stringify(path))}
+		>
+			<Icon icon={Folder} class="size-4 shrink-0 text-muted-foreground" />
+			<span class="min-w-0 truncate" safe>
+				{label}
+			</span>
+		</button>,
+	);
+}
+
 export function renderWorkspaceSearchResults(
 	recentWorkspaces: readonly string[],
 	searchWorkspaces: readonly WorkspaceSuggestion[],
@@ -215,6 +348,28 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 
 function openWorkspaceAction(valueExpression: string): string {
 	return `if (!$_sessionTransitionLoading) {
+		@post('${endpoints.workspaceOpen}', {
+			payload: { workspacePath: ${valueExpression} },
+		});
+	}`;
+}
+
+function browseWorkspaceAction(
+	valueExpression: string,
+	showHiddenExpression = "$_workspaceBrowserShowHidden",
+): string {
+	return `@get('${endpoints.workspaceBrowse}', {
+		payload: {
+			workspacePath: ${valueExpression},
+			showHidden: ${showHiddenExpression},
+		},
+		requestCancellation: 'cleanup',
+	})`;
+}
+
+function openWorkspaceFromBrowserAction(valueExpression: string): string {
+	return `if (!$_sessionTransitionLoading) {
+		document.getElementById('workspace-browser-dialog')?.close();
 		@post('${endpoints.workspaceOpen}', {
 			payload: { workspacePath: ${valueExpression} },
 		});

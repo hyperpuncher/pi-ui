@@ -16,7 +16,7 @@ import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
 import { Icon } from "./icon.tsx";
-import { FileUp, Search } from "./icons.ts";
+import { FileUp, FolderOpen, Search } from "./icons.ts";
 import { altShortcutAction } from "./keyboard.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
@@ -257,9 +257,10 @@ export function renderPage(
 						onclick="if (event.target === this) this.close()"
 					>
 						<div class="command sm:max-w-md">
-							<header class="pr-1">
+							<header class="relative pr-1">
 								<input
 									id="workspace-input"
+									class="pr-10"
 									type="text"
 									placeholder="Type a path or search workspaces..."
 									autocomplete="off"
@@ -277,8 +278,44 @@ export function renderPage(
 									})`,
 									}}
 								/>
+								<button
+									type="button"
+									class="btn absolute top-1/2 right-2 size-7 -translate-y-1/2"
+									data-variant="ghost"
+									data-size="icon-xs"
+									aria-label="Browse folders"
+									data-on:click={`
+										$_workspaceBrowserShowHidden = false;
+										window.piUi.dialogs.openWorkspaceBrowser();
+										@get('${endpoints.workspaceBrowse}', {
+										payload: {
+											workspacePath: document.getElementById('workspace-input')?.value || ${JSON.stringify(state.workspacePath)},
+											showHidden: false,
+										},
+										requestCancellation: 'cleanup',
+									});
+									`}
+								>
+									<Icon icon={FolderOpen} />
+								</button>
 							</header>
 							{renderWorkspaceDialogMenu(state)}
+						</div>
+					</dialog>
+
+					<dialog
+						id="workspace-browser-dialog"
+						class="dialog workspace-browser-dialog"
+						aria-labelledby="workspace-browser-title"
+						data-signals:_workspace-browser-show-hidden__ifmissing="false"
+						data-preserve-attr="open"
+						onclick="if (event.target === this) this.close()"
+					>
+						<div
+							id="workspace-browser-content"
+							class="flex w-[min(30rem,calc(100vw-2rem))] max-w-none items-center justify-center p-8 text-sm text-muted-foreground"
+						>
+							Loading folders…
 						</div>
 					</dialog>
 

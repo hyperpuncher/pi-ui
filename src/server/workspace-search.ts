@@ -7,6 +7,13 @@ export type WorkspaceSuggestion = {
 	path: string;
 };
 
+export type WorkspaceDirectoryListing = {
+	path: string;
+	parent?: string;
+	directories: string[];
+	showHidden: boolean;
+};
+
 const maxResults = 20;
 
 export async function searchWorkspaces(
@@ -42,6 +49,31 @@ export async function searchWorkspaces(
 	} catch {
 		return [];
 	}
+}
+
+export async function browseWorkspaceDirectories(
+	workspacePath: string,
+	value: string,
+	showHidden: boolean,
+): Promise<WorkspaceDirectoryListing> {
+	const expanded = expandHomePath(value.trim() || workspacePath);
+	const directory = path.isAbsolute(expanded)
+		? path.normalize(expanded)
+		: path.resolve(workspacePath, expanded);
+	const entries = await readdir(directory, { withFileTypes: true });
+	const parent = path.dirname(directory);
+	return {
+		path: directory,
+		parent: parent === directory ? undefined : parent,
+		directories: entries
+			.filter(
+				(entry) =>
+					entry.isDirectory() && (showHidden || !entry.name.startsWith(".")),
+			)
+			.map((entry) => path.join(directory, entry.name))
+			.sort((left, right) => left.localeCompare(right)),
+		showHidden,
+	};
 }
 
 function compareWorkspacePaths(left: string, right: string, prefix: string): number {
