@@ -25,6 +25,7 @@ export type RouteAgentHost = Pick<
 	| "openLlama"
 	| "openTree"
 	| "prompt"
+	| "refreshModels"
 	| "removeQueuedMessage"
 	| "renameSession"
 	| "respondExtensionUi"

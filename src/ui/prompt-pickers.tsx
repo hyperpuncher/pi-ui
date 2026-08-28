@@ -225,6 +225,8 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-preserve-attr="aria-expanded"
 					data-tooltip="Model"
 					data-tooltip-delay
+					data-on:click__capture={`if (el.getAttribute('aria-expanded') !== 'true')
+						@post('${endpoints.modelsRefresh}', { payload: {} })`}
 				>
 					<span class="min-w-0 truncate" safe>
 						{currentLabel}

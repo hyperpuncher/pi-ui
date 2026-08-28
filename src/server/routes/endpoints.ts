@@ -41,6 +41,7 @@ export const endpoints = {
 	workspaceReviewSubmit: "/workspace/review/submit",
 	model: "/model",
 	modelCycle: "/model/cycle",
+	modelsRefresh: "/models/refresh",
 	modelsScopeToggle: "/models/scope/toggle",
 	thinking: "/thinking",
 	thinkingCycle: "/thinking/cycle",

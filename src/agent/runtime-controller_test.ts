@@ -39,6 +39,7 @@ type RuntimeFake = {
 		text: string;
 		streamingBehavior: "steer" | "followUp" | undefined;
 	}>;
+	modelRefreshForces: Array<boolean | undefined>;
 	setSessionNames: string[];
 	emit(event: AgentSessionEvent): void;
 	setCompacting(value: boolean): void;
@@ -89,6 +90,7 @@ function fakeRuntime(
 		disposeResult: Promise.resolve(),
 		promptResult: Promise.resolve(),
 		promptInputs: [],
+		modelRefreshForces: [],
 		setSessionNames: [],
 		emit: (event) => {
 			if (event.type === "queue_update") {
@@ -112,7 +114,10 @@ function fakeRuntime(
 		getModel: () => undefined,
 		getProviders: () => [],
 		hasConfiguredAuth: () => false,
-		refresh: () => Promise.resolve({ aborted: false, errors: new Map() }),
+		refresh: (options?: { force?: boolean }) => {
+			fake.modelRefreshForces.push(options?.force);
+			return Promise.resolve({ aborted: false, errors: new Map() });
+		},
 	};
 	const steeringMessages: string[] = [];
 	const followUpMessages: string[] = [];
@@ -244,6 +249,28 @@ test("RuntimeController production path binds callbacks before activation", asyn
 	await controller.dispose();
 	assertEquals(fake.calls.filter((call) => call === "unsubscribe").length, 1);
 	assertEquals(fake.disposeCount, 1);
+});
+
+test("RuntimeController forces only the first model picker refresh within thirty minutes", async () => {
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+
+	const originalNow = Date.now;
+	let now = originalNow();
+	Date.now = () => now;
+	try {
+		await controller.refreshModels();
+		now += 30 * 60 * 1000 - 1;
+		await controller.refreshModels();
+		now += 1;
+		await controller.refreshModels();
+		assertEquals(fake.modelRefreshForces, [true, false, true]);
+	} finally {
+		Date.now = originalNow;
+		await controller.dispose();
+	}
 });
 
 test("RuntimeController preparation does not wait for the session catalog", async () => {
@@ -408,6 +435,7 @@ test("RuntimeController clears chat at authoritative session invalidation", asyn
 	assertEquals(store.messages, []);
 	releaseReplacement();
 	assertEquals((await transition).status, "success");
+	assertEquals(fake.modelRefreshForces, []);
 	await controller.dispose();
 });
 

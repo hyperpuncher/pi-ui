@@ -7,6 +7,12 @@ import { endpoints } from "./endpoints.ts";
 const directions = ["forward", "backward"] as const;
 
 export function registerModelRoutes(router: ExactRouter<RouteContext>): void {
+	router.register("POST", endpoints.modelsRefresh, async (request, context) => {
+		await requireHost(context).refreshModels(
+			AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]),
+		);
+		return datastarResponse();
+	});
 	router.register("POST", endpoints.model, async (request, context) => {
 		const model = requiredString(await readActionSignals(request), "model");
 		if (!(await requireHost(context).setModel(model))) {

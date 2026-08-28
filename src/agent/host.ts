@@ -160,6 +160,10 @@ export class AgentHost {
 		return this.runtime.respondExtensionUi(requestId, response, cancelled);
 	}
 
+	refreshModels(signal?: AbortSignal): Promise<void> {
+		return this.runtime.refreshModels(signal);
+	}
+
 	setModel(modelRef: string): Promise<boolean> {
 		return this.runtime.setModel(modelRef);
 	}

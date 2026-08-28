@@ -71,6 +71,7 @@ import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
 
 const extensionFactories = [llamaProviderExtension];
+const modelCatalogForceIntervalMs = 30 * 60 * 1000;
 
 export type RuntimeControllerDependencies = Readonly<{
 	createRuntime: typeof createAgentSessionRuntime;
@@ -135,6 +136,7 @@ export class RuntimeController {
 	private resetChatOnInvalidation = false;
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
+	private lastForcedModelRefreshAt: number | undefined;
 	private readonly dependencies: RuntimeControllerDependencies;
 	private readonly autoTitlesInFlight = new Set<string>();
 
@@ -860,6 +862,15 @@ export class RuntimeController {
 		return this.extensionUi.respond(requestId, response, cancelled);
 	}
 
+	async refreshModels(signal?: AbortSignal): Promise<void> {
+		const now = Date.now();
+		const force =
+			this.lastForcedModelRefreshAt === undefined ||
+			now - this.lastForcedModelRefreshAt >= modelCatalogForceIntervalMs;
+		if (force) this.lastForcedModelRefreshAt = now;
+		await this.models.refresh({ force, signal });
+	}
+
 	async setModel(modelRef: string): Promise<boolean> {
 		return await this.models.set(modelRef);
 	}
@@ -1173,11 +1184,6 @@ export class RuntimeController {
 					: undefined,
 			);
 			this.syncModels();
-			void this.models
-				.refresh()
-				.catch((error: ErrorOptions["cause"]) =>
-					console.warn("Failed to refresh model catalogs", error),
-				);
 			this.models.syncThinking();
 			this.state.setThinkingHidden(
 				session.settingsManager?.getHideThinkingBlock() ?? false,

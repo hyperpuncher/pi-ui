@@ -286,6 +286,9 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
 	assertStringIncludes(withoutSelection, 'data-filter="manual"');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-expanded"');
+	assertStringIncludes(withoutSelection, "data-on:click__capture");
+	assertStringIncludes(withoutSelection, "el.getAttribute('aria-expanded') !== 'true'");
+	assertStringIncludes(withoutSelection, "@post('/models/refresh', { payload: {} })");
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-hidden"');
 	assertStringIncludes(withoutSelection, "w-88");
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');

@@ -63,6 +63,7 @@ test("all server endpoints are registered through domain route modules", async (
 		"POST /workspace/review/submit",
 		"POST /model",
 		"POST /model/cycle",
+		"POST /models/refresh",
 		"POST /models/scope/toggle",
 		"POST /thinking",
 		"POST /thinking/cycle",
@@ -640,6 +641,26 @@ test("tree navigation state follows mutable host ownership", async () => {
 	assertStringExcludes(cancelledBody, '"prompt"');
 });
 
+test("model catalog refresh delegates to the active host", async () => {
+	let refreshSignal: AbortSignal | undefined;
+	const router = createRouter(
+		fakeContext({
+			host: fakeHost({
+				refreshModels: (signal) => {
+					refreshSignal = signal;
+					return Promise.resolve();
+				},
+			}),
+		}),
+	);
+
+	const response = await router.fetch(
+		new Request("http://localhost/models/refresh", { method: "POST" }),
+	);
+	assertEquals(response.status, 204);
+	assertEquals(refreshSignal?.aborted, false);
+});
+
 test("file links open locally and download remotely", async () => {
 	const path = await makeTempFile({ suffix: "-linked file.txt" });
 	await writeTextFile(path, "linked content");
@@ -744,6 +765,7 @@ function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
 		openLlama: () => {},
 		openTree: () => true,
 		prompt: async () => true,
+		refreshModels: async () => {},
 		removeQueuedMessage: async () => true,
 		renameSession: async () => true,
 		respondExtensionUi: () => true,

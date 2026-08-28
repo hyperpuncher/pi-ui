@@ -1,3 +1,4 @@
+import type { ModelsRefreshOptions } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
 import type { AppStore, AppThinkingLevel } from "../state/app-store.ts";
@@ -82,9 +83,9 @@ export class ModelController {
 		this.state.setModels(models, current, options);
 	}
 
-	async refresh(): Promise<void> {
+	async refresh(options: ModelsRefreshOptions = {}): Promise<void> {
 		const runtime = this.getRuntime();
-		await runtime.services.modelRuntime.refresh();
+		await runtime.services.modelRuntime.refresh(options);
 		if (runtime === this.getRuntime()) this.sync();
 	}
 
