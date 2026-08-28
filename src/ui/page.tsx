@@ -203,6 +203,8 @@ export function renderPage(
 						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
 						payload: {},
 						openWhenHidden: true,
+						retry: 'always',
+						retryMaxCount: Infinity,
 						requestCancellation: 'cleanup',
 					})`}
 					>
