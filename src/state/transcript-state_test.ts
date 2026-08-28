@@ -1,11 +1,13 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { TranscriptState } from "./transcript-state.ts";
 
 const hint = { keys: "ctrl N", description: "New session" };
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
 
-Deno.test("transcript state appends, streams, updates, and finishes messages", () => {
+test("transcript state appends, streams, updates, and finishes messages", () => {
 	const state = new TranscriptState(hint);
 	const thoughtId = state.appendThoughtDelta("thinking");
 	state.appendThoughtDelta(" more");
@@ -26,7 +28,7 @@ Deno.test("transcript state appends, streams, updates, and finishes messages", (
 	);
 });
 
-Deno.test("transcript snapshots restore independent domain state and queue metadata", () => {
+test("transcript snapshots restore independent domain state and queue metadata", () => {
 	const original = new TranscriptState(hint);
 	original.replaceMessages([
 		{ role: "user", text: "old", timestamp },
@@ -48,7 +50,7 @@ Deno.test("transcript snapshots restore independent domain state and queue metad
 	assertEquals(restored.activeAssistantMessageId, activeId);
 });
 
-Deno.test("transcript paging and reset have no presentation state", () => {
+test("transcript paging and reset have no presentation state", () => {
 	const state = new TranscriptState(hint);
 	state.replaceMessages(
 		Array.from({ length: 180 }, (_, index) => ({

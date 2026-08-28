@@ -9,11 +9,53 @@ import {
 	type ZstdCompress,
 } from "node:zlib";
 
-const streamEncodings = ["zstd", "br", "gzip"] as const;
+const encodings = ["zstd", "br", "gzip"] as const;
 const brotliFlushChunkSize = 4 * 1_024;
+const minimumCompressionSize = 1_024;
 
-type StreamEncoding = (typeof streamEncodings)[number];
+const compressibleApplicationTypes = new Set([
+	"application/javascript",
+	"application/json",
+	"application/manifest+json",
+	"application/xhtml+xml",
+	"application/xml",
+]);
+
+export type ResponseEncoding = (typeof encodings)[number];
 type Compressor = ZstdCompress | BrotliCompress | Gzip;
+
+export function compressResponse(request: Request, response: Response): Response {
+	if (!response.body || response.headers.has("content-encoding")) return response;
+
+	const contentType = response.headers
+		.get("content-type")
+		?.split(";", 1)[0]
+		.trim()
+		.toLowerCase();
+	if (contentType === "text/event-stream") {
+		return compressSseResponse(request, response);
+	}
+	if (
+		request.method === "HEAD" ||
+		response.status === 206 ||
+		response.headers.has("content-range") ||
+		response.headers.get("cache-control")?.toLowerCase().includes("no-transform") ||
+		!contentType ||
+		!isCompressibleContentType(contentType)
+	) {
+		return response;
+	}
+
+	const contentLength = response.headers.get("content-length");
+	if (contentLength && Number(contentLength) < minimumCompressionSize) return response;
+
+	const headers = new Headers(response.headers);
+	headers.set("vary", appendHeaderValue(headers.get("vary"), "Accept-Encoding"));
+	const encoding = preferredResponseEncoding(request.headers.get("accept-encoding"));
+	if (!encoding) return responseWithHeaders(response, headers);
+
+	return compressedResponse(response, headers, encoding);
+}
 
 export function compressSseResponse(request: Request, response: Response): Response {
 	if (
@@ -24,26 +66,17 @@ export function compressSseResponse(request: Request, response: Response): Respo
 	) {
 		return response;
 	}
-	const encoding = preferredStreamEncoding(request.headers.get("accept-encoding"));
+	const encoding = preferredResponseEncoding(request.headers.get("accept-encoding"));
 	if (!encoding) return response;
 
-	const compressor = createCompressor(encoding);
-	void pumpCompressedBody(response.body.getReader(), compressor, encoding);
-
 	const headers = new Headers(response.headers);
-	headers.set("content-encoding", encoding);
 	headers.set("vary", appendHeaderValue(headers.get("vary"), "Accept-Encoding"));
-	headers.delete("content-length");
-	return new Response(Readable.toWeb(compressor), {
-		status: response.status,
-		statusText: response.statusText,
-		headers,
-	});
+	return compressedResponse(response, headers, encoding, encoding);
 }
 
-export function preferredStreamEncoding(
+export function preferredResponseEncoding(
 	acceptEncoding: string | null,
-): StreamEncoding | undefined {
+): ResponseEncoding | undefined {
 	if (!acceptEncoding) return undefined;
 	const qualities = new Map<string, number>();
 	for (const entry of acceptEncoding.split(",")) {
@@ -62,9 +95,9 @@ export function preferredStreamEncoding(
 		qualities.set(name, Math.max(qualities.get(name) ?? 0, quality));
 	}
 	const wildcard = qualities.get("*") ?? 0;
-	let preferred: StreamEncoding | undefined;
+	let preferred: ResponseEncoding | undefined;
 	let preferredQuality = 0;
-	for (const encoding of streamEncodings) {
+	for (const encoding of encodings) {
 		const quality = qualities.get(encoding) ?? wildcard;
 		if (quality > preferredQuality) {
 			preferred = encoding;
@@ -74,12 +107,54 @@ export function preferredStreamEncoding(
 	return preferred;
 }
 
-function createCompressor(encoding: StreamEncoding): Compressor {
+function compressedResponse(
+	response: Response,
+	headers: Headers,
+	encoding: ResponseEncoding,
+	flushEncoding?: ResponseEncoding,
+): Response {
+	const body = response.body;
+	if (!body) return response;
+	const compressor = createCompressor(encoding);
+	void pumpCompressedBody(body.getReader(), compressor, flushEncoding);
+
+	headers.set("content-encoding", encoding);
+	headers.delete("content-length");
+	const compressedBody: object = Readable.toWeb(compressor);
+	// SAFETY: Node and Bun expose compatible byte-oriented Web stream contracts.
+	return new Response(compressedBody as BodyInit, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
+function responseWithHeaders(response: Response, headers: Headers): Response {
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
+function isCompressibleContentType(contentType: string): boolean {
+	return (
+		contentType.startsWith("text/") ||
+		contentType === "image/svg+xml" ||
+		compressibleApplicationTypes.has(contentType) ||
+		contentType.endsWith("+json") ||
+		contentType.endsWith("+xml")
+	);
+}
+
+function createCompressor(encoding: ResponseEncoding): Compressor {
 	switch (encoding) {
 		case "zstd":
 			return createZstdCompress();
 		case "br":
-			return createBrotliCompress();
+			return createBrotliCompress({
+				params: { [constants.BROTLI_PARAM_QUALITY]: 6 },
+			});
 		case "gzip":
 			return createGzip();
 	}
@@ -88,7 +163,7 @@ function createCompressor(encoding: StreamEncoding): Compressor {
 async function pumpCompressedBody(
 	reader: ReadableStreamDefaultReader<Uint8Array>,
 	compressor: Compressor,
-	encoding: StreamEncoding,
+	flushEncoding?: ResponseEncoding,
 ): Promise<void> {
 	let sourceEnded = false;
 	const cancelSource = () => {
@@ -102,11 +177,11 @@ async function pumpCompressedBody(
 				sourceEnded = true;
 				break;
 			}
-			// Deno's Node Brotli bridge only exposes 4 KiB per explicit flush.
-			const chunkSize = encoding === "br" ? brotliFlushChunkSize : value.length;
+			const chunkSize =
+				flushEncoding === "br" ? brotliFlushChunkSize : value.length;
 			for (let offset = 0; offset < value.length; offset += chunkSize) {
 				await write(compressor, value.subarray(offset, offset + chunkSize));
-				await flush(compressor, encoding);
+				if (flushEncoding) await flush(compressor, flushEncoding);
 			}
 		}
 		if (!compressor.destroyed) await end(compressor);
@@ -127,7 +202,7 @@ function write(compressor: Compressor, chunk: Uint8Array): Promise<void> {
 	});
 }
 
-function flush(compressor: Compressor, encoding: StreamEncoding): Promise<void> {
+function flush(compressor: Compressor, encoding: ResponseEncoding): Promise<void> {
 	const operation = {
 		zstd: constants.ZSTD_e_flush,
 		br: constants.BROTLI_OPERATION_FLUSH,

@@ -1,4 +1,6 @@
-import { assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertStringIncludes } from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
 import {
@@ -6,7 +8,7 @@ import {
 	renderExtensionDialogContent,
 } from "./extension-dialog.tsx";
 
-Deno.test("extension dialog escapes labels and posts attributed selections", () => {
+test("extension dialog escapes labels and posts attributed selections", () => {
 	const html = renderExtensionDialogContent({
 		id: "request-1",
 		kind: "select",
@@ -16,13 +18,13 @@ Deno.test("extension dialog escapes labels and posts attributed selections", () 
 
 	assertStringExcludes(html, "<script>title</script>");
 	assertStringExcludes(html, "<strong>option</strong>");
-	assertStringIncludes(html, "&lt;script>title&lt;/script>");
-	assertStringIncludes(html, "&lt;strong>option&lt;/strong>");
+	assertStringIncludes(html, "&lt;script&gt;title&lt;/script&gt;");
+	assertStringIncludes(html, "&lt;strong&gt;option&lt;/strong&gt;");
 	assertStringIncludes(html, "/extensions/ui/respond");
 	assertStringIncludes(html, "request-1");
 });
 
-Deno.test("extension dialog close uses the current backend signal", () => {
+test("extension dialog close uses the current backend signal", () => {
 	const html = renderExtensionDialog(undefined);
 	assertStringIncludes(html, "$extensionRequestId");
 	assertStringIncludes(html, "extensionCancelled: true");

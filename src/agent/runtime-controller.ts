@@ -9,14 +9,13 @@ import {
 	SessionManager,
 } from "@earendil-works/pi-coding-agent";
 
-import {
-	isApplicationFocused,
-	notifySessionDone,
-	type SessionDoneNotification,
-} from "../desktop-notifications.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import { AppStore } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
+import {
+	notifySessionDone,
+	type SessionDoneNotification,
+} from "../system-notifications.ts";
 import { errorMessage } from "../utils/errors.ts";
 import { configureAgentHttpProxy, withAgentHttpProxy } from "../utils/http-proxy.ts";
 import { moveToTrash } from "../utils/trash.ts";
@@ -1091,9 +1090,12 @@ export class RuntimeController {
 		details: SessionDoneNotification,
 		background: boolean,
 	): Promise<void> {
-		const focused =
-			this.activationOptions.isApplicationFocused ?? isApplicationFocused;
-		if (!background && (await focused())) return;
+		if (
+			!background &&
+			(await (this.activationOptions.isApplicationFocused?.() ?? true))
+		) {
+			return;
+		}
 		const notify = this.activationOptions.notifySessionDone ?? notifySessionDone;
 		await notify(details);
 	}

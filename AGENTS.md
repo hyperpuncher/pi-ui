@@ -2,18 +2,8 @@
 
 Read relevant docs in full before implementing against them:
 
-- Deno docs LLM index: https://docs.deno.com/llms.txt
-- Deno docs repo mirror: `~/docs/deno-docs/` (https://github.com/denoland/docs)
-- Deno Desktop docs: https://docs.deno.com/runtime/desktop/index.md
-    - Configuration: https://docs.deno.com/runtime/desktop/configuration.md
-    - Backends: https://docs.deno.com/runtime/desktop/backends.md
-    - HTTP serving: https://docs.deno.com/runtime/desktop/serving.md
-    - Windows/events: https://docs.deno.com/runtime/desktop/windows.md
-    - Bindings: https://docs.deno.com/runtime/desktop/bindings.md
-    - Menus/accelerators: https://docs.deno.com/runtime/desktop/menus.md
-    - DevTools: https://docs.deno.com/runtime/desktop/devtools.md
-    - Distribution: https://docs.deno.com/runtime/desktop/distribution.md
-    - Tray/dock/icons: https://docs.deno.com/runtime/desktop/tray_and_dock.md
+- Bun docs: https://bun.sh/docs
+- Bun docs repo mirror: `~/docs/bun/` (https://github.com/oven-sh/bun)
 - Basecoat docs LLM index: https://basecoatui.com/llms.txt
 - Datastar docs already mirrored under `~/docs/datastar-docs/`
 - Datastar TypeScript SDK docs/source under `~/docs/datastar-typescript/`
@@ -22,12 +12,12 @@ Read relevant docs in full before implementing against them:
 
 ## Project conventions
 
-- Runtime/windowing: Deno Desktop with CEF by default.
+- Runtime: Bun server with a browser UI.
 - Interactivity: Datastar, using `@starfederation/datastar-sdk` server-side.
 - HTML rendering: Kita JSX (`@kitajs/html`), not React.
-- Markdown rendering: Sätteri with WASI/browser condition plus Shiki for finalized code highlighting.
+- Markdown rendering: Sätteri with native bindings plus Shiki for finalized code highlighting.
 - Styling: Tailwind utilities + Basecoat Nova. Avoid custom CSS unless unavoidable.
-- Desktop packaging: use `desktop` config in `deno.json` for backend, icons, and output paths; local builds target Linux, release workflow builds all platforms.
+- Distribution: compile standalone executables with `bun build --compile`; release workflows build on each target platform.
 - Prefer backend-owned UI state; use frontend signals only for local UI state and writes.
 - Datastar attributes in TSX: use normal JSX attributes unless the attribute name contains a `.` and must be passed another way.
 - Datastar write interactions should use signals + `@post()`, not forms.
@@ -37,5 +27,5 @@ Read relevant docs in full before implementing against them:
 Before finishing code changes, run:
 
 ```sh
-deno task css:build && deno task fmt && deno task lint && deno task check
+bun run css:build && bun run fmt && bun run lint && bun run check && bun test
 ```

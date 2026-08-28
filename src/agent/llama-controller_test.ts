@@ -1,14 +1,17 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { AppStore } from "../state/app-store.ts";
 import { LlamaController } from "./llama-controller.ts";
 
-Deno.test("unload accepts the router's forced-exit status", async () => {
+test("unload accepts the router's forced-exit status", async () => {
 	let unloaded = false;
 	let refreshes = 0;
-	const server = Deno.serve(
-		{ hostname: "127.0.0.1", port: 0, onListen: () => {} },
-		(request) => {
+	const server = Bun.serve({
+		hostname: "127.0.0.1",
+		port: 0,
+		fetch(request) {
 			const path = new URL(request.url).pathname;
 			if (path === "/models/unload") {
 				unloaded = true;
@@ -28,10 +31,8 @@ Deno.test("unload accepts the router's forced-exit status", async () => {
 			}
 			return new Response(null, { status: 404 });
 		},
-	);
-	const address = server.addr;
-	if (address.transport !== "tcp") throw new Error("Expected a TCP test server");
-	const serverUrl = `http://127.0.0.1:${address.port}`;
+	});
+	const serverUrl = `http://127.0.0.1:${server.port}`;
 	const runtime = {
 		services: {
 			modelRuntime: {
@@ -63,7 +64,7 @@ Deno.test("unload accepts the router's forced-exit status", async () => {
 		assertEquals(refreshes, 1);
 	} finally {
 		controller.dispose();
-		await server.shutdown();
+		await server.stop();
 	}
 });
 

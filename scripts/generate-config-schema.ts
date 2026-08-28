@@ -170,11 +170,13 @@ const schema = Type.Object(
 const output = `${JSON.stringify(schema, null, "\t")}\n`;
 const outputUrl = new URL("../config.schema.json", import.meta.url);
 
-if (Deno.args.includes("--check")) {
-	const current = await Deno.readTextFile(outputUrl).catch(() => "");
+if (process.argv.includes("--check")) {
+	const current = await Bun.file(outputUrl)
+		.text()
+		.catch(() => "");
 	if (current !== output) {
-		throw new Error("config.schema.json is stale; run `deno task schema:build`");
+		throw new Error("config.schema.json is stale; run `bun run schema:build`");
 	}
 } else {
-	await Deno.writeTextFile(outputUrl, output);
+	await Bun.write(outputUrl, output);
 }

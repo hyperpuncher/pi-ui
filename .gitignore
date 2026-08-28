@@ -1,6 +1,5 @@
 node_modules/
 dist/
-.laufey/
 .agents/
 skills-lock.json
 .envrc
@@ -9,7 +8,6 @@ static/vendor/datastar-inspector.min.js
 static/app.css
 static/basecoat.vendor.js
 static/build/
-static/native/windows-folder-picker.exe
 src/ui/basecoat.generated.css
 /plans
 /docs

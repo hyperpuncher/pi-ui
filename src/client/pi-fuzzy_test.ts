@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { fuzzyFilter, fuzzyMatch } from "./pi-fuzzy.ts";
 
-Deno.test("pi fuzzy matching filters and ranks slash command names", () => {
+test("pi fuzzy matching filters and ranks slash command names", () => {
 	assertEquals(fuzzyMatch("lg", "login").matches, true);
 	assertEquals(fuzzyMatch("lg", "tree").matches, false);
 	assertEquals(

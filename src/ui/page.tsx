@@ -16,7 +16,7 @@ import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
 import { Icon } from "./icon.tsx";
-import { FileUp, FolderOpen, Search } from "./icons.ts";
+import { FileUp, Search } from "./icons.ts";
 import { altShortcutAction } from "./keyboard.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
@@ -33,11 +33,6 @@ import { syncHtml } from "./sync-html.ts";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
 
-const desktopStartupReadyScript = `addEventListener("load", () => {
-	globalThis.piUiStartupLayoutGate?.arm();
-	void bindings.piUiStartupReady();
-}, { once: true });`;
-
 // Restore the persisted width before CSS can paint. Datastar takes ownership
 // after initialization, avoiding a transition from the default on every reload.
 const sessionSidebarStartupScript = `try {
@@ -50,31 +45,6 @@ const sessionSidebarStartupScript = `try {
 	}
 } catch {}`;
 
-// Hyprland can expose CEF's previous child viewport during its animated tile
-// configure. A resize must remain unchanged across three compositor paints
-// before CEF content is allowed to appear. The nearly opaque cover forces CEF
-// to rasterize the application beneath it instead of occlusion-culling it.
-const startupLayoutGateScript = `(() => {
-	let armed = false;
-	let generation = 0;
-	let revealed = false;
-	const reveal = (candidate) => {
-		if (revealed || candidate !== generation) return;
-		revealed = true;
-		document.getElementById("startup-layout-cover")?.remove();
-	};
-	const resized = () => {
-		if (!armed || revealed) return;
-		const candidate = ++generation;
-		requestAnimationFrame(() => requestAnimationFrame(() =>
-			requestAnimationFrame(() => reveal(candidate))
-		));
-	};
-	addEventListener("resize", resized, { passive: true });
-	visualViewport?.addEventListener("resize", resized, { passive: true });
-	globalThis.piUiStartupLayoutGate = { arm: () => { armed = true; } };
-})();`;
-
 export function renderPage(
 	state: AppRenderSnapshot,
 	appVersion = "development",
@@ -82,13 +52,10 @@ export function renderPage(
 	minimalMode = false,
 	toolOutputHidden = false,
 ): string {
-	const desktop = Deno.BrowserWindow instanceof Function;
 	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
 	const fonts = activeFontStacks();
 	const displayClientId = crypto.randomUUID();
-	const gateStartupLayout =
-		desktop && Boolean(Deno.env.get("HYPRLAND_INSTANCE_SIGNATURE"));
 	const initialSignals = JSON.stringify(projectBackendSignals(state));
 
 	return syncHtml(
@@ -102,31 +69,25 @@ export function renderPage(
 				<head>
 					<meta charset="utf-8" />
 					<meta name="viewport" content="width=device-width, initial-scale=1" />
+					<meta name="theme-color" content="#09090b" />
+					<meta name="apple-mobile-web-app-capable" content="yes" />
+					<meta name="apple-mobile-web-app-title" content="pi-ui" />
 					<title safe>{state.documentTitle}</title>
+					<link rel="manifest" href={`${staticBase}/manifest.webmanifest`} />
 					<link
 						rel="icon"
 						type="image/svg+xml"
 						href={`${staticBase}/favicon.svg`}
 					/>
+					<link rel="apple-touch-icon" href={`${staticBase}/icon-180.png`} />
 					<script src={`${staticBase}/theme.js`}></script>
 					<script>{sessionSidebarStartupScript}</script>
 					<link rel="stylesheet" href={`${staticBase}/app.css`} />
-					{gateStartupLayout && <script>{startupLayoutGateScript}</script>}
-					{desktop && <script>{desktopStartupReadyScript}</script>}
 					<script src="/basecoat.js" defer></script>
-					<script type="module" src={`${staticBase}/app/main.js`}></script>
-					<script type="module" src={`${staticBase}/build/fonts.js`}></script>
+					<script type="module" src={`${staticBase}/build/main.js`}></script>
 					<script
 						type="module"
 						src={`${staticBase}/vendor/datastar.js`}
-					></script>
-					<script
-						type="module"
-						src={`${staticBase}/build/workspace-review.js`}
-					></script>
-					<script
-						type="module"
-						src={`${staticBase}/build/code-theme.js`}
 					></script>
 					{state.datastarInspector && (
 						<script
@@ -141,8 +102,6 @@ export function renderPage(
 					data-keybind-hints={keybindHints}
 					data-minimal-mode={minimalMode}
 					data-time-locale={systemTimeLocale}
-					data-native-file-picker={desktop}
-					data-files-pick-endpoint={endpoints.filesPick}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-workspace-files-endpoint={workspaceFilesBase}
@@ -217,14 +176,6 @@ export function renderPage(
 						window.piUi.fileTransfer.insert(evt.dataTransfer);
 					}`}
 				>
-					{gateStartupLayout && (
-						<div
-							id="startup-layout-cover"
-							class="fixed inset-0 bg-background"
-							style="z-index: 2147483647; opacity: 0.9999;"
-							aria-hidden="true"
-						/>
-					)}
 					{state.datastarInspector && <datastar-inspector />}
 					{renderDebugOverlay(state)}
 					<div
@@ -302,10 +253,7 @@ export function renderPage(
 						class="command-dialog"
 						aria-label="Change workspace"
 						data-preserve-attr="open"
-						data-signals__ifmissing={JSON.stringify({
-							workspaceDraft: "",
-							_workspacePickerError: "",
-						})}
+						data-signals:workspace-draft__ifmissing="''"
 						onclick="if (event.target === this) this.close()"
 					>
 						<div class="command sm:max-w-md">
@@ -329,34 +277,7 @@ export function renderPage(
 									})`,
 									}}
 								/>
-								<button
-									type="button"
-									class="btn size-6 shrink-0 p-0"
-									data-variant="outline"
-									data-indicator:_workspace-picking
-									data-attr:disabled="
-										$_sessionTransitionLoading ||
-										$_workspacePicking
-									"
-									data-on:click={`
-										$_workspacePickerError = '';
-										@post('${endpoints.workspacePick}', {
-										payload: {},
-									});
-									`}
-									aria-label="Browse for workspace folder"
-								>
-									<Icon icon={FolderOpen} />
-								</button>
 							</header>
-							<p
-								id="workspace-picker-error"
-								class="pi-error-foreground px-3 pt-2 text-xs"
-								role="alert"
-								style="display: none"
-								data-show="$_workspacePickerError"
-								data-text="$_workspacePickerError"
-							></p>
 							{renderWorkspaceDialogMenu(state)}
 						</div>
 					</dialog>

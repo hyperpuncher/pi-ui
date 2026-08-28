@@ -1,6 +1,11 @@
+import { test } from "bun:test";
+import { pathToFileURL } from "node:url";
+
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
-import { assertEquals, assertStringIncludes } from "@std/assert";
-import { toFileUrl } from "@std/path";
+
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
+import { mkdir, remove, writeFile, writeTextFile } from "#testing/files";
+import { makeTempDir, makeTempFile } from "#testing/temp";
 
 import { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
@@ -11,9 +16,8 @@ import { DatastarClientHub } from "../datastar-client-hub.ts";
 import { SessionImageStore } from "../session-image-store.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
-import { pickWorkspace } from "./workspace.ts";
 
-Deno.test("all server endpoints are registered through domain route modules", async () => {
+test("all server endpoints are registered through domain route modules", async () => {
 	const context = fakeContext();
 	const router = createRouter(context);
 	const expected = [
@@ -44,7 +48,6 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /sessions/rename",
 		"POST /sessions/resume",
 		"POST /workspace/open",
-		"POST /workspace/pick",
 		"GET /workspace/search",
 		"GET /workspace/files",
 		"GET /workspace/files/content",
@@ -77,7 +80,6 @@ Deno.test("all server endpoints are registered through domain route modules", as
 		"POST /tree/open",
 		"POST /tree/navigate",
 		"GET /files/search",
-		"POST /files/pick",
 		"POST /files/import",
 		"POST /files/open",
 		"GET /basecoat.js",
@@ -90,13 +92,15 @@ Deno.test("all server endpoints are registered through domain route modules", as
 	);
 });
 
-Deno.test("page assets use the current immutable content version", async () => {
+test("page assets use the current immutable content version", async () => {
 	const context = fakeContext();
 	context.renderer = new UiRenderer(context.store, new DatastarClientHub());
 	const response = await createRouter(context).fetch(new Request("http://localhost/"));
 	const html = await response.text();
 	assertEquals(response.headers.get("cache-control"), "no-store");
 	assertStringIncludes(html, `/static/${context.appVersion}/app.css`);
+	assertStringIncludes(html, `/static/${context.appVersion}/manifest.webmanifest`);
+	assertStringIncludes(html, `/static/${context.appVersion}/icon-180.png`);
 	assertStringIncludes(html, `appVersion=${context.appVersion}`);
 	assertStringIncludes(html, " data-keybind-hints ");
 	assertStringExcludes(html, " data-minimal-mode ");
@@ -122,7 +126,7 @@ Deno.test("page assets use the current immutable content version", async () => {
 	assertEquals(basecoat.headers.get("cache-control"), "no-cache, must-revalidate");
 });
 
-Deno.test("stale main streams reload the page before connecting", async () => {
+test("stale main streams reload the page before connecting", async () => {
 	let connected = false;
 	const context = fakeContext({
 		renderer: uiRendererStub({
@@ -150,14 +154,11 @@ Deno.test("stale main streams reload the page before connecting", async () => {
 	assertEquals(connected, true);
 });
 
-Deno.test("session favicons use workspace assets and fall back to a folder", async () => {
-	const workspace = await Deno.makeTempDir();
+test("session favicons use workspace assets and fall back to a folder", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.mkdir(`${workspace}/public`);
-		await Deno.writeFile(
-			`${workspace}/public/favicon.png`,
-			new Uint8Array([1, 2, 3]),
-		);
+		await mkdir(`${workspace}/public`);
+		await writeFile(`${workspace}/public/favicon.png`, new Uint8Array([1, 2, 3]));
 		const context = fakeContext();
 		context.store.setSessions([
 			{
@@ -190,11 +191,11 @@ Deno.test("session favicons use workspace assets and fall back to a folder", asy
 		);
 		assertStringIncludes(await fallback.text(), "M20 20a2 2");
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("older messages use a targeted persistent-stream patch", async () => {
+test("older messages use a targeted persistent-stream patch", async () => {
 	let revealedIds: readonly string[] = [];
 	const context = fakeContext({
 		renderer: uiRendererStub({
@@ -219,7 +220,7 @@ Deno.test("older messages use a targeted persistent-stream patch", async () => {
 	assertEquals(revealedIds.length, 30);
 });
 
-Deno.test("older sessions expand backend-owned sidebar state", async () => {
+test("older sessions expand backend-owned sidebar state", async () => {
 	const context = fakeContext();
 	context.store.setSessionCatalog(
 		Array.from({ length: 51 }, (_, index) => ({
@@ -241,7 +242,7 @@ Deno.test("older sessions expand backend-owned sidebar state", async () => {
 	assertEquals(context.store.snapshot().sessionSidebarHasMore, false);
 });
 
-Deno.test("session images are served separately from transcript HTML", async () => {
+test("session images are served separately from transcript HTML", async () => {
 	const context = fakeContext();
 	const url = context.resources.sessionImages.register({
 		data: "aW1hZ2U=",
@@ -255,42 +256,12 @@ Deno.test("session images are served separately from transcript HTML", async () 
 	assertEquals(new TextDecoder().decode(await response.arrayBuffer()), "image");
 });
 
-Deno.test("native workspace picking opens directly through Datastar", async () => {
-	const opened: string[] = [];
-	const context = {
-		openWorkspace(path: string) {
-			opened.push(path);
-			return Promise.resolve(path !== "/failed");
-		},
-	};
-
-	const cancelled = await pickWorkspace(context, () => Promise.resolve(undefined));
-	assertEquals(cancelled.status, 204);
-	assertEquals(opened, []);
-
-	const success = await pickWorkspace(context, () => Promise.resolve("/selected"));
-	assertEquals(success.status, 200);
-	const successBody = await success.text();
-	assertStringIncludes(successBody, '"_workspacePickerError":""');
-	assertStringIncludes(successBody, "workspace-dialog");
-	assertStringIncludes(successBody, ".close()");
-	assertEquals(opened, ["/selected"]);
-
-	const failed = await pickWorkspace(context, () => Promise.resolve("/failed"));
-	assertEquals(failed.status, 200);
-	assertStringIncludes(
-		await failed.text(),
-		'"_workspacePickerError":"Workspace transition failed."',
-	);
-	assertEquals(opened, ["/selected", "/failed"]);
-});
-
-Deno.test("file search uses current workspace and escapes Datastar fragments", async () => {
-	const firstWorkspace = await Deno.makeTempDir();
-	const secondWorkspace = await Deno.makeTempDir();
+test("file search uses current workspace and escapes Datastar fragments", async () => {
+	const firstWorkspace = await makeTempDir();
+	const secondWorkspace = await makeTempDir();
 	try {
-		await Deno.writeTextFile(`${firstWorkspace}/first.txt`, "");
-		await Deno.writeTextFile(`${secondWorkspace}/<unsafe>.txt`, "");
+		await writeTextFile(`${firstWorkspace}/first.txt`, "");
+		await writeTextFile(`${secondWorkspace}/<unsafe>.txt`, "");
 		const context = fakeContext();
 		context.store.setWorkspacePath(firstWorkspace);
 		const router = createRouter(context);
@@ -307,7 +278,7 @@ Deno.test("file search uses current workspace and escapes Datastar fragments", a
 		assertEquals(response.headers.get("content-type"), "text/event-stream");
 		const body = await response.text();
 		assertStringIncludes(body, 'id="file-picker-results"');
-		assertStringIncludes(body, "&lt;unsafe>.txt");
+		assertStringIncludes(body, "&lt;unsafe&gt;.txt");
 		assertStringIncludes(body, "datastar-patch-elements");
 		assertStringIncludes(body, '"_filePickerOpen":true');
 
@@ -326,16 +297,16 @@ Deno.test("file search uses current workspace and escapes Datastar fragments", a
 		);
 	} finally {
 		await Promise.all([
-			Deno.remove(firstWorkspace, { recursive: true }),
-			Deno.remove(secondWorkspace, { recursive: true }),
+			remove(firstWorkspace, { recursive: true }),
+			remove(secondWorkspace, { recursive: true }),
 		]);
 	}
 });
 
-Deno.test("workspace search returns matching directories", async () => {
-	const workspace = await Deno.makeTempDir();
+test("workspace search returns matching directories", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.mkdir(`${workspace}/alpha`);
+		await mkdir(`${workspace}/alpha`);
 		const context = fakeContext();
 		context.store.setWorkspacePath(workspace);
 		const response = await createRouter(context).fetch(
@@ -344,11 +315,11 @@ Deno.test("workspace search returns matching directories", async () => {
 		assertEquals(response.status, 200);
 		assertStringIncludes(await response.text(), "alpha");
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("workspace review comments are sent to the current agent session", async () => {
+test("workspace review comments are sent to the current agent session", async () => {
 	let prompt = "";
 	const context = fakeContext({
 		host: fakeHost({
@@ -383,7 +354,7 @@ Deno.test("workspace review comments are sent to the current agent session", asy
 	);
 });
 
-Deno.test("workspace review comments reject malformed input", async () => {
+test("workspace review comments reject malformed input", async () => {
 	const response = await createRouter(fakeContext()).fetch(
 		signalRequest("/workspace/review/submit", {
 			workspaceReviewComments: { comments: [] },
@@ -392,7 +363,7 @@ Deno.test("workspace review comments reject malformed input", async () => {
 	assertEquals(response.status, 400);
 });
 
-Deno.test("malformed actions return 400 without mutating the transcript", async () => {
+test("malformed actions return 400 without mutating the transcript", async () => {
 	const context = fakeContext();
 	const response = await createRouter(context).fetch(
 		new Request("http://localhost/prompt", {
@@ -405,7 +376,7 @@ Deno.test("malformed actions return 400 without mutating the transcript", async 
 	assertEquals(context.store.messages.length, 0);
 });
 
-Deno.test("host-dependent actions return 503 when runtime is absent", async () => {
+test("host-dependent actions return 503 when runtime is absent", async () => {
 	const context = fakeContext();
 	context.resources.host = undefined;
 	const response = await createRouter(context).fetch(
@@ -414,7 +385,7 @@ Deno.test("host-dependent actions return 503 when runtime is absent", async () =
 	assertEquals(response.status, 503);
 });
 
-Deno.test("accepted prompts do not clear a newer frontend draft", async () => {
+test("accepted prompts do not clear a newer frontend draft", async () => {
 	const router = createRouter(fakeContext());
 	for (const path of ["/prompt", "/prompt/follow-up"]) {
 		const response = await router.fetch(signalRequest(path, { prompt: "hello" }));
@@ -423,7 +394,7 @@ Deno.test("accepted prompts do not clear a newer frontend draft", async () => {
 	}
 });
 
-Deno.test("multipart prompts resize valid image attachments before passing them to pi", async () => {
+test("multipart prompts resize valid image attachments before passing them to pi", async () => {
 	let submitted:
 		| {
 				text: string;
@@ -461,7 +432,7 @@ Deno.test("multipart prompts resize valid image attachments before passing them 
 	});
 });
 
-Deno.test("multipart prompts reject HEIC images before provider submission", async () => {
+test("multipart prompts reject HEIC images before provider submission", async () => {
 	const formData = new FormData();
 	formData.set("prompt", "inspect this");
 	formData.set(
@@ -475,7 +446,7 @@ Deno.test("multipart prompts reject HEIC images before provider submission", asy
 	assertStringIncludes(await response.text(), "HEIC and HEIF images are not supported");
 });
 
-Deno.test("extension UI tracks the browser editor for synchronous extension reads", async () => {
+test("extension UI tracks the browser editor for synchronous extension reads", async () => {
 	const context = fakeContext();
 	const response = await createRouter(context).fetch(
 		signalRequest("/extensions/ui/editor", { prompt: "current draft" }),
@@ -485,7 +456,7 @@ Deno.test("extension UI tracks the browser editor for synchronous extension read
 	assertEquals(context.store.promptEditorText, "current draft");
 });
 
-Deno.test("extension UI responses return to the active agent backend", async () => {
+test("extension UI responses return to the active agent backend", async () => {
 	let response:
 		| { requestId: string; value: string | undefined; cancelled: boolean }
 		| undefined;
@@ -512,7 +483,7 @@ Deno.test("extension UI responses return to the active agent backend", async () 
 	});
 });
 
-Deno.test("main stream binds a validated display client identity", async () => {
+test("main stream binds a validated display client identity", async () => {
 	const clientId = "123e4567-e89b-42d3-a456-426614174000";
 	let connectedClientId: string | undefined;
 	const context = fakeContext({
@@ -542,7 +513,7 @@ Deno.test("main stream binds a validated display client identity", async () => {
 	);
 });
 
-Deno.test("display refresh updates its connected presentation owner", async () => {
+test("display refresh updates its connected presentation owner", async () => {
 	const clientId = "123e4567-e89b-42d3-a456-426614174000";
 	let measured: { clientId: string; hz: number } | undefined;
 	const context = fakeContext({
@@ -577,7 +548,7 @@ Deno.test("display refresh updates its connected presentation owner", async () =
 	);
 });
 
-Deno.test("tree open remains repeatable and includes the fallback open effect", async () => {
+test("tree open remains repeatable and includes the fallback open effect", async () => {
 	let opens = 0;
 	const host = fakeHost({ openTree: () => ((opens += 1), true) });
 	const router = createRouter(fakeContext({ host }));
@@ -589,7 +560,7 @@ Deno.test("tree open remains repeatable and includes the fallback open effect", 
 	assertEquals(opens, 2);
 });
 
-Deno.test("tree navigation state follows mutable host ownership", async () => {
+test("tree navigation state follows mutable host ownership", async () => {
 	let resolveNavigation: (value: {
 		status: "success";
 		editorText: string;
@@ -629,10 +600,10 @@ Deno.test("tree navigation state follows mutable host ownership", async () => {
 	assertStringExcludes(cancelledBody, '"prompt"');
 });
 
-Deno.test("file links open locally and download remotely", async () => {
-	const path = await Deno.makeTempFile({ suffix: "-linked file.txt" });
-	await Deno.writeTextFile(path, "linked content");
-	const uri = toFileUrl(path).href;
+test("file links open locally and download remotely", async () => {
+	const path = await makeTempFile({ suffix: "-linked file.txt" });
+	await writeTextFile(path, "linked content");
+	const uri = pathToFileURL(path).href;
 	try {
 		let openedPath: string | undefined;
 		const localRouter = createRouter(
@@ -657,16 +628,12 @@ Deno.test("file links open locally and download remotely", async () => {
 		);
 		assertEquals(await remote.text(), "linked content");
 	} finally {
-		await Deno.remove(path);
+		await remove(path);
 	}
 });
 
-Deno.test("request locality uses the connection peer address", () => {
-	const address = (hostname: string): Deno.NetAddr => ({
-		transport: "tcp",
-		hostname,
-		port: 1234,
-	});
+test("request locality uses the connection peer address", () => {
+	const address = (hostname: string) => ({ address: hostname });
 	assertEquals(isLoopbackAddress(address("127.0.0.1")), true);
 	assertEquals(isLoopbackAddress(address("::1")), true);
 	assertEquals(isLoopbackAddress(address("::ffff:127.0.0.1")), true);
@@ -726,7 +693,7 @@ function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
 		cycleModel: async () => true,
 		cycleThinkingLevel: () => true,
 		deleteSession: async () => true,
-		getWorkspacePath: () => Deno.cwd(),
+		getWorkspacePath: () => process.cwd(),
 		listSessions: async () => {},
 		logout: () => true,
 		navigateTree: async () => ({ status: "success", editorText: "" }),

@@ -1,8 +1,9 @@
-import { basename } from "@std/path";
+import { stat } from "node:fs/promises";
+import { basename } from "node:path";
 
 import { fileUriToPath } from "../../../static/file-uri.js";
-import { pickNativeFilePaths } from "../../native-file-picker.ts";
 import { renderFilePickerResults } from "../../ui/pickers.tsx";
+import { isNotFound } from "../../utils/fs-errors.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { searchFiles } from "../file-search.ts";
@@ -30,9 +31,6 @@ export function registerFileRoutes(router: ExactRouter<RouteContext>): void {
 			{ type: "signals", signals: { _filePickerOpen: items.length > 0 } },
 		]);
 	});
-	router.register("POST", endpoints.filesPick, async () =>
-		Response.json({ paths: await pickNativeFilePaths() }),
-	);
 	router.register("POST", endpoints.filesImport, importTransferredFiles);
 	router.register("POST", endpoints.filesOpen, openLinkedFile);
 }
@@ -45,11 +43,11 @@ async function openLinkedFile(
 	const path = fileUriToPath(uri);
 	if (!path) throw new RouteError(400, "Invalid file link.");
 
-	let info: Deno.FileInfo;
+	let info: Awaited<ReturnType<typeof stat>>;
 	try {
-		info = await Deno.stat(path);
+		info = await stat(path);
 	} catch (error) {
-		if (error instanceof Deno.errors.NotFound) {
+		if (isNotFound(error)) {
 			throw new RouteError(404, "File not found.");
 		}
 		throw error;
@@ -59,13 +57,12 @@ async function openLinkedFile(
 		await context.openPath(path);
 		return new Response(null, { status: 204 });
 	}
-	if (!info.isFile) {
+	if (!info.isFile()) {
 		throw new RouteError(400, "Only files can be downloaded remotely.");
 	}
 
-	const file = await Deno.open(path, { read: true });
 	const name = basename(path) || "download";
-	return new Response(file.readable, {
+	return new Response(Bun.file(path), {
 		headers: {
 			"content-type": "application/octet-stream",
 			"content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,

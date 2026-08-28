@@ -1,4 +1,4 @@
-import { fromFileUrl } from "@std/path";
+import { realpath, stat } from "node:fs/promises";
 
 import { AgentHost } from "../agent/host.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
@@ -36,16 +36,21 @@ import { registerWorkspaceReviewRoutes } from "./routes/workspace-review.ts";
 import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { SessionImageStore } from "./session-image-store.ts";
 import { createStaticAssetServer } from "./static-assets.ts";
+import { staticPath, staticRoot } from "./static-path.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
 import { readWorkspaceReviewPreferences } from "./workspace-review-preferences.ts";
 
-const basecoatJsPath = fromFileUrl(
-	new URL("../../static/basecoat.vendor.js", import.meta.url),
-);
-const staticRoot = fromFileUrl(new URL("../../static", import.meta.url));
+const basecoatJsPath = staticPath("basecoat.vendor.js");
 
-export async function createApp(): Promise<Deno.ServeDefaultExport> {
+export interface AppServer {
+	fetch(request: Request, clientAddress?: ClientAddress): Response | Promise<Response>;
+	dispose(): Promise<void>;
+}
+
+export type ClientAddress = Readonly<{ address: string }>;
+
+export async function createApp(): Promise<AppServer> {
 	const staticAssets = await createStaticAssetServer(staticRoot);
 	const appConfig = await ensureAppConfig();
 	const [codeTheme, fonts, autoTitle, workspaceReviewPreferences] = await Promise.all([
@@ -83,23 +88,6 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 	workspaceReview.open(store.workspacePath);
 	const resources: RouteResources = { host, sessionImages };
 	const transferredFiles = await TransferredFileStore.create();
-	addEventListener(
-		"unload",
-		() => {
-			workspaceReview.dispose();
-			try {
-				transferredFiles.disposeSync();
-			} catch {
-				// Best-effort only during process teardown.
-			}
-			// Unload cannot reliably await asynchronous runtime teardown.
-			resources.host?.dispose().catch((error: ErrorOptions["cause"]) => {
-				console.error("Failed to dispose pi SDK runtime during teardown", error);
-			});
-		},
-		{ once: true },
-	);
-
 	const context: RouteContext = {
 		store,
 		renderer,
@@ -109,8 +97,7 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		keybindHints: appConfig.keybindHints !== false,
 		minimalMode: appConfig.minimalMode === true,
 		toolOutputHidden: appConfig.toolOutputHidden === true,
-		readBasecoat: async () =>
-			new Uint8Array(await Deno.readFile(basecoatJsPath)).buffer,
+		readBasecoat: async () => await Bun.file(basecoatJsPath).arrayBuffer(),
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>
 			openWorkspace(path, store, resources, transitions, autoTitle),
@@ -118,20 +105,32 @@ export async function createApp(): Promise<Deno.ServeDefaultExport> {
 		isLocalRequest: (request) => localRequests.has(request),
 	};
 	const router = createRouter(context);
+	let disposal: Promise<void> | undefined;
 	return {
-		fetch: (request, info) => {
-			if (isLoopbackAddress(info.remoteAddr)) localRequests.add(request);
+		fetch: (request, clientAddress) => {
+			if (clientAddress && isLoopbackAddress(clientAddress)) {
+				localRequests.add(request);
+			}
 			const pathname = new URL(request.url).pathname;
 			if (router.has(request.method, pathname)) return router.fetch(request);
 			if (request.method === "GET") return context.serveStatic(request);
 			return router.fetch(request);
 		},
+		dispose: () => {
+			disposal ??= (async () => {
+				workspaceReview.dispose();
+				await Promise.allSettled([
+					transferredFiles.dispose(),
+					resources.host?.dispose(),
+				]);
+			})();
+			return disposal;
+		},
 	};
 }
 
-export function isLoopbackAddress(address: Deno.Addr): boolean {
-	if (address.transport !== "tcp") return true;
-	const hostname = address.hostname.toLowerCase();
+export function isLoopbackAddress(address: ClientAddress): boolean {
+	const hostname = address.address.toLowerCase();
 	return (
 		hostname === "localhost" ||
 		hostname === "::1" ||
@@ -173,8 +172,8 @@ async function openWorkspace(
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
 	const transition = await transitions.run(requestedPath, async () => {
-		const realPath = await Deno.realPath(expandHomePath(requestedPath));
-		if (!(await Deno.stat(realPath)).isDirectory) {
+		const realPath = await realpath(expandHomePath(requestedPath));
+		if (!(await stat(realPath)).isDirectory()) {
 			throw new Error("Not a directory");
 		}
 		if (!resources.host) {
@@ -191,12 +190,10 @@ async function openWorkspace(
 }
 
 function installUnhandledErrorReporter(): void {
-	addEventListener("unhandledrejection", (event) => {
-		event.preventDefault();
-		console.error("Unhandled rejection", event.reason);
+	process.on("unhandledRejection", (error) => {
+		console.error("Unhandled rejection", error);
 	});
-	addEventListener("error", (event) => {
-		event.preventDefault();
-		console.error("Unhandled error", event.error ?? event.message);
+	process.on("uncaughtException", (error) => {
+		console.error("Unhandled error", error);
 	});
 }

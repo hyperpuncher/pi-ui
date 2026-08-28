@@ -1,6 +1,7 @@
+import { test } from "bun:test";
 import os from "node:os";
 
-import { assertFalse, assertStringIncludes } from "@std/assert";
+import { assertFalse, assertStringIncludes } from "#testing/assertions";
 
 import {
 	renderFilePickerResults,
@@ -16,7 +17,7 @@ import {
 } from "./prompt-pickers.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
-Deno.test("slash picker anchors its selected result nearest the prompt", () => {
+test("slash picker anchors its selected result nearest the prompt", () => {
 	const html = renderSlashPicker(
 		appRenderSnapshot({
 			slashCommands: [
@@ -35,7 +36,7 @@ Deno.test("slash picker anchors its selected result nearest the prompt", () => {
 	assertStringIncludes(html, "payload: { prompt: &#34;/login&#34; }");
 });
 
-Deno.test("slash picker uses pi fuzzy matching on command names", () => {
+test("slash picker uses pi fuzzy matching on command names", () => {
 	const expression = slashPickerOpenExpression(
 		appRenderSnapshot({
 			slashCommands: [
@@ -63,7 +64,7 @@ Deno.test("slash picker uses pi fuzzy matching on command names", () => {
 	assertStringIncludes(emptyExpression, "[].some");
 });
 
-Deno.test("session rows expose stable ids for resilient active descendants", () => {
+test("session rows expose stable ids for resilient active descendants", () => {
 	const path = `/sessions/a session.jsonl`;
 	const html = renderSessionPicker(
 		appRenderSnapshot({
@@ -89,7 +90,7 @@ Deno.test("session rows expose stable ids for resilient active descendants", () 
 	assertStringIncludes(html, "text-[13px] text-muted-foreground");
 });
 
-Deno.test("current running session is live but does not resume itself", () => {
+test("current running session is live but does not resume itself", () => {
 	const path = "/sessions/current.jsonl";
 	const html = renderSessionPicker(
 		appRenderSnapshot({
@@ -133,7 +134,7 @@ Deno.test("current running session is live but does not resume itself", () => {
 	assertFalse(html.includes("/sessions/resume"));
 });
 
-Deno.test("background session statuses use shared semantic dots", () => {
+test("background session statuses use shared semantic dots", () => {
 	const html = renderSessionPicker(
 		appRenderSnapshot({
 			sessions: [
@@ -167,7 +168,7 @@ Deno.test("background session statuses use shared semantic dots", () => {
 	assertFalse(html.includes('class="badge'));
 });
 
-Deno.test("current idle session exposes deletion", () => {
+test("current idle session exposes deletion", () => {
 	const path = "/sessions/current.jsonl";
 	const html = renderSessionPicker(
 		appRenderSnapshot({
@@ -194,7 +195,7 @@ Deno.test("current idle session exposes deletion", () => {
 	assertFalse(html.includes('disabled=""'));
 });
 
-Deno.test("workspace picker shows only the workspace folder name", () => {
+test("workspace picker shows only the workspace folder name", () => {
 	const nested = renderWorkspacePicker(
 		appRenderSnapshot({
 			workspacePath: "/home/user/Documents/Blenderanimation",
@@ -212,7 +213,7 @@ Deno.test("workspace picker shows only the workspace folder name", () => {
 	assertStringIncludes(home, ">~</span>");
 });
 
-Deno.test("workspace rows show each collapsed path once", () => {
+test("workspace rows show each collapsed path once", () => {
 	const home = os.homedir();
 	const html = renderWorkspaceDialogMenu(
 		appRenderSnapshot({
@@ -235,7 +236,7 @@ Deno.test("workspace rows show each collapsed path once", () => {
 	);
 });
 
-Deno.test("workspace picker only opens existing workspace suggestions", () => {
+test("workspace picker only opens existing workspace suggestions", () => {
 	const html = renderWorkspaceDialogMenu(
 		appRenderSnapshot({
 			workspacePath: "/workspace",
@@ -248,7 +249,7 @@ Deno.test("workspace picker only opens existing workspace suggestions", () => {
 	assertStringIncludes(html, "Recent workspaces");
 });
 
-Deno.test("model picker distinguishes missing auth from an unselected model", () => {
+test("model picker distinguishes missing auth from an unselected model", () => {
 	const withoutProvider = renderModelPicker(
 		appRenderSnapshot({
 			models: [],
@@ -304,7 +305,7 @@ Deno.test("model picker distinguishes missing auth from an unselected model", ()
 	);
 });
 
-Deno.test("model picker shows only the final model name in its trigger", () => {
+test("model picker shows only the final model name in its trigger", () => {
 	const html = renderModelPicker(
 		appRenderSnapshot({
 			models: [
@@ -324,7 +325,7 @@ Deno.test("model picker shows only the final model name in its trigger", () => {
 	assertStringIncludes(html, ">deepseek-ai/DeepSeek-R1</span>");
 });
 
-Deno.test("thinking picker describes every supported maximum level", () => {
+test("thinking picker describes every supported maximum level", () => {
 	const html = renderThinkingPicker(
 		appRenderSnapshot({
 			thinkingLevel: "max",
@@ -342,7 +343,7 @@ Deno.test("thinking picker describes every supported maximum level", () => {
 	);
 });
 
-Deno.test("file picker fragments escape dynamic values and expose list semantics", () => {
+test("file picker fragments escape dynamic values and expose list semantics", () => {
 	const html = renderFilePickerResults(
 		[
 			{
@@ -359,8 +360,8 @@ Deno.test("file picker fragments escape dynamic values and expose list semantics
 	assertStringIncludes(html, 'role="listbox"');
 	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'role="option"');
-	assertStringIncludes(html, "&lt;unsafe>.ts");
-	assertStringIncludes(html, "src/&lt;unsafe>.ts");
+	assertStringIncludes(html, "&lt;unsafe&gt;.ts");
+	assertStringIncludes(html, "src/&lt;unsafe&gt;.ts");
 });
 
 function escapeRegExp(value: string): string {

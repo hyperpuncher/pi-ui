@@ -1,9 +1,11 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertThrows } from "#testing/assertions";
 
 import { AppStore } from "../state/app-store.ts";
 import { ExtensionUiController } from "./extension-ui-controller.ts";
 
-Deno.test("extension UI resolves queued web dialogs in order", async () => {
+test("extension UI resolves queued web dialogs in order", async () => {
 	const store = new AppStore();
 	const controller = new ExtensionUiController(store);
 	const ui = controller.context(() => true);
@@ -22,7 +24,7 @@ Deno.test("extension UI resolves queued web dialogs in order", async () => {
 	assertEquals(store.extensionDialog, undefined);
 });
 
-Deno.test("extension UI cancels dialogs on abort and inactive runtimes", async () => {
+test("extension UI cancels dialogs on abort and inactive runtimes", async () => {
 	const store = new AppStore();
 	const controller = new ExtensionUiController(store);
 	const abort = new AbortController();
@@ -35,7 +37,7 @@ Deno.test("extension UI cancels dialogs on abort and inactive runtimes", async (
 	assertEquals(await controller.context(() => false).confirm("No", "No"), false);
 });
 
-Deno.test("extension UI rejects TUI-only capabilities explicitly", () => {
+test("extension UI rejects TUI-only capabilities explicitly", () => {
 	const ui = new ExtensionUiController(new AppStore()).context(() => true);
 
 	assertThrows(() => ui.onTerminalInput(() => undefined), Error, "raw terminal input");
@@ -46,7 +48,7 @@ Deno.test("extension UI rejects TUI-only capabilities explicitly", () => {
 	});
 });
 
-Deno.test("extension UI projects status, widgets, working state, and editor text", () => {
+test("extension UI projects status, widgets, working state, and editor text", () => {
 	const store = new AppStore();
 	const controller = new ExtensionUiController(store);
 	const ui = controller.context(() => true);

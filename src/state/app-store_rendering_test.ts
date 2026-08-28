@@ -1,8 +1,10 @@
+import { test } from "bun:test";
+
 import {
 	assert,
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
-} from "@std/assert";
+} from "#testing/assertions";
 
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
@@ -16,7 +18,7 @@ import { TranscriptState } from "./transcript-state.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
 
-Deno.test("restored fallback content patches before bounded enhancements", async () => {
+test("restored fallback content patches before bounded enhancements", async () => {
 	const gates: Array<{ resolve: (html: string) => void }> = [];
 	let active = 0;
 	let maximum = 0;
@@ -81,7 +83,7 @@ Deno.test("restored fallback content patches before bounded enhancements", async
 	}
 });
 
-Deno.test("ordinary commits exclude finalized assistant messages", async () => {
+test("ordinary commits exclude finalized assistant messages", async () => {
 	let resolveEnhancement: ((html: string) => void) | undefined;
 	const state = createState({
 		renderMarkdownFinal: () =>
@@ -107,7 +109,7 @@ Deno.test("ordinary commits exclude finalized assistant messages", async () => {
 	}
 });
 
-Deno.test("ordinary commits exclude finalized tool messages", async () => {
+test("ordinary commits exclude finalized tool messages", async () => {
 	const state = createState({
 		renderDiff: () =>
 			Promise.resolve('<div data-pierre-diff="">highlighted edit</div>'),
@@ -135,7 +137,7 @@ Deno.test("ordinary commits exclude finalized tool messages", async () => {
 	}
 });
 
-Deno.test("new messages append to the stable message list", async () => {
+test("new messages append to the stable message list", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -158,7 +160,7 @@ Deno.test("new messages append to the stable message list", async () => {
 	}
 });
 
-Deno.test("parallel message updates all reach their final state", async () => {
+test("parallel message updates all reach their final state", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -191,7 +193,7 @@ Deno.test("parallel message updates all reach their final state", async () => {
 	}
 });
 
-Deno.test("session transitions patch signals and replace only the transcript", async () => {
+test("session transitions patch signals and replace only the transcript", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -228,7 +230,7 @@ Deno.test("session transitions patch signals and replace only the transcript", a
 	}
 });
 
-Deno.test("session loading clears after fallback and before enhancement", async () => {
+test("session loading clears after fallback and before enhancement", async () => {
 	let resolveEnhancement: ((html: string) => void) | undefined;
 	const state = createState({
 		renderMarkdownFinal: () =>
@@ -275,7 +277,7 @@ Deno.test("session loading clears after fallback and before enhancement", async 
 	}
 });
 
-Deno.test("loading older pages enqueues only newly revealed messages", async () => {
+test("loading older pages enqueues only newly revealed messages", async () => {
 	let renderCount = 0;
 	const state = createState({
 		renderMarkdownFinal: (text) => {
@@ -298,7 +300,7 @@ Deno.test("loading older pages enqueues only newly revealed messages", async () 
 	assertEqual(renderCount, 80);
 });
 
-Deno.test("older messages use one targeted patch before restoring the anchor", async () => {
+test("older messages use one targeted patch before restoring the anchor", async () => {
 	const state = createState();
 	state.replaceMessages(
 		Array.from({ length: 130 }, (_, index) => ({
@@ -330,7 +332,7 @@ Deno.test("older messages use one targeted patch before restoring the anchor", a
 	}
 });
 
-Deno.test("replacement discards stale enhancement completion", async () => {
+test("replacement discards stale enhancement completion", async () => {
 	const gates: Array<{ text: string; resolve: (html: string) => void }> = [];
 	const state = createState({
 		enhancementConcurrency: 1,
@@ -351,7 +353,7 @@ Deno.test("replacement discards stale enhancement completion", async () => {
 	assertEqual(projectedMessages(state)[0].presentationState, "final");
 });
 
-Deno.test("oversized enhancement retains fallback until explicitly requested", async () => {
+test("oversized enhancement retains fallback until explicitly requested", async () => {
 	let renderCount = 0;
 	const state = createState({
 		renderMarkdownFinal: (text) => {
@@ -370,7 +372,7 @@ Deno.test("oversized enhancement retains fallback until explicitly requested", a
 	assertEqual(projectedMessages(state)[0].presentationState, "final");
 });
 
-Deno.test("skill and compaction instructions render Markdown without enhancement work", async () => {
+test("skill and compaction instructions render Markdown without enhancement work", async () => {
 	let renderCount = 0;
 	const state = createState({
 		renderMarkdownFinal: () => {
@@ -392,7 +394,7 @@ Deno.test("skill and compaction instructions render Markdown without enhancement
 	assertNotIncludes(state.renderer.renderMessagesElement(), "Enhance formatting");
 });
 
-Deno.test("assistant completion immediately flushes newest streaming content", () => {
+test("assistant completion immediately flushes newest streaming content", () => {
 	const state = createState();
 	state.appendMessage("assistant", "first");
 	state.appendAssistantDelta(" **latest**");
@@ -403,7 +405,7 @@ Deno.test("assistant completion immediately flushes newest streaming content", (
 	);
 });
 
-Deno.test("running background transcript stays headless until activation", async () => {
+test("running background transcript stays headless until activation", async () => {
 	let enhancementCount = 0;
 	const background = new TranscriptState({ keys: "N", description: "New" });
 	background.appendAssistantDelta("```ts\nconst partial = true");
@@ -436,7 +438,7 @@ Deno.test("running background transcript stays headless until activation", async
 	assertEqual(foreground.queuedFollowUpMessages.join(","), "follow");
 });
 
-Deno.test("AppStore transcript metadata has one owner and restores with chat", () => {
+test("AppStore transcript metadata has one owner and restores with chat", () => {
 	const state = createState();
 	state.setActivityText("Working...");
 	state.setQueuedMessages(["steer"], ["follow"]);
@@ -455,7 +457,7 @@ Deno.test("AppStore transcript metadata has one owner and restores with chat", (
 	assertEqual(state.queuedSteeringMessages.join(","), "steer");
 });
 
-Deno.test("completed background transcript enhances only after activation", async () => {
+test("completed background transcript enhances only after activation", async () => {
 	let enhancementCount = 0;
 	const background = new TranscriptState({ keys: "N", description: "New" });
 	background.appendAssistantDelta("completed **answer**");
@@ -474,7 +476,7 @@ Deno.test("completed background transcript enhances only after activation", asyn
 	assertEqual(enhancementCount, 1);
 });
 
-Deno.test("enhancement errors retain the rendered Markdown fallback", async () => {
+test("enhancement errors retain the rendered Markdown fallback", async () => {
 	const originalWarn = console.warn;
 	console.warn = () => {};
 	try {
@@ -497,7 +499,7 @@ Deno.test("enhancement errors retain the rendered Markdown fallback", async () =
 	}
 });
 
-Deno.test("nested state updates commit one fat morph and one signal patch", async () => {
+test("nested state updates commit one fat morph and one signal patch", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -530,7 +532,7 @@ Deno.test("nested state updates commit one fat morph and one signal patch", asyn
 	}
 });
 
-Deno.test("a thrown update still commits its completed mutations", async () => {
+test("a thrown update still commits its completed mutations", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -556,7 +558,7 @@ Deno.test("a thrown update still commits its completed mutations", async () => {
 	}
 });
 
-Deno.test("headless updates initialize one current view and tolerate disconnect", async () => {
+test("headless updates initialize one current view and tolerate disconnect", async () => {
 	const state = createState();
 	state.setWorkspacePath("/tmp/headless");
 	const controller = new AbortController();
@@ -578,7 +580,7 @@ Deno.test("headless updates initialize one current view and tolerate disconnect"
 	assertEqual(state.activityText, "disconnected");
 });
 
-Deno.test("session pagination patches only session-owned regions", async () => {
+test("session pagination patches only session-owned regions", async () => {
 	const state = createState();
 	const sessions = Array.from({ length: 70 }, (_, index) => ({
 		path: `/sessions/${index}.jsonl`,
@@ -622,7 +624,7 @@ Deno.test("session pagination patches only session-owned regions", async () => {
 	}
 });
 
-Deno.test("workspace review snapshots travel through the app stream", async () => {
+test("workspace review snapshots travel through the app stream", async () => {
 	const state = createState();
 	state.setWorkspaceReview({
 		branch: "main",
@@ -648,7 +650,7 @@ Deno.test("workspace review snapshots travel through the app stream", async () =
 	}
 });
 
-Deno.test("initial streams reopen active backend dialogs", async () => {
+test("initial streams reopen active backend dialogs", async () => {
 	const state = createState();
 	state.setAuthDialog({
 		mode: "login",
@@ -672,7 +674,7 @@ Deno.test("initial streams reopen active backend dialogs", async () => {
 	}
 });
 
-Deno.test("component morphs need no server refresh script", async () => {
+test("component morphs need no server refresh script", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -680,7 +682,7 @@ Deno.test("component morphs need no server refresh script", async () => {
 		state.update(
 			() => {
 				state.setThinking("high", ["off", "high"]);
-				state.setCurrentModel("provider/model");
+				state.setModels([], "provider/model");
 			},
 			{ flush: true },
 		);
@@ -693,7 +695,7 @@ Deno.test("component morphs need no server refresh script", async () => {
 	}
 });
 
-Deno.test("app stream refreshes current and background session statuses", async () => {
+test("app stream refreshes current and background session statuses", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	const first = {
@@ -753,7 +755,7 @@ Deno.test("app stream refreshes current and background session statuses", async 
 	}
 });
 
-Deno.test("state snapshots contain domain messages only", () => {
+test("state snapshots contain domain messages only", () => {
 	const state = createState();
 	state.appendMessage("assistant", "**answer**");
 
@@ -764,7 +766,7 @@ Deno.test("state snapshots contain domain messages only", () => {
 	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
 });
 
-Deno.test("initial and live backend-owned signals share exact projections", () => {
+test("initial and live backend-owned signals share exact projections", () => {
 	const state = createState();
 	const cases = [
 		() => {},
@@ -777,7 +779,7 @@ Deno.test("initial and live backend-owned signals share exact projections", () =
 				overlay: true,
 			}),
 		() => {
-			state.setCurrentModel("provider/model");
+			state.setModels([], "provider/model");
 			state.setThinking("high", ["off", "high"]);
 			state.setWorkspacePath("/tmp/workspace");
 			state.setActivityText(undefined);
@@ -794,7 +796,7 @@ Deno.test("initial and live backend-owned signals share exact projections", () =
 	}
 });
 
-Deno.test("server-owned view signals are transport-private", () => {
+test("server-owned view signals are transport-private", () => {
 	const signals = projectBackendSignals(createState().snapshot());
 	assertEqual(Object.keys(signals).sort(), [
 		"_codeThemeDark",
@@ -818,9 +820,9 @@ Deno.test("server-owned view signals are transport-private", () => {
 	]);
 });
 
-Deno.test("hot app views exclude independently owned regions", () => {
-	const previous = Deno.env.get("PI_UI_DEBUG");
-	Deno.env.set("PI_UI_DEBUG", "1");
+test("hot app views exclude independently owned regions", () => {
+	const previous = process.env.PI_UI_DEBUG;
+	process.env.PI_UI_DEBUG = "1";
 	try {
 		const store = new AppStore();
 		const renderer = new UiRenderer(store, new DatastarClientHub());
@@ -853,12 +855,12 @@ Deno.test("hot app views exclude independently owned regions", () => {
 		])
 			assertNotIncludes(view, `id="${id}"`);
 	} finally {
-		if (previous === undefined) Deno.env.delete("PI_UI_DEBUG");
-		else Deno.env.set("PI_UI_DEBUG", previous);
+		if (previous === undefined) delete process.env.PI_UI_DEBUG;
+		else process.env.PI_UI_DEBUG = previous;
 	}
 });
 
-Deno.test("fat morph markup preserves browser-owned interaction state", () => {
+test("fat morph markup preserves browser-owned interaction state", () => {
 	const state = createState();
 	state.setModels(
 		[
@@ -883,7 +885,6 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	const html = renderPage(state.renderer.projectState(state.snapshot()));
 
 	assertIncludes(html, 'id="prompt-input"');
-	assertNotIncludes(html, " data-native-file-picker ");
 	const displayClientId = html.match(/\/stream\?clientId=([0-9a-f-]{36})/)?.[1];
 	assert(displayClientId, "Display client ID is missing");
 	assertIncludes(html, `clientId: '${displayClientId}'`);
@@ -897,14 +898,10 @@ Deno.test("fat morph markup preserves browser-owned interaction state", () => {
 	assertNotIncludes(globalSignals, "&#34;model&#34;");
 	assertIncludes(html, "data-signals:session-search__ifmissing");
 	assertIncludes(html, "data-signals__ifmissing");
-	for (const signal of [
-		"prompt",
-		"workspaceDraft",
-		"authInput",
-		"_fileSearchController",
-	]) {
+	for (const signal of ["prompt", "authInput", "_fileSearchController"]) {
 		assertIncludes(html, `&#34;${signal}&#34;:&#34;&#34;`);
 	}
+	assertIncludes(html, `data-signals:workspace-draft__ifmissing="''"`);
 	assertIncludes(html, "$_fileSearchController.abort()");
 	assertIncludes(html, "requestCancellation: $_fileSearchController");
 	assertIncludes(html, 'id="messages"');

@@ -1,4 +1,4 @@
-import { join } from "@std/path";
+import { join } from "node:path";
 
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
 import { renderSessionPickerContent } from "../../ui/pickers.tsx";
@@ -155,11 +155,11 @@ async function readFaviconFile(
 	path: string,
 ): Promise<{ bytes: ArrayBuffer; contentType: string } | undefined> {
 	try {
-		const info = await Deno.stat(path);
-		if (!info.isFile) return undefined;
+		const file = Bun.file(path);
+		if (!(await file.exists())) return undefined;
 		const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
 		return {
-			bytes: new Uint8Array(await Deno.readFile(path)).buffer,
+			bytes: await file.arrayBuffer(),
 			contentType:
 				FAVICON_CONTENT_TYPES.get(extension) ?? "application/octet-stream",
 		};

@@ -214,9 +214,9 @@ export const sessionSidebarPageSize = 30;
 
 const emptyChatHints: AppKeybindHint[] = [
 	...appCommandCatalog
-		.filter((command) => command.shortcut.display)
+		.filter((command) => command.shortcut)
 		.map((command) => ({
-			keys: formatShortcut(command.shortcut.display),
+			keys: formatShortcut(command.shortcut),
 			description: command.description,
 		})),
 	{ keys: "alt T", description: "Cycle thinking level." },
@@ -228,10 +228,10 @@ function randomEmptyChatHint(): AppKeybindHint {
 	return emptyChatHints[Math.floor(Math.random() * emptyChatHints.length)];
 }
 function debugUiEnabled(): boolean {
-	return Deno.env.get("PI_UI_DEBUG") === "1";
+	return process.env.PI_UI_DEBUG === "1";
 }
 function datastarInspectorEnabled(): boolean {
-	return Deno.env.get("PI_UI_INSPECTOR") === "1";
+	return process.env.PI_UI_INSPECTOR === "1";
 }
 function uniqueStrings(values: string[]): string[] {
 	const unique: string[] = [];
@@ -655,11 +655,6 @@ export class AppStore {
 	}
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
-		this.presentation?.pickersChanged();
-		this.commit();
-	}
-	setCurrentModel(value: string | undefined): void {
-		this.currentModel = value;
 		this.presentation?.pickersChanged();
 		this.commit();
 	}

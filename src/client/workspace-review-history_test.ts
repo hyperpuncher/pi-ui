@@ -1,10 +1,11 @@
+import { test } from "bun:test";
 /// <reference lib="dom" />
 
-import { assertEquals, assertNotMatch, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertNotMatch, assertStringIncludes } from "#testing/assertions";
 
 import { formatCommitDate, formatCommitDetailDate } from "./workspace-review-history.ts";
 
-Deno.test("commit dates use local calendar days instead of elapsed 24-hour periods", () => {
+test("commit dates use local calendar days instead of elapsed 24-hour periods", () => {
 	const now = new Date(2026, 6, 22, 0, 30);
 
 	assertEquals(
@@ -21,7 +22,7 @@ Deno.test("commit dates use local calendar days instead of elapsed 24-hour perio
 	);
 });
 
-Deno.test("commit detail times honor the configured time locale", () => {
+test("commit detail times honor the configured time locale", () => {
 	const value = new Date(2026, 6, 22, 20, 25).toISOString();
 	const formatted = formatCommitDetailDate(value, "en-IE");
 

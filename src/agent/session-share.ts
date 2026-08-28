@@ -1,7 +1,9 @@
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
-import { join } from "@std/path";
+
+import { outputCommand } from "../utils/command.ts";
 
 type ShareableSession = Pick<AgentSessionRuntime["session"], "exportToHtml">;
 type CommandResult = { code: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -21,11 +23,11 @@ export type SessionShareDependencies = {
 const decoder = new TextDecoder();
 
 const sessionShareDependencies: SessionShareDependencies = {
-	tempFilePath: () => join(tmpdir(), "session.html"),
-	removeFile: (path) => Deno.remove(path),
-	runGh: (args) => new Deno.Command("gh", { args }).output(),
+	tempFilePath: () => join(tmpdir(), `pi-ui-session-${crypto.randomUUID()}.html`),
+	removeFile: (path) => Bun.file(path).delete(),
+	runGh: (args) => outputCommand("gh", { args }),
 	shareViewerUrl: (gistId) =>
-		`${Deno.env.get("PI_SHARE_VIEWER_URL") ?? "https://pi.dev/session/"}#${gistId}`,
+		`${process.env.PI_SHARE_VIEWER_URL ?? "https://pi.dev/session/"}#${gistId}`,
 };
 
 export async function shareSession(

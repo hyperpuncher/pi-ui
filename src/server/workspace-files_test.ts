@@ -1,4 +1,8 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertRejects } from "#testing/assertions";
+import { mkdir, remove, symlink, writeFile, writeTextFile } from "#testing/files";
+import { makeTempDir, makeTempFile } from "#testing/temp";
 
 import {
 	createWorkspaceEntry,
@@ -11,18 +15,18 @@ import {
 	writeWorkspaceFile,
 } from "./workspace-files.ts";
 
-Deno.test("workspace files list source files without dependencies or symlinks", async () => {
-	const workspace = await Deno.makeTempDir();
-	const outside = await Deno.makeTempFile();
+test("workspace files list source files without dependencies or symlinks", async () => {
+	const workspace = await makeTempDir();
+	const outside = await makeTempFile();
 	try {
-		await Deno.mkdir(`${workspace}/src`, { recursive: true });
-		await Deno.mkdir(`${workspace}/node_modules/package`, { recursive: true });
-		await Deno.mkdir(`${workspace}/.github`, { recursive: true });
-		await Deno.writeTextFile(`${workspace}/src/main.ts`, "main");
-		await Deno.writeTextFile(`${workspace}/.gitignore`, "dist");
-		await Deno.writeTextFile(`${workspace}/.github/workflow.yml`, "jobs: {}");
-		await Deno.writeTextFile(`${workspace}/node_modules/package/index.js`, "ignored");
-		await Deno.symlink(outside, `${workspace}/outside.txt`);
+		await mkdir(`${workspace}/src`, { recursive: true });
+		await mkdir(`${workspace}/node_modules/package`, { recursive: true });
+		await mkdir(`${workspace}/.github`, { recursive: true });
+		await writeTextFile(`${workspace}/src/main.ts`, "main");
+		await writeTextFile(`${workspace}/.gitignore`, "dist");
+		await writeTextFile(`${workspace}/.github/workflow.yml`, "jobs: {}");
+		await writeTextFile(`${workspace}/node_modules/package/index.js`, "ignored");
+		await symlink(outside, `${workspace}/outside.txt`);
 
 		assertEquals(await listWorkspaceFiles(workspace), [
 			".github/",
@@ -32,31 +36,31 @@ Deno.test("workspace files list source files without dependencies or symlinks", 
 			"src/main.ts",
 		]);
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
-		await Deno.remove(outside);
+		await remove(workspace, { recursive: true });
+		await remove(outside);
 	}
 });
 
-Deno.test("workspace files can omit hidden directories outside Git repositories", async () => {
-	const workspace = await Deno.makeTempDir();
+test("workspace files can omit hidden directories outside Git repositories", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.mkdir(`${workspace}/.cache`, { recursive: true });
-		await Deno.mkdir(`${workspace}/src`, { recursive: true });
-		await Deno.writeTextFile(`${workspace}/.cache/generated.json`, "{}");
-		await Deno.writeTextFile(`${workspace}/.env`, "VALUE=1");
-		await Deno.writeTextFile(`${workspace}/src/main.ts`, "main");
+		await mkdir(`${workspace}/.cache`, { recursive: true });
+		await mkdir(`${workspace}/src`, { recursive: true });
+		await writeTextFile(`${workspace}/.cache/generated.json`, "{}");
+		await writeTextFile(`${workspace}/.env`, "VALUE=1");
+		await writeTextFile(`${workspace}/src/main.ts`, "main");
 
 		assertEquals(
 			await listWorkspaceFiles(workspace, { includeHiddenDirectories: false }),
 			[".env", "src/", "src/main.ts"],
 		);
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("workspace entries create, rename, and remove files and folders", async () => {
-	const workspace = await Deno.makeTempDir();
+test("workspace entries create, rename, and remove files and folders", async () => {
+	const workspace = await makeTempDir();
 	try {
 		assertEquals(await createWorkspaceEntry(workspace, "src", "folder"), {
 			path: "src",
@@ -72,14 +76,14 @@ Deno.test("workspace entries create, rename, and remove files and folders", asyn
 		await removeWorkspaceEntry(workspace, "src");
 		assertEquals(await listWorkspaceFiles(workspace), []);
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("workspace files read and save with revision conflict protection", async () => {
-	const workspace = await Deno.makeTempDir();
+test("workspace files read and save with revision conflict protection", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.writeTextFile(`${workspace}/value.ts`, "export const value = 1;\n");
+		await writeTextFile(`${workspace}/value.ts`, "export const value = 1;\n");
 		const first = await readWorkspaceFile(workspace, "value.ts");
 		if ("message" in first) throw new Error(first.message);
 		assertEquals(first.contents, "export const value = 1;\n");
@@ -97,20 +101,20 @@ Deno.test("workspace files read and save with revision conflict protection", asy
 			"changed on disk",
 		);
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("workspace files handle unsupported files and reject unsafe paths", async () => {
-	const workspace = await Deno.makeTempDir();
-	const outside = await Deno.makeTempFile();
+test("workspace files handle unsupported files and reject unsafe paths", async () => {
+	const workspace = await makeTempDir();
+	const outside = await makeTempFile();
 	try {
-		await Deno.writeFile(`${workspace}/binary`, new Uint8Array([0xff, 0xfe]));
-		await Deno.writeFile(
+		await writeFile(`${workspace}/binary`, new Uint8Array([0xff, 0xfe]));
+		await writeFile(
 			`${workspace}/large`,
 			new Uint8Array(maximumWorkspaceFileBytes + 1),
 		);
-		await Deno.symlink(outside, `${workspace}/outside`);
+		await symlink(outside, `${workspace}/outside`);
 
 		await assertRejects(
 			() => createWorkspaceEntry(workspace, "../created", "file"),
@@ -145,7 +149,7 @@ Deno.test("workspace files handle unsupported files and reject unsafe paths", as
 			);
 		}
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
-		await Deno.remove(outside);
+		await remove(workspace, { recursive: true });
+		await remove(outside);
 	}
 });

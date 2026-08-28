@@ -54,7 +54,7 @@ export function bindMessageScroll() {
 	// Release follow mode from explicit reader interactions, never from scroll
 	// position changes alone: streamed tables, code, and other blocks can resize.
 	const releasePointerScroll = (event) => {
-		// Native CEF autoscroll can begin outside the transcript's DOM event path,
+		// Browser autoscroll can begin outside the transcript's DOM event path,
 		// so middle-button intent is global. Primary drags inside the transcript
 		// cover scrollbar movement and text selection without treating clicks as scrolls.
 		if (event.button === 1) {

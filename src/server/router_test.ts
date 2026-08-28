@@ -1,9 +1,11 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
 import { ExactRouter } from "./router.ts";
 
-Deno.test("exact router matches method and pathname and reports 404/405", async () => {
+test("exact router matches method and pathname and reports 404/405", async () => {
 	const router = new ExactRouter({ value: "first" });
 	router.register(
 		"POST",
@@ -18,7 +20,7 @@ Deno.test("exact router matches method and pathname and reports 404/405", async 
 	assertEquals((await router.fetch(request("POST", "/other"))).status, 404);
 });
 
-Deno.test("exact router turns thrown handlers into generic 500 responses", async () => {
+test("exact router turns thrown handlers into generic 500 responses", async () => {
 	const reported: unknown[] = [];
 	const router = new ExactRouter({}, (error) => reported.push(error));
 	router.register("GET", "/throw", () => {
@@ -30,7 +32,7 @@ Deno.test("exact router turns thrown handlers into generic 500 responses", async
 	assertStringExcludes(await response.text(), "local details");
 });
 
-Deno.test("exact router silently handles aborted requests", async () => {
+test("exact router silently handles aborted requests", async () => {
 	const reported: unknown[] = [];
 	const router = new ExactRouter({}, (error) => reported.push(error));
 	router.register(
@@ -57,7 +59,7 @@ Deno.test("exact router silently handles aborted requests", async () => {
 	assertEquals(reported, []);
 });
 
-Deno.test("exact router reads mutable replacement resources from context", async () => {
+test("exact router reads mutable replacement resources from context", async () => {
 	const context = { resource: { name: "first" } };
 	const router = new ExactRouter(context);
 	router.register(

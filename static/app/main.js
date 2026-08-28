@@ -1,5 +1,4 @@
-import { filterModelSearch } from "../build/model-search.js";
-import { fuzzyFilter, fuzzyMatch } from "../build/pi-fuzzy.js";
+import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
 import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
 import * as dialogs from "./dialogs.js";
@@ -14,6 +13,7 @@ import {
 	restoreAnchor,
 	scrollBottom,
 } from "./message-scroll.js";
+import { filterModelSearch } from "./model-search.js";
 import {
 	bindPickers,
 	closePickers,
@@ -85,7 +85,13 @@ function hasOpenDismissible() {
 // the browser to attempt the forbidden file:// navigation itself.
 bindFileLinks();
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
+	await Promise.all([
+		import("../../src/client/fonts.ts"),
+		import("../../src/client/code-theme.ts"),
+		import("../../src/client/workspace-review.ts"),
+	]);
+
 	focusPromptEnd();
 	dialogs.bindDialogs();
 	bindPromptInteractions();

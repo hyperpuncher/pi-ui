@@ -1,8 +1,10 @@
-import { assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertStringIncludes } from "#testing/assertions";
 
 import { renderLlamaDialogContent } from "./llama-dialog.tsx";
 
-Deno.test("llama dialog renders model actions and loading progress", () => {
+test("llama dialog renders model actions and loading progress", () => {
 	const html = renderLlamaDialogContent({
 		serverUrl: "http://127.0.0.1:8080",
 		models: [

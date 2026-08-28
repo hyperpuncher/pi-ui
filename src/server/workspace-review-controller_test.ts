@@ -1,17 +1,22 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
+import { remove, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { AppStore } from "../state/app-store.ts";
+import { outputCommand } from "../utils/command.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
 
-Deno.test("workspace review controller publishes Git changes to AppStore", async () => {
-	const workspace = await Deno.makeTempDir();
+test("workspace review controller publishes Git changes to AppStore", async () => {
+	const workspace = await makeTempDir();
 	const store = new AppStore();
 	const controller = new WorkspaceReviewController(store);
 	try {
 		await git(workspace, "init");
 		await git(workspace, "config", "user.email", "pi-ui@example.test");
 		await git(workspace, "config", "user.name", "pi-ui");
-		await Deno.writeTextFile(`${workspace}/example.txt`, "first\n");
+		await writeTextFile(`${workspace}/example.txt`, "first\n");
 		await git(workspace, "add", "example.txt");
 		await git(workspace, "commit", "-m", "initial");
 
@@ -20,7 +25,7 @@ Deno.test("workspace review controller publishes Git changes to AppStore", async
 		const revision = store.workspaceReview.revision;
 		const filesRevision = store.workspaceFilesRevision;
 		await new Promise((resolve) => setTimeout(resolve, 50));
-		await Deno.writeTextFile(`${workspace}/example.txt`, "second\n");
+		await writeTextFile(`${workspace}/example.txt`, "second\n");
 		await waitFor(() => store.workspaceReview.revision !== revision);
 		await waitFor(() => store.workspaceFilesRevision !== filesRevision);
 
@@ -31,32 +36,30 @@ Deno.test("workspace review controller publishes Git changes to AppStore", async
 		assertEquals(store.workspaceFilesRevision, settledFilesRevision);
 	} finally {
 		controller.dispose();
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("workspace review controller publishes non-Git file changes", async () => {
-	const workspace = await Deno.makeTempDir();
+test("workspace review controller publishes non-Git file changes", async () => {
+	const workspace = await makeTempDir();
 	const store = new AppStore();
 	const controller = new WorkspaceReviewController(store);
 	try {
 		controller.open(workspace);
 		await waitFor(() => store.workspaceReview.revision === "non-git");
 		const revision = store.workspaceFilesRevision;
-		await Deno.writeTextFile(`${workspace}/example.txt`, "first\n");
+		await writeTextFile(`${workspace}/example.txt`, "first\n");
 		await waitFor(() => store.workspaceFilesRevision !== revision);
 	} finally {
 		controller.dispose();
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
 async function git(cwd: string, ...args: string[]): Promise<void> {
-	const output = await new Deno.Command("git", {
+	const output = await outputCommand("git", {
 		args: ["-C", cwd, ...args],
-		stderr: "piped",
-		stdout: "null",
-	}).output();
+	});
 	if (!output.success) throw new Error(new TextDecoder().decode(output.stderr));
 }
 

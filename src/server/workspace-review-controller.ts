@@ -1,3 +1,4 @@
+import { watch as watchFileSystem, type FSWatcher } from "node:fs";
 import os from "node:os";
 import * as path from "node:path";
 
@@ -10,7 +11,7 @@ const debounceMs = 200;
 export class WorkspaceReviewController {
 	private generation = 0;
 	private timer: ReturnType<typeof setTimeout> | undefined;
-	private watcher: Deno.FsWatcher | undefined;
+	private watchers: FSWatcher[] = [];
 
 	constructor(private readonly store: AppStore) {
 		store.listenForWorkspacePath((path) => this.open(path));
@@ -66,33 +67,31 @@ export class WorkspaceReviewController {
 		if (!active()) return;
 		const gitPaths = await findGitWatchPaths(path);
 		if (!active()) return;
-		const watcher = Deno.watchFs(gitPaths ?? [path], {
-			recursive: gitPaths !== undefined || canWatchRecursively(path),
-		});
-		this.watcher = watcher;
-		try {
-			for await (const _event of watcher) {
-				if (!active()) break;
-				if (this.timer !== undefined) clearTimeout(this.timer);
-				this.timer = setTimeout(() => {
-					this.timer = undefined;
-					this.store.workspaceFilesChanged();
-					void refresh();
-				}, debounceMs);
-			}
-		} catch (error) {
-			if (active()) throw error;
-		} finally {
-			if (this.watcher === watcher) this.watcher = undefined;
-			watcher.close();
-		}
+		const changed = () => {
+			if (!active()) return;
+			if (this.timer !== undefined) clearTimeout(this.timer);
+			this.timer = setTimeout(() => {
+				this.timer = undefined;
+				this.store.workspaceFilesChanged();
+				void refresh();
+			}, debounceMs);
+		};
+		this.watchers = (gitPaths ?? [path]).map((watchPath) =>
+			watchFileSystem(
+				watchPath,
+				{
+					recursive: gitPaths !== undefined || canWatchRecursively(path),
+				},
+				changed,
+			),
+		);
 	}
 
 	private stopWatcher(): void {
 		if (this.timer !== undefined) clearTimeout(this.timer);
 		this.timer = undefined;
-		this.watcher?.close();
-		this.watcher = undefined;
+		for (const watcher of this.watchers) watcher.close();
+		this.watchers = [];
 	}
 }
 

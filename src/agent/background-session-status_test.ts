@@ -1,4 +1,9 @@
-import { assertEquals, assertStringIncludes as assertIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import {
+	assertEquals,
+	assertStringIncludes as assertIncludes,
+} from "#testing/assertions";
 
 import type { AppSessionSummary } from "../state/app-store.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
@@ -10,7 +15,7 @@ const ordinary = summary("/sessions/ordinary.json", "Ordinary");
 const running = summary("/sessions/running.json", "Running");
 const completed = summary("/sessions/completed.json", "Completed");
 
-Deno.test("background statuses merge by canonical session path", () => {
+test("background statuses merge by canonical session path", () => {
 	const merged = mergeBackgroundSessionStatuses(
 		[ordinary, running, completed],
 		new Map([
@@ -26,7 +31,7 @@ Deno.test("background statuses merge by canonical session path", () => {
 	]);
 });
 
-Deno.test("foreground session takes precedence over background status", () => {
+test("foreground session takes precedence over background status", () => {
 	const merged = mergeBackgroundSessionStatuses(
 		[{ ...running, backgroundStatus: "completed" }],
 		new Map([[running.path, "running" as const]]),
@@ -36,7 +41,7 @@ Deno.test("foreground session takes precedence over background status", () => {
 	assertEquals(merged, [running]);
 });
 
-Deno.test("session picker escapes titles and renders background controls", () => {
+test("session picker escapes titles and renders background controls", () => {
 	const escapedTitle = '<script>alert("x")</script>';
 	const html = renderSessionPicker(
 		appRenderSnapshot({
@@ -48,7 +53,7 @@ Deno.test("session picker escapes titles and renders background controls", () =>
 		}),
 	);
 
-	assertIncludes(html, "&lt;script>alert(&#34;x&#34;)&lt;/script>");
+	assertIncludes(html, "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
 	assertIncludes(html, 'aria-label="Background session running"');
 	assertIncludes(html, 'aria-label="Background session completed"');
 	assertIncludes(html, "Abort background session");

@@ -1,14 +1,16 @@
-import { assertEquals as assertEqual, assertThrows } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals as assertEqual, assertThrows } from "#testing/assertions";
 
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
 
-Deno.test("BoundedCache validates its capacity", () => {
+test("BoundedCache validates its capacity", () => {
 	for (const capacity of [0, -1, 1.5]) {
 		assertThrows(() => new BoundedCache(capacity));
 	}
 });
 
-Deno.test("BoundedCache replaces values and refreshes recency", () => {
+test("BoundedCache replaces values and refreshes recency", () => {
 	const cache = new BoundedCache<string, number>(2);
 	cache.set("a", 1);
 	cache.set("b", 2);
@@ -20,7 +22,7 @@ Deno.test("BoundedCache replaces values and refreshes recency", () => {
 	assertEqual(cache.get("c"), 4);
 });
 
-Deno.test("BoundedCache evicts entries that exceed its weight budget", () => {
+test("BoundedCache evicts entries that exceed its weight budget", () => {
 	const cache = new BoundedCache<string, string>(10, {
 		maxWeight: 5,
 		weight: (_key, value) => value.length,
@@ -36,7 +38,7 @@ Deno.test("BoundedCache evicts entries that exceed its weight budget", () => {
 	assertEqual(cache.size, 0);
 });
 
-Deno.test("BoundedCache evicts, deletes, and clears entries", () => {
+test("BoundedCache evicts, deletes, and clears entries", () => {
 	const cache = new BoundedCache<string, number>(2);
 	cache.set("a", 1);
 	cache.set("b", 2);
@@ -48,7 +50,7 @@ Deno.test("BoundedCache evicts, deletes, and clears entries", () => {
 	assertEqual(cache.size, 0);
 });
 
-Deno.test("deleteStringKeysWithPrefix only removes one message's state", () => {
+test("deleteStringKeysWithPrefix only removes one message's state", () => {
 	const states = new Map([
 		["message-1:0", 1],
 		["message-1:1", 2],

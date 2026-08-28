@@ -1,4 +1,6 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { AppStore } from "../state/app-store.ts";
 import { AuthController } from "./auth-controller.ts";
@@ -8,7 +10,7 @@ function nextTurn(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-Deno.test("provider-owned API key login can request multiple fields and accept empty values", async () => {
+test("provider-owned API key login can request multiple fields and accept empty values", async () => {
 	const submitted: string[] = [];
 	const provider = {
 		id: "custom-cloud",

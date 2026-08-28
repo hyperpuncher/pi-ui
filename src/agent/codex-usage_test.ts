@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { formatCodexUsage, parseCodexUsage } from "./codex-usage.ts";
 
-Deno.test("parses available Codex windows independently", () => {
+test("parses available Codex windows independently", () => {
 	assertEquals(
 		parseCodexUsage({
 			rate_limit: {
@@ -25,7 +27,7 @@ Deno.test("parses available Codex windows independently", () => {
 	);
 });
 
-Deno.test("keeps valid Codex windows when another window is malformed", () => {
+test("keeps valid Codex windows when another window is malformed", () => {
 	assertEquals(
 		parseCodexUsage({
 			rate_limit: {
@@ -44,7 +46,7 @@ Deno.test("keeps valid Codex windows when another window is malformed", () => {
 	);
 });
 
-Deno.test("formats Codex windows from their reported duration", () => {
+test("formats Codex windows from their reported duration", () => {
 	assertEquals(
 		formatCodexUsage({
 			primary: { usedPercent: 22, windowSeconds: 604_800 },
@@ -60,7 +62,7 @@ Deno.test("formats Codex windows from their reported duration", () => {
 	);
 });
 
-Deno.test("uses legacy labels when Codex omits window durations", () => {
+test("uses legacy labels when Codex omits window durations", () => {
 	assertEquals(
 		formatCodexUsage({
 			primary: { usedPercent: 10 },

@@ -1,3 +1,9 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { isNotFound } from "../utils/fs-errors.ts";
+
 export const MAX_TRANSFER_FILES = 10;
 export const MAX_TRANSFER_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
@@ -101,10 +107,9 @@ export class TransferredFileStore {
 	static async create(
 		options: { tempRoot?: string } = {},
 	): Promise<TransferredFileStore> {
-		const rootPath = await Deno.makeTempDir({
-			dir: options.tempRoot,
-			prefix: "pi-ui-transfers-",
-		});
+		const rootPath = await mkdtemp(
+			join(options.tempRoot ?? tmpdir(), "pi-ui-transfers-"),
+		);
 		return new TransferredFileStore(rootPath);
 	}
 
@@ -116,14 +121,16 @@ export class TransferredFileStore {
 		const importedPaths: string[] = [];
 		try {
 			for (const file of files) {
-				const path = await Deno.makeTempFile({
-					dir: this.rootPath,
-					prefix: "file-",
-					suffix: `-${sanitizeFileName(file.name || "pasted-file")}`,
-				});
+				const path = join(
+					this.rootPath,
+					`file-${crypto.randomUUID()}-${sanitizeFileName(file.name || "pasted-file")}`,
+				);
 				this.#paths.add(path);
 				importedPaths.push(path);
-				await Deno.writeFile(path, new Uint8Array(await file.arrayBuffer()));
+				await Bun.write(
+					path,
+					file instanceof Blob ? file : await file.arrayBuffer(),
+				);
 			}
 			return importedPaths;
 		} catch (error) {
@@ -139,29 +146,18 @@ export class TransferredFileStore {
 		this.#disposed = true;
 		this.#paths.clear();
 		try {
-			await Deno.remove(this.rootPath, { recursive: true });
+			await rm(this.rootPath, { recursive: true });
 		} catch (error) {
-			if (!(error instanceof Deno.errors.NotFound)) throw error;
-		}
-	}
-
-	disposeSync(): void {
-		if (this.#disposed) return;
-		this.#disposed = true;
-		this.#paths.clear();
-		try {
-			Deno.removeSync(this.rootPath, { recursive: true });
-		} catch (error) {
-			if (!(error instanceof Deno.errors.NotFound)) throw error;
+			if (!isNotFound(error)) throw error;
 		}
 	}
 
 	async #removeOwnedFile(path: string): Promise<void> {
 		if (!this.#paths.delete(path)) return;
 		try {
-			await Deno.remove(path);
+			await Bun.file(path).delete();
 		} catch (error) {
-			if (!(error instanceof Deno.errors.NotFound)) throw error;
+			if (!isNotFound(error)) throw error;
 		}
 	}
 }

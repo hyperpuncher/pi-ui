@@ -1,30 +1,34 @@
-import { assertEquals } from "@std/assert";
-import { join } from "@std/path";
+import { test } from "bun:test";
+import { join } from "node:path";
+
+import { assertEquals } from "#testing/assertions";
+import { readTextFile, remove, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { appConfigSchemaUrl } from "../config-schema.ts";
 import { ensureAppConfig } from "./app-config.ts";
 
-Deno.test("app config is created with its schema", async () => {
-	const directory = await Deno.makeTempDir();
+test("app config is created with its schema", async () => {
+	const directory = await makeTempDir();
 	const path = join(directory, "nested", "config.json");
 	try {
 		const config = await ensureAppConfig(path);
 		assertEquals(config, { $schema: appConfigSchemaUrl });
-		assertEquals(JSON.parse(await Deno.readTextFile(path)), config);
+		assertEquals(JSON.parse(await readTextFile(path)), config);
 	} finally {
-		await Deno.remove(directory, { recursive: true });
+		await remove(directory, { recursive: true });
 	}
 });
 
-Deno.test("app config creation preserves an existing file", async () => {
-	const directory = await Deno.makeTempDir();
+test("app config creation preserves an existing file", async () => {
+	const directory = await makeTempDir();
 	const path = join(directory, "config.json");
 	const existing = { future: true };
 	try {
-		await Deno.writeTextFile(path, JSON.stringify(existing));
+		await writeTextFile(path, JSON.stringify(existing));
 		assertEquals(await ensureAppConfig(path), existing);
-		assertEquals(JSON.parse(await Deno.readTextFile(path)), existing);
+		assertEquals(JSON.parse(await readTextFile(path)), existing);
 	} finally {
-		await Deno.remove(directory, { recursive: true });
+		await remove(directory, { recursive: true });
 	}
 });

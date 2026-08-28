@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { AppStore } from "./app-store.ts";
 
-Deno.test("prompt history contains the latest 100 user messages newest first", () => {
+test("prompt history contains the latest 100 user messages newest first", () => {
 	const store = new AppStore();
 	store.replaceMessages(
 		Array.from({ length: 102 }, (_, index) => ({

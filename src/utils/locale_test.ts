@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { formatDateTime, posixLocaleToBcp47, systemTimeLocale } from "./locale.ts";
 
-Deno.test("date-time labels adapt from time to calendar context", () => {
+test("date-time labels adapt from time to calendar context", () => {
 	const now = new Date(2026, 7, 11, 16, 0);
 	const today = new Date(2026, 7, 11, 15, 42);
 	const yesterday = new Date(2026, 7, 10, 15, 42);
@@ -45,7 +47,7 @@ Deno.test("date-time labels adapt from time to calendar context", () => {
 	);
 });
 
-Deno.test("POSIX locales normalize to valid BCP 47 language tags", () => {
+test("POSIX locales normalize to valid BCP 47 language tags", () => {
 	assertEquals(posixLocaleToBcp47(undefined), undefined);
 	assertEquals(posixLocaleToBcp47("C"), undefined);
 	assertEquals(posixLocaleToBcp47("C.UTF-8"), undefined);

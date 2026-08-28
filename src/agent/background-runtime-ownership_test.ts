@@ -1,4 +1,6 @@
-import { assertEquals, assertStrictEquals, assertThrows } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStrictEquals, assertThrows } from "#testing/assertions";
 
 import {
 	BackgroundRuntimeOwnership,
@@ -8,7 +10,7 @@ import {
 
 type FakeRuntime = OwnedBackgroundRuntime & { name: string };
 
-Deno.test("activation rollback retains its runtime", () => {
+test("activation rollback retains its runtime", () => {
 	const ownership = new BackgroundRuntimeOwnership<FakeRuntime>();
 	const target = fakeRuntime("A", ownership.allocateGeneration());
 	ownership.register("A", target);
@@ -20,7 +22,7 @@ Deno.test("activation rollback retains its runtime", () => {
 	assertStrictEquals(ownership.get("A"), target);
 });
 
-Deno.test("activation commit removes its runtime exactly once", () => {
+test("activation commit removes its runtime exactly once", () => {
 	const ownership = new BackgroundRuntimeOwnership<FakeRuntime>();
 	const target = fakeRuntime("A", ownership.allocateGeneration());
 	ownership.register("A", target);
@@ -36,7 +38,7 @@ Deno.test("activation commit removes its runtime exactly once", () => {
 	assertEquals(ownership.invariantFailureCount, 0);
 });
 
-Deno.test("register rejects replacing an owned runtime", () => {
+test("register rejects replacing an owned runtime", () => {
 	const ownership = new BackgroundRuntimeOwnership<FakeRuntime>();
 	const first = fakeRuntime("A", ownership.allocateGeneration());
 	const replacement = fakeRuntime("B", ownership.allocateGeneration());

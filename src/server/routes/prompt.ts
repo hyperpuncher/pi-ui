@@ -1,5 +1,4 @@
 import type { ImageContent } from "@earendil-works/pi-ai";
-import { resizeImage } from "@earendil-works/pi-coding-agent";
 
 import {
 	ActionInputError,
@@ -9,6 +8,7 @@ import {
 	requiredString,
 } from "../action-input.ts";
 import { datastarResponse, signalsResponse } from "../datastar.ts";
+import { resizeImage } from "../image-resize.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import {
 	TransferredFileError,

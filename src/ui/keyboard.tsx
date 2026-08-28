@@ -1,4 +1,5 @@
 import { formatShortcut, shortcutParts } from "../utils/keyboard.ts";
+import { operatingSystem } from "../utils/platform.ts";
 
 export function altShortcutAction(code: string, action: string): string {
 	return `if (
@@ -23,7 +24,7 @@ function shortcutGlyph(part: string): string {
 }
 
 export function ShortcutKbd(props: { shortcut: string }) {
-	const symbolic = Deno.build.os === "darwin";
+	const symbolic = operatingSystem === "darwin";
 	const label = symbolic ? formatShortcut(props.shortcut) : undefined;
 	return (
 		<span

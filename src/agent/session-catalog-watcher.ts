@@ -1,4 +1,5 @@
-import { join } from "@std/path";
+import { watch } from "node:fs";
+import { join } from "node:path";
 
 const sessionExtension = ".jsonl";
 
@@ -8,26 +9,18 @@ export type SessionCatalogWatch = (
 ) => () => void;
 
 export const watchSessionCatalog: SessionCatalogWatch = (agentDir, onChange) => {
-	let watcher: Deno.FsWatcher;
+	const root = join(agentDir, "sessions");
 	try {
-		watcher = Deno.watchFs(join(agentDir, "sessions"), { recursive: true });
+		const watcher = watch(root, { recursive: true }, (_event, fileName) => {
+			if (!fileName) return;
+			const path = join(root, fileName.toString());
+			if (path.endsWith(sessionExtension)) onChange(path);
+		});
+		watcher.on("error", (error) => {
+			console.warn("Session catalogue watcher stopped", error);
+		});
+		return () => watcher.close();
 	} catch {
 		return () => {};
 	}
-
-	void (async () => {
-		try {
-			for await (const event of watcher) {
-				for (const path of event.paths) {
-					if (path.endsWith(sessionExtension)) onChange(path);
-				}
-			}
-		} catch (error) {
-			if (!(error instanceof Deno.errors.BadResource)) {
-				console.warn("Session catalogue watcher stopped", error);
-			}
-		}
-	})();
-
-	return () => watcher.close();
 };

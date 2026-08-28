@@ -1,11 +1,13 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import {
 	SessionTransitionController,
 	type SessionTransitionState,
 } from "./session-transition-controller.ts";
 
-Deno.test("session transition controller reports success and cancellation", async () => {
+test("session transition controller reports success and cancellation", async () => {
 	const states: string[] = [];
 	const controller = new SessionTransitionController((state) =>
 		states.push(state.status),
@@ -15,7 +17,7 @@ Deno.test("session transition controller reports success and cancellation", asyn
 	assertEquals(states, ["idle", "loading", "idle", "loading", "idle"]);
 });
 
-Deno.test("session transition controller surfaces errors and remains recoverable", async () => {
+test("session transition controller surfaces errors and remains recoverable", async () => {
 	const states: SessionTransitionState[] = [];
 	const controller = new SessionTransitionController((state) => states.push(state));
 	assertEquals(
@@ -35,7 +37,7 @@ Deno.test("session transition controller surfaces errors and remains recoverable
 	assertEquals((await controller.run("next", () => true)).status, "success");
 });
 
-Deno.test("session transition controller supports non-overlay loading", async () => {
+test("session transition controller supports non-overlay loading", async () => {
 	const states: unknown[] = [];
 	const controller = new SessionTransitionController((state) => states.push(state));
 	assertEquals(
@@ -50,7 +52,7 @@ Deno.test("session transition controller supports non-overlay loading", async ()
 	});
 });
 
-Deno.test("session transition controller ignores concurrent transitions", async () => {
+test("session transition controller ignores concurrent transitions", async () => {
 	let release = () => {};
 	const pending = new Promise<void>((resolve) => (release = resolve));
 	const controller = new SessionTransitionController(() => {});

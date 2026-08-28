@@ -1,23 +1,20 @@
 import os from "node:os";
+import { join } from "node:path";
 
-import { join } from "@std/path";
+import { operatingSystem } from "./platform.ts";
 
 export function appCachePath(fileName: string): string {
 	const home = os.homedir();
-	if (Deno.build.os === "windows") {
+	if (operatingSystem === "windows") {
 		return join(
-			Deno.env.get("LOCALAPPDATA") ?? join(home, "AppData", "Local"),
+			process.env.LOCALAPPDATA ?? join(home, "AppData", "Local"),
 			"pi-ui",
 			"Cache",
 			fileName,
 		);
 	}
-	if (Deno.build.os === "darwin") {
+	if (operatingSystem === "darwin") {
 		return join(home, "Library", "Caches", "pi-ui", fileName);
 	}
-	return join(
-		Deno.env.get("XDG_CACHE_HOME") ?? join(home, ".cache"),
-		"pi-ui",
-		fileName,
-	);
+	return join(process.env.XDG_CACHE_HOME ?? join(home, ".cache"), "pi-ui", fileName);
 }

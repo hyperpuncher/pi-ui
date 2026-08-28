@@ -1,4 +1,6 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { fileUriToPath } from "./file-uri.js";
 
@@ -27,7 +29,7 @@ const cases = [
 ] as const;
 
 for (const [name, uri, expected] of cases) {
-	Deno.test(name, () => {
+	test(name, () => {
 		assertEquals(fileUriToPath(uri), expected);
 	});
 }

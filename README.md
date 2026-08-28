@@ -18,15 +18,13 @@ keyboard-first minimal gui for [`pi`](https://pi.dev).
 
 features:
 
-- desktop and server apps
-- background sessions and native notifications
+- background sessions
 - git review with commit history and inline comments
 - markdown, syntax highlighting, and rich diffs
 - file attachments with image previews
 
 built with:
 
-- [`deno-desktop`](https://docs.deno.com/runtime/desktop/)
 - [`datastar`](https://data-star.dev/)
 - [`kita-jsx`](https://github.com/kitajs/html)
 - [`sätteri`](https://github.com/bruits/satteri)
@@ -35,75 +33,43 @@ built with:
 
 ## install
 
-> server mode is recommended for most users: it is lighter and runs in your existing browser
+after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415) in your browser.
 
-### server
-
-use pi-ui in your browser without installing the desktop app. after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415)
-
-#### quick install (linux / mac)
+### quick install (linux / mac)
 
 ```sh
-curl -fsSL https://pi-ui.app/install-server | sh
+curl -fsSL https://pi-ui.app/install | sh
 ```
 
-#### arch
+### arch
 
 ```sh
 paru -S pi-ui-server-bin
 pi-ui-server autostart enable
 ```
 
-#### mac
+### mac
 
 ```sh
 brew install hyperpuncher/tap/pi-ui-server
 brew services start pi-ui-server
 ```
 
-#### windows
+### windows
 
 ```powershell
-irm https://pi-ui.app/install-server.ps1 | iex
+irm https://pi-ui.app/install.ps1 | iex
 ```
 
 the windows installer starts pi-ui at login.
 
-### desktop
+## development
 
-#### quick install (linux / mac)
-
-```sh
-curl -fsSL https://pi-ui.app/install | sh
-```
-
-#### arch
+requires Bun 1.4 or newer.
 
 ```sh
-paru -S pi-ui-bin
-```
-
-#### debian / ubuntu
-
-download the `.deb` for your architecture from the [latest release](https://github.com/hyperpuncher/pi-ui/releases/latest), then:
-
-```sh
-sudo apt install ./pi-ui-linux-*.deb
-```
-
-#### other linux
-
-download the `.AppImage` for your architecture from the [latest release](https://github.com/hyperpuncher/pi-ui/releases/latest), then:
-
-```sh
-chmod +x pi-ui-linux-*.AppImage
-./pi-ui-linux-*.AppImage
-```
-
-#### mac
-
-```sh
-brew install --cask hyperpuncher/tap/pi-ui
+bun ci
+bun run server
 ```
 
 ## configuration

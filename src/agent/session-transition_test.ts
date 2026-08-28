@@ -1,4 +1,6 @@
-import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertRejects, assertStringIncludes } from "#testing/assertions";
 
 import { newSessionAction } from "../commands/actions.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
@@ -21,7 +23,7 @@ import {
 	transitionRuntime,
 } from "./session-transition.ts";
 
-Deno.test("classify session leave policy", async (t) => {
+test("classify session leave policy", () => {
 	const cases: Array<{
 		name: string;
 		persisted: boolean;
@@ -66,9 +68,7 @@ Deno.test("classify session leave policy", async (t) => {
 		},
 	];
 	for (const testCase of cases) {
-		await t.step(testCase.name, () => {
-			assertEquals(classifySessionLeave(testCase), testCase.expected);
-		});
+		assertEquals(classifySessionLeave(testCase), testCase.expected, testCase.name);
 	}
 });
 
@@ -105,20 +105,20 @@ function lifecycle(action: SessionLeaveAction, options: { rejectAbort?: boolean 
 	};
 }
 
-Deno.test("discard orders unsubscribe, abort, dispose, and replacement bind", async () => {
+test("discard orders unsubscribe, abort, dispose, and replacement bind", async () => {
 	const fake = lifecycle("discard");
 	await fake.run();
 	assertEquals(fake.events, ["unsubscribe", "abort", "dispose", "bind"]);
 	assertEquals(fake.backgroundCount, 0);
 });
 
-Deno.test("abort rejection still disposes and binds replacement", async () => {
+test("abort rejection still disposes and binds replacement", async () => {
 	const fake = lifecycle("discard", { rejectAbort: true });
 	await fake.run();
 	assertEquals(fake.events, ["unsubscribe", "abort", "abort-error", "dispose", "bind"]);
 });
 
-Deno.test("replacement bind waits for delayed disposal", async () => {
+test("replacement bind waits for delayed disposal", async () => {
 	const events: string[] = [];
 	let releaseDispose!: () => void;
 	const disposal = new Promise<void>((resolve) => {
@@ -147,7 +147,7 @@ Deno.test("replacement bind waits for delayed disposal", async () => {
 	assertEquals(events, ["unsubscribe", "abort", "dispose", "bind"]);
 });
 
-Deno.test("disposal rejection prevents replacement binding", async () => {
+test("disposal rejection prevents replacement binding", async () => {
 	const fake = lifecycle("dispose");
 	fake.run = () =>
 		transitionRuntime({
@@ -167,19 +167,19 @@ Deno.test("disposal rejection prevents replacement binding", async () => {
 	assertEquals(fake.events, ["unsubscribe", "dispose"]);
 });
 
-Deno.test("running persisted runtime is only backgrounded", async () => {
+test("running persisted runtime is only backgrounded", async () => {
 	const fake = lifecycle("background");
 	await fake.run();
 	assertEquals(fake.events, ["background", "bind"]);
 });
 
-Deno.test("idle replacement is disposed once", async () => {
+test("idle replacement is disposed once", async () => {
 	const fake = lifecycle("dispose");
 	await fake.run();
 	assertEquals(fake.events, ["unsubscribe", "dispose", "bind"]);
 });
 
-Deno.test("session transition renderer escapes targets and renders loading and errors", () => {
+test("session transition renderer escapes targets and renders loading and errors", () => {
 	const targetPath = '<session name="bad">';
 	const loading = renderSessionTransition(
 		appRenderSnapshot({
@@ -192,7 +192,7 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 		}),
 	);
 	assertStringIncludes(loading, 'role="status"');
-	assertStringIncludes(loading, "&lt;session name=&#34;bad&#34;>");
+	assertStringIncludes(loading, "&lt;session name=&quot;bad&quot;&gt;");
 	assertStringExcludes(loading, targetPath);
 
 	const quiet = renderSessionTransition(
@@ -221,7 +221,7 @@ Deno.test("session transition renderer escapes targets and renders loading and e
 	assertStringIncludes(error, "Try another session.");
 });
 
-Deno.test("new session actions lock without driving the transition overlay", () => {
+test("new session actions lock without driving the transition overlay", () => {
 	const action = newSessionAction();
 	assertStringIncludes(action, "$_newSessionPending");
 	const toolbar = renderPromptToolbar(appRenderSnapshot({ isTemporarySession: false }));
@@ -230,7 +230,7 @@ Deno.test("new session actions lock without driving the transition overlay", () 
 	assertStringExcludes(toolbar, "data-indicator:_session-loading");
 });
 
-Deno.test("session request indicators lock controls without hiding the transcript", () => {
+test("session request indicators lock controls without hiding the transcript", () => {
 	const state = new AppStore();
 	const transition = renderSessionTransition(state.snapshot());
 	const messages = renderMessages([], { keys: "/", description: "Commands" });
@@ -241,7 +241,7 @@ Deno.test("session request indicators lock controls without hiding the transcrip
 	assertStringIncludes(messages, "$_sessionTransitionLoading");
 });
 
-Deno.test("shared resume action drives every immediate loading signal", () => {
+test("shared resume action drives every immediate loading signal", () => {
 	const action = resumeSessionAction("/sessions/one.json", {
 		closeDialog: true,
 	});
@@ -256,7 +256,7 @@ Deno.test("shared resume action drives every immediate loading signal", () => {
 	}
 });
 
-Deno.test("empty chat shows login instead of recent sessions without auth", () => {
+test("empty chat shows login instead of recent sessions without auth", () => {
 	const html = renderMessages(
 		[],
 		{ keys: "/", description: "Open commands" },
@@ -278,7 +278,7 @@ Deno.test("empty chat shows login instead of recent sessions without auth", () =
 	assertStringExcludes(html, "/sessions/resume");
 });
 
-Deno.test("resume renderers share loading behavior and disable controls", () => {
+test("resume renderers share loading behavior and disable controls", () => {
 	const session = {
 		path: "/sessions/one.json",
 		cwd: "/workspace",
@@ -311,7 +311,7 @@ Deno.test("resume renderers share loading behavior and disable controls", () => 
 	assertStringIncludes(shortcuts, "evt.ctrlKey");
 });
 
-Deno.test("session picker command state morphs on the app stream", async () => {
+test("session picker command state morphs on the app stream", async () => {
 	const state = new AppStore();
 	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const controller = new AbortController();
@@ -343,7 +343,7 @@ Deno.test("session picker command state morphs on the app stream", async () => {
 	}
 });
 
-Deno.test("completed session transition scrolls the transcript to bottom", async () => {
+test("completed session transition scrolls the transcript to bottom", async () => {
 	const state = new AppStore();
 	const renderer = new UiRenderer(state, new DatastarClientHub());
 	const controller = new AbortController();
@@ -365,7 +365,7 @@ Deno.test("completed session transition scrolls the transcript to bottom", async
 	}
 });
 
-Deno.test("session transition responses use meaningful statuses", () => {
+test("session transition responses use meaningful statuses", () => {
 	const cases = [
 		["success", 204],
 		["busy", 409],

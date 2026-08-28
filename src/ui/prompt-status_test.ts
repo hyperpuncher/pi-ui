@@ -1,11 +1,13 @@
-import { assertFalse, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertFalse, assertStringIncludes } from "#testing/assertions";
 
 import { renderPromptAction } from "./prompt-action.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
-Deno.test("context tooltip stays structured while usage is unavailable", () => {
+test("context tooltip stays structured while usage is unavailable", () => {
 	const html = renderPromptStatus(
 		appRenderSnapshot({
 			activityText: undefined,
@@ -27,7 +29,7 @@ Deno.test("context tooltip stays structured while usage is unavailable", () => {
 	assertFalse(html.includes('data-tooltip="$14.60 • ?/272k"'));
 });
 
-Deno.test("send action has a stable icon and submission-aware disabled state", () => {
+test("send action has a stable icon and submission-aware disabled state", () => {
 	const html = renderPromptAction(appRenderSnapshot({ activityText: undefined }));
 
 	assertFalse(html.includes('data-show="$_promptSubmitting"'));
@@ -35,7 +37,7 @@ Deno.test("send action has a stable icon and submission-aware disabled state", (
 	assertStringIncludes(html, "!window.piUi.fileTransfer.canSubmit($prompt)");
 });
 
-Deno.test("prompt box owns ephemeral submission state declaratively", () => {
+test("prompt box owns ephemeral submission state declaratively", () => {
 	const html = renderPromptBox(appRenderSnapshot({}));
 
 	assertStringIncludes(html, "&#34;_promptSubmitting&#34;:false");

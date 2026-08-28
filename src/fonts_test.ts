@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { defaultFonts, validFonts } from "./fonts.ts";
 
-Deno.test("font preferences validate known interface and code fonts", () => {
+test("font preferences validate known interface and code fonts", () => {
 	assertEquals(validFonts({ mono: "JetBrains Mono", sans: "Inter" }), {
 		mono: "JetBrains Mono",
 		sans: "Inter",

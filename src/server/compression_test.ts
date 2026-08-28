@@ -1,22 +1,89 @@
+import { test } from "bun:test";
 import { Readable } from "node:stream";
 import { createBrotliDecompress, createGunzip, createZstdDecompress } from "node:zlib";
 
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertStrictEquals } from "#testing/assertions";
 
-import { compressSseResponse, preferredStreamEncoding } from "./compression.ts";
+import {
+	compressResponse,
+	compressSseResponse,
+	preferredResponseEncoding,
+} from "./compression.ts";
 
-Deno.test("stream compression negotiates zstd, brotli, and gzip quality", () => {
-	assertEquals(preferredStreamEncoding("gzip, deflate, br, zstd"), "zstd");
-	assertEquals(preferredStreamEncoding("gzip, deflate, br"), "br");
-	assertEquals(preferredStreamEncoding("zstd;q=0.5, br;q=0.8"), "br");
-	assertEquals(preferredStreamEncoding("br;q=0.5, gzip;q=0.9"), "gzip");
-	assertEquals(preferredStreamEncoding("br;q=invalid, gzip"), "gzip");
-	assertEquals(preferredStreamEncoding("gzip;q=0, *;q=0.4"), "zstd");
-	assertEquals(preferredStreamEncoding("zstd;q=0, br;q=0, gzip;q=0"), undefined);
-	assertEquals(preferredStreamEncoding(null), undefined);
+test("response compression negotiates zstd, brotli, and gzip quality", () => {
+	assertEquals(preferredResponseEncoding("gzip, deflate, br, zstd"), "zstd");
+	assertEquals(preferredResponseEncoding("gzip, deflate, br"), "br");
+	assertEquals(preferredResponseEncoding("zstd;q=0.5, br;q=0.8"), "br");
+	assertEquals(preferredResponseEncoding("br;q=0.5, gzip;q=0.9"), "gzip");
+	assertEquals(preferredResponseEncoding("br;q=invalid, gzip"), "gzip");
+	assertEquals(preferredResponseEncoding("gzip;q=0, *;q=0.4"), "zstd");
+	assertEquals(preferredResponseEncoding("zstd;q=0, br;q=0, gzip;q=0"), undefined);
+	assertEquals(preferredResponseEncoding(null), undefined);
 });
 
-Deno.test("compressed response cancellation reaches the SSE source", async () => {
+test("ordinary responses compress without streaming flushes", async () => {
+	const text = "compress this response ".repeat(10_000);
+	for (const encoding of ["zstd", "br", "gzip"] as const) {
+		const response = compressResponse(
+			new Request("http://localhost/", {
+				headers: { "accept-encoding": encoding },
+			}),
+			new Response(text, {
+				headers: {
+					"content-length": String(text.length),
+					"content-type": "text/html; charset=utf-8",
+					vary: "Datastar-Request",
+				},
+			}),
+		);
+
+		assertEquals(response.headers.get("content-encoding"), encoding);
+		assertEquals(response.headers.get("content-length"), null);
+		assertEquals(response.headers.get("vary"), "Datastar-Request, Accept-Encoding");
+		if (!response.body) throw new Error("compressed response has no body");
+		assertEquals(
+			await new Response(decompressedBody(response.body, encoding)).text(),
+			text,
+		);
+	}
+});
+
+test("ordinary compression only transforms eligible responses", () => {
+	const request = new Request("http://localhost/", {
+		headers: { "accept-encoding": "br" },
+	});
+	for (const response of [
+		new Response("small", {
+			headers: { "content-length": "5", "content-type": "text/plain" },
+		}),
+		new Response(new Uint8Array(2_000), {
+			headers: { "content-type": "image/png" },
+		}),
+		new Response("large".repeat(1_000), {
+			headers: {
+				"cache-control": "public, no-transform",
+				"content-type": "text/plain",
+			},
+		}),
+	]) {
+		assertStrictEquals(compressResponse(request, response), response);
+	}
+});
+
+test("eligible identity responses vary by accepted encoding", async () => {
+	const response = compressResponse(
+		new Request("http://localhost/"),
+		new Response("identity".repeat(1_000), {
+			headers: { "content-type": "application/json" },
+		}),
+	);
+
+	assertEquals(response.headers.get("content-encoding"), null);
+	assertEquals(response.headers.get("vary"), "Accept-Encoding");
+	assertEquals(await response.text(), "identity".repeat(1_000));
+});
+
+test("compressed response cancellation reaches the SSE source", async () => {
 	const cancelled = Promise.withResolvers<void>();
 	const source = new ReadableStream<Uint8Array>({
 		start(controller) {
@@ -46,7 +113,7 @@ Deno.test("compressed response cancellation reaches the SSE source", async () =>
 	]);
 });
 
-Deno.test("SSE compression flushes events without closing the stream", async () => {
+test("SSE compression flushes events without closing the stream", async () => {
 	const event = `event: datastar-patch-elements\ndata: elements <main>${"ready".repeat(
 		30_000,
 	)}</main>\n\n`;
@@ -97,10 +164,12 @@ function decompressedBody(
 			: encoding === "br"
 				? createBrotliDecompress()
 				: createGunzip();
-	// SAFETY: Deno and Node expose the same Web ReadableStream contract here.
-	Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]).pipe(decompressor);
+	// SAFETY: Bun and Node expose the same Web ReadableStream contract here.
+	Readable.fromWeb(body as unknown as Parameters<typeof Readable.fromWeb>[0]).pipe(
+		decompressor,
+	);
 	// SAFETY: The decompressor emits byte chunks, so the Web stream contains Uint8Array values.
-	return Readable.toWeb(decompressor) as ReadableStream<Uint8Array>;
+	return Readable.toWeb(decompressor) as unknown as ReadableStream<Uint8Array>;
 }
 
 async function readBytes(

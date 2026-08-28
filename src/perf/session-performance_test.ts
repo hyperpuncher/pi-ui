@@ -1,8 +1,12 @@
+import { test } from "bun:test";
+
 import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
 	assertThrows,
-} from "@std/assert";
+} from "#testing/assertions";
+import { readTextFile, remove } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { parseClientTransitionPaint } from "../server/routes/session-performance.ts";
@@ -16,10 +20,10 @@ import {
 } from "./session-performance-log.ts";
 import { sessionPerformance } from "./session-performance.ts";
 
-Deno.test("performance metrics are disabled by default and retain no content", () => {
-	const previous = Deno.env.get("PI_UI_PERF");
+test("performance metrics are disabled by default and retain no content", () => {
+	const previous = process.env.PI_UI_PERF;
 	try {
-		Deno.env.delete("PI_UI_PERF");
+		delete process.env.PI_UI_PERF;
 		sessionPerformance.reset();
 		const end = sessionPerformance.startSpan("transcriptProjection");
 		end();
@@ -29,16 +33,16 @@ Deno.test("performance metrics are disabled by default and retain no content", (
 		assertEqual(snapshot.fatMorphCount, 0);
 		assertEqual(snapshot.bytesRendered, 0);
 	} finally {
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
-		else Deno.env.set("PI_UI_PERF", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF;
+		else process.env.PI_UI_PERF = previous;
 		sessionPerformance.reset();
 	}
 });
 
-Deno.test("performance snapshots contain durations and counts but no content", () => {
-	const previous = Deno.env.get("PI_UI_PERF");
+test("performance snapshots contain durations and counts but no content", () => {
+	const previous = process.env.PI_UI_PERF;
 	try {
-		Deno.env.set("PI_UI_PERF", "1");
+		process.env.PI_UI_PERF = "1";
 		sessionPerformance.reset();
 		const end = sessionPerformance.startSpan("toolEnhancement");
 		end();
@@ -54,18 +58,18 @@ Deno.test("performance snapshots contain durations and counts but no content", (
 			assertNotIncludes(serialized, sensitive);
 		}
 	} finally {
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
-		else Deno.env.set("PI_UI_PERF", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF;
+		else process.env.PI_UI_PERF = previous;
 		sessionPerformance.reset();
 	}
 });
 
-Deno.test("transition records isolate overlapping spans and reset counters", () => {
-	const previous = Deno.env.get("PI_UI_PERF");
+test("transition records isolate overlapping spans and reset counters", () => {
+	const previous = process.env.PI_UI_PERF;
 	const originalLog = console.log;
 	const output: string[] = [];
 	try {
-		Deno.env.set("PI_UI_PERF", "1");
+		process.env.PI_UI_PERF = "1";
 		sessionPerformance.reset();
 		console.log = (value?: Parameters<Console["log"]>[0]) =>
 			output.push(String(value));
@@ -96,20 +100,20 @@ Deno.test("transition records isolate overlapping spans and reset counters", () 
 		assertEqual(firstRecord.cumulative.fatMorphCount, 2);
 	} finally {
 		console.log = originalLog;
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
-		else Deno.env.set("PI_UI_PERF", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF;
+		else process.env.PI_UI_PERF = previous;
 		sessionPerformance.reset();
 	}
 });
 
-Deno.test("async transition context keeps nested spans on their owner", async () => {
-	const previous = Deno.env.get("PI_UI_PERF");
+test("async transition context keeps nested spans on their owner", async () => {
+	const previous = process.env.PI_UI_PERF;
 	const originalLog = console.log;
 	const output: string[] = [];
 	let releaseFirst = () => {};
 	const wait = new Promise<void>((resolve) => (releaseFirst = resolve));
 	try {
-		Deno.env.set("PI_UI_PERF", "1");
+		process.env.PI_UI_PERF = "1";
 		sessionPerformance.reset();
 		console.log = (value?: Parameters<Console["log"]>[0]) =>
 			output.push(String(value));
@@ -134,18 +138,18 @@ Deno.test("async transition context keeps nested spans on their owner", async ()
 		assertEqual(secondRecord.transition.spans.runtimeSessionCreate.count, 1);
 	} finally {
 		console.log = originalLog;
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
-		else Deno.env.set("PI_UI_PERF", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF;
+		else process.env.PI_UI_PERF = previous;
 		sessionPerformance.reset();
 	}
 });
 
-Deno.test("ownership diagnostics are transition-scoped and content-free", () => {
-	const previous = Deno.env.get("PI_UI_PERF");
+test("ownership diagnostics are transition-scoped and content-free", () => {
+	const previous = process.env.PI_UI_PERF;
 	const originalLog = console.log;
 	const output: string[] = [];
 	try {
-		Deno.env.set("PI_UI_PERF", "1");
+		process.env.PI_UI_PERF = "1";
 		sessionPerformance.reset();
 		console.log = (value?: Parameters<Console["log"]>[0]) =>
 			output.push(String(value));
@@ -179,18 +183,18 @@ Deno.test("ownership diagnostics are transition-scoped and content-free", () => 
 		}
 	} finally {
 		console.log = originalLog;
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
-		else Deno.env.set("PI_UI_PERF", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF;
+		else process.env.PI_UI_PERF = previous;
 		sessionPerformance.reset();
 	}
 });
 
-Deno.test("cancelled transitions emit no record or sensitive fields", () => {
-	const previous = Deno.env.get("PI_UI_PERF");
+test("cancelled transitions emit no record or sensitive fields", () => {
+	const previous = process.env.PI_UI_PERF;
 	const originalLog = console.log;
 	const output: string[] = [];
 	try {
-		Deno.env.set("PI_UI_PERF", "1");
+		process.env.PI_UI_PERF = "1";
 		sessionPerformance.reset();
 		console.log = (value?: Parameters<Console["log"]>[0]) =>
 			output.push(String(value));
@@ -214,13 +218,13 @@ Deno.test("cancelled transitions emit no record or sensitive fields", () => {
 		}
 	} finally {
 		console.log = originalLog;
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
-		else Deno.env.set("PI_UI_PERF", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF;
+		else process.env.PI_UI_PERF = previous;
 		sessionPerformance.reset();
 	}
 });
 
-Deno.test("client transition metrics validate timing order and bounds", () => {
+test("client transition metrics validate timing order and bounds", () => {
 	assertEqual(
 		parseClientTransitionPaint({
 			generation: 3,
@@ -245,24 +249,24 @@ Deno.test("client transition metrics validate timing order and bounds", () => {
 	);
 });
 
-Deno.test("performance records append to the configured JSONL file", async () => {
-	const previous = Deno.env.get("PI_UI_PERF_FILE");
-	const directory = await Deno.makeTempDir();
+test("performance records append to the configured JSONL file", async () => {
+	const previous = process.env.PI_UI_PERF_FILE;
+	const directory = await makeTempDir();
 	const path = `${directory}/performance.jsonl`;
 	try {
-		Deno.env.set("PI_UI_PERF_FILE", path);
+		process.env.PI_UI_PERF_FILE = path;
 		appendSessionPerformanceRecord({ id: 1 });
 		appendSessionPerformanceRecord({ id: 2 });
 		await flushSessionPerformanceLog();
-		assertEqual(await Deno.readTextFile(path), '{"id":1}\n{"id":2}\n');
+		assertEqual(await readTextFile(path), '{"id":1}\n{"id":2}\n');
 	} finally {
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF_FILE");
-		else Deno.env.set("PI_UI_PERF_FILE", previous);
-		await Deno.remove(directory, { recursive: true });
+		if (previous === undefined) delete process.env.PI_UI_PERF_FILE;
+		else process.env.PI_UI_PERF_FILE = previous;
+		await remove(directory, { recursive: true });
 	}
 });
 
-Deno.test("SSE parser handles event frames split across chunk boundaries", async () => {
+test("SSE parser handles event frames split across chunk boundaries", async () => {
 	const encoder = new TextEncoder();
 	const chunks = [
 		"event: datastar-patch-ele",
@@ -283,9 +287,9 @@ Deno.test("SSE parser handles event frames split across chunk boundaries", async
 	assertEqual(summary.targetedPatchCount, 1);
 });
 
-Deno.test("20-message restore emits fallback once and targets enhancements", async () => {
-	const previous = Deno.env.get("PI_UI_PERF");
-	Deno.env.set("PI_UI_PERF", "1");
+test("20-message restore emits fallback once and targets enhancements", async () => {
+	const previous = process.env.PI_UI_PERF;
+	process.env.PI_UI_PERF = "1";
 	sessionPerformance.reset();
 	const state = new AppStore();
 	const renderer = new UiRenderer(state, new DatastarClientHub());
@@ -309,8 +313,8 @@ Deno.test("20-message restore emits fallback once and targets enhancements", asy
 		assertEqual(snapshot.spans.markdownEnhancement.count, 8);
 	} finally {
 		controller.abort();
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF");
-		else Deno.env.set("PI_UI_PERF", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF;
+		else process.env.PI_UI_PERF = previous;
 		sessionPerformance.reset();
 	}
 });
@@ -354,14 +358,14 @@ function generatedSessionFixture(count: number): AppMessageInput[] {
 }
 
 function completeTransition(transitionId: number | undefined): void {
-	const previous = Deno.env.get("PI_UI_PERF_FILE");
+	const previous = process.env.PI_UI_PERF_FILE;
 	try {
-		Deno.env.set("PI_UI_PERF_FILE", "off");
+		process.env.PI_UI_PERF_FILE = "off";
 		sessionPerformance.markTranscriptProjected(transitionId);
 		sessionPerformance.markFirstTranscriptPatch(transitionId);
 		sessionPerformance.markSessionTransitionComplete(transitionId);
 	} finally {
-		if (previous === undefined) Deno.env.delete("PI_UI_PERF_FILE");
-		else Deno.env.set("PI_UI_PERF_FILE", previous);
+		if (previous === undefined) delete process.env.PI_UI_PERF_FILE;
+		else process.env.PI_UI_PERF_FILE = previous;
 	}
 }

@@ -1,10 +1,12 @@
-import { assert, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assert, assertStringIncludes } from "#testing/assertions";
 
 import type { AppAuthDialog } from "../state/app-store.ts";
 import { assertStringExcludes } from "../testing/assertions.ts";
 import { renderAuthDialogContent } from "./auth-dialog.tsx";
 
-Deno.test("provider picker includes client-side search", () => {
+test("provider picker includes client-side search", () => {
 	const dialog: AppAuthDialog = {
 		mode: "login",
 		phase: "providers",
@@ -25,7 +27,7 @@ Deno.test("provider picker includes client-side search", () => {
 	assertStringIncludes(html, "No providers found.");
 });
 
-Deno.test("authentication prompts keep actions in the dialog footer", () => {
+test("authentication prompts keep actions in the dialog footer", () => {
 	const dialog: AppAuthDialog = {
 		mode: "login",
 		phase: "api-key",

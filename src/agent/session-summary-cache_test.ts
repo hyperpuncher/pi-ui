@@ -1,18 +1,22 @@
-import { assertEquals, assertFalse } from "@std/assert";
-import { join } from "@std/path";
+import { test } from "bun:test";
+import { join } from "node:path";
+
+import { assertEquals, assertFalse } from "#testing/assertions";
+import { mkdir, remove, stat, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { listCachedSessions } from "./session-catalog.ts";
 import { readSessionSummaryCache } from "./session-summary-cache.ts";
 
-Deno.test("sessions reuse and incrementally update the summary cache", async () => {
-	const root = await Deno.makeTempDir();
+test("sessions reuse and incrementally update the summary cache", async () => {
+	const root = await makeTempDir();
 	const sessionsRoot = join(root, "sessions");
 	const workspace = join(sessionsRoot, "workspace");
 	const sessionPath = join(workspace, "session.jsonl");
 	const cachePath = join(root, "cache", "session-index.json");
-	await Deno.mkdir(workspace, { recursive: true });
+	await mkdir(workspace, { recursive: true });
 	try {
-		await Deno.writeTextFile(
+		await writeTextFile(
 			sessionPath,
 			lines([
 				{
@@ -39,10 +43,10 @@ Deno.test("sessions reuse and incrementally update the summary cache", async () 
 
 		const firstCache = await readSessionSummaryCache(cachePath);
 		const firstEntry = firstCache.sessions[sessionPath];
-		assertEquals(firstEntry.indexedBytes, (await Deno.stat(sessionPath)).size);
+		assertEquals(firstEntry.indexedBytes, (await stat(sessionPath)).size);
 		assertFalse("size" in firstEntry);
 
-		await Deno.writeTextFile(
+		await writeTextFile(
 			sessionPath,
 			lines([message("user", "Appended prompt", 4_000)]),
 			{ append: true },
@@ -55,22 +59,22 @@ Deno.test("sessions reuse and incrementally update the summary cache", async () 
 		const secondCache = await readSessionSummaryCache(cachePath);
 		assertEquals(
 			secondCache.sessions[sessionPath].indexedBytes,
-			(await Deno.stat(sessionPath)).size,
+			(await stat(sessionPath)).size,
 		);
 	} finally {
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });
 
-Deno.test("the cached catalog indexes every session and drops deleted files", async () => {
-	const root = await Deno.makeTempDir();
+test("the cached catalog indexes every session and drops deleted files", async () => {
+	const root = await makeTempDir();
 	const sessionsRoot = join(root, "sessions");
 	const workspace = join(sessionsRoot, "workspace");
 	const cachePath = join(root, "cache", "session-index.json");
-	await Deno.mkdir(workspace, { recursive: true });
+	await mkdir(workspace, { recursive: true });
 	try {
 		for (const index of [1, 2]) {
-			await Deno.writeTextFile(
+			await writeTextFile(
 				join(workspace, `session-${index}.jsonl`),
 				lines([
 					{
@@ -91,22 +95,22 @@ Deno.test("the cached catalog indexes every session and drops deleted files", as
 			2,
 		);
 
-		await Deno.remove(join(workspace, "session-1.jsonl"));
+		await remove(join(workspace, "session-1.jsonl"));
 		assertEquals((await listCachedSessions(sessionsRoot, cachePath)).length, 1);
 		assertEquals(Object.keys((await readSessionSummaryCache(cachePath)).sessions), [
 			join(workspace, "session-2.jsonl"),
 		]);
 	} finally {
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });
 
-Deno.test("attachment references produce readable session titles", async () => {
-	const root = await Deno.makeTempDir();
+test("attachment references produce readable session titles", async () => {
+	const root = await makeTempDir();
 	const sessionsRoot = join(root, "sessions");
 	const workspace = join(sessionsRoot, "workspace");
 	const cachePath = join(root, "cache", "session-index.json");
-	await Deno.mkdir(workspace, { recursive: true });
+	await mkdir(workspace, { recursive: true });
 	try {
 		const prompts = [
 			"@/tmp/pi-ui-transfers/file-d1a3d330684a04ab-image.png",
@@ -114,7 +118,7 @@ Deno.test("attachment references produce readable session titles", async () => {
 			"@/tmp/pi-ui-transfers/file-a1-image.png\nwhy is the sidebar visible?",
 		];
 		for (const [index, prompt] of prompts.entries()) {
-			await Deno.writeTextFile(
+			await writeTextFile(
 				join(workspace, `session-${index}.jsonl`),
 				lines([
 					{
@@ -139,21 +143,21 @@ Deno.test("attachment references produce readable session titles", async () => {
 			"session-2": "why is the sidebar visible?",
 		});
 	} finally {
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });
 
-Deno.test("a corrupt summary cache is rebuilt", async () => {
-	const root = await Deno.makeTempDir();
+test("a corrupt summary cache is rebuilt", async () => {
+	const root = await makeTempDir();
 	const sessionsRoot = join(root, "sessions");
 	const workspace = join(sessionsRoot, "workspace");
 	const sessionPath = join(workspace, "session.jsonl");
 	const cachePath = join(root, "cache", "session-index.json");
-	await Deno.mkdir(workspace, { recursive: true });
-	await Deno.mkdir(join(root, "cache"), { recursive: true });
+	await mkdir(workspace, { recursive: true });
+	await mkdir(join(root, "cache"), { recursive: true });
 	try {
-		await Deno.writeTextFile(cachePath, "not json");
-		await Deno.writeTextFile(
+		await writeTextFile(cachePath, "not json");
+		await writeTextFile(
 			sessionPath,
 			lines([
 				{
@@ -171,7 +175,7 @@ Deno.test("a corrupt summary cache is rebuilt", async () => {
 		assertEquals(sessions[0].firstMessage, "Recovered");
 		assertEquals((await readSessionSummaryCache(cachePath)).version, 2);
 	} finally {
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });
 

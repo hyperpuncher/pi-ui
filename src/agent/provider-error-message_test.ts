@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { formatProviderErrorMessage } from "./provider-error-message.ts";
 
-Deno.test("pretty prints a structured provider error without dropping fields", () => {
+test("pretty prints a structured provider error without dropping fields", () => {
 	assertEquals(
 		formatProviderErrorMessage(
 			'403: {"type":"RegionError","message":"This model requires explicit opt in."}',
@@ -14,7 +16,7 @@ Deno.test("pretty prints a structured provider error without dropping fields", (
 	);
 });
 
-Deno.test("pretty prints nested provider errors without assuming their schema", () => {
+test("pretty prints nested provider errors without assuming their schema", () => {
 	assertEquals(
 		formatProviderErrorMessage(
 			'429: {"error":{"message":"Rate limit exceeded","type":"rate_limit"}}',
@@ -28,7 +30,7 @@ Deno.test("pretty prints nested provider errors without assuming their schema", 
 	);
 });
 
-Deno.test("preserves unstructured and malformed provider errors", () => {
+test("preserves unstructured and malformed provider errors", () => {
 	assertEquals(
 		formatProviderErrorMessage("Provider unavailable"),
 		"Error: Provider unavailable",

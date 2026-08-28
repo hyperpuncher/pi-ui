@@ -1,4 +1,6 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
 
 import {
 	defaultAutoTitleConfig,
@@ -8,7 +10,7 @@ import {
 } from "./auto-title.ts";
 import { agentSessionRuntimeStub } from "./test-fixtures.ts";
 
-Deno.test("auto-title config uses luna defaults and accepts a custom prompt", () => {
+test("auto-title config uses luna defaults and accepts a custom prompt", () => {
 	assertEquals(parseAutoTitleConfig(undefined), defaultAutoTitleConfig);
 	assertEquals(
 		parseAutoTitleConfig({
@@ -24,7 +26,7 @@ Deno.test("auto-title config uses luna defaults and accepts a custom prompt", ()
 	);
 });
 
-Deno.test("generated titles start before an assistant response", async () => {
+test("generated titles start before an assistant response", async () => {
 	let selected: { provider: string; id: string } | undefined;
 	let systemPrompt = "";
 	let request = "";
@@ -90,7 +92,7 @@ Deno.test("generated titles start before an assistant response", async () => {
 	assertEquals(title, "lowercase session titles");
 });
 
-Deno.test("generated titles are cleaned without losing content", () => {
+test("generated titles are cleaned without losing content", () => {
 	assertEquals(sanitizeTitle("Title: a useful title"), "a useful title");
 	assertEquals(
 		sanitizeTitle(

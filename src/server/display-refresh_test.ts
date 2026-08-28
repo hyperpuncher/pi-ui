@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { readDisplayRefreshUpdate } from "./display-refresh.ts";
 
-Deno.test("display refresh update accepts only identified safe-range JSON", async () => {
+test("display refresh update accepts only identified safe-range JSON", async () => {
 	const clientId = "123e4567-e89b-42d3-a456-426614174000";
 	for (const hz of [60, 75, 90, 100, 120, 144, 165, 240]) {
 		assertEquals(await readDisplayRefreshUpdate(request({ clientId, hz })), {

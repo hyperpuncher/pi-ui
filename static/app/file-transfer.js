@@ -22,32 +22,8 @@ export function hasFiles(data) {
 	return [...data.types].some((type) => type === "Files" || type === "text/uri-list");
 }
 
-export async function pick() {
+export function pick() {
 	showTransferError("");
-	if (!document.body.hasAttribute("data-native-file-picker")) {
-		pickBrowserFiles();
-		return;
-	}
-	try {
-		const endpoint = document.body.dataset.filesPickEndpoint;
-		const response = await fetch(endpoint, { method: "POST" });
-		if (!response.ok) throw new Error(`Native picker failed: ${response.status}`);
-		const result = await response.json();
-		if (Array.isArray(result.paths) && result.paths.length > 0) {
-			const unsupported = unsupportedImagePathError(result.paths);
-			if (unsupported) {
-				showTransferError(unsupported);
-				return;
-			}
-			addPathAttachments(result.paths);
-		}
-	} catch (error) {
-		console.error(error);
-		showTransferError(error?.message || "Could not open the native file picker.");
-	}
-}
-
-function pickBrowserFiles() {
 	const input = document.createElement("input");
 	input.type = "file";
 	input.multiple = true;

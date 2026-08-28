@@ -1,12 +1,15 @@
+import { test } from "bun:test";
+
 import type {
 	AgentSessionEvent,
 	AgentSessionRuntime,
 	SessionManager,
 } from "@earendil-works/pi-coding-agent";
-import { assertEquals, assertRejects } from "@std/assert";
 
-import type { SessionDoneNotification } from "../desktop-notifications.ts";
+import { assertEquals, assertRejects } from "#testing/assertions";
+
 import { AppStore } from "../state/app-store.ts";
+import type { SessionDoneNotification } from "../system-notifications.ts";
 import {
 	RuntimeController,
 	type RuntimeControllerDependencies,
@@ -225,7 +228,7 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 	};
 }
 
-Deno.test("RuntimeController production path binds callbacks before activation", async () => {
+test("RuntimeController production path binds callbacks before activation", async () => {
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
 		dependencies: dependencies([fake]),
@@ -242,7 +245,7 @@ Deno.test("RuntimeController production path binds callbacks before activation",
 	assertEquals(fake.disposeCount, 1);
 });
 
-Deno.test("RuntimeController preparation does not wait for the session catalog", async () => {
+test("RuntimeController preparation does not wait for the session catalog", async () => {
 	const fake = fakeRuntime();
 	let resolveSessions!: () => void;
 	const delayedSessions = new Promise<PreparedSessionList>((resolve) => {
@@ -273,7 +276,7 @@ Deno.test("RuntimeController preparation does not wait for the session catalog",
 	await result.dispose();
 });
 
-Deno.test("RuntimeController loads the full catalog once during activation", async () => {
+test("RuntimeController loads the full catalog once during activation", async () => {
 	const fake = fakeRuntime();
 	const store = new AppStore();
 	let loads = 0;
@@ -302,7 +305,7 @@ Deno.test("RuntimeController loads the full catalog once during activation", asy
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController binds extension session controls to the active runtime", async () => {
+test("RuntimeController binds extension session controls to the active runtime", async () => {
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
 		dependencies: dependencies([fake]),
@@ -324,7 +327,7 @@ Deno.test("RuntimeController binds extension session controls to the active runt
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController treats the current session as an immediate no-op", async () => {
+test("RuntimeController treats the current session as an immediate no-op", async () => {
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
 		dependencies: dependencies([fake]),
@@ -339,7 +342,7 @@ Deno.test("RuntimeController treats the current session as an immediate no-op", 
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController renames the active pi session", async () => {
+test("RuntimeController renames the active pi session", async () => {
 	const fake = fakeRuntime("/sessions/current.jsonl");
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
 		dependencies: dependencies([fake]),
@@ -354,7 +357,7 @@ Deno.test("RuntimeController renames the active pi session", async () => {
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController replaces and trashes the current idle session", async () => {
+test("RuntimeController replaces and trashes the current idle session", async () => {
 	const fake = fakeRuntime("/sessions/current.jsonl");
 	let currentPath = "/sessions/current.jsonl";
 	fake.runtime.session.sessionManager.getSessionFile = () => currentPath;
@@ -381,7 +384,7 @@ Deno.test("RuntimeController replaces and trashes the current idle session", asy
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController clears chat at authoritative session invalidation", async () => {
+test("RuntimeController clears chat at authoritative session invalidation", async () => {
 	const fake = fakeRuntime();
 	let releaseReplacement!: () => void;
 	const replacement = new Promise<void>((resolve) => {
@@ -407,7 +410,7 @@ Deno.test("RuntimeController clears chat at authoritative session invalidation",
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController clears chat before temporary runtime creation", async () => {
+test("RuntimeController clears chat before temporary runtime creation", async () => {
 	const current = fakeRuntime();
 	const replacement = fakeRuntime(undefined, false);
 	let releaseCreation!: () => void;
@@ -439,7 +442,7 @@ Deno.test("RuntimeController clears chat before temporary runtime creation", asy
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController keeps chat when new session is cancelled", async () => {
+test("RuntimeController keeps chat when new session is cancelled", async () => {
 	const fake = fakeRuntime();
 	fake.runtime.newSession = () => Promise.resolve({ cancelled: true });
 	const store = new AppStore();
@@ -457,7 +460,7 @@ Deno.test("RuntimeController keeps chat when new session is cancelled", async ()
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController ignores callbacks captured before in-place replacement", async () => {
+test("RuntimeController ignores callbacks captured before in-place replacement", async () => {
 	const fake = fakeRuntime();
 	const store = new AppStore();
 	const loadingOverlays: boolean[] = [];
@@ -485,7 +488,7 @@ Deno.test("RuntimeController ignores callbacks captured before in-place replacem
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController disposal awaits and attempts foreground and background runtimes", async () => {
+test("RuntimeController disposal awaits and attempts foreground and background runtimes", async () => {
 	const foreground = fakeRuntime();
 	const replacement = fakeRuntime("/sessions/b.jsonl");
 	foreground.setStreaming(true);
@@ -522,7 +525,7 @@ Deno.test("RuntimeController disposal awaits and attempts foreground and backgro
 	assertEquals(replacement.disposeCount, 1);
 });
 
-Deno.test("RuntimeController shows one error when manual compaction fails", async () => {
+test("RuntimeController shows one error when manual compaction fails", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(state, "/workspace", {
@@ -551,7 +554,7 @@ Deno.test("RuntimeController shows one error when manual compaction fails", asyn
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController handles share without sending it to the model", async () => {
+test("RuntimeController handles share without sending it to the model", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(state, "/workspace", {
@@ -578,7 +581,7 @@ Deno.test("RuntimeController handles share without sending it to the model", asy
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController shows prompts queued during compaction and sends them afterward", async () => {
+test("RuntimeController shows prompts queued during compaction and sends them afterward", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(state, "/workspace", {
@@ -616,7 +619,7 @@ Deno.test("RuntimeController shows prompts queued during compaction and sends th
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController removes one message from the active agent queue", async () => {
+test("RuntimeController removes one message from the active agent queue", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(state, "/workspace", {
@@ -638,7 +641,7 @@ Deno.test("RuntimeController removes one message from the active agent queue", a
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController reuses streaming runtimes across repeated background activation", async () => {
+test("RuntimeController reuses streaming runtimes across repeated background activation", async () => {
 	const state = new AppStore();
 	const a = fakeRuntime("/sessions/a.jsonl");
 	const b = fakeRuntime("/sessions/b.jsonl");
@@ -690,7 +693,7 @@ Deno.test("RuntimeController reuses streaming runtimes across repeated backgroun
 	assertEquals(b.disposeCount, 1);
 });
 
-Deno.test("RuntimeController preserves a streaming session across workspace changes", async () => {
+test("RuntimeController preserves a streaming session across workspace changes", async () => {
 	const state = new AppStore();
 	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
 	const replacement = fakeRuntime(
@@ -720,7 +723,7 @@ Deno.test("RuntimeController preserves a streaming session across workspace chan
 	assertEquals(source.disposeCount, 1);
 });
 
-Deno.test("RuntimeController preserves the current workspace when replacement preparation fails", async () => {
+test("RuntimeController preserves the current workspace when replacement preparation fails", async () => {
 	const state = new AppStore();
 	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
 	const replacement = fakeRuntime(
@@ -747,7 +750,7 @@ Deno.test("RuntimeController preserves the current workspace when replacement pr
 	assertEquals(source.disposeCount, 1);
 });
 
-Deno.test("RuntimeController disposes an idle session on workspace change", async () => {
+test("RuntimeController disposes an idle session on workspace change", async () => {
 	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
 	const replacement = fakeRuntime(
 		"/sessions/replacement.jsonl",
@@ -765,7 +768,7 @@ Deno.test("RuntimeController disposes an idle session on workspace change", asyn
 	assertEquals(replacement.disposeCount, 1);
 });
 
-Deno.test("RuntimeController preserves a runtime while accepted prompt work is pending", async () => {
+test("RuntimeController preserves a runtime while accepted prompt work is pending", async () => {
 	const source = fakeRuntime();
 	const replacement = fakeRuntime("/sessions/replacement.jsonl");
 	let finishPrompt!: () => void;
@@ -790,7 +793,7 @@ Deno.test("RuntimeController preserves a runtime while accepted prompt work is p
 	assertEquals(replacement.disposeCount, 1);
 });
 
-Deno.test("RuntimeController aborts and disposes an active temporary runtime", async () => {
+test("RuntimeController aborts and disposes an active temporary runtime", async () => {
 	const temporary = fakeRuntime(undefined, false);
 	const replacement = fakeRuntime("/sessions/replacement.jsonl");
 	temporary.setStreaming(true);
@@ -815,7 +818,7 @@ Deno.test("RuntimeController aborts and disposes an active temporary runtime", a
 	assertEquals(replacement.disposeCount, 1);
 });
 
-Deno.test("RuntimeController completes and aborts background runtimes exactly once", async () => {
+test("RuntimeController completes and aborts background runtimes exactly once", async () => {
 	const completed = fakeRuntime("/sessions/completed.jsonl");
 	const foreground = fakeRuntime("/sessions/foreground.jsonl");
 	completed.setStreaming(true);
@@ -851,7 +854,7 @@ Deno.test("RuntimeController completes and aborts background runtimes exactly on
 	assertEquals(next.disposeCount, 1);
 });
 
-Deno.test("RuntimeController notifies for completed foreground work only while unfocused", async () => {
+test("RuntimeController notifies for completed foreground work only while unfocused", async () => {
 	const notifications: SessionDoneNotification[] = [];
 	const notifySessionDone = (details: SessionDoneNotification) => {
 		notifications.push(details);
@@ -894,7 +897,7 @@ Deno.test("RuntimeController notifies for completed foreground work only while u
 	await unfocusedController.dispose();
 });
 
-Deno.test("RuntimeController always notifies for completed background work", async () => {
+test("RuntimeController always notifies for completed background work", async () => {
 	const notifications: SessionDoneNotification[] = [];
 	const background = fakeRuntime("/sessions/background.jsonl");
 	const foreground = fakeRuntime("/sessions/foreground.jsonl");
@@ -919,7 +922,7 @@ Deno.test("RuntimeController always notifies for completed background work", asy
 	await controller.dispose();
 });
 
-Deno.test("RuntimeController disposes a prepared runtime when extension binding fails", async () => {
+test("RuntimeController disposes a prepared runtime when extension binding fails", async () => {
 	const fake = fakeRuntime();
 	fake.runtime.session.bindExtensions = () => Promise.reject(new Error("bind failed"));
 	await assertRejects(

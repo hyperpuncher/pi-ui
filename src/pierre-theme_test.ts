@@ -1,4 +1,6 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import {
 	DEFAULT_PIERRE_THEMES,
@@ -6,7 +8,7 @@ import {
 	setActiveCodeTheme,
 } from "./pierre-theme.ts";
 
-Deno.test("active Pierre themes discard catalog metadata", () => {
+test("active Pierre themes discard catalog metadata", () => {
 	const catalogTheme = {
 		dark: "dark-theme",
 		light: "light-theme",

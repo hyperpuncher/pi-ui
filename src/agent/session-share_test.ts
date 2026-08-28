@@ -1,4 +1,6 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertRejects } from "#testing/assertions";
 
 import { shareSession, type SessionShareDependencies } from "./session-share.ts";
 
@@ -30,7 +32,7 @@ function dependencies(
 	return { value, calls, removed };
 }
 
-Deno.test("shares the exported session as a secret gist", async () => {
+test("shares the exported session as a secret gist", async () => {
 	const deps = dependencies([
 		{ code: 0 },
 		{ code: 0, stdout: "https://gist.github.com/user/gist-id\n" },
@@ -60,7 +62,7 @@ Deno.test("shares the exported session as a secret gist", async () => {
 	assertEquals(deps.removed, ["/tmp/session.html"]);
 });
 
-Deno.test("reports missing GitHub authentication before exporting", async () => {
+test("reports missing GitHub authentication before exporting", async () => {
 	const deps = dependencies([{ code: 1 }]);
 	await assertRejects(
 		() =>
@@ -74,7 +76,7 @@ Deno.test("reports missing GitHub authentication before exporting", async () => 
 	assertEquals(deps.removed, []);
 });
 
-Deno.test("cleans up the export when gist creation fails", async () => {
+test("cleans up the export when gist creation fails", async () => {
 	const deps = dependencies([{ code: 0 }, { code: 1, stderr: "network unavailable" }]);
 	await assertRejects(
 		() =>

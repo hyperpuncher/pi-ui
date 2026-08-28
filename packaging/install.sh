@@ -3,14 +3,6 @@ set -eu
 
 repository="hyperpuncher/pi-ui"
 install_directory="${PI_UI_INSTALL_DIR:-$HOME/.local/bin}"
-mode="desktop"
-
-if [ "${1:-}" = "--server" ]; then
-	mode="server"
-elif [ "$#" -ne 0 ]; then
-	echo "usage: install.sh [--server]" >&2
-	exit 2
-fi
 
 case "$(uname -s)" in
 	Darwin)
@@ -18,18 +10,12 @@ case "$(uname -s)" in
 			echo "Homebrew is required on macOS: https://brew.sh" >&2
 			exit 1
 		fi
-		if [ "$mode" = "server" ]; then
-			if brew list --formula pi-ui-server >/dev/null 2>&1; then
-				brew upgrade hyperpuncher/tap/pi-ui-server
-			else
-				brew install hyperpuncher/tap/pi-ui-server
-			fi
-			brew services restart pi-ui-server
-		elif brew list --cask pi-ui >/dev/null 2>&1; then
-			brew upgrade --cask hyperpuncher/tap/pi-ui
+		if brew list --formula pi-ui-server >/dev/null 2>&1; then
+			brew upgrade hyperpuncher/tap/pi-ui-server
 		else
-			brew install --cask hyperpuncher/tap/pi-ui
+			brew install hyperpuncher/tap/pi-ui-server
 		fi
+		brew services restart pi-ui-server
 		exit
 		;;
 	Linux) ;;
@@ -50,18 +36,9 @@ if [ -f /etc/arch-release ]; then
 		exit 1
 	fi
 
-	if [ "$mode" = "server" ]; then
-		package="pi-ui-server-bin"
-	else
-		package="pi-ui-bin"
-	fi
-
-	echo "Installing $package from the AUR with $aur_helper..."
-	"$aur_helper" -S --needed "$package" </dev/tty
-	if [ "$mode" = "server" ]; then
-		pi-ui-server autostart enable
-		echo "Open http://127.0.0.1:31415 in your browser."
-	fi
+	"$aur_helper" -S --needed pi-ui-server-bin </dev/tty
+	pi-ui-server autostart enable
+	echo "Open http://127.0.0.1:31415 in your browser."
 	exit
 fi
 
@@ -75,33 +52,19 @@ case "$(uname -m)" in
 esac
 
 mkdir -p "$install_directory"
-
-if [ "$mode" = "server" ]; then
-	asset="pi-ui-server-linux-$architecture.tar.zst"
-	target="$install_directory/pi-ui-server"
-else
-	asset="pi-ui-linux-$architecture.AppImage"
-	target="$install_directory/pi-ui"
-fi
-
+asset="pi-ui-server-linux-$architecture.tar.zst"
+target="$install_directory/pi-ui-server"
 url="https://github.com/$repository/releases/latest/download/$asset"
+archive=$(mktemp "${TMPDIR:-/tmp}/pi-ui-server.XXXXXX.tar.zst")
 temporary=$(mktemp "$install_directory/.pi-ui-install.XXXXXX")
-trap 'rm -f "$temporary"' EXIT HUP INT TERM
+trap 'rm -f "$archive" "$temporary"' EXIT HUP INT TERM
 
-echo "Downloading $asset..."
-if [ "$mode" = "server" ]; then
-	archive=$(mktemp "${TMPDIR:-/tmp}/pi-ui-server.XXXXXX.tar.zst")
-	trap 'rm -f "$temporary" "$archive"' EXIT HUP INT TERM
-	curl -fsSL --retry 3 "$url" -o "$archive"
-	tar --zstd -xOf "$archive" pi-ui-server > "$temporary"
-	rm -f "$archive"
-else
-	curl -fsSL --retry 3 "$url" -o "$temporary"
-fi
-
+curl -fsSL --retry 3 "$url" -o "$archive"
+tar --zstd -xOf "$archive" pi-ui-server > "$temporary"
 chmod +x "$temporary"
 mv "$temporary" "$target"
 trap - EXIT HUP INT TERM
+rm -f "$archive"
 
 echo "Installed $target"
 case ":$PATH:" in
@@ -109,7 +72,5 @@ case ":$PATH:" in
 	*) echo "Add $install_directory to PATH to run it by name." ;;
 esac
 
-if [ "$mode" = "server" ]; then
-	"$target" autostart enable
-	echo "Open http://127.0.0.1:31415 in your browser."
-fi
+"$target" autostart enable
+echo "Open http://127.0.0.1:31415 in your browser."

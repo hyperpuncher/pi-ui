@@ -1,4 +1,8 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
+import { mkdir, readTextFile, remove, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { appConfigSchemaUrl } from "../config-schema.ts";
 import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
@@ -7,7 +11,7 @@ import {
 	writeWorkspaceReviewPreferences,
 } from "./workspace-review-preferences.ts";
 
-Deno.test("workspace review preference defaults remain undefined", () => {
+test("workspace review preference defaults remain undefined", () => {
 	assertEquals(normalizeWorkspaceReviewPreferences(undefined), {});
 	assertEquals(normalizeWorkspaceReviewPreferences({}), {
 		changesRatio: undefined,
@@ -20,7 +24,7 @@ Deno.test("workspace review preference defaults remain undefined", () => {
 	});
 });
 
-Deno.test("workspace review preferences validate layout values", () => {
+test("workspace review preferences validate layout values", () => {
 	assertEquals(
 		normalizeWorkspaceReviewPreferences({
 			changesRatio: 0.4,
@@ -75,13 +79,13 @@ Deno.test("workspace review preferences validate layout values", () => {
 	);
 });
 
-Deno.test("workspace review preferences persist without replacing future config", async () => {
-	const directory = await Deno.makeTempDir();
+test("workspace review preferences persist without replacing future config", async () => {
+	const directory = await makeTempDir();
 	const path = `${directory}/nested/preferences.json`;
 	try {
 		assertEquals(await readWorkspaceReviewPreferences(path), {});
-		await Deno.mkdir(`${directory}/nested`);
-		await Deno.writeTextFile(path, '{"futureSetting":true}\n');
+		await mkdir(`${directory}/nested`);
+		await writeTextFile(path, '{"futureSetting":true}\n');
 		const preferences = {
 			changesRatio: 0.4,
 			gitPaneRatio: 0.6,
@@ -93,12 +97,12 @@ Deno.test("workspace review preferences persist without replacing future config"
 		};
 		await writeWorkspaceReviewPreferences(preferences, path);
 		assertEquals(await readWorkspaceReviewPreferences(path), preferences);
-		assertEquals(JSON.parse(await Deno.readTextFile(path)), {
+		assertEquals(JSON.parse(await readTextFile(path)), {
 			futureSetting: true,
 			gitView: preferences,
 			$schema: appConfigSchemaUrl,
 		});
 	} finally {
-		await Deno.remove(directory, { recursive: true });
+		await remove(directory, { recursive: true });
 	}
 });

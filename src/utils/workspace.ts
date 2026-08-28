@@ -1,7 +1,7 @@
 import os from "node:os";
 
 export function defaultWorkspacePath(): string {
-	return os.homedir() || Deno.cwd();
+	return os.homedir() || process.cwd();
 }
 
 export function expandHomePath(path: string): string {

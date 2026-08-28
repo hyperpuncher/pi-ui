@@ -703,7 +703,7 @@ function createWorkerPool() {
 			poolSize: 1,
 			totalASTLRUCacheSize: 100,
 			workerFactory: () =>
-				new Worker(new URL("./pierre-worker.js", import.meta.url), {
+				new Worker(new URL("../pierre-worker.js", import.meta.url), {
 					type: "module",
 				}),
 		},
@@ -808,7 +808,7 @@ function bindWorkspaceKeyboardNavigation(): void {
 	});
 }
 
-function isTextInput(target: EventTarget): boolean {
+function isTextInput(target: EventTarget | undefined): boolean {
 	return (
 		target instanceof HTMLInputElement ||
 		target instanceof HTMLTextAreaElement ||

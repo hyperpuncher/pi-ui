@@ -1,4 +1,17 @@
+import type { Stats } from "node:fs";
+import {
+	lstat,
+	mkdir,
+	open,
+	readdir,
+	realpath,
+	rename,
+	rm,
+	stat,
+} from "node:fs/promises";
 import * as path from "node:path";
+
+import { isAlreadyExists, isNotFound, isPermissionDenied } from "../utils/fs-errors.ts";
 
 const maxDirectoryCount = 20_000;
 const maxEntryCount = 20_000;
@@ -49,8 +62,8 @@ export async function createWorkspaceEntry(
 ): Promise<{ path: string }> {
 	const target = await resolveWorkspaceTarget(workspacePath, entryPath);
 	try {
-		if (kind === "folder") await Deno.mkdir(target.resolved);
-		else (await Deno.open(target.resolved, { createNew: true, write: true })).close();
+		if (kind === "folder") await mkdir(target.resolved);
+		else await (await open(target.resolved, "wx")).close();
 	} catch (error) {
 		throw workspaceMutationError(error);
 	}
@@ -65,13 +78,13 @@ export async function moveWorkspaceEntry(
 	const source = await resolveWorkspaceEntry(workspacePath, entryPath);
 	const destination = await resolveWorkspaceTarget(workspacePath, destinationPath);
 	try {
-		await Deno.lstat(destination.resolved);
+		await lstat(destination.resolved);
 		throw new WorkspaceFileError(409, "A file or folder already exists there.");
 	} catch (error) {
-		if (!(error instanceof Deno.errors.NotFound)) throw error;
+		if (!isNotFound(error)) throw error;
 	}
 	try {
-		await Deno.rename(source, destination.resolved);
+		await rename(source, destination.resolved);
 	} catch (error) {
 		throw workspaceMutationError(error);
 	}
@@ -84,7 +97,7 @@ export async function removeWorkspaceEntry(
 ): Promise<void> {
 	const resolved = await resolveWorkspaceEntry(workspacePath, entryPath);
 	try {
-		await Deno.remove(resolved, { recursive: true });
+		await rm(resolved, { recursive: true });
 	} catch (error) {
 		throw workspaceMutationError(error);
 	}
@@ -95,13 +108,13 @@ export async function readWorkspaceFile(
 	filePath: string,
 ): Promise<WorkspaceFile | WorkspaceUnavailableFile> {
 	const resolved = await resolveWorkspaceFile(workspacePath, filePath);
-	const info = await Deno.stat(resolved);
-	if (!info.isFile) throw new WorkspaceFileError(400, "Path is not a file.");
+	const info = await stat(resolved);
+	if (!info.isFile()) throw new WorkspaceFileError(400, "Path is not a file.");
 	const path = normalizeRelativePath(filePath);
 	if (info.size > maximumWorkspaceFileBytes) {
 		return { message: "File is too large to view in pi-ui.", path, size: info.size };
 	}
-	const bytes = await Deno.readFile(resolved);
+	const bytes = await Bun.file(resolved).bytes();
 	let contents: string;
 	try {
 		contents = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -127,16 +140,16 @@ export async function writeWorkspaceFile(
 		throw new WorkspaceFileError(413, "File is too large to save in pi-ui.");
 	}
 	const resolved = await resolveWorkspaceFile(workspacePath, filePath);
-	const current = await Deno.stat(resolved);
+	const current = await stat(resolved);
 	validateReadableFile(current);
-	const currentBytes = await Deno.readFile(resolved);
+	const currentBytes = await Bun.file(resolved).bytes();
 	if ((await fileRevision(currentBytes)) !== expectedRevision) {
 		throw new WorkspaceFileError(
 			409,
 			"The file changed on disk. Reopen it before saving.",
 		);
 	}
-	await Deno.writeTextFile(resolved, contents);
+	await Bun.write(resolved, contents);
 	const saved = await readWorkspaceFile(workspacePath, filePath);
 	if ("message" in saved) throw new WorkspaceFileError(500, saved.message);
 	return saved;
@@ -157,10 +170,9 @@ async function walkWorkspace(
 	) {
 		const current = directories[index];
 		if (!current || current.depth > maxFileDepth) continue;
-		let entries: Deno.DirEntry[];
+		let entries;
 		try {
-			entries = [];
-			for await (const entry of Deno.readDir(current.path)) entries.push(entry);
+			entries = await readdir(current.path, { withFileTypes: true });
 		} catch {
 			continue;
 		}
@@ -168,20 +180,20 @@ async function walkWorkspace(
 		for (const entry of entries) {
 			if (paths.length >= maxEntryCount) return paths;
 			if (
-				entry.isSymlink ||
+				entry.isSymbolicLink() ||
 				ignoredDirectoryNames.has(entry.name) ||
 				(!includeHiddenDirectories &&
-					entry.isDirectory &&
+					entry.isDirectory() &&
 					entry.name.startsWith("."))
 			)
 				continue;
 			const entryPath = path.join(current.path, entry.name);
-			if (entry.isDirectory) {
+			if (entry.isDirectory()) {
 				paths.push(
 					`${path.relative(workspacePath, entryPath).replaceAll("\\", "/")}/`,
 				);
 				directories.push({ depth: current.depth + 1, path: entryPath });
-			} else if (entry.isFile) {
+			} else if (entry.isFile()) {
 				paths.push(path.relative(workspacePath, entryPath).replaceAll("\\", "/"));
 			}
 		}
@@ -194,17 +206,17 @@ async function resolveWorkspaceEntry(
 	entryPath: string,
 ): Promise<string> {
 	const target = await resolveWorkspaceTarget(workspacePath, entryPath);
-	let info: Deno.FileInfo;
+	let info: Stats;
 	try {
-		info = await Deno.lstat(target.resolved);
+		info = await lstat(target.resolved);
 	} catch (error) {
 		throw workspaceMutationError(error);
 	}
-	if (info.isSymlink) {
+	if (info.isSymbolicLink()) {
 		throw new WorkspaceFileError(400, "Symbolic links cannot be changed.");
 	}
-	const resolved = await Deno.realPath(target.resolved);
-	const workspace = await Deno.realPath(workspacePath);
+	const resolved = await realpath(target.resolved);
+	const workspace = await realpath(workspacePath);
 	if (!isWithinWorkspace(workspace, resolved)) {
 		throw new WorkspaceFileError(400, "File is outside the workspace.");
 	}
@@ -219,14 +231,14 @@ async function resolveWorkspaceTarget(
 	if (!normalized || normalized.includes("\0") || path.isAbsolute(normalized)) {
 		throw new WorkspaceFileError(400, "Invalid workspace file path.");
 	}
-	const workspace = await Deno.realPath(workspacePath);
+	const workspace = await realpath(workspacePath);
 	const candidate = path.resolve(workspace, normalized);
 	if (candidate === workspace || !isWithinWorkspace(workspace, candidate)) {
 		throw new WorkspaceFileError(400, "File is outside the workspace.");
 	}
 	let parent: string;
 	try {
-		parent = await Deno.realPath(path.dirname(candidate));
+		parent = await realpath(path.dirname(candidate));
 	} catch (error) {
 		throw workspaceMutationError(error);
 	}
@@ -247,16 +259,16 @@ async function resolveWorkspaceFile(
 	if (!normalized || normalized.includes("\0") || path.isAbsolute(normalized)) {
 		throw new WorkspaceFileError(400, "Invalid workspace file path.");
 	}
-	const workspace = await Deno.realPath(workspacePath);
+	const workspace = await realpath(workspacePath);
 	const candidate = path.resolve(workspace, normalized);
 	if (!isWithinWorkspace(workspace, candidate)) {
 		throw new WorkspaceFileError(400, "File is outside the workspace.");
 	}
 	let resolved: string;
 	try {
-		resolved = await Deno.realPath(candidate);
+		resolved = await realpath(candidate);
 	} catch (error) {
-		if (error instanceof Deno.errors.NotFound) {
+		if (isNotFound(error)) {
 			throw new WorkspaceFileError(404, "File not found.");
 		}
 		throw error;
@@ -269,13 +281,13 @@ async function resolveWorkspaceFile(
 
 function workspaceMutationError(error: ErrorOptions["cause"]): WorkspaceFileError {
 	if (error instanceof WorkspaceFileError) return error;
-	if (error instanceof Deno.errors.AlreadyExists) {
+	if (isAlreadyExists(error)) {
 		return new WorkspaceFileError(409, "A file or folder already exists there.");
 	}
-	if (error instanceof Deno.errors.NotFound) {
+	if (isNotFound(error)) {
 		return new WorkspaceFileError(404, "File or folder not found.");
 	}
-	if (error instanceof Deno.errors.PermissionDenied) {
+	if (isPermissionDenied(error)) {
 		return new WorkspaceFileError(403, "Permission denied.");
 	}
 	return new WorkspaceFileError(500, "Could not change the file or folder.");
@@ -294,16 +306,13 @@ function normalizeRelativePath(filePath: string): string {
 	return filePath.replaceAll("\\", "/");
 }
 
-function validateReadableFile(info: Deno.FileInfo): void {
-	if (!info.isFile) throw new WorkspaceFileError(400, "Path is not a file.");
+function validateReadableFile(info: Stats): void {
+	if (!info.isFile()) throw new WorkspaceFileError(400, "Path is not a file.");
 	if (info.size > maximumWorkspaceFileBytes) {
 		throw new WorkspaceFileError(413, "File is too large to view in pi-ui.");
 	}
 }
 
-async function fileRevision(contents: Uint8Array): Promise<string> {
-	const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(contents).buffer);
-	return Array.from(new Uint8Array(digest), (byte) =>
-		byte.toString(16).padStart(2, "0"),
-	).join("");
+function fileRevision(contents: Uint8Array): Promise<string> {
+	return Promise.resolve(new Bun.CryptoHasher("sha256").update(contents).digest("hex"));
 }

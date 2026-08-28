@@ -1,11 +1,13 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertThrows } from "#testing/assertions";
 
 import {
 	formatWorkspaceReviewPrompt,
 	parseWorkspaceReviewComments,
 } from "./workspace-review-comments.ts";
 
-Deno.test("review comment parsing validates and trims client input", () => {
+test("review comment parsing validates and trims client input", () => {
 	assertEquals(
 		parseWorkspaceReviewComments({
 			comments: [
@@ -47,7 +49,7 @@ Deno.test("review comment parsing validates and trims client input", () => {
 	);
 });
 
-Deno.test("review comment parsing rejects an oversized batch", () => {
+test("review comment parsing rejects an oversized batch", () => {
 	assertThrows(() =>
 		parseWorkspaceReviewComments({
 			comments: Array.from({ length: 11 }, () => ({
@@ -62,7 +64,7 @@ Deno.test("review comment parsing rejects an oversized batch", () => {
 	);
 });
 
-Deno.test("review comments format as a concise agent prompt", () => {
+test("review comments format as a concise agent prompt", () => {
 	const prompt = formatWorkspaceReviewPrompt([
 		{
 			body: "another one!",

@@ -1,4 +1,6 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertRejects } from "#testing/assertions";
 
 import { attachmentFileKind } from "./attachment-file.js";
 
@@ -24,14 +26,14 @@ const {
 	jpegFileName,
 } = await import("./file-transfer.js");
 
-Deno.test("file references use one line per path and end with a newline", () => {
+test("file references use one line per path and end with a newline", () => {
 	assertEquals(
 		formatFileReferences(["/tmp/one.txt", "/tmp/two.txt"]),
 		"@/tmp/one.txt\n@/tmp/two.txt\n",
 	);
 });
 
-Deno.test("attachment paths are composed separately from visible prompt editing", () => {
+test("attachment paths are composed separately from visible prompt editing", () => {
 	assertEquals(
 		composePrompt("review these", ["/tmp/one.txt", "/tmp/two.txt"]),
 		"@/tmp/one.txt\n@/tmp/two.txt\nreview these",
@@ -39,7 +41,7 @@ Deno.test("attachment paths are composed separately from visible prompt editing"
 	assertEquals(composePrompt("", ["/tmp/one.txt"]), "@/tmp/one.txt");
 });
 
-Deno.test("transferred files use their original paths", () => {
+test("transferred files use their original paths", () => {
 	const values = new Map(
 		Object.entries({
 			"text/uri-list": "# files\nfile:///tmp/one.txt\nfile:///tmp/two%20words.txt",
@@ -57,7 +59,7 @@ Deno.test("transferred files use their original paths", () => {
 	);
 });
 
-Deno.test("attachment file kinds use MIME types and extensions", () => {
+test("attachment file kinds use MIME types and extensions", () => {
 	assertEquals(attachmentFileKind("vadim.txt", "text/plain"), "text");
 	assertEquals(attachmentFileKind("recording.ogg", "audio/ogg"), "audio");
 	assertEquals(attachmentFileKind("source.ts", ""), "code");
@@ -65,7 +67,7 @@ Deno.test("attachment file kinds use MIME types and extensions", () => {
 	assertEquals(attachmentFileKind("unknown.bin", ""), "file");
 });
 
-Deno.test("AVIF images are detected and renamed for JPEG conversion", () => {
+test("AVIF images are detected and renamed for JPEG conversion", () => {
 	assertEquals(isAvifImageFile({ name: "photo.bin", type: "image/avif" }), true);
 	assertEquals(isAvifImageFile({ name: "photo.AVIF", type: "" }), true);
 	assertEquals(isAvifImageFile({ name: "photo.png", type: "image/png" }), false);
@@ -73,13 +75,13 @@ Deno.test("AVIF images are detected and renamed for JPEG conversion", () => {
 	assertEquals(jpegFileName("pasted-image"), "pasted-image.jpg");
 });
 
-Deno.test("HEIC and HEIF images are detected by MIME type or extension", () => {
+test("HEIC and HEIF images are detected by MIME type or extension", () => {
 	assertEquals(isHeicImageFile({ name: "photo.bin", type: "image/heic" }), true);
 	assertEquals(isHeicImageFile({ name: "photo.HEIF", type: "" }), true);
 	assertEquals(isHeicImageFile({ name: "photo.avif", type: "image/avif" }), false);
 });
 
-Deno.test("AVIF conversion produces a quality 85 JPEG and closes the bitmap", async () => {
+test("AVIF conversion produces a quality 85 JPEG and closes the bitmap", async () => {
 	const originalBitmap = Object.getOwnPropertyDescriptor(
 		globalThis,
 		"createImageBitmap",
@@ -134,7 +136,7 @@ Deno.test("AVIF conversion produces a quality 85 JPEG and closes the bitmap", as
 	}
 });
 
-Deno.test("AVIF conversion reports decoding failures clearly", async () => {
+test("AVIF conversion reports decoding failures clearly", async () => {
 	const original = Object.getOwnPropertyDescriptor(globalThis, "createImageBitmap");
 	Object.defineProperty(globalThis, "createImageBitmap", {
 		configurable: true,
@@ -162,7 +164,7 @@ function restoreGlobal(name: string, descriptor?: PropertyDescriptor) {
 	}
 }
 
-Deno.test("transferred files use a webview-provided path without reading bytes", () => {
+test("transferred files use a webview-provided path without reading bytes", () => {
 	assertEquals(
 		extractTransferredFilePaths({
 			files: [{ path: "/tmp/large-model.bin", name: "large-model.bin" }],

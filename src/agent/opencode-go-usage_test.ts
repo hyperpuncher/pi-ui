@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { formatOpenCodeGoUsage, parseOpenCodeGoUsage } from "./opencode-go-usage.ts";
 
-Deno.test("parses OpenCode Go usage windows", () => {
+test("parses OpenCode Go usage windows", () => {
 	assertEquals(
 		parseOpenCodeGoUsage({
 			usage: {
@@ -19,7 +21,7 @@ Deno.test("parses OpenCode Go usage windows", () => {
 	);
 });
 
-Deno.test("formats OpenCode Go limits as remaining percentages", () => {
+test("formats OpenCode Go limits as remaining percentages", () => {
 	assertEquals(
 		formatOpenCodeGoUsage({
 			rolling: { usedPercent: 12 },
@@ -30,7 +32,7 @@ Deno.test("formats OpenCode Go limits as remaining percentages", () => {
 	);
 });
 
-Deno.test("rejects malformed OpenCode Go usage", () => {
+test("rejects malformed OpenCode Go usage", () => {
 	assertEquals(
 		parseOpenCodeGoUsage({ usage: { rolling: { percent: "nope" } } }),
 		undefined,

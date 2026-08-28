@@ -62,9 +62,9 @@ function renderCommandRow(item: AppCommandMetadata): string {
 					{item.description}
 				</span>
 			</span>
-			{item.shortcut.display && (
+			{item.shortcut && (
 				<span class="ml-auto">
-					<ShortcutKbd shortcut={item.shortcut.display} />
+					<ShortcutKbd shortcut={item.shortcut} />
 				</span>
 			)}
 		</div>,

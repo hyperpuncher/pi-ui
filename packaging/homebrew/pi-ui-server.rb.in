@@ -27,6 +27,6 @@ class PiUiServer < Formula
   end
 
   test do
-    assert_match "pi-ui-server", shell_output("#{bin}/pi-ui-server invalid 2>&1", 1)
+    assert_equal version.to_s, shell_output("#{bin}/pi-ui-server --version").strip
   end
 end

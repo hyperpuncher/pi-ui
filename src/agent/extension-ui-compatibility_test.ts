@@ -1,10 +1,15 @@
+import { test } from "bun:test";
+
 import {
 	createAgentSessionFromServices,
 	createAgentSessionRuntime,
 	createAgentSessionServices,
 	SessionManager,
 } from "@earendil-works/pi-coding-agent";
-import { assertEquals } from "@std/assert";
+
+import { assertEquals } from "#testing/assertions";
+import { mkdir, remove, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { AppStore } from "../state/app-store.ts";
 import {
@@ -43,13 +48,13 @@ export default function (pi) {
 }
 `;
 
-Deno.test("a discovered pi extension uses the web UI bridge end to end", async () => {
-	const root = await Deno.makeTempDir();
+test("a discovered pi extension uses the web UI bridge end to end", async () => {
+	const root = await makeTempDir();
 	const agentDir = `${root}/agent`;
 	const cwd = `${root}/workspace`;
-	await Deno.mkdir(`${agentDir}/extensions`, { recursive: true });
-	await Deno.mkdir(cwd);
-	await Deno.writeTextFile(`${agentDir}/extensions/ui-fixture.js`, fixtureSource);
+	await mkdir(`${agentDir}/extensions`, { recursive: true });
+	await mkdir(cwd);
+	await writeTextFile(`${agentDir}/extensions/ui-fixture.js`, fixtureSource);
 
 	const store = new AppStore();
 	store.setPromptEditorText("browser draft");
@@ -88,7 +93,7 @@ Deno.test("a discovered pi extension uses the web UI bridge end to end", async (
 		);
 	} finally {
 		await controller?.dispose();
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });
 

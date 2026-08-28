@@ -1,8 +1,10 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertExists } from "#testing/assertions";
 
 import { createWorkspaceReviewCommentStore } from "./workspace-review-comment-state.ts";
 
-Deno.test("review comment store drafts and batches comments", () => {
+test("review comment store drafts and batches comments", () => {
 	const store = createWorkspaceReviewCommentStore();
 	assertEquals(
 		store.add("src/app.ts", "version-1", {
@@ -56,7 +58,7 @@ Deno.test("review comment store drafts and batches comments", () => {
 	]);
 });
 
-Deno.test("review comment store removes comments when their diff changes", () => {
+test("review comment store removes comments when their diff changes", () => {
 	const store = createWorkspaceReviewCommentStore();
 	store.add("src/app.ts", "version-1", {
 		end: 14,

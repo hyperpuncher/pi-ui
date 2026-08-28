@@ -2,6 +2,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { operatingSystem, type OperatingSystem } from "../utils/platform.ts";
+
 export type SessionResumeRuntimeState = {
 	streaming: boolean;
 	observedRunning: boolean;
@@ -25,7 +27,7 @@ type PathApi = Pick<typeof path, "join" | "resolve">;
 type CanonicalPathOptions = {
 	homeDir?: string;
 	pathApi?: PathApi;
-	platform?: typeof Deno.build.os;
+	platform?: OperatingSystem;
 };
 
 /** Matches the SDK's lexical resolvePath semantics without reading the session. */
@@ -33,7 +35,7 @@ export function canonicalSessionPath(
 	input: string,
 	options: CanonicalPathOptions = {},
 ): string {
-	const platform = options.platform ?? Deno.build.os;
+	const platform = options.platform ?? operatingSystem;
 	const pathApi = options.pathApi ?? path;
 	const home = options.homeDir ?? os.homedir();
 	let normalized = input;

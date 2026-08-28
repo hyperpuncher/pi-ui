@@ -1,4 +1,6 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { createWindowFocusGuard } from "./window-focus.js";
 
@@ -8,7 +10,7 @@ type Focusable = {
 	focus(options?: { preventScroll?: boolean }): void;
 };
 
-Deno.test("window focus guard blurs and restores the focused control", () => {
+test("window focus guard blurs and restores the focused control", () => {
 	const body = focusable();
 	const input = focusable();
 	let active: Focusable = input;
@@ -36,7 +38,7 @@ Deno.test("window focus guard blurs and restores the focused control", () => {
 	assertEquals(active, input);
 });
 
-Deno.test("window focus guard does not steal focus or run a stale restore", () => {
+test("window focus guard does not steal focus or run a stale restore", () => {
 	const body = focusable();
 	const input = focusable();
 	const other = focusable();

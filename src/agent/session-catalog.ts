@@ -1,9 +1,11 @@
+import { readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
+
 import {
 	type AgentSessionEvent,
 	getAgentDir,
 	type SessionInfo,
 } from "@earendil-works/pi-coding-agent";
-import { join } from "@std/path";
 
 import type {
 	AppSessionSummary,
@@ -11,6 +13,7 @@ import type {
 	BackgroundSessionStatus,
 } from "../state/app-store.ts";
 import { errorMessage } from "../utils/errors.ts";
+import { isNotFound } from "../utils/fs-errors.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { isRecord, isString } from "../utils/type-guards.ts";
 import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
@@ -220,15 +223,15 @@ export class SessionCatalog {
 		this.pathRefreshGenerations.set(path, generation);
 		let candidate: SessionCandidate;
 		try {
-			const file = await Deno.stat(path);
-			const modified = file.mtime ?? new Date();
+			const file = await stat(path);
+			const modified = file.mtime;
 			candidate = {
 				path,
 				indexedBytes: file.size,
 				mtime: modified.getTime(),
 			};
 		} catch (error) {
-			if (!(error instanceof Deno.errors.NotFound)) return;
+			if (!isNotFound(error)) return;
 			if (this.pathRefreshGenerations.get(path) !== generation) return;
 			if (!options.preserveMissing) this.state.removeSession(path);
 			return;
@@ -400,12 +403,14 @@ export async function listCachedSessions(
 async function sessionCandidates(sessionsRoot: string): Promise<SessionCandidate[]> {
 	const paths: string[] = [];
 	try {
-		for await (const workspace of Deno.readDir(sessionsRoot)) {
-			if (!workspace.isDirectory) continue;
+		for (const workspace of await readdir(sessionsRoot, { withFileTypes: true })) {
+			if (!workspace.isDirectory()) continue;
 			const workspacePath = join(sessionsRoot, workspace.name);
 			try {
-				for await (const entry of Deno.readDir(workspacePath)) {
-					if (entry.isFile && entry.name.endsWith(".jsonl")) {
+				for (const entry of await readdir(workspacePath, {
+					withFileTypes: true,
+				})) {
+					if (entry.isFile() && entry.name.endsWith(".jsonl")) {
 						paths.push(join(workspacePath, entry.name));
 					}
 				}
@@ -414,15 +419,15 @@ async function sessionCandidates(sessionsRoot: string): Promise<SessionCandidate
 			}
 		}
 	} catch (error) {
-		if (error instanceof Deno.errors.NotFound) return [];
+		if (isNotFound(error)) return [];
 		throw error;
 	}
 
 	const candidates = await Promise.all(
 		paths.map(async (path): Promise<SessionCandidate | undefined> => {
 			try {
-				const info = await Deno.stat(path);
-				const modified = info.mtime ?? new Date(0);
+				const info = await stat(path);
+				const modified = info.mtime;
 				return {
 					path,
 					indexedBytes: info.size,

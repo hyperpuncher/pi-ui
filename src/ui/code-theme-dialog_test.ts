@@ -1,8 +1,10 @@
-import { assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertStringIncludes } from "#testing/assertions";
 
 import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
 
-Deno.test("code theme dialog delegates filtering and selection to datastar", () => {
+test("code theme dialog delegates filtering and selection to datastar", () => {
 	const html = renderCodeThemeDialog();
 
 	assertStringIncludes(html, 'data-bind:code-theme-search=""');

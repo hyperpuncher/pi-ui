@@ -1,11 +1,13 @@
+import { test } from "bun:test";
+
 import {
 	assertAlmostEquals as assertNear,
 	assertEquals as assertEqual,
-} from "@std/assert";
+} from "#testing/assertions";
 
 import { StreamingFrameScheduler } from "./streaming-frame-scheduler.ts";
 
-Deno.test("streaming scheduler is latest-wins with one queued frame", () => {
+test("streaming scheduler is latest-wins with one queued frame", () => {
 	const clock = new FakeClock();
 	const rendered: string[] = [];
 	const scheduler = new StreamingFrameScheduler<string>(
@@ -22,7 +24,7 @@ Deno.test("streaming scheduler is latest-wins with one queued frame", () => {
 	assertEqual(scheduler.stats.coalescedSnapshots, 2);
 });
 
-Deno.test("streaming scheduler does not overlap reentrant rendering", () => {
+test("streaming scheduler does not overlap reentrant rendering", () => {
 	const clock = new FakeClock();
 	const rendered: number[] = [];
 	let active = 0;
@@ -44,7 +46,7 @@ Deno.test("streaming scheduler does not overlap reentrant rendering", () => {
 	assertEqual(maximum, 1);
 });
 
-Deno.test("streaming scheduler immediately flushes completion during a slow render", () => {
+test("streaming scheduler immediately flushes completion during a slow render", () => {
 	const clock = new FakeClock();
 	const rendered: string[] = [];
 	let scheduler: StreamingFrameScheduler<string>;
@@ -61,7 +63,7 @@ Deno.test("streaming scheduler immediately flushes completion during a slow rend
 	assertEqual(clock.pending, 0);
 });
 
-Deno.test("streaming scheduler flushes final content and clears replacement work", () => {
+test("streaming scheduler flushes final content and clears replacement work", () => {
 	const clock = new FakeClock();
 	const rendered: string[] = [];
 	const scheduler = new StreamingFrameScheduler<string>(
@@ -79,7 +81,7 @@ Deno.test("streaming scheduler flushes final content and clears replacement work
 	assertEqual(rendered.join(","), "final");
 });
 
-Deno.test("streaming scheduler follows 60 through 240 Hz monotonic cadence", () => {
+test("streaming scheduler follows 60 through 240 Hz monotonic cadence", () => {
 	for (const hz of [60, 75, 90, 100, 120, 144, 165, 240]) {
 		const clock = new FakeClock();
 		const times: number[] = [];
@@ -98,7 +100,7 @@ Deno.test("streaming scheduler follows 60 through 240 Hz monotonic cadence", () 
 	}
 });
 
-Deno.test("streaming scheduler reports skipped and late deadlines", () => {
+test("streaming scheduler reports skipped and late deadlines", () => {
 	let now = 0;
 	let timer: (() => void) | undefined;
 	const scheduler = new StreamingFrameScheduler<number>(() => {}, {

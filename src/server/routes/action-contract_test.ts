@@ -1,4 +1,7 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
+import { readTextFile } from "#testing/files";
 
 import { assertStringExcludes } from "../../testing/assertions.ts";
 import { endpoints } from "./endpoints.ts";
@@ -45,7 +48,7 @@ export function unknownActionPaths(
 	);
 }
 
-Deno.test("literal action path extraction and validation", () => {
+test("literal action path extraction and validation", () => {
 	const registered = ["/prompt", "/messages/enhance"];
 	assertEquals(
 		extractLiteralActionPaths(`
@@ -64,12 +67,12 @@ Deno.test("literal action path extraction and validation", () => {
 	assertEquals(unknownActionPaths("@post('/unknown')", registered), ["/unknown"]);
 });
 
-Deno.test("TypeScript write actions use endpoint constants", async () => {
+test("TypeScript write actions use endpoint constants", async () => {
 	const sources = await readActionSources(typescriptActionSources);
 	assertEquals(extractLiteralWriteActionPaths(sources.join("\n")), []);
 });
 
-Deno.test("each literal browser action references a registered endpoint", async () => {
+test("each literal browser action references a registered endpoint", async () => {
 	const browserActions = await readActionSources(browserActionSources);
 	assertEquals(
 		unknownActionPaths(browserActions.join("\n"), Object.values(endpoints)),
@@ -77,7 +80,7 @@ Deno.test("each literal browser action references a registered endpoint", async 
 	);
 });
 
-Deno.test("Datastar actions declare narrow request contracts", async () => {
+test("Datastar actions declare narrow request contracts", async () => {
 	const source = (await readActionSources(typescriptActionSources)).join("\n");
 	const actionCount = countMatches(source, /@(get|post|put|patch|delete)\(/g);
 	const payloadCount = countMatches(source, /\bpayload\s*:/g);
@@ -101,6 +104,6 @@ function extractLiteralWriteActionPaths(source: string): string[] {
 
 async function readActionSources(paths: readonly string[]): Promise<string[]> {
 	return await Promise.all(
-		paths.map((path) => Deno.readTextFile(new URL(path, import.meta.url))),
+		paths.map((path) => readTextFile(new URL(path, import.meta.url))),
 	);
 }

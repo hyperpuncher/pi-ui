@@ -1,6 +1,7 @@
 import { parsePatchFiles } from "@pierre/diffs";
 
 import { outputCommand } from "../utils/command.ts";
+import { isNotFound } from "../utils/fs-errors.ts";
 import { sortWorkspaceReviewEntries } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommit,
@@ -436,7 +437,7 @@ async function git(cwd: string, ...args: string[]): Promise<GitResult> {
 			stdout: decoder.decode(output.stdout),
 		};
 	} catch (error) {
-		if (!(error instanceof Deno.errors.NotFound)) throw error;
+		if (!isNotFound(error)) throw error;
 		return { code: 127, stderr: "Git executable not found.", stdout: "" };
 	}
 }

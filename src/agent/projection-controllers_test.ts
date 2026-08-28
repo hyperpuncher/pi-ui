@@ -1,7 +1,15 @@
+import { test } from "bun:test";
 import os from "node:os";
 
 import type { SessionTreeNode } from "@earendil-works/pi-coding-agent";
-import { assertEquals, assertStrictEquals, assertStringIncludes } from "@std/assert";
+
+import {
+	assertEquals,
+	assertStrictEquals,
+	assertStringIncludes,
+} from "#testing/assertions";
+import { mkdir, remove, utime, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { AppStore } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
@@ -42,7 +50,7 @@ import {
 import { flattenTree, TreeProjector } from "./tree-projector.ts";
 import { formatStats } from "./usage-controller.ts";
 
-Deno.test("tool presentation preserves representative and malformed values", () => {
+test("tool presentation preserves representative and malformed values", () => {
 	assertEquals(toolEndMeta(Date.now() - 90_000), "1m 30s");
 	assertEquals(formatToolStart("edit", { edits: [{}, {}] }), {
 		text: "2 replacements",
@@ -104,7 +112,7 @@ Deno.test("tool presentation preserves representative and malformed values", () 
 	assertEquals(summarizeValue(circular), "[object Object]");
 });
 
-Deno.test("transcript projection preserves user, skill, thought, and assistant roles", () => {
+test("transcript projection preserves user, skill, thought, and assistant roles", () => {
 	const timestamp = new Date(0);
 	assertEquals(userContentToMessages("hello", timestamp), [
 		{ role: "user", text: "hello", timestamp },
@@ -125,7 +133,7 @@ Deno.test("transcript projection preserves user, skill, thought, and assistant r
 	);
 });
 
-Deno.test("transcript projection restores persisted provider errors", () => {
+test("transcript projection restores persisted provider errors", () => {
 	const timestamp = new Date(0);
 	const projector = new TranscriptProjector();
 	const message = assistantMessageStub({
@@ -149,7 +157,7 @@ Deno.test("transcript projection restores persisted provider errors", () => {
 	);
 });
 
-Deno.test("user projection keeps image data and hides transfer implementation text", () => {
+test("user projection keeps image data and hides transfer implementation text", () => {
 	const [message] = new TranscriptProjector().message(
 		{
 			role: "user",
@@ -184,7 +192,7 @@ Deno.test("user projection keeps image data and hides transfer implementation te
 	});
 });
 
-Deno.test("model picker keeps scoped models above the current model", () => {
+test("model picker keeps scoped models above the current model", () => {
 	const models = [
 		{ id: "current", provider: "anthropic", scoped: false },
 		{ id: "starred-z", provider: "zeta", scoped: true },
@@ -199,7 +207,7 @@ Deno.test("model picker keeps scoped models above the current model", () => {
 	);
 });
 
-Deno.test("model patterns preserve wildcards, thinking suffixes, and first-match ordering", () => {
+test("model patterns preserve wildcards, thinking suffixes, and first-match ordering", () => {
 	const models = [
 		{ provider: "openai", id: "gpt-5", name: "GPT Five" },
 		{ provider: "anthropic", id: "claude-sonnet", name: "Sonnet" },
@@ -215,7 +223,7 @@ Deno.test("model patterns preserve wildcards, thinking suffixes, and first-match
 	]);
 });
 
-Deno.test("tree projection orders the active branch first", () => {
+test("tree projection orders the active branch first", () => {
 	const entry = (id: string, parentId: string | null, text: string) =>
 		sessionEntryStub({
 			id,
@@ -242,7 +250,7 @@ Deno.test("tree projection orders the active branch first", () => {
 	assertEquals(rows[1].prefix, "├─ ");
 });
 
-Deno.test("tree projection shows tool call details and hides tool-only assistants", () => {
+test("tree projection shows tool call details and hides tool-only assistants", () => {
 	const assistant = sessionEntryStub({
 		id: "assistant",
 		parentId: null,
@@ -297,7 +305,7 @@ Deno.test("tree projection shows tool call details and hides tool-only assistant
 	);
 });
 
-Deno.test("tree navigation rejects overlap and can cancel summarization", async () => {
+test("tree navigation rejects overlap and can cancel summarization", async () => {
 	let navigateCount = 0;
 	let abortCount = 0;
 	let finishNavigation = (_result: { cancelled: boolean }) => {};
@@ -332,7 +340,7 @@ Deno.test("tree navigation rejects overlap and can cancel summarization", async 
 	assertEquals({ navigateCount, abortCount }, { navigateCount: 1, abortCount: 1 });
 });
 
-Deno.test("stale tree navigation cannot mutate a reused session generation", async () => {
+test("stale tree navigation cannot mutate a reused session generation", async () => {
 	let finishOld = (_result: { cancelled: boolean; editorText: string }) => {};
 	const oldNavigation = new Promise<{ cancelled: boolean; editorText: string }>(
 		(resolve) => (finishOld = resolve),
@@ -374,7 +382,7 @@ Deno.test("stale tree navigation cannot mutate a reused session generation", asy
 	assertEquals({ navigated, treeLoads }, { navigated: 1, treeLoads: 1 });
 });
 
-Deno.test("tree navigation reports successful empty editor text explicitly", async () => {
+test("tree navigation reports successful empty editor text explicitly", async () => {
 	let navigated = 0;
 	const runtime = agentSessionRuntimeStub({
 		session: {
@@ -399,15 +407,15 @@ Deno.test("tree navigation reports successful empty editor text explicitly", asy
 	assertEquals(navigated, 1);
 });
 
-Deno.test("session discovery indexes every candidate in newest-first order", async () => {
-	const root = await Deno.makeTempDir();
+test("session discovery indexes every candidate in newest-first order", async () => {
+	const root = await makeTempDir();
 	try {
 		const workspace = `${root}/workspace`;
-		await Deno.mkdir(workspace);
+		await mkdir(workspace);
 		for (let index = 1; index <= 4; index++) {
 			const timestamp = new Date(index * 1_000);
 			const path = `${workspace}/${index}.jsonl`;
-			await Deno.writeTextFile(
+			await writeTextFile(
 				path,
 				`${JSON.stringify({
 					type: "session",
@@ -427,7 +435,7 @@ Deno.test("session discovery indexes every candidate in newest-first order", asy
 					},
 				})}\n`,
 			);
-			await Deno.utime(path, timestamp, timestamp);
+			await utime(path, timestamp, timestamp);
 		}
 
 		const sessions = await listCachedSessions(root, `${root}/session-index.json`);
@@ -437,11 +445,11 @@ Deno.test("session discovery indexes every candidate in newest-first order", asy
 		);
 		assertEquals(sessions[0]?.firstMessage, "Message 4");
 	} finally {
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });
 
-Deno.test("session catalog ignores an older refresh that finishes last", async () => {
+test("session catalog ignores an older refresh that finishes last", async () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);
 	let finishOlder = (_value: PreparedSessionList) => {};
@@ -481,7 +489,7 @@ function sessionInfo(
 	};
 }
 
-Deno.test("session catalog updates a streaming session incrementally", () => {
+test("session catalog updates a streaming session incrementally", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);
 	const empty = sessionInfo("/session", "Untitled session");
@@ -508,7 +516,7 @@ Deno.test("session catalog updates a streaming session incrementally", () => {
 	assertEquals(state.sessions[0]?.subtitle, "1 message");
 });
 
-Deno.test("session catalog shows a new session before pi creates its file", () => {
+test("session catalog shows a new session before pi creates its file", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);
 
@@ -546,7 +554,7 @@ Deno.test("session catalog shows a new session before pi creates its file", () =
 	);
 });
 
-Deno.test("session catalog promotes user-relevant activity", () => {
+test("session catalog promotes user-relevant activity", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);
 	catalog.applyPrepared({
@@ -574,7 +582,7 @@ Deno.test("session catalog promotes user-relevant activity", () => {
 	);
 });
 
-Deno.test("session catalog status changes preserve live row order", () => {
+test("session catalog status changes preserve live row order", () => {
 	const state = new AppStore();
 	const statuses = new Map<string, "running" | "completed">();
 	const catalog = new SessionCatalog(state, {
@@ -614,7 +622,7 @@ Deno.test("session catalog status changes preserve live row order", () => {
 	);
 });
 
-Deno.test("session catalog owns watcher activation and cleanup", () => {
+test("session catalog owns watcher activation and cleanup", () => {
 	const state = new AppStore();
 	let watchCount = 0;
 	let stopCount = 0;
@@ -640,7 +648,7 @@ Deno.test("session catalog owns watcher activation and cleanup", () => {
 	assertEquals(stopCount, 1);
 });
 
-Deno.test("session catalog keeps every recent workspace", () => {
+test("session catalog keeps every recent workspace", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);
 	const sessions = Array.from({ length: 12 }, (_, index) => {
@@ -659,7 +667,7 @@ Deno.test("session catalog keeps every recent workspace", () => {
 	);
 });
 
-Deno.test("session catalog keeps recent rows small while searching every session", () => {
+test("session catalog keeps recent rows small while searching every session", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);
 	const sessions = Array.from({ length: 51 }, (_, index) =>
@@ -676,7 +684,7 @@ Deno.test("session catalog keeps recent rows small while searching every session
 	assertEquals(state.searchSessions("Session").length, 50);
 });
 
-Deno.test("session summaries keep workspace and message metadata separate", () => {
+test("session summaries keep workspace and message metadata separate", () => {
 	const info = sessionInfo("/session", "Home session");
 	info.cwd = `${os.homedir()}/projects/pi-ui`;
 
@@ -685,7 +693,7 @@ Deno.test("session summaries keep workspace and message metadata separate", () =
 	assertEquals(summary.subtitle, "1 message");
 });
 
-Deno.test("catalog and usage formatting remain stable", () => {
+test("catalog and usage formatting remain stable", () => {
 	const sessions: Parameters<typeof recentSessionWorkspaces>[0] = [
 		{
 			...sessionInfo("/one", "first"),

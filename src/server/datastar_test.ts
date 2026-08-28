@@ -1,9 +1,11 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
 import { datastarResponse, datastarStream } from "./datastar.ts";
 
-Deno.test("element patches normalize carriage returns into valid SSE data lines", async () => {
+test("element patches normalize carriage returns into valid SSE data lines", async () => {
 	const response = datastarStream((stream) => {
 		stream.patchElements('<div id="output">first\rsecond\r\nthird</div>');
 	});
@@ -15,7 +17,7 @@ Deno.test("element patches normalize carriage returns into valid SSE data lines"
 	assertStringIncludes(body, "data: elements third</div>\n\n");
 });
 
-Deno.test("Datastar response preserves ordered events and response metadata", async () => {
+test("Datastar response preserves ordered events and response metadata", async () => {
 	const response = datastarResponse(
 		[
 			{ type: "elements", elements: '<div id="output">ready</div>' },

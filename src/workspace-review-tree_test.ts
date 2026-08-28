@@ -1,15 +1,17 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { sortWorkspaceReviewEntries } from "./workspace-review-tree.ts";
 
-Deno.test("workspace review paths follow file tree order", () => {
+test("workspace review paths follow file tree order", () => {
 	assertEquals(
 		sortPaths(["README.md", "src/file10.ts", ".env", "src/file2.ts", "docs/a.ts"]),
 		["docs/a.ts", "src/file2.ts", "src/file10.ts", ".env", "README.md"],
 	);
 });
 
-Deno.test("workspace review tree order handles test file names", () => {
+test("workspace review tree order handles test file names", () => {
 	assertEquals(
 		sortPaths([
 			"src/server/workspace-review_test.ts",

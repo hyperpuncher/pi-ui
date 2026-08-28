@@ -1,10 +1,11 @@
+import { test } from "bun:test";
 import path from "node:path";
 
 import {
 	assertEquals as assertEqual,
 	assertEquals as assertEvents,
 	assertRejects,
-} from "@std/assert";
+} from "#testing/assertions";
 
 import {
 	canonicalSessionPath,
@@ -71,14 +72,14 @@ function resumeHarness(
 	};
 }
 
-Deno.test("idle persisted resume delegates to one SDK logical open", async () => {
+test("idle persisted resume delegates to one SDK logical open", async () => {
 	const fake = resumeHarness({ streaming: false, persisted: true });
 	assertEqual(await executeSessionResume("session.jsonl", fake.operations), true);
 	assertEqual(fake.logicalOpenCount, 1);
 	assertEvents(fake.events, ["switch"]);
 });
 
-Deno.test("background activation performs no session open", async () => {
+test("background activation performs no session open", async () => {
 	const target = canonicalSessionPath("session.jsonl");
 	const fake = resumeHarness(
 		{ streaming: true, persisted: true },
@@ -89,14 +90,14 @@ Deno.test("background activation performs no session open", async () => {
 	assertEvents(fake.events, ["activate-background"]);
 });
 
-Deno.test("streaming foreground opens one manager and backgrounds the runtime", async () => {
+test("streaming foreground opens one manager and backgrounds the runtime", async () => {
 	const fake = resumeHarness({ streaming: true, persisted: true });
 	assertEqual(await executeSessionResume("session.jsonl", fake.operations), true);
 	assertEqual(fake.logicalOpenCount, 1);
 	assertEvents(fake.events, ["open", "background", "create"]);
 });
 
-Deno.test("observed lifecycle preserves a persisted runtime when SDK streaming is false", async () => {
+test("observed lifecycle preserves a persisted runtime when SDK streaming is false", async () => {
 	const fake = resumeHarness({
 		streaming: false,
 		observedRunning: true,
@@ -107,7 +108,7 @@ Deno.test("observed lifecycle preserves a persisted runtime when SDK streaming i
 	assertEvents(fake.events, ["open", "background", "create"]);
 });
 
-Deno.test("temporary foreground opens once and preserves cross-workspace cwd", async () => {
+test("temporary foreground opens once and preserves cross-workspace cwd", async () => {
 	const fake = resumeHarness(
 		{ streaming: true, persisted: false },
 		{ managerCwd: "/another-workspace" },
@@ -118,14 +119,14 @@ Deno.test("temporary foreground opens once and preserves cross-workspace cwd", a
 	assertEvents(fake.events, ["open", "discard", "create"]);
 });
 
-Deno.test("idle temporary foreground opens once and disposes the runtime", async () => {
+test("idle temporary foreground opens once and disposes the runtime", async () => {
 	const fake = resumeHarness({ streaming: false, persisted: false });
 	assertEqual(await executeSessionResume("session.jsonl", fake.operations), true);
 	assertEqual(fake.logicalOpenCount, 1);
 	assertEvents(fake.events, ["open", "dispose", "create"]);
 });
 
-Deno.test("malformed replacement target fails before runtime invalidation", async () => {
+test("malformed replacement target fails before runtime invalidation", async () => {
 	const fake = resumeHarness(
 		{ streaming: true, persisted: true },
 		{ openError: new Error("malformed") },
@@ -134,7 +135,7 @@ Deno.test("malformed replacement target fails before runtime invalidation", asyn
 	assertEvents(fake.events, ["open"]);
 });
 
-Deno.test("extension cancellation keeps the idle persisted runtime", async () => {
+test("extension cancellation keeps the idle persisted runtime", async () => {
 	const fake = resumeHarness(
 		{ streaming: false, persisted: true },
 		{ cancelSwitch: true },
@@ -144,7 +145,7 @@ Deno.test("extension cancellation keeps the idle persisted runtime", async () =>
 	assertEvents(fake.events, ["switch"]);
 });
 
-Deno.test("session paths use SDK-compatible POSIX and Windows lexical resolution", () => {
+test("session paths use SDK-compatible POSIX and Windows lexical resolution", () => {
 	assertEqual(
 		canonicalSessionPath("~/sessions/../one.jsonl", {
 			homeDir: "/home/test",

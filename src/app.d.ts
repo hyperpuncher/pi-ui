@@ -47,18 +47,21 @@ interface PiUiNamespace {
 		resetDrag(): void;
 	};
 	messageScroll: {
+		bindResize(): void;
 		captureAnchor(): boolean;
+		hydratePierreDiff(element: HTMLElement): void;
 		restoreAnchor(): void;
 		scrollBottom(behavior?: "auto" | "smooth"): void;
 	};
 	modelSearch: {
-		preserve(): void;
-		restore(): void;
+		filter(input: HTMLInputElement, query: string): void;
 	};
 	pickers: {
+		close(): void;
 		fuzzyMatch(query: string, text: string): { matches: boolean; score: number };
 		isFileOpen(): boolean;
 		isOpen(): boolean;
+		resetFile(): void;
 	};
 	prompt: {
 		bindLayout(): void;
@@ -69,6 +72,7 @@ interface PiUiNamespace {
 		handleKeydown(event: KeyboardEvent, entries: readonly string[]): boolean;
 	};
 	sessionPerformance: {
+		observe(status: string, generation: number): void;
 		start(): void;
 	};
 	windowFocus: {

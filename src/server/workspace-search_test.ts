@@ -1,17 +1,20 @@
+import { test } from "bun:test";
 import * as path from "node:path";
 
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "#testing/assertions";
+import { mkdir, remove, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
 
 import { searchWorkspaces } from "./workspace-search.ts";
 
-Deno.test("workspace search completes matching directories", async () => {
-	const root = await Deno.makeTempDir();
+test("workspace search completes matching directories", async () => {
+	const root = await makeTempDir();
 	try {
-		await Deno.mkdir(path.join(root, "alpha"));
-		await Deno.mkdir(path.join(root, "alpine"));
-		await Deno.mkdir(path.join(root, "beta"));
-		await Deno.mkdir(path.join(root, ".hidden"));
-		await Deno.writeTextFile(path.join(root, "alphabet.txt"), "");
+		await mkdir(path.join(root, "alpha"));
+		await mkdir(path.join(root, "alpine"));
+		await mkdir(path.join(root, "beta"));
+		await mkdir(path.join(root, ".hidden"));
+		await writeTextFile(path.join(root, "alphabet.txt"), "");
 
 		assertEquals(await searchWorkspaces(root, path.join(root, "alp")), [
 			{ path: path.join(root, "alpha") },
@@ -21,20 +24,20 @@ Deno.test("workspace search completes matching directories", async () => {
 			{ path: path.join(root, ".hidden") },
 		]);
 	} finally {
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });
 
-Deno.test("workspace search resolves relative paths from the active workspace", async () => {
-	const root = await Deno.makeTempDir();
+test("workspace search resolves relative paths from the active workspace", async () => {
+	const root = await makeTempDir();
 	try {
-		await Deno.mkdir(path.join(root, "projects"));
-		await Deno.mkdir(path.join(root, "projects", "pi-ui"));
+		await mkdir(path.join(root, "projects"));
+		await mkdir(path.join(root, "projects", "pi-ui"));
 
 		assertEquals(await searchWorkspaces(root, "projects/pi"), [
 			{ path: path.join(root, "projects", "pi-ui") },
 		]);
 	} finally {
-		await Deno.remove(root, { recursive: true });
+		await remove(root, { recursive: true });
 	}
 });

@@ -1,10 +1,13 @@
+import { mkdir, open } from "node:fs/promises";
 import os from "node:os";
+import { dirname, join } from "node:path";
 
-import { dirname, join } from "@std/path";
 import { Compile } from "typebox/compile";
 
 import { appConfigSchemaUrl } from "../config-schema.ts";
+import { isAlreadyExists, isNotFound } from "../utils/fs-errors.ts";
 import { type JsonObject, JsonObjectSchema } from "../utils/json-types.ts";
+import { operatingSystem } from "../utils/platform.ts";
 
 export type AppConfig = JsonObject;
 
@@ -14,10 +17,10 @@ let pendingWrite = Promise.resolve();
 
 export async function readAppConfig(path = appConfigPath()): Promise<AppConfig> {
 	try {
-		const value = JSON.parse(await Deno.readTextFile(path));
+		const value = JSON.parse(await Bun.file(path).text());
 		return appConfigValidator.Check(value) ? value : {};
 	} catch (error) {
-		if (error instanceof Deno.errors.NotFound || error instanceof SyntaxError) {
+		if (isNotFound(error) || error instanceof SyntaxError) {
 			return {};
 		}
 		throw error;
@@ -25,15 +28,15 @@ export async function readAppConfig(path = appConfigPath()): Promise<AppConfig> 
 }
 
 export async function ensureAppConfig(path = appConfigPath()): Promise<AppConfig> {
-	await Deno.mkdir(dirname(path), { recursive: true });
+	await mkdir(dirname(path), { recursive: true });
 	const config: AppConfig = { $schema: appConfigSchemaUrl };
 	try {
-		await Deno.writeTextFile(path, serializeAppConfig(config), {
-			createNew: true,
-		});
+		const file = await open(path, "wx");
+		await file.writeFile(serializeAppConfig(config));
+		await file.close();
 		return config;
 	} catch (error) {
-		if (!(error instanceof Deno.errors.AlreadyExists)) throw error;
+		if (!isAlreadyExists(error)) throw error;
 		return await readAppConfig(path);
 	}
 }
@@ -46,8 +49,8 @@ export async function updateAppConfig(
 		const config = await readAppConfig(path);
 		update(config);
 		config.$schema = appConfigSchemaUrl;
-		await Deno.mkdir(dirname(path), { recursive: true });
-		await Deno.writeTextFile(path, serializeAppConfig(config));
+		await mkdir(dirname(path), { recursive: true });
+		await Bun.write(path, serializeAppConfig(config));
 	});
 	pendingWrite = write.catch(() => {});
 	await write;
@@ -59,15 +62,15 @@ function serializeAppConfig(config: AppConfig): string {
 
 function appConfigPath(): string {
 	const home = os.homedir();
-	if (Deno.build.os === "windows") {
+	if (operatingSystem === "windows") {
 		return join(
-			Deno.env.get("APPDATA") ?? join(home, "AppData", "Roaming"),
+			process.env.APPDATA ?? join(home, "AppData", "Roaming"),
 			"pi-ui",
 			"config.json",
 		);
 	}
 	return join(
-		Deno.env.get("XDG_CONFIG_HOME") ?? join(home, ".config"),
+		process.env.XDG_CONFIG_HOME ?? join(home, ".config"),
 		"pi-ui",
 		"config.json",
 	);

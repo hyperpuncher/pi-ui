@@ -1,9 +1,11 @@
-import { assertFalse, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertFalse, assertStringIncludes } from "#testing/assertions";
 
 import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
-Deno.test("session sidebar uses Basecoat structure and marks the current session", () => {
+test("session sidebar uses Basecoat structure and marks the current session", () => {
 	const currentPath = "/sessions/current.jsonl";
 	const html = renderSessionSidebar(
 		appRenderSnapshot({
@@ -78,7 +80,7 @@ Deno.test("session sidebar uses Basecoat structure and marks the current session
 	assertStringIncludes(html, "$sessionDeletePath");
 });
 
-Deno.test("session sidebar starts closed without sessions", () => {
+test("session sidebar starts closed without sessions", () => {
 	const html = renderSessionSidebar(
 		appRenderSnapshot({
 			sessions: [],
@@ -91,7 +93,7 @@ Deno.test("session sidebar starts closed without sessions", () => {
 	assertStringIncludes(html, 'data-initial-open="false"');
 });
 
-Deno.test("session sidebar keeps loading visible beneath partial results", () => {
+test("session sidebar keeps loading visible beneath partial results", () => {
 	const html = renderSessionSidebar(
 		appRenderSnapshot({
 			sessions: [
@@ -114,7 +116,7 @@ Deno.test("session sidebar keeps loading visible beneath partial results", () =>
 	assertStringIncludes(html, "animate-spin");
 });
 
-Deno.test("session sidebar groups sessions while preserving times and shortcuts", () => {
+test("session sidebar groups sessions while preserving times and shortcuts", () => {
 	const now = new Date();
 	const today = new Date(now);
 	today.setHours(12, 0, 0, 0);
@@ -171,7 +173,7 @@ Deno.test("session sidebar groups sessions while preserving times and shortcuts"
 	assertStringIncludes(html, "evt.code === 'Digit3'");
 });
 
-Deno.test("session sidebar initially renders 30 sessions and an infinite-scroll trigger", () => {
+test("session sidebar initially renders 30 sessions and an infinite-scroll trigger", () => {
 	const html = renderSessionSidebar(
 		appRenderSnapshot({
 			sessions: Array.from({ length: 31 }, (_, index) => ({
@@ -194,7 +196,7 @@ Deno.test("session sidebar initially renders 30 sessions and an infinite-scroll 
 	assertStringIncludes(html, "data-indicator:_session-page-loading");
 });
 
-Deno.test("session sidebar assigns shortcuts to only the first nine sessions", () => {
+test("session sidebar assigns shortcuts to only the first nine sessions", () => {
 	const html = renderSessionSidebar(
 		appRenderSnapshot({
 			sessions: Array.from({ length: 10 }, (_, index) => ({

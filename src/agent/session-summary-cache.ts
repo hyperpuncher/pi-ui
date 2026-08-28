@@ -1,5 +1,7 @@
+import { mkdir, rename, rm } from "node:fs/promises";
+import { dirname } from "node:path";
+
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
-import { dirname } from "@std/path";
 import Type from "typebox";
 import { Compile } from "typebox/compile";
 
@@ -8,12 +10,12 @@ import {
 	attachmentDisplayName,
 	splitLeadingAttachmentReferences,
 } from "../utils/attachment-references.ts";
+import { isNotFound } from "../utils/fs-errors.ts";
 import type { JsonValue } from "../utils/json-types.ts";
 import { isNumber, isRecord, isString } from "../utils/type-guards.ts";
 
 const cacheVersion = 2;
 const maxSummaryTextLength = 96;
-const readBufferSize = 64 * 1024;
 const decoder = new TextDecoder();
 const cacheWrites = new Map<string, Promise<void>>();
 const cacheEntrySchema = Type.Object({
@@ -62,7 +64,7 @@ export async function readSessionSummaryCache(
 	path = sessionSummaryCachePath(),
 ): Promise<SessionSummaryCache> {
 	try {
-		const value = JSON.parse(await Deno.readTextFile(path));
+		const value = JSON.parse(await Bun.file(path).text());
 		if (
 			!isRecord(value) ||
 			value.version !== cacheVersion ||
@@ -77,7 +79,7 @@ export async function readSessionSummaryCache(
 		}
 		return { version: cacheVersion, sessions };
 	} catch (error) {
-		if (error instanceof Deno.errors.NotFound || error instanceof SyntaxError) {
+		if (isNotFound(error) || error instanceof SyntaxError) {
 			return emptyCache();
 		}
 		throw error;
@@ -88,13 +90,13 @@ async function writeSessionSummaryCache(
 	cache: SessionSummaryCache,
 	path = sessionSummaryCachePath(),
 ): Promise<void> {
-	await Deno.mkdir(dirname(path), { recursive: true });
+	await mkdir(dirname(path), { recursive: true });
 	const temporaryPath = `${path}.${crypto.randomUUID()}.tmp`;
 	try {
-		await Deno.writeTextFile(temporaryPath, `${JSON.stringify(cache, null, "\t")}\n`);
-		await Deno.rename(temporaryPath, path);
+		await Bun.write(temporaryPath, `${JSON.stringify(cache, null, "\t")}\n`);
+		await rename(temporaryPath, path);
 	} catch (error) {
-		await Deno.remove(temporaryPath).catch(() => undefined);
+		await rm(temporaryPath).catch(() => undefined);
 		throw error;
 	}
 }
@@ -182,18 +184,14 @@ async function parseSessionFile(
 				created: 0,
 			};
 	const start = cached?.indexedBytes ?? 0;
-	let file: Deno.FsFile | undefined;
 	try {
-		file = await Deno.open(candidate.path, { read: true });
-		if (start > 0) await file.seek(start, Deno.SeekMode.Start);
+		const reader = Bun.file(candidate.path).slice(start).stream().getReader();
 		const pending: Uint8Array[] = [];
 		let pendingBytes = 0;
 		let consumedBytes = 0;
-		const buffer = new Uint8Array(readBufferSize);
 		while (true) {
-			const count = await file.read(buffer);
-			if (count === null) break;
-			const chunk = buffer.slice(0, count);
+			const { done, value: chunk } = await reader.read();
+			if (done) break;
 			let lineStart = 0;
 			for (let index = 0; index < chunk.length; index += 1) {
 				if (chunk[index] !== 10) continue;
@@ -217,8 +215,6 @@ async function parseSessionFile(
 		return state;
 	} catch {
 		return undefined;
-	} finally {
-		file?.close();
 	}
 }
 

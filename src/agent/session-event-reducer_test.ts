@@ -1,5 +1,8 @@
+import { test } from "bun:test";
+
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
-import { assertEquals } from "@std/assert";
+
+import { assertEquals } from "#testing/assertions";
 
 import type { AppMessageOptions } from "../state/app-store.ts";
 import type { TranscriptMessage } from "../state/transcript-state.ts";
@@ -123,7 +126,7 @@ function userMessage() {
 	return { role: "user" as const, content: "hello", timestamp: 1 };
 }
 
-Deno.test("reduces agent, message, queue, and completion events", () => {
+test("reduces agent, message, queue, and completion events", () => {
 	let usageSyncs = 0;
 	const { state, context } = fixture({ syncUsage: () => usageSyncs++ });
 
@@ -182,7 +185,7 @@ Deno.test("reduces agent, message, queue, and completion events", () => {
 	assertEquals(outcome, { agentCompleted: true });
 });
 
-Deno.test("surfaces the provider error when an assistant message fails", () => {
+test("surfaces the provider error when an assistant message fails", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({
@@ -212,7 +215,7 @@ Deno.test("surfaces the provider error when an assistant message fails", () => {
 	]);
 });
 
-Deno.test("uses a fallback when a provider omits its error message", () => {
+test("uses a fallback when a provider omits its error message", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({
@@ -225,7 +228,7 @@ Deno.test("uses a fallback when a provider omits its error message", () => {
 	assertEquals(state.appended[0]?.text, "Error: Unknown error");
 });
 
-Deno.test("skips tool-result message starts", () => {
+test("skips tool-result message starts", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({
@@ -244,7 +247,7 @@ Deno.test("skips tool-result message starts", () => {
 	assertEquals(state.appended, []);
 });
 
-Deno.test("shows tools without rendering each streamed argument delta", () => {
+test("shows tools without rendering each streamed argument delta", () => {
 	const { state, tools, context } = fixture();
 	const partial = {
 		role: "assistant",
@@ -361,7 +364,7 @@ Deno.test("shows tools without rendering each streamed argument delta", () => {
 	});
 });
 
-Deno.test("reduces one complete tool lifecycle and clears all tool maps", () => {
+test("reduces one complete tool lifecycle and clears all tool maps", () => {
 	const { state, tools, context } = fixture();
 	reduceSessionEvent(
 		event({
@@ -424,7 +427,7 @@ Deno.test("reduces one complete tool lifecycle and clears all tool maps", () => 
 	assertEquals(tools.startedAt.size, 0);
 });
 
-Deno.test("appends an orphan tool end and removes stale map entries", () => {
+test("appends an orphan tool end and removes stale map entries", () => {
 	const { state, tools, context } = fixture();
 	tools.callArgs.set("call", { path: "file" });
 	tools.startedAt.set("call", 12);
@@ -458,7 +461,7 @@ Deno.test("appends an orphan tool end and removes stale map entries", () => {
 	);
 });
 
-Deno.test("reduces retry and compaction lifecycle events", async (t) => {
+test("reduces retry and compaction lifecycle events", () => {
 	const cases: Array<{ input: AgentSessionEvent; expected: string | undefined }> = [
 		{
 			input: event({
@@ -488,15 +491,13 @@ Deno.test("reduces retry and compaction lifecycle events", async (t) => {
 		},
 	];
 	for (const testCase of cases) {
-		await t.step(testCase.input.type, () => {
-			const { state, context } = fixture();
-			reduceSessionEvent(testCase.input, context);
-			assertEquals(state.activity, [testCase.expected]);
-		});
+		const { state, context } = fixture();
+		reduceSessionEvent(testCase.input, context);
+		assertEquals(state.activity, [testCase.expected], testCase.input.type);
 	}
 });
 
-Deno.test("successful compaction appends its timeline entry", () => {
+test("successful compaction appends its timeline entry", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({
@@ -523,7 +524,7 @@ Deno.test("successful compaction appends its timeline entry", () => {
 	assertEquals(state.activity, [undefined]);
 });
 
-Deno.test("failed compaction appends the error", () => {
+test("failed compaction appends the error", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({

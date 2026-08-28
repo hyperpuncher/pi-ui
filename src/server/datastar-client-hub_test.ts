@@ -1,10 +1,12 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
 import { DatastarClientHub, type DatastarClient } from "./datastar-client-hub.ts";
 import { DatastarStream } from "./datastar.ts";
 
-Deno.test("hub connects, sends an initial view, broadcasts fat and targeted patches, and aborts", async () => {
+test("hub connects, sends an initial view, broadcasts fat and targeted patches, and aborts", async () => {
 	const hub = new DatastarClientHub();
 	const controller = new AbortController();
 	const response = hub.createStream(controller.signal, () => ({
@@ -28,7 +30,7 @@ Deno.test("hub connects, sends an initial view, broadcasts fat and targeted patc
 	assertStringIncludes(body, 'signals {"extra":true}');
 });
 
-Deno.test("hub broadcasts to multiple clients and disconnects them independently", async () => {
+test("hub broadcasts to multiple clients and disconnects them independently", async () => {
 	const hub = new DatastarClientHub();
 	const firstController = new AbortController();
 	const secondController = new AbortController();
@@ -46,7 +48,7 @@ Deno.test("hub broadcasts to multiple clients and disconnects them independently
 	assertStringIncludes(await second.text(), "second only");
 });
 
-Deno.test("hub runs disconnect lifecycle once across overlapping close signals", () => {
+test("hub runs disconnect lifecycle once across overlapping close signals", () => {
 	const hub = new DatastarClientHub();
 	const controller = new AbortController();
 	let disconnects = 0;
@@ -61,7 +63,7 @@ Deno.test("hub runs disconnect lifecycle once across overlapping close signals",
 	return response.body?.cancel();
 });
 
-Deno.test("hub removes a client after a failed send", () => {
+test("hub removes a client after a failed send", () => {
 	let closed = false;
 	let disconnects = 0;
 	const client: DatastarClient = {

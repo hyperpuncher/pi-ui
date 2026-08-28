@@ -1,10 +1,12 @@
-import { assertEquals, assertStrictEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStrictEquals } from "#testing/assertions";
 
 import { AppStore } from "../state/app-store.ts";
 import { ModelController } from "./model-controller.ts";
 import { agentSessionRuntimeStub } from "./test-fixtures.ts";
 
-Deno.test("ModelController persists explicit and cycled model selections", async () => {
+test("ModelController persists explicit and cycled model selections", async () => {
 	const model = { id: "kimi-k2.6", provider: "opencode-go" };
 	const persistence: Array<boolean | undefined> = [];
 	let flushes = 0;

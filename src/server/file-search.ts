@@ -1,5 +1,7 @@
+import { readdirSync, type Dirent } from "node:fs";
 import * as path from "node:path";
 
+import { outputCommand, type CommandOutput } from "../utils/command.ts";
 import { expandHomePath } from "../utils/workspace.ts";
 
 export type FileSuggestion = {
@@ -29,10 +31,9 @@ const fdIgnoredDirectoryArgs = [...ignoredDirectoryNames].flatMap((name) => [
 export type FileSearchCommand = (
 	args: string[],
 	signal?: AbortSignal,
-) => Promise<Deno.CommandOutput>;
+) => Promise<CommandOutput>;
 
-const runFd: FileSearchCommand = (args, signal) =>
-	new Deno.Command("fd", { args, signal }).output();
+const runFd: FileSearchCommand = (args, signal) => outputCommand("fd", { args, signal });
 
 export async function searchFiles(
 	workspacePath: string,
@@ -87,7 +88,7 @@ async function searchWithFd(
 	}
 	if (scope.query) args.push(escapeRegex(scope.query));
 
-	let output: Deno.CommandOutput;
+	let output: CommandOutput;
 	try {
 		output = await command(args, signal);
 	} catch (error) {
@@ -211,15 +212,15 @@ function walkFiles(
 	maxSearchDepth = maxDepth,
 ): boolean {
 	if (depth > maxSearchDepth) return true;
-	let entries: Deno.DirEntry[];
+	let entries: Dirent[];
 	try {
-		entries = [...Deno.readDirSync(dir)];
+		entries = readdirSync(dir, { withFileTypes: true });
 	} catch {
 		return true;
 	}
 	entries.sort((a, b) => {
-		if (a.isDirectory && !b.isDirectory) return -1;
-		if (!a.isDirectory && b.isDirectory) return 1;
+		if (a.isDirectory() && !b.isDirectory()) return -1;
+		if (!a.isDirectory() && b.isDirectory()) return 1;
 		return a.name.localeCompare(b.name);
 	});
 	for (const entry of entries) {
@@ -231,11 +232,11 @@ function walkFiles(
 			continue;
 		}
 		const entryPath = path.join(dir, entry.name);
-		if (!visit(entryPath, entry.isDirectory)) {
+		if (!visit(entryPath, entry.isDirectory())) {
 			return false;
 		}
 		if (
-			entry.isDirectory &&
+			entry.isDirectory() &&
 			!walkFiles(entryPath, visit, depth + 1, includeHidden, maxSearchDepth)
 		) {
 			return false;

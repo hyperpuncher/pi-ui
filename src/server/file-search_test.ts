@@ -1,16 +1,20 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { test } from "bun:test";
 
+import { assertEquals, assertRejects } from "#testing/assertions";
+import { mkdir, notFoundError, remove, writeTextFile } from "#testing/files";
+import { makeTempDir } from "#testing/temp";
+
+import type { CommandOutput } from "../utils/command.ts";
 import { searchFiles } from "./file-search.ts";
 
-const output = (text: string, success = true): Deno.CommandOutput => ({
+const output = (text: string, success = true): CommandOutput => ({
 	success,
 	code: success ? 0 : 1,
-	signal: null,
 	stdout: new TextEncoder().encode(text),
 	stderr: new Uint8Array(),
 });
 
-Deno.test("file search preserves scoped ranking and result cap", async () => {
+test("file search preserves scoped ranking and result cap", async () => {
 	let args: string[] = [];
 	const lines = [
 		"beta.txt",
@@ -30,7 +34,7 @@ Deno.test("file search preserves scoped ranking and result cap", async () => {
 	);
 });
 
-Deno.test("file search excludes hidden paths unless explicitly requested", async () => {
+test("file search excludes hidden paths unless explicitly requested", async () => {
 	const calls: string[][] = [];
 	for (const query of ["config", ".config"]) {
 		await searchFiles("/workspace", query, undefined, (args) => {
@@ -44,7 +48,7 @@ Deno.test("file search excludes hidden paths unless explicitly requested", async
 	assertEquals(calls[1].at(-1), String.raw`\.config`);
 });
 
-Deno.test("terminal dot includes hidden entries in a scoped directory", async () => {
+test("terminal dot includes hidden entries in a scoped directory", async () => {
 	let args: string[] = [];
 	const results = await searchFiles(
 		"/workspace",
@@ -64,7 +68,7 @@ Deno.test("terminal dot includes hidden entries in a scoped directory", async ()
 	);
 });
 
-Deno.test("file search scopes trailing directory queries before recursing", async () => {
+test("file search scopes trailing directory queries before recursing", async () => {
 	let args: string[] = [];
 	await searchFiles("/workspace", ".dotfiles/", undefined, (next) => {
 		args = next;
@@ -75,7 +79,7 @@ Deno.test("file search scopes trailing directory queries before recursing", asyn
 	assertEquals(args.at(-1), "--hidden");
 });
 
-Deno.test("file search excludes dependency and environment directories", async () => {
+test("file search excludes dependency and environment directories", async () => {
 	let args: string[] = [];
 	await searchFiles("/workspace", "package", undefined, (next) => {
 		args = next;
@@ -91,7 +95,7 @@ Deno.test("file search excludes dependency and environment directories", async (
 	assertEquals(exclusions.includes("venv"), true);
 });
 
-Deno.test("file search ranks shallower equal-quality matches first", async () => {
+test("file search ranks shallower equal-quality matches first", async () => {
 	const results = await searchFiles("/workspace", "config.ts", undefined, () =>
 		Promise.resolve(output("packages/generated/config.ts\nconfig.ts\nsrc/config.ts")),
 	);
@@ -102,7 +106,7 @@ Deno.test("file search ranks shallower equal-quality matches first", async () =>
 	);
 });
 
-Deno.test("file search tries shallow results before bounded recursion", async () => {
+test("file search tries shallow results before bounded recursion", async () => {
 	const calls: string[][] = [];
 	const results = await searchFiles("/workspace", "button", undefined, (args) => {
 		calls.push(args);
@@ -128,7 +132,7 @@ Deno.test("file search tries shallow results before bounded recursion", async ()
 	);
 });
 
-Deno.test("file search returns no typo suggestions after recursive miss", async () => {
+test("file search returns no typo suggestions after recursive miss", async () => {
 	const calls: string[][] = [];
 	const results = await searchFiles(
 		"/workspace",
@@ -152,7 +156,7 @@ Deno.test("file search returns no typo suggestions after recursive miss", async 
 	);
 });
 
-Deno.test("file search supports absolute and parent paths", async () => {
+test("file search supports absolute and parent paths", async () => {
 	const baseDirectories: string[] = [];
 	for (const query of ["/tmp/file", "../secret/file"]) {
 		await searchFiles("/workspace", query, undefined, (args) => {
@@ -163,10 +167,10 @@ Deno.test("file search supports absolute and parent paths", async () => {
 	assertEquals(baseDirectories, ["/tmp", "/secret"]);
 });
 
-Deno.test("aborted fd search rethrows without manual fallback", async () => {
-	const workspace = await Deno.makeTempDir();
+test("aborted fd search rethrows without manual fallback", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.writeTextFile(`${workspace}/fallback.txt`, "");
+		await writeTextFile(`${workspace}/fallback.txt`, "");
 		const controller = new AbortController();
 		const reason = new Error("cancelled");
 		const search = searchFiles(
@@ -183,14 +187,14 @@ Deno.test("aborted fd search rethrows without manual fallback", async () => {
 		controller.abort(reason);
 		await assertRejects(() => search, Error, "cancelled");
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("aborted unsuccessful fd output does not enter manual fallback", async () => {
-	const workspace = await Deno.makeTempDir();
+test("aborted unsuccessful fd output does not enter manual fallback", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.writeTextFile(`${workspace}/fallback.txt`, "");
+		await writeTextFile(`${workspace}/fallback.txt`, "");
 		const controller = new AbortController();
 		const reason = new Error("cancelled unsuccessful command");
 		const search = searchFiles(
@@ -207,19 +211,19 @@ Deno.test("aborted unsuccessful fd output does not enter manual fallback", async
 		controller.abort(reason);
 		await assertRejects(() => search, Error, "cancelled unsuccessful command");
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("manual file search applies explicit hidden path behavior", async () => {
-	const workspace = await Deno.makeTempDir();
+test("manual file search applies explicit hidden path behavior", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.mkdir(`${workspace}/.config`);
-		await Deno.mkdir(`${workspace}/node_modules/package`, { recursive: true });
-		await Deno.writeTextFile(`${workspace}/.config/settings.json`, "");
-		await Deno.writeTextFile(`${workspace}/node_modules/package/settings.json`, "");
-		await Deno.writeTextFile(`${workspace}/settings.json`, "");
-		const unavailable = () => Promise.reject(new Deno.errors.NotFound("fd"));
+		await mkdir(`${workspace}/.config`);
+		await mkdir(`${workspace}/node_modules/package`, { recursive: true });
+		await writeTextFile(`${workspace}/.config/settings.json`, "");
+		await writeTextFile(`${workspace}/node_modules/package/settings.json`, "");
+		await writeTextFile(`${workspace}/settings.json`, "");
+		const unavailable = () => Promise.reject(notFoundError("fd"));
 
 		assertEquals(
 			(await searchFiles(workspace, "settings", undefined, unavailable)).map(
@@ -234,34 +238,34 @@ Deno.test("manual file search applies explicit hidden path behavior", async () =
 			[".config/settings.json"],
 		);
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("unavailable fd falls back to recursive manual search", async () => {
-	const workspace = await Deno.makeTempDir();
+test("unavailable fd falls back to recursive manual search", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.mkdir(`${workspace}/src/components`, { recursive: true });
-		await Deno.writeTextFile(`${workspace}/src/components/button.tsx`, "");
+		await mkdir(`${workspace}/src/components`, { recursive: true });
+		await writeTextFile(`${workspace}/src/components/button.tsx`, "");
 		const results = await searchFiles(workspace, "button", undefined, () =>
-			Promise.reject(new Deno.errors.NotFound("fd")),
+			Promise.reject(notFoundError("fd")),
 		);
 		assertEquals(
 			results.map((item) => item.value),
 			["src/components/button.tsx"],
 		);
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });
 
-Deno.test("unavailable fd falls back to manual search including empty queries", async () => {
-	const workspace = await Deno.makeTempDir();
+test("unavailable fd falls back to manual search including empty queries", async () => {
+	const workspace = await makeTempDir();
 	try {
-		await Deno.writeTextFile(`${workspace}/fallback.txt`, "");
+		await writeTextFile(`${workspace}/fallback.txt`, "");
 		for (const query of ["fallback", ""]) {
 			const results = await searchFiles(workspace, query, undefined, () =>
-				Promise.reject(new Deno.errors.NotFound("fd")),
+				Promise.reject(notFoundError("fd")),
 			);
 			assertEquals(
 				results.map((item) => item.value),
@@ -269,6 +273,6 @@ Deno.test("unavailable fd falls back to manual search including empty queries", 
 			);
 		}
 	} finally {
-		await Deno.remove(workspace, { recursive: true });
+		await remove(workspace, { recursive: true });
 	}
 });

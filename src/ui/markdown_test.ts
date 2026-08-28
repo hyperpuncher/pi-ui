@@ -1,7 +1,9 @@
+import { test } from "bun:test";
+
 import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
-} from "@std/assert";
+} from "#testing/assertions";
 
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { preloadPierreHighlighter } from "./diffs.ts";
@@ -12,29 +14,30 @@ import {
 	renderMarkdownStreaming,
 } from "./markdown.tsx";
 
-Deno.test("streaming cache keeps one entry per stable message key", () => {
+test("streaming cache keeps one entry per stable message key", () => {
+	const baseline = markdownCacheStatsForTest().streamingEntries;
 	const first = renderMarkdownStreaming("Hello", { cacheKey: "cache-test-1" });
 	const repeated = renderMarkdownStreaming("Hello", {
 		cacheKey: "cache-test-1",
 	});
 	assertEqual(repeated, first);
 	renderMarkdownStreaming("Hello, world", { cacheKey: "cache-test-1" });
-	assertEqual(markdownCacheStatsForTest().streamingEntries, 1);
+	assertEqual(markdownCacheStatsForTest().streamingEntries, baseline + 1);
 
 	renderMarkdownStreaming("Other", { cacheKey: "cache-test-2" });
 	releaseMarkdownStreamingState("cache-test-1");
-	assertEqual(markdownCacheStatsForTest().streamingEntries, 1);
+	assertEqual(markdownCacheStatsForTest().streamingEntries, baseline + 1);
 	releaseMarkdownStreamingState("cache-test-2");
-	assertEqual(markdownCacheStatsForTest().streamingEntries, 0);
+	assertEqual(markdownCacheStatsForTest().streamingEntries, baseline);
 });
 
-Deno.test("streaming without a key does not retain output", () => {
+test("streaming without a key does not retain output", () => {
 	const before = markdownCacheStatsForTest().streamingEntries;
 	renderMarkdownStreaming("uncached");
 	assertEqual(markdownCacheStatsForTest().streamingEntries, before);
 });
 
-Deno.test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
+test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
 	const markdown =
 		'<script>alert("xss")</script>\n\n[unsafe label](javascript:alert(1)) ![bad image](data:text/html,bad) [local file](file:///tmp/example.txt)';
 	for (const html of [
@@ -52,7 +55,7 @@ Deno.test("markdown fallback and final rendering reject unsafe HTML and URLs", a
 	}
 });
 
-Deno.test("plain, fenced, and incomplete markdown preserve rendering structure", async () => {
+test("plain, fenced, and incomplete markdown preserve rendering structure", async () => {
 	const plainStreaming = renderMarkdownStreaming("Hello **world**");
 	const plainFinal = await renderMarkdownFinal("Hello **world**");
 	assertEqual(plainStreaming, plainFinal);
@@ -95,7 +98,7 @@ Deno.test("plain, fenced, and incomplete markdown preserve rendering structure",
 	assertEqual(renderMarkdownStreaming(table), await renderMarkdownFinal(table));
 });
 
-Deno.test("growing streaming code fences preserve the latest complete source", () => {
+test("growing streaming code fences preserve the latest complete source", () => {
 	const key = "continuity";
 	renderMarkdownStreaming("```ts\nconst first = 1;", { cacheKey: key });
 	const latest = renderMarkdownStreaming(
@@ -107,7 +110,7 @@ Deno.test("growing streaming code fences preserve the latest complete source", (
 	releaseMarkdownStreamingState(key);
 });
 
-Deno.test("code blocks omit the parser-added terminal display line", async () => {
+test("code blocks omit the parser-added terminal display line", async () => {
 	await preloadPierreHighlighter();
 	const markdown = "```ts\none\n\nthree\n```";
 	const key = "terminal-newline";

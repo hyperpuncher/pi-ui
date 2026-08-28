@@ -7,7 +7,6 @@ import { isString } from "./type-guards.ts";
 const platformFetch = globalThis.fetch;
 const agentProxy = new AsyncLocalStorage<string>();
 const proxyByRuntime = new WeakMap<Models, string>();
-const proxyClients = new Map<string, Deno.HttpClient>();
 let scopedFetchInstalled = false;
 
 export function configureAgentHttpProxy(
@@ -53,14 +52,12 @@ function scopedProxyFetch(
 	init?: RequestInit,
 ): Promise<Response> {
 	const proxy = agentProxy.getStore();
-	if (!proxy || (init && "client" in init)) return platformFetch(input, init);
+	if (!proxy || (init && "proxy" in init)) return platformFetch(input, init);
 
 	const targetUrl = fetchTargetUrl(input);
 	if (!targetUrl || !shouldProxy(targetUrl)) return platformFetch(input, init);
 
-	const client = getProxyClient(proxy);
-	// SAFETY: Deno extends RequestInit with `client`; the runtime fetch accepts it.
-	return platformFetch(input, { ...init, client } as RequestInit);
+	return platformFetch(input, { ...init, proxy });
 }
 
 function fetchTargetUrl(input: RequestInfo | URL): URL | undefined {
@@ -74,21 +71,8 @@ function fetchTargetUrl(input: RequestInfo | URL): URL | undefined {
 	}
 }
 
-function getProxyClient(proxy: string): Deno.HttpClient {
-	const existingClient = proxyClients.get(proxy);
-	if (existingClient) return existingClient;
-
-	const client = Deno.createHttpClient({ proxy: { url: proxy } });
-	proxyClients.set(proxy, client);
-	return client;
-}
-
 function shouldProxy(url: URL): boolean {
-	const noProxy = (
-		Deno.env.get("no_proxy") ||
-		Deno.env.get("NO_PROXY") ||
-		""
-	).toLowerCase();
+	const noProxy = (process.env.no_proxy || process.env.NO_PROXY || "").toLowerCase();
 	if (!noProxy) return true;
 	if (noProxy === "*") return false;
 

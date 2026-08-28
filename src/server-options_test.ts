@@ -1,4 +1,6 @@
-import { assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStringIncludes, assertThrows } from "#testing/assertions";
 
 import {
 	defaultServerHostname,
@@ -7,7 +9,7 @@ import {
 	serverUsage,
 } from "./server-options.ts";
 
-Deno.test("server options use loopback defaults", () => {
+test("server options use loopback defaults", () => {
 	assertEquals(parseServerOptions([]), {
 		hostname: defaultServerHostname,
 		port: defaultServerPort,
@@ -15,7 +17,7 @@ Deno.test("server options use loopback defaults", () => {
 	});
 });
 
-Deno.test("server options read host and port from the environment", () => {
+test("server options read host and port from the environment", () => {
 	assertEquals(parseServerOptions([], { host: "0.0.0.0", port: "8080" }), {
 		hostname: "0.0.0.0",
 		port: 8080,
@@ -23,7 +25,7 @@ Deno.test("server options read host and port from the environment", () => {
 	});
 });
 
-Deno.test("server flags override the environment", () => {
+test("server flags override the environment", () => {
 	assertEquals(
 		parseServerOptions(["--host", "::1", "--port=9000"], {
 			host: "0.0.0.0",
@@ -33,7 +35,7 @@ Deno.test("server flags override the environment", () => {
 	);
 });
 
-Deno.test("server options support help", () => {
+test("server options support help", () => {
 	assertEquals(parseServerOptions(["-h"]), {
 		hostname: defaultServerHostname,
 		port: defaultServerPort,
@@ -43,7 +45,7 @@ Deno.test("server options support help", () => {
 	assertStringIncludes(serverUsage, "PI_UI_PORT");
 });
 
-Deno.test("server options reject invalid input", () => {
+test("server options reject invalid input", () => {
 	assertThrows(() => parseServerOptions(["--host"]), Error, "non-empty hostname");
 	assertThrows(() => parseServerOptions(["--port", "0"]), Error, "1 to 65535");
 	assertThrows(() => parseServerOptions([], { port: "abc" }), Error, "1 to 65535");

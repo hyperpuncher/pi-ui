@@ -1,8 +1,10 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
 
 import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 
-Deno.test("alt shortcuts use physical keys and ignore open dialogs", () => {
+test("alt shortcuts use physical keys and ignore open dialogs", () => {
 	const action = altShortcutAction("KeyF", "focusFiles();");
 
 	assertStringIncludes(action, "evt.code === 'KeyF'");
@@ -14,11 +16,11 @@ Deno.test("alt shortcuts use physical keys and ignore open dialogs", () => {
 	assertStringIncludes(action, "focusFiles();");
 });
 
-Deno.test("shortcut keys use platform-appropriate modifiers", async () => {
+test("shortcut keys use platform-appropriate modifiers", async () => {
 	const html = await ShortcutKbd({ shortcut: "alt F" });
 
 	assertStringIncludes(html, "data-keybind-hint");
-	assertStringIncludes(html, Deno.build.os === "darwin" ? "⌥" : ">alt</kbd>");
+	assertStringIncludes(html, process.platform === "darwin" ? "⌥" : ">alt</kbd>");
 	assertStringIncludes(html, ">F</kbd>");
 	assertEquals(html.match(/<kbd/g)?.length, 2);
 });

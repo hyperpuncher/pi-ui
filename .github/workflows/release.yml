@@ -1,9 +1,7 @@
 name: Release
 
 env:
-    CEF_BACKEND_REPOSITORY: hyperpuncher/laufey
-    CEF_BACKEND_TAG: cef-151.3.14-pi-ui.2
-    DENO_VERSION: v2.9.5
+    BUN_VERSION: 1.4.0
 
 on:
     workflow_dispatch:
@@ -21,153 +19,43 @@ jobs:
                 include:
                     - name: linux-x64
                       os: ubuntu-latest
-                      server_executable: pi-ui-server
-                      target: x86_64-unknown-linux-gnu
                     - name: linux-arm64
                       os: ubuntu-24.04-arm
-                      server_executable: pi-ui-server
-                      target: aarch64-unknown-linux-gnu
                     - name: darwin-x64
                       os: macos-15-intel
-                      server_executable: pi-ui-server
-                      target: x86_64-apple-darwin
                     - name: darwin-arm64
                       os: macos-14
-                      server_executable: pi-ui-server
-                      target: aarch64-apple-darwin
                     - name: windows-x64
                       os: windows-latest
-                      server_executable: pi-ui-server.exe
-                      target: x86_64-pc-windows-msvc
 
         steps:
             - uses: actions/checkout@v7
-            - uses: denoland/setup-deno@v2.0.5
+            - uses: oven-sh/setup-bun@v2
               with:
-                  deno-version: ${{ env.DENO_VERSION }}
-
+                  bun-version: ${{ env.BUN_VERSION }}
             - name: Install dependencies
-              shell: bash
-              run: |
-                  deno ci
-                  cd tools && deno ci
-
-            - name: Download CEF 151 backend
-              shell: bash
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: |
-                  case "${{ matrix.target }}" in
-                    *windows*) asset="laufey-cef-${{ matrix.target }}.zip" ;;
-                    *) asset="laufey-cef-${{ matrix.target }}.tar.gz" ;;
-                  esac
-
-                  download_dir="$RUNNER_TEMP/laufey-download"
-                  backend_dir="$RUNNER_TEMP/laufey/cef/build/Release"
-                  mkdir -p "$download_dir" "$backend_dir"
-
-                  gh release download "$CEF_BACKEND_TAG" \
-                    --repo "$CEF_BACKEND_REPOSITORY" \
-                    --pattern "$asset" \
-                    --dir "$download_dir"
-
-                  expected=$(gh release view "$CEF_BACKEND_TAG" \
-                    --repo "$CEF_BACKEND_REPOSITORY" \
-                    --json assets \
-                    --jq ".assets[] | select(.name == \"$asset\") | .digest | ltrimstr(\"sha256:\")" \
-                    | tr -d '\r')
-                  if [[ -z "$expected" ]]; then
-                    echo "::error::No checksum found for $asset"
-                    exit 1
-                  fi
-                  if command -v sha256sum >/dev/null; then
-                    checksum=$(sha256sum < "$download_dir/$asset")
-                  else
-                    checksum=$(shasum -a 256 < "$download_dir/$asset")
-                  fi
-                  actual=${checksum%% *}
-                  if [[ "$actual" != "$expected" ]]; then
-                    echo "::error::Checksum mismatch for $asset (expected $expected, got $actual)"
-                    exit 1
-                  fi
-
-                  if [[ "$asset" == *.zip ]]; then
-                    7z x -y "$download_dir/$asset" "-o$backend_dir"
-                  else
-                    tar xzf "$download_dir/$asset" -C "$backend_dir"
-                  fi
-
-                  echo "LAUFEY_DEV_DIR=$RUNNER_TEMP/laufey" >> "$GITHUB_ENV"
-
-            - name: Build assets
-              run: deno task assets:build
-
-            - name: Build server
-              shell: bash
-              run: |
-                  server_args=(
-                    -A
-                    --conditions browser
-                    --exclude-unused-npm
-                    --frozen
-                    --include static
-                    --lock deno.lock
-                    --node-modules-dir=none
-                    --output "dist/server/${{ matrix.server_executable }}"
-                    --target "${{ matrix.target }}"
-                  )
-                  case "${{ matrix.target }}" in
-                    *windows*) server_args+=(--no-terminal) ;;
-                  esac
-                  deno compile "${server_args[@]}" src/server-main.ts
-
-            - name: Build desktop app
-              shell: bash
-              run: |
-                  rm -rf node_modules
-                  desktop_args=(
-                    -A
-                    --conditions browser
-                    --frozen
-                    --include static
-                    --lock deno.lock
-                    --target "${{ matrix.target }}"
-                  )
-                  deno desktop "${desktop_args[@]}" src/main.ts
-                  case "${{ matrix.name }}" in
-                    linux-*)
-                      deno desktop "${desktop_args[@]}" --output dist/linux/pi-ui.AppImage src/main.ts
-                      deno desktop "${desktop_args[@]}" --output dist/linux/pi-ui.deb src/main.ts
-                      ;;
-                  esac
-
+              run: bun ci
+            - name: Build executable
+              run: bun run build
             - name: Package artifact
               shell: bash
               run: |
                   case "${{ matrix.name }}" in
                     linux-*)
-                      tar --zstd -cf "dist/pi-ui-${{ matrix.name }}.tar.zst" -C dist/linux pi-ui
-                      ZSTD_CLEVEL=19 tar --zstd -cf "dist/pi-ui-server-${{ matrix.name }}.tar.zst" -C dist/server pi-ui-server
-                      mv dist/linux/pi-ui.AppImage "dist/pi-ui-${{ matrix.name }}.AppImage"
-                      mv dist/linux/pi-ui.deb "dist/pi-ui-${{ matrix.name }}.deb"
-                      ;;
-                    windows-*)
-                      mv dist/windows/pi-ui.msi "dist/pi-ui-${{ matrix.name }}.msi"
-                      (cd dist/server && 7z a "../../dist/pi-ui-server-${{ matrix.name }}.zip" pi-ui-server.exe)
+                      ZSTD_CLEVEL=19 tar --zstd -cf "dist/pi-ui-server-${{ matrix.name }}.tar.zst" -C dist pi-ui-server
                       ;;
                     darwin-*)
-                      ditto -c -k --keepParent dist/macos/pi-ui.app "dist/pi-ui-${{ matrix.name }}.zip"
-                      ditto -c -k --keepParent dist/server/pi-ui-server "dist/pi-ui-server-${{ matrix.name }}.zip"
+                      ditto -c -k --keepParent dist/pi-ui-server "dist/pi-ui-server-${{ matrix.name }}.zip"
+                      ;;
+                    windows-*)
+                      (cd dist && 7z a "pi-ui-server-${{ matrix.name }}.zip" pi-ui-server.exe)
                       ;;
                   esac
-
             - name: Upload artifact
               uses: actions/upload-artifact@v7
               with:
                   name: ${{ matrix.name }}
-                  path: |
-                      dist/pi-ui-${{ matrix.name }}.*
-                      dist/pi-ui-server-${{ matrix.name }}.*
+                  path: dist/pi-ui-server-${{ matrix.name }}.*
 
     publish:
         name: Publish release and packages
@@ -184,13 +72,11 @@ jobs:
             - uses: actions/download-artifact@v8
               with:
                   path: dist
-
             - name: Flatten artifacts
               run: |
                   find dist -mindepth 2 -type f -exec mv {} dist/ \;
                   find dist -mindepth 1 -type d -empty -delete
                   ls -lh dist
-
             - name: Generate release notes
               shell: bash
               run: |
@@ -208,76 +94,49 @@ jobs:
                       git log --reverse --format="- %s [\`%h\`](${repository_url}/commit/%H)" "$GITHUB_REF_NAME"
                     fi
                   } > /tmp/release-notes.md
-
             - name: GitHub release
               uses: softprops/action-gh-release@v3
               with:
                   files: dist/*
                   body_path: /tmp/release-notes.md
-
             - name: Compute checksums
               id: sha
               run: |
                   {
-                    echo "linux-x64=$(sha256sum dist/pi-ui-linux-x64.tar.zst | cut -d' ' -f1)"
-                    echo "linux-arm64=$(sha256sum dist/pi-ui-linux-arm64.tar.zst | cut -d' ' -f1)"
-                    echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)"
-                    echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)"
-                    echo "server-linux-x64=$(sha256sum dist/pi-ui-server-linux-x64.tar.zst | cut -d' ' -f1)"
-                    echo "server-linux-arm64=$(sha256sum dist/pi-ui-server-linux-arm64.tar.zst | cut -d' ' -f1)"
-                    echo "server-darwin-x64=$(sha256sum dist/pi-ui-server-darwin-x64.zip | cut -d' ' -f1)"
-                    echo "server-darwin-arm64=$(sha256sum dist/pi-ui-server-darwin-arm64.zip | cut -d' ' -f1)"
+                    echo "linux-x64=$(sha256sum dist/pi-ui-server-linux-x64.tar.zst | cut -d' ' -f1)"
+                    echo "linux-arm64=$(sha256sum dist/pi-ui-server-linux-arm64.tar.zst | cut -d' ' -f1)"
+                    echo "darwin-x64=$(sha256sum dist/pi-ui-server-darwin-x64.zip | cut -d' ' -f1)"
+                    echo "darwin-arm64=$(sha256sum dist/pi-ui-server-darwin-arm64.zip | cut -d' ' -f1)"
                   } >> "$GITHUB_OUTPUT"
-
-            - name: Generate Homebrew cask
+            - name: Generate Homebrew formula
               run: |
                   V="${GITHUB_REF_NAME#v}"
                   sed -e "s/{{VERSION}}/$V/g" \
                       -e "s/{{SHA_DARWIN_X64}}/${{ steps.sha.outputs.darwin-x64 }}/g" \
                       -e "s/{{SHA_DARWIN_ARM64}}/${{ steps.sha.outputs.darwin-arm64 }}/g" \
-                      packaging/homebrew/pi-ui.rb.in > /tmp/pi-ui.rb
-
-            - name: Generate Homebrew formula
-              run: |
-                  V="${GITHUB_REF_NAME#v}"
-                  sed -e "s/{{VERSION}}/$V/g" \
-                      -e "s/{{SHA_DARWIN_X64}}/${{ steps.sha.outputs.server-darwin-x64 }}/g" \
-                      -e "s/{{SHA_DARWIN_ARM64}}/${{ steps.sha.outputs.server-darwin-arm64 }}/g" \
                       packaging/homebrew/pi-ui-server.rb.in > /tmp/pi-ui-server.rb
-
-            - name: Push Homebrew packages
+            - name: Push Homebrew formula
               env:
                   GH_PAT: ${{ secrets.GH_PAT }}
               run: |
                   git clone "https://x-access-token:${GH_PAT}@github.com/hyperpuncher/homebrew-tap.git" /tmp/homebrew-tap
-                  mkdir -p /tmp/homebrew-tap/Casks /tmp/homebrew-tap/Formula
-                  cp /tmp/pi-ui.rb /tmp/homebrew-tap/Casks/pi-ui.rb
+                  mkdir -p /tmp/homebrew-tap/Formula
                   cp /tmp/pi-ui-server.rb /tmp/homebrew-tap/Formula/pi-ui-server.rb
                   cd /tmp/homebrew-tap
                   git config user.name "github-actions"
                   git config user.email "github-actions@github.com"
-                  git add Casks/pi-ui.rb Formula/pi-ui-server.rb
+                  git add Formula/pi-ui-server.rb
                   git diff --staged --quiet || git commit -m "pi-ui ${GITHUB_REF_NAME}"
                   git push
-
             - name: Generate AUR package
               run: |
                   V="${GITHUB_REF_NAME#v}"
-                  ICON_SHA=$(sha256sum icons/pi-logo.svg | cut -d' ' -f1)
-                  DESKTOP_SHA=$(sha256sum packaging/aur/pi-ui.desktop | cut -d' ' -f1)
                   LICENSE_SHA=$(sha256sum LICENSE | cut -d' ' -f1)
                   sed -e "s/{{VERSION}}/$V/g" \
-                      -e "s/{{SHA_ICON}}/$ICON_SHA/g" \
-                      -e "s/{{SHA_DESKTOP}}/$DESKTOP_SHA/g" \
                       -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
                       -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
                       -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
-                      packaging/aur/PKGBUILD.in > /tmp/PKGBUILD
-                  sed -e "s/{{VERSION}}/$V/g" \
-                      -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
-                      -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.server-linux-x64 }}/g" \
-                      -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.server-linux-arm64 }}/g" \
-                      packaging/aur/PKGBUILD.server.in > /tmp/PKGBUILD.server
+                      packaging/aur/PKGBUILD.server.in > /tmp/PKGBUILD
                   docker run --rm --interactive archlinux:base-devel bash -c '
                     useradd --create-home builder
                     cat > /home/builder/PKGBUILD
@@ -285,15 +144,7 @@ jobs:
                     cd /home/builder
                     runuser --user builder -- makepkg --printsrcinfo
                   ' < /tmp/PKGBUILD > /tmp/.SRCINFO
-                  docker run --rm --interactive archlinux:base-devel bash -c '
-                    useradd --create-home builder
-                    cat > /home/builder/PKGBUILD
-                    chown builder:builder /home/builder/PKGBUILD
-                    cd /home/builder
-                    runuser --user builder -- makepkg --printsrcinfo
-                  ' < /tmp/PKGBUILD.server > /tmp/.SRCINFO.server
-
-            - name: Push AUR packages
+            - name: Push AUR package
               env:
                   AUR_KEY: ${{ secrets.AUR_KEY }}
               run: |
@@ -302,24 +153,11 @@ jobs:
                   chmod 600 ~/.ssh/aur_key
                   ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts
                   export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur_key"
-                  git clone ssh://aur@aur.archlinux.org/pi-ui-bin.git /tmp/aur-repo
+                  git clone ssh://aur@aur.archlinux.org/pi-ui-server-bin.git /tmp/aur-repo
                   cp /tmp/PKGBUILD /tmp/aur-repo/PKGBUILD
                   cp /tmp/.SRCINFO /tmp/aur-repo/.SRCINFO
-                  cp icons/pi-logo.svg /tmp/aur-repo/pi-logo.svg
-                  cp packaging/aur/pi-ui.desktop /tmp/aur-repo/pi-ui.desktop
                   cp LICENSE /tmp/aur-repo/LICENSE
                   cd /tmp/aur-repo
-                  git config user.name "hyperpuncher"
-                  git config user.email "hyperpuncher@users.noreply.github.com"
-                  git add PKGBUILD .SRCINFO pi-logo.svg pi-ui.desktop LICENSE
-                  git diff --staged --quiet || git commit -m "upgpkg: pi-ui-bin ${GITHUB_REF_NAME#v}"
-                  git push
-
-                  git clone ssh://aur@aur.archlinux.org/pi-ui-server-bin.git /tmp/aur-server-repo
-                  cp /tmp/PKGBUILD.server /tmp/aur-server-repo/PKGBUILD
-                  cp /tmp/.SRCINFO.server /tmp/aur-server-repo/.SRCINFO
-                  cp "$GITHUB_WORKSPACE/LICENSE" /tmp/aur-server-repo/LICENSE
-                  cd /tmp/aur-server-repo
                   git config user.name "hyperpuncher"
                   git config user.email "hyperpuncher@users.noreply.github.com"
                   git add PKGBUILD .SRCINFO LICENSE

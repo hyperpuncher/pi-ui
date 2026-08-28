@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { PromptHistoryNavigator } from "./prompt-history.js";
 
-Deno.test("prompt history browses newest first and restores the empty draft", () => {
+test("prompt history browses newest first and restores the empty draft", () => {
 	const history = new PromptHistoryNavigator();
 	history.sync(["third", "second", "first"]);
 
@@ -30,7 +32,7 @@ Deno.test("prompt history browses newest first and restores the empty draft", ()
 	assertEquals(history.navigate("third", "down"), { value: "", cursor: "end" });
 });
 
-Deno.test("prompt history only starts from an empty prompt", () => {
+test("prompt history only starts from an empty prompt", () => {
 	const history = new PromptHistoryNavigator();
 	history.sync(["previous"]);
 
@@ -39,7 +41,7 @@ Deno.test("prompt history only starts from an empty prompt", () => {
 	assertEquals(history.navigate("", "up"), { value: "previous", cursor: "start" });
 });
 
-Deno.test("prompt history resets when the session history changes", () => {
+test("prompt history resets when the session history changes", () => {
 	const history = new PromptHistoryNavigator();
 	history.sync(["session one"]);
 	assertEquals(history.navigate("", "up")?.value, "session one");

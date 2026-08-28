@@ -1,6 +1,10 @@
-import { dirname } from "@std/path";
+import { mkdir } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname } from "node:path";
 
 import { outputCommand } from "./utils/command.ts";
+import { isNotFound } from "./utils/fs-errors.ts";
+import { operatingSystem } from "./utils/platform.ts";
 
 const serviceName = "pi-ui-server";
 const launchAgentLabel = "dev.pi.ui.server";
@@ -15,17 +19,17 @@ export type ServerAutostartConfig = {
 	uid?: number;
 };
 
-export function serverAutostartConfig(platform = Deno.build.os): ServerAutostartConfig {
+export function serverAutostartConfig(platform = operatingSystem): ServerAutostartConfig {
 	if (platform !== "linux" && platform !== "darwin" && platform !== "windows") {
 		throw new Error(`server autostart is not supported on ${platform}`);
 	}
-	const home = Deno.env.get(platform === "windows" ? "USERPROFILE" : "HOME");
+	const home = homedir();
 	if (!home) throw new Error("could not determine the user home directory");
 	return {
 		platform,
-		executable: Deno.execPath(),
+		executable: process.execPath,
 		home,
-		uid: platform === "darwin" ? (Deno.uid() ?? undefined) : undefined,
+		uid: platform === "darwin" ? process.getuid?.() : undefined,
 	};
 }
 
@@ -146,12 +150,11 @@ async function enableWindowsAutostart(config: ServerAutostartConfig): Promise<vo
 		windowsRunCommand(config),
 		"/F",
 	]);
-	const child = new Deno.Command(config.executable, {
-		detached: true,
-		stdin: "null",
-		stdout: "null",
-		stderr: "null",
-	}).spawn();
+	const child = Bun.spawn([config.executable], {
+		stdin: "ignore",
+		stdout: "ignore",
+		stderr: "ignore",
+	});
 	child.unref();
 }
 
@@ -168,7 +171,7 @@ async function removeLegacyWindowsTask(): Promise<void> {
 
 async function stopWindowsServer(config: ServerAutostartConfig): Promise<void> {
 	const executable = powershellString(config.executable);
-	const script = `Get-Process -Name '${serviceName}' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${Deno.pid} -and $_.Path -eq '${executable}' } | Stop-Process -Force`;
+	const script = `Get-Process -Name '${serviceName}' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${process.pid} -and $_.Path -eq '${executable}' } | Stop-Process -Force`;
 	await command("powershell.exe", [
 		"-NoProfile",
 		"-NonInteractive",
@@ -191,15 +194,15 @@ function launchDomain(config: ServerAutostartConfig): string {
 }
 
 async function writeConfig(path: string, contents: string): Promise<void> {
-	await Deno.mkdir(dirname(path), { recursive: true });
-	await Deno.writeTextFile(path, contents);
+	await mkdir(dirname(path), { recursive: true });
+	await Bun.write(path, contents);
 }
 
 async function removeIfPresent(path: string): Promise<void> {
 	try {
-		await Deno.remove(path);
+		await Bun.file(path).delete();
 	} catch (error) {
-		if (!(error instanceof Deno.errors.NotFound)) throw error;
+		if (!isNotFound(error)) throw error;
 	}
 }
 

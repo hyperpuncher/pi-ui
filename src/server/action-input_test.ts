@@ -1,9 +1,11 @@
+import { test } from "bun:test";
+
 import {
 	assertEquals,
 	assertRejects,
 	assertStringIncludes,
 	assertThrows,
-} from "@std/assert";
+} from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
 import {
@@ -15,7 +17,7 @@ import {
 	requiredString,
 } from "./action-input.ts";
 
-Deno.test("action inputs reject malformed JSON instead of returning empty signals", async () => {
+test("action inputs reject malformed JSON instead of returning empty signals", async () => {
 	await assertRejects(
 		() => readActionSignals(actionRequest("{")),
 		ActionInputError,
@@ -23,7 +25,7 @@ Deno.test("action inputs reject malformed JSON instead of returning empty signal
 	);
 });
 
-Deno.test("action input readers validate required and optional field types", () => {
+test("action input readers validate required and optional field types", () => {
 	assertEquals(requiredString({ path: " /tmp " }, "path"), " /tmp ");
 	assertEquals(optionalString({}, "note"), undefined);
 	assertEquals(booleanField({ enabled: true }, "enabled"), true);
@@ -50,7 +52,7 @@ Deno.test("action input readers validate required and optional field types", () 
 	}
 });
 
-Deno.test("action input errors redact signal values including secrets", () => {
+test("action input errors redact signal values including secrets", () => {
 	const secret = "sk-secret-value";
 	const error = assertThrows(
 		() => requiredString({ authInput: { secret } }, "authInput"),

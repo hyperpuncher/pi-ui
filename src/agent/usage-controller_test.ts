@@ -1,10 +1,12 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import type { AppUsage } from "../state/app-store.ts";
 import { agentSessionRuntimeStub } from "./test-fixtures.ts";
 import { cumulativeCacheHitPercent, UsageController } from "./usage-controller.ts";
 
-Deno.test("keeps cached Codex usage while switching models", async () => {
+test("keeps cached Codex usage while switching models", async () => {
 	const codexModel = { provider: "openai-codex", id: "gpt-5" };
 	let model = codexModel;
 	let rendered: AppUsage | undefined;
@@ -60,7 +62,7 @@ Deno.test("keeps cached Codex usage while switching models", async () => {
 	controller.dispose();
 });
 
-Deno.test("shows OpenCode Go usage for OpenCode Go models", async () => {
+test("shows OpenCode Go usage for OpenCode Go models", async () => {
 	const model = { provider: "opencode-go", id: "kimi-k2.5" };
 	let rendered: AppUsage | undefined;
 	const session = {
@@ -118,7 +120,7 @@ Deno.test("shows OpenCode Go usage for OpenCode Go models", async () => {
 	controller.dispose();
 });
 
-Deno.test("uses the cumulative session cache hit rate", () => {
+test("uses the cumulative session cache hit rate", () => {
 	assertEquals(
 		cumulativeCacheHitPercent({
 			tokens: {

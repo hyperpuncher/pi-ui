@@ -1,18 +1,20 @@
+import { outputCommand } from "./command.ts";
+import { isNotFound } from "./fs-errors.ts";
+import { operatingSystem } from "./platform.ts";
+
 type TrashCommand = { command: string; args: string[] };
 
 export async function moveToTrash(path: string): Promise<void> {
 	const command = trashCommand(path);
 	try {
-		const output = await new Deno.Command(command.command, {
-			args: command.args,
-		}).output();
+		const output = await outputCommand(command.command, { args: command.args });
 		if (!output.success) {
 			const stderr = new TextDecoder().decode(output.stderr).trim();
 			throw new Error(stderr || `Trash command failed with code ${output.code}`);
 		}
 	} catch (error) {
-		if (error instanceof Deno.errors.NotFound) {
-			await Deno.remove(path);
+		if (isNotFound(error)) {
+			await Bun.file(path).delete();
 			return;
 		}
 		throw error;
@@ -20,7 +22,7 @@ export async function moveToTrash(path: string): Promise<void> {
 }
 
 function trashCommand(path: string): TrashCommand {
-	if (Deno.build.os === "darwin") {
+	if (operatingSystem === "darwin") {
 		return {
 			command: "osascript",
 			args: [
@@ -29,7 +31,7 @@ function trashCommand(path: string): TrashCommand {
 			],
 		};
 	}
-	if (Deno.build.os === "windows") {
+	if (operatingSystem === "windows") {
 		return {
 			command: "powershell",
 			args: [

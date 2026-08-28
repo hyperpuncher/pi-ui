@@ -1,10 +1,9 @@
 {
 	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
 	"entry": [
-		"src/main.ts",
 		"src/server-main.ts",
+		"src/server/app.ts",
 		"scripts/*.ts",
-		"rolldown.config.ts",
 		"src/client/code-theme.ts",
 		"src/client/pi-fuzzy.ts",
 		"src/client/pierre-worker.ts",
@@ -25,13 +24,12 @@
 		"@pierre/diffs",
 		"@pierre/trees",
 		"@starfederation/datastar-sdk",
-		"@std/http",
-		"rolldown",
+		"basecoat-css",
 		"satteri",
 		"tailwindcss",
 		"typebox"
 	],
-	"ignoreUnresolvedImports": ["../static/native/windows-folder-picker.exe"],
+	"ignoreUnresolvedImports": ["../pierre-worker.js"],
 	"ignoreExports": [
 		{
 			"file": "static/app/dialogs.js",

@@ -21,7 +21,7 @@ import { shikiTokenStyle } from "./shiki-token-style.ts";
 import { syncHtml } from "./sync-html.ts";
 
 // Streaming entries track roughly two restored pages; final results can deduplicate
-// repeated content across a much longer desktop session.
+// repeated content across a much longer session.
 const maxStreamingEntries = 100;
 const maxFinalMarkdownEntries = 500;
 const maxPierreCodeBlockEntries = 500;

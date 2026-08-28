@@ -1,5 +1,8 @@
+import { test } from "bun:test";
+
 import type { AssistantMessage } from "@earendil-works/pi-ai";
-import { assertEquals, assertMatch } from "@std/assert";
+
+import { assertEquals, assertMatch } from "#testing/assertions";
 
 import {
 	collectCacheMisses,
@@ -55,7 +58,7 @@ function entry(message: AssistantMessage) {
 	});
 }
 
-Deno.test("detects and formats significant cache misses like pi", () => {
+test("detects and formats significant cache misses like pi", () => {
 	const previous = assistant({ timestamp: 0, input: 10_000, cacheWrite: 40_000 });
 	const current = assistant({
 		timestamp: 6 * 60_000,
@@ -70,7 +73,7 @@ Deno.test("detects and formats significant cache misses like pi", () => {
 	);
 });
 
-Deno.test("cache miss collection resets after compaction", () => {
+test("cache miss collection resets after compaction", () => {
 	const before = assistant({ timestamp: 0, input: 10_000, cacheWrite: 40_000 });
 	const after = assistant({ timestamp: 1_000, input: 50_000, cacheWrite: 0 });
 	const entries = [
@@ -86,7 +89,7 @@ Deno.test("cache miss collection resets after compaction", () => {
 	assertEquals(collectCacheMisses(entries, models).size, 0);
 });
 
-Deno.test("hides cache misses below pi's notice thresholds", () => {
+test("hides cache misses below pi's notice thresholds", () => {
 	assertEquals(
 		formatCacheMissNotice({
 			missedTokens: 19_999,

@@ -1,4 +1,6 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import type { WorkspaceCommit, WorkspaceFileChange } from "../workspace-review-types.ts";
 import {
@@ -26,13 +28,13 @@ function change(path: string): WorkspaceFileChange {
 	return { additions: 1, deletions: 0, path, status: "modified" };
 }
 
-Deno.test("summary and unloaded revisions represent loading state", () => {
+test("summary and unloaded revisions represent loading state", () => {
 	assertEquals(workspaceReviewLoading("git-unloaded"), true);
 	assertEquals(workspaceReviewLoading("git-summary:abc"), true);
 	assertEquals(workspaceReviewLoading("abc"), false);
 });
 
-Deno.test("workspace changes reconcile equal Git revisions", () => {
+test("workspace changes reconcile equal Git revisions", () => {
 	assertEquals(
 		workspaceReviewStateChanged(
 			{ revision: "same", workspacePath: "/first" },
@@ -49,7 +51,7 @@ Deno.test("workspace changes reconcile equal Git revisions", () => {
 	);
 });
 
-Deno.test("loading another workspace preserves Git view availability", () => {
+test("loading another workspace preserves Git view availability", () => {
 	assertEquals(
 		reconcileReviewAvailability(true, {
 			isGitRepository: false,
@@ -66,7 +68,7 @@ Deno.test("loading another workspace preserves Git view availability", () => {
 	);
 });
 
-Deno.test("same-head refresh preserves unique older commits", () => {
+test("same-head refresh preserves unique older commits", () => {
 	const firstPage = Array.from({ length: 50 }, (_, index) => commit(`h${index}`));
 	const current = [...firstPage, commit("older"), commit("duplicate")];
 	const next = [...firstPage.slice(0, 49), commit("duplicate")];
@@ -80,7 +82,7 @@ Deno.test("same-head refresh preserves unique older commits", () => {
 	);
 });
 
-Deno.test("changed head resets history and pagination", () => {
+test("changed head resets history and pagination", () => {
 	const next = [commit("new-head")];
 	const result = reconcileFirstHistoryPage(
 		[commit("old-head"), commit("older")],
@@ -95,7 +97,7 @@ Deno.test("changed head resets history and pagination", () => {
 	});
 });
 
-Deno.test("opening review prefers working changes over a commit", () => {
+test("opening review prefers working changes over a commit", () => {
 	const selectedCommit = { hash: "head", kind: "commit" } as const;
 	assertEquals(selectionForReviewOpen(selectedCommit, [change("first.ts")]), {
 		kind: "working",
@@ -104,7 +106,7 @@ Deno.test("opening review prefers working changes over a commit", () => {
 	assertEquals(selectionForReviewOpen(selectedCommit, []), selectedCommit);
 });
 
-Deno.test("snapshot reconciliation chooses an available selection", () => {
+test("snapshot reconciliation chooses an available selection", () => {
 	assertEquals(
 		reconcileSelection(
 			{ kind: "working", path: "removed.ts" },

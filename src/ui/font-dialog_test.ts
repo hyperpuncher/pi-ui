@@ -1,8 +1,10 @@
-import { assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertStringIncludes } from "#testing/assertions";
 
 import { renderFontDialog } from "./font-dialog.tsx";
 
-Deno.test("font dialog renders searchable interface and code font previews", () => {
+test("font dialog renders searchable interface and code font previews", () => {
 	const html = renderFontDialog();
 	assertStringIncludes(html, "Atkinson Hyperlegible Next");
 	assertStringIncludes(html, "Atkinson Hyperlegible Mono");

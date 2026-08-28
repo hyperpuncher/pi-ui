@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { llamaLoadProgress, normalizeLlamaServerUrl } from "./llama-client.ts";
 
-Deno.test("llama server URLs normalize to the router root", () => {
+test("llama server URLs normalize to the router root", () => {
 	assertEquals(
 		normalizeLlamaServerUrl("http://localhost:8080/v1/"),
 		"http://localhost:8080",
@@ -13,7 +15,7 @@ Deno.test("llama server URLs normalize to the router root", () => {
 	);
 });
 
-Deno.test("llama loading stages map to overall progress", () => {
+test("llama loading stages map to overall progress", () => {
 	assertEquals(
 		llamaLoadProgress({
 			model: "qwen",

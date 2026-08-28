@@ -1,8 +1,10 @@
-import { assertEquals as assertEqual } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals as assertEqual } from "#testing/assertions";
 
 import { EnhancementQueue } from "./enhancement-queue.ts";
 
-Deno.test("enhancement queue bounds concurrency and continues after errors", async () => {
+test("enhancement queue bounds concurrency and continues after errors", async () => {
 	const queue = new EnhancementQueue(2);
 	let active = 0;
 	let maximum = 0;
@@ -37,7 +39,7 @@ Deno.test("enhancement queue bounds concurrency and continues after errors", asy
 	assertEqual(completed.length, 4);
 });
 
-Deno.test("enhancement queue cancels pending and active jobs", async () => {
+test("enhancement queue cancels pending and active jobs", async () => {
 	const queue = new EnhancementQueue(1);
 	let release: (() => void) | undefined;
 	let cancelled = 0;

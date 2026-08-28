@@ -1,4 +1,6 @@
-import { assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals, assertFalse, assertStringIncludes } from "#testing/assertions";
 
 import {
 	launchAgent,
@@ -7,7 +9,7 @@ import {
 	windowsRunCommand,
 } from "./server-autostart.ts";
 
-Deno.test("systemd service starts the current server executable", () => {
+test("systemd service starts the current server executable", () => {
 	const service = systemdService({
 		platform: "linux",
 		executable: "/home/Test User/pi-ui%dev",
@@ -18,7 +20,7 @@ Deno.test("systemd service starts the current server executable", () => {
 	assertStringIncludes(service, "WantedBy=default.target");
 });
 
-Deno.test("launch agent starts at login and escapes paths", () => {
+test("launch agent starts at login and escapes paths", () => {
 	const agent = launchAgent({
 		platform: "darwin",
 		executable: "/Applications/pi-ui & dev.app/Contents/MacOS/pi-ui",
@@ -32,7 +34,7 @@ Deno.test("launch agent starts at login and escapes paths", () => {
 	assertStringIncludes(agent, "/Applications/pi-ui &amp; dev.app/Contents/MacOS/pi-ui");
 });
 
-Deno.test("windows startup command quotes the executable", () => {
+test("windows startup command quotes the executable", () => {
 	assertEquals(
 		windowsRunCommand({
 			platform: "windows",
@@ -43,14 +45,14 @@ Deno.test("windows startup command quotes the executable", () => {
 	);
 });
 
-Deno.test("autostart uses the current server executable", () => {
-	assertEquals(serverAutostartConfig("linux").executable, Deno.execPath());
+test("autostart uses the current server executable", () => {
+	assertEquals(serverAutostartConfig("linux").executable, process.execPath);
 });
 
-Deno.test("windows installer waits only for the autostart command", async () => {
-	const script = await Deno.readTextFile(
-		new URL("../packaging/windows/install-server.ps1", import.meta.url),
-	);
+test("windows installer waits only for the autostart command", async () => {
+	const script = await Bun.file(
+		new URL("../packaging/windows/install.ps1", import.meta.url),
+	).text();
 	assertStringIncludes(script, "$command.WaitForExit()");
 	assertFalse(/Start-Process[^\r\n]+-Wait/.test(script));
 });

@@ -1,8 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
 
 import { completeFileValue, extractFilePrefix, nextPickerIndex } from "./pickers.js";
 
-Deno.test("extractFilePrefix finds the @ token at the caret", () => {
+test("extractFilePrefix finds the @ token at the caret", () => {
 	assertEquals(extractFilePrefix("open @src/ui after", 12), {
 		start: 5,
 		end: 12,
@@ -16,7 +18,7 @@ Deno.test("extractFilePrefix finds the @ token at the caret", () => {
 	});
 });
 
-Deno.test("picker navigation stops at both visual boundaries", () => {
+test("picker navigation stops at both visual boundaries", () => {
 	assertEquals(nextPickerIndex(4, -1, -1), 0);
 	assertEquals(nextPickerIndex(4, 0, 1), 0);
 	assertEquals(nextPickerIndex(4, 3, -1), 3);
@@ -25,7 +27,7 @@ Deno.test("picker navigation stops at both visual boundaries", () => {
 	assertEquals(nextPickerIndex(4, 1, 1), 0);
 });
 
-Deno.test("file completion preserves surrounding prompt text and directory flow", () => {
+test("file completion preserves surrounding prompt text and directory flow", () => {
 	const match = { start: 4, end: 7, query: "sr" };
 	assertEquals(completeFileValue("see @sr now", match, "src/app.ts"), {
 		text: "see @src/app.ts  now",

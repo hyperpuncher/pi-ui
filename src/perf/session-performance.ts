@@ -128,7 +128,7 @@ class SessionPerformanceCollector {
 	private readonly transitionContext = new AsyncLocalStorage<number>();
 
 	get enabled(): boolean {
-		return Deno.env.get("PI_UI_PERF") === "1";
+		return process.env.PI_UI_PERF === "1";
 	}
 
 	reset(): void {

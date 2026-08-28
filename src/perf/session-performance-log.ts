@@ -1,13 +1,15 @@
-import { dirname } from "@std/path";
+import { appendFile, mkdir, stat, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 
 import { appCachePath } from "../utils/app-cache.ts";
+import { isNotFound } from "../utils/fs-errors.ts";
 import type { JsonValue } from "../utils/json-types.ts";
 
 const maxLogBytes = 5 * 1024 * 1024;
 let pendingWrite = Promise.resolve();
 
 function sessionPerformanceLogPath(): string | undefined {
-	const configured = Deno.env.get("PI_UI_PERF_FILE")?.trim();
+	const configured = process.env.PI_UI_PERF_FILE?.trim();
 	if (configured?.toLowerCase() === "off") return undefined;
 	return configured || appCachePath("session-performance.jsonl");
 }
@@ -20,16 +22,15 @@ export function appendSessionPerformanceRecord(record: JsonValue): void {
 	pendingWrite = pendingWrite
 		.catch(() => undefined)
 		.then(async () => {
-			await Deno.mkdir(dirname(path), { recursive: true });
-			const size = await Deno.stat(path)
+			await mkdir(dirname(path), { recursive: true });
+			const size = await stat(path)
 				.then((info) => info.size)
 				.catch((error) => {
-					if (error instanceof Deno.errors.NotFound) return 0;
+					if (isNotFound(error)) return 0;
 					throw error;
 				});
-			await Deno.writeTextFile(path, line, {
-				append: size > 0 && size + bytes <= maxLogBytes,
-			});
+			if (size > 0 && size + bytes <= maxLogBytes) await appendFile(path, line);
+			else await writeFile(path, line);
 		})
 		.catch((error) => console.warn("Failed to write session performance log", error));
 }

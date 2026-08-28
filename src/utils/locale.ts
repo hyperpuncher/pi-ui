@@ -1,7 +1,7 @@
 import { formatAdaptiveDateTime, formatExpandedDateTime } from "./date-time-format.ts";
 
 export const systemTimeLocale = posixLocaleToBcp47(
-	Deno.env.get("LC_ALL") || Deno.env.get("LC_TIME") || Deno.env.get("LANG"),
+	process.env.LC_ALL || process.env.LC_TIME || process.env.LANG,
 );
 
 export function formatDateTime(

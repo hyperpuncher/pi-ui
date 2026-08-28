@@ -19,7 +19,7 @@ const components = [
 	["Tooltip", "tooltip"],
 ] as const;
 const selectedSections = new Set<string>(components.map(([section]) => section));
-const source = await Deno.readTextFile(sourcePath);
+const source = await Bun.file(sourcePath).text();
 const sectionPattern = /^\s*\/\* ([^*]+) \*\/\s*$/gm;
 const sections = [...source.matchAll(sectionPattern)];
 const availableSections = new Set(sections.map((section) => section[1]));
@@ -48,9 +48,9 @@ const selectedCss = sections
 	.join("\n");
 
 await Promise.all([
-	Deno.writeTextFile(
+	Bun.write(
 		outputPath,
 		`${imports}\n\n/* Generated from the used Basecoat Nova component sections. */\n@layer components {${selectedCss}\n}\n`,
 	),
-	Deno.copyFile(basecoatJsSourcePath, basecoatJsOutputPath),
+	Bun.write(basecoatJsOutputPath, Bun.file(basecoatJsSourcePath)),
 ]);

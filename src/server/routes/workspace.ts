@@ -1,9 +1,8 @@
-import { pickNativeDirectoryPath } from "../../native-file-picker.ts";
 import { renderWorkspaceSearchResults } from "../../ui/pickers.tsx";
 import { isRecord, isString } from "../../utils/type-guards.ts";
 import { formatHomePath } from "../../utils/workspace.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
-import { datastarResponse, signalsResponse } from "../datastar.ts";
+import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import {
 	createWorkspaceEntry,
@@ -20,10 +19,6 @@ import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 export function registerWorkspaceRoutes(router: ExactRouter<RouteContext>): void {
-	router.register("POST", endpoints.workspacePick, (_request, context) =>
-		pickWorkspace(context),
-	);
-
 	router.register("GET", endpoints.workspaceSearch, async (request, context) => {
 		const query = stringField(await readActionSignals(request), "workspaceDraft");
 		const recent = filterWorkspaces(
@@ -126,30 +121,6 @@ export function registerWorkspaceRoutes(router: ExactRouter<RouteContext>): void
 		}
 		return datastarResponse();
 	});
-}
-
-export async function pickWorkspace(
-	context: Pick<RouteContext, "openWorkspace">,
-	pickDirectory: () => Promise<string | undefined> = pickNativeDirectoryPath,
-): Promise<Response> {
-	try {
-		const path = await pickDirectory();
-		if (!path) return datastarResponse();
-		if (!(await context.openWorkspace(path))) {
-			return signalsResponse({
-				_workspacePickerError: "Workspace transition failed.",
-			});
-		}
-		return datastarResponse([
-			{ type: "signals", signals: { _workspacePickerError: "" } },
-			{ type: "effect", effect: { type: "close-workspace-picker" } },
-		]);
-	} catch (error) {
-		console.error("Native workspace picker failed", error);
-		return signalsResponse({
-			_workspacePickerError: "Could not open the native folder picker.",
-		});
-	}
 }
 
 async function workspaceFileResponse<Value>(

@@ -1,12 +1,16 @@
-import { assertEquals } from "@std/assert";
+import { test } from "bun:test";
+
+import { assertEquals } from "#testing/assertions";
+import { readTextFile, remove, writeTextFile } from "#testing/files";
+import { makeTempFile } from "#testing/temp";
 
 import { defaultFonts } from "../fonts.ts";
 import { readFontPreferences, writeFontPreferences } from "./font-preferences.ts";
 
-Deno.test("font preferences default, validate, and preserve config", async () => {
-	const path = await Deno.makeTempFile();
+test("font preferences default, validate, and preserve config", async () => {
+	const path = await makeTempFile();
 	try {
-		await Deno.writeTextFile(path, JSON.stringify({ future: { enabled: true } }));
+		await writeTextFile(path, JSON.stringify({ future: { enabled: true } }));
 		assertEquals(await readFontPreferences(path), defaultFonts());
 
 		const fonts = {
@@ -15,10 +19,10 @@ Deno.test("font preferences default, validate, and preserve config", async () =>
 		} as const;
 		await writeFontPreferences(fonts, path);
 		assertEquals(await readFontPreferences(path), fonts);
-		assertEquals(JSON.parse(await Deno.readTextFile(path)).future, {
+		assertEquals(JSON.parse(await readTextFile(path)).future, {
 			enabled: true,
 		});
 	} finally {
-		await Deno.remove(path);
+		await remove(path);
 	}
 });

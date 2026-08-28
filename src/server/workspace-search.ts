@@ -1,3 +1,4 @@
+import { readdir } from "node:fs/promises";
 import * as path from "node:path";
 
 import { expandHomePath } from "../utils/workspace.ts";
@@ -25,9 +26,9 @@ export async function searchWorkspaces(
 
 	try {
 		const suggestions: WorkspaceSuggestion[] = [];
-		for await (const entry of Deno.readDir(directory)) {
+		for (const entry of await readdir(directory, { withFileTypes: true })) {
 			if (
-				!entry.isDirectory ||
+				!entry.isDirectory() ||
 				(!prefix.startsWith(".") && entry.name.startsWith("."))
 			) {
 				continue;
