@@ -77,7 +77,7 @@ pi-ui stores its configuration in:
 
 - linux: `~/.config/pi-ui/config.json`
 - macos: `~/.config/pi-ui/config.json`
-- windows: `%APPDATA%\\pi-ui\\config.json`
+- windows: `%APPDATA%\pi-ui\config.json`
 
 all options with their defaults:
 
