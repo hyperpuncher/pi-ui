@@ -51,6 +51,13 @@ test("autostart uses the current server executable", () => {
 	assertEquals(serverAutostartConfig("linux").executable, process.execPath);
 });
 
+test("mac installer migrates the renamed Homebrew formula", async () => {
+	const script = await Bun.file(
+		new URL("../packaging/install.sh", import.meta.url),
+	).text();
+	assertStringIncludes(script, "brew migrate pi-ui");
+});
+
 test("windows installer waits only for the autostart command", async () => {
 	const script = await Bun.file(
 		new URL("../packaging/windows/install.ps1", import.meta.url),

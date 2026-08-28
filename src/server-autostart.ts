@@ -187,13 +187,7 @@ async function removeWindowsAutostart(name: string): Promise<void> {
 }
 
 async function stopLegacyWindowsServer(): Promise<void> {
-	const script = `Get-Process -Name '${legacyServiceName}' -ErrorAction SilentlyContinue | Stop-Process -Force`;
-	await command("powershell.exe", [
-		"-NoProfile",
-		"-NonInteractive",
-		"-Command",
-		script,
-	]);
+	await command("taskkill.exe", ["/F", "/IM", `${legacyServiceName}.exe`], true);
 }
 
 async function stopWindowsServer(config: ServerAutostartConfig): Promise<void> {
