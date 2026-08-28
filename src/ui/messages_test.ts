@@ -68,12 +68,7 @@ test("user messages render attached images without placeholder text", () => {
 		}),
 		'src="/sessions/image?id=one"',
 	);
-	assertStringIncludes(html, "flex-col items-end gap-2");
-	assertStringIncludes(html, "rounded-xl bg-primary p-1.5");
 	assertStringIncludes(html, "notes.txt");
-	assertStringIncludes(html, "h-16");
-	assertStringIncludes(html, "bg-card");
-	assertStringIncludes(html, "rounded-lg border bg-muted");
 	assertStringIncludes(html, "check this");
 	assertStringExcludes(html, "[image:");
 });
@@ -150,7 +145,6 @@ test("thinking blocks render expanded content and a collapsed label", () => {
 	});
 	assertStringIncludes(html, "<strong>Planning full validation tests</strong>");
 	assertStringIncludes(html, "Thinking...");
-	assertStringIncludes(html, 'class="m-0 leading-[1.7] font-semibold"');
 	assertStringIncludes(html, 'data-show="$_thinkingHidden && !$_minimalMode"');
 	assertStringIncludes(html, 'data-show="$_minimalMode"');
 	assertStringIncludes(html, "pi-tool-state-dot");

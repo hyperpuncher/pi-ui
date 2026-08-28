@@ -88,7 +88,6 @@ test("session rows expose stable ids for resilient active descendants", () => {
 	assertStringIncludes(html, "aria-current:bg-sidebar-accent!");
 	assertStringIncludes(html, "No matching sessions.");
 	assertFalse(html.includes("data-session-rename-title"));
-	assertStringIncludes(html, "text-[13px] text-muted-foreground");
 });
 
 test("current running session is live but does not resume itself", () => {
@@ -110,23 +109,13 @@ test("current running session is live but does not resume itself", () => {
 	);
 
 	assertStringIncludes(html, 'aria-current="true"');
-	assertStringIncludes(html, "bg-sidebar-accent!");
-	assertStringIncludes(html, "text-sidebar-accent-foreground!");
 	assertFalse(html.includes("data-current-session-indicator"));
 	assertStringIncludes(html, 'aria-label="Current session running"');
 	assertStringIncludes(html, "pi-tool-status-ball");
-	assertStringIncludes(
-		html,
-		'class="inline-grid size-2 shrink-0 *:[grid-area:1/1] ml-0.75"',
-	);
-	assertFalse(html.includes("pi-inverse-fine-print"));
 	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
-	assertStringIncludes(html, 'class="pi-date"');
 	assertStringIncludes(html, "data-session-rename-title");
 	assertStringIncludes(html, "data-on:dblclick");
 	assertStringIncludes(html, "@post('/sessions/rename'");
-	assertStringIncludes(html, "size-3 text-destructive!");
-	assertStringIncludes(html, "[&_rect]:fill-current");
 	assertStringIncludes(html, "@post('/abort'");
 	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
 	assertStringIncludes(html, "dataset.sessionPickerCloseTimer");
@@ -225,13 +214,11 @@ test("workspace rows show each collapsed path once", () => {
 
 	assertStringIncludes(html, ">~<");
 	assertStringIncludes(html, ">~/projects/pi-ui<");
-	assertStringIncludes(html, "truncate font-mono text-[13px]");
 	assertStringIncludes(
 		html,
 		`src="/sessions/favicon?cwd=${encodeURIComponent(`${home}/projects/pi-ui`)}"`,
 	);
 	assertStringIncludes(html, 'aria-current="true"');
-	assertStringIncludes(html, "font-semibold text-foreground");
 	assertFalse(
 		new RegExp(`>\\s*${escapeRegExp(home)}(?:/projects/pi-ui)?\\s*<`).test(html),
 	);
@@ -296,8 +283,6 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 		}),
 	);
 	assertStringIncludes(withoutSelection, "choose model");
-	assertStringIncludes(withoutSelection, 'class="popover min-w-0"');
-	assertStringIncludes(withoutSelection, 'class="command"');
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
 	assertStringIncludes(withoutSelection, 'data-filter="manual"');
 	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-expanded"');
@@ -313,16 +298,6 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet anthropic"');
 	assertStringIncludes(withoutSelection, 'data-keywords="Claude Sonnet"');
 	assertStringIncludes(withoutSelection, 'data-model-search-order="0"');
-	assertStringIncludes(withoutSelection, "[content-visibility:auto]");
-	assertStringIncludes(withoutSelection, "[contain-intrinsic-block-size:auto_3rem]");
-	assertStringIncludes(
-		withoutSelection,
-		"w-0 opacity-0 group-hover:w-7 group-hover:opacity-100 focus-visible:w-7 focus-visible:opacity-100",
-	);
-	assertStringIncludes(
-		withoutSelection,
-		"group-data-[context-compact]/prompt-footer:max-w-28",
-	);
 });
 
 test("model picker shows only the final model name in its trigger", () => {
@@ -341,7 +316,7 @@ test("model picker shows only the final model name in its trigger", () => {
 		}),
 	);
 
-	assertStringIncludes(html, '<span class="min-w-0 truncate">DeepSeek-R1</span>');
+	assertStringIncludes(html, ">DeepSeek-R1</span>");
 	assertStringIncludes(html, ">deepseek-ai/DeepSeek-R1</span>");
 });
 

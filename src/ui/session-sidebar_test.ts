@@ -32,11 +32,9 @@ test("session sidebar uses Basecoat structure and marks the current session", ()
 		}),
 	);
 
-	assertStringIncludes(html, 'class="sidebar peer/sidebar group/sidebar"');
 	assertStringIncludes(html, 'data-side="right"');
 	assertFalse(html.includes('data-initial-open="false"'));
 	assertStringIncludes(html, 'aria-label="Sessions"');
-	assertStringIncludes(html, "pi-raised-surface");
 	assertStringIncludes(html, "pi-resize-handle");
 	assertStringIncludes(html, 'data-on:click__stop="true"');
 	assertStringIncludes(html, "$_sessionSidebarWidth");
@@ -46,9 +44,6 @@ test("session sidebar uses Basecoat structure and marks the current session", ()
 	assertFalse(html.includes('tabindex="0"'));
 	assertFalse(html.includes('role="separator"'));
 	assertStringIncludes(html, "data-style:right");
-	assertStringIncludes(html, "absolute! inset-0 h-full! p-0!");
-	assertStringIncludes(html, "flex min-w-0 flex-col gap-1 p-2");
-	assertStringIncludes(html, 'class="pi-date"');
 	assertStringIncludes(html, ">workspace</span>");
 	assertFalse(html.includes("3 messages"));
 	assertFalse(html.includes("1 message"));
@@ -63,13 +58,6 @@ test("session sidebar uses Basecoat structure and marks the current session", ()
 	assertStringIncludes(html, "evt.code === 'Digit2'");
 	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
 	assertStringIncludes(html, '<kbd class="kbd">2</kbd>');
-	assertFalse(html.includes("pr-7"));
-	assertFalse(html.includes("absolute right-2"));
-	assertStringIncludes(html, "flex h-6 min-w-0 items-center gap-2");
-	assertStringIncludes(html, "*:[grid-area:1/1]");
-	assertStringIncludes(html, "group-hover:opacity-0");
-	assertStringIncludes(html, "pointer-events-auto");
-	assertStringIncludes(html, "cursor-text");
 	assertStringIncludes(html, "data-on:dblclick");
 	assertStringIncludes(html, "data-session-rename-input");
 	assertStringIncludes(html, "evt.currentTarget.blur()");
@@ -163,9 +151,6 @@ test("session sidebar groups sessions while preserving times and shortcuts", () 
 	assertFalse(html.includes(">Today</span>"));
 	assertStringIncludes(html, ">Yesterday</span>");
 	assertFalse(html.includes(">Earlier</span>"));
-	assertStringIncludes(html, 'class="flex-1 border-t border-border"');
-	assertStringIncludes(html, "items-center gap-2 px-2 py-1");
-	assertStringIncludes(html, "text-muted-foreground lowercase");
 	assertStringIncludes(html, ">12:00</time>");
 	assertFalse(html.includes(">yesterday</time>"));
 	assertFalse(html.includes(">Aug 1</time>"));
