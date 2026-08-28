@@ -22,9 +22,9 @@ jobs:
                     - name: linux-arm64
                       os: ubuntu-24.04-arm
                     - name: darwin-x64
-                      os: macos-15-intel
+                      os: macos-26-intel
                     - name: darwin-arm64
-                      os: macos-14
+                      os: macos-26
                     - name: windows-x64
                       os: windows-latest
 
@@ -45,7 +45,7 @@ jobs:
                       ZSTD_CLEVEL=19 tar --zstd -cf "dist/pi-ui-server-${{ matrix.name }}.tar.zst" -C dist pi-ui-server
                       ;;
                     darwin-*)
-                      ditto -c -k --keepParent dist/pi-ui-server "dist/pi-ui-server-${{ matrix.name }}.zip"
+                      (cd dist && ditto -c -k --keepParent pi-ui-server "pi-ui-server-${{ matrix.name }}.zip")
                       ;;
                     windows-*)
                       (cd dist && 7z a "pi-ui-server-${{ matrix.name }}.zip" pi-ui-server.exe)
