@@ -256,7 +256,10 @@ function highlightStreamingCodeBlock(
 	cacheKey: string,
 ): string {
 	const highlighter = getHighlighterIfLoaded();
-	if (!highlighter) return renderPlainCodeBlock(code, language);
+	if (!highlighter || !loadedCodeLanguage(language)) {
+		if (language !== "text") void loadPierreLanguage(language);
+		return renderPlainCodeBlock(code, language);
+	}
 
 	const themedCacheKey = `${getActiveCodeThemeId()}:${cacheKey}`;
 	let state = streamingCodeBlockStates.get(themedCacheKey);

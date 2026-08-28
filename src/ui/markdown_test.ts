@@ -6,7 +6,7 @@ import {
 } from "#testing/assertions";
 
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
-import { preloadPierreHighlighter } from "./diffs.ts";
+import { loadPierreLanguage, preloadPierreHighlighter } from "./diffs.ts";
 import {
 	markdownCacheStatsForTest,
 	releaseMarkdownStreamingState,
@@ -35,6 +35,15 @@ test("streaming without a key does not retain output", () => {
 	const before = markdownCacheStatsForTest().streamingEntries;
 	renderMarkdownStreaming("uncached");
 	assertEqual(markdownCacheStatsForTest().streamingEntries, before);
+});
+
+test("streaming code stays visible while its language loads", async () => {
+	await loadPierreLanguage("bash");
+	const key = "loading-language";
+	const html = renderMarkdownStreaming("```odin\npackage main", { cacheKey: key });
+	assertIncludes(html, '<code class="language-odin">package main</code>');
+	await loadPierreLanguage("odin");
+	releaseMarkdownStreamingState(key);
 });
 
 test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
