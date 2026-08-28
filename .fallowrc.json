@@ -25,7 +25,6 @@
 		"@pierre/trees",
 		"@starfederation/datastar-sdk",
 		"basecoat-css",
-		"satteri",
 		"tailwindcss",
 		"typebox"
 	],

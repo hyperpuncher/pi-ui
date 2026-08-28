@@ -483,7 +483,7 @@ test("enhancement errors retain the rendered Markdown fallback", async () => {
 		const state = createState({
 			renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
 		});
-		state.replaceMessages([markdownMessage("<b>**fallback**</b>")]);
+		state.replaceMessages([markdownMessage("**fallback**")]);
 		await settleMicrotasks();
 		assertEqual(
 			projectedMessages(state)[0].renderedHtml,

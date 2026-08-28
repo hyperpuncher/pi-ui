@@ -45,6 +45,7 @@ test("markdown fallback and final rendering reject unsafe HTML and URLs", async 
 		await renderMarkdownFinal(markdown),
 	]) {
 		assertNotIncludes(html, "<script>");
+		assertIncludes(html, "&lt;script&gt;");
 		assertNotIncludes(html, "javascript:");
 		assertNotIncludes(html, "data:text/html");
 		assertIncludes(html, "<span>unsafe label</span>");
@@ -95,7 +96,10 @@ test("plain, fenced, and incomplete markdown preserve rendering structure", asyn
 	assertIncludes(incomplete, "const value = 1;");
 
 	const table = "| Name | Value |\n| --- | --- |\n| cadence | measured |";
-	assertEqual(renderMarkdownStreaming(table), await renderMarkdownFinal(table));
+	const streamingTable = renderMarkdownStreaming(table);
+	assertEqual(streamingTable, await renderMarkdownFinal(table));
+	assertIncludes(streamingTable, 'class="table-container');
+	assertIncludes(streamingTable, 'class="table min-w-max');
 });
 
 test("growing streaming code fences preserve the latest complete source", () => {

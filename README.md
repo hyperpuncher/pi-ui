@@ -27,7 +27,6 @@ built with:
 
 - [`datastar`](https://data-star.dev/)
 - [`kita-jsx`](https://github.com/kitajs/html)
-- [`sätteri`](https://github.com/bruits/satteri)
 - [`pierre-diffs`](https://diffs.com/)
 - [`basecoat`](https://basecoatui.com/)
 

@@ -5,16 +5,9 @@ import {
 	type SupportedLanguages,
 	type ThemedToken,
 } from "@pierre/diffs";
-import {
-	defineHastPlugin,
-	defineMdastPlugin,
-	markdownToHtml,
-	type CompileOptions,
-} from "satteri";
 
 import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
 import { escapeHtml } from "../utils/html.ts";
-import { isString } from "../utils/type-guards.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
 import { shikiTokenStyle } from "./shiki-token-style.ts";
@@ -52,131 +45,59 @@ type StreamingCodeBlockState = {
 	tokenizer: ShikiStreamTokenizer;
 };
 
-const stripRawHtml = defineMdastPlugin({
-	name: "pi-ui-strip-raw-html",
-	html(node, ctx) {
-		ctx.removeNode(node);
-	},
-});
-
-const basecoatTables = defineHastPlugin({
-	name: "pi-ui-basecoat-tables",
-	element: {
-		filter: ["table", "th", "td"],
-		visit(node, ctx) {
-			if (node.tagName === "table") {
-				ctx.setProperty(
-					node,
-					"className",
-					classes(node.properties.className, [
-						"table",
-						"min-w-max",
-						"w-full",
-						"table-auto",
-						"text-sm",
-					]),
-				);
-				ctx.wrapNode(node, {
-					type: "element",
-					tagName: "div",
-					properties: {
-						className: [
-							"table-container",
-							"border-border/60",
-							"bg-background",
-							"overflow-x-auto",
-							"rounded-md",
-							"border",
-						],
-					},
-					children: [],
-				});
+const markdownHtmlRewriter = new HTMLRewriter()
+	.on("a", {
+		element(element) {
+			const href = element.getAttribute("href");
+			if (!href || !safeUrl(href, { allowDataImage: false })) {
+				element.before("<span>", { html: true });
+				element.after("</span>", { html: true });
+				element.removeAndKeepContent();
+				return;
 			}
-
-			if (node.tagName === "th") {
-				ctx.setProperty(
-					node,
-					"className",
-					classes(node.properties.className, [
-						"break-words",
-						"px-3",
-						"py-2",
-						"text-left",
-						"align-top",
-						"font-semibold",
-						"whitespace-normal",
-					]),
-				);
-			}
-
-			if (node.tagName === "td") {
-				ctx.setProperty(
-					node,
-					"className",
-					classes(node.properties.className, [
-						"break-words",
-						"px-3",
-						"py-2",
-						"align-top",
-						"whitespace-normal",
-					]),
-				);
+			if (new URL(href, "http://pi-ui.local").protocol === "file:") {
+				// Keep the local URI out of href so the browser cannot attempt a
+				// forbidden file:// navigation when client-side handling is unavailable.
+				element.setAttribute("href", "#");
+				element.setAttribute("data-pi-file-link", href);
+			} else {
+				element.setAttribute("target", "_blank");
+				element.setAttribute("rel", "noreferrer");
 			}
 		},
-	},
-});
-
-const safeLinksAndImages = defineHastPlugin({
-	name: "pi-ui-safe-links-and-images",
-	element: {
-		filter: ["a", "img"],
-		visit(node, ctx) {
-			if (node.tagName === "a") {
-				const href = stringProperty(node.properties.href);
-				if (!href || !safeUrl(href, { allowDataImage: false })) {
-					ctx.replaceNode(node, {
-						type: "element",
-						tagName: "span",
-						properties: {},
-						children: node.children,
-					});
-					return;
-				}
-				if (new URL(href, "http://pi-ui.local").protocol === "file:") {
-					// Keep the local URI out of href so the browser cannot attempt a
-					// forbidden file:// navigation when client-side handling is unavailable.
-					ctx.setProperty(node, "href", "#");
-					ctx.setProperty(node, "data-pi-file-link", href);
-				} else {
-					ctx.setProperty(node, "target", "_blank");
-					ctx.setProperty(node, "rel", "noreferrer");
-				}
-			}
-
-			if (node.tagName === "img") {
-				const src = stringProperty(node.properties.src);
-				if (!src || !safeUrl(src, { allowDataImage: true })) {
-					ctx.removeNode(node);
-				}
-			}
+	})
+	.on("img", {
+		element(element) {
+			const src = element.getAttribute("src");
+			if (!src || !safeUrl(src, { allowDataImage: true })) element.remove();
 		},
-	},
-	raw(node, ctx) {
-		ctx.removeNode(node);
-	},
-});
-
-const compileOptions = {
-	features: {
-		frontmatter: false,
-		gfm: true,
-		headingAttributes: false,
-		math: false,
-		smartPunctuation: true,
-	},
-	hastPlugins: [safeLinksAndImages, basecoatTables],
-	mdastPlugins: [stripRawHtml],
-} satisfies CompileOptions;
+	})
+	.on("table", {
+		element(element) {
+			element.setAttribute("class", "table min-w-max w-full table-auto text-sm");
+			element.before(
+				'<div class="table-container border-border/60 bg-background overflow-x-auto rounded-md border">',
+				{ html: true },
+			);
+			element.after("</div>", { html: true });
+		},
+	})
+	.on("th", {
+		element(element) {
+			element.setAttribute(
+				"class",
+				"break-words px-3 py-2 text-left align-top font-semibold whitespace-normal",
+			);
+		},
+	})
+	.on("td", {
+		element(element) {
+			element.setAttribute(
+				"class",
+				"break-words px-3 py-2 align-top whitespace-normal",
+			);
+		},
+	});
 
 type StreamingMarkdownMeasurement = {
 	html: string;
@@ -245,8 +166,15 @@ export async function renderMarkdownFinal(markdown: string): Promise<string> {
 }
 
 function compileMarkdown(markdown: string): string {
-	const result = markdownToHtml(markdown, compileOptions);
-	return result.html;
+	const html = Bun.markdown.html(markdown, {
+		autolinks: true,
+		noHtmlBlocks: true,
+		noHtmlSpans: true,
+		strikethrough: true,
+		tables: true,
+		tasklists: true,
+	});
+	return markdownHtmlRewriter.transform(html);
 }
 
 export async function renderCodeFinal(
@@ -527,19 +455,6 @@ function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {
 	} catch {
 		return false;
 	}
-}
-
-function stringProperty<Value>(value: Value): string | undefined {
-	return isString(value) ? value : undefined;
-}
-
-function classes<Value>(value: Value, additions: string[]): string[] {
-	const current = Array.isArray(value)
-		? value.filter((item): item is string => isString(item))
-		: isString(value)
-			? value.split(/\s+/).filter(Boolean)
-			: [];
-	return [...new Set([...current, ...additions])];
 }
 
 function decodeHtml(value: string): string {

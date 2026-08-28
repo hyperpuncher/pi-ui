@@ -7,7 +7,6 @@ Read relevant docs in full before implementing against them:
 - Basecoat docs LLM index: https://basecoatui.com/llms.txt
 - Datastar docs already mirrored under `~/docs/datastar-docs/`
 - Datastar TypeScript SDK docs/source under `~/docs/datastar-typescript/`
-- Sätteri docs/source under `~/docs/satteri/`
 - pi coding-agent docs under `~/docs/pi/packages/coding-agent/`
 
 ## Project conventions
@@ -15,7 +14,7 @@ Read relevant docs in full before implementing against them:
 - Runtime: Bun server with a browser UI.
 - Interactivity: Datastar, using `@starfederation/datastar-sdk` server-side.
 - HTML rendering: Kita JSX (`@kitajs/html`), not React.
-- Markdown rendering: Sätteri with native bindings plus Shiki for finalized code highlighting.
+- Markdown rendering: Bun Markdown with HTMLRewriter sanitization plus Shiki for finalized code highlighting.
 - Styling: Tailwind utilities + Basecoat Nova. Avoid custom CSS unless unavoidable.
 - Distribution: compile standalone executables with `bun build --compile`; release workflows build on each target platform.
 - Prefer backend-owned UI state; use frontend signals only for local UI state and writes.
