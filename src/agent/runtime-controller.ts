@@ -82,6 +82,7 @@ export type RuntimeControllerDependencies = Readonly<{
 	moveToTrash: typeof moveToTrash;
 	shareSession: typeof shareSession;
 	getAgentDir: typeof getAgentDir;
+	notifySessionDone: typeof notifySessionDone;
 	watchSessionCatalog?: SessionCatalogWatch;
 }>;
 
@@ -95,6 +96,7 @@ const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	moveToTrash,
 	shareSession,
 	getAgentDir,
+	notifySessionDone,
 	watchSessionCatalog,
 };
 
@@ -1096,7 +1098,9 @@ export class RuntimeController {
 		) {
 			return;
 		}
-		const notify = this.activationOptions.notifySessionDone ?? notifySessionDone;
+		const notify =
+			this.activationOptions.notifySessionDone ??
+			this.dependencies.notifySessionDone;
 		await notify(details);
 	}
 

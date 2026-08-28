@@ -225,6 +225,7 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 				gistUrl: "https://gist.github.com/user/gist-id",
 			}),
 		getAgentDir: () => "/agent",
+		notifySessionDone: () => Promise.resolve(),
 	};
 }
 

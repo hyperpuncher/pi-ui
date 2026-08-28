@@ -132,6 +132,7 @@ function dependencies(agentDir: string): RuntimeControllerDependencies {
 				gistUrl: "https://gist.github.com/fixture",
 			}),
 		getAgentDir: () => agentDir,
+		notifySessionDone: () => Promise.resolve(),
 	};
 }
 
