@@ -1,11 +1,8 @@
-import { registerBunOAuthFlows } from "@earendil-works/pi-ai/bun-oauth";
-
 import { disableServerAutostart, enableServerAutostart } from "./server-autostart.ts";
 import { parseServerOptions, serverUsage } from "./server-options.ts";
 import { isVersionRequest, version } from "./version.ts";
 
 async function main(): Promise<void> {
-	registerBunOAuthFlows();
 	const args = process.argv.slice(2);
 
 	if (isVersionRequest(args)) {
@@ -29,20 +26,18 @@ async function main(): Promise<void> {
 		if (options.help) {
 			console.log(serverUsage);
 		} else {
-			const [{ createApp }, { compressResponse }] = await Promise.all([
-				import("./server/app.ts"),
-				import("./server/compression.ts"),
-			]);
-			const app = await createApp();
+			let appPromise: ReturnType<typeof loadApp> | undefined;
+			const getApp = () => (appPromise ??= loadApp());
 			const server = Bun.serve({
 				hostname: options.hostname,
 				port: options.port,
 				idleTimeout: 0,
 				async fetch(request, server) {
 					const peer = server.requestIP(request);
-					return compressResponse(
+					const loaded = await getApp();
+					return loaded.compressResponse(
 						request,
-						await app.fetch(
+						await loaded.app.fetch(
 							request,
 							peer ? { address: peer.address } : undefined,
 						),
@@ -54,13 +49,25 @@ async function main(): Promise<void> {
 				if (stopping) return;
 				stopping = true;
 				await server.stop();
-				await app.dispose();
+				const loaded = await appPromise?.catch(() => undefined);
+				await loaded?.app.dispose();
 			};
 			process.once("SIGINT", () => void stop());
 			process.once("SIGTERM", () => void stop());
 			console.log(`pi-ui listening on ${server.url}`);
 		}
 	}
+}
+
+async function loadApp() {
+	const [{ registerBunOAuthFlows }, { createApp }, { compressResponse }] =
+		await Promise.all([
+			import("@earendil-works/pi-ai/bun-oauth"),
+			import("./server/app.ts"),
+			import("./server/compression.ts"),
+		]);
+	registerBunOAuthFlows();
+	return { app: await createApp(), compressResponse };
 }
 
 main().catch((cause) => {
