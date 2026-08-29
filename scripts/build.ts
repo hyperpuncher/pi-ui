@@ -7,6 +7,8 @@ const command = [
 	"--compile",
 	"--minify",
 	"--sourcemap",
+	"--external",
+	"@silvia-odwyer/photon-node",
 	"--asset",
 	"./static",
 	"src/server-main.ts",

@@ -1,11 +1,16 @@
 const maxWidth = 2_000;
 const maxHeight = 2_000;
 const maxBase64Bytes = 4.5 * 1_024 * 1_024;
-const jpegQualities = [80, 85, 70, 55, 40] as const;
+const jpegQualities = [85, 70, 55, 40] as const;
 
 export type ResizedImage = Readonly<{
 	data: string;
-	mimeType: "image/jpeg" | "image/png" | string;
+	mimeType: string;
+	originalWidth: number;
+	originalHeight: number;
+	width: number;
+	height: number;
+	wasResized: boolean;
 }>;
 
 export async function resizeImage(
@@ -19,12 +24,24 @@ export async function resizeImage(
 		return undefined;
 	}
 
+	const normalizedMimeType = mimeType.toLowerCase().split(";", 1)[0];
 	if (
+		["image/gif", "image/jpeg", "image/png", "image/webp"].includes(
+			normalizedMimeType,
+		) &&
 		metadata.width <= maxWidth &&
 		metadata.height <= maxHeight &&
 		base64Size(input.byteLength) < maxBase64Bytes
 	) {
-		return { data: input.toBase64(), mimeType };
+		return {
+			data: input.toBase64(),
+			mimeType: normalizedMimeType,
+			originalWidth: metadata.width,
+			originalHeight: metadata.height,
+			width: metadata.width,
+			height: metadata.height,
+			wasResized: false,
+		};
 	}
 
 	let width = metadata.width;
@@ -41,12 +58,28 @@ export async function resizeImage(
 	while (true) {
 		const png = await encode(input, width, height, "png");
 		if (png && png.length < maxBase64Bytes) {
-			return { data: png, mimeType: "image/png" };
+			return {
+				data: png,
+				mimeType: "image/png",
+				originalWidth: metadata.width,
+				originalHeight: metadata.height,
+				width,
+				height,
+				wasResized: width !== metadata.width || height !== metadata.height,
+			};
 		}
 		for (const quality of jpegQualities) {
 			const jpeg = await encode(input, width, height, "jpeg", quality);
 			if (jpeg && jpeg.length < maxBase64Bytes) {
-				return { data: jpeg, mimeType: "image/jpeg" };
+				return {
+					data: jpeg,
+					mimeType: "image/jpeg",
+					originalWidth: metadata.width,
+					originalHeight: metadata.height,
+					width,
+					height,
+					wasResized: width !== metadata.width || height !== metadata.height,
+				};
 			}
 		}
 
@@ -61,7 +94,7 @@ async function encode(
 	width: number,
 	height: number,
 	format: "jpeg" | "png",
-	quality = 80,
+	quality: number = jpegQualities[0],
 ): Promise<string | undefined> {
 	try {
 		const image = new Bun.Image(input).resize(width, height, {

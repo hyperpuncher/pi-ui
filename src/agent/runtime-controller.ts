@@ -40,6 +40,7 @@ import {
 	type PromptStreamingBehavior,
 	type RuntimePromptOptions,
 } from "./prompt-lifecycle.ts";
+import { createBunReadToolDefinition } from "./read-tool.ts";
 import {
 	type SessionCatalogWatch,
 	watchSessionCatalog,
@@ -233,12 +234,18 @@ export class RuntimeController {
 						availableModels,
 					),
 			);
+			const readIsOverridden = services.resourceLoader
+				.getExtensions()
+				.extensions.some((extension) => extension.tools.has("read"));
 			const session = await sessionPerformance.measure("runtimeSessionCreate", () =>
 				createAgentSessionFromServices({
 					services,
 					sessionManager,
 					sessionStartEvent,
 					scopedModels,
+					customTools: readIsOverridden
+						? undefined
+						: [createBunReadToolDefinition(cwd)],
 				}),
 			);
 			return {
