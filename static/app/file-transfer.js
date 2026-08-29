@@ -89,7 +89,10 @@ export async function insert(data) {
 	}
 	const uploaded = await uploadTransferredFiles(files);
 	for (let index = 0; index < uploaded.length; index += 1) {
-		addAttachment({ path: uploaded[index], file: files[index] });
+		addAttachment({
+			path: uploaded[index].path,
+			file: fileWithDetectedMimeType(files[index], uploaded[index].mimeType),
+		});
 	}
 }
 
@@ -170,6 +173,14 @@ export function jpegFileName(name) {
 	return /\.avif$/i.test(name)
 		? name.replace(/\.avif$/i, ".jpg")
 		: `${name || "image"}.jpg`;
+}
+
+export function fileWithDetectedMimeType(file, mimeType) {
+	if (mimeType === undefined || file.type === mimeType) return file;
+	return new File([file], file.name, {
+		type: mimeType ?? "",
+		lastModified: file.lastModified,
+	});
 }
 
 async function prepareTransferredImages(files) {
@@ -272,7 +283,7 @@ async function uploadTransferredFiles(files) {
 			return [];
 		}
 		showTransferError("");
-		return Array.isArray(result.paths) ? result.paths : [];
+		return Array.isArray(result.imports) ? result.imports : [];
 	} catch {
 		showTransferError("Could not transfer the selected files.");
 		return [];

@@ -426,6 +426,32 @@ test("host-dependent actions return 503 when runtime is absent", async () => {
 	assertEquals(response.status, 503);
 });
 
+test("file imports report content-detected image MIME types", async () => {
+	const tempDir = await makeTempDir({ prefix: "pi-ui-image-mime-test-" });
+	const path = `${tempDir}/screenshot.bin`;
+	const imageData =
+		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+	await writeFile(path, Uint8Array.fromBase64(imageData));
+	try {
+		const formData = new FormData();
+		formData.set("file", new File(["ignored"], "screenshot.bin"));
+		const response = await createRouter(
+			fakeContext({ transferredFiles: { importFiles: async () => [path] } }),
+		).fetch(
+			new Request("http://localhost/files/import", {
+				method: "POST",
+				body: formData,
+			}),
+		);
+		assertEquals(response.status, 200);
+		assertEquals(await response.json(), {
+			imports: [{ path, mimeType: "image/png" }],
+		});
+	} finally {
+		await remove(tempDir, { recursive: true });
+	}
+});
+
 test("accepted prompts do not clear a newer frontend draft", async () => {
 	const router = createRouter(fakeContext());
 	for (const path of ["/prompt", "/prompt/follow-up"]) {
@@ -714,6 +740,7 @@ function fakeContext(
 		keybindHints?: boolean;
 		minimalMode?: boolean;
 		toolOutputHidden?: boolean;
+		transferredFiles?: RouteContext["transferredFiles"];
 	} = {},
 ): RouteContext {
 	const store = new AppStore();
@@ -736,7 +763,7 @@ function fakeContext(
 			host: overrides.host ?? fakeHost(),
 			sessionImages: new SessionImageStore(),
 		},
-		transferredFiles: { importFiles: async () => [] },
+		transferredFiles: overrides.transferredFiles ?? { importFiles: async () => [] },
 		openWorkspace: async () => true,
 		openPath: overrides.openPath ?? (async () => {}),
 		isLocalRequest: overrides.isLocalRequest ?? (() => false),

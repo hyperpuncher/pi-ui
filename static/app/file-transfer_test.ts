@@ -20,6 +20,7 @@ const {
 	composePrompt,
 	convertAvifToJpeg,
 	extractTransferredFilePaths,
+	fileWithDetectedMimeType,
 	formatFileReferences,
 	isAvifImageFile,
 	isHeicImageFile,
@@ -65,6 +66,21 @@ test("attachment file kinds use MIME types and extensions", () => {
 	assertEquals(attachmentFileKind("source.ts", ""), "code");
 	assertEquals(attachmentFileKind("bundle.zip", ""), "archive");
 	assertEquals(attachmentFileKind("unknown.bin", ""), "file");
+});
+
+test("server-detected MIME types replace untrusted browser metadata", async () => {
+	const original = new File(["image"], "screenshot.bin", {
+		type: "application/octet-stream",
+		lastModified: 42,
+	});
+	const detected = fileWithDetectedMimeType(original, "image/png");
+	assertEquals(detected.name, original.name);
+	assertEquals(detected.type, "image/png");
+	assertEquals(detected.lastModified, 42);
+	assertEquals(await detected.text(), "image");
+	assertEquals(fileWithDetectedMimeType(detected, "image/png"), detected);
+	assertEquals(fileWithDetectedMimeType(detected, null).type, "");
+	assertEquals(fileWithDetectedMimeType(detected, undefined), detected);
 });
 
 test("AVIF images are detected and renamed for JPEG conversion", () => {

@@ -1,6 +1,8 @@
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
 
+import { detectSupportedImageMimeTypeFromFile } from "@earendil-works/pi-coding-agent";
+
 import { fileUriToPath } from "../../../static/file-uri.js";
 import { renderFilePickerResults } from "../../ui/pickers.tsx";
 import { isNotFound } from "../../utils/fs-errors.ts";
@@ -87,8 +89,14 @@ async function importTransferredFiles(
 	if (validationError) return transferredFileErrorResponse(validationError);
 
 	try {
+		const paths = await context.transferredFiles.importFiles(files);
 		return Response.json({
-			paths: await context.transferredFiles.importFiles(files),
+			imports: await Promise.all(
+				paths.map(async (path) => ({
+					path,
+					mimeType: await detectSupportedImageMimeTypeFromFile(path),
+				})),
+			),
 		});
 	} catch (error) {
 		if (error instanceof TransferredFileError) {
