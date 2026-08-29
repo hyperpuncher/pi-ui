@@ -42,6 +42,8 @@ test("extension UI rejects TUI-only capabilities explicitly", () => {
 
 	assertThrows(() => ui.onTerminalInput(() => undefined), Error, "raw terminal input");
 	assertThrows(() => ui.setToolsExpanded(true), Error, "global tool expansion state");
+	assertEquals({ ...ui }.theme, ui.theme);
+	assertThrows(() => ui.theme.fg("accent", "text"), Error, "TUI themes");
 	assertEquals(ui.setTheme("dark"), {
 		success: false,
 		error: "TUI themes are unavailable in pi-ui",

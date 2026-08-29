@@ -1,6 +1,7 @@
 import type {
 	ExtensionUIContext,
 	ExtensionUIDialogOptions,
+	Theme,
 	WorkingIndicatorOptions,
 } from "@earendil-works/pi-coding-agent";
 
@@ -11,6 +12,10 @@ import type {
 } from "../state/app-store.ts";
 
 const defaultWorkingVisible = true;
+// SAFETY: the proxy throws before exposing any property from the placeholder.
+const unsupportedTheme = new Proxy({} as Theme, {
+	get: () => unsupported("TUI themes"),
+});
 
 type PendingDialog = {
 	dialog: AppExtensionDialog;
@@ -117,9 +122,7 @@ export class ExtensionUiController {
 				if (isActive() && factory) unsupported("custom editor components");
 			},
 			getEditorComponent: () => undefined,
-			get theme() {
-				return unsupported("TUI themes");
-			},
+			theme: unsupportedTheme,
 			getAllThemes: () => [],
 			getTheme: () => undefined,
 			setTheme: () => ({
