@@ -10,8 +10,12 @@ const result = await Bun.build({
 	outdir: outputRoot,
 	target: "bun",
 	format: "esm",
-	packages: "external",
+	packages: "bundle",
+	// pi-ui replaces pi's Photon image processing with Bun.Image.
+	external: ["@silvia-odwyer/photon-node"],
 	minify: true,
+	// Let runtime-loaded pi extensions import the core modules embedded above.
+	define: { PI_BUNDLED_NODE: "true" },
 	banner: "#!/usr/bin/env bun",
 });
 if (!result.success) {
