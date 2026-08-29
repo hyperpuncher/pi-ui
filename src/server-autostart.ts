@@ -17,27 +17,49 @@ export type ServerAutostartPlatform = "linux" | "darwin" | "windows";
 export type ServerAutostartConfig = {
 	platform: ServerAutostartPlatform;
 	executable: string;
+	args?: readonly string[];
 	home: string;
 	uid?: number;
+	transient?: boolean;
 };
 
-export function serverAutostartConfig(platform = operatingSystem): ServerAutostartConfig {
+type ServerRuntime = Readonly<{
+	executable: string;
+	script?: string;
+	standalone: boolean;
+}>;
+
+export function serverAutostartConfig(
+	platform = operatingSystem,
+	runtime: ServerRuntime = currentServerRuntime(),
+): ServerAutostartConfig {
 	if (platform !== "linux" && platform !== "darwin" && platform !== "windows") {
 		throw new Error(`server autostart is not supported on ${platform}`);
 	}
 	const home = homedir();
 	if (!home) throw new Error("could not determine the user home directory");
+	const script = runtime.standalone ? undefined : runtime.script;
+	if (!runtime.standalone && !script) {
+		throw new Error("could not determine the pi-ui server script");
+	}
 	return {
 		platform,
-		executable: process.execPath,
+		executable: runtime.executable,
+		args: script ? [script] : [],
 		home,
 		uid: platform === "darwin" ? process.getuid?.() : undefined,
+		transient: script ? isBunxPath(script) : false,
 	};
 }
 
 export async function enableServerAutostart(
 	config = serverAutostartConfig(),
 ): Promise<void> {
+	if (config.transient) {
+		throw new Error(
+			"bunx cannot install the background service. install pi-ui first with: bun i -g @hyperpuncher/pi-ui",
+		);
+	}
 	switch (config.platform) {
 		case "linux":
 			await enableSystemdService(config);
@@ -75,7 +97,7 @@ export function systemdService(config: ServerAutostartConfig): string {
 Description=pi-ui server
 
 [Service]
-ExecStart=${systemdArgument(config.executable)}
+ExecStart=${serverCommand(config).map(systemdArgument).join(" ")}
 Restart=on-failure
 RestartSec=2
 
@@ -94,7 +116,9 @@ export function launchAgent(config: ServerAutostartConfig): string {
 	<string>${launchAgentLabel}</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>${xml(config.executable)}</string>
+${serverCommand(config)
+	.map((argument) => `\t\t<string>${xml(argument)}</string>`)
+	.join("\n")}
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
@@ -114,7 +138,11 @@ export function launchAgent(config: ServerAutostartConfig): string {
 
 export function windowsRunCommand(config: ServerAutostartConfig): string {
 	const executable = powershellString(config.executable);
-	return `powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -Command "Start-Process -WindowStyle Hidden -FilePath '${executable}'"`;
+	const args = config.args ?? [];
+	const argumentList = args.length
+		? ` -ArgumentList @(${args.map((argument) => `'${powershellString(argument)}'`).join(", ")})`
+		: "";
+	return `powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -Command "Start-Process -WindowStyle Hidden -FilePath '${executable}'${argumentList}"`;
 }
 
 async function enableSystemdService(config: ServerAutostartConfig): Promise<void> {
@@ -166,7 +194,7 @@ async function enableWindowsAutostart(config: ServerAutostartConfig): Promise<vo
 		windowsRunCommand(config),
 		"/F",
 	]);
-	const child = Bun.spawn([config.executable], {
+	const child = Bun.spawn(serverCommand(config), {
 		stdin: "ignore",
 		stdout: "ignore",
 		stderr: "ignore",
@@ -195,13 +223,37 @@ async function stopLegacyWindowsServer(): Promise<void> {
 
 async function stopWindowsServer(config: ServerAutostartConfig): Promise<void> {
 	const executable = powershellString(config.executable);
-	const script = `Get-Process -Name '${serviceName}' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${process.pid} -and $_.Path -eq '${executable}' } | Stop-Process -Force`;
+	const scriptPath = config.args?.[0];
+	const commandMatch = scriptPath
+		? ` -and $_.CommandLine -and $_.CommandLine.Contains('${powershellString(scriptPath)}')`
+		: "";
+	const script = `Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne ${process.pid} -and $_.ExecutablePath -eq '${executable}'${commandMatch} } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
 	await command("powershell.exe", [
 		"-NoProfile",
 		"-NonInteractive",
 		"-Command",
 		script,
 	]);
+}
+
+function currentServerRuntime(): ServerRuntime {
+	return {
+		executable: process.execPath,
+		script: process.argv[1],
+		standalone: Bun.isStandaloneExecutable,
+	};
+}
+
+function isBunxPath(path: string): boolean {
+	const normalized = path.replaceAll("\\", "/");
+	return (
+		normalized.includes("/.bun/install/cache/") ||
+		/(?:^|\/)bunx-[^/]+\//.test(normalized)
+	);
+}
+
+function serverCommand(config: ServerAutostartConfig): string[] {
+	return [config.executable, ...(config.args ?? [])];
 }
 
 function systemdServicePath(config: ServerAutostartConfig, name: string): string {

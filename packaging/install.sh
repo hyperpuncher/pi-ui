@@ -49,7 +49,7 @@ if [ -f /etc/arch-release ]; then
 	fi
 
 	"$aur_helper" -S --needed pi-ui-bin </dev/tty
-	pi-ui autostart enable
+	pi-ui service install
 	echo "Open http://127.0.0.1:31415 in your browser."
 	exit
 fi
@@ -85,6 +85,6 @@ case ":$PATH:" in
 	*) echo "Add $install_directory to PATH to run it by name." ;;
 esac
 
-"$target" autostart enable
+"$target" service install
 rm -f "$legacy_target"
 echo "Open http://127.0.0.1:31415 in your browser."

@@ -42,6 +42,7 @@ test("server options support help", () => {
 		help: true,
 	});
 	assertStringIncludes(serverUsage, "usage: pi-ui [options]");
+	assertStringIncludes(serverUsage, "pi-ui service install|uninstall");
 	assertStringIncludes(serverUsage, "PI_UI_HOST");
 	assertStringIncludes(serverUsage, "PI_UI_PORT");
 });

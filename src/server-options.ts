@@ -55,7 +55,7 @@ export function parseServerOptions(
 }
 
 export const serverUsage = `usage: pi-ui [options]
-       pi-ui autostart enable|disable
+       pi-ui service install|uninstall
 
 options:
       --host <hostname>  listen hostname (default: ${defaultServerHostname}; env: PI_UI_HOST)

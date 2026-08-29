@@ -37,10 +37,10 @@ try {
 	}
 	[Environment]::SetEnvironmentVariable("Path", ($entries -join ";"), "User")
 
-	$command = Start-Process $executable -ArgumentList @("autostart", "enable") -PassThru
+	$command = Start-Process $executable -ArgumentList @("service", "install") -PassThru
 	$command.WaitForExit()
 	if ($command.ExitCode -ne 0) {
-		throw "Could not configure pi-ui autostart (exit code $($command.ExitCode))."
+		throw "Could not install the pi-ui service (exit code $($command.ExitCode))."
 	}
 	Remove-Item $legacyInstallDirectory -Recurse -Force -ErrorAction SilentlyContinue
 	Write-Host "pi-ui installed. Open http://127.0.0.1:31415 in your browser."

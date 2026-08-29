@@ -7,16 +7,21 @@ async function main(): Promise<void> {
 
 	if (isVersionRequest(args)) {
 		console.log(version);
-	} else if (args[0] === "autostart") {
-		if (args.length !== 2 || !["enable", "disable"].includes(args[1])) {
-			throw new Error("usage: pi-ui autostart enable|disable");
+	} else if (args[0] === "service" || args[0] === "autostart") {
+		const installAction = args[0] === "service" ? "install" : "enable";
+		const uninstallAction = args[0] === "service" ? "uninstall" : "disable";
+		if (
+			args.length !== 2 ||
+			(args[1] !== installAction && args[1] !== uninstallAction)
+		) {
+			throw new Error("usage: pi-ui service install|uninstall");
 		}
-		if (args[1] === "enable") {
+		if (args[1] === installAction) {
 			await enableServerAutostart();
-			console.log("pi-ui server will start automatically at login");
+			console.log("pi-ui service installed and started");
 		} else {
 			await disableServerAutostart();
-			console.log("pi-ui server will no longer start automatically at login");
+			console.log("pi-ui service stopped and uninstalled");
 		}
 	} else {
 		const options = parseServerOptions(args, {

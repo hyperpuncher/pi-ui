@@ -1,6 +1,6 @@
 # pi-ui
 
-keyboard-first minimal gui for [`pi`](https://pi.dev).
+keyboard-first minimal gui for [`pi`](https://pi.dev)
 
 <div>
 	<picture>
@@ -16,63 +16,98 @@ keyboard-first minimal gui for [`pi`](https://pi.dev).
 	</picture>
 </div>
 
-features:
+## features
 
 - background sessions
 - git review with commit history and inline comments
 - markdown, syntax highlighting, and rich diffs
 - file attachments with image previews
 
-built with:
+## built with
 
 - [`datastar`](https://data-star.dev/)
 - [`kita-jsx`](https://github.com/kitajs/html)
 - [`pierre-diffs`](https://diffs.com/)
 - [`basecoat`](https://basecoatui.com/)
 
-## install
+## try
 
-after installing, open [http://127.0.0.1:31415](http://127.0.0.1:31415) in your browser.
-
-### run without installing
-
-requires bun 1.4 or newer
+> requires bun 1.4+
 
 ```sh
 bunx @hyperpuncher/pi-ui
 ```
 
-### quick install (linux / mac)
+## install
+
+### quick install
+
+> the quick installers start pi-ui in the background and at login
+
+#### linux and macos
 
 ```sh
 curl -fsSL https://pi-ui.app/install | sh
 ```
 
-### arch
-
-```sh
-paru -S pi-ui-bin
-pi-ui autostart enable
-```
-
-### mac
-
-```sh
-brew install hyperpuncher/tap/pi-ui
-brew services start pi-ui
-```
-
-### windows
+#### windows
 
 ```powershell
 irm https://pi-ui.app/install.ps1 | iex
 ```
 
-the windows installer starts pi-ui at login.
+open [http://127.0.0.1:31415](http://127.0.0.1:31415) in your browser
+
+### package managers
+
+#### bun
+
+> requires bun 1.4+
+
+```sh
+bun i -g @hyperpuncher/pi-ui
+```
+
+#### arch
+
+```sh
+paru -S pi-ui-bin
+```
+
+#### homebrew
+
+```sh
+brew install hyperpuncher/tap/pi-ui
+```
+
+> package-manager installs must be started with `pi-ui` or configured as a background service below
+
+## background service
+
+start pi-ui now and at login:
+
+```sh
+pi-ui service install
+```
+
+stop pi-ui and remove the service:
+
+```sh
+pi-ui service uninstall
+```
+
+### homebrew
+
+homebrew manages the service separately:
+
+```sh
+brew services start pi-ui
+brew services stop pi-ui
+```
 
 ## development
 
-requires bun 1.4 or newer
+> requires bun 1.4+
 
 ```sh
 bun ci
