@@ -56,17 +56,19 @@ export async function resizeImage(
 	}
 
 	while (true) {
-		const png = await encode(input, width, height, "png");
-		if (png && png.length < maxBase64Bytes) {
-			return {
-				data: png,
-				mimeType: "image/png",
-				originalWidth: metadata.width,
-				originalHeight: metadata.height,
-				width,
-				height,
-				wasResized: width !== metadata.width || height !== metadata.height,
-			};
+		if (normalizedMimeType !== "image/jpeg") {
+			const png = await encode(input, width, height, "png");
+			if (png && png.length < maxBase64Bytes) {
+				return {
+					data: png,
+					mimeType: "image/png",
+					originalWidth: metadata.width,
+					originalHeight: metadata.height,
+					width,
+					height,
+					wasResized: width !== metadata.width || height !== metadata.height,
+				};
+			}
 		}
 		for (const quality of jpegQualities) {
 			const jpeg = await encode(input, width, height, "jpeg", quality);
