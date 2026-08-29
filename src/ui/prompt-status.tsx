@@ -213,7 +213,7 @@ function usageRing(percent: number, className: string): string {
 				stroke="currentColor"
 				stroke-width="3"
 				stroke-linecap="round"
-				class={className}
+				class={`${className} transition-[stroke-dashoffset] duration-250 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transition-none`}
 				stroke-dasharray={circumference}
 				stroke-dashoffset={
 					circumference - (clampPercent(percent) / 100) * circumference
