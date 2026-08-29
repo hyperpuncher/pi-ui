@@ -29,7 +29,6 @@
 		--message-user-gap: 0.5rem;
 		--message-tool-gap: 1.25rem;
 		--message-tool-narrative-gap: 1rem;
-		--message-thought-assistant-gap: 0.25rem;
 
 		/* Shared workspace geometry */
 		--pi-workspace-gap: 0.25rem;
@@ -678,12 +677,9 @@
 	}
 
 	#message-list > .message-tool + .message-narrative,
-	#message-list > .message-narrative + .message-tool {
-		margin-top: var(--message-tool-narrative-gap);
-	}
-
+	#message-list > .message-narrative + .message-tool,
 	#message-list > .message-thought + .message-assistant {
-		margin-top: var(--message-thought-assistant-gap);
+		margin-top: var(--message-tool-narrative-gap);
 	}
 
 	#message-list > .message + .message-notice,
@@ -979,7 +975,7 @@
 	}
 
 	[data-minimal-mode] {
-		--message-tool-gap: 0.75rem;
+		--message-gap: var(--message-tool-gap);
 	}
 
 	[data-minimal-mode] #message-list > .message-tool::before,
@@ -992,9 +988,14 @@
 		margin-top: var(--message-gap);
 	}
 
-	/* Give completed activity the same space above and below its summary. */
+	/* Keep completed activity aligned with other minimal-mode messages. */
 	[data-minimal-mode] #message-list > .message-activity-result {
-		margin-top: var(--message-tool-narrative-gap);
+		margin-top: var(--message-gap);
+	}
+
+	/* Keep full turn separation when activity rows are hidden. */
+	[data-minimal-mode] #message-list > .message-user {
+		padding-block: 0.75rem;
 	}
 
 	/* The active block keeps running until its final assistant message arrives. */
@@ -1022,25 +1023,10 @@
 		}
 	}
 
-	/* Keep the latest tool stable while the model thinks between tool calls. */
+	/* Show only the latest live activity row. */
 	[data-minimal-mode]
 		#message-list
-		> .message-thought:has(+ :is(.message-thought, .message-tool)),
-	[data-minimal-mode]
-		#message-list
-		> .message-thought:has(
-			+ .message-notice + :is(.message-thought, .message-tool, .message-assistant)
-		),
-	[data-minimal-mode] #message-list > .message-tool:has(+ .message-tool),
-	[data-minimal-mode]
-		#message-list
-		> .message-tool:has(+ .message-thought + .message-tool),
-	[data-minimal-mode] #message-list > .message-tool + .message-thought,
-	[data-minimal-mode] #message-list > .message-thought:has(+ .message-assistant),
-	[data-minimal-mode] #message-list > .message-tool:has(+ .message-assistant),
-	[data-minimal-mode]
-		#message-list
-		> .message-tool:has(+ .message-thought + .message-assistant) {
+		> :is(.message-thought, .message-tool):has(~ .message) {
 		display: none;
 	}
 
