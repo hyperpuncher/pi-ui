@@ -930,7 +930,7 @@ test("fat morph markup preserves browser-owned interaction state", () => {
 	const app = html.match(/<div[^>]*id="app"[^>]*>/)?.[0] ?? "";
 	assertIncludes(app, 'data-class:pi-review-open="$_workspaceReviewOpen"');
 	assertIncludes(app, "window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)");
-	assertIncludes(app, "openWhenHidden: true");
+	assertNotIncludes(app, "openWhenHidden");
 	assertIncludes(app, "retry: 'always'");
 	assertIncludes(app, "retryMaxCount: Infinity");
 	const review = html.match(/<section[^>]*id="workspace-review"[^>]*>/)?.[0] ?? "";

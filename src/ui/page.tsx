@@ -202,7 +202,6 @@ export function renderPage(
 						data-signals:_workspace-review-open__ifmissing="false"
 						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
 						payload: {},
-						openWhenHidden: true,
 						retry: 'always',
 						retryMaxCount: Infinity,
 						requestCancellation: 'cleanup',
