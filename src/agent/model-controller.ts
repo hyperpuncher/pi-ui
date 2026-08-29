@@ -16,7 +16,11 @@ export class ModelController {
 		const model = this.findOrReport(modelRef);
 		if (!model) return false;
 		const runtime = this.getRuntime();
-		await runtime.session.setModel(model, { persist: true });
+		await runtime.session.setModel(model, { persist: false });
+		runtime.services.settingsManager.setDefaultModelAndProvider(
+			model.provider,
+			model.id,
+		);
 		await runtime.services.settingsManager.flush();
 		this.onModelChanged();
 		return true;

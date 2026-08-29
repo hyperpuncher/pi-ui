@@ -9,6 +9,7 @@ import { agentSessionRuntimeStub } from "./test-fixtures.ts";
 test("ModelController persists explicit and cycled model selections", async () => {
 	const model = { id: "kimi-k2.6", provider: "opencode-go" };
 	const persistence: Array<boolean | undefined> = [];
+	const defaults: Array<{ provider: string; id: string }> = [];
 	let flushes = 0;
 	let changes = 0;
 	const runtime = agentSessionRuntimeStub({
@@ -32,6 +33,9 @@ test("ModelController persists explicit and cycled model selections", async () =
 					provider === model.provider && id === model.id ? model : undefined,
 			},
 			settingsManager: {
+				setDefaultModelAndProvider: (provider: string, id: string) => {
+					defaults.push({ provider, id });
+				},
 				flush: () => {
 					flushes += 1;
 					return Promise.resolve();
@@ -49,7 +53,8 @@ test("ModelController persists explicit and cycled model selections", async () =
 
 	assertEquals(await controller.set("opencode-go/kimi-k2.6"), true);
 	assertEquals(await controller.cycle(), true);
-	assertEquals(persistence, [true, true]);
+	assertEquals(persistence, [false, true]);
+	assertEquals(defaults, [{ provider: "opencode-go", id: "kimi-k2.6" }]);
 	assertEquals(flushes, 2);
 	assertEquals(changes, 2);
 });
