@@ -222,6 +222,16 @@ export class TranscriptState {
 		);
 	}
 
+	showRecentMessages(): boolean {
+		const nextStart = Math.max(
+			0,
+			this.transcriptMessages.length - initialVisibleMessageCount,
+		);
+		if (nextStart <= this.visibleMessageStart) return false;
+		this.visibleMessageStart = nextStart;
+		return true;
+	}
+
 	loadOlderMessages(): readonly string[] {
 		if (!this.hasOlderMessages) return [];
 		const previousStart = this.visibleMessageStart;

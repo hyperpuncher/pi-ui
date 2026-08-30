@@ -31,6 +31,7 @@ class FakeState implements SessionEventStateSink {
 	readonly queues: Array<{ steering: readonly string[]; followUp: readonly string[] }> =
 		[];
 	finishCount = 0;
+	recentMessagesCount = 0;
 
 	appendMessage(
 		role: TranscriptMessage["role"],
@@ -56,6 +57,10 @@ class FakeState implements SessionEventStateSink {
 
 	finishAssistant(): void {
 		this.finishCount += 1;
+	}
+
+	showRecentMessages(): void {
+		this.recentMessagesCount += 1;
 	}
 
 	setActivityText(activityText: string | undefined): void {
@@ -522,6 +527,7 @@ test("successful compaction appends its timeline entry", () => {
 		},
 	]);
 	assertEquals(state.activity, [undefined]);
+	assertEquals(state.recentMessagesCount, 1);
 });
 
 test("failed compaction appends the error", () => {

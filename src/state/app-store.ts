@@ -142,6 +142,7 @@ export type UiCommitEffect =
 			open: boolean;
 	  }
 	| { type: "document-title"; title: string }
+	| { type: "scroll-transcript-bottom" }
 	| { type: "signal-overrides"; values: JsonObject };
 
 export interface AppStorePresentation {
@@ -453,6 +454,15 @@ export class AppStore {
 			this.transcript.messages.map((message) => message.id),
 		);
 		this.commit();
+	}
+	showRecentMessages(): void {
+		if (!this.transcript.showRecentMessages()) return;
+		this.presentation?.transcriptReplacing();
+		this.presentation?.transcriptReplaced(
+			[],
+			this.transcript.messages.map((message) => message.id),
+		);
+		this.commit({ type: "scroll-transcript-bottom" });
 	}
 	loadOlderMessages(): readonly string[] {
 		return this.transcript.loadOlderMessages();

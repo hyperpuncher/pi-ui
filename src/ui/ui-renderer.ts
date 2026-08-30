@@ -349,6 +349,9 @@ export class UiRenderer implements AppStorePresentation {
 			if (effect.type === "document-title") {
 				scripts.push(`document.title = ${JSON.stringify(effect.title)}`);
 			}
+			if (effect.type === "scroll-transcript-bottom") {
+				scripts.push("window.piUi.messageScroll.scrollBottom()");
+			}
 		}
 		return scripts;
 	}

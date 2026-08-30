@@ -328,6 +328,33 @@ test("older messages use one targeted patch before restoring the anchor", async 
 	}
 });
 
+test("repaging replaces the transcript and moves to the recent page", async () => {
+	const state = createState();
+	state.replaceMessages(
+		Array.from({ length: 80 }, (_, index) => ({
+			role: "user" as const,
+			text: `message ${index}`,
+			timestamp,
+		})),
+	);
+	state.loadOlderMessages();
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+
+		state.showRecentMessages();
+		const output = await readUntil(reader, (text) =>
+			text.includes("window.piUi.messageScroll.scrollBottom()"),
+		);
+
+		assertIncludes(output, 'id="messages"');
+		assertIncludes(output, 'id="older-messages-trigger"');
+		assertIncludes(output, "message 30");
+	} finally {
+		controller.abort();
+	}
+});
+
 test("replacement discards stale enhancement completion", async () => {
 	const gates: Array<{ text: string; resolve: (html: string) => void }> = [];
 	const state = createState({

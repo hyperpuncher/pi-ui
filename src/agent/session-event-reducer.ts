@@ -29,6 +29,7 @@ export type SessionEventStateSink = {
 	appendThoughtDelta(delta: string): void;
 	appendAssistantDelta(delta: string): void;
 	finishAssistant(): void;
+	showRecentMessages(): void;
 	setActivityText(activityText: string | undefined): void;
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void;
 };
@@ -268,6 +269,7 @@ export function reduceSessionEvent(
 				state.appendMessage("compaction", event.result.summary, {
 					meta: `compacted from ${event.result.tokensBefore.toLocaleString()} tokens`,
 				});
+				state.showRecentMessages();
 			}
 			if (event.errorMessage) state.appendMessage("system", event.errorMessage);
 			break;
