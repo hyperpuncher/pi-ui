@@ -1,3 +1,4 @@
+import { importLoginShellEnvironment } from "./login-shell-environment.ts";
 import { disableServerAutostart, enableServerAutostart } from "./server-autostart.ts";
 import { parseServerOptions, serverUsage } from "./server-options.ts";
 import { isVersionRequest, version } from "./version.ts";
@@ -24,6 +25,7 @@ async function main(): Promise<void> {
 			console.log("pi-ui service stopped and uninstalled");
 		}
 	} else {
+		await importLoginShellEnvironment();
 		const options = parseServerOptions(args, {
 			host: process.env.PI_UI_HOST,
 			port: process.env.PI_UI_PORT,
