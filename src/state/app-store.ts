@@ -467,7 +467,7 @@ export class AppStore {
 		);
 		this.commit({ type: "scroll-transcript-bottom" });
 	}
-	loadOlderMessages(): readonly string[] {
+	loadOlderMessages(): readonly TranscriptMessage[] {
 		return this.transcript.loadOlderMessages();
 	}
 	trimOldMessages(): readonly string[] {

@@ -5,6 +5,7 @@ import type {
 	AppStorePresentation,
 	UiCommitEffect,
 } from "../state/app-store.ts";
+import type { TranscriptMessage } from "../state/transcript-state.ts";
 import type { JsonObject } from "../utils/json-types.ts";
 import { renderAuthDialogContent } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
@@ -255,9 +256,9 @@ export class UiRenderer implements AppStorePresentation {
 	): void {
 		this.messages.transcriptReplaced(activeIds, enhancementIds);
 	}
-	patchOlderMessages(ids: readonly string[]): void {
+	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
 		this.hub.patchElement(
-			this.messages.renderOlderMessagesPatch(ids),
+			this.messages.renderOlderMessagesPatch(messages),
 			"#older-messages-trigger",
 			{
 				mode: "after",
@@ -268,7 +269,9 @@ export class UiRenderer implements AppStorePresentation {
 			this.messages.renderOlderMessagesTrigger(),
 			"#older-messages-trigger",
 		);
-		for (const id of ids.toReversed()) this.messages.enqueueEnhancement(id);
+		for (const message of messages.toReversed()) {
+			this.messages.enqueueEnhancement(message.id);
+		}
 	}
 	enhanceMessage(id: string): boolean {
 		return this.messages.enhanceMessage(id);

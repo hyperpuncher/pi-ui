@@ -73,7 +73,10 @@ test("transcript paging and reset have no presentation state", () => {
 	);
 	assertEquals(state.messages.length, 30);
 	assertEquals(state.hasOlderMessages, true);
-	assertEquals(state.loadOlderMessages().length, 30);
+	const olderMessages = state.loadOlderMessages();
+	assertEquals(olderMessages.length, 30);
+	assertEquals(olderMessages[0].text, "message 120");
+	assertEquals(olderMessages.at(-1)?.text, "message 149");
 	while (state.hasOlderMessages) {
 		assertEquals(state.loadOlderMessages().length <= 30, true);
 	}

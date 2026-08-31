@@ -124,8 +124,8 @@ export class MessageRenderService {
 		if (!message) return undefined;
 		return renderMessage(this.project(message));
 	}
-	renderOlderMessagesPatch(ids: readonly string[]): string {
-		return renderOlderMessagesPatch(this.projectMessages(this.store.messages), ids);
+	renderOlderMessagesPatch(messages: readonly TranscriptMessage[]): string {
+		return renderOlderMessagesPatch(this.projectMessages(messages));
 	}
 	renderOlderMessagesTrigger(): string {
 		return renderOlderMessagesTriggerPatch(this.store.hasOlderMessages);

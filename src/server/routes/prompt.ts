@@ -73,8 +73,8 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 	});
 
 	router.register("POST", endpoints.messagesOlder, (_request, context) => {
-		const ids = context.store.loadOlderMessages();
-		if (ids.length > 0) context.renderer.patchOlderMessages(ids);
+		const messages = context.store.loadOlderMessages();
+		if (messages.length > 0) context.renderer.patchOlderMessages(messages);
 		return datastarResponse();
 	});
 

@@ -121,14 +121,8 @@ export function renderMessages(
 	);
 }
 
-export function renderOlderMessagesPatch(
-	messages: readonly AppMessage[],
-	messageIds: readonly string[],
-): string {
-	const ids = new Set(messageIds);
-	return messages
-		.map((message) => (ids.has(message.id) ? renderMessage(message) : ""))
-		.join("");
+export function renderOlderMessagesPatch(messages: readonly AppMessage[]): string {
+	return messages.map(renderMessage).join("");
 }
 
 export function renderOlderMessagesTriggerPatch(active: boolean): string {

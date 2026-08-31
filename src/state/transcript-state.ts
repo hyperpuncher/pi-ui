@@ -233,13 +233,11 @@ export class TranscriptState {
 		return true;
 	}
 
-	loadOlderMessages(): readonly string[] {
+	loadOlderMessages(): readonly TranscriptMessage[] {
 		if (!this.hasOlderMessages) return [];
 		const previousStart = this.visibleMessageStart;
 		this.visibleMessageStart = Math.max(0, previousStart - olderMessageBatchSize);
-		return this.transcriptMessages
-			.slice(this.visibleMessageStart, previousStart)
-			.map((message) => message.id);
+		return this.transcriptMessages.slice(this.visibleMessageStart, previousStart);
 	}
 
 	trimOldMessages(): readonly string[] {
