@@ -77,7 +77,7 @@ export class DatastarClientHub {
 		elements: string,
 		selector: string,
 		options: {
-			mode?: "outer" | "replace" | "append";
+			mode?: "outer" | "replace" | "append" | "after" | "remove";
 			scripts?: readonly string[];
 		} = {},
 	): void {

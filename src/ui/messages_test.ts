@@ -266,6 +266,8 @@ test("older messages use one wrapper with prefetch and top triggers", () => {
 	const messageIndex = html.indexOf('data-message-id="user-1"');
 	assert(listIndex >= 0 && listIndex < triggerIndex && triggerIndex < messageIndex);
 	assertEquals(html.match(/data-on-intersect/g)?.length, 2);
+	assertEquals(html.match(/data-indicator:_older-messages-loading/g)?.length, 2);
+	assertStringIncludes(html, "Loading older messages");
 });
 
 test("recent session loading is announced", () => {

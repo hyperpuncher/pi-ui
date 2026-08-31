@@ -50,6 +50,18 @@ test("transcript snapshots restore independent domain state and queue metadata",
 	assertEquals(restored.activeAssistantMessageId, activeId);
 });
 
+test("live transcripts trim only when requested", () => {
+	const state = new TranscriptState(hint);
+	for (let index = 0; index < 101; index += 1) {
+		state.appendMessage("tool", `message ${index}`);
+	}
+	assertEquals(state.messages.length, 101);
+	assertEquals(state.trimOldMessages(), ["m-1"]);
+	assertEquals(state.messages.length, 100);
+	assertEquals(state.messages[0].text, "message 1");
+	assertEquals(state.trimOldMessages(), []);
+});
+
 test("transcript paging and reset have no presentation state", () => {
 	const state = new TranscriptState(hint);
 	state.replaceMessages(
@@ -59,19 +71,19 @@ test("transcript paging and reset have no presentation state", () => {
 			timestamp,
 		})),
 	);
-	assertEquals(state.messages.length, 50);
+	assertEquals(state.messages.length, 30);
 	assertEquals(state.hasOlderMessages, true);
-	assertEquals(state.loadOlderMessages().length, 50);
-	assertEquals(state.messages.length, 100);
-	assertEquals(state.loadOlderMessages().length, 50);
-	assertEquals(state.messages.length, 150);
 	assertEquals(state.loadOlderMessages().length, 30);
+	while (state.hasOlderMessages) {
+		assertEquals(state.loadOlderMessages().length <= 30, true);
+	}
 	assertEquals(state.messages.length, 180);
+	assertEquals(state.messages[0].text, "message 0");
 	assertEquals(state.loadOlderMessages(), []);
 
 	assertEquals(state.showRecentMessages(), true);
-	assertEquals(state.messages.length, 50);
-	assertEquals(state.messages[0].text, "message 130");
+	assertEquals(state.messages.length, 30);
+	assertEquals(state.messages[0].text, "message 150");
 	assertEquals(state.showRecentMessages(), false);
 
 	state.reset({ keys: "new", description: "Different hint" });

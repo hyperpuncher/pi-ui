@@ -151,6 +151,7 @@ export interface AppStorePresentation {
 	requestCommit(effect?: UiCommitEffect): void;
 	flush(): void;
 	messageAppended(id: string): void;
+	messagesRemoved(ids: readonly string[]): void;
 	messageUpdated(id: string): void;
 	pickersChanged(): void;
 	sessionsChanged(): void;
@@ -466,6 +467,9 @@ export class AppStore {
 	}
 	loadOlderMessages(): readonly string[] {
 		return this.transcript.loadOlderMessages();
+	}
+	trimOldMessages(): readonly string[] {
+		return this.transcript.trimOldMessages();
 	}
 	setModels(
 		models: AppModel[],

@@ -44,6 +44,10 @@ export function bindMessageScroll() {
 				)
 			)
 				state.pinnedToBottom = true;
+			if (historyLoading && anchor) {
+				anchor.userScrollDelta += messages.scrollTop - anchor.lastScrollTop;
+				anchor.lastScrollTop = messages.scrollTop;
+			}
 			state.scrollTop = messages.scrollTop;
 			state.rearmOnBottom = false;
 			updateScrollControl();
@@ -150,20 +154,21 @@ export function captureAnchor() {
 	if (historyLoading) return false;
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return false;
-	const viewportTop = messages.getBoundingClientRect().top;
-	const visibleMessage = [...messages.querySelectorAll("[data-message-id]")].find(
-		(message) => message.getBoundingClientRect().bottom > viewportTop,
-	);
-	historyLoading = true;
+	const viewport = messages.getBoundingClientRect();
+	const visibleMessage = messageAtViewportTop(messages, viewport);
 	anchor = {
-		pinnedToBottom: state.pinnedToBottom,
+		lastScrollTop: messages.scrollTop,
 		messageId: visibleMessage?.getAttribute("data-message-id"),
 		offset: visibleMessage
-			? visibleMessage.getBoundingClientRect().top - viewportTop
+			? visibleMessage.getBoundingClientRect().top - viewport.top
 			: undefined,
+		pinnedToBottom: state.pinnedToBottom,
 		scrollHeight: messages.scrollHeight,
 		scrollTop: messages.scrollTop,
+		userScrollDelta: 0,
 	};
+	historyLoading = true;
+	messages.style.overflowAnchor = "none";
 	updateScrollControl();
 	return true;
 }
@@ -172,47 +177,95 @@ export function restoreAnchor() {
 	const saved = anchor;
 	anchor = undefined;
 	historyLoading = false;
-	if (!saved) return;
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	if (!saved) {
+		messages.style.removeProperty("overflow-anchor");
+		return;
+	}
 	if (saved.pinnedToBottom) {
+		messages.style.removeProperty("overflow-anchor");
 		scrollBottom();
 		return;
 	}
-
-	// Restore against a retained DOM node rather than estimating from scrollHeight.
-	// Datastar morphs and deferred message rendering can both change unrelated heights.
-	const restore = () => {
-		const messages = document.getElementById("messages");
-		if (!(messages instanceof HTMLElement)) return;
-		const retainedMessage = [...messages.querySelectorAll("[data-message-id]")].find(
-			(message) => message.getAttribute("data-message-id") === saved.messageId,
+	const retainedMessage = [...messages.querySelectorAll("[data-message-id]")].find(
+		(message) => message.getAttribute("data-message-id") === saved.messageId,
+	);
+	if (retainedMessage && saved.offset !== undefined) {
+		const currentOffset =
+			retainedMessage.getBoundingClientRect().top -
+			messages.getBoundingClientRect().top;
+		const targetOffset = saved.offset - saved.userScrollDelta;
+		messages.scrollTop = retainedAnchorScrollTop(
+			messages.scrollTop,
+			currentOffset,
+			targetOffset,
 		);
-		if (retainedMessage && saved.offset !== undefined) {
-			const currentOffset =
-				retainedMessage.getBoundingClientRect().top -
-				messages.getBoundingClientRect().top;
-			messages.scrollTop = retainedAnchorScrollTop(
-				messages.scrollTop,
-				currentOffset,
-				saved.offset,
-			);
-		} else {
-			messages.scrollTop =
-				saved.scrollTop + messages.scrollHeight - saved.scrollHeight;
-		}
-		updateScrollControl();
-	};
-
-	// The immediate correction prevents a paint at the morphed position. Follow-up
-	// frames absorb layout produced by custom-element hydration and style resolution.
-	restore();
-	requestAnimationFrame(() => {
-		restore();
-		requestAnimationFrame(restore);
-	});
+	} else {
+		messages.scrollTop =
+			saved.scrollTop +
+			saved.userScrollDelta +
+			messages.scrollHeight -
+			saved.scrollHeight;
+	}
+	messages.style.removeProperty("overflow-anchor");
+	state.scrollTop = messages.scrollTop;
+	updateScrollControl();
 }
 
-export function retainedAnchorScrollTop(scrollTop, currentOffset, savedOffset) {
-	return scrollTop + currentOffset - savedOffset;
+export function trimOldMessages() {
+	if (!state.pinnedToBottom) return;
+	const messages = document.getElementById("messages");
+	const trigger = document.getElementById("messages-trim");
+	if (!(messages instanceof HTMLElement) || !(trigger instanceof HTMLButtonElement))
+		return;
+	const messageElements = [
+		...document.querySelectorAll("#message-list > [data-message-id]"),
+	];
+	const excess = messageElements.length - 100;
+	const lastCandidate = messageElements[excess - 1];
+	if (
+		!lastCandidate ||
+		!shouldTrimOldMessages(
+			state.pinnedToBottom,
+			excess,
+			lastCandidate.getBoundingClientRect().bottom,
+			messages.getBoundingClientRect().top,
+		)
+	)
+		return;
+	trigger.click();
+}
+
+export function retainedAnchorScrollTop(scrollTop, currentOffset, targetOffset) {
+	return scrollTop + currentOffset - targetOffset;
+}
+
+export function shouldTrimOldMessages(
+	pinnedToBottom,
+	excess,
+	candidateBottom,
+	viewportTop,
+) {
+	return pinnedToBottom && excess > 0 && candidateBottom <= viewportTop;
+}
+
+function messageAtViewportTop(messages, viewport) {
+	for (const yOffset of [8, 32, 64, 128]) {
+		for (const xRatio of [0.25, 0.5, 0.75]) {
+			const message = document
+				.elementFromPoint(
+					viewport.left + viewport.width * xRatio,
+					viewport.top + yOffset,
+				)
+				?.closest("[data-message-id]");
+			if (message instanceof HTMLElement && messages.contains(message))
+				return message;
+		}
+	}
+	return [...messages.querySelectorAll("[data-message-id]")].find(
+		(message) => message.getBoundingClientRect().bottom > viewport.top,
+	);
 }
 
 export function hasPointerDragIntent(startX, startY, currentX, currentY) {
@@ -245,6 +298,7 @@ export function scrollBottom(behavior = "auto") {
 	const scroll = () => {
 		const messages = document.getElementById("messages");
 		if (!(messages instanceof HTMLElement) || !state.pinnedToBottom) return;
+		messages.style.removeProperty("overflow-anchor");
 		messages.scrollTo({ top: messages.scrollHeight, behavior });
 		updateScrollControl();
 	};

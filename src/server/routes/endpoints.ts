@@ -17,6 +17,7 @@ export const endpoints = {
 	promptQueueRemove: "/prompt/queue/remove",
 	abort: "/abort",
 	messagesOlder: "/messages/older",
+	messagesTrim: "/messages/trim",
 	messagesEnhance: "/messages/enhance",
 	sessionsNew: "/sessions/new",
 	sessionsNewTemporary: "/sessions/new-temporary",

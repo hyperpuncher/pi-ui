@@ -12,6 +12,7 @@ import {
 	hydratePierreDiff,
 	restoreAnchor,
 	scrollBottom,
+	trimOldMessages,
 } from "./message-scroll.js";
 import { filterModelSearch } from "./model-search.js";
 import {
@@ -49,6 +50,7 @@ window.piUi = {
 		hydratePierreDiff,
 		restoreAnchor,
 		scrollBottom,
+		trimOldMessages,
 	},
 	modelSearch: { filter: filterModelSearch },
 	pickers: {

@@ -189,13 +189,24 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.messageAppended(id);
 		this.appendMessage(id);
 	}
+	messagesRemoved(ids: readonly string[]): void {
+		this.hub.patchElement(
+			"",
+			ids.map((id) => `#message-list > [data-message-id="${id}"]`).join(","),
+			{ mode: "remove" },
+		);
+	}
 	private appendMessage(id: string): void {
 		if (this.store.messages.length === 1) {
 			this.hub.patchElement(this.messages.renderMessagesElement(), "#messages");
 			return;
 		}
 		const html = this.messages.renderMessageElement(id);
-		if (html) this.hub.patchElement(html, "#message-list", { mode: "append" });
+		if (html)
+			this.hub.patchElement(html, "#message-list", {
+				mode: "append",
+				scripts: ["window.piUi.messageScroll.trimOldMessages()"],
+			});
 	}
 	messageUpdated(id: string): void {
 		this.messages.messageUpdated(id);
@@ -245,12 +256,18 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.transcriptReplaced(activeIds, enhancementIds);
 	}
 	patchOlderMessages(ids: readonly string[]): void {
-		const elements = this.messages.renderOlderMessagesPatch(ids);
-		this.hub.patchElement(elements, "#older-messages-trigger", {
-			mode: "replace",
-			scripts: ["window.piUi.messageScroll.restoreAnchor()"],
-		});
-		// Newly revealed messages nearest the retained scroll anchor finish first.
+		this.hub.patchElement(
+			this.messages.renderOlderMessagesPatch(ids),
+			"#older-messages-trigger",
+			{
+				mode: "after",
+				scripts: ["window.piUi.messageScroll.restoreAnchor()"],
+			},
+		);
+		this.hub.patchElement(
+			this.messages.renderOlderMessagesTrigger(),
+			"#older-messages-trigger",
+		);
 		for (const id of ids.toReversed()) this.messages.enqueueEnhancement(id);
 	}
 	enhanceMessage(id: string): boolean {

@@ -77,7 +77,19 @@ export function renderMessages(
 		>
 			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
 				<div id="message-list" class="contents">
-					{hasOlderMessages ? renderOlderMessagesTrigger() : ""}
+					<div
+						class="pointer-events-none absolute -top-16 left-1/2 z-10 -translate-x-1/2"
+						data-show="$_olderMessagesLoading"
+						style="display: none"
+					>
+						<Icon
+							icon={Loader}
+							label="Loading older messages"
+							role="status"
+							class="size-4 animate-spin text-muted-foreground"
+						/>
+					</div>
+					{renderOlderMessagesTrigger(hasOlderMessages)}
 					{messages.length === 0
 						? renderEmptyMessages(
 								emptyHint,
@@ -87,6 +99,14 @@ export function renderMessages(
 							)
 						: messages.map(renderMessage)}
 				</div>
+				<button
+					id="messages-trim"
+					type="button"
+					class="hidden"
+					data-on:click={`@post('${endpoints.messagesTrim}', { payload: {} })`}
+					tabindex="-1"
+					aria-hidden="true"
+				/>
 				{messages.length > 0 && (
 					<div
 						id="messages-prompt-spacer"
@@ -104,15 +124,15 @@ export function renderMessages(
 export function renderOlderMessagesPatch(
 	messages: readonly AppMessage[],
 	messageIds: readonly string[],
-	hasOlderMessages: boolean,
 ): string {
 	const ids = new Set(messageIds);
-	return (
-		(hasOlderMessages ? renderOlderMessagesTrigger() : "") +
-		messages
-			.map((message) => (ids.has(message.id) ? renderMessage(message) : ""))
-			.join("")
-	);
+	return messages
+		.map((message) => (ids.has(message.id) ? renderMessage(message) : ""))
+		.join("");
+}
+
+export function renderOlderMessagesTriggerPatch(active: boolean): string {
+	return syncHtml(renderOlderMessagesTrigger(active));
 }
 
 function renderEmptyMessages(
@@ -202,23 +222,31 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 	);
 }
 
-function renderOlderMessagesTrigger() {
-	const loadOlderMessages = `window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { payload: {} })`;
+function renderOlderMessagesTrigger(active: boolean) {
+	const action = active
+		? `window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { payload: {} })`
+		: undefined;
 	return (
 		<div
 			id="older-messages-trigger"
 			class="pointer-events-none absolute inset-0"
 			aria-hidden="true"
 		>
-			<div
-				class="absolute top-0 h-[min(50vh,100%)] w-full opacity-0"
-				data-on-intersect={loadOlderMessages}
-			/>
-			<div
-				class="absolute h-px w-full opacity-0"
-				style="top: min(250vh, calc(100% - 1px))"
-				data-on-intersect={loadOlderMessages}
-			/>
+			{action && (
+				<>
+					<div
+						class="absolute top-0 h-[min(50vh,100%)] w-full opacity-0"
+						data-indicator:_older-messages-loading
+						data-on-intersect={action}
+					/>
+					<div
+						class="absolute h-px w-full opacity-0"
+						style="top: min(250vh, calc(100% - 1px))"
+						data-indicator:_older-messages-loading
+						data-on-intersect={action}
+					/>
+				</>
+			)}
 		</div>
 	);
 }

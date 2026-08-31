@@ -36,6 +36,7 @@ test("all server endpoints are registered through domain route modules", async (
 		"POST /prompt/queue/remove",
 		"POST /abort",
 		"POST /messages/older",
+		"POST /messages/trim",
 		"POST /messages/enhance",
 		"POST /sessions/new",
 		"POST /sessions/new-temporary",
@@ -200,16 +201,16 @@ test("session favicons use workspace assets and fall back to a folder", async ()
 });
 
 test("older messages use a targeted persistent-stream patch", async () => {
-	let revealedIds: readonly string[] = [];
+	let revealedCount = 0;
 	const context = fakeContext({
 		renderer: uiRendererStub({
 			patchOlderMessages: (ids) => {
-				revealedIds = ids;
+				revealedCount = ids.length;
 			},
 		}),
 	});
 	context.store.replaceMessages(
-		Array.from({ length: 80 }, (_, index) => ({
+		Array.from({ length: 100 }, (_, index) => ({
 			role: "user" as const,
 			text: `message ${index}`,
 			timestamp: new Date(0),
@@ -221,7 +222,34 @@ test("older messages use a targeted persistent-stream patch", async () => {
 
 	assertEquals(response.status, 204);
 	assertEquals(await response.text(), "");
-	assertEquals(revealedIds.length, 30);
+	assertEquals(revealedCount, 30);
+});
+
+test("old messages trim only after an explicit viewport-safe request", async () => {
+	let removedCount = 0;
+	const context = fakeContext({
+		renderer: uiRendererStub({
+			messagesRemoved: (ids) => {
+				removedCount = ids.length;
+			},
+		}),
+	});
+	context.store.replaceMessages(
+		Array.from({ length: 180 }, (_, index) => ({
+			role: "user" as const,
+			text: `message ${index}`,
+			timestamp: new Date(0),
+		})),
+	);
+	for (let page = 0; page < 3; page += 1) context.store.loadOlderMessages();
+
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/messages/trim", { method: "POST" }),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(removedCount, 20);
+	assertEquals(context.store.messages.length, 100);
 });
 
 test("older sessions expand backend-owned sidebar state", async () => {

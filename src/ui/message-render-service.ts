@@ -11,7 +11,12 @@ import {
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
 } from "./markdown.tsx";
-import { renderMessage, renderMessages, renderOlderMessagesPatch } from "./messages.tsx";
+import {
+	renderMessage,
+	renderMessages,
+	renderOlderMessagesPatch,
+	renderOlderMessagesTriggerPatch,
+} from "./messages.tsx";
 import type { AppMessage } from "./render-state.ts";
 
 type MessagePresentation = Pick<
@@ -120,11 +125,10 @@ export class MessageRenderService {
 		return renderMessage(this.project(message));
 	}
 	renderOlderMessagesPatch(ids: readonly string[]): string {
-		return renderOlderMessagesPatch(
-			this.projectMessages(this.store.messages),
-			ids,
-			this.store.hasOlderMessages,
-		);
+		return renderOlderMessagesPatch(this.projectMessages(this.store.messages), ids);
+	}
+	renderOlderMessagesTrigger(): string {
+		return renderOlderMessagesTriggerPatch(this.store.hasOlderMessages);
 	}
 	messageAppended(id: string): void {
 		const message = this.store.transcript.getMessage(id);

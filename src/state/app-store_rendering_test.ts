@@ -148,8 +148,9 @@ test("new messages append to the stable message list", async () => {
 			reader,
 			(text) => text.includes("one") && text.includes("two"),
 		);
-		assertEqual(count(tools, "data: selector #message-list"), 2);
-		assertEqual(count(tools, "data: mode append"), 2);
+		assertIncludes(tools, "data: selector #message-list");
+		assertIncludes(tools, "data: mode append");
+		assertIncludes(tools, "window.piUi.messageScroll.trimOldMessages()");
 		assertNotIncludes(tools, '<main id="messages"');
 	} finally {
 		controller.abort();
@@ -173,7 +174,10 @@ test("parallel message updates all reach their final state", async () => {
 			format: "pre",
 			state: "running",
 		});
-		await readUntil(reader, (text) => count(text, "data: mode append") === 2);
+		await readUntil(
+			reader,
+			(text) => text.includes(firstId) && text.includes(secondId),
+		);
 
 		state.updateMessage(firstId, { title: "read first.ts", state: "success" });
 		state.updateMessage(secondId, { title: "read second.ts", state: "success" });
@@ -282,21 +286,21 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 		},
 	});
 	state.replaceMessages(
-		Array.from({ length: 80 }, (_, index) => markdownMessage(`**message ${index}**`)),
+		Array.from({ length: 60 }, (_, index) => markdownMessage(`**message ${index}**`)),
 	);
-	await waitFor(() => renderCount === 50);
+	await waitFor(() => renderCount === 30);
 	const ids = state.loadOlderMessages();
 	assertEqual(ids.length, 30);
 	state.renderer.patchOlderMessages(ids);
-	await waitFor(() => renderCount === 80);
+	await waitFor(() => renderCount === 60);
 	assertEqual(state.loadOlderMessages(), []);
 	const immediatePage = state.renderer.renderMessagesElement();
 	assertIncludes(immediatePage, "<strong>message 0</strong>");
 	assertNotIncludes(immediatePage, "**message 0**");
-	assertEqual(renderCount, 80);
+	assertEqual(renderCount, 60);
 });
 
-test("older messages use one targeted patch before restoring the anchor", async () => {
+test("older messages insert after the trigger before rearming it", async () => {
 	const state = createState();
 	state.replaceMessages(
 		Array.from({ length: 130 }, (_, index) => ({
@@ -310,17 +314,20 @@ test("older messages use one targeted patch before restoring the anchor", async 
 		const reader = await openInitializedStateStream(state, controller.signal);
 
 		const ids = state.loadOlderMessages();
-		assertEqual(ids.length, 50);
+		assertEqual(ids.length, 30);
 		state.renderer.patchOlderMessages(ids);
-		const output = await readUntil(reader, (text) =>
-			text.includes("window.piUi.messageScroll.restoreAnchor()"),
+		const output = await readUntil(
+			reader,
+			(text) =>
+				text.includes("window.piUi.messageScroll.restoreAnchor()") &&
+				text.includes('id="older-messages-trigger"'),
 		);
 
 		assertIncludes(output, "data: selector #older-messages-trigger");
-		assertIncludes(output, "data: mode replace");
+		assertIncludes(output, "data: mode after");
 		assertIncludes(output, 'id="older-messages-trigger"');
-		assertIncludes(output, "message 30");
-		assertNotIncludes(output, "message 29");
+		assertIncludes(output, "message 70");
+		assertNotIncludes(output, "message 69");
 		assertNotIncludes(output, 'id="messages"');
 		assertIncludes(output, "window.piUi.messageScroll.restoreAnchor()");
 	} finally {
@@ -349,7 +356,7 @@ test("repaging replaces the transcript and moves to the recent page", async () =
 
 		assertIncludes(output, 'id="messages"');
 		assertIncludes(output, 'id="older-messages-trigger"');
-		assertIncludes(output, "message 30");
+		assertIncludes(output, "message 50");
 	} finally {
 		controller.abort();
 	}

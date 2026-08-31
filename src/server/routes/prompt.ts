@@ -78,6 +78,12 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 		return datastarResponse();
 	});
 
+	router.register("POST", endpoints.messagesTrim, (_request, context) => {
+		const ids = context.store.trimOldMessages();
+		if (ids.length > 0) context.renderer.messagesRemoved(ids);
+		return datastarResponse();
+	});
+
 	router.register("POST", endpoints.messagesEnhance, (_request, context, url) => {
 		if (!context.renderer.enhanceMessage(url.searchParams.get("id") ?? "")) {
 			throw new RouteError(409, "Message is not deferred.");

@@ -59,8 +59,9 @@ export type TranscriptSnapshot = {
 	queuedFollowUpMessages: string[];
 };
 
-const initialVisibleMessageCount = 50;
-const olderMessageBatchSize = 50;
+const initialVisibleMessageCount = 30;
+const olderMessageBatchSize = 30;
+const maximumVisibleMessageCount = 100;
 
 /** Renderer-independent, authoritative transcript state. */
 export type FinishedAssistantIds = {
@@ -235,13 +236,22 @@ export class TranscriptState {
 	loadOlderMessages(): readonly string[] {
 		if (!this.hasOlderMessages) return [];
 		const previousStart = this.visibleMessageStart;
-		this.visibleMessageStart = Math.max(
-			0,
-			this.visibleMessageStart - olderMessageBatchSize,
-		);
+		this.visibleMessageStart = Math.max(0, previousStart - olderMessageBatchSize);
 		return this.transcriptMessages
 			.slice(this.visibleMessageStart, previousStart)
 			.map((message) => message.id);
+	}
+
+	trimOldMessages(): readonly string[] {
+		const nextStart = Math.max(
+			this.visibleMessageStart,
+			this.transcriptMessages.length - maximumVisibleMessageCount,
+		);
+		const ids = this.transcriptMessages
+			.slice(this.visibleMessageStart, nextStart)
+			.map((message) => message.id);
+		this.visibleMessageStart = nextStart;
+		return ids;
 	}
 }
 

@@ -53,6 +53,7 @@ interface PiUiNamespace {
 		hydratePierreDiff(element: HTMLElement): void;
 		restoreAnchor(): void;
 		scrollBottom(behavior?: "auto" | "smooth"): void;
+		trimOldMessages(): void;
 	};
 	modelSearch: {
 		filter(input: HTMLInputElement, query: string): void;
