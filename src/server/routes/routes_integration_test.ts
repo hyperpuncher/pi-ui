@@ -229,8 +229,8 @@ test("old messages trim only after an explicit viewport-safe request", async () 
 	let removedCount = 0;
 	const context = fakeContext({
 		renderer: uiRendererStub({
-			messagesRemoved: (ids) => {
-				removedCount = ids.length;
+			messagesRemoved: (count) => {
+				removedCount = count;
 			},
 		}),
 	});

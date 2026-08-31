@@ -335,6 +335,41 @@ test("older messages insert after the trigger before rearming it", async () => {
 	}
 });
 
+test("trimming removes old DOM messages with one structural selector", async () => {
+	const state = createState();
+	state.replaceMessages(
+		Array.from({ length: 130 }, (_, index) => ({
+			role: "user" as const,
+			text: `message ${index}`,
+			timestamp,
+		})),
+	);
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+		for (let page = 0; page < 3; page += 1) {
+			const messages = state.loadOlderMessages();
+			state.renderer.patchOlderMessages(messages);
+			await readUntil(reader, (text) =>
+				text.includes("window.piUi.messageScroll.restoreAnchor()"),
+			);
+		}
+		const ids = state.trimOldMessages();
+		state.renderer.messagesRemoved(ids.length);
+		const output = await readUntil(reader, (text) => text.includes("mode remove"));
+
+		assertEqual(ids.length, 20);
+		assertEqual(state.messages.length, 100);
+		assertIncludes(
+			output,
+			"data: selector #message-list > [data-message-id]:nth-last-child(n + 101)",
+		);
+		assertNotIncludes(output, '[data-message-id="m-');
+	} finally {
+		controller.abort();
+	}
+});
+
 test("repaging replaces the transcript and moves to the recent page", async () => {
 	const state = createState();
 	state.replaceMessages(

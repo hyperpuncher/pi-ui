@@ -80,7 +80,7 @@ export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 
 	router.register("POST", endpoints.messagesTrim, (_request, context) => {
 		const ids = context.store.trimOldMessages();
-		if (ids.length > 0) context.renderer.messagesRemoved(ids);
+		if (ids.length > 0) context.renderer.messagesRemoved(ids.length);
 		return datastarResponse();
 	});
 
