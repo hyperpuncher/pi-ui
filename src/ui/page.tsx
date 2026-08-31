@@ -402,11 +402,14 @@ export function renderPage(
 							<header>
 								<h2 id="session-delete-title">Delete session?</h2>
 								<p id="session-delete-description">
-									This will permanently delete{" "}
-									<span data-text="$sessionDeleteTitle">
+									Are you sure you want to delete{" "}
+									<strong
+										class="font-semibold text-foreground"
+										data-text="$sessionDeleteTitle"
+									>
 										the selected session
-									</span>
-									.
+									</strong>
+									? This action can’t be undone.
 								</p>
 							</header>
 							<footer>
