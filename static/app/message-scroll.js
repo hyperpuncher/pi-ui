@@ -158,7 +158,7 @@ export function captureAnchor() {
 	const visibleMessage = messageAtViewportTop(messages, viewport);
 	anchor = {
 		lastScrollTop: messages.scrollTop,
-		messageId: visibleMessage?.getAttribute("data-message-id"),
+		message: visibleMessage,
 		offset: visibleMessage
 			? visibleMessage.getBoundingClientRect().top - viewport.top
 			: undefined,
@@ -188,10 +188,12 @@ export function restoreAnchor() {
 		scrollBottom();
 		return;
 	}
-	const retainedMessage = [...messages.querySelectorAll("[data-message-id]")].find(
-		(message) => message.getAttribute("data-message-id") === saved.messageId,
-	);
-	if (retainedMessage && saved.offset !== undefined) {
+	const retainedMessage = saved.message;
+	if (
+		retainedMessage instanceof HTMLElement &&
+		messages.contains(retainedMessage) &&
+		saved.offset !== undefined
+	) {
 		const currentOffset =
 			retainedMessage.getBoundingClientRect().top -
 			messages.getBoundingClientRect().top;
