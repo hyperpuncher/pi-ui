@@ -6,6 +6,7 @@ export type TranscriptMessageRole =
 	| "tool"
 	| "thought"
 	| "compaction"
+	| "summary"
 	| "skill";
 
 export type TranscriptMessageTitlePart = {

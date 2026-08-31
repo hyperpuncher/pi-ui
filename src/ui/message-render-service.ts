@@ -37,6 +37,7 @@ const markdownRoles = new Set<AppMessage["role"]>([
 	"assistant",
 	"thought",
 	"compaction",
+	"summary",
 	"skill",
 ]);
 function rendersMarkdown(role: AppMessage["role"]): boolean {
@@ -48,7 +49,8 @@ function enhancementKind(
 	if (
 		rendersMarkdown(message.role) &&
 		message.role !== "skill" &&
-		message.role !== "compaction"
+		message.role !== "compaction" &&
+		message.role !== "summary"
 	)
 		return "markdown";
 	if (message.role !== "tool") return undefined;

@@ -193,6 +193,20 @@ test("compactions show their metadata without enhancement controls", () => {
 	assertStringExcludes(html, "Enhance formatting");
 });
 
+test("branch summaries use the compact summarize presentation", () => {
+	const html = renderMessage({
+		id: "summary-1",
+		presentationState: "deferred",
+		presentationVersion: 1,
+		role: "summary",
+		text: "Previous branch summary",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, ">summarize</span>");
+	assertStringIncludes(html, "<details");
+	assertStringExcludes(html, "Enhance formatting");
+});
+
 test("bodyless tools show only their title", () => {
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "Read file");

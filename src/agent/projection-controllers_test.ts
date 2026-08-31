@@ -133,6 +133,26 @@ test("transcript projection preserves user, skill, thought, and assistant roles"
 	);
 });
 
+test("transcript projection renders branch summaries as compact summaries", () => {
+	const timestamp = new Date(0);
+	const messages = new TranscriptProjector().entry(
+		sessionEntryStub({
+			type: "branch_summary",
+			fromId: "old-leaf",
+			summary: "Work completed on the previous branch",
+		}),
+		new Map(),
+	);
+
+	assertEquals(messages, [
+		{
+			role: "summary",
+			text: "Work completed on the previous branch",
+			timestamp,
+		},
+	]);
+});
+
 test("transcript projection restores persisted provider errors", () => {
 	const timestamp = new Date(0);
 	const projector = new TranscriptProjector();
@@ -329,14 +349,18 @@ test("tree navigation rejects overlap and can cancel summarization", async () =>
 			},
 		},
 	});
+	const activities: Array<string | undefined> = [];
 	const projector = new TreeProjector(() => runtime, {
 		setTreeEntries: () => {},
+		setActivityText: (activity) => activities.push(activity),
 	});
 
 	const first = projector.navigate("one", { summarize: true });
+	assertEquals(activities, ["Summarizing branch..."]);
 	assertEquals(await projector.navigate("two"), { status: "busy" });
 	projector.open();
 	assertEquals(await first, { status: "cancelled" });
+	assertEquals(activities, ["Summarizing branch...", undefined]);
 	assertEquals({ navigateCount, abortCount }, { navigateCount: 1, abortCount: 1 });
 });
 

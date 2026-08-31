@@ -90,7 +90,7 @@ export class TranscriptProjector {
 			];
 		}
 		if (entry.type === "branch_summary") {
-			return [{ role: "system", text: entry.summary, timestamp }];
+			return [{ role: "summary", text: entry.summary, timestamp }];
 		}
 		return [];
 	}
@@ -154,7 +154,7 @@ export class TranscriptProjector {
 						]
 					: [];
 			case "branchSummary":
-				return [{ role: "system", text: message.summary, timestamp }];
+				return [{ role: "summary", text: message.summary, timestamp }];
 			case "compactionSummary":
 				return [
 					{

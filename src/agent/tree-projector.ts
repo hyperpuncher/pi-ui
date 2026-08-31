@@ -7,7 +7,8 @@ import type { AppStore, AppTreeEntry } from "../state/app-store.ts";
 import { formatDateTime } from "../utils/locale.ts";
 import { type JsonRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
 
-type TreeState = Pick<AppStore, "setTreeEntries">;
+type TreeState = Pick<AppStore, "setTreeEntries"> &
+	Partial<Pick<AppStore, "setActivityText">>;
 type TreeOwnerToken = PropertyKey | object;
 
 export type TreeNavigationResult =
@@ -53,6 +54,7 @@ export class TreeProjector {
 		if (!entryId.trim()) return { status: "cancelled" };
 		const navigation = { session };
 		this.navigations.set(ownerToken, navigation);
+		if (options.summarize) this.state.setActivityText?.("Summarizing branch...");
 		try {
 			const result = await session.navigateTree(entryId, {
 				summarize: options.summarize ?? false,
@@ -66,6 +68,7 @@ export class TreeProjector {
 			return { status: "success", editorText: result.editorText };
 		} finally {
 			if (this.navigations.get(ownerToken) === navigation) {
+				if (options.summarize) this.state.setActivityText?.(undefined);
 				this.navigations.delete(ownerToken);
 			}
 		}

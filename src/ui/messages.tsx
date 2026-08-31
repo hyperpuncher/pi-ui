@@ -487,7 +487,11 @@ export function renderMessage(message: AppMessage): string {
 	if (message.role === "system" || message.role === "notice") {
 		return renderSystemMessage(message);
 	}
-	if (message.role === "compaction" || message.role === "skill") {
+	if (
+		message.role === "compaction" ||
+		message.role === "summary" ||
+		message.role === "skill"
+	) {
 		return renderContextMessage(message);
 	}
 	return renderToolMessage(message);
@@ -631,12 +635,21 @@ function renderSystemMessage(message: AppMessage): string {
 }
 
 function renderContextMessage(message: AppMessage): string {
-	const label = message.role === "compaction" ? "compaction" : "skill";
+	const label =
+		message.role === "compaction"
+			? "compaction"
+			: message.role === "summary"
+				? "summarize"
+				: "skill";
 	return syncHtml(
 		<article
 			class={[
 				"message pi-tool-timeline-item w-full self-start",
-				message.role === "compaction" ? "message-compaction" : "message-skill",
+				message.role === "compaction"
+					? "message-compaction"
+					: message.role === "skill"
+						? "message-skill"
+						: undefined,
 			]}
 			data-message-id={message.id}
 		>
