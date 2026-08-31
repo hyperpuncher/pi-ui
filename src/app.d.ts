@@ -19,6 +19,9 @@ interface PiUiNamespace {
 		loadFontPreviews(light: string, dark: string): void;
 		loadPreviews(): void;
 	};
+	dateTime: {
+		hydrate(element: HTMLTimeElement): void;
+	};
 	fonts: {
 		apply(mono: string, sans: string): void;
 	};

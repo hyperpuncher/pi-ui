@@ -6,7 +6,6 @@ import {
 	workspaceFilesBase,
 	workspaceReviewBase,
 } from "../server/routes/endpoints.ts";
-import { systemTimeLocale } from "../utils/locale.ts";
 import { gitPaneRatioDefault } from "../workspace-review-types.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
@@ -100,7 +99,6 @@ export function renderPage(
 					spellcheck="false"
 					data-keybind-hints={keybindHints}
 					data-minimal-mode={minimalMode}
-					data-time-locale={systemTimeLocale}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-workspace-files-endpoint={workspaceFilesBase}

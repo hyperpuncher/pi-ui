@@ -1,6 +1,7 @@
 import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
 import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
+import { hydrateDateTime } from "./date-time.js";
 import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
 import { bindFileLinks } from "./file-links.js";
@@ -41,6 +42,7 @@ const promptHistory = createPromptHistory();
 window.piUi = {
 	basecoat: { refresh },
 	codeTheme: { loadPreviews() {} },
+	dateTime: { hydrate: hydrateDateTime },
 	fonts: { apply() {} },
 	dialogs,
 	fileTransfer,

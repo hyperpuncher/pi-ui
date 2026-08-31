@@ -186,25 +186,16 @@ function renderCommitFiles(
 	return files;
 }
 
-export function formatCommitDetailDate(
-	value: string,
-	locale = configuredTimeLocale(),
-): string {
+export function formatCommitDetailDate(value: string, locale?: string): string {
 	return formatExpandedDateTime(new Date(value), locale);
 }
 
 export function formatCommitDate(
 	value: string,
 	now = new Date(),
-	locale = configuredTimeLocale(),
+	locale?: string,
 ): string {
 	return formatAdaptiveDateTime(new Date(value), now, locale);
-}
-
-function configuredTimeLocale(): string | undefined {
-	return "document" in globalThis
-		? globalThis.document.body.dataset.timeLocale || undefined
-		: undefined;
 }
 
 function sumChanges(

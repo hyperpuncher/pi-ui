@@ -11,7 +11,13 @@ export function DateTime({ class: className, dateTime, label }: DateTimeProps) {
 	const title =
 		date && !Number.isNaN(date.getTime()) ? formatFullDateTime(date) : undefined;
 	return (
-		<time class={["pi-date", className]} datetime={dateTime} title={title} safe>
+		<time
+			class={["pi-date", className]}
+			datetime={dateTime}
+			title={title}
+			data-init={date ? "window.piUi.dateTime.hydrate(el)" : undefined}
+			safe
+		>
 			{label}
 		</time>
 	);
