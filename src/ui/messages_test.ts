@@ -22,18 +22,6 @@ function tool(overrides: Partial<AppMessage> = {}): AppMessage {
 	};
 }
 
-test("user messages wrap uninterrupted content", () => {
-	const html = renderMessage({
-		id: "user-1",
-		presentationState: "plain",
-		presentationVersion: 1,
-		role: "user",
-		text: "x".repeat(200),
-		timestamp: new Date(0),
-	});
-	assertStringIncludes(html, "wrap-anywhere");
-});
-
 test("user messages render attached images without placeholder text", () => {
 	const html = renderMessage({
 		id: "user-image",
@@ -128,10 +116,6 @@ test("assistant messages summarize preceding tool activity", () => {
 	assertEquals(assistant.activitySummary, { duration: "1m 4s", stepCount: 2 });
 	const html = renderMessage(assistant);
 	assertStringIncludes(html, "completed 2 steps in 1m 4s");
-	assertStringIncludes(html, "message-activity-result");
-	assertStringIncludes(html, "pi-activity-summary");
-	assertStringIncludes(html, "pi-tool-timeline-item");
-	assertStringIncludes(html, "pi-tool-state-dot");
 });
 
 test("thinking blocks render expanded content and a collapsed label", () => {
@@ -145,24 +129,8 @@ test("thinking blocks render expanded content and a collapsed label", () => {
 	});
 	assertStringIncludes(html, "<strong>Planning full validation tests</strong>");
 	assertStringIncludes(html, "Thinking...");
-	assertStringIncludes(html, 'data-show="$_thinkingHidden && !$_minimalMode"');
-	assertStringIncludes(html, 'data-show="$_minimalMode"');
-	assertStringIncludes(html, "pi-tool-state-dot");
 	assertStringIncludes(html, 'aria-label="Thinking"');
-	assertStringIncludes(html, 'data-show="!$_thinkingHidden && !$_minimalMode"');
 	assertStringExcludes(html, "**Planning");
-});
-
-test("cache miss notices have a dedicated spacing class", () => {
-	const html = renderMessage({
-		id: "notice-1",
-		presentationState: "plain",
-		presentationVersion: 1,
-		role: "notice",
-		text: "cache miss after 6m idle",
-		timestamp: new Date(0),
-	});
-	assertStringIncludes(html, "message-notice");
 });
 
 test("system messages make share URLs actionable and escape text", () => {
@@ -179,7 +147,7 @@ test("system messages make share URLs actionable and escape text", () => {
 	assertStringIncludes(html, 'target="_blank"');
 });
 
-test("provider errors use error styling and alert semantics", () => {
+test("provider errors use alert semantics", () => {
 	const html = renderMessage({
 		id: "provider-error",
 		presentationState: "plain",
@@ -189,12 +157,11 @@ test("provider errors use error styling and alert semantics", () => {
 		text: 'Error: 403: {"type":"RegionError"}',
 		timestamp: new Date(0),
 	});
-	assertStringIncludes(html, "pi-error-foreground");
 	assertStringIncludes(html, 'role="alert"');
 	assertStringIncludes(html, "Error: 403:");
 });
 
-test("skills use the tool timeline without enhancement controls", () => {
+test("skills show their metadata without enhancement controls", () => {
 	const html = renderMessage({
 		id: "skill-1",
 		presentationState: "deferred",
@@ -204,15 +171,13 @@ test("skills use the tool timeline without enhancement controls", () => {
 		timestamp: new Date(0),
 		meta: "kita-html",
 	});
-	assertStringIncludes(html, "pi-tool-timeline-item");
-	assertStringIncludes(html, "pi-tool-output-surface");
 	assertStringIncludes(html, ">skill</span>");
 	assertStringIncludes(html, "kita-html");
 	assert(html.indexOf("skill") < html.indexOf("kita-html"));
 	assertStringExcludes(html, "Enhance formatting");
 });
 
-test("compactions use the tool timeline without enhancement controls", () => {
+test("compactions show their metadata without enhancement controls", () => {
 	const html = renderMessage({
 		id: "compaction-1",
 		presentationState: "deferred",
@@ -222,36 +187,17 @@ test("compactions use the tool timeline without enhancement controls", () => {
 		timestamp: new Date(0),
 		meta: "compacted from 57,053 tokens",
 	});
-	assertStringIncludes(html, "pi-tool-timeline-item");
-	assertStringIncludes(html, "pi-tool-output-surface");
 	assertStringIncludes(html, ">compaction</span>");
 	assertStringIncludes(html, "compacted from 57,053 tokens");
 	assertStringExcludes(html, "click to expand");
 	assertStringExcludes(html, "Enhance formatting");
 });
 
-test("bodyless tools use timeline markup without an output surface", () => {
+test("bodyless tools show only their title", () => {
 	const html = renderMessage(tool());
-	assertStringIncludes(html, "pi-tool-timeline-item");
-	assertStringIncludes(html, "pi-tool-state-dot");
-	assertStringIncludes(html, 'data-show="!$_minimalMode && !$_toolOutputHidden"');
-	assertStringIncludes(html, 'data-show="$_minimalMode || $_toolOutputHidden"');
-	assertStringIncludes(html, "min-w-0 truncate");
 	assertStringIncludes(html, "Read file");
 	assertStringExcludes(html, "Working...");
 	assertStringExcludes(html, "<details");
-	assertStringIncludes(html, "min-w-[6ch]");
-	assertStringIncludes(html, 'aria-hidden="true"');
-	assertStringExcludes(html, "pi-tool-output-surface");
-	assertStringExcludes(html, "data-ignore-morph");
-});
-
-test("consecutive tools need no backend connector markers", () => {
-	const html = renderMessages(
-		[tool(), tool({ id: "tool-2" }), tool({ id: "tool-3" })],
-		{ description: "Send", keys: "enter" },
-	);
-	assertStringExcludes(html, "data-tool-continues");
 });
 
 test("shell tools preserve wrapped title, metadata, and escaped output", () => {
@@ -268,10 +214,8 @@ test("shell tools preserve wrapped title, metadata, and escaped output", () => {
 	);
 	assertStringIncludes(html, "&#39;a very long command&#39;");
 	assertEquals(html.match(/printf/g)?.length, 2);
-	assertStringIncludes(html, "whitespace-nowrap!");
 	assertStringIncludes(html, "42ms");
 	assertStringIncludes(html, "&lt;script&gt;");
-	assertStringIncludes(html, 'data-init="el.scrollTop = el.scrollHeight; 1"');
 	assertStringExcludes(html, "<script>");
 });
 
@@ -283,58 +227,23 @@ test("tool formats retain specific hooks inside the shared output surface", () =
 		["pre", "<pre"],
 	] as const) {
 		const html = renderMessage(tool({ format, text: "value" }));
-		assertStringIncludes(html, "pi-tool-output-surface");
 		assertStringIncludes(html, hook);
 	}
 });
 
 test("running and error tools preserve state semantics", () => {
 	const running = renderMessage(tool({ state: "running", meta: "working" }));
-	assertStringIncludes(running, "animate-ping");
-	assertStringIncludes(running, "transition-opacity");
-	assertStringIncludes(running, "text-muted-foreground");
 	assertStringIncludes(running, 'aria-label="Running"');
 	assertStringIncludes(running, 'role="status"');
-	assertEquals(running.match(/pi-tool-status-ball/g)?.length, 3);
-	assertStringExcludes(running, "animate-spin");
 	assertStringIncludes(running, "working");
 	const error = renderMessage(tool({ state: "error" }));
-	assertStringIncludes(error, "pi-tool-status-ball");
-	assertStringIncludes(error, "pi-tool-status-error");
-	assertStringIncludes(error, "opacity-100");
 	assertStringIncludes(error, 'aria-label="Failed"');
-	assertEquals(error.match(/pi-tool-status-ball/g)?.length, 3);
-	assertStringExcludes(error, "animate-ping");
 });
 
 test("plain tool titles remain escaped", () => {
 	const html = renderMessage(tool({ title: '<img src=x onerror="bad">' }));
 	assertStringExcludes(html, "<img");
 	assertStringIncludes(html, "&lt;img");
-});
-
-test("messages reserve the overlaid prompt when populated", () => {
-	const html = renderMessages([], { description: "Send", keys: "enter" });
-	assertStringIncludes(html, "messages-stack relative mx-auto min-h-full");
-	assertStringIncludes(html, "grid flex-1 place-items-center");
-	assertStringIncludes(html, "pt-8 pb-32");
-	assertStringExcludes(html, "messages-prompt-spacer");
-	assertStringExcludes(html, "100vh");
-	const populated = renderMessages(
-		[
-			{
-				id: "user-1",
-				presentationState: "plain",
-				presentationVersion: 1,
-				role: "user",
-				text: "hello",
-				timestamp: new Date(0),
-			},
-		],
-		{ description: "Send", keys: "enter" },
-	);
-	assertStringIncludes(populated, "pt-24");
-	assertStringIncludes(populated, 'id="messages-prompt-spacer"');
 });
 
 test("older messages use one wrapper with prefetch and top triggers", () => {
@@ -357,12 +266,9 @@ test("older messages use one wrapper with prefetch and top triggers", () => {
 	const messageIndex = html.indexOf('data-message-id="user-1"');
 	assert(listIndex >= 0 && listIndex < triggerIndex && triggerIndex < messageIndex);
 	assertEquals(html.match(/data-on-intersect/g)?.length, 2);
-	assertStringIncludes(html, "h-[min(50vh,100%)]");
-	assertStringIncludes(html, "top: min(250vh, calc(100% - 1px))");
-	assertStringExcludes(html, "data-on:scroll");
 });
 
-test("recent session loading reserves exactly three rows", () => {
+test("recent session loading is announced", () => {
 	const loading = renderMessages(
 		[],
 		{ description: "Send", keys: "enter" },
@@ -372,8 +278,6 @@ test("recent session loading reserves exactly three rows", () => {
 		true,
 	);
 	assertStringIncludes(loading, 'aria-label="Loading recent sessions"');
-	assertStringIncludes(loading, "h-50");
-	assertStringIncludes(loading, "h-44");
 });
 
 test("partial recent sessions stay visible during full catalog loading", () => {

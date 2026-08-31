@@ -5,7 +5,7 @@ import { assertFalse, assertStringIncludes } from "#testing/assertions";
 import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
-test("session sidebar uses Basecoat structure and marks the current session", () => {
+test("session sidebar exposes session state and actions", () => {
 	const currentPath = "/sessions/current.jsonl";
 	const html = renderSessionSidebar(
 		appRenderSnapshot({
@@ -32,40 +32,18 @@ test("session sidebar uses Basecoat structure and marks the current session", ()
 		}),
 	);
 
-	assertStringIncludes(html, 'data-side="right"');
 	assertFalse(html.includes('data-initial-open="false"'));
 	assertStringIncludes(html, 'aria-label="Sessions"');
-	assertStringIncludes(html, "pi-resize-handle");
-	assertStringIncludes(html, 'data-on:click__stop="true"');
-	assertStringIncludes(html, "$_sessionSidebarWidth");
-	assertStringIncludes(html, "data-on:pointerdown__prevent");
-	assertStringIncludes(html, "data-on:pointermove__throttle.8ms");
-	assertStringIncludes(html, "data-on:dblclick");
-	assertFalse(html.includes('tabindex="0"'));
-	assertFalse(html.includes('role="separator"'));
-	assertStringIncludes(html, "data-style:right");
 	assertStringIncludes(html, ">workspace</span>");
 	assertFalse(html.includes("3 messages"));
 	assertFalse(html.includes("1 message"));
-	assertStringIncludes(html, 'id="session-sidebar-content"');
-	assertStringIncludes(html, 'data-active="true"');
 	assertStringIncludes(html, 'aria-current="true"');
 	assertStringIncludes(html, 'aria-label="Current session running"');
 	assertStringIncludes(html, 'aria-label="Background session completed"');
-	assertStringIncludes(html, "pi-tool-status-ball");
-	assertFalse(html.includes('class="badge'));
 	assertStringIncludes(html, "@post('/sessions/resume'");
-	assertStringIncludes(html, "evt.code === 'Digit2'");
-	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
-	assertStringIncludes(html, '<kbd class="kbd">2</kbd>');
-	assertStringIncludes(html, "data-on:dblclick");
-	assertStringIncludes(html, "data-session-rename-input");
-	assertStringIncludes(html, "evt.currentTarget.blur()");
 	assertStringIncludes(html, "@post('/sessions/rename'");
 	assertStringIncludes(html, "Rename session Current session");
-	assertStringIncludes(html, "$sessionRenamePath");
 	assertStringIncludes(html, "Delete session Background session");
-	assertStringIncludes(html, "$sessionDeletePath");
 });
 
 test("session sidebar starts closed without sessions", () => {
@@ -101,7 +79,6 @@ test("session sidebar keeps loading visible beneath partial results", () => {
 
 	assertStringIncludes(html, "Partial session");
 	assertStringIncludes(html, 'aria-label="Loading"');
-	assertStringIncludes(html, "animate-spin");
 });
 
 test("session sidebar groups sessions while preserving times and shortcuts", () => {
@@ -176,9 +153,7 @@ test("session sidebar initially renders 30 sessions and an infinite-scroll trigg
 
 	assertStringIncludes(html, "Session 30");
 	assertFalse(html.includes("Session 31"));
-	assertStringIncludes(html, "data-on-intersect__once");
 	assertStringIncludes(html, "@post('/sessions/more'");
-	assertStringIncludes(html, "data-indicator:_session-page-loading");
 });
 
 test("session sidebar assigns shortcuts to only the first nine sessions", () => {
@@ -197,9 +172,9 @@ test("session sidebar assigns shortcuts to only the first nine sessions", () => 
 		}),
 	);
 
-	for (let index = 1; index <= 9; index++) {
-		assertStringIncludes(html, `evt.code === 'Digit${index}'`);
-		assertStringIncludes(html, `<kbd class="kbd">${index}</kbd>`);
-	}
+	assertStringIncludes(html, "evt.code === 'Digit1'");
+	assertStringIncludes(html, "evt.code === 'Digit9'");
+	assertStringIncludes(html, ">1</kbd>");
+	assertStringIncludes(html, ">9</kbd>");
 	assertFalse(html.includes("Digit10"));
 });

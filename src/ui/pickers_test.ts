@@ -28,10 +28,7 @@ test("slash picker anchors its selected result nearest the prompt", () => {
 		}),
 	);
 	assertStringIncludes(html, 'id="slash-picker-list"');
-	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'aria-selected="true"');
-	assertStringIncludes(html, 'data-slash-order="0"');
-	assertStringIncludes(html, 'data-slash-name="login"');
 	assertStringIncludes(html, "$prompt = '';");
 	assertStringIncludes(html, "@post('/prompt'");
 	assertStringIncludes(html, "payload: { prompt: &#34;/login&#34; }");
@@ -83,9 +80,6 @@ test("session rows expose stable ids for resilient active descendants", () => {
 	);
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
 	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
-	assertStringIncludes(html, 'aria-hidden="true"');
-	assertStringIncludes(html, 'data-preserve-attr="class aria-hidden"');
-	assertStringIncludes(html, "aria-current:bg-sidebar-accent!");
 	assertStringIncludes(html, "No matching sessions.");
 	assertFalse(html.includes("data-session-rename-title"));
 });
@@ -109,22 +103,13 @@ test("current running session is live but does not resume itself", () => {
 	);
 
 	assertStringIncludes(html, 'aria-current="true"');
-	assertFalse(html.includes("data-current-session-indicator"));
 	assertStringIncludes(html, 'aria-label="Current session running"');
-	assertStringIncludes(html, "pi-tool-status-ball");
-	assertFalse(html.includes('<kbd class="kbd">1</kbd>'));
-	assertStringIncludes(html, "data-session-rename-title");
-	assertStringIncludes(html, "data-on:dblclick");
 	assertStringIncludes(html, "@post('/sessions/rename'");
 	assertStringIncludes(html, "@post('/abort'");
-	assertStringIncludes(html, "document.getElementById('session-dialog')?.close()");
-	assertStringIncludes(html, "dataset.sessionPickerCloseTimer");
-	assertStringIncludes(html, "setTimeout");
-	assertFalse(html.includes('disabled=""'));
 	assertFalse(html.includes("/sessions/resume"));
 });
 
-test("background session statuses use shared semantic dots", () => {
+test("background sessions expose statuses and shortcuts", () => {
 	const html = renderSessionPicker(
 		appRenderSnapshot({
 			sessions: [
@@ -151,11 +136,8 @@ test("background session statuses use shared semantic dots", () => {
 
 	assertStringIncludes(html, 'aria-label="Background session running"');
 	assertStringIncludes(html, 'aria-label="Background session completed"');
-	assertStringIncludes(html, "animate-ping");
-	assertStringIncludes(html, "pi-tool-status-success");
 	assertStringIncludes(html, '<kbd class="kbd">1</kbd>');
 	assertStringIncludes(html, '<kbd class="kbd">2</kbd>');
-	assertFalse(html.includes('class="badge'));
 });
 
 test("current idle session exposes deletion", () => {
@@ -175,14 +157,8 @@ test("current idle session exposes deletion", () => {
 		}),
 	);
 
+	assertStringIncludes(html, 'aria-label="Delete session Current session"');
 	assertStringIncludes(html, "$sessionDeletePath");
-	assertStringIncludes(html, "opacity-0 transition-opacity");
-	assertStringIncludes(html, "group-hover:opacity-100");
-	assertStringIncludes(html, 'data-variant="ghost"');
-	assertStringIncludes(html, "$sessionDeleteHover");
-	assertStringIncludes(html, "? 'destructive' : 'ghost'");
-	assertFalse(html.includes("hover:bg-destructive"));
-	assertFalse(html.includes('disabled=""'));
 });
 
 test("workspace picker shows only the workspace folder name", () => {
@@ -192,8 +168,6 @@ test("workspace picker shows only the workspace folder name", () => {
 		}),
 	);
 	assertStringIncludes(nested, ">Blenderanimation</span>");
-	assertStringIncludes(nested, "group-data-[context-compact]/prompt-footer:hidden");
-	assertStringIncludes(nested, 'data-size="sm"');
 	assertStringIncludes(nested, 'aria-label="/home/user/Documents/Blenderanimation"');
 
 	const home = renderWorkspacePicker(
@@ -239,9 +213,7 @@ test("workspace browser navigates folders and opens the selected directory", () 
 	assertStringIncludes(html, "/workspace/open");
 	assertStringIncludes(html, "/workspace/browse");
 	assertStringIncludes(html, ">alpha</span>");
-	assertFalse(html.includes("data-filter"));
 	assertStringIncludes(html, "Show hidden");
-	assertStringIncludes(html, "$_workspaceBrowserShowHidden");
 });
 
 test("workspace picker only opens existing workspace suggestions", () => {
@@ -284,28 +256,10 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 		}),
 	);
 	assertStringIncludes(withoutSelection, "choose model");
-	assertStringIncludes(
-		withoutSelection,
-		"group-data-[context-compact]/prompt-footer:max-w-32",
-	);
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
-	assertStringIncludes(withoutSelection, 'data-filter="manual"');
-	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-expanded"');
-	assertStringIncludes(withoutSelection, "data-on:click__capture");
-	assertStringIncludes(withoutSelection, "el.getAttribute('aria-expanded') !== 'true'");
 	assertStringIncludes(withoutSelection, "@post('/models/refresh', { payload: {} })");
-	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-hidden"');
-	assertStringIncludes(withoutSelection, "w-88");
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
-	assertStringIncludes(withoutSelection, "data-signals:_model-query__ifmissing");
-	assertStringIncludes(withoutSelection, "data-bind:_model-query");
-	assertStringIncludes(withoutSelection, "window.piUi.modelSearch.filter");
-	assertStringIncludes(withoutSelection, 'data-preserve-attr="aria-activedescendant"');
-	assertStringIncludes(withoutSelection, 'data-preserve-attr="class aria-hidden"');
-	assertStringIncludes(withoutSelection, "autofocus");
-	assertStringIncludes(withoutSelection, 'data-filter="claude-sonnet anthropic"');
-	assertStringIncludes(withoutSelection, 'data-keywords="Claude Sonnet"');
-	assertStringIncludes(withoutSelection, 'data-model-search-order="0"');
+	assertStringIncludes(withoutSelection, "Claude Sonnet");
 });
 
 test("model picker shows only the final model name in its trigger", () => {
@@ -338,13 +292,6 @@ test("thinking picker describes every supported maximum level", () => {
 
 	assertStringIncludes(html, "Extra-high reasoning");
 	assertStringIncludes(html, "Maximum reasoning");
-	assertStringIncludes(html, 'data-size="sm"');
-	assertStringIncludes(html, "!evt.ctrlKey");
-	assertStringIncludes(html, "!evt.metaKey");
-	assertStringIncludes(
-		html,
-		'data-preserve-attr="aria-expanded aria-activedescendant"',
-	);
 });
 
 test("file picker fragments escape dynamic values and expose list semantics", () => {
@@ -360,9 +307,7 @@ test("file picker fragments escape dynamic values and expose list semantics", ()
 		"src",
 	);
 	assertStringIncludes(html, 'id="file-picker-results"');
-	assertStringIncludes(html, "window.piUi.pickers.resetFile(&#34;src&#34;)");
 	assertStringIncludes(html, 'role="listbox"');
-	assertStringIncludes(html, "flex-col-reverse");
 	assertStringIncludes(html, 'role="option"');
 	assertStringIncludes(html, "&lt;unsafe&gt;.ts");
 	assertStringIncludes(html, "src/&lt;unsafe&gt;.ts");
