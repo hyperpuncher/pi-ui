@@ -136,22 +136,24 @@ export class UiRenderer implements AppStorePresentation {
 		this.workspaceReviewDirty = false;
 		const state = this.store.snapshot();
 		if (this.hub.clientCount > 0) {
-			const snapshot = this.projectState(state);
 			if (this.replaceTranscriptOnCommit) {
-				this.hub.replaceElement(this.renderTranscript(snapshot), "#messages");
+				this.hub.replaceElement(
+					this.renderTranscript(this.projectState(state)),
+					"#messages",
+				);
 			}
 			this.hub.patchView(
-				this.replaceTranscriptOnCommit ? "" : this.renderAppElements(snapshot),
-				this.renderSignals(snapshot, this.effectSignalOverrides(effects)),
+				this.replaceTranscriptOnCommit ? "" : this.renderAppElements(state),
+				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.mainEffectScripts(effects),
 			);
-			this.patchDirtyRegions(snapshot, effects, dirtyRegions);
+			this.patchDirtyRegions(state, effects, dirtyRegions);
 		}
 		this.replaceTranscriptOnCommit = false;
 		for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
 	private patchDirtyRegions(
-		snapshot: AppRenderSnapshot,
+		snapshot: AppStateSnapshot,
 		effects: readonly UiCommitEffect[],
 		dirty: DirtyRegions,
 	): void {
@@ -167,7 +169,7 @@ export class UiRenderer implements AppStorePresentation {
 				renderSessionPickerContent(snapshot) +
 					renderSessionSidebarContent(snapshot) +
 					(snapshot.messages.length === 0
-						? this.renderTranscript(snapshot)
+						? this.renderTranscript(this.projectState(snapshot))
 						: ""),
 				"{}",
 				[],
@@ -304,7 +306,7 @@ export class UiRenderer implements AppStorePresentation {
 			snapshot.sessionCatalogLoading,
 		);
 	}
-	private renderAppElements(snapshot: AppRenderSnapshot): string {
+	private renderAppElements(snapshot: AppStateSnapshot): string {
 		return (
 			renderPromptAction(snapshot) +
 			renderPromptQueue(snapshot) +

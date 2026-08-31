@@ -785,6 +785,31 @@ test("app stream refreshes current and background session statuses", async () =>
 	}
 });
 
+test("ordinary commits do not project an unchanged transcript", async () => {
+	const state = createState();
+	state.replaceMessages([{ role: "assistant", text: "answer", timestamp }]);
+	const controller = new AbortController();
+	try {
+		await openInitializedStateStream(state, controller.signal);
+		const projectMessages = state.renderer.messages.projectMessages.bind(
+			state.renderer.messages,
+		);
+		let projectionCount = 0;
+		state.renderer.messages.projectMessages = (messages) => {
+			projectionCount += 1;
+			return projectMessages(messages);
+		};
+
+		state.update(() => state.setUsage({ text: "1 token", costText: "$0.00" }), {
+			flush: true,
+		});
+
+		assertEqual(projectionCount, 0);
+	} finally {
+		controller.abort();
+	}
+});
+
 test("state snapshots contain domain messages only", () => {
 	const state = createState();
 	state.appendMessage("assistant", "**answer**");
