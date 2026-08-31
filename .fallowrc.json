@@ -20,6 +20,7 @@
 		"@earendil-works/pi-ai",
 		"@earendil-works/pi-coding-agent",
 		"@earendil-works/pi-tui",
+		"@iconify-json/lucide",
 		"@oxlint/plugins",
 		"@pierre/diffs",
 		"@pierre/trees",
@@ -42,5 +43,13 @@
 			"file": "static/app/model-search.js",
 			"exports": ["bindModelSearch", "preserveModelSearch", "restoreModelSearch"]
 		}
-	]
+	],
+	"typeAware": {
+		"enabled": true,
+		"projects": ["tsconfig.json"],
+		"require": "best-effort"
+	},
+	"rules": {
+		"private-type-leaks": "off"
+	}
 }

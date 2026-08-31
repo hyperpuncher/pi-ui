@@ -402,6 +402,8 @@ export class AppStore {
 		if (!this.transcript.updateMessage(id, patch)) return;
 		this.presentation?.messageUpdated(id);
 	}
+	// Called through the session reducer's computed state-sink member.
+	// fallow-ignore-next-line unused-class-member
 	appendThoughtDelta(delta: string): void {
 		const previousId = this.transcript.activeThoughtMessageId;
 		const id = this.transcript.appendThoughtDelta(delta);

@@ -48,7 +48,7 @@ export function toggleWorkspaceReviewAction(): string {
 	return "$_workspaceReviewOpen = !$_workspaceReviewOpen";
 }
 
-export function toggleKeybindHintsAction(): string {
+function toggleKeybindHintsAction(): string {
 	return `document.body.toggleAttribute('data-keybind-hints'); @post('${endpoints.keybindHints}', { payload: { keybindHints: document.body.hasAttribute('data-keybind-hints') } })`;
 }
 

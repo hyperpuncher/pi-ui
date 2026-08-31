@@ -7,7 +7,7 @@ export type FontPreferences = Readonly<{
 	sans: string;
 }>;
 
-export const SYSTEM_FONT = "system";
+const SYSTEM_FONT = "system";
 
 export const FONT_OPTIONS = {
 	mono: [
