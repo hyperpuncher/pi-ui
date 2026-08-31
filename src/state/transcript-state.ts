@@ -74,6 +74,7 @@ export class TranscriptState {
 	private activeAssistantId: string | undefined;
 	private activeThoughtId: string | undefined;
 	private transcriptMessages: TranscriptMessage[] = [];
+	private messageIndexById = new Map<string, number>();
 	private visibleMessageStart = 0;
 	emptyChatHint: TranscriptEmptyHint;
 	activityText: string | undefined;
@@ -105,7 +106,12 @@ export class TranscriptState {
 	}
 
 	getMessage(id: string): TranscriptMessage | undefined {
-		return this.transcriptMessages.find((message) => message.id === id);
+		const index = this.messageIndexById.get(id);
+		return index === undefined ? undefined : this.transcriptMessages[index];
+	}
+
+	getMessageIndex(id: string): number | undefined {
+		return this.messageIndexById.get(id);
 	}
 
 	appendMessage(
@@ -122,6 +128,7 @@ export class TranscriptState {
 			timestamp: new Date(),
 			...options,
 		});
+		this.messageIndexById.set(id, this.transcriptMessages.length - 1);
 		if (role === "assistant") this.activeAssistantId = id;
 		if (role === "thought") this.activeThoughtId = id;
 		return id;
@@ -191,6 +198,7 @@ export class TranscriptState {
 		this.activeAssistantId = snapshot.activeAssistantId;
 		this.activeThoughtId = snapshot.activeThoughtId;
 		this.transcriptMessages = snapshot.transcriptMessages.map(cloneMessage);
+		this.rebuildMessageIndex();
 		this.visibleMessageStart = snapshot.visibleMessageStart;
 		this.emptyChatHint = { ...snapshot.emptyChatHint };
 		this.activityText = snapshot.activityText;
@@ -200,6 +208,7 @@ export class TranscriptState {
 
 	reset(emptyChatHint?: TranscriptEmptyHint): void {
 		this.transcriptMessages = [];
+		this.messageIndexById.clear();
 		this.visibleMessageStart = 0;
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
@@ -217,6 +226,7 @@ export class TranscriptState {
 			this.messageSeq += 1;
 			return { ...message, id: `m-${this.messageSeq}` };
 		});
+		this.rebuildMessageIndex();
 		this.visibleMessageStart = Math.max(
 			0,
 			this.transcriptMessages.length - initialVisibleMessageCount,
@@ -250,6 +260,12 @@ export class TranscriptState {
 			.map((message) => message.id);
 		this.visibleMessageStart = nextStart;
 		return ids;
+	}
+
+	private rebuildMessageIndex(): void {
+		this.messageIndexById = new Map(
+			this.transcriptMessages.map((message, index) => [message.id, index]),
+		);
 	}
 }
 

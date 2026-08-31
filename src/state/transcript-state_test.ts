@@ -18,6 +18,10 @@ test("transcript state appends, streams, updates, and finishes messages", () => 
 	const active = state.finishAssistant();
 
 	assertEquals(active, { assistantId, thoughtId: undefined });
+	assertEquals(state.getMessageIndex(thoughtId), 0);
+	assertEquals(state.getMessageIndex(assistantId), 1);
+	assertEquals(state.getMessageIndex(toolId), 2);
+	assertEquals(state.getMessageIndex("missing"), undefined);
 	assertEquals(
 		state.allMessages.map(({ id, role, text, state }) => ({ id, role, text, state })),
 		[
@@ -43,6 +47,7 @@ test("transcript snapshots restore independent domain state and queue metadata",
 
 	snapshot.transcriptMessages[0].text = "mutated snapshot";
 	assertEquals(restored.getMessage(activeId)?.text, "streaming");
+	assertEquals(restored.getMessageIndex(activeId), 2);
 	assertEquals(restored.allMessages[0].text, "old");
 	assertEquals(restored.activityText, "Working...");
 	assertEquals(restored.queuedSteeringMessages, ["steer"]);
@@ -89,8 +94,11 @@ test("transcript paging and reset have no presentation state", () => {
 	assertEquals(state.messages[0].text, "message 150");
 	assertEquals(state.showRecentMessages(), false);
 
+	const previousId = state.allMessages[0].id;
 	state.reset({ keys: "new", description: "Different hint" });
 	assertEquals(state.messages, []);
+	assertEquals(state.getMessage(previousId), undefined);
+	assertEquals(state.getMessageIndex(previousId), undefined);
 	assertEquals(state.hasOlderMessages, false);
 	assertEquals(state.emptyChatHint.keys, "new");
 });

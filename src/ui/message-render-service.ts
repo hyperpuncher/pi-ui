@@ -240,7 +240,7 @@ export class MessageRenderService {
 		value.presentationState = "enhancing";
 		this.queue.enqueue({
 			key: `${generation}:${id}:${version}:${kind}`,
-			priority: this.store.transcript.allMessages.indexOf(message),
+			priority: this.store.transcript.getMessageIndex(id) ?? 0,
 			run: async (signal) => {
 				const html = await this.renderEnhancement(kind, text);
 				if (signal.aborted) return;
@@ -359,8 +359,8 @@ export class MessageRenderService {
 	private activitySummary(message: TranscriptMessage): AppMessage["activitySummary"] {
 		if (message.role !== "assistant") return undefined;
 		const messages = this.store.transcript.allMessages;
-		const messageIndex = messages.findIndex((item) => item.id === message.id);
-		if (messageIndex < 0) return undefined;
+		const messageIndex = this.store.transcript.getMessageIndex(message.id);
+		if (messageIndex === undefined) return undefined;
 		let activityStart = messageIndex;
 		while (
 			activityStart > 0 &&
