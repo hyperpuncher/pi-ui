@@ -1,6 +1,6 @@
 import { operatingSystem } from "./platform.ts";
 
-export function openWithDefaultApp(target: string): Promise<void> {
+export async function openWithDefaultApp(target: string): Promise<void> {
 	const [command, ...args] =
 		operatingSystem === "darwin"
 			? ["open", target]
@@ -10,8 +10,13 @@ export function openWithDefaultApp(target: string): Promise<void> {
 	const child = Bun.spawn([command, ...args], {
 		stdin: "ignore",
 		stdout: "ignore",
-		stderr: "ignore",
+		stderr: "pipe",
 	});
-	child.unref();
-	return Promise.resolve();
+	const [exitCode, stderr] = await Promise.all([
+		child.exited,
+		new Response(child.stderr).text(),
+	]);
+	if (exitCode !== 0) {
+		throw new Error(stderr.trim() || `${command} exited with code ${exitCode}`);
+	}
 }

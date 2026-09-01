@@ -27,7 +27,9 @@ test("systemd service starts the current server executable", () => {
 		service,
 		"ExecStart=/home/Test\\x20User/.bun/bin/bun /home/Test\\x20User/pi-ui\\x25dev/server-main.js",
 	);
-	assertStringIncludes(service, "WantedBy=default.target");
+	assertStringIncludes(service, "After=graphical-session.target");
+	assertStringIncludes(service, "PartOf=graphical-session.target");
+	assertStringIncludes(service, "WantedBy=graphical-session.target");
 });
 
 test("launch agent starts at login and escapes paths", () => {

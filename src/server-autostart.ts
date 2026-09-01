@@ -95,6 +95,8 @@ export async function disableServerAutostart(
 export function systemdService(config: ServerAutostartConfig): string {
 	return `[Unit]
 Description=pi-ui server
+After=graphical-session.target
+PartOf=graphical-session.target
 
 [Service]
 ExecStart=${serverCommand(config).map(systemdArgument).join(" ")}
@@ -102,7 +104,7 @@ Restart=on-failure
 RestartSec=2
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
 `;
 }
 
@@ -150,7 +152,7 @@ async function enableSystemdService(config: ServerAutostartConfig): Promise<void
 	const path = systemdServicePath(config, serviceName);
 	await writeConfig(path, systemdService(config));
 	await command("systemctl", ["--user", "daemon-reload"]);
-	await command("systemctl", ["--user", "enable", `${serviceName}.service`]);
+	await command("systemctl", ["--user", "reenable", `${serviceName}.service`]);
 	await command("systemctl", ["--user", "restart", `${serviceName}.service`]);
 }
 
