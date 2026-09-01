@@ -41,9 +41,15 @@ test("streaming code stays visible while its language loads", async () => {
 	await loadPierreLanguage("bash");
 	const key = "loading-language";
 	const html = renderMarkdownStreaming("```odin\npackage main", { cacheKey: key });
-	assertIncludes(html, '<code class="language-odin">package main</code>');
+	assertIncludes(html, "streaming-code-line-number");
+	assertIncludes(html, "package main");
 	await loadPierreLanguage("odin");
 	releaseMarkdownStreamingState(key);
+});
+
+test("streaming code has line numbers without highlighting state", () => {
+	const html = renderMarkdownStreaming("```text\none\ntwo\nthree\n```");
+	assertEqual(html.match(/streaming-code-line-number/g)?.length, 3);
 });
 
 test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {

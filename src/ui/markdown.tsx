@@ -202,7 +202,7 @@ function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
 		const code = decodeHtml(rawCode).replace(/\n$/, "");
 		const replacement = cacheKeyPrefix
 			? highlightStreamingCodeBlock(code, language, `${cacheKeyPrefix}:${index}`)
-			: renderPlainCodeBlock(code, language);
+			: renderStreamingPlainCodeBlock(code, language);
 		highlighted = highlighted.replace(raw, replacement);
 	}
 	return highlighted;
@@ -258,7 +258,7 @@ function highlightStreamingCodeBlock(
 	const highlighter = getHighlighterIfLoaded();
 	if (!highlighter || !loadedCodeLanguage(language)) {
 		if (language !== "text") void loadPierreLanguage(language);
-		return renderPlainCodeBlock(code, language);
+		return renderStreamingPlainCodeBlock(code, language);
 	}
 
 	const themedCacheKey = `${getActiveCodeThemeId()}:${cacheKey}`;
@@ -311,22 +311,26 @@ function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 		}
 	}
 	if (lines.length > 1 && lines.at(-1) === "") lines.pop();
+	return renderStreamingLinesPre(lines);
+}
+
+function renderStreamingPlainCodeBlock(code: string, language: string): string {
+	return syncHtml(
+		<CodeBlock
+			pre={renderStreamingLinesPre(code.split("\n").map(escapeHtml))}
+			language={language}
+			source={code}
+		/>,
+	);
+}
+
+function renderStreamingLinesPre(lines: string[]): string {
 	return `<pre class="plain-code" tabindex="0"><code class="streaming-code">${lines
 		.map(
 			(line, index) =>
 				`<span class="streaming-code-line-number">${index + 1}</span><span class="streaming-code-line">${line || "&nbsp;"}</span>`,
 		)
 		.join("")}</code></pre>`;
-}
-
-function renderPlainCodeBlock(code: string, language: string): string {
-	return syncHtml(
-		<CodeBlock
-			pre={renderPlainCode(code, language, { chrome: false })}
-			language={language}
-			source={code}
-		/>,
-	);
 }
 
 function renderPlainCode(
