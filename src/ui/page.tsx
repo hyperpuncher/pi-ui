@@ -250,7 +250,9 @@ export function renderPage(
 						id="workspace-dialog"
 						class="command-dialog"
 						aria-label="Change workspace"
+						data-attr:aria-label="$_workspaceAction === 'fork' ? 'Fork session to workspace' : 'Change workspace'"
 						data-preserve-attr="open"
+						data-signals:_workspace-action__ifmissing="'open'"
 						data-signals:workspace-draft__ifmissing="''"
 						onclick="if (event.target === this) this.close()"
 					>
@@ -261,6 +263,9 @@ export function renderPage(
 									class="pr-10"
 									type="text"
 									placeholder="Type a path or search workspaces..."
+									data-attr:placeholder="$_workspaceAction === 'fork'
+										? 'Choose a destination workspace...'
+										: 'Type a path or search workspaces...'"
 									autocomplete="off"
 									autocorrect="off"
 									spellcheck="false"

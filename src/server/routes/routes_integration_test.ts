@@ -48,6 +48,7 @@ test("all server endpoints are registered through domain route modules", async (
 		"POST /sessions/delete",
 		"POST /sessions/rename",
 		"POST /sessions/resume",
+		"POST /sessions/fork-to-workspace",
 		"POST /workspace/open",
 		"GET /workspace/search",
 		"GET /workspace/browse",
@@ -383,6 +384,31 @@ test("workspace browser lists server directories", async () => {
 			}),
 		);
 		assertStringIncludes(await hiddenResponse.text(), ".hidden");
+	} finally {
+		await remove(workspace, { recursive: true });
+	}
+});
+
+test("sessions can be forked to another workspace", async () => {
+	const workspace = await makeTempDir();
+	let target = "";
+	try {
+		const context = fakeContext({
+			host: fakeHost({
+				forkSessionToWorkspace: async (workspacePath) => {
+					target = workspacePath;
+					return { status: "success" };
+				},
+			}),
+		});
+		const response = await createRouter(context).fetch(
+			signalRequest(endpoints.sessionsForkToWorkspace, {
+				workspacePath: workspace,
+			}),
+		);
+
+		assertEquals(response.status, 204);
+		assertEquals(target, workspace);
 	} finally {
 		await remove(workspace, { recursive: true });
 	}
@@ -809,6 +835,7 @@ function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
 		cycleModel: async () => true,
 		cycleThinkingLevel: () => true,
 		deleteSession: async () => true,
+		forkSessionToWorkspace: async () => ({ status: "success" }),
 		getWorkspacePath: () => process.cwd(),
 		listSessions: async () => {},
 		logout: () => true,

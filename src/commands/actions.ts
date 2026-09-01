@@ -36,8 +36,11 @@ function openTreeAction(): string {
 	return `window.piUi.dialogs.openTree(); @post('${endpoints.treeOpen}', { payload: {} })`;
 }
 
-export function openWorkspaceDialogAction(closeCommandDialog = false): string {
-	return `${closeCommandDialog ? "document.getElementById('command-dialog')?.close(); " : ""}window.piUi.dialogs.openWorkspace()`;
+export function openWorkspaceDialogAction(
+	closeCommandDialog = false,
+	action: "open" | "fork" = "open",
+): string {
+	return `${closeCommandDialog ? "document.getElementById('command-dialog')?.close(); " : ""}$_workspaceAction = '${action}'; window.piUi.dialogs.openWorkspace()`;
 }
 
 export function toggleWorkspaceDialogAction(): string {
@@ -83,6 +86,7 @@ export const commandActions = {
 	"cycle-thinking-backward": cycleThinkingAction("backward"),
 	"toggle-thinking": `document.getElementById('command-dialog')?.close(); @post('${endpoints.thinkingVisibilityToggle}', { payload: {} })`,
 	"change-workspace": openWorkspaceDialogAction(true),
+	"fork-session-to-workspace": openWorkspaceDialogAction(true, "fork"),
 	"toggle-review": toggleWorkspaceReviewAction(),
 	login: authDialogAction("login"),
 	logout: authDialogAction("logout"),

@@ -209,8 +209,10 @@ test("workspace browser navigates folders and opens the selected directory", () 
 
 	assertStringIncludes(html, "Select folder");
 	assertStringIncludes(html, "Open folder");
+	assertStringIncludes(html, "Fork session");
 	assertStringIncludes(html, "workspacePath: &#34;/workspace&#34;");
 	assertStringIncludes(html, "/workspace/open");
+	assertStringIncludes(html, "/sessions/fork-to-workspace");
 	assertStringIncludes(html, "/workspace/browse");
 	assertStringIncludes(html, ">alpha</span>");
 	assertStringIncludes(html, "Show hidden");

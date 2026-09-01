@@ -93,6 +93,10 @@ export class AgentHost {
 		return this.runtime.resumeSession(sessionPath);
 	}
 
+	forkSessionToWorkspace(cwd: string): Promise<SessionTransitionResult> {
+		return this.runtime.forkSessionToWorkspace(cwd);
+	}
+
 	openTree(): boolean {
 		return this.runtime.openTree();
 	}

@@ -80,6 +80,7 @@ export type RuntimeControllerDependencies = Readonly<{
 	refreshSessions: typeof SessionCatalog.prepare;
 	createSessionManager: typeof SessionManager.create;
 	createMemorySessionManager: typeof SessionManager.inMemory;
+	forkSessionManager: typeof SessionManager.forkFrom;
 	openSessionManager: typeof SessionManager.open;
 	moveToTrash: typeof moveToTrash;
 	shareSession: typeof shareSession;
@@ -94,6 +95,7 @@ const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	refreshSessions: SessionCatalog.prepare,
 	createSessionManager: SessionManager.create,
 	createMemorySessionManager: SessionManager.inMemory,
+	forkSessionManager: SessionManager.forkFrom,
 	openSessionManager: SessionManager.open,
 	moveToTrash,
 	shareSession,
@@ -576,6 +578,30 @@ export class RuntimeController {
 		this.state.resetChat({ preserveEmptyHint: true });
 		this.bindSessionState();
 		return true;
+	}
+
+	async forkSessionToWorkspace(cwd: string): Promise<SessionTransitionResult> {
+		const sourcePath = this.runtime.session.sessionManager.getSessionFile();
+		if (!sourcePath) {
+			this.state.appendMessage(
+				"notice",
+				"Temporary sessions cannot be forked to another workspace.",
+			);
+			return { status: "cancelled" };
+		}
+
+		return await this.transitionController.run(
+			`Fork to ${formatHomePath(cwd)}`,
+			async () => {
+				const targetPath = this.dependencies
+					.forkSessionManager(sourcePath, cwd)
+					.getSessionFile();
+				return targetPath
+					? await this.resumeSessionTransition(targetPath)
+					: false;
+			},
+			{ overlay: false },
+		);
 	}
 
 	async resumeSession(sessionPath: string): Promise<SessionTransitionResult> {

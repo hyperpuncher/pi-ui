@@ -14,6 +14,7 @@ export type RouteAgentHost = Pick<
 	| "cycleModel"
 	| "cycleThinkingLevel"
 	| "deleteSession"
+	| "forkSessionToWorkspace"
 	| "getWorkspacePath"
 	| "listSessions"
 	| "logout"

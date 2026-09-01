@@ -151,7 +151,12 @@ export function renderWorkspaceBrowserContent(
 			<header class="shrink-0 border-b border-border px-5 pt-5 pb-4">
 				<div class="flex items-center justify-between gap-4">
 					<h2 id="workspace-browser-title" class="text-base font-semibold">
-						Select folder
+						<span data-show="$_workspaceAction !== 'fork'">
+							Select folder
+						</span>
+						<span data-show="$_workspaceAction === 'fork'">
+							Fork session to folder
+						</span>
 					</h2>
 					<button
 						type="button"
@@ -215,7 +220,8 @@ export function renderWorkspaceBrowserContent(
 						JSON.stringify(listing.path),
 					)}
 				>
-					Open folder
+					<span data-show="$_workspaceAction !== 'fork'">Open folder</span>
+					<span data-show="$_workspaceAction === 'fork'">Fork session</span>
 				</button>
 			</footer>
 		</div>,
@@ -348,9 +354,15 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 
 function openWorkspaceAction(valueExpression: string): string {
 	return `if (!$_sessionTransitionLoading) {
-		@post('${endpoints.workspaceOpen}', {
-			payload: { workspacePath: ${valueExpression} },
-		});
+		if ($_workspaceAction === 'fork') {
+			@post('${endpoints.sessionsForkToWorkspace}', {
+				payload: { workspacePath: ${valueExpression} },
+			});
+		} else {
+			@post('${endpoints.workspaceOpen}', {
+				payload: { workspacePath: ${valueExpression} },
+			});
+		}
 	}`;
 }
 
@@ -370,9 +382,15 @@ function browseWorkspaceAction(
 function openWorkspaceFromBrowserAction(valueExpression: string): string {
 	return `if (!$_sessionTransitionLoading) {
 		document.getElementById('workspace-browser-dialog')?.close();
-		@post('${endpoints.workspaceOpen}', {
-			payload: { workspacePath: ${valueExpression} },
-		});
+		if ($_workspaceAction === 'fork') {
+			@post('${endpoints.sessionsForkToWorkspace}', {
+				payload: { workspacePath: ${valueExpression} },
+			});
+		} else {
+			@post('${endpoints.workspaceOpen}', {
+				payload: { workspacePath: ${valueExpression} },
+			});
+		}
 	}`;
 }
 

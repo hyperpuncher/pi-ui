@@ -29,6 +29,7 @@ export const endpoints = {
 	sessionsDelete: "/sessions/delete",
 	sessionsRename: "/sessions/rename",
 	sessionsResume: "/sessions/resume",
+	sessionsForkToWorkspace: "/sessions/fork-to-workspace",
 	workspaceOpen: "/workspace/open",
 	workspaceSearch: "/workspace/search",
 	workspaceBrowse: "/workspace/browse",

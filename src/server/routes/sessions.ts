@@ -1,7 +1,9 @@
+import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
 import { renderSessionPickerContent } from "../../ui/pickers.tsx";
+import { expandHomePath } from "../../utils/workspace.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
@@ -107,6 +109,23 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 		).trim();
 		return sessionTransitionResponse(await requireHost(context).resumeSession(path));
 	});
+	router.register(
+		"POST",
+		endpoints.sessionsForkToWorkspace,
+		async (request, context) => {
+			const requestedPath = requiredString(
+				await readActionSignals(request),
+				"workspacePath",
+			).trim();
+			const workspacePath = await realpath(expandHomePath(requestedPath));
+			if (!(await stat(workspacePath)).isDirectory()) {
+				throw new RouteError(422, "Workspace is not a directory.");
+			}
+			return sessionTransitionResponse(
+				await requireHost(context).forkSessionToWorkspace(workspacePath),
+			);
+		},
+	);
 }
 
 const FAVICON_CANDIDATES = [

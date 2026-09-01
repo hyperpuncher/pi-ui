@@ -228,6 +228,8 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 		refreshSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		createSessionManager: (cwd) => manager(undefined, true, cwd),
 		createMemorySessionManager: (cwd) => manager(undefined, false, cwd),
+		forkSessionManager: (_sourcePath, cwd) =>
+			manager("/sessions/fork.jsonl", true, cwd),
 		openSessionManager: (path) => manager(path),
 		moveToTrash: () => Promise.resolve(),
 		shareSession: () =>
@@ -751,6 +753,36 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	await controller.dispose();
 	assertEquals(a.disposeCount, 1);
 	assertEquals(b.disposeCount, 1);
+});
+
+test("RuntimeController forks the current session to another workspace", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
+	const target = fakeRuntime("/sessions/fork.jsonl", true, "/work/target");
+	source.setStreaming(true);
+	const forkCalls: Array<{ sourcePath: string; cwd: string }> = [];
+	const baseDependencies = dependencies([source, target]);
+	const controller = await RuntimeController.prepare(state, "/work/source", {
+		dependencies: {
+			...baseDependencies,
+			forkSessionManager: (sourcePath, cwd) => {
+				forkCalls.push({ sourcePath, cwd });
+				return manager("/sessions/fork.jsonl", true, cwd);
+			},
+			openSessionManager: (path) => manager(path, true, "/work/target"),
+		},
+	});
+	controller.activate();
+
+	assertEquals(await controller.forkSessionToWorkspace("/work/target"), {
+		status: "success",
+	});
+	assertEquals(forkCalls, [
+		{ sourcePath: "/sessions/source.jsonl", cwd: "/work/target" },
+	]);
+	assertEquals(state.currentSessionPath, "/sessions/fork.jsonl");
+	assertEquals(state.workspacePath, "/work/target");
+	await controller.dispose();
 });
 
 test("RuntimeController preserves a streaming session across workspace changes", async () => {
