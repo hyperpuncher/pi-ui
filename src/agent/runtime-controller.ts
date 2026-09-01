@@ -323,6 +323,11 @@ export class RuntimeController {
 			return true;
 		}
 
+		if (trimmed === "/reload") {
+			void this.reload();
+			return true;
+		}
+
 		const runtime = this.runtime;
 		if (runtime.session.isCompacting) {
 			this.prompts.queueAfterCompaction(
@@ -795,6 +800,51 @@ export class RuntimeController {
 		}
 	}
 
+	async reload(): Promise<boolean> {
+		const runtime = this.runtime;
+		const session = runtime.session;
+		if (session.isStreaming) {
+			this.state.appendMessage(
+				"notice",
+				"Wait for the current response to finish before reloading.",
+			);
+			return false;
+		}
+		if (session.isCompacting) {
+			this.state.appendMessage(
+				"notice",
+				"Wait for compaction to finish before reloading.",
+			);
+			return false;
+		}
+
+		this.state.setActivityText("Reloading...");
+		try {
+			await session.reload();
+			if (runtime !== this.runtime) return false;
+			this.unbindSession();
+			this.bindSessionState();
+			this.loadCurrentSessionMessages();
+			this.state.appendMessage(
+				"system",
+				"Reloaded extensions, skills, prompts, and context files.",
+			);
+			return true;
+		} catch (error) {
+			if (runtime === this.runtime) {
+				this.state.appendMessage(
+					"notice",
+					`Reload failed: ${errorMessage(error)}`,
+				);
+			}
+			return false;
+		} finally {
+			if (runtime === this.runtime) {
+				this.state.setActivityText(undefined);
+			}
+		}
+	}
+
 	private async share(): Promise<void> {
 		if (this.sharing) {
 			this.state.appendMessage("notice", "A session share is already in progress.");
@@ -1236,11 +1286,7 @@ export class RuntimeController {
 					switchSession: (sessionPath, options) =>
 						runtime.switchSession(sessionPath, options),
 					reload: async () => {
-						await session.reload();
-						if (runtime !== this.runtime) return;
-						this.unbindSession();
-						this.bindSessionState();
-						this.loadCurrentSessionMessages();
+						await this.reload();
 					},
 				},
 			}),
@@ -1475,6 +1521,11 @@ export class RuntimeController {
 			{
 				name: "share",
 				description: "Share session as a secret GitHub gist",
+				source: "system" as const,
+			},
+			{
+				name: "reload",
+				description: "Reload extensions, skills, prompts, and context files",
 				source: "system" as const,
 			},
 			...prompts,

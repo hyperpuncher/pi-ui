@@ -40,6 +40,7 @@ type RuntimeFake = {
 		streamingBehavior: "steer" | "followUp" | undefined;
 	}>;
 	modelRefreshForces: Array<boolean | undefined>;
+	reloadCount: number;
 	setSessionNames: string[];
 	emit(event: AgentSessionEvent): void;
 	setCompacting(value: boolean): void;
@@ -91,6 +92,7 @@ function fakeRuntime(
 		promptResult: Promise.resolve(),
 		promptInputs: [],
 		modelRefreshForces: [],
+		reloadCount: 0,
 		setSessionNames: [],
 		emit: (event) => {
 			if (event.type === "queue_update") {
@@ -143,6 +145,10 @@ function fakeRuntime(
 			return Promise.resolve();
 		},
 		waitForIdle: () => Promise.resolve(),
+		reload: () => {
+			fake.reloadCount += 1;
+			return Promise.resolve();
+		},
 		compact: () => compact(),
 		abort: () => {
 			calls.push("abort");
@@ -605,6 +611,31 @@ test("RuntimeController handles share without sending it to the model", async ()
 	);
 	assertEquals(
 		state.slashCommands.some((command) => command.name === "share"),
+		true,
+	);
+	await controller.dispose();
+});
+
+test("RuntimeController reloads resources without sending the command to the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+
+	assertEquals(await controller.prompt("/reload"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(fake.reloadCount, 1);
+	assertEquals(state.activityText, undefined);
+	assertEquals(
+		state.messages.at(-1)?.text,
+		"Reloaded extensions, skills, prompts, and context files.",
+	);
+	assertEquals(
+		state.slashCommands.some((command) => command.name === "reload"),
 		true,
 	);
 	await controller.dispose();
