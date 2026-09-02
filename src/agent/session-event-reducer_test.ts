@@ -164,11 +164,13 @@ test("reduces agent, message, queue, and completion events", () => {
 		event({ type: "queue_update", steering: ["now"], followUp: ["later"] }),
 		context,
 	);
-	const outcome = reduceSessionEvent(
+	const attemptOutcome = reduceSessionEvent(
 		event({ type: "agent_end", messages: [], willRetry: false }),
 		context,
 	);
+	const outcome = reduceSessionEvent(event({ type: "agent_settled" }), context);
 
+	assertEquals(attemptOutcome, { agentCompleted: false });
 	assertEquals(state.activity, ["Working...", undefined]);
 	assertEquals(state.appended[0], {
 		id: "message-1",

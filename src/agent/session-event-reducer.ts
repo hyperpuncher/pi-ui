@@ -248,6 +248,8 @@ export function reduceSessionEvent(
 			state.setQueuedMessages(event.steering, event.followUp);
 			break;
 		case "agent_end":
+			break;
+		case "agent_settled":
 			state.setActivityText(undefined);
 			return { agentCompleted: true };
 		case "auto_retry_start":

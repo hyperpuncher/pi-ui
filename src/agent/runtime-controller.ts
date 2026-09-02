@@ -1142,7 +1142,7 @@ export class RuntimeController {
 		event: AgentSessionEvent,
 	): void {
 		if (event.type === "agent_start") backgroundSession.observedRunning = true;
-		if (event.type === "agent_end") backgroundSession.observedRunning = false;
+		if (event.type === "agent_settled") backgroundSession.observedRunning = false;
 		const outcome = this.reduceEvent(event, backgroundSession.state, {
 			messageIds: backgroundSession.toolMessageIds,
 			previewMessages: backgroundSession.toolPreviewMessages,
@@ -1355,7 +1355,7 @@ export class RuntimeController {
 
 	private handleEvent(event: AgentSessionEvent): void {
 		if (event.type === "agent_start") this.foregroundObservedRunning = true;
-		if (event.type === "agent_end") this.foregroundObservedRunning = false;
+		if (event.type === "agent_settled") this.foregroundObservedRunning = false;
 		this.state.update(
 			() => {
 				const outcome = this.reduceEvent(
@@ -1371,6 +1371,9 @@ export class RuntimeController {
 				);
 				this.updateSessionCatalogFromEvent(event, this.runtime);
 				this.scheduleAutoTitleAfterUserMessage(this.runtime, event);
+				if (this.foregroundObservedRunning && !this.state.activityText) {
+					this.state.setActivityText("Working...");
+				}
 				if (outcome.agentCompleted) {
 					const path = this.runtime.session.sessionManager.getSessionFile();
 					if (path) this.catalog.agentCompleted(path);

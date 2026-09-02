@@ -703,6 +703,31 @@ test("RuntimeController removes one message from the active agent queue", async 
 	await controller.dispose();
 });
 
+test("RuntimeController keeps foreground activity visible through retry events", async () => {
+	const state = new AppStore();
+	const runtime = fakeRuntime("/sessions/running.jsonl");
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: dependencies([runtime]),
+	});
+	controller.activate();
+
+	runtime.emit(agentSessionEventStub({ type: "agent_start" }));
+	assertEquals(state.activityText, "Working...");
+
+	runtime.emit(
+		agentSessionEventStub({ type: "auto_retry_end", success: true, attempt: 1 }),
+	);
+	assertEquals(state.activityText, "Working...");
+
+	runtime.emit(
+		agentSessionEventStub({ type: "agent_end", messages: [], willRetry: false }),
+	);
+	assertEquals(state.activityText, "Working...");
+	runtime.emit(agentSessionEventStub({ type: "agent_settled" }));
+	assertEquals(state.activityText, undefined);
+	await controller.dispose();
+});
+
 test("RuntimeController reuses streaming runtimes across repeated background activation", async () => {
 	const state = new AppStore();
 	const a = fakeRuntime("/sessions/a.jsonl");
@@ -749,6 +774,8 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	assertEquals(state.queuedFollowUpMessages, ["later"]);
 	assertEquals(state.messages.length, 1);
 	a.emit(agentSessionEventStub({ type: "agent_end", messages: [], willRetry: false }));
+	assertEquals(state.activityText, "Working...");
+	a.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(state.activityText, undefined);
 	await controller.dispose();
 	assertEquals(a.disposeCount, 1);
@@ -920,6 +947,7 @@ test("RuntimeController completes and aborts background runtimes exactly once", 
 	controller.activate();
 	assertEquals((await controller.newSession()).status, "success");
 	completed.emit(agentSessionEventStub({ type: "agent_end" }));
+	completed.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(
 		await controller.abortBackgroundSession("/sessions/completed.jsonl"),
 		false,
@@ -964,6 +992,7 @@ test("RuntimeController notifies for completed foreground work only while unfocu
 	);
 	focusedController.activate();
 	focused.emit(agentSessionEventStub({ type: "agent_end" }));
+	focused.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(notifications, []);
 	await focusedController.dispose();
 
@@ -979,6 +1008,7 @@ test("RuntimeController notifies for completed foreground work only while unfocu
 	);
 	unfocusedController.activate();
 	unfocused.emit(agentSessionEventStub({ type: "agent_end" }));
+	unfocused.emit(agentSessionEventStub({ type: "agent_settled" }));
 	await Promise.resolve();
 	assertEquals(notifications, [
 		{
@@ -1005,6 +1035,7 @@ test("RuntimeController always notifies for completed background work", async ()
 	controller.activate();
 	assertEquals((await controller.newSession()).status, "success");
 	background.emit(agentSessionEventStub({ type: "agent_end" }));
+	background.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(notifications, [
 		{
 			workspace: "/workspace",
