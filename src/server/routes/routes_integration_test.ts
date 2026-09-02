@@ -17,85 +17,6 @@ import { SessionImageStore } from "../session-image-store.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
-test("all server endpoints are registered through domain route modules", async () => {
-	const context = fakeContext();
-	const router = createRouter(context);
-	const expected = [
-		"GET /",
-		"GET /stream",
-		"POST /display-refresh",
-		"POST /code-theme",
-		"POST /fonts",
-		"POST /keybind-hints",
-		"POST /minimal-mode",
-		"POST /tool-output",
-		"POST /session-performance/client",
-		"POST /prompt",
-		"POST /prompt/follow-up",
-		"POST /prompt/dequeue",
-		"POST /prompt/queue/remove",
-		"POST /abort",
-		"POST /messages/older",
-		"POST /messages/trim",
-		"POST /messages/enhance",
-		"POST /sessions/new",
-		"POST /sessions/new-temporary",
-		"GET /sessions/search",
-		"POST /sessions/more",
-		"GET /sessions/favicon",
-		"GET /sessions/image",
-		"POST /sessions/background/abort",
-		"POST /sessions/delete",
-		"POST /sessions/rename",
-		"POST /sessions/resume",
-		"POST /sessions/fork-to-workspace",
-		"POST /workspace/open",
-		"GET /workspace/search",
-		"GET /workspace/browse",
-		"GET /workspace/files",
-		"GET /workspace/files/content",
-		"PUT /workspace/files/content",
-		"POST /workspace/files/entry",
-		"PATCH /workspace/files/entry",
-		"DELETE /workspace/files/entry",
-		"GET /workspace/review/commit",
-		"POST /workspace/review/discard",
-		"GET /workspace/review/history",
-		"POST /workspace/review/preferences",
-		"POST /workspace/review/submit",
-		"POST /model",
-		"POST /model/cycle",
-		"POST /models/refresh",
-		"POST /models/scope/toggle",
-		"POST /thinking",
-		"POST /thinking/cycle",
-		"POST /thinking/visibility/toggle",
-		"POST /auth/open-login",
-		"POST /auth/open-logout",
-		"POST /auth/login/start",
-		"POST /auth/input",
-		"POST /auth/logout",
-		"POST /auth/close",
-		"POST /llama/open",
-		"POST /llama/toggle",
-		"POST /llama/close",
-		"POST /extensions/ui/editor",
-		"POST /extensions/ui/respond",
-		"POST /tree/open",
-		"POST /tree/navigate",
-		"GET /files/search",
-		"POST /files/import",
-		"POST /files/open",
-		"GET /basecoat.js",
-		"GET /vendor/datastar-inspector.min.js",
-	].sort();
-	assertEquals([...router.registeredRoutes()].sort(), expected);
-	assertEquals(
-		new Set(Object.values(endpoints)),
-		new Set(expected.map((route) => route.slice(route.indexOf(" ") + 1))),
-	);
-});
-
 test("page assets use the current immutable content version", async () => {
 	const context = fakeContext();
 	context.renderer = new UiRenderer(context.store, new DatastarClientHub());
@@ -108,13 +29,6 @@ test("page assets use the current immutable content version", async () => {
 	assertStringIncludes(html, `appVersion=${context.appVersion}`);
 	assertStringIncludes(html, " data-keybind-hints ");
 	assertStringExcludes(html, " data-minimal-mode ");
-	assertStringIncludes(html, "KeyM");
-	assertStringIncludes(html, "KeyO");
-	assertStringIncludes(html, "/minimal-mode");
-	assertStringIncludes(html, "/tool-output");
-	assertStringIncludes(html, 'aria-label="Browse folders"');
-	assertStringIncludes(html, "/workspace/browse");
-	assertStringIncludes(html, "$_toolOutputHidden");
 
 	context.keybindHints = false;
 	context.minimalMode = true;

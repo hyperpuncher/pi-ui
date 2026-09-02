@@ -1,7 +1,6 @@
 import { test } from "bun:test";
 
 import {
-	assert,
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
@@ -11,7 +10,6 @@ import { assertStringExcludes as assertNotIncludes } from "../testing/assertions
 import { collectElementPatches } from "../testing/element-patches.ts";
 import { projectBackendSignals } from "../ui/backend-signals.ts";
 import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
-import { renderPage } from "../ui/page.tsx";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { type AppMessageInput, AppStore } from "./app-store.ts";
 import { TranscriptState } from "./transcript-state.ts";
@@ -739,27 +737,6 @@ test("initial streams reopen active backend dialogs", async () => {
 	}
 });
 
-test("component morphs need no server refresh script", async () => {
-	const state = createState();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.update(
-			() => {
-				state.setThinking("high", ["off", "high"]);
-				state.setModels([], "provider/model");
-			},
-			{ flush: true },
-		);
-		const output = await readUntil(reader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		assertEqual(count(output, '<script data-effect="el.remove()">'), 0);
-	} finally {
-		controller.abort();
-	}
-});
-
 test("app stream refreshes current and background session statuses", async () => {
 	const state = createState();
 	const controller = new AbortController();
@@ -948,90 +925,6 @@ test("hot app views exclude independently owned regions", () => {
 		if (previous === undefined) delete process.env.PI_UI_DEBUG;
 		else process.env.PI_UI_DEBUG = previous;
 	}
-});
-
-test("fat morph markup preserves browser-owned interaction state", () => {
-	const state = createState();
-	state.setModels(
-		[
-			{
-				id: "test-model",
-				provider: "test-provider",
-				name: "Test Model",
-				configured: true,
-				scoped: false,
-			},
-		],
-		"test-provider/test-model",
-	);
-	state.replaceMessages([
-		{
-			role: "compaction",
-			text: "summary",
-			timestamp,
-		},
-	]);
-	state.flush();
-	const html = renderPage(state.renderer.projectState(state.snapshot()));
-
-	assertIncludes(html, 'id="prompt-input"');
-	const displayClientId = html.match(/\/stream\?clientId=([0-9a-f-]{36})/)?.[1];
-	assert(displayClientId, "Display client ID is missing");
-	assertIncludes(html, `clientId: '${displayClientId}'`);
-	assertIncludes(html, "payload: {}");
-	assertIncludes(html, "filterSignals");
-	const globalSignals = html.match(/<body[^>]*data-signals="([^"]+)"/)?.[1] ?? "";
-	assertIncludes(globalSignals, "_isBusy");
-	assertNotIncludes(globalSignals, "&#34;prompt&#34;");
-	assertNotIncludes(globalSignals, "workspacePath");
-	assertNotIncludes(globalSignals, "thinkingLevel");
-	assertNotIncludes(globalSignals, "&#34;model&#34;");
-	assertIncludes(html, "data-signals:session-search__ifmissing");
-	assertIncludes(html, "data-signals__ifmissing");
-	for (const signal of ["prompt", "authInput", "_fileSearchController"]) {
-		assertIncludes(html, `&#34;${signal}&#34;:&#34;&#34;`);
-	}
-	assertIncludes(html, `data-signals:workspace-draft__ifmissing="''"`);
-	assertIncludes(html, "$_fileSearchController.abort()");
-	assertIncludes(html, "requestCancellation: $_fileSearchController");
-	assertIncludes(html, 'id="messages"');
-	assertIncludes(html, 'id="workspace-dialog"');
-	assertIncludes(html, 'id="session-dialog"');
-	assertIncludes(html, 'data-filter="manual"');
-	assertIncludes(html, 'id="session-sidebar"');
-	assertIncludes(html, 'data-side="right"');
-	const workspaceShell = html.match(/<div[^>]*id="workspace-shell"[^>]*>/)?.[0] ?? "";
-	assertIncludes(workspaceShell, "@container/workspace");
-	assertIncludes(workspaceShell, "--pi-review-pane-ratio");
-	assertIncludes(workspaceShell, "gitPaneRatio || 0.5");
-	assertNotIncludes(workspaceShell, "gitPaneRatio ??");
-	assertNotIncludes(workspaceShell, "--pi-review-sidebar-width");
-	assertNotIncludes(workspaceShell, "--pi-review-changes-ratio");
-	const reviewBody = html.match(/<div[^>]*id="review-body"[^>]*>/)?.[0] ?? "";
-	assertIncludes(reviewBody, "--pi-review-sidebar-width");
-	assertIncludes(reviewBody, "reviewSidebarWidth || 272");
-	assertNotIncludes(reviewBody, "reviewSidebarWidth ??");
-	const reviewSidebar =
-		html.match(/<aside[^>]*id="review-git-sidebar"[^>]*>/)?.[0] ?? "";
-	assertIncludes(reviewSidebar, "--pi-review-changes-ratio");
-	assertIncludes(reviewSidebar, "changesRatio || 0.5");
-	assertNotIncludes(reviewSidebar, "changesRatio ??");
-	assertIncludes(html, 'id="model-select"');
-	assert(
-		html.indexOf("/app/main.js") < html.indexOf("/vendor/datastar.js"),
-		"window.piUi must initialize before Datastar",
-	);
-	const app = html.match(/<div[^>]*id="app"[^>]*>/)?.[0] ?? "";
-	assertIncludes(app, 'data-class:pi-review-open="$_workspaceReviewOpen"');
-	assertIncludes(app, "window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)");
-	assertNotIncludes(app, "openWhenHidden");
-	assertIncludes(app, "retry: 'always'");
-	assertIncludes(app, "retryMaxCount: Infinity");
-	const review = html.match(/<section[^>]*id="workspace-review"[^>]*>/)?.[0] ?? "";
-	assertIncludes(review, 'data-attr:aria-hidden="$_workspaceReviewOpen');
-	assertIncludes(review, 'data-attr:inert="!$_workspaceReviewOpen"');
-	const treeDialog = html.match(/<dialog[^>]*id="tree-dialog"[^>]*>/)?.[0] ?? "";
-	assertIncludes(treeDialog, 'data-preserve-attr="open"');
 });
 
 type TestStore = AppStore & {

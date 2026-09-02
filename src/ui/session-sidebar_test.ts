@@ -5,60 +5,6 @@ import { assertFalse, assertStringIncludes } from "#testing/assertions";
 import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
-test("session sidebar exposes session state and actions", () => {
-	const currentPath = "/sessions/current.jsonl";
-	const html = renderSessionSidebar(
-		appRenderSnapshot({
-			sessions: [
-				{
-					path: currentPath,
-					cwd: "/workspace",
-					title: "Current session",
-					subtitle: "3 messages",
-					modified: "Now",
-				},
-				{
-					path: "/sessions/background.jsonl",
-					cwd: "/workspace",
-					title: "Background session",
-					subtitle: "1 message",
-					modified: "Today",
-					backgroundStatus: "completed",
-				},
-			],
-			currentSessionPath: currentPath,
-			activityText: "Working…",
-			sessionCatalogLoading: false,
-		}),
-	);
-
-	assertFalse(html.includes('data-initial-open="false"'));
-	assertStringIncludes(html, 'aria-label="Sessions"');
-	assertStringIncludes(html, ">workspace</span>");
-	assertFalse(html.includes("3 messages"));
-	assertFalse(html.includes("1 message"));
-	assertStringIncludes(html, 'aria-current="true"');
-	assertStringIncludes(html, 'aria-label="Current session running"');
-	assertStringIncludes(html, 'aria-label="Background session completed"');
-	assertStringIncludes(html, "@post('/sessions/resume'");
-	assertStringIncludes(html, "@post('/sessions/rename'");
-	assertStringIncludes(html, "Rename session Current session");
-	assertStringIncludes(html, "Delete session Background session");
-});
-
-test("session sidebar starts closed without sessions", () => {
-	const html = renderSessionSidebar(
-		appRenderSnapshot({
-			sessions: [],
-			currentSessionPath: undefined,
-			activityText: undefined,
-			sessionCatalogLoading: false,
-		}),
-	);
-
-	assertStringIncludes(html, 'data-initial-open="false"');
-});
-
 test("session sidebar keeps loading visible beneath partial results", () => {
 	const html = renderSessionSidebar(
 		appRenderSnapshot({

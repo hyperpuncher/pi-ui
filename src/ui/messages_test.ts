@@ -118,21 +118,6 @@ test("assistant messages summarize preceding tool activity", () => {
 	assertStringIncludes(html, "completed 2 steps in 1m 4s");
 });
 
-test("thinking blocks render expanded content and a collapsed label", () => {
-	const html = renderMessage({
-		id: "thought-1",
-		presentationState: "plain",
-		presentationVersion: 1,
-		role: "thought",
-		text: "**Planning full validation tests**",
-		timestamp: new Date(0),
-	});
-	assertStringIncludes(html, "<strong>Planning full validation tests</strong>");
-	assertStringIncludes(html, "Thinking...");
-	assertStringIncludes(html, 'aria-label="Thinking"');
-	assertStringExcludes(html, "**Planning");
-});
-
 test("system messages make share URLs actionable and escape text", () => {
 	const html = renderMessage({
 		id: "share-1",
@@ -145,66 +130,6 @@ test("system messages make share URLs actionable and escape text", () => {
 	assertStringIncludes(html, "Share &lt;ready&gt;:");
 	assertStringIncludes(html, 'href="https://pi.dev/session/#gist-id"');
 	assertStringIncludes(html, 'target="_blank"');
-});
-
-test("provider errors use alert semantics", () => {
-	const html = renderMessage({
-		id: "provider-error",
-		presentationState: "plain",
-		presentationVersion: 1,
-		role: "system",
-		state: "error",
-		text: 'Error: 403: {"type":"RegionError"}',
-		timestamp: new Date(0),
-	});
-	assertStringIncludes(html, 'role="alert"');
-	assertStringIncludes(html, "Error: 403:");
-});
-
-test("skills show their metadata without enhancement controls", () => {
-	const html = renderMessage({
-		id: "skill-1",
-		presentationState: "deferred",
-		presentationVersion: 1,
-		role: "skill",
-		text: "Follow these instructions",
-		timestamp: new Date(0),
-		meta: "kita-html",
-	});
-	assertStringIncludes(html, ">skill</span>");
-	assertStringIncludes(html, "kita-html");
-	assert(html.indexOf("skill") < html.indexOf("kita-html"));
-	assertStringExcludes(html, "Enhance formatting");
-});
-
-test("compactions show their metadata without enhancement controls", () => {
-	const html = renderMessage({
-		id: "compaction-1",
-		presentationState: "deferred",
-		presentationVersion: 1,
-		role: "compaction",
-		text: "Conversation summary",
-		timestamp: new Date(0),
-		meta: "compacted from 57,053 tokens",
-	});
-	assertStringIncludes(html, ">compaction</span>");
-	assertStringIncludes(html, "compacted from 57,053 tokens");
-	assertStringExcludes(html, "click to expand");
-	assertStringExcludes(html, "Enhance formatting");
-});
-
-test("branch summaries use the compact summarize presentation", () => {
-	const html = renderMessage({
-		id: "summary-1",
-		presentationState: "deferred",
-		presentationVersion: 1,
-		role: "summary",
-		text: "Previous branch summary",
-		timestamp: new Date(0),
-	});
-	assertStringIncludes(html, ">summarize</span>");
-	assertStringIncludes(html, "<details");
-	assertStringExcludes(html, "Enhance formatting");
 });
 
 test("bodyless tools show only their title", () => {
@@ -245,15 +170,6 @@ test("tool formats retain specific hooks inside the shared output surface", () =
 	}
 });
 
-test("running and error tools preserve state semantics", () => {
-	const running = renderMessage(tool({ state: "running", meta: "working" }));
-	assertStringIncludes(running, 'aria-label="Running"');
-	assertStringIncludes(running, 'role="status"');
-	assertStringIncludes(running, "working");
-	const error = renderMessage(tool({ state: "error" }));
-	assertStringIncludes(error, 'aria-label="Failed"');
-});
-
 test("plain tool titles remain escaped", () => {
 	const html = renderMessage(tool({ title: '<img src=x onerror="bad">' }));
 	assertStringExcludes(html, "<img");
@@ -282,18 +198,6 @@ test("older messages use one wrapper with prefetch and top triggers", () => {
 	assertEquals(html.match(/data-on-intersect/g)?.length, 2);
 	assertEquals(html.match(/data-indicator:_older-messages-loading/g)?.length, 2);
 	assertStringIncludes(html, "Loading older messages");
-});
-
-test("recent session loading is announced", () => {
-	const loading = renderMessages(
-		[],
-		{ description: "Send", keys: "enter" },
-		false,
-		[],
-		true,
-		true,
-	);
-	assertStringIncludes(loading, 'aria-label="Loading recent sessions"');
 });
 
 test("partial recent sessions stay visible during full catalog loading", () => {

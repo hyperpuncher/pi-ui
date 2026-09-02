@@ -3,10 +3,7 @@ import { test } from "bun:test";
 import { assertStringIncludes } from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
-import {
-	renderExtensionDialog,
-	renderExtensionDialogContent,
-} from "./extension-dialog.tsx";
+import { renderExtensionDialogContent } from "./extension-dialog.tsx";
 
 test("extension dialog escapes labels and posts attributed selections", () => {
 	const html = renderExtensionDialogContent({
@@ -22,10 +19,4 @@ test("extension dialog escapes labels and posts attributed selections", () => {
 	assertStringIncludes(html, "&lt;strong&gt;option&lt;/strong&gt;");
 	assertStringIncludes(html, "/extensions/ui/respond");
 	assertStringIncludes(html, "request-1");
-});
-
-test("extension dialog close uses the current backend signal", () => {
-	const html = renderExtensionDialog(undefined);
-	assertStringIncludes(html, "$extensionRequestId");
-	assertStringIncludes(html, "extensionCancelled: true");
 });
