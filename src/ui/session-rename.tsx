@@ -44,16 +44,16 @@ export function SessionRenameTitle(props: { session: AppSessionSummary }): strin
 	const editing = `$sessionRenamePath === ${JSON.stringify(props.session.path)}`;
 	return syncHtml(
 		<span
-			class="pointer-events-auto min-w-0 flex-1 cursor-text text-[13px] font-medium text-foreground"
+			class="session-rename"
 			data-session-rename-title
 			data-on:dblclick={startSessionRenameAction(props.session)}
 		>
-			<span class="block truncate" data-show={`!(${editing})`} safe>
+			<span class="session-rename-title" data-show={`!(${editing})`} safe>
 				{props.session.title}
 			</span>
 			<input
 				type="text"
-				class="input pointer-events-auto h-6 w-full min-w-0 rounded-sm px-1 py-0 text-[13px]"
+				class="input session-rename-input"
 				style="display: none"
 				aria-label={`Rename session ${props.session.title}`}
 				maxlength="96"

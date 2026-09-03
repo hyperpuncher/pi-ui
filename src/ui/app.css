@@ -1,0 +1,26 @@
+@layer props, theme, tokens, base, components, utilities;
+
+@import "open-props/gray-hd" layer(props);
+@import "open-props/colors-hd" layer(props);
+@import "open-props/oklch-hues" layer(props);
+
+@import "./styles/tokens.css";
+@import "./styles/base.css";
+@import "./fonts.css";
+@import "./styles/controls.css";
+@import "./styles/overlays.css";
+@import "./workspace-review.css";
+@import "./page.css";
+@import "./misc.css";
+@import "./dialogs.css";
+@import "./preferences.css";
+@import "./pickers.css";
+@import "./markdown.css";
+@import "./diffs.css";
+@import "./messages.css";
+@import "./session-sidebar.css";
+@import "./prompt-box.css";
+@import "./prompt-toolbar.css";
+@import "./prompt-pickers.css";
+@import "./prompt-status.css";
+@import "./prompt-action.css";

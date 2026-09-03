@@ -1,0 +1,190 @@
+@layer components {
+	.prompt-status,
+	.prompt-status-message,
+	.usage-indicators,
+	.usage-indicator {
+		display: inline-flex;
+		min-width: 0;
+		align-items: center;
+	}
+	.prompt-status {
+		height: 2rem;
+		flex-shrink: 0;
+		gap: 1rem;
+	}
+	.prompt-status-message {
+		height: 1.5rem;
+		gap: 0.375rem;
+		overflow: hidden;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.prompt-working-status {
+		display: inline-flex;
+		min-width: 0;
+		height: 1.5rem;
+		align-items: center;
+		overflow: hidden;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.prompt-working-content {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+	.prompt-status-message > span,
+	.prompt-working-content > span {
+		text-box: trim-both cap alphabetic;
+	}
+	.extension-status {
+		display: none;
+		max-width: 10rem;
+		overflow: hidden;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+		line-height: 1.25;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.usage-indicators {
+		flex-shrink: 0;
+		gap: 0.375rem;
+		font-size: var(--text-xs);
+		line-height: 1;
+	}
+	.usage-indicator {
+		width: 1rem;
+		height: 1rem;
+		flex-shrink: 0;
+		justify-content: center;
+	}
+
+	.usage-tooltip {
+		display: grid;
+		align-items: stretch;
+		gap: 0;
+		padding: 0.625rem 0.75rem;
+		text-align: start;
+	}
+	.usage-tooltip-context {
+		width: 15rem;
+	}
+	.usage-tooltip-limits {
+		width: 13rem;
+	}
+	.usage-tooltip :where(strong, span) {
+		min-width: 0;
+	}
+	.usage-tooltip strong {
+		font-weight: 600;
+	}
+	.usage-tooltip > strong {
+		margin-block-end: 0.5rem;
+		font-size: var(--text-xs);
+		line-height: 1.25;
+	}
+	.usage-tooltip-heading,
+	.usage-tooltip-row,
+	.usage-tooltip-footer,
+	.usage-window-heading {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+	.usage-tooltip-heading {
+		margin-block-end: 0.375rem;
+	}
+	.usage-tooltip-row {
+		margin-block-end: 0.25rem;
+		font-size: 0.6875rem;
+		line-height: 1.25;
+	}
+	.usage-tooltip-title {
+		font-size: var(--text-xs);
+		font-weight: 600;
+		line-height: 1.25;
+	}
+	.usage-tooltip-footer {
+		margin-block-start: 0.375rem;
+		font-size: 0.625rem;
+		line-height: 1.25;
+	}
+	.usage-tooltip-small {
+		font-size: 0.625rem;
+	}
+	.usage-tooltip-note {
+		font-size: 0.6875rem;
+		line-height: 1.25;
+	}
+	.usage-tooltip-label {
+		margin-block-end: 0.5rem;
+		font-size: var(--text-xs);
+		font-weight: 600;
+		line-height: 1.25;
+	}
+	.usage-window {
+		display: grid;
+		gap: 0.125rem;
+	}
+	.usage-window-spaced {
+		margin-block-start: 0.5rem;
+	}
+	.usage-window-heading {
+		gap: 1rem;
+		font-size: 0.6875rem;
+		line-height: 1.25;
+	}
+	.usage-window-reset {
+		font-size: 0.625rem;
+		line-height: 1.25;
+		text-align: end;
+	}
+	.usage-meter {
+		display: block;
+		height: 0.25rem;
+		overflow: hidden;
+		border-radius: 999px;
+		background: oklch(from currentColor l c h / 20%);
+	}
+	.usage-meter-value {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: currentColor;
+	}
+
+	.usage-ring {
+		width: 1rem;
+		height: 1rem;
+		rotate: -90deg;
+		opacity: 0.6;
+		transition: opacity 130ms ease;
+	}
+	.usage-indicator:is(:hover, :focus-visible) .usage-ring {
+		opacity: 1;
+	}
+	.usage-ring-track {
+		color: oklch(from var(--text-muted) l c h / 20%);
+	}
+	.usage-ring-danger {
+		color: var(--status-danger);
+	}
+	.usage-ring-normal {
+		color: var(--text);
+	}
+	.usage-ring-value {
+		transition: stroke-dashoffset 250ms cubic-bezier(0.77, 0, 0.175, 1);
+	}
+
+	@media (width >= 40rem) {
+		.extension-status {
+			display: inline;
+		}
+	}
+}

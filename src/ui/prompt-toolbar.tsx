@@ -82,12 +82,8 @@ export function renderPromptToolbar(
 	reviewAvailable = false,
 ): string {
 	return syncHtml(
-		<div
-			id="prompt-toolbar"
-			class="shrink-0 group-data-[measuring]/prompt-footer:flex-none"
-			aria-label="Message tools"
-		>
-			<div class="flex items-center gap-0.5 group-data-[toolbar-compact]/prompt-footer:hidden">
+		<div id="prompt-toolbar" class="prompt-toolbar" aria-label="Message tools">
+			<div class="prompt-toolbar-buttons">
 				{promptToolbarItems.map((item) => {
 					const temporary = item.action === "new-temporary-chat";
 					return (
@@ -109,13 +105,10 @@ export function renderPromptToolbar(
 					);
 				})}
 			</div>
-			<div
-				class="dropdown-menu hidden group-data-[toolbar-compact]/prompt-footer:block"
-				data-preserve-attr="data-dropdown-menu-initialized data-basecoat-component"
-			>
+			<div class="dropdown-menu prompt-toolbar-menu">
 				<button
 					type="button"
-					class="btn leading-none"
+					class="btn prompt-toolbar-button"
 					data-variant="ghost"
 					data-size="icon-sm"
 					aria-label="Message tools"
@@ -132,7 +125,7 @@ export function renderPromptToolbar(
 					data-align="start"
 					aria-hidden="true"
 					data-preserve-attr="aria-hidden"
-					class="w-max max-w-[calc(100vw-2rem)]"
+					class="prompt-toolbar-popover"
 				>
 					<div id="prompt-toolbar-menu" role="menu" aria-label="Message tools">
 						{promptToolbarItems
@@ -170,7 +163,7 @@ function PromptToolbarButton(props: {
 }) {
 	return (
 		<button
-			class="btn leading-none"
+			class="btn prompt-toolbar-button"
 			data-variant={props.variant ?? "ghost"}
 			data-pi-ui-action={props.action}
 			aria-pressed={props.pressed ? "true" : undefined}
@@ -233,8 +226,8 @@ function MobilePromptToolbarItem(props: {
 			data-on:click={promptToolbarClickAction(props.action)}
 		>
 			{props.children}
-			<span class="min-w-0 truncate text-left">{props.label}</span>
-			{props.active && <span class="ml-auto text-muted-foreground">•</span>}
+			<span class="prompt-toolbar-menu-label">{props.label}</span>
+			{props.active && <span class="selection-dot" aria-hidden="true" />}
 		</button>
 	);
 }

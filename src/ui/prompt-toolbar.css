@@ -1,0 +1,45 @@
+@layer components {
+	.prompt-toolbar {
+		flex-shrink: 0;
+	}
+	.prompt-footer[data-measuring] .prompt-toolbar {
+		flex: none;
+	}
+
+	.prompt-toolbar-buttons {
+		display: flex;
+		align-items: center;
+		gap: 0.125rem;
+	}
+
+	.prompt-toolbar-menu {
+		display: none;
+	}
+	.prompt-footer[data-toolbar-compact] .prompt-toolbar-buttons {
+		display: none;
+	}
+	.prompt-footer[data-toolbar-compact] .prompt-toolbar-menu {
+		display: block;
+	}
+
+	.prompt-toolbar-button {
+		line-height: 1;
+	}
+	.btn.prompt-toolbar-button[data-variant="ghost"] {
+		color: var(--text-muted);
+	}
+	.btn.prompt-toolbar-button[data-variant="ghost"]:hover {
+		color: var(--text);
+	}
+	.prompt-toolbar-popover {
+		width: max-content;
+		max-width: calc(100vw - 2rem);
+	}
+	.prompt-toolbar-menu-label {
+		min-width: 0;
+		overflow: hidden;
+		text-align: start;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}

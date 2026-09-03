@@ -29,6 +29,18 @@ test("page assets use the current immutable content version", async () => {
 	assertStringIncludes(html, `appVersion=${context.appVersion}`);
 	assertStringIncludes(html, " data-keybind-hints ");
 	assertStringExcludes(html, " data-minimal-mode ");
+	assertStringExcludes(html, 'id="theme-lab"');
+	assertStringExcludes(html, "/theme-lab.css");
+	assertStringExcludes(html, "/build/theme-lab.js");
+
+	context.themeLab = true;
+	const themeLabPage = await createRouter(context).fetch(
+		new Request("http://localhost/"),
+	);
+	const themeLabHtml = await themeLabPage.text();
+	assertStringIncludes(themeLabHtml, 'id="theme-lab"');
+	assertStringIncludes(themeLabHtml, "/theme-lab.css");
+	assertStringIncludes(themeLabHtml, "/build/theme-lab.js");
 
 	context.keybindHints = false;
 	context.minimalMode = true;
@@ -39,11 +51,6 @@ test("page assets use the current immutable content version", async () => {
 	const quietPageHtml = await hiddenHintsPage.text();
 	assertStringExcludes(quietPageHtml, " data-keybind-hints ");
 	assertStringIncludes(quietPageHtml, " data-minimal-mode ");
-
-	const basecoat = await createRouter(context).fetch(
-		new Request("http://localhost/basecoat.js"),
-	);
-	assertEquals(basecoat.headers.get("cache-control"), "no-cache, must-revalidate");
 });
 
 test("stale main streams reload the page before connecting", async () => {
@@ -708,6 +715,7 @@ function fakeContext(
 		keybindHints?: boolean;
 		minimalMode?: boolean;
 		toolOutputHidden?: boolean;
+		themeLab?: boolean;
 		transferredFiles?: RouteContext["transferredFiles"];
 	} = {},
 ): RouteContext {
@@ -717,6 +725,7 @@ function fakeContext(
 		keybindHints: overrides.keybindHints ?? true,
 		minimalMode: overrides.minimalMode ?? false,
 		toolOutputHidden: overrides.toolOutputHidden ?? false,
+		themeLab: overrides.themeLab ?? false,
 		store,
 		renderer:
 			overrides.renderer ??
@@ -735,7 +744,6 @@ function fakeContext(
 		openWorkspace: async () => true,
 		openPath: overrides.openPath ?? (async () => {}),
 		isLocalRequest: overrides.isLocalRequest ?? (() => false),
-		readBasecoat: async () => new ArrayBuffer(0),
 		serveStatic: async () => new Response("static"),
 	};
 }

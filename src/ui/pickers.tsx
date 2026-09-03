@@ -24,8 +24,7 @@ import { resumeSessionAction } from "./session-transition.tsx";
 import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-const bottomAnchoredPickerClass =
-	"flex max-h-72 list-none flex-col-reverse overflow-y-auto p-1";
+const bottomAnchoredPickerClass = "picker-list picker-list-bottom";
 
 export function slashPickerOpenExpression(state: AppStateSnapshot): string {
 	const names = state.slashCommands.map(slashCommandName);
@@ -62,7 +61,7 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 			id={`slash-option-${encodeURIComponent(name)}`}
 			role="option"
 			tabindex="-1"
-			class="rounded-md aria-selected:bg-muted"
+			class="picker-row"
 			aria-selected={index === 0 ? "true" : "false"}
 			data-preserve-attr="aria-selected"
 			data-slash-row
@@ -74,7 +73,7 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 			`}
 		>
 			<button
-				class="flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
+				class="picker-row-button"
 				type="button"
 				data-picker-kind="slash"
 				data-on:click={`
@@ -84,18 +83,18 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 					@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} } });
 				`}
 			>
-				<span class="min-w-0">
-					<span class="block truncate font-mono">
-						<span class="text-primary" safe>
+				<span class="picker-row-content">
+					<span class="slash-command-title">
+						<span class="slash-command-name" safe>
 							{label}
 						</span>
 						{item.argumentHint && (
-							<span class="ml-2 text-muted-foreground" safe>
+							<span class="slash-command-argument" safe>
 								{item.argumentHint}
 							</span>
 						)}
 					</span>
-					<span class="block truncate text-xs text-muted-foreground" safe>
+					<span class="picker-row-description" safe>
 						{item.description || item.source}
 					</span>
 				</span>
@@ -108,7 +107,12 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
 	return syncHtml(
-		<div role="menu" id="workspace-menu" class="mt-1" aria-orientation="vertical">
+		<div
+			role="menu"
+			id="workspace-menu"
+			class="command-menu"
+			aria-orientation="vertical"
+		>
 			{renderWorkspaceSearchResults(workspaces, [], state.workspacePath)}
 		</div>,
 	);
@@ -144,13 +148,10 @@ export function renderWorkspaceBrowserContent(
 	listing: WorkspaceDirectoryListing,
 ): string {
 	return syncHtml(
-		<div
-			id="workspace-browser-content"
-			class="flex h-[min(36rem,calc(100vh-2rem))] w-[min(30rem,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0"
-		>
-			<header class="shrink-0 border-b border-border px-5 pt-5 pb-4">
-				<div class="flex items-center justify-between gap-4">
-					<h2 id="workspace-browser-title" class="text-base font-semibold">
+		<div id="workspace-browser-content" class="workspace-browser-panel">
+			<header class="workspace-browser-header">
+				<div class="workspace-browser-heading">
+					<h2 id="workspace-browser-title">
 						<span data-show="$_workspaceAction !== 'fork'">
 							Select folder
 						</span>
@@ -181,15 +182,11 @@ export function renderWorkspaceBrowserContent(
 						<span data-show="$_workspaceBrowserShowHidden">Hide hidden</span>
 					</button>
 				</div>
-				<p
-					class="mt-1 truncate font-mono text-xs text-muted-foreground"
-					title={listing.path}
-					safe
-				>
+				<p class="workspace-browser-path" title={listing.path} safe>
 					{formatHomePath(listing.path)}
 				</p>
 			</header>
-			<div class="min-h-0 flex-1 overflow-y-auto p-2">
+			<div class="workspace-browser-list">
 				{listing.parent && renderWorkspaceBrowserDirectory(listing.parent, "..")}
 				{listing.directories.map((directory) =>
 					renderWorkspaceBrowserDirectory(
@@ -198,12 +195,10 @@ export function renderWorkspaceBrowserContent(
 					),
 				)}
 				{listing.directories.length === 0 && (
-					<p class="px-3 py-4 text-sm text-muted-foreground">
-						No folders found.
-					</p>
+					<p class="workspace-browser-empty">No folders found.</p>
 				)}
 			</div>
-			<footer class="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3">
+			<footer class="workspace-browser-footer">
 				<button
 					type="button"
 					class="btn"
@@ -232,21 +227,19 @@ export function renderWorkspaceBrowserError(path: string): string {
 	return syncHtml(
 		<div
 			id="workspace-browser-content"
-			class="flex w-[min(30rem,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0"
+			class="workspace-browser-panel workspace-browser-error"
 		>
-			<header class="border-b border-border px-5 pt-5 pb-4">
-				<h2 id="workspace-browser-title" class="text-base font-semibold">
-					Select folder
-				</h2>
+			<header class="workspace-browser-header">
+				<h2 id="workspace-browser-title">Select folder</h2>
 			</header>
-			<p class="px-5 py-6 text-sm text-destructive">
+			<p class="workspace-browser-error-message">
 				Could not read{" "}
-				<span class="font-mono" safe>
+				<span class="workspace-browser-error-path" safe>
 					{formatHomePath(path)}
 				</span>
 				.
 			</p>
-			<footer class="flex justify-end border-t border-border px-5 py-3">
+			<footer class="workspace-browser-footer">
 				<button
 					type="button"
 					class="btn"
@@ -263,13 +256,13 @@ function renderWorkspaceBrowserDirectory(path: string, label: string): string {
 	return syncHtml(
 		<button
 			type="button"
-			class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-mono text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+			class="workspace-browser-directory"
 			data-indicator:_workspace-browser-loading
 			data-attr:disabled="$_workspaceBrowserLoading"
 			data-on:click={browseWorkspaceAction(JSON.stringify(path))}
 		>
-			<Icon icon={Folder} class="size-4 shrink-0 text-muted-foreground" />
-			<span class="min-w-0 truncate" safe>
+			<Icon icon={Folder} class="workspace-browser-directory-icon" />
+			<span class="workspace-browser-directory-name" safe>
 				{label}
 			</span>
 		</button>,
@@ -306,7 +299,7 @@ function renderWorkspaceGroup(
 			: "workspace-search-heading";
 	return syncHtml(
 		<div role="group" aria-labelledby={id}>
-			<span role="heading" id={id} class="py-1!">
+			<span role="heading" id={id} class="workspace-group-heading">
 				{heading}
 			</span>
 			{workspaces.map((workspacePath) =>
@@ -323,7 +316,7 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 		<div
 			id={`workspace-option-${encodeURIComponent(workspacePath)}`}
 			role="menuitem"
-			class="px-2 py-2!"
+			class="workspace-row"
 			data-preserve-attr="class"
 			tabindex="-1"
 			aria-current={current ? "true" : undefined}
@@ -333,21 +326,11 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-attr:aria-disabled="$_sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
-			<img
-				class="size-4 shrink-0 rounded-[3px]"
-				src={faviconUrl}
-				alt=""
-				aria-hidden="true"
-			/>
-			<span
-				class={[
-					"min-w-0 truncate font-mono text-[13px] leading-none",
-					current ? "font-semibold text-foreground" : "text-muted-foreground",
-				]}
-				safe
-			>
+			<img class="workspace-favicon" src={faviconUrl} alt="" aria-hidden="true" />
+			<span class="workspace-row-label" safe>
 				{label}
 			</span>
+			{current && <span class="selection-dot" aria-hidden="true" />}
 		</div>,
 	);
 }
@@ -410,7 +393,7 @@ export function renderSessionPicker(state: AppStateSnapshot): string {
 		<div
 			role="menu"
 			id="session-menu"
-			class="mt-1 max-h-96!"
+			class="session-menu"
 			aria-orientation="vertical"
 			data-empty="No matching sessions."
 			data-signals:background-session-path__ifmissing="''"
@@ -427,7 +410,7 @@ type SessionPickerState = Pick<
 
 export function renderSessionPickerContent(state: SessionPickerState): string {
 	return syncHtml(
-		<div id="session-menu-content" class="space-y-px px-1">
+		<div id="session-menu-content" class="session-menu-content">
 			{state.sessions.map((session, index) => {
 				const current = session.path === state.currentSessionPath;
 				return renderSessionRow(
@@ -472,7 +455,7 @@ function renderSessionRow(
 			id={sessionRowId(session.path)}
 			role="menuitem"
 			tabindex="-1"
-			class="group block! aria-current:bg-sidebar-accent! aria-current:text-sidebar-accent-foreground! [&.active]:bg-sidebar-accent! [&.active]:text-sidebar-accent-foreground!"
+			class="session-menu-row"
 			aria-current={current ? "true" : undefined}
 			data-preserve-attr="class aria-hidden"
 			data-keep-command-open
@@ -486,29 +469,34 @@ function renderSessionRow(
 					: resumeSessionAction(session.path, { closeDialog: true })
 			}
 		>
-			<span class="flex items-center gap-2">
-				{displayStatus && (
-					<StatusDot
-						class="ml-0.75"
-						state={displayStatus === "running" ? "running" : "success"}
-						label={sessionStatusLabel(displayStatus, current)}
-					/>
-				)}
+			<span class="session-menu-heading">
+				<span
+					class={[
+						"session-status-transition",
+						!displayStatus && "session-status-empty",
+					]}
+				>
+					{displayStatus && (
+						<StatusDot
+							class="session-menu-status"
+							state={displayStatus === "running" ? "running" : "success"}
+							label={sessionStatusLabel(displayStatus, current)}
+						/>
+					)}
+				</span>
 				{current ? (
 					<SessionRenameTitle session={session} />
 				) : (
-					<span
-						class="min-w-0 flex-1 truncate text-[13px] text-muted-foreground"
-						safe
-					>
+					<span class="session-menu-title" safe>
 						{session.title}
 					</span>
 				)}
+				{current && <span class="selection-dot" aria-hidden="true" />}
 				<DateTime dateTime={session.modifiedAt} label={session.modified} />
 				{displayStatus === "running" && (
 					<button
 						type="button"
-						class="btn shrink-0"
+						class="btn session-menu-abort"
 						data-variant="destructive"
 						data-size="icon-xs"
 						aria-label={`Abort ${current ? "current" : "background"} session ${session.title}`}
@@ -527,18 +515,12 @@ function renderSessionRow(
 						`
 						}
 					>
-						<Icon
-							icon={Square}
-							class="size-3 text-destructive! [&_rect]:fill-current"
-						/>
+						<Icon icon={Square} class="session-menu-abort-icon" />
 					</button>
 				)}
 			</span>
-			<span class="flex h-6 items-center gap-2">
-				<SessionSubtitle
-					session={session}
-					class="min-w-0 flex-1 text-xs text-muted-foreground"
-				/>
+			<span class="session-menu-meta">
+				<SessionSubtitle session={session} class="session-menu-subtitle" />
 				<SessionRowAction
 					session={session}
 					shortcut={shortcut}

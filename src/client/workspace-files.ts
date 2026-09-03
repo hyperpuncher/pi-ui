@@ -152,7 +152,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		const button = document.createElement("button");
 		button.type = "button";
 		button.className = `workspace-tree-context-menu-item${
-			destructive ? " text-destructive" : ""
+			destructive ? " workspace-tree-context-menu-item-destructive" : ""
 		}`;
 		button.setAttribute("role", "menuitem");
 		button.textContent = label;
@@ -268,7 +268,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			unsafeCSS: `
 				@media (prefers-reduced-motion: no-preference) {
 					[data-caret] {
-						animation-timing-function: step-end !important;
+						animation-timing-function: step-end;
 					}
 				}
 
@@ -534,7 +534,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		entryAction.textContent = options.action;
 		entryInput.value = options.initialValue ?? "";
 		entryError.textContent = "";
-		entryError.classList.add("hidden");
+		entryError.hidden = true;
 		entryDialog.returnValue = "";
 		return new Promise((resolve) => {
 			entryDialog.addEventListener(
@@ -556,7 +556,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		if (!validEntryName(entryInput.value)) {
 			entryError.textContent =
 				"Use a non-empty name without slashes, '.', or '..'.";
-			entryError.classList.remove("hidden");
+			entryError.hidden = false;
 			return;
 		}
 		entryDialog.close("submit");

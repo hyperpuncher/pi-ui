@@ -27,23 +27,18 @@ export function ShortcutKbd(props: { shortcut: string }) {
 	const symbolic = operatingSystem === "darwin";
 	const label = symbolic ? formatShortcut(props.shortcut) : undefined;
 	return (
-		<span
-			class="flex items-center gap-0.5"
-			data-keybind-hint
-			aria-label={label}
-			title={label}
-		>
+		<span class="shortcut" data-keybind-hint aria-label={label} title={label}>
 			{shortcutParts(props.shortcut).map((part) => (
 				<kbd class="kbd">{symbolic ? shortcutGlyph(part) : part}</kbd>
 			))}
-			<span class="hidden" aria-hidden="true" />
+			<span hidden aria-hidden="true" />
 		</span>
 	);
 }
 
 export function ShortcutTooltip(props: { label: string; shortcut: string }) {
 	return (
-		<span class="font-sans" role="tooltip" data-slot="tooltip-content">
+		<span class="shortcut-tooltip" role="tooltip" data-slot="tooltip-content">
 			<span>{props.label}</span>
 			<ShortcutKbd shortcut={props.shortcut} />
 		</span>

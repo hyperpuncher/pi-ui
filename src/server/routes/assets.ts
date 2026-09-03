@@ -15,6 +15,7 @@ export function registerAssetRoutes(router: ExactRouter<RouteContext>): void {
 					context.keybindHints,
 					context.minimalMode,
 					context.toolOutputHidden,
+					context.themeLab,
 				),
 				{
 					headers: {
@@ -23,17 +24,6 @@ export function registerAssetRoutes(router: ExactRouter<RouteContext>): void {
 					},
 				},
 			),
-	);
-	router.register(
-		"GET",
-		endpoints.basecoat,
-		async (_request, context) =>
-			new Response(await context.readBasecoat(), {
-				headers: {
-					"cache-control": "no-cache, must-revalidate",
-					"content-type": "text/javascript; charset=utf-8",
-				},
-			}),
 	);
 	router.register("GET", endpoints.inspector, (request, context) => {
 		if (!context.store.debugUi) throw new RouteError(404, "Not found.");

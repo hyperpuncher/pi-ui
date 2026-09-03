@@ -19,16 +19,16 @@ import { syncHtml } from "./sync-html.ts";
 
 const sidebarWidth = { min: 224, default: 288, max: 384 } as const;
 const sidebarWidthCss =
-	"clamp(var(--pi-session-sidebar-min-width), ${$_sessionSidebarWidth}px, min(var(--pi-session-sidebar-max-width), 50vw))";
+	"clamp(var(--session-sidebar-min-width), ${$_sessionSidebarWidth}px, min(var(--session-sidebar-max-width), 50vw))";
 export const sessionSidebarMarginRightExpression = `\`${sidebarWidthCss}\``;
 export const sessionSidebarStorageKey = "pi-ui-session-sidebar-width";
-const sidebarHandleRightExpression = `\`calc(${sidebarWidthCss} + var(--pi-workspace-inset) - var(--pi-workspace-gap))\``;
-const sidebarNavWidthExpression = `\`calc(${sidebarWidthCss} - var(--pi-workspace-gap))\``;
+const sidebarHandleRightExpression = `\`calc(${sidebarWidthCss} + var(--workspace-inset) - var(--workspace-gap))\``;
+const sidebarNavWidthExpression = `\`calc(${sidebarWidthCss} - var(--workspace-gap))\``;
 const sidebarPointerWidthExpression = `Math.round(Math.min(
 	Math.max(${sidebarWidth.min}, Math.min(${sidebarWidth.max}, innerWidth * 0.5)),
 	Math.max(${sidebarWidth.min}, $_sessionSidebarWidth + $_sessionSidebarPointerX - evt.clientX),
 ))`;
-const sidebarResizeFinish = `document.documentElement.classList.remove('pi-resizing');
+const sidebarResizeFinish = `document.documentElement.classList.remove('is-resizing');
 localStorage.setItem('${sessionSidebarStorageKey}', String($_sessionSidebarWidth));`;
 const focusSessionSidebarShortcut = altShortcutAction(
 	"KeyS",
@@ -55,7 +55,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 	return syncHtml(
 		<aside
 			id="session-sidebar"
-			class="sidebar peer/sidebar group/sidebar"
+			class="sidebar"
 			data-side="right"
 			data-initial-open={state.sessions.length === 0 && "false"}
 			aria-keyshortcuts="Control+B Meta+B"
@@ -67,20 +67,20 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 			data-signals:session-delete-hover__ifmissing="''"
 			data-on:keydown__window={`if (evt.code === 'KeyB' && !evt.altKey && !evt.shiftKey && ${primaryModifierExpression()}) {
 			evt.preventDefault();
-			el.toggle?.();
+			window.piUi.controls.toggleSidebar(el);
 			}
 			${focusSessionSidebarShortcut}`}
 		>
 			<div
 				id="session-sidebar-separator"
-				class="pi-resize-handle fixed! inset-y-(--pi-workspace-inset)! z-50 w-(--pi-workspace-gap)! group-aria-[hidden=true]/sidebar:hidden! max-md:hidden"
+				class="resize-handle session-sidebar-resize"
 				aria-hidden="true"
 				data-style:right={sidebarHandleRightExpression}
 				data-on:click__stop="true"
 				data-on:pointerdown__prevent={`if (evt.button === 0) {
 					$_sessionSidebarPointerX = evt.clientX;
 					el.setPointerCapture(evt.pointerId);
-					document.documentElement.classList.add('pi-resizing');
+					document.documentElement.classList.add('is-resizing');
 				}`}
 				{...{
 					"data-on:pointermove__throttle.8ms": `if (el.hasPointerCapture(evt.pointerId)) {
@@ -94,13 +94,15 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					$_sessionSidebarWidth = ${sidebarWidth.default};
 					localStorage.setItem('${sessionSidebarStorageKey}', '${sidebarWidth.default}');
 				`}
-			></div>
+			/>
 			<nav
-				class="pi-raised-surface inset-y-(--pi-workspace-inset)! right-(--pi-workspace-inset)! transition-transform duration-150 ease-(--pi-ease-out) motion-reduce:transition-none max-md:w-[calc(var(--sidebar-mobile-width)-var(--pi-workspace-gap))]! md:w-[calc(var(--sidebar-width)-var(--pi-workspace-gap))]"
+				class="raised-surface session-sidebar-nav"
 				aria-label="Sessions"
 				aria-keyshortcuts="Alt+S"
 				tabindex="-1"
-				data-style:width={sidebarNavWidthExpression}
+				{...{
+					"data-style:--session-sidebar-width": sidebarNavWidthExpression,
+				}}
 				data-on:keydown={`if (
 					!evt.altKey &&
 					!evt.ctrlKey &&
@@ -119,8 +121,8 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					}
 				}`}
 			>
-				<header class="px-4 text-xs font-medium">
-					<div class="flex items-center justify-between">
+				<header class="session-sidebar-header">
+					<div class="session-sidebar-heading">
 						<span>Sessions</span>
 						<ShortcutKbd shortcut="alt S" />
 					</div>
@@ -128,7 +130,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 				<section>
 					<div
 						role="group"
-						class="pt-0 in-data-[keybind-hints=false]:pt-2"
+						class="session-sidebar-group"
 						aria-label="Recent sessions"
 					>
 						{renderSessionSidebarContent(state)}
@@ -149,13 +151,10 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 					{group.label && (
 						<h3
 							id={`session-sidebar-${group.key}`}
-							class="flex h-auto items-center gap-2 px-2 py-1 text-[10px] font-medium tracking-wide text-muted-foreground lowercase"
+							class="session-group-heading"
 						>
 							<span>{group.label}</span>
-							<span
-								class="flex-1 border-t border-border"
-								aria-hidden="true"
-							/>
+							<span class="session-group-rule" aria-hidden="true" />
 						</h3>
 					)}
 					<ul>
@@ -171,9 +170,7 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 				</div>
 			))}
 			{state.sessionCatalogLoading && (
-				<div class="flex justify-center px-2 py-4 text-muted-foreground">
-					{loaderIcon()}
-				</div>
+				<div class="session-sidebar-loading">{loaderIcon()}</div>
 			)}
 			{state.sessionSidebarHasMore && renderSessionPageTrigger()}
 		</div>,
@@ -187,7 +184,7 @@ function sessionSidebarRowId(path: string): string {
 function renderSessionPageTrigger() {
 	return (
 		<div
-			class="flex min-h-8 items-center justify-center text-muted-foreground"
+			class="session-page-trigger"
 			data-indicator:_session-page-loading
 			data-on-intersect__once={`@post('${endpoints.sessionsMore}', { payload: {} })`}
 		>
@@ -274,10 +271,10 @@ function renderSessionSidebarRow(
 	const shortcut = index < 9 ? `ctrl ${index + 1}` : undefined;
 	const deletable = status !== "running";
 	return syncHtml(
-		<li id={sessionSidebarRowId(session.path)} class="group relative">
+		<li id={sessionSidebarRowId(session.path)} class="session-sidebar-row">
 			<button
 				type="button"
-				class="absolute! inset-0 h-full! p-0!"
+				class="session-sidebar-row-button"
 				data-size="lg"
 				data-active={current ? "true" : undefined}
 				aria-current={current ? "true" : undefined}
@@ -290,23 +287,27 @@ function renderSessionSidebarRow(
 						? resumeSessionShortcutAction(session.path, index)
 						: undefined
 				}
-			></button>
-			<span class="pointer-events-none relative z-10 flex min-w-0 flex-col gap-1 p-2">
-				<span class="flex min-w-0 items-center gap-2">
-					{status && (
-						<StatusDot
-							class="ml-0.75"
-							state={status === "running" ? "running" : "success"}
-							label={sessionStatusLabel(status, current)}
-						/>
-					)}
+			/>
+			<span class="session-sidebar-row-content">
+				<span class="session-sidebar-row-heading">
+					<span
+						class={[
+							"session-status-transition",
+							!status && "session-status-empty",
+						]}
+					>
+						{status && (
+							<StatusDot
+								class="session-sidebar-status"
+								state={status === "running" ? "running" : "success"}
+								label={sessionStatusLabel(status, current)}
+							/>
+						)}
+					</span>
 					{current ? (
 						<SessionRenameTitle session={session} />
 					) : (
-						<span
-							class="min-w-0 flex-1 truncate text-[13px] text-muted-foreground"
-							safe
-						>
+						<span class="session-sidebar-title" safe>
 							{session.title}
 						</span>
 					)}
@@ -317,10 +318,10 @@ function renderSessionSidebarRow(
 						/>
 					)}
 				</span>
-				<span class="flex h-6 min-w-0 items-center gap-2">
+				<span class="session-sidebar-row-meta">
 					<SessionSubtitle
 						session={session}
-						class="pi-fine-print min-w-0 flex-1 overflow-hidden text-xs"
+						class="fine-print session-sidebar-subtitle"
 						workspaceNameOnly
 						showSubtitle={false}
 					/>

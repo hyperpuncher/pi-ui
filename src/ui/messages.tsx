@@ -47,12 +47,9 @@ export function renderMessages(
 	return syncHtml(
 		<main
 			id="messages"
-			class={[
-				"min-h-0 overflow-y-auto mask-[linear-gradient(to_bottom,black_92%,transparent),linear-gradient(black,black)] mask-size-[calc(100%-var(--scrollbar-width))_100%,var(--scrollbar-width)_100%] mask-position-[left_top,right_top] mask-no-repeat px-4 outline-none sm:px-6 xl:px-8",
-				messages.length === 0 ? "pt-8 pb-32" : "pt-24",
-			]}
+			class={messages.length === 0 ? "messages-empty" : undefined}
 			data-show="!$_sessionTransitionVisible"
-			data-class:opacity-50="
+			data-class:messages-loading="
 				$_sessionLoading ||
 				$_sessionTransitionLoading
 			"
@@ -75,10 +72,10 @@ export function renderMessages(
 			}
 			${altShortcutAction("KeyC", "el.focus({ preventScroll: true });")}`}
 		>
-			<div class="messages-stack relative mx-auto min-h-full w-[calc(100%-2rem)] max-w-(--pi-messages-max-width)">
-				<div id="message-list" class="contents">
+			<div class="messages-stack">
+				<div id="message-list">
 					<div
-						class="pointer-events-none absolute -top-16 left-1/2 z-10 -translate-x-1/2"
+						class="older-messages-loading"
 						data-show="$_olderMessagesLoading"
 						style="display: none"
 					>
@@ -86,7 +83,7 @@ export function renderMessages(
 							icon={Loader}
 							label="Loading older messages"
 							role="status"
-							class="size-4 animate-spin text-muted-foreground"
+							class="icon-spin older-messages-spinner"
 						/>
 					</div>
 					{renderOlderMessagesTrigger(hasOlderMessages)}
@@ -102,7 +99,7 @@ export function renderMessages(
 				<button
 					id="messages-trim"
 					type="button"
-					class="hidden"
+					hidden
 					data-on:click={`@post('${endpoints.messagesTrim}', { payload: {} })`}
 					tabindex="-1"
 					aria-hidden="true"
@@ -110,7 +107,7 @@ export function renderMessages(
 				{messages.length > 0 && (
 					<div
 						id="messages-prompt-spacer"
-						class="pointer-events-none min-h-48 shrink-0"
+						class="messages-prompt-spacer"
 						style="height: 12rem"
 						data-preserve-attr="style"
 						aria-hidden="true"
@@ -136,23 +133,18 @@ function renderEmptyMessages(
 	sessionCatalogLoading: boolean,
 ) {
 	return (
-		<div class="grid flex-1 place-items-center text-center text-muted-foreground">
-			<div class="w-full max-w-xl">
-				<p class="m-0 text-lg font-medium text-foreground">
-					What can I help with?
-				</p>
-				<p
-					class="m-0 mt-3 flex items-center justify-center gap-2 text-sm"
-					data-keybind-hint
-				>
+		<div class="messages-empty-state">
+			<div class="messages-empty-content">
+				<p class="messages-empty-title">What can I help with?</p>
+				<p class="messages-empty-hint" data-keybind-hint>
 					<ShortcutKbd shortcut={emptyHint.keys} />
 					<span safe>{emptyHint.description}</span>
 				</p>
 				{!authenticated ? (
-					<p class="m-0 mt-8 text-sm text-muted-foreground">
+					<p class="messages-empty-login">
 						<button
 							type="button"
-							class="btn h-auto p-0 font-mono"
+							class="btn messages-login-button"
 							data-variant="link"
 							data-on:click={authDialogAction("login")}
 						>
@@ -162,20 +154,21 @@ function renderEmptyMessages(
 					</p>
 				) : (
 					(sessionCatalogLoading || sessions.length > 0) && (
-						<div class="mt-8 h-50 text-left">
-							<p class="mb-2 px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-								Recent sessions
-							</p>
+						<div class="recent-sessions">
+							<p class="recent-sessions-heading">Recent sessions</p>
 							{sessionCatalogLoading && sessions.length === 0 ? (
 								<div
-									class="grid h-44 place-items-center text-muted-foreground"
+									class="recent-sessions-loading"
 									role="status"
 									aria-label="Loading recent sessions"
 								>
-									<Icon icon={Loader} class="size-5 animate-spin" />
+									<Icon
+										icon={Loader}
+										class="icon-spin recent-sessions-spinner"
+									/>
 								</div>
 							) : (
-								<div class="flex flex-col gap-1">
+								<div class="recent-sessions-list">
 									{sessions.map((session, index) =>
 										renderRecentSession(session, index),
 									)}
@@ -194,21 +187,18 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 	return (
 		<button
 			type="button"
-			class="flex h-14 w-full items-start justify-between gap-4 overflow-hidden rounded-md border-0 bg-transparent px-2 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
+			class="recent-session"
 			data-indicator:_session-loading
 			data-attr:disabled="$_sessionTransitionLoading"
 			data-on:click={resumeSessionAction(session.path)}
 		>
-			<span class="min-w-0">
-				<span class="block truncate text-sm text-foreground" safe>
+			<span class="recent-session-main">
+				<span class="recent-session-title" safe>
 					{session.title}
 				</span>
-				<SessionSubtitle
-					session={session}
-					class="mt-1 line-clamp-2 text-xs text-muted-foreground"
-				/>
+				<SessionSubtitle session={session} class="recent-session-subtitle" />
 			</span>
-			<span class="flex shrink-0 items-center gap-2 whitespace-nowrap">
+			<span class="recent-session-meta">
 				<DateTime dateTime={session.modifiedAt} label={session.modified} />
 				<ShortcutKbd shortcut={shortcut} />
 			</span>
@@ -223,18 +213,18 @@ function renderOlderMessagesTrigger(active: boolean) {
 	return (
 		<div
 			id="older-messages-trigger"
-			class="pointer-events-none absolute inset-0"
+			class="older-messages-trigger"
 			aria-hidden="true"
 		>
 			{action && (
 				<>
 					<div
-						class="absolute top-0 h-[min(50vh,100%)] w-full opacity-0"
+						class="older-messages-sensor older-messages-sensor-top"
 						data-indicator:_older-messages-loading
 						data-on-intersect={action}
 					/>
 					<div
-						class="absolute h-px w-full opacity-0"
+						class="older-messages-sensor older-messages-sensor-bottom"
 						style="top: min(250vh, calc(100% - 1px))"
 						data-indicator:_older-messages-loading
 						data-on-intersect={action}
@@ -247,8 +237,8 @@ function renderOlderMessagesTrigger(active: boolean) {
 
 function renderPreOutput(text: string) {
 	return (
-		<div class="pi-tool-output-surface p-3">
-			<pre class="m-0 max-h-80 overflow-auto rounded-md bg-transparent text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap text-muted-foreground">
+		<div class="tool-output-surface tool-pre-output">
+			<pre class="tool-pre">
 				<code safe>{text}</code>
 			</pre>
 		</div>
@@ -257,16 +247,19 @@ function renderPreOutput(text: string) {
 
 function renderDiffOutput(message: AppMessage) {
 	return (
-		<div class="diff-output pi-tool-output-surface max-h-96 overflow-auto [&_.pierre-diff]:block [&_.pierre-diff]:min-w-0 [&_.pierre-diff]:overflow-hidden [&_.pierre-diff]:rounded-md [&_.pierre-diff+_.pierre-diff]:mt-3 [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+		<div class="diff-output tool-output-surface tool-rendered-output">
 			{message.renderedHtml ??
-				renderPendingToolOutput(stripDiffMetadata(message.text), "pl-13")}
+				renderPendingToolOutput(
+					stripDiffMetadata(message.text),
+					"tool-output-diff-padding",
+				)}
 		</div>
 	);
 }
 
 function renderCodeOutput(message: AppMessage) {
 	return (
-		<div class="code-output pi-tool-output-surface max-h-80 overflow-auto [&_.pierre-code]:block [&_.pierre-code]:min-w-0 [&_.pierre-code]:overflow-hidden [&_.pierre-code]:rounded-md [&_.shiki]:m-0 [&_.shiki]:bg-transparent! [&_.shiki]:text-sm [&_.shiki]:leading-relaxed [&_.shiki]:wrap-anywhere [&_.shiki]:whitespace-pre-wrap [&_.shiki_code]:whitespace-pre-wrap">
+		<div class="code-output tool-output-surface tool-rendered-output">
 			{message.renderedHtml ?? renderPendingCodeOutput(message.text)}
 		</div>
 	);
@@ -275,17 +268,17 @@ function renderCodeOutput(message: AppMessage) {
 function renderPlainOutput(message: AppMessage) {
 	return (
 		<div
-			class="tool-output pi-tool-output-surface max-h-[calc(5lh+1px)] overflow-hidden leading-5.5"
+			class="tool-output tool-output-surface tool-plain-output"
 			data-init={`el.scrollTop = el.scrollHeight; ${message.presentationVersion}`}
 		>
-			{renderPendingToolOutput(message.text, "pl-2")}
+			{renderPendingToolOutput(message.text, "tool-output-padding")}
 		</div>
 	);
 }
 
 function renderPendingCodeOutput(text: string) {
 	return (
-		<pre class="m-0 bg-transparent pr-3 pl-2 font-mono text-[13px] leading-5.5 wrap-anywhere whitespace-pre-wrap text-muted-foreground">
+		<pre class="tool-pending-output tool-pending-code">
 			<code>{renderInlineBash(text)}</code>
 		</pre>
 	);
@@ -293,12 +286,7 @@ function renderPendingCodeOutput(text: string) {
 
 function renderPendingToolOutput(text: string, paddingClass: string) {
 	return (
-		<pre
-			class={[
-				"m-0 bg-transparent pr-3 font-mono text-[13px] leading-5.5 wrap-anywhere whitespace-pre-wrap text-muted-foreground",
-				paddingClass,
-			]}
-		>
+		<pre class={["tool-pending-output", paddingClass]}>
 			<code safe>{text}</code>
 		</pre>
 	);
@@ -320,11 +308,11 @@ function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined
 	if (!parts?.length) return <span safe>{title}</span>;
 	if (parts[0]?.text === "$ " && parts[1]?.highlight === "bash") {
 		return (
-			<span class="inline-flex max-w-full min-w-0 items-start align-top">
-				<span class="shrink-0 pr-[1ch] font-mono" safe>
+			<span class="tool-command-title">
+				<span class="tool-command-prompt" safe>
 					{parts[0].text.trimEnd()}
 				</span>
-				<span class="min-w-0">
+				<span class="tool-command-content">
 					{parts
 						.slice(1)
 						.map((part, index) => renderToolTitlePart(part, index + 1))}
@@ -386,7 +374,7 @@ function renderDeferredEnhancement(message: AppMessage) {
 	return (
 		<button
 			type="button"
-			class="btn m-2"
+			class="btn enhance-message"
 			data-variant="ghost"
 			data-size="sm"
 			data-on:click={`@post('${endpoints.messagesEnhance}?id=${encodeURIComponent(message.id)}', {
@@ -406,20 +394,20 @@ function renderUserFileAttachment(
 		: undefined;
 	const kind = attachmentFileKind(attachment.name, attachment.mimeType);
 	return (
-		<div class="flex h-16 max-w-60 min-w-0 items-center gap-2 rounded-xl border bg-card p-2 pr-3 text-card-foreground shadow-sm">
-			<span class="pi-fine-print flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border bg-muted">
+		<div class="message-file">
+			<span class="fine-print message-file-icon">
 				<AttachmentFileIcon kind={kind} />
 				{extension && (
-					<span class="font-mono text-[9px] leading-none uppercase" safe>
+					<span class="message-file-extension" safe>
 						{extension}
 					</span>
 				)}
 			</span>
-			<span class="min-w-0">
-				<span class="block truncate text-xs font-medium" safe>
+			<span class="message-file-content">
+				<span class="message-file-name" safe>
 					{attachment.name}
 				</span>
-				<span class="pi-fine-print block text-[10px]">{fileKindLabel(kind)}</span>
+				<span class="fine-print message-file-kind">{fileKindLabel(kind)}</span>
 			</span>
 		</div>
 	);
@@ -434,7 +422,7 @@ function fileKindLabel(kind: AttachmentFileKind): string {
 function AttachmentFileIcon(props: { kind: AttachmentFileKind }) {
 	const icon = attachmentFileIcons[props.kind];
 	return (
-		<Icon class="size-5">
+		<Icon class="message-file-type-icon">
 			<>
 				{icon.paths.map((path) => (
 					<path d={path} />
@@ -447,12 +435,12 @@ function AttachmentFileIcon(props: { kind: AttachmentFileKind }) {
 
 function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
 	const classes = [];
-	if (index === 0 && !part.mono) classes.push("mr-2");
-	if (part.mono) classes.push("font-mono");
-	if (part.highlight === "bash") classes.push("break-all whitespace-pre-wrap");
-	if (part.tone === "accent") classes.push("text-primary");
-	if (part.tone === "warning") classes.push("pi-warning-foreground");
-	if (part.tone === "muted") classes.push("text-muted-foreground");
+	if (index === 0 && !part.mono) classes.push("tool-title-gap");
+	if (part.mono) classes.push("tool-title-mono");
+	if (part.highlight === "bash") classes.push("tool-title-bash");
+	if (part.tone === "accent") classes.push("tool-title-accent");
+	if (part.tone === "warning") classes.push("warning-foreground");
+	if (part.tone === "muted") classes.push("tool-title-muted");
 	return classes.join(" ");
 }
 
@@ -463,7 +451,7 @@ function renderPlainTextLinks(text: string): string {
 			{parts.filter(Boolean).map((part) =>
 				part.startsWith("http://") || part.startsWith("https://") ? (
 					<a
-						class="underline decoration-border underline-offset-2 hover:decoration-current"
+						class="message-link"
 						href={part}
 						target="_blank"
 						rel="noreferrer"
@@ -503,16 +491,13 @@ function renderUserMessage(message: AppMessage): string {
 	const fileAttachments =
 		message.attachments?.filter((attachment) => !attachment.image) ?? [];
 	return syncHtml(
-		<article
-			class="message message-user flex max-w-[min(32rem,72%)] flex-col items-end gap-2 self-end"
-			data-message-id={message.id}
-		>
+		<article class="message message-user" data-message-id={message.id}>
 			{imageAttachments.length ? (
-				<div class="flex max-w-full flex-wrap justify-end gap-2">
+				<div class="message-attachments">
 					{imageAttachments.map((attachment, index) => (
-						<div class="overflow-clip rounded-xl bg-primary p-1.5">
+						<div class="message-image-frame">
 							<img
-								class="max-h-72 max-w-full rounded-lg object-contain"
+								class="message-image"
 								src={
 									attachment.image!.url ??
 									`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`
@@ -527,17 +512,14 @@ function renderUserMessage(message: AppMessage): string {
 				""
 			)}
 			{fileAttachments.length ? (
-				<div class="flex max-w-full flex-wrap justify-end gap-2">
+				<div class="message-attachments">
 					{fileAttachments.map(renderUserFileAttachment)}
 				</div>
 			) : (
 				""
 			)}
 			{message.text && (
-				<p
-					class="m-0 max-w-full rounded-xl bg-primary px-3.5 py-2.5 wrap-anywhere whitespace-pre-wrap text-primary-foreground"
-					safe
-				>
+				<p class="message-user-text" safe>
 					{message.text}
 				</p>
 			)}
@@ -550,29 +532,23 @@ function renderNarrativeMessage(message: AppMessage): string {
 	if (message.role === "thought") {
 		return syncHtml(
 			<article
-				class="message message-narrative message-thought pi-thought-foreground w-full self-start text-sm italic"
+				class="message message-narrative message-thought thought-foreground"
 				data-message-id={message.id}
 				data-ignore-morph={preservesFinalizedMessageDom(message)}
 			>
 				<p
-					class="m-0 leading-[1.7] font-semibold"
+					class="thinking-placeholder"
 					data-show="$_thinkingHidden && !$_minimalMode"
 				>
 					Thinking...
 				</p>
 				<div
-					class="pi-tool-timeline-item relative w-full not-italic"
+					class="tool-timeline-item minimal-activity"
 					style="display: none"
 					data-show="$_minimalMode"
 				>
-					<StatusDot
-						class="pi-tool-state-dot"
-						state="running"
-						label="Thinking"
-					/>
-					<p class="m-0 truncate font-mono text-sm leading-4.5 font-medium text-muted-foreground">
-						thinking...
-					</p>
+					<StatusDot class="tool-state-dot" state="running" label="Thinking" />
+					<p class="minimal-activity-label">thinking...</p>
 				</div>
 				<div data-show="!$_thinkingHidden && !$_minimalMode">
 					<div class="markdown-content">{content}</div>
@@ -584,7 +560,7 @@ function renderNarrativeMessage(message: AppMessage): string {
 	return syncHtml(
 		<article
 			class={[
-				"message message-narrative message-assistant w-full self-start",
+				"message message-narrative message-assistant",
 				message.activitySummary && "message-activity-result",
 			]}
 			data-message-id={message.id}
@@ -592,16 +568,12 @@ function renderNarrativeMessage(message: AppMessage): string {
 		>
 			{message.activitySummary && (
 				<div
-					class="pi-activity-summary pi-tool-timeline-item relative w-full"
+					class="activity-summary tool-timeline-item minimal-activity"
 					style="display: none"
 					data-show="$_minimalMode"
 				>
-					<StatusDot
-						class="pi-tool-state-dot"
-						state="success"
-						label="Completed"
-					/>
-					<p class="m-0 truncate font-mono text-sm leading-4.5 font-medium text-muted-foreground">
+					<StatusDot class="tool-state-dot" state="success" label="Completed" />
+					<p class="minimal-activity-label">
 						completed {message.activitySummary.stepCount}{" "}
 						{message.activitySummary.stepCount === 1 ? "step" : "steps"} in{" "}
 						{message.activitySummary.duration}
@@ -619,17 +591,17 @@ function renderSystemMessage(message: AppMessage): string {
 	return syncHtml(
 		<article
 			class={[
-				"message message-narrative max-w-3xl self-start",
+				"message message-narrative message-system-row",
 				isError
-					? "message-system pi-error-foreground"
+					? "message-system error-foreground"
 					: message.role === "notice"
-						? "message-notice pi-warning-foreground"
-						: "message-system text-muted-foreground",
+						? "message-notice warning-foreground"
+						: "message-system message-muted",
 			]}
 			data-message-id={message.id}
 			role={isError ? "alert" : message.role === "notice" ? "status" : undefined}
 		>
-			<p class="m-0 whitespace-pre-wrap">{renderPlainTextLinks(message.text)}</p>
+			<p class="message-system-text">{renderPlainTextLinks(message.text)}</p>
 		</article>,
 	);
 }
@@ -644,7 +616,7 @@ function renderContextMessage(message: AppMessage): string {
 	return syncHtml(
 		<article
 			class={[
-				"message pi-tool-timeline-item w-full self-start",
+				"message message-context tool-timeline-item",
 				message.role === "compaction"
 					? "message-compaction"
 					: message.role === "skill"
@@ -653,27 +625,24 @@ function renderContextMessage(message: AppMessage): string {
 			]}
 			data-message-id={message.id}
 		>
-			<details class="group" data-preserve-attr="open">
-				<summary class="flex min-h-4.5 cursor-pointer list-none items-start gap-2 font-mono text-sm outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-					<span class="pi-tool-state-dot inline-grid size-2" aria-hidden="true">
-						<span class="pi-tool-status-ball pi-tool-status-success" />
+			<details class="context-details" data-preserve-attr="open">
+				<summary class="context-summary">
+					<span class="tool-state-dot status-dot" aria-hidden="true">
+						<span class="tool-status-ball tool-status-success" />
 					</span>
-					<span class="min-w-0 flex-1 leading-4.5 font-medium">
+					<span class="context-title">
 						<span safe>{label}</span>
 						{message.meta && (
-							<span class="ml-2 font-normal text-muted-foreground" safe>
+							<span class="context-meta" safe>
 								{message.meta}
 							</span>
 						)}
 					</span>
-					<span class="ml-auto inline-flex h-4.5 shrink-0 items-center text-xs text-muted-foreground">
-						<Icon
-							icon={ChevronRight}
-							class="size-3.5 rotate-180 transition-transform duration-150 ease-(--pi-ease-out) group-open:rotate-90 motion-reduce:transition-none"
-						/>
+					<span class="context-chevron">
+						<Icon icon={ChevronRight} class="context-chevron-icon" />
 					</span>
 				</summary>
-				<div class="pi-tool-output-surface p-3 text-sm text-muted-foreground">
+				<div class="tool-output-surface context-output">
 					<div class="markdown-content">
 						<div>
 							{message.renderedHtml ??
@@ -709,34 +678,24 @@ function renderToolMessage(message: AppMessage): string {
 	const status = toolMessageStatus(message);
 	return syncHtml(
 		<article
-			class="message message-tool pi-tool-timeline-item w-full self-start"
+			class="message message-tool tool-timeline-item"
 			data-message-id={message.id}
 		>
-			<StatusDot
-				class="pi-tool-state-dot"
-				state={status.state}
-				label={status.label}
-			/>
-			<header
-				class="flex min-h-4.5 items-start gap-2 font-mono text-sm"
-				data-show="!$_minimalMode && !$_toolOutputHidden"
-			>
-				<span class="min-w-0 flex-1 leading-4.5 font-medium wrap-anywhere">
+			<StatusDot class="tool-state-dot" state={status.state} label={status.label} />
+			<header class="tool-header" data-show="!$_minimalMode && !$_toolOutputHidden">
+				<span class="tool-title">
 					{renderToolTitle(message.title ?? "Tool", message.titleParts)}
 				</span>
 				<span
-					class="ml-auto inline-flex h-4.5 min-w-[6ch] shrink-0 items-center justify-end text-xs font-normal text-muted-foreground tabular-nums"
+					class="tool-meta"
 					aria-hidden={message.meta ? undefined : "true"}
 					safe
 				>
 					{message.meta ?? ""}
 				</span>
 			</header>
-			<p
-				class="m-0 flex min-w-0 overflow-hidden font-mono text-sm leading-4.5 font-medium text-muted-foreground"
-				data-show="$_minimalMode || $_toolOutputHidden"
-			>
-				<span class="block min-w-0 truncate [&_*]:inline! [&_*]:whitespace-nowrap!">
+			<p class="tool-title-compact" data-show="$_minimalMode || $_toolOutputHidden">
+				<span class="tool-title-compact-content">
 					{renderToolTitle(message.title ?? "Tool", message.titleParts)}
 				</span>
 			</p>

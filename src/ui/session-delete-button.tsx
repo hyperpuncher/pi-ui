@@ -12,7 +12,7 @@ export function SessionDeleteButton(props: {
 	return syncHtml(
 		<button
 			type="button"
-			class={["btn shrink-0", props.class]}
+			class={["btn session-delete-button", props.class]}
 			data-variant="ghost"
 			data-attr:data-variant={`$sessionDeleteHover === ${path} ? 'destructive' : 'ghost'`}
 			data-size="icon-xs"
@@ -28,7 +28,7 @@ export function SessionDeleteButton(props: {
 				document.getElementById('session-delete-dialog')?.showModal();
 			`}
 		>
-			<Icon icon={Trash2} class="text-current!" />
+			<Icon icon={Trash2} />
 		</button>,
 	);
 }

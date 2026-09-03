@@ -50,15 +50,14 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 		if (!("side" in annotation)) return undefined;
 		const { metadata } = annotation;
 		const wrapper = document.createElement("div");
-		wrapper.className = "w-full overflow-hidden";
+		wrapper.className = "review-comment-wrapper";
 		wrapper.dataset.reviewCommentId = metadata.id;
 		const card = document.createElement("div");
-		card.className =
-			"mx-3 my-2 max-w-2xl whitespace-normal rounded-lg border border-border bg-card p-3 font-sans text-foreground shadow-sm";
+		card.className = "review-comment-card";
 		wrapper.append(card);
 
 		const label = document.createElement("p");
-		label.className = "mb-2 text-xs font-medium text-muted-foreground";
+		label.className = "review-comment-label";
 		label.textContent = rangeLabel(metadata.range, annotation.side);
 		card.append(label);
 
@@ -69,11 +68,11 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 
 	function renderEditor(card: HTMLElement, id: string): void {
 		const textarea = document.createElement("textarea");
-		textarea.className = "textarea min-h-20 w-full resize-y text-sm";
+		textarea.className = "textarea review-comment-input";
 		textarea.placeholder = "Leave a comment for the agent…";
 		textarea.setAttribute("aria-label", "Review comment");
 		const actions = document.createElement("div");
-		actions.className = "mt-2 flex items-center gap-2";
+		actions.className = "review-comment-actions";
 		const addButton = button("Add comment");
 		addButton.disabled = true;
 		const cancelButton = button("Cancel", "outline");
@@ -104,12 +103,12 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 
 	function renderSavedComment(card: HTMLElement, id: string, text: string): void {
 		const body = document.createElement("p");
-		body.className = "whitespace-pre-wrap text-sm leading-relaxed";
+		body.className = "review-comment-body";
 		body.textContent = text;
 		const actions = document.createElement("div");
-		actions.className = "mt-2";
+		actions.className = "review-comment-actions";
 		const removeButton = button("Remove", "ghost");
-		removeButton.classList.add("pi-error-foreground");
+		removeButton.classList.add("error-foreground");
 		removeButton.addEventListener("click", () => remove(id));
 		actions.append(removeButton);
 		card.append(body, actions);
@@ -149,12 +148,12 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 	function syncControls(): void {
 		const count = store.savedComments().length;
 		const draft = store.hasDraft();
-		options.submitButton.classList.toggle("hidden", count === 0 && !draft);
+		options.submitButton.hidden = count === 0 && !draft;
 		options.submitButton.disabled = count === 0 || draft || submitting;
 		options.submitButton.textContent = submitting
 			? "Sending…"
 			: `Submit review${count > 0 ? ` (${count})` : ""}`;
-		options.status.classList.toggle("hidden", !statusMessage);
+		options.status.hidden = !statusMessage;
 		options.status.textContent = statusMessage ?? "";
 	}
 

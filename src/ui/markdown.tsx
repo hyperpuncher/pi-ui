@@ -74,28 +74,19 @@ const markdownHtmlRewriter = new HTMLRewriter()
 	})
 	.on("table", {
 		element(element) {
-			element.setAttribute("class", "table min-w-max w-full table-auto text-sm");
-			element.before(
-				'<div class="table-container border-border/60 bg-background overflow-x-auto rounded-md border">',
-				{ html: true },
-			);
+			element.setAttribute("class", "markdown-table");
+			element.before('<div class="table-container">', { html: true });
 			element.after("</div>", { html: true });
 		},
 	})
 	.on("th", {
 		element(element) {
-			element.setAttribute(
-				"class",
-				"break-words px-3 py-2 text-left align-top font-semibold whitespace-normal",
-			);
+			element.setAttribute("class", "markdown-table-heading");
 		},
 	})
 	.on("td", {
 		element(element) {
-			element.setAttribute(
-				"class",
-				"break-words px-3 py-2 align-top whitespace-normal",
-			);
+			element.setAttribute("class", "markdown-table-cell");
 		},
 	});
 
@@ -346,19 +337,16 @@ function renderPlainCode(
 
 function CodeBlock(props: { pre: string; language: string; source?: string }) {
 	return (
-		<div
-			class="code-block [&_pre]:tab-size-4! my-4 overflow-hidden rounded-md border border-border/60 bg-muted/40 dark:bg-muted/55 [&_pre]:m-0! [&_pre]:rounded-none! [&_pre]:bg-(--code-background)! [&_pre]:p-4! [&_pre]:text-[13px]! [&_pre]:leading-5.5!"
-			data-code-block
-		>
+		<div class="code-block" data-code-block>
 			{props.source !== undefined && (
 				<script type="text/plain" data-code-source safe>
 					{props.source}
 				</script>
 			)}
-			<div class="flex items-center justify-between gap-3 px-3 py-0.5 font-mono text-xs text-muted-foreground">
+			<div class="code-block-header">
 				<span safe>{props.language}</span>
 				<button
-					class="btn group relative"
+					class="btn code-copy-button"
 					data-variant="ghost"
 					data-size="icon-xs"
 					type="button"
@@ -366,7 +354,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					aria-label="Copy code"
 				>
 					<svg
-						class="transition-[opacity,scale] duration-100 ease-out group-data-[copy-state=copied]:scale-95 group-data-[copy-state=copied]:opacity-0 motion-reduce:transform-none motion-reduce:transition-opacity"
+						class="code-copy-icon code-copy-icon-idle"
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
 						height="24"
@@ -385,7 +373,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 						</g>
 					</svg>
 					<svg
-						class="absolute scale-95 opacity-0 transition-[opacity,scale] duration-100 ease-out group-data-[copy-state=copied]:scale-100 group-data-[copy-state=copied]:opacity-100 motion-reduce:transform-none motion-reduce:transition-opacity"
+						class="code-copy-icon code-copy-icon-done"
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
 						height="24"
@@ -403,9 +391,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					</svg>
 				</button>
 			</div>
-			<div class="overflow-hidden rounded-t-md border-t border-border/60 bg-(--code-background)">
-				{props.pre}
-			</div>
+			<div class="code-block-content">{props.pre}</div>
 		</div>
 	);
 }

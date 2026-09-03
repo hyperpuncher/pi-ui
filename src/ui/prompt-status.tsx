@@ -8,12 +8,9 @@ import { syncHtml } from "./sync-html.ts";
 export function renderPromptStatus(state: AppStateSnapshot): string {
 	const activityText = state.extensionWorkingMessage ?? state.activityText;
 	return syncHtml(
-		<span
-			id="prompt-status"
-			class="inline-flex h-8 min-w-0 shrink-0 items-center gap-2"
-		>
+		<span id="prompt-status" class="prompt-status">
 			<span
-				class="inline-flex h-6 min-w-0 items-center gap-1.5 truncate font-mono text-xs leading-none text-muted-foreground"
+				class="prompt-status-message"
 				data-show="$_promptSubmitting"
 				style="display: none"
 			>
@@ -21,8 +18,8 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 				<span>Sending...</span>
 			</span>
 			{state.extensionWorkingVisible && activityText && (
-				<span class="inline-flex h-6 min-w-0 items-center truncate font-mono text-xs leading-none text-muted-foreground">
-					<span class="inline-flex items-center gap-1.5">
+				<span class="prompt-working-status">
+					<span class="prompt-working-content">
 						{state.extensionWorkingIndicator === undefined
 							? loaderIcon()
 							: state.extensionWorkingIndicator && (
@@ -33,17 +30,11 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 				</span>
 			)}
 			{state.extensionStatuses.map((status) => (
-				<span
-					class="hidden max-w-40 truncate font-mono text-xs text-muted-foreground sm:inline"
-					data-extension-status={status.key}
-					safe
-				>
+				<span class="extension-status" data-extension-status={status.key} safe>
 					{status.text}
 				</span>
 			))}
-			<span class="inline-flex shrink-0 items-center gap-1">
-				{renderUsageIndicator(state.usage)}
-			</span>
+			<span class="usage-indicators">{renderUsageIndicator(state.usage)}</span>
 		</span>,
 	);
 }
@@ -54,9 +45,9 @@ function renderUsageIndicator(usage: AppUsage): string {
 		? Math.max(0, ...usage.limits.windows.map((window) => window.usedPercent))
 		: 0;
 	return syncHtml(
-		<span class="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs">
+		<span class="usage-indicators">
 			<span
-				class="group inline-flex size-4 shrink-0 items-center justify-center"
+				class="usage-indicator"
 				data-tooltip="Context usage"
 				aria-label={usage.text}
 			>
@@ -65,7 +56,7 @@ function renderUsageIndicator(usage: AppUsage): string {
 			</span>
 			{usage.limits && (
 				<span
-					class="group inline-flex size-4 shrink-0 items-center justify-center"
+					class="usage-indicator"
 					data-tooltip={usage.limits.label}
 					aria-label={formatLimitsAriaLabel(usage.limits)}
 				>
@@ -88,33 +79,29 @@ function renderContextTooltip(usage: AppUsage): string {
 		<span
 			role="tooltip"
 			data-slot="tooltip-content"
-			class="grid w-60 max-w-none items-stretch gap-0 px-3 py-2.5 text-left"
+			class="usage-tooltip usage-tooltip-context"
 		>
 			{hasContext ? (
 				<>
-					<span class="mb-1.5 flex items-baseline justify-between gap-3">
-						<strong class="font-mono text-xs font-semibold">
-							Context usage
-						</strong>
-						<strong class="font-mono text-xs font-semibold">
+					<span class="usage-tooltip-heading">
+						<strong class="usage-tooltip-title">Context usage</strong>
+						<strong class="usage-tooltip-title">
 							{Math.round(contextPercent)}% used
 						</strong>
 					</span>
-					<span class="mb-1 flex items-baseline justify-between gap-3 font-mono text-[0.6875rem]">
-						<strong class="font-semibold">
-							{formatTokens(contextTokens)} tokens
-						</strong>
-						<span class="pi-inverse-fine-print">
+					<span class="usage-tooltip-row">
+						<strong>{formatTokens(contextTokens)} tokens</strong>
+						<span class="inverse-fine-print">
 							of {formatTokens(contextWindow)}
 						</span>
 					</span>
-					<span class="h-1 overflow-hidden rounded-full bg-background/20">
+					<span class="usage-meter">
 						<span
-							class="block h-full rounded-full bg-background"
+							class="usage-meter-value"
 							style={`width: ${clampPercent(contextPercent)}%`}
 						/>
 					</span>
-					<span class="pi-inverse-fine-print mt-1.5 flex items-baseline justify-between gap-3 font-mono text-[0.625rem]">
+					<span class="inverse-fine-print usage-tooltip-footer">
 						<span>
 							{usage.cacheHitPercent === undefined
 								? "cache hit unavailable"
@@ -125,13 +112,13 @@ function renderContextTooltip(usage: AppUsage): string {
 				</>
 			) : (
 				<>
-					<span class="mb-1 flex items-baseline justify-between gap-3 font-mono">
-						<strong class="text-xs font-semibold">Context usage</strong>
-						<span class="pi-inverse-fine-print text-[0.625rem]">
+					<span class="usage-tooltip-row">
+						<strong class="usage-tooltip-title">Context usage</strong>
+						<span class="inverse-fine-print usage-tooltip-small">
 							{usage.costText} session
 						</span>
 					</span>
-					<span class="pi-inverse-fine-print font-mono text-[0.6875rem]">
+					<span class="inverse-fine-print usage-tooltip-note">
 						Available after next response
 					</span>
 				</>
@@ -145,29 +132,29 @@ function renderLimitsTooltip(limits: AppUsageLimits): string {
 		<span
 			role="tooltip"
 			data-slot="tooltip-content"
-			class="grid w-52 max-w-none items-stretch gap-0 px-3 py-2.5 text-left"
+			class="usage-tooltip usage-tooltip-limits"
 		>
-			<strong class="mb-2 font-mono text-xs font-semibold">{limits.label}</strong>
+			<strong class="usage-tooltip-label">{limits.label}</strong>
 			{limits.status && (
-				<span class="pi-inverse-fine-print font-mono text-[0.6875rem]">
-					{limits.status}
-				</span>
+				<span class="inverse-fine-print usage-tooltip-note">{limits.status}</span>
 			)}
 			{limits.windows.map((window, index) => (
-				<span class={index === 0 ? "grid gap-0.5" : "mt-2 grid gap-0.5"}>
-					<span class="flex items-baseline justify-between gap-4 font-mono text-[0.6875rem]">
-						<strong class="font-semibold">{window.label}</strong>
-						<strong class="font-semibold">
-							{window.remainingPercent}% left
-						</strong>
+				<span
+					class={
+						index === 0 ? "usage-window" : "usage-window usage-window-spaced"
+					}
+				>
+					<span class="usage-window-heading">
+						<strong>{window.label}</strong>
+						<strong>{window.remainingPercent}% left</strong>
 					</span>
-					<span class="h-1 overflow-hidden rounded-full bg-background/20">
+					<span class="usage-meter">
 						<span
-							class="block h-full rounded-full bg-background"
+							class="usage-meter-value"
 							style={`width: ${clampPercent(window.remainingPercent)}%`}
 						/>
 					</span>
-					<span class="pi-inverse-fine-print text-right font-mono text-[0.625rem]">
+					<span class="inverse-fine-print usage-window-reset">
 						{window.resetText === "?"
 							? "reset time unavailable"
 							: `resets in ${window.resetText}`}
@@ -191,11 +178,7 @@ function formatLimitsAriaLabel(limits: AppUsageLimits): string {
 function usageRing(percent: number, className: string): string {
 	const circumference = 2 * Math.PI * 10;
 	return syncHtml(
-		<svg
-			class="size-4 -rotate-90 opacity-60 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-			viewBox="0 0 24 24"
-			aria-hidden="true"
-		>
+		<svg class="usage-ring" viewBox="0 0 24 24" aria-hidden="true">
 			<circle
 				cx="12"
 				cy="12"
@@ -203,7 +186,7 @@ function usageRing(percent: number, className: string): string {
 				fill="none"
 				stroke="currentColor"
 				stroke-width="3"
-				class="text-muted-foreground/20"
+				class="usage-ring-track"
 			/>
 			<circle
 				cx="12"
@@ -213,7 +196,7 @@ function usageRing(percent: number, className: string): string {
 				stroke="currentColor"
 				stroke-width="3"
 				stroke-linecap="round"
-				class={`${className} transition-[stroke-dashoffset] duration-250 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transition-none`}
+				class={`${className} usage-ring-value`}
 				stroke-dasharray={circumference}
 				stroke-dashoffset={
 					circumference - (clampPercent(percent) / 100) * circumference
@@ -224,7 +207,7 @@ function usageRing(percent: number, className: string): string {
 }
 
 function usageColor(percent: number): string {
-	return percent > 90 ? "text-destructive" : "text-foreground";
+	return percent > 90 ? "usage-ring-danger" : "usage-ring-normal";
 }
 
 function clampPercent(value: number): number {
@@ -232,7 +215,5 @@ function clampPercent(value: number): number {
 }
 
 export function loaderIcon() {
-	return (
-		<Icon icon={Loader} label="Loading" role="status" class="size-3 animate-spin" />
-	);
+	return <Icon icon={Loader} label="Loading" role="status" class="icon-spin" />;
 }

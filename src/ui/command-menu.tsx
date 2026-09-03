@@ -56,14 +56,12 @@ function renderCommandRow(item: AppCommandMetadata): string {
 			data-keywords={`${item.description} ${item.id}`}
 			data-on:click={commandActions[item.id]}
 		>
-			<span class="min-w-0">
-				<span class="block truncate">{item.title}</span>
-				<span class="block truncate text-xs text-muted-foreground">
-					{item.description}
-				</span>
+			<span class="command-item-content">
+				<span class="command-item-title">{item.title}</span>
+				<span class="command-item-description">{item.description}</span>
 			</span>
 			{item.shortcut && (
-				<span class="ml-auto">
+				<span class="command-item-shortcut">
 					<ShortcutKbd shortcut={item.shortcut} />
 				</span>
 			)}

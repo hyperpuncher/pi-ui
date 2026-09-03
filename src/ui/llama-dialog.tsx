@@ -20,7 +20,7 @@ export function renderLlamaDialog(dialog: AppLlamaDialog | undefined): string {
 export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): string {
 	const haystacks = dialog?.models.map((model) => model.id.toLowerCase()) ?? [];
 	return syncHtml(
-		<div id="llama-dialog-content" class="sm:max-w-2xl">
+		<div id="llama-dialog-content" class="dialog-extra-wide">
 			{dialog ? (
 				<>
 					<header>
@@ -37,7 +37,7 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 							<input
 								id="llama-model-search"
 								type="search"
-								class="input w-full"
+								class="input"
 								placeholder="Search models..."
 								autocomplete="off"
 								autocorrect="off"
@@ -47,19 +47,16 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 							/>
 						</div>
 					)}
-					<div class="max-h-[60vh] overflow-y-auto py-1">
+					<div class="dialog-option-list">
 						{dialog.models.length === 0 ? (
-							<p
-								class="py-6 text-center text-sm text-muted-foreground"
-								safe
-							>
+							<p class="dialog-empty" safe>
 								{dialog.error ?? dialog.status ?? "No models found."}
 							</p>
 						) : (
 							<>
 								{dialog.models.map((model) => renderModel(model, dialog))}
 								<p
-									class="py-6 text-center text-sm text-muted-foreground"
+									class="dialog-empty"
 									style="display: none"
 									data-show={`!${JSON.stringify(haystacks)}.some((model) => model.includes($_llamaSearch.trim().toLowerCase()))`}
 								>
@@ -69,8 +66,8 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 						)}
 					</div>
 					{dialog.progress && (
-						<div class="space-y-2">
-							<div class="flex justify-between gap-4 text-sm text-muted-foreground">
+						<div class="dialog-flow-compact">
+							<div class="dialog-progress-heading">
 								<span safe>{dialog.progress.label}</span>
 								{dialog.progress.ratio !== undefined && (
 									<span>
@@ -79,7 +76,7 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 								)}
 							</div>
 							<div
-								class="h-2 overflow-hidden rounded-full bg-muted"
+								class="dialog-progress-track"
 								role="progressbar"
 								aria-label={dialog.progress.label}
 								aria-valuemin="0"
@@ -91,7 +88,7 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 								}
 							>
 								<div
-									class="h-full bg-primary transition-[width]"
+									class="dialog-progress-value"
 									style={`width: ${(dialog.progress.ratio ?? 0) * 100}%`}
 								/>
 							</div>
@@ -99,12 +96,7 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 					)}
 					{(dialog.status || dialog.error) && dialog.models.length > 0 && (
 						<p
-							class={[
-								"text-sm",
-								dialog.error
-									? "pi-error-foreground"
-									: "text-muted-foreground",
-							]}
+							class={["dialog-message", dialog.error && "error-foreground"]}
 							safe
 						>
 							{dialog.error ?? dialog.status}
@@ -134,7 +126,7 @@ function renderModel(model: AppLlamaModel, dialog: AppLlamaDialog): string {
 	return syncHtml(
 		<button
 			type="button"
-			class="btn h-auto w-full justify-between gap-4 px-3 py-2 text-left"
+			class="btn dialog-option dialog-option-between"
 			data-variant="ghost"
 			disabled={busy}
 			data-show={`${JSON.stringify(model.id.toLowerCase())}.includes($_llamaSearch.trim().toLowerCase())`}
@@ -142,14 +134,10 @@ function renderModel(model: AppLlamaModel, dialog: AppLlamaDialog): string {
 			payload: { llamaModel: ${JSON.stringify(model.id)} },
 			})`}
 		>
-			<span class="min-w-0 truncate font-mono text-sm" safe>
+			<span class="dialog-model-name" safe>
 				{model.id}
 			</span>
-			<span
-				class="badge shrink-0"
-				data-variant={active ? "default" : "secondary"}
-				safe
-			>
+			<span class="badge" data-variant={active ? "default" : "secondary"} safe>
 				{dialog.busyModel === model.id
 					? active
 						? "unloading"

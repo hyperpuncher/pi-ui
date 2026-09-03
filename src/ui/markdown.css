@@ -1,0 +1,319 @@
+@layer base {
+	html.dark .shiki span {
+		/* stylelint-disable-next-line declaration-no-important -- generated Shiki token boundary */
+		color: var(--shiki-dark) !important;
+	}
+
+	.streaming-token {
+		background-color: light-dark(
+			var(--shiki-light-bg, transparent),
+			var(--shiki-dark-bg, transparent)
+		);
+		color: light-dark(var(--shiki-light), var(--shiki-dark));
+	}
+}
+
+@layer components {
+	.markdown-table {
+		width: 100%;
+		min-width: max-content;
+		table-layout: auto;
+		font-size: var(--text-sm);
+	}
+	.markdown-table-heading,
+	.markdown-table-cell {
+		padding: 0.5rem 0.75rem;
+		vertical-align: top;
+		overflow-wrap: break-word;
+		white-space: normal;
+	}
+	.markdown-table-heading {
+		font-weight: 600;
+		text-align: start;
+	}
+
+	.code-block {
+		margin-block: 1rem;
+		overflow: hidden;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		background: var(--surface-control);
+	}
+	.code-block pre {
+		border-radius: 0;
+		background: var(--surface-code);
+		padding-block: 0;
+		padding-inline: 1rem;
+		font-size: 0.8125rem;
+		line-height: 1.375rem;
+		tab-size: 4;
+	}
+	.code-block pre:has(> .streaming-code) {
+		padding-inline: 0;
+	}
+	.code-block-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.125rem 0.75rem;
+		color: var(--text-muted);
+		font: var(--text-xs)/1.25 var(--font-mono);
+	}
+	.code-copy-button {
+		position: relative;
+	}
+	.code-copy-icon {
+		transition:
+			opacity 100ms ease-out,
+			scale 100ms ease-out;
+	}
+	.code-copy-icon-done {
+		position: absolute;
+		opacity: 0;
+		scale: 0.95;
+	}
+	.code-copy-button[data-copy-state="copied"] .code-copy-icon-idle {
+		opacity: 0;
+		scale: 0.95;
+	}
+	.code-copy-button[data-copy-state="copied"] .code-copy-icon-done {
+		opacity: 1;
+		scale: 1;
+	}
+	.code-block-content {
+		overflow: hidden;
+		border-top: 1px solid var(--border);
+		border-radius: var(--radius-md) var(--radius-md) 0 0;
+		background: var(--surface-code);
+	}
+
+	.markdown-content {
+		line-height: 1.7;
+		overflow-wrap: anywhere;
+	}
+
+	.markdown-content > :first-child {
+		margin-top: 0;
+	}
+
+	.markdown-content > :last-child {
+		margin-bottom: 0;
+	}
+
+	.markdown-content :where(h1, h2, h3, h4, h5, h6) {
+		margin-block: 1.4em 0.45em;
+		font-weight: 600;
+		line-height: 1.2;
+	}
+
+	.markdown-content h1 {
+		font-size: 1.5rem;
+	}
+
+	.markdown-content h2 {
+		font-size: 1.25rem;
+	}
+
+	.markdown-content h3 {
+		font-size: var(--text-lg);
+	}
+
+	.markdown-content h4 {
+		font-size: var(--text-base);
+	}
+
+	.markdown-content h5 {
+		font-size: var(--text-sm);
+	}
+
+	.markdown-content h6 {
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+		letter-spacing: 0.025em;
+	}
+
+	.markdown-content :where(p, ul, ol, blockquote, .table-container) {
+		margin-block: 0.75rem;
+	}
+
+	.markdown-content p {
+		white-space: pre-wrap;
+	}
+
+	.markdown-content .table-container {
+		--markdown-table-border: oklch(from var(--text) l c h / 10%);
+
+		position: relative;
+		left: 50%;
+		width: fit-content;
+		min-width: 100%;
+		max-width: calc(100cqw - 2rem);
+		overflow-x: auto;
+		border: 1px solid var(--markdown-table-border);
+		border-radius: var(--radius-md);
+		transform: translateX(-50%);
+	}
+
+	.markdown-content .table-container table {
+		width: max-content;
+		min-width: 100%;
+		border-collapse: separate;
+		border-spacing: 0;
+	}
+
+	@media (width >= 40rem) {
+		.markdown-content .table-container {
+			max-width: calc(100cqw - 3rem);
+		}
+	}
+
+	@media (width >= 80rem) {
+		.markdown-content .table-container {
+			max-width: calc(100cqw - 4rem);
+		}
+	}
+
+	.markdown-content .table-container :where(th, td) {
+		max-width: 24rem;
+		border-block-end: 1px solid var(--markdown-table-border);
+		border-inline-end: 1px solid var(--markdown-table-border);
+	}
+
+	.markdown-content .table-container :where(th, td):last-child {
+		border-inline-end: 0;
+	}
+
+	.markdown-content .table-container tbody tr:last-child td {
+		border-block-end: 0;
+	}
+
+	.markdown-content .table-container th {
+		background: var(--surface-control);
+		white-space: nowrap;
+	}
+
+	.markdown-content .table-container tr:nth-child(even) td {
+		background: oklch(from var(--text) l c h / 3%);
+	}
+
+	.markdown-content .table-container tbody tr:is(:hover, :focus-within) td {
+		background: oklch(from var(--text) l c h / 7%);
+	}
+
+	.markdown-content :where(ul, ol) {
+		padding-left: 1.5rem;
+	}
+
+	.markdown-content ul {
+		list-style: disc;
+	}
+
+	.markdown-content ol {
+		list-style: decimal;
+	}
+
+	.markdown-content li {
+		margin-block: 0.25rem;
+	}
+
+	.markdown-content li::marker {
+		color: var(--text-muted);
+	}
+
+	.markdown-content .task-list-item {
+		list-style: none;
+	}
+
+	.markdown-content .task-list-item-checkbox {
+		width: 0.875rem;
+		height: 0.875rem;
+		margin-inline: -1.375rem 0.5rem;
+		accent-color: var(--action-primary);
+		cursor: default;
+		opacity: 1;
+		vertical-align: -0.125rem;
+	}
+
+	.markdown-content blockquote {
+		border-left: 2px solid var(--border);
+		padding-left: 1rem;
+		color: var(--text-muted);
+	}
+
+	.markdown-content a {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.markdown-content code:not(pre code) {
+		border-radius: var(--radius-sm);
+		background: light-dark(
+			var(--surface-muted),
+			color-mix(in oklch, var(--surface-code), var(--surface-muted))
+		);
+		padding: 0.25em 0.5em;
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+		box-decoration-break: clone;
+	}
+
+	.markdown-content pre code {
+		background: transparent;
+		padding: 0;
+	}
+
+	.streaming-code {
+		display: grid;
+		grid-template-columns: max-content minmax(0, 1fr);
+		background: var(--surface-code);
+	}
+
+	.streaming-code-line-number {
+		box-sizing: content-box;
+		min-width: 1ch;
+		padding-inline: 2ch 1ch;
+		color: var(--text-muted);
+		text-align: right;
+		user-select: none;
+	}
+
+	.streaming-code-line {
+		min-width: 0;
+		padding-inline: 1ch;
+		white-space: pre-wrap;
+	}
+
+	.markdown-content .pierre-code {
+		display: block;
+		margin-block: 1rem;
+		overflow: hidden;
+		border-radius: var(--radius-lg);
+	}
+
+	.markdown-content .code-block .pierre-code {
+		margin-block: 0;
+		border-radius: 0;
+	}
+
+	.markdown-content .shiki {
+		margin-block: 1rem;
+		overflow: auto;
+		border-radius: var(--radius-lg);
+		padding: 1rem;
+		font-size: var(--text-sm);
+		line-height: 1.625;
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+	}
+
+	.markdown-content .shiki code {
+		white-space: pre-wrap;
+	}
+
+	.markdown-content hr {
+		margin-block: 1.5rem;
+		border: 0;
+		border-block-start: 1px solid var(--border);
+	}
+}

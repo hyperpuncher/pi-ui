@@ -1,0 +1,126 @@
+@layer components {
+	.icon-default {
+		width: 0.875rem;
+		height: 0.875rem;
+	}
+	.extension-widgets {
+		display: grid;
+		gap: 0.25rem;
+	}
+	.extension-widget {
+		border-radius: var(--radius-md);
+		background: var(--surface-muted);
+		padding: 0.375rem 0.5rem;
+		color: var(--text-muted);
+		font: var(--text-xs)/1.25 var(--font-mono);
+	}
+
+	.session-transition {
+		display: grid;
+		min-height: 0;
+		grid-area: 1 / 1;
+		place-items: center;
+		padding-inline: 1.5rem;
+		text-align: center;
+	}
+	.session-transition-error {
+		max-width: 32rem;
+	}
+	.session-transition-title {
+		font-weight: 500;
+	}
+	.session-transition-detail {
+		margin: 0.5rem 0 0;
+		color: var(--text-muted);
+		font-size: var(--text-sm);
+	}
+	.session-transition-loading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		color: var(--text-muted);
+	}
+	.session-transition-spinner {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.debug-panel {
+		position: fixed;
+		z-index: 50;
+		inset-block-start: 0.75rem;
+		inset-inline-end: 0.75rem;
+		display: none;
+		min-width: 11rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		background: var(--surface-raised);
+		padding: 0.5rem;
+		color: var(--text);
+		font: 0.65rem/1.25 var(--font-mono);
+		box-shadow: var(--shadow-lg);
+		backdrop-filter: blur(8px);
+	}
+	.debug-title {
+		margin-block-end: 0.25rem;
+		color: var(--text-muted);
+		text-transform: uppercase;
+	}
+	.debug-values {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0.25rem 0.75rem;
+	}
+	.debug-values dt {
+		color: var(--text-muted);
+	}
+	@media (width >= 48rem) {
+		.debug-panel {
+			display: block;
+		}
+	}
+
+	.fine-print {
+		color: var(--text-muted);
+	}
+
+	.inverse-fine-print {
+		color: light-dark(var(--gray-2), var(--gray-6));
+	}
+
+	.formatted-date {
+		flex-shrink: 0;
+		color: var(--text-muted);
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-variant-numeric: tabular-nums;
+		line-height: 1rem;
+		text-transform: lowercase;
+		white-space: nowrap;
+	}
+
+	.thought-foreground {
+		color: light-dark(var(--gray-6), var(--gray-4));
+	}
+
+	.error-foreground {
+		color: var(--status-error);
+	}
+
+	.warning-foreground {
+		color: var(--status-warning);
+	}
+}
+
+@layer utilities {
+	body:not([data-keybind-hints]) [data-keybind-hint],
+	[data-minimal-mode] [data-keybind-hint] {
+		display: none;
+	}
+
+	@media (width <= 48rem) {
+		[data-keybind-hint] {
+			display: none;
+		}
+	}
+}

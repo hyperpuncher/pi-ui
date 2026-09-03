@@ -51,6 +51,7 @@ export interface RouteContext {
 	keybindHints: boolean;
 	minimalMode: boolean;
 	toolOutputHidden: boolean;
+	themeLab: boolean;
 	store: AppStore;
 	renderer: UiRenderer;
 	resources: RouteResources;
@@ -58,7 +59,6 @@ export interface RouteContext {
 	openWorkspace(path: string): Promise<boolean>;
 	openPath(path: string): Promise<void>;
 	isLocalRequest(request: Request): boolean;
-	readBasecoat(): Promise<ArrayBuffer>;
 	serveStatic(request: Request): Promise<Response>;
 }
 

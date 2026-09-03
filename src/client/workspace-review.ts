@@ -55,7 +55,7 @@ type DiffLayout = NonNullable<WorkspaceReviewPreferences["layout"]>;
 type CommitView = { detail: WorkspaceCommitDetail; items: ReviewItem[] };
 
 const diffListEndPadding = 10;
-const workspaceGap = 4;
+const workspaceGap = 2;
 const codeThemeLight = document.body.dataset.codeThemeLight;
 const codeThemeDark = document.body.dataset.codeThemeDark;
 if (codeThemeLight && codeThemeDark) {
@@ -197,6 +197,7 @@ window.piUi.workspaceReview = {
 };
 
 history.addEventListener("scroll", maybeLoadOlderHistory, { passive: true });
+history.addEventListener("keydown", handleHistoryKeydown);
 allButton.addEventListener("click", () => setMode("all"));
 selectedButton.addEventListener("click", () => setMode("selected"));
 splitButton.addEventListener("click", () => setLayout("split"));
@@ -621,7 +622,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 		layout: {
 			gap: workspaceGap,
 			paddingBottom: diffListEndPadding,
-			paddingTop: workspaceGap,
+			paddingTop: 0,
 		},
 		lineHoverHighlight: "both",
 		overflow: wrap ? "wrap" : "scroll",
@@ -630,21 +631,21 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 		themeType: document.documentElement.classList.contains("dark") ? "dark" : "light",
 		unsafeCSS: `
 			:host {
-				--diffs-bg: var(--pi-code-surface);
-				--diffs-dark-bg: var(--pi-code-surface);
-				--diffs-bg-selection-override: var(--pi-selection-background);
-				--diffs-bg-selection-number-override: var(--pi-selection-background);
-				--diffs-editor-selection-bg: var(--pi-selection-background) !important;
+				--diffs-bg: var(--surface-code);
+				--diffs-dark-bg: var(--surface-code);
+				--diffs-bg-selection-override: var(--selection);
+				--diffs-bg-selection-number-override: var(--selection);
+				--diffs-editor-selection-bg: var(--selection);
 				--diffs-font-family: var(--font-mono);
 				--diffs-gap-block: 0px;
 				--diffs-gap-style: 0 solid transparent;
 				--diffs-header-font-family: var(--font-sans);
-				--diffs-light-bg: var(--pi-code-surface);
+				--diffs-light-bg: var(--surface-code);
 				--diffs-scrollbar-gutter-override: 0px;
 			}
 
 			::selection {
-				background: var(--pi-selection-background);
+				background: var(--selection);
 				color: currentColor;
 			}
 
@@ -680,7 +681,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
 			}
 
 			[data-code] {
-				padding-bottom: 0 !important;
+				padding-bottom: 0;
 			}
 
 			[data-annotation-content] {
@@ -738,6 +739,10 @@ function focusGit(): void {
 	visibility.open();
 	setPanelMode("git");
 	focusAfterOpen(() => {
+		if (selection.kind === "commit" || snapshot.changes.length === 0) {
+			focusHistoryCommit();
+			return;
+		}
 		const path =
 			tree.getSelectedPaths()[0] ??
 			tree.getFocusedPath() ??
@@ -750,6 +755,46 @@ function focusGit(): void {
 			(root ?? treeHost).focus({ preventScroll: true });
 		});
 	});
+}
+
+function historyCommitButtons(): HTMLButtonElement[] {
+	return [...history.querySelectorAll<HTMLButtonElement>(".review-commit")];
+}
+
+function focusHistoryCommit(): void {
+	const button =
+		history.querySelector<HTMLButtonElement>('.review-commit[aria-pressed="true"]') ??
+		historyCommitButtons()[0];
+	(button ?? history).focus({ preventScroll: true });
+	button?.scrollIntoView({ block: "nearest" });
+}
+
+function handleHistoryKeydown(event: KeyboardEvent): void {
+	if (
+		event.defaultPrevented ||
+		event.altKey ||
+		event.ctrlKey ||
+		event.metaKey ||
+		event.shiftKey ||
+		!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.code)
+	) {
+		return;
+	}
+	const buttons = historyCommitButtons();
+	if (buttons.length === 0) return;
+	const current =
+		event.target instanceof HTMLButtonElement ? buttons.indexOf(event.target) : -1;
+	let index = current;
+	if (event.code === "ArrowDown") index = Math.min(current + 1, buttons.length - 1);
+	if (event.code === "ArrowUp")
+		index = current < 0 ? buttons.length - 1 : Math.max(0, current - 1);
+	if (event.code === "Home") index = 0;
+	if (event.code === "End") index = buttons.length - 1;
+	const button = buttons[index];
+	if (!button) return;
+	event.preventDefault();
+	button.click();
+	requestAnimationFrame(focusHistoryCommit);
 }
 
 function focusEditor(): void {
@@ -780,6 +825,18 @@ function bindWorkspaceKeyboardNavigation(): void {
 		const path = event.composedPath();
 		if (path.some(isTextInput)) return;
 		const arrow = event.code === "KeyJ" ? "ArrowDown" : "ArrowUp";
+
+		if (path.includes(history)) {
+			event.preventDefault();
+			path[0]?.dispatchEvent(
+				new KeyboardEvent("keydown", {
+					bubbles: true,
+					code: arrow,
+					key: arrow,
+				}),
+			);
+			return;
+		}
 
 		if (path.some((target) => target === treeHost || target === fileTreeHost)) {
 			event.preventDefault();
@@ -837,7 +894,8 @@ function renderReviewContextMenu(
 	});
 	const discard = document.createElement("button");
 	discard.type = "button";
-	discard.className = "workspace-tree-context-menu-item text-destructive";
+	discard.className =
+		"workspace-tree-context-menu-item workspace-tree-context-menu-item-destructive";
 	discard.setAttribute("role", "menuitem");
 	discard.textContent = "Discard changes";
 	discard.addEventListener("click", () => {
@@ -917,7 +975,7 @@ function createVisibility(
 		if (open !== wasOpen) onChange(open);
 	};
 	syncAvailability();
-	applyOpen(app.classList.contains("pi-review-open"));
+	applyOpen(app.classList.contains("review-open"));
 	return {
 		applyOpen,
 		isAvailable: () => available,

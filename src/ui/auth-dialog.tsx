@@ -24,7 +24,7 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 
 export function renderAuthDialogContent(dialog: AppAuthDialog | undefined): string {
 	return syncHtml(
-		<div id="auth-dialog-content" class="sm:max-w-lg">
+		<div id="auth-dialog-content" class="dialog-wide">
 			{dialog ? renderDialogContent(dialog) : <div />}
 		</div>,
 	);
@@ -61,7 +61,7 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 					<input
 						id="auth-provider-search"
 						type="search"
-						class="input w-full"
+						class="input"
 						placeholder="Search providers..."
 						autocomplete="off"
 						autocorrect="off"
@@ -72,9 +72,9 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 					/>
 				</div>
 			)}
-			<div id="auth-provider-list" class="max-h-[60vh] overflow-y-auto py-1">
+			<div id="auth-provider-list" class="dialog-option-list">
 				{dialog.providers.length === 0 ? (
-					<p class="py-6 text-center text-sm text-muted-foreground" safe>
+					<p class="dialog-empty" safe>
 						{dialog.error ??
 							dialog.status ??
 							(dialog.mode === "login"
@@ -87,7 +87,7 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 							renderProviderButton(provider, dialog.mode),
 						)}
 						<p
-							class="py-6 text-center text-sm text-muted-foreground"
+							class="dialog-empty"
 							role="status"
 							style="display: none"
 							data-show={`!${JSON.stringify(providerHaystacks)}.some((provider) => provider.includes($_authSearch.trim().toLowerCase()))`}
@@ -119,7 +119,7 @@ function renderProviderButton(
 	return syncHtml(
 		<button
 			type="button"
-			class="btn h-auto w-full justify-between gap-4 px-3 py-2 text-left"
+			class="btn dialog-option dialog-option-between"
 			data-variant="ghost"
 			data-show={`${JSON.stringify(providerSearchHaystack(provider))}.includes($_authSearch.trim().toLowerCase())`}
 			data-on:click={`
@@ -130,15 +130,15 @@ function renderProviderButton(
 				});
 			`}
 		>
-			<span class="min-w-0">
-				<span class="block truncate" safe>
+			<span class="dialog-option-text">
+				<span class="dialog-option-title" safe>
 					{provider.name}
 				</span>
-				<span class="block truncate font-mono text-xs text-muted-foreground" safe>
+				<span class="dialog-option-description" safe>
 					{provider.id}
 				</span>
 			</span>
-			<span class="badge shrink-0" data-variant="secondary">
+			<span class="badge" data-variant="secondary">
 				{provider.authType === "oauth" ? "Subscription" : "API key"}
 			</span>
 		</button>,
@@ -159,11 +159,11 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 				</h2>
 				{dialog.status && <p safe>{dialog.status}</p>}
 			</header>
-			<div class="space-y-4">
+			<div class="dialog-flow">
 				{dialog.url && (
-					<div class="space-y-2">
+					<div class="dialog-flow-compact">
 						<a
-							class="block break-all text-primary underline"
+							class="dialog-link"
 							href={dialog.url}
 							target="_blank"
 							rel="noreferrer"
@@ -172,32 +172,30 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 							{dialog.url}
 						</a>
 						{dialog.instructions && (
-							<p class="text-sm text-muted-foreground" safe>
+							<p class="dialog-description" safe>
 								{dialog.instructions}
 							</p>
 						)}
 					</div>
 				)}
 				{dialog.deviceCode && (
-					<div class="rounded-lg border p-3">
-						<p class="text-sm text-muted-foreground">
-							Enter this code in the browser:
-						</p>
-						<code class="mt-1 block text-lg font-semibold" safe>
+					<div class="dialog-callout">
+						<p class="dialog-description">Enter this code in the browser:</p>
+						<code class="dialog-device-code" safe>
 							{dialog.deviceCode}
 						</code>
 					</div>
 				)}
 				{dialog.prompt && renderAuthenticationPrompt(dialog)}
 				{dialog.progress.length > 0 && (
-					<div class="space-y-1 text-sm text-muted-foreground">
+					<div class="dialog-progress-messages">
 						{dialog.progress.map((message) => (
 							<p safe>{message}</p>
 						))}
 					</div>
 				)}
 				{dialog.error && (
-					<p class="pi-error-foreground text-sm" safe>
+					<p class="error-foreground dialog-message" safe>
 						{dialog.error}
 					</p>
 				)}
@@ -229,14 +227,14 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 	const prompt = dialog.prompt!;
 	if (prompt.options) {
 		return syncHtml(
-			<div class="space-y-2">
-				<p class="text-sm font-medium" safe>
+			<div class="dialog-flow-compact">
+				<p class="dialog-prompt" safe>
 					{prompt.message}
 				</p>
 				{prompt.options.map((option) => (
 					<button
 						type="button"
-						class="btn h-auto w-full justify-start px-3 py-2 text-left"
+						class="btn dialog-option"
 						data-variant="outline"
 						data-on:click={`
 							$authInput = ${JSON.stringify(option.id)};
@@ -282,7 +280,7 @@ function renderResult(dialog: AppAuthDialog): string {
 				<h2 id="auth-dialog-title">
 					{dialog.error ? "Authentication failed" : "Authentication updated"}
 				</h2>
-				<p class={dialog.error ? "pi-error-foreground" : undefined} safe>
+				<p class={dialog.error ? "error-foreground" : undefined} safe>
 					{dialog.error ?? dialog.status}
 				</p>
 			</header>

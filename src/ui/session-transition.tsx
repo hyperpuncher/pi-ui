@@ -34,7 +34,7 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 	return syncHtml(
 		<main
 			id="session-transition"
-			class="col-start-1 row-start-1 grid min-h-0 place-items-center px-6 text-center"
+			class="session-transition"
 			style={visible ? undefined : "display: none"}
 			data-show="$_sessionTransitionVisible"
 			role={transition.status === "error" ? "alert" : "status"}
@@ -47,17 +47,17 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 			}
 		>
 			{transition.status === "error" ? (
-				<div class="max-w-lg">
-					<p class="pi-error-foreground m-0 font-medium">
+				<div class="session-transition-error">
+					<p class="error-foreground session-transition-title">
 						Session transition failed
 					</p>
-					<p class="mt-2 mb-0 text-sm text-muted-foreground" safe>
+					<p class="session-transition-detail" safe>
 						{transition.message}
 					</p>
 				</div>
 			) : (
-				<div class="flex flex-col items-center text-muted-foreground">
-					<Icon icon={Loader} class="size-5 animate-spin" />
+				<div class="session-transition-loading">
+					<Icon icon={Loader} class="icon-spin session-transition-spinner" />
 					<span class="sr-only" safe>
 						{targetPath}
 					</span>

@@ -24,7 +24,7 @@ export function renderExtensionDialogContent(
 	dialog: AppExtensionDialog | undefined,
 ): string {
 	return syncHtml(
-		<div id="extension-dialog-content" class="sm:max-w-lg">
+		<div id="extension-dialog-content" class="dialog-wide">
 			{dialog ? renderContent(dialog) : <div />}
 		</div>,
 	);
@@ -44,11 +44,11 @@ function renderSelect(dialog: Extract<AppExtensionDialog, { kind: "select" }>): 
 					{dialog.title}
 				</h2>
 			</header>
-			<div class="max-h-[60vh] space-y-1 overflow-y-auto py-1">
+			<div class="dialog-option-list">
 				{dialog.options.map((option) => (
 					<button
 						type="button"
-						class="btn h-auto w-full justify-start px-3 py-2 text-left"
+						class="btn dialog-option"
 						data-variant="ghost"
 						data-on:click={responseAction(
 							dialog.id,
@@ -115,7 +115,7 @@ function renderText(
 				{dialog.kind === "editor" ? (
 					<textarea
 						id="extension-dialog-input"
-						class="min-h-40 resize-y"
+						class="dialog-editor"
 						placeholder={dialog.placeholder}
 						data-bind:extension-response
 						autofocus

@@ -36,26 +36,23 @@ export function renderFontDialog(): string {
 			`}
 			onclick="if (event.target === this) this.close()"
 		>
-			<div class="flex h-[min(48rem,calc(100vh-2rem))] w-[min(42rem,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
-				<header class="shrink-0 border-b border-border px-5 pt-5 pb-4">
-					<div class="flex items-start justify-between gap-4">
+			<div class="font-dialog-panel">
+				<header class="preference-dialog-header">
+					<div class="preference-dialog-heading">
 						<div>
-							<h2 id="font-dialog-title" class="text-base font-semibold">
-								Fonts
-							</h2>
-							<p class="mt-1 text-xs text-muted-foreground">
+							<h2 id="font-dialog-title">Fonts</h2>
+							<p class="preference-dialog-description">
 								Local fonts are preferred, with a cached web fallback.
 							</p>
 						</div>
 						<div
-							class="font-kind flex rounded-md border border-border bg-muted p-0.5"
+							class="font-kind segmented-control"
 							role="group"
 							aria-label="Font use"
 						>
 							{(["sans", "mono"] as const).map((kind) => (
 								<button
 									type="button"
-									class="rounded-sm px-3 py-1 text-xs text-muted-foreground"
 									data-on:click={`$fontKind = ${JSON.stringify(kind)}`}
 									data-attr:aria-pressed={`$fontKind === ${JSON.stringify(kind)} ? 'true' : 'false'`}
 									aria-pressed={kind === "sans" ? "true" : "false"}
@@ -68,7 +65,7 @@ export function renderFontDialog(): string {
 					<input
 						id="font-search"
 						type="search"
-						class="input mt-4 h-8 w-full text-xs"
+						class="input preference-dialog-search"
 						placeholder="Search fonts…"
 						aria-label="Search fonts"
 						autocomplete="off"
@@ -76,10 +73,10 @@ export function renderFontDialog(): string {
 						data-bind:font-search=""
 					/>
 				</header>
-				<div class="min-h-0 flex-1 overflow-y-auto p-5">
+				<div class="preference-dialog-body">
 					{(["sans", "mono"] as const).map((kind) => (
 						<div
-							class="grid auto-rows-max grid-cols-2 content-start gap-2 max-sm:grid-cols-1"
+							class="preference-grid"
 							role="radiogroup"
 							aria-label={kind === "sans" ? "Interface font" : "Code font"}
 							data-show={`$fontKind === ${JSON.stringify(kind)}`}
@@ -90,10 +87,10 @@ export function renderFontDialog(): string {
 						</div>
 					))}
 				</div>
-				<footer class="flex min-h-11 shrink-0 items-center justify-end border-t border-border px-5 py-2">
+				<footer class="preference-dialog-footer">
 					<button
 						type="button"
-						class="btn h-7 px-3 text-xs"
+						class="btn"
 						data-variant="outline"
 						onclick="this.closest('dialog').close()"
 					>
@@ -117,7 +114,7 @@ function renderFontCard(
 	return syncHtml(
 		<label
 			for={id}
-			class="block min-w-0 cursor-pointer rounded-lg border border-border bg-card p-4 text-left transition-[border-color,transform] duration-150 ease-(--pi-ease-out) hover:border-foreground/35 active:scale-[0.985] has-[input:checked]:border-primary has-[input:checked]:ring-2 has-[input:checked]:ring-primary has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-ring motion-reduce:transition-colors active:motion-reduce:scale-100"
+			class="font-card"
 			style={`font-family: ${fontStack(kind, font)}`}
 			data-show={`
 				!$fontSearch.trim() ||
@@ -136,22 +133,17 @@ function renderFontCard(
 				data-bind={preferenceSignal}
 				data-on:change={`@post('${endpoints.fonts}', { payload: { fontKind: ${JSON.stringify(kind)}, fontName: ${JSON.stringify(font)} } })`}
 			/>
-			<strong class="block truncate text-sm font-semibold">{label}</strong>
+			<strong class="font-card-title">{label}</strong>
 			{kind === "mono" ? (
-				<pre
-					data-font-code-preview
-					class="m-0 mt-3 overflow-x-auto font-[inherit] text-[13px] leading-5 whitespace-pre [&_code]:font-[inherit]"
-				>
+				<pre data-font-code-preview class="font-card-code">
 					<code>{codePreview}</code>
 				</pre>
 			) : (
 				<>
-					<span class="mt-3 block text-base leading-7">
+					<span class="font-card-sample">
 						The quick brown fox jumps over the lazy dog.
 					</span>
-					<span class="mt-2 block truncate text-[11px] text-muted-foreground">
-						Aa Bb Cc 0123456789
-					</span>
+					<span class="font-card-glyphs">Aa Bb Cc 0123456789</span>
 				</>
 			)}
 		</label>,

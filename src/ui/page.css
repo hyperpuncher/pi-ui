@@ -1,0 +1,215 @@
+@layer theme {
+	:root {
+		--workspace-gap: 0.125rem;
+		--workspace-inset: 0.25rem;
+	}
+}
+
+@layer components {
+	.file-drop-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 80;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: light-dark(oklch(100% 0 none / 55%), oklch(0% 0 none / 55%));
+		opacity: 0;
+		backdrop-filter: blur(4px);
+		pointer-events: none;
+		transition:
+			opacity 100ms ease-out,
+			display 100ms allow-discrete;
+	}
+
+	.file-drop-overlay.file-drop-active {
+		opacity: 1;
+	}
+
+	.file-drop-card {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		border: 2px dashed var(--border);
+		border-radius: calc(var(--radius-xl) + 0.25rem);
+		background: var(--surface-raised);
+		padding: 1rem 1.25rem;
+		color: var(--text);
+		font-size: var(--text-sm);
+		box-shadow: var(--shadow-lg);
+		scale: 0.95;
+		transition: scale 100ms ease-out;
+	}
+
+	.file-drop-card.file-drop-card-active {
+		scale: 1;
+	}
+	.file-drop-icon {
+		width: 2rem;
+		height: 2rem;
+		color: var(--text-muted);
+	}
+
+	.app-shell {
+		position: fixed;
+		inset: 0;
+		overflow: hidden;
+	}
+
+	.workspace-shell {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		min-width: 0;
+		min-height: 0;
+		container: workspace / inline-size;
+		margin-inline-end: var(--session-sidebar-margin, 0);
+		transition: margin 150ms var(--ease-out);
+	}
+
+	#session-sidebar[aria-hidden="true"] ~ .workspace-shell {
+		margin-inline-end: 0;
+	}
+
+	.chat-pane {
+		display: grid;
+		min-width: 0;
+		min-height: 0;
+		grid-template-rows: minmax(0, 1fr);
+		overflow: hidden;
+		transition:
+			width 150ms var(--ease-out),
+			margin-inline-start 150ms var(--ease-out);
+	}
+
+	.command-medium {
+		max-width: 28rem;
+	}
+	.command-wide {
+		max-width: 36rem;
+	}
+	.command-tree {
+		max-width: 72rem;
+	}
+
+	.workspace-command-header {
+		position: relative;
+		padding-inline-end: 0.25rem;
+	}
+	.workspace-command-input {
+		padding-inline-end: 2.5rem;
+	}
+	.workspace-browse-button {
+		position: absolute;
+		inset-inline-end: 0.5rem;
+		top: 50%;
+		translate: 0 -50%;
+	}
+
+	.workspace-browser-loading {
+		display: flex;
+		width: min(30rem, calc(100vw - 2rem));
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		color: var(--text-muted);
+		font-size: var(--text-sm);
+	}
+
+	.dialog-medium {
+		width: min(28rem, calc(100vw - 2rem));
+	}
+	.dialog-emphasis {
+		color: var(--text);
+		font-weight: 600;
+	}
+
+	@media (width <= 48rem) {
+		#workspace-shell {
+			margin-inline-end: 0;
+		}
+	}
+
+	#workspace-shell {
+		grid-template-columns:
+			var(--workspace-inset)
+			minmax(
+				0,
+				calc(
+					(100% - 2 * var(--workspace-inset) - var(--workspace-gap)) *
+						clamp(0.35, var(--review-pane-ratio, 0.5), 0.65)
+				)
+			)
+			var(--workspace-gap) minmax(0, 1fr)
+			var(--workspace-inset);
+	}
+
+	#chat-pane {
+		position: absolute;
+		inset: var(--workspace-inset);
+		container-type: inline-size;
+	}
+
+	@container (width >= calc(50vw + 28rem)) {
+		#app:not(.review-open) :is(#prompt-box, #session-transition > *) {
+			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
+		}
+	}
+
+	@container (width >= calc(50vw + 26rem)) {
+		#app:not(.review-open) #messages > .messages-stack {
+			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
+		}
+	}
+
+	.resize-handle {
+		position: relative;
+		z-index: 2;
+		display: block;
+		width: var(--workspace-gap);
+		height: 100%;
+		cursor: col-resize;
+		touch-action: none;
+		outline: none;
+	}
+
+	.resize-handle[data-orientation="horizontal"] {
+		width: 100%;
+		height: var(--workspace-gap);
+		cursor: row-resize;
+	}
+
+	.resize-handle::before {
+		position: absolute;
+		inset: 0 -0.25rem;
+		content: "";
+	}
+
+	.resize-handle[data-orientation="horizontal"]::before {
+		inset: -0.25rem 0;
+	}
+
+	.resize-handle:focus-visible {
+		background: var(--focus-ring);
+	}
+
+	.is-resizing :is(#workspace-shell, #chat-pane, #workspace-review) {
+		transition: none;
+	}
+
+	.workspace-canvas {
+		background: var(--surface-canvas);
+	}
+
+	.raised-surface {
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		background: var(--surface-pane);
+		color: var(--text);
+		box-shadow: var(--shadow-md);
+	}
+
+	:is(#chat-pane, #session-sidebar nav, #workspace-review .raised-surface) {
+		border-radius: var(--radius-sm);
+	}
+}

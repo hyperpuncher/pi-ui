@@ -1,6 +1,6 @@
 import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
-import { refresh } from "./basecoat.js";
 import { bindCodeCopy } from "./code-copy.js";
+import { bindControls, refreshControls, togglePopup, toggleSidebar } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
 import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
@@ -40,7 +40,7 @@ import { windowFocus } from "./window-focus.js";
 const promptHistory = createPromptHistory();
 
 window.piUi = {
-	basecoat: { refresh },
+	controls: { refresh: refreshControls, togglePopup, toggleSidebar },
 	codeTheme: { loadPreviews() {} },
 	dateTime: { hydrate: hydrateDateTime },
 	fonts: { apply() {} },
@@ -90,6 +90,7 @@ function hasOpenDismissible() {
 bindFileLinks();
 
 window.addEventListener("DOMContentLoaded", async () => {
+	bindControls();
 	await Promise.all([
 		import("../../src/client/fonts.ts"),
 		import("../../src/client/code-theme.ts"),

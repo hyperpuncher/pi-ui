@@ -1,10 +1,16 @@
 import {
 	getHighlighterIfLoaded,
 	preloadHighlighter,
+	resolveTheme,
 	type ThemedToken,
 } from "@pierre/diffs";
 
 import { CODE_THEMES, type CodeThemeAppearance } from "../code-themes.ts";
+import {
+	DEFAULT_PIERRE_THEMES,
+	isPierreThemes,
+	type PierreThemes,
+} from "../pierre-theme.ts";
 
 const themeNames = CODE_THEMES.map((theme) => theme.name);
 let previewsPromise: Promise<void> | undefined;
@@ -19,6 +25,78 @@ window.piUi.codeTheme = {
 		previewsPromise ??= loadPreviews();
 	},
 };
+
+const initialLightTheme = document.body.dataset.codeThemeLight;
+const initialDarkTheme = document.body.dataset.codeThemeDark;
+if (initialLightTheme && initialDarkTheme) {
+	setTimeout(() => {
+		void syncStatusColors({ dark: initialDarkTheme, light: initialLightTheme });
+	});
+}
+window.addEventListener("pi-ui-code-theme-changed", (event) => {
+	if (event instanceof CustomEvent && isPierreThemes(event.detail)) {
+		void syncStatusColors(event.detail);
+	}
+});
+window.addEventListener("pi-ui-theme-mode-changed", applyStatusColors);
+
+type StatusColors = Readonly<{ error?: string; success?: string }>;
+
+let statusColorGeneration = 0;
+let statusThemeKey = "";
+let statusColors: Readonly<{ dark: StatusColors; light: StatusColors }> | undefined;
+const statusColorLoads = new Map<string, Promise<StatusColors>>();
+
+async function syncStatusColors(themes: PierreThemes): Promise<void> {
+	const themeKey = `${themes.light}:${themes.dark}`;
+	if (themeKey === statusThemeKey) return;
+	statusThemeKey = themeKey;
+	const generation = ++statusColorGeneration;
+	const [light, dark, fallbackLight, fallbackDark] = await Promise.all([
+		loadStatusColors(themes.light),
+		loadStatusColors(themes.dark),
+		loadStatusColors(DEFAULT_PIERRE_THEMES.light),
+		loadStatusColors(DEFAULT_PIERRE_THEMES.dark),
+	]);
+	if (generation !== statusColorGeneration) return;
+	statusColors = {
+		light: {
+			error: light.error ?? fallbackLight.error,
+			success: light.success ?? fallbackLight.success,
+		},
+		dark: {
+			error: dark.error ?? fallbackDark.error,
+			success: dark.success ?? fallbackDark.success,
+		},
+	};
+	applyStatusColors();
+}
+
+function loadStatusColors(themeName: string): Promise<StatusColors> {
+	const cached = statusColorLoads.get(themeName);
+	if (cached) return cached;
+	const loading = resolveTheme(themeName)
+		.then((theme) => ({
+			error:
+				theme.colors?.["gitDecoration.deletedResourceForeground"] ??
+				theme.colors?.["terminal.ansiRed"],
+			success:
+				theme.colors?.["gitDecoration.addedResourceForeground"] ??
+				theme.colors?.["terminal.ansiGreen"],
+		}))
+		.catch(() => ({}));
+	statusColorLoads.set(themeName, loading);
+	return loading;
+}
+
+function applyStatusColors(): void {
+	if (!statusColors) return;
+	const mode = document.documentElement.classList.contains("dark") ? "dark" : "light";
+	for (const [name, value] of Object.entries(statusColors[mode])) {
+		if (value) document.documentElement.style.setProperty(`--status-${name}`, value);
+		else document.documentElement.style.removeProperty(`--status-${name}`);
+	}
+}
 
 async function loadFontPreviews(theme: string): Promise<void> {
 	const previews = [

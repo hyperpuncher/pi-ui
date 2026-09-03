@@ -1,0 +1,99 @@
+@layer props, theme, tokens, base, components;
+
+@layer tokens {
+	:root {
+		color-scheme: light;
+
+		/* Open Props neutral palette */
+		--gray-chroma: 0;
+
+		/* Shape */
+		--radius: 0.625rem;
+		--radius-sm: calc(var(--radius) - 4px);
+		--radius-md: calc(var(--radius) - 2px);
+		--radius-lg: var(--radius);
+		--radius-xl: calc(var(--radius) + 4px);
+
+		/* Surfaces */
+		--surface-base: var(--gray-0);
+		--surface-canvas: var(--gray-1);
+		--surface-pane: var(--gray-0);
+		--surface-raised: white;
+		--surface-muted: var(--gray-1);
+		--surface-control: var(--gray-1);
+		--surface-code: oklch(97.67% 0 none);
+
+		/* Text and interaction */
+		--text: var(--gray-15);
+		--text-muted: var(--gray-9);
+		--action-primary: var(--gray-13);
+		--action-primary-text: var(--gray-0);
+		--border: oklch(90.33% 0 none);
+		--focus-ring: var(--gray-4);
+		--selection: var(--gray-2);
+		--status-danger: oklch(from var(--color-7) l c var(--hue-red));
+		--status-error: oklch(from var(--color-9) l c var(--hue-red));
+		--status-warning: oklch(from var(--color-9) l c var(--hue-orange));
+		--status-success: oklch(from var(--color-7) l c var(--hue-teal));
+
+		/* Typography */
+		--font-sans: ui-sans-serif, system-ui, sans-serif;
+		--font-mono: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+		--text-xs: 0.75rem;
+		--text-sm: 0.875rem;
+		--text-base: 1rem;
+		--text-lg: 1.125rem;
+
+		/* Motion */
+		--ease-out: cubic-bezier(0, 0, 0.3, 1);
+
+		/* Elevation */
+		--shadow-sm: 0 1px 2px -1px oklch(20% 0 none / 10%);
+		--shadow-md:
+			0 3px 5px -2px oklch(20% 0 none / 4%), 0 7px 14px -5px oklch(20% 0 none / 6%);
+		--shadow-lg:
+			0 -1px 3px 0 oklch(20% 0 none / 3%), 0 1px 2px -5px oklch(20% 0 none / 3%),
+			0 2px 5px -5px oklch(20% 0 none / 5%), 0 4px 12px -5px oklch(20% 0 none / 6%),
+			0 12px 15px -5px oklch(20% 0 none / 8%);
+		--shadow-xl:
+			0 -2px 5px 0 oklch(20% 0 none / 3%), 0 1px 1px -2px oklch(20% 0 none / 4%),
+			0 2px 2px -2px oklch(20% 0 none / 4%), 0 5px 5px -2px oklch(20% 0 none / 5%),
+			0 9px 9px -2px oklch(20% 0 none / 6%), 0 16px 16px -2px oklch(20% 0 none / 7%);
+	}
+
+	html.dark {
+		--surface-base: var(--gray-14);
+		--surface-canvas: black;
+		--surface-pane: var(--gray-14);
+		--surface-raised: oklch(20.33% 0 none);
+		--surface-muted: var(--gray-11);
+		--surface-control: var(--gray-13);
+		--surface-code: oklch(15.33% 0 none);
+
+		--text: var(--gray-0);
+		--text-muted: var(--gray-3);
+		--action-primary: var(--gray-2);
+		--action-primary-text: var(--gray-14);
+		--border: var(--gray-13);
+		--focus-ring: var(--gray-6);
+		--selection: var(--gray-12);
+		--status-danger: oklch(from var(--color-5) l c var(--hue-red));
+		--status-error: oklch(from var(--color-3) l c var(--hue-red));
+		--status-warning: oklch(from var(--color-3) l c var(--hue-yellow));
+		--status-success: oklch(from var(--color-4) l c var(--hue-teal));
+
+		--shadow-sm: 0 1px 2px -1px oklch(0% 0 none / 34%);
+		--shadow-md:
+			0 3px 5px -2px oklch(0% 0 none / 28%), 0 7px 14px -5px oklch(0% 0 none / 30%);
+		--shadow-lg:
+			0 -1px 3px 0 oklch(0% 0 none / 27%), 0 1px 2px -5px oklch(0% 0 none / 27%),
+			0 2px 5px -5px oklch(0% 0 none / 29%), 0 4px 12px -5px oklch(0% 0 none / 30%),
+			0 12px 15px -5px oklch(0% 0 none / 32%);
+		--shadow-xl:
+			0 -2px 5px 0 oklch(0% 0 none / 27%), 0 1px 1px -2px oklch(0% 0 none / 28%),
+			0 2px 2px -2px oklch(0% 0 none / 28%), 0 5px 5px -2px oklch(0% 0 none / 29%),
+			0 9px 9px -2px oklch(0% 0 none / 30%), 0 16px 16px -2px oklch(0% 0 none / 31%);
+
+		color-scheme: dark;
+	}
+}

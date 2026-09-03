@@ -1,24 +1,15 @@
 import { mkdir } from "node:fs/promises";
 
 await mkdir("dist", { recursive: true });
-const command = [
-	process.execPath,
-	"build",
-	"--compile",
-	"--minify",
-	"--sourcemap",
-	"--external",
-	"@silvia-odwyer/photon-node",
-	"--asset",
-	"./static",
-	"src/server-main.ts",
-	"--outfile",
-	"./dist/pi-ui",
-];
-const child = Bun.spawn(command, {
-	stdin: "inherit",
-	stdout: "inherit",
-	stderr: "inherit",
+const result = await Bun.build({
+	entrypoints: ["src/server-main.ts"],
+	compile: {
+		assets: ["./static"],
+		outfile: "./dist/pi-ui",
+	},
+	external: ["@silvia-odwyer/photon-node"],
+	minify: true,
+	sourcemap: "linked",
 });
-const exitCode = await child.exited;
-if (exitCode !== 0) process.exit(exitCode);
+
+for (const log of result.logs) console.warn(log);

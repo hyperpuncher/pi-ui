@@ -4,21 +4,21 @@ import { DateTime } from "./date-time.tsx";
 import { syncHtml } from "./sync-html.ts";
 
 const treeLabelClasses = {
-	user: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-	assistant: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-	tool: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
-	summary: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
-	other: "bg-muted text-muted-foreground",
+	user: "tree-kind-user",
+	assistant: "tree-kind-assistant",
+	tool: "tree-kind-tool",
+	summary: "tree-kind-summary",
+	other: "tree-kind-other",
 } satisfies Record<AppTreeEntry["kind"], string>;
 
 export function renderTreePicker(state: AppStateSnapshot): string {
 	return syncHtml(
-		<div id="tree-picker" class="flex min-h-0 flex-1 flex-col">
+		<div id="tree-picker">
 			<input id="tree-selected-id" type="hidden" data-bind:tree-selected-id />
 			<div
 				role="menu"
 				id="tree-menu"
-				class="max-h-none! min-h-0 flex-1 scroll-py-1 px-1.5 py-1.5"
+				class="tree-menu"
 				aria-orientation="vertical"
 				data-empty="No session entries found."
 			>
@@ -69,7 +69,7 @@ function SummaryChoice(): string {
 			<span role="heading" data-show="$treeCustomSummary">
 				Summary instructions
 			</span>
-			<div class="input-group m-1" data-show="$treeCustomSummary">
+			<div class="input-group tree-summary-input" data-show="$treeCustomSummary">
 				<input
 					id="tree-summary-input"
 					placeholder="What should the summary focus on?"
@@ -134,9 +134,9 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			role="menuitem"
 			tabindex="-1"
 			class={[
-				"grid! min-h-7 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-1! rounded-md! px-2! py-0.5! text-xs leading-5",
-				entry.inPath ? "text-foreground" : "text-muted-foreground",
-				entry.active && "bg-muted/60",
+				"tree-row",
+				entry.inPath ? "tree-row-path" : "tree-row-muted",
+				entry.active && "tree-row-active",
 			]}
 			aria-current={entry.active ? "true" : undefined}
 			data-filter={haystack}
@@ -146,43 +146,30 @@ function renderTreeRow(entry: AppTreeEntry): string {
 			data-attr:aria-disabled="$treeSelectedId ? 'true' : 'false'"
 			data-on:click={selectTreeEntryAction(entry.id)}
 		>
-			<span class="flex items-center font-mono">
-				<span class="whitespace-pre text-neutral-300 dark:text-neutral-700" safe>
+			<span class="tree-branch">
+				<span class="tree-prefix" safe>
 					{entry.prefix}
 				</span>
-				<span class="text-neutral-400 dark:text-neutral-600" safe>
-					•
-				</span>
+				<span class="tree-node" aria-hidden="true" />
 			</span>
-			<span class="min-w-0">
-				<span
-					class={`inline-flex max-w-full rounded px-1.5 text-[10px] leading-4 font-semibold ${treeLabelClasses[entry.kind]}`}
-					safe
-				>
+			<span class="tree-kind-cell">
+				<span class={`tree-kind ${treeLabelClasses[entry.kind]}`} safe>
 					{entry.role}
 				</span>
 			</span>
 			<span
-				class={[
-					"min-w-0 truncate",
-					entry.kind === "tool" && "font-mono text-[11px]",
-				]}
+				class={["tree-entry-text", entry.kind === "tool" && "tree-entry-tool"]}
 				safe
 			>
 				{entry.label && `[${entry.label}] `}
 				{entry.text}
 			</span>
-			<span class="ml-3 flex items-center gap-3 tabular-nums">
+			<span class="tree-meta">
 				<DateTime
-					class="text-[11px] text-muted-foreground"
+					class="tree-date"
 					dateTime={entry.metaTimestamp}
 					label={entry.meta}
 				/>
-				{entry.active && (
-					<span class="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-						active
-					</span>
-				)}
 			</span>
 		</div>,
 	);
@@ -195,7 +182,7 @@ function selectTreeEntryAction(entryId: string): string {
 		const search = document.getElementById('tree-input');
 		if (search) search.value = '';
 		requestAnimationFrame(() => {
-			window.piUi.basecoat.refresh(document.getElementById('tree-dialog'));
+			window.piUi.controls.refresh(document.getElementById('tree-dialog'));
 			document.getElementById('tree-summary-no')?.dispatchEvent(
 				new MouseEvent('mousemove', { bubbles: true }),
 			);

@@ -4,6 +4,7 @@ try {
 		const stored = localStorage.getItem("themeMode");
 		const dark = stored ? stored === "dark" : media.matches;
 		document.documentElement.classList.toggle("dark", dark);
+		window.dispatchEvent(new Event("pi-ui-theme-mode-changed"));
 	};
 	apply();
 	media.addEventListener("change", apply);

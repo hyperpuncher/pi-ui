@@ -10,23 +10,14 @@ export function SessionRowAction(props: {
 }): string {
 	if (!props.shortcut && !props.deletable) return "";
 	return syncHtml(
-		<span class="grid shrink-0 items-center justify-items-end *:[grid-area:1/1]">
+		<span class="session-row-actions">
 			{props.shortcut && (
-				<span
-					class={
-						props.deletable
-							? "transition-opacity duration-150 group-focus-within:opacity-0 group-hover:opacity-0 motion-reduce:transition-none"
-							: undefined
-					}
-				>
+				<span class={props.deletable ? "session-row-shortcut" : undefined}>
 					<ShortcutKbd shortcut={props.shortcut} />
 				</span>
 			)}
 			{props.deletable && (
-				<SessionDeleteButton
-					session={props.session}
-					class="pointer-events-none opacity-0 transition-opacity duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 motion-reduce:transition-none"
-				/>
+				<SessionDeleteButton session={props.session} class="session-row-delete" />
 			)}
 		</span>,
 	);

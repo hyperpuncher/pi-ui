@@ -114,7 +114,7 @@ test("plain, fenced, and incomplete markdown preserve rendering structure", asyn
 	const streamingTable = renderMarkdownStreaming(table);
 	assertEqual(streamingTable, await renderMarkdownFinal(table));
 	assertIncludes(streamingTable, 'class="table-container');
-	assertIncludes(streamingTable, 'class="table min-w-max');
+	assertIncludes(streamingTable, 'class="markdown-table"');
 });
 
 test("growing streaming code fences preserve the latest complete source", () => {

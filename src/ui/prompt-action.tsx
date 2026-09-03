@@ -10,7 +10,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 		return syncHtml(
 			<button
 				id="prompt-action"
-				class="btn leading-none"
+				class="btn prompt-action"
 				data-variant="destructive"
 				data-size="icon"
 				type="button"
@@ -30,7 +30,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 				data-align="end"
 				aria-label="Abort"
 			>
-				<Icon icon={Square} class="size-3.5 [&_rect]:fill-current" />
+				<Icon icon={Square} class="prompt-abort-icon" />
 				<ShortcutTooltip label="Abort" shortcut="Esc" />
 			</button>,
 		);
@@ -39,7 +39,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 	return syncHtml(
 		<button
 			id="prompt-action"
-			class="btn leading-none"
+			class="btn prompt-action"
 			data-size="icon"
 			type="button"
 			data-send-trigger
@@ -61,7 +61,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			data-align="end"
 			aria-label="Send"
 		>
-			<Icon icon={ArrowUp} />
+			<Icon icon={ArrowUp} class="prompt-send-icon" />
 			<ShortcutTooltip label="Send" shortcut="Enter" />
 		</button>,
 	);

@@ -28,7 +28,6 @@ keyboard-first minimal gui for [`pi`](https://pi.dev)
 - [`datastar`](https://data-star.dev/)
 - [`kita-jsx`](https://github.com/kitajs/html)
 - [`pierre-diffs`](https://diffs.com/)
-- [`basecoat`](https://basecoatui.com/)
 
 ## try
 
@@ -111,7 +110,7 @@ brew services stop pi-ui
 
 ```sh
 bun ci
-bun run server
+bun run dev
 ```
 
 ## configuration

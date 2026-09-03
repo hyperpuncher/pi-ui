@@ -9,25 +9,9 @@ import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
 import { getPierreThemes } from "../pierre-theme.ts";
 
 const pierreUnsafeCSS = `
-	:host {
-		--diffs-bg: var(--code-background) !important;
-		--diffs-gap-style: 0 solid transparent;
-		--diffs-light-bg: var(--code-background) !important;
-		--diffs-dark-bg: var(--code-background) !important;
-		--diffs-bg-selection-override: var(--pi-selection-background);
-		--diffs-bg-selection-number-override: var(--pi-selection-background);
-		--diffs-editor-selection-bg: var(--pi-selection-background) !important;
-	}
-
 	::selection {
-		background: var(--pi-selection-background);
+		background: var(--selection);
 		color: currentColor;
-	}
-
-	:host-context(.pi-tool-output-surface) {
-		--diffs-bg: transparent !important;
-		--diffs-light-bg: transparent !important;
-		--diffs-dark-bg: transparent !important;
 	}
 
 	[data-additions-count] {
@@ -122,25 +106,6 @@ function isPierreLanguageLoaded(language: string): boolean {
 	}
 }
 
-const hostStyle = [
-	"--diffs-font-family: var(--font-mono)",
-	"--diffs-header-font-family: var(--font-sans)",
-	"--diffs-font-features: normal",
-	"--diffs-font-size: 13px",
-	"--diffs-line-height: 22px",
-	"--diffs-tab-size: 4",
-	"--diffs-gap-block: 0px",
-	"--diffs-gap-inline: 0px",
-	"--diffs-bg: var(--code-background)",
-	"--diffs-light-bg: var(--code-background)",
-	"--diffs-dark-bg: var(--code-background)",
-	"--diffs-bg-buffer-override: transparent",
-	"--diffs-bg-selection-override: var(--pi-selection-background)",
-	"--diffs-bg-selection-number-override: var(--pi-selection-background)",
-	"--diffs-bg-context-override: transparent",
-	"--diffs-bg-context-gutter-override: transparent",
-].join("; ");
-
 export async function renderPierreDiff(patch: string): Promise<string | undefined> {
 	const files = await preloadPatchFile({
 		patch,
@@ -190,5 +155,5 @@ export async function renderPierreCode(
 }
 
 function pierreHost(className: string, prerenderedHTML: string): string {
-	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-init="window.piUi.messageScroll.hydratePierreDiff(el)" style="display:block; width:100%; ${hostStyle}"><template shadowrootmode="open">${prerenderedHTML}</template></${DIFFS_TAG_NAME}>`;
+	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-init="window.piUi.messageScroll.hydratePierreDiff(el)"><template shadowrootmode="open">${prerenderedHTML}</template></${DIFFS_TAG_NAME}>`;
 }

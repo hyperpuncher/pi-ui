@@ -297,7 +297,7 @@ function showTransferError(message) {
 	if (!(error instanceof HTMLParagraphElement)) {
 		error = document.createElement("p");
 		error.id = "file-transfer-error";
-		error.className = "text-destructive mb-1 px-1 text-xs";
+		error.className = "file-transfer-error";
 		error.setAttribute("role", "alert");
 		error.setAttribute("aria-live", "polite");
 		input.before(error);
@@ -372,14 +372,13 @@ function renderAttachment(attachment) {
 	if (attachment.previewUrl) {
 		const item = document.createElement("button");
 		item.type = "button";
-		item.className =
-			"group relative size-16 shrink-0 cursor-pointer overflow-visible rounded-md border bg-muted/40 p-0 shadow-sm";
+		item.className = "prompt-attachment prompt-attachment-image";
 		item.setAttribute("aria-label", `Remove ${name}`);
 		item.addEventListener("click", () => removeAttachment(attachment.path));
 		const preview = document.createElement("span");
-		preview.className = "block size-full overflow-clip rounded-md";
+		preview.className = "prompt-attachment-preview";
 		const image = document.createElement("img");
-		image.className = "size-full object-cover";
+		image.className = "prompt-attachment-image-content";
 		image.style.overflowClipMargin = "unset";
 		image.src = attachment.previewUrl;
 		image.alt = name;
@@ -390,32 +389,30 @@ function renderAttachment(attachment) {
 
 	const item = document.createElement("button");
 	item.type = "button";
-	item.className =
-		"group relative flex h-16 max-w-52 items-center gap-2 overflow-visible rounded-lg border bg-card p-2 pr-3 text-left text-card-foreground shadow-sm";
+	item.className = "prompt-attachment prompt-attachment-file";
 	item.setAttribute("aria-label", `Remove ${name}`);
 	item.addEventListener("click", () => removeAttachment(attachment.path));
 	const extension = fileExtension(name);
 	const kind = attachmentFileKind(name, attachment.file?.type);
 	const icon = document.createElement("span");
-	icon.className =
-		"flex size-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border bg-muted text-muted-foreground";
+	icon.className = "prompt-attachment-file-icon";
 	icon.dataset.fileKind = kind;
 	icon.append(attachmentFileIcon(kind));
 	if (extension) {
 		const extensionElement = document.createElement("span");
-		extensionElement.className = "font-mono text-[9px] leading-none uppercase";
+		extensionElement.className = "prompt-attachment-extension";
 		extensionElement.textContent = extension;
 		icon.append(extensionElement);
 	}
 	item.append(icon);
 	const details = document.createElement("span");
-	details.className = "min-w-0";
+	details.className = "prompt-attachment-details";
 	const nameElement = document.createElement("span");
-	nameElement.className = "block truncate text-xs font-medium";
+	nameElement.className = "prompt-attachment-name";
 	nameElement.textContent = name;
 	details.append(nameElement);
 	const meta = document.createElement("span");
-	meta.className = "block truncate text-[10px] text-muted-foreground";
+	meta.className = "prompt-attachment-meta";
 	meta.textContent = attachment.file ? formatBytes(attachment.file.size) : "local file";
 	details.append(meta);
 	item.append(details, removeBadge());
@@ -424,8 +421,7 @@ function renderAttachment(attachment) {
 
 function removeBadge() {
 	const badge = document.createElement("span");
-	badge.className =
-		"absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full border border-primary bg-primary text-xs text-primary-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100";
+	badge.className = "prompt-attachment-remove";
 	badge.textContent = "×";
 	badge.setAttribute("aria-hidden", "true");
 	return badge;

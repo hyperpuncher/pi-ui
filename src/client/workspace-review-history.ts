@@ -34,7 +34,7 @@ export function renderWorkspaceReviewHistory({
 	history.replaceChildren();
 	if (commits.length === 0) {
 		const message = document.createElement("p");
-		message.className = "text-muted-foreground px-2 py-1 text-xs";
+		message.className = "review-history-message";
 		message.textContent =
 			revision === "git-unloaded" ? "Loading history…" : "No commits yet";
 		history.append(message);
@@ -50,26 +50,24 @@ export function renderWorkspaceReviewHistory({
 		const row = document.createElement("div");
 		const button = document.createElement("button");
 		button.type = "button";
-		button.className =
-			"pi-selected-surface hover:bg-muted/60 flex w-full min-w-0 flex-col rounded-md px-2 py-1.5 text-left";
+		button.className = "review-commit";
 		button.setAttribute("aria-pressed", String(selected));
 		button.title = commit.subject;
 		button.addEventListener("click", () => onSelectCommit(commit.hash));
 
 		const subject = document.createElement("span");
-		subject.className = "w-full truncate text-xs";
+		subject.className = "review-commit-subject";
 		subject.textContent = commit.subject || "Untitled commit";
 		const metadata = document.createElement("span");
-		metadata.className =
-			"pi-fine-print flex w-full min-w-0 items-center gap-1.5 text-[10px]";
+		metadata.className = "fine-print review-commit-meta";
 		const shortHash = document.createElement("span");
-		shortHash.className = "shrink-0 font-mono";
+		shortHash.className = "review-commit-hash";
 		shortHash.textContent = commit.shortHash;
 		const author = document.createElement("span");
-		author.className = "truncate";
+		author.className = "review-commit-author";
 		author.textContent = commit.author;
 		const date = document.createElement("time");
-		date.className = "pi-date ml-auto";
+		date.className = "formatted-date";
 		date.dateTime = commit.authoredAt;
 		date.title = formatCommitDetailDate(commit.authoredAt);
 		date.textContent = formatCommitDate(commit.authoredAt);
@@ -94,7 +92,7 @@ export function renderWorkspaceReviewHistory({
 	}
 	if (loading) {
 		const message = document.createElement("p");
-		message.className = "pi-fine-print px-2 py-2 text-center text-[10px]";
+		message.className = "fine-print review-history-loading";
 		message.textContent = "Loading older commits…";
 		history.append(message);
 	}
@@ -106,33 +104,32 @@ export function showWorkspaceReviewDetailHeader(
 	detail: WorkspaceCommitDetail,
 ): void {
 	detailHeader.replaceChildren();
-	detailHeader.classList.remove("hidden");
+	detailHeader.hidden = false;
 	const heading = document.createElement("div");
-	heading.className = "flex min-w-0 items-center gap-2";
+	heading.className = "review-detail-heading";
 	const subject = document.createElement("div");
-	subject.className = "min-w-0 flex-1 truncate text-xs font-medium";
+	subject.className = "review-detail-subject";
 	subject.textContent = detail.commit.subject || "Untitled commit";
 	const totals = document.createElement("span");
-	totals.className = "flex shrink-0 gap-1 font-mono text-[10px] tabular-nums";
+	totals.className = "review-detail-totals";
 	const additions = document.createElement("span");
-	additions.className = "text-(--pi-diff-addition)";
+	additions.className = "review-additions";
 	additions.textContent = `+${sumChanges(detail.changes, "additions")}`;
 	const deletions = document.createElement("span");
-	deletions.className = "text-(--pi-diff-deletion)";
+	deletions.className = "review-deletions";
 	deletions.textContent = `-${sumChanges(detail.changes, "deletions")}`;
 	totals.append(additions, deletions);
 	heading.append(subject, totals);
 	const metadata = document.createElement("div");
-	metadata.className =
-		"pi-fine-print mt-0.5 flex min-w-0 items-center gap-2 text-[10px]";
+	metadata.className = "fine-print review-detail-meta";
 	const hash = document.createElement("span");
-	hash.className = "font-mono";
+	hash.className = "review-detail-hash";
 	hash.textContent = detail.commit.shortHash;
 	const author = document.createElement("span");
-	author.className = "truncate";
+	author.className = "review-detail-author";
 	author.textContent = detail.commit.author;
 	const date = document.createElement("time");
-	date.className = "pi-date ml-auto";
+	date.className = "formatted-date";
 	date.dateTime = detail.commit.authoredAt;
 	date.title = formatCommitDetailDate(detail.commit.authoredAt);
 	date.textContent = date.title;
@@ -141,19 +138,18 @@ export function showWorkspaceReviewDetailHeader(
 }
 
 export function hideWorkspaceReviewDetailHeader(detailHeader: HTMLElement): void {
-	detailHeader.classList.add("hidden");
+	detailHeader.hidden = true;
 	detailHeader.replaceChildren();
 }
 
 function renderPushGroup(pushed: boolean | null): HTMLElement {
 	const group = document.createElement("div");
-	group.className =
-		"pi-fine-print flex items-center gap-2 px-2 py-1 text-[10px] font-medium";
+	group.className = "fine-print review-push-group";
 	const label = document.createElement("span");
 	label.textContent =
 		pushed === null ? "No upstream" : pushed ? "Pushed" : "Not pushed";
 	const line = document.createElement("span");
-	line.className = "border-border flex-1 border-t";
+	line.className = "review-push-rule";
 	group.append(label, line);
 	return group;
 }
@@ -165,20 +161,19 @@ function renderCommitFiles(
 	onSelect: (hash: string, path: string) => void,
 ): HTMLElement {
 	const files = document.createElement("div");
-	files.className = "border-border ml-3 border-l py-0.5 pl-1";
+	files.className = "review-commit-files";
 	for (const change of changes) {
 		const button = document.createElement("button");
 		button.type = "button";
-		button.className =
-			"pi-fine-print pi-selected-surface hover:bg-muted/60 flex w-full min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-[11px]";
+		button.className = "fine-print review-commit-file";
 		button.setAttribute("aria-pressed", String(selectedPath === change.path));
 		button.title = change.path;
 		button.addEventListener("click", () => onSelect(hash, change.path));
 		const status = document.createElement("span");
-		status.className = "w-3 shrink-0 font-mono";
+		status.className = "review-commit-file-status";
 		status.textContent = statusLetter(change.status);
 		const path = document.createElement("span");
-		path.className = "truncate";
+		path.className = "review-commit-file-path";
 		path.textContent = change.path;
 		button.append(status, path);
 		files.append(button);

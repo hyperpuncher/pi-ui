@@ -1,5 +1,7 @@
 import { fuzzyFilter } from "@earendil-works/pi-tui/dist/fuzzy.js";
 
+import { refreshControls } from "./controls.js";
+
 export function filterModelSearch(input, query) {
 	if (!(input instanceof HTMLInputElement)) return;
 	const command = input.closest(".command");
@@ -21,13 +23,11 @@ export function filterModelSearch(input, query) {
 		: originalItems;
 
 	for (const item of orderedItems) {
-		// Basecoat 1.0.2 tracks the active item by index. Reordering before
-		// refresh() can otherwise leave the old item active as well.
 		item.classList.remove("active");
 		item.setAttribute("aria-hidden", String(!visible.has(item)));
 		item.parentElement?.append(item);
 	}
-	command.refresh?.();
+	refreshControls(command);
 }
 
 export function modelSearchText(modelAndProvider, name) {

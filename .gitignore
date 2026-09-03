@@ -6,9 +6,8 @@ skills-lock.json
 static/vendor/datastar-inspector.min.js
 
 static/app.css
-static/basecoat.vendor.js
+static/theme-lab.css
 static/build/
-src/ui/basecoat.generated.css
 /plans
 /docs
 

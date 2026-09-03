@@ -1,4 +1,4 @@
-import { refresh } from "./basecoat.js";
+import { refreshControls, togglePopup } from "./controls.js";
 
 function openAndFocus(dialogId, inputId, options = {}) {
 	const dialog = document.getElementById(dialogId);
@@ -8,7 +8,7 @@ function openAndFocus(dialogId, inputId, options = {}) {
 		resetSearchInput(document.getElementById(inputId));
 		dialog.showModal();
 	}
-	refresh(dialog);
+	refreshControls(dialog);
 	requestAnimationFrame(() => {
 		const activeItem = options.activeSelector
 			? dialog.querySelector(options.activeSelector)
@@ -99,7 +99,7 @@ export function togglePopover(triggerId) {
 	if (!(trigger instanceof HTMLButtonElement)) return false;
 	const opening = trigger.getAttribute("aria-expanded") !== "true";
 	if (opening) restoreFocusWhenPopoverCloses(trigger, document.activeElement);
-	trigger.click();
+	togglePopup(triggerId);
 	return opening;
 }
 
@@ -124,7 +124,7 @@ export function openWorkspaceBrowser() {
 		restoreFocusWhenDialogCloses(dialog, document.getElementById("workspace-picker"));
 		dialog.showModal();
 	}
-	refresh(dialog);
+	refreshControls(dialog);
 }
 
 export function toggleWorkspace() {

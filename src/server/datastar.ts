@@ -95,13 +95,13 @@ function clientEffectScript(effect: ClientEffect): string {
 		case "open-tree":
 			return "window.piUi.dialogs.openTree()";
 		case "refresh-session-picker":
-			return "window.piUi.basecoat.refresh(document.getElementById('session-dialog'))";
+			return "window.piUi.controls.refresh(document.getElementById('session-dialog'))";
 		case "refresh-workspace-picker":
-			return "window.piUi.basecoat.refresh(document.getElementById('workspace-dialog'))";
+			return "window.piUi.controls.refresh(document.getElementById('workspace-dialog'))";
 		case "close-workspace-picker":
 			return "document.getElementById('workspace-dialog')?.close()";
 		case "session-deleted":
-			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.basecoat.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
+			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.controls.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
 		case "workspace-review-submitted":
 			return "window.dispatchEvent(new CustomEvent('pi-ui-workspace-review-submitted'))";
 	}

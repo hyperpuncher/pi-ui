@@ -236,7 +236,7 @@ test("session request indicators lock controls without hiding the transcript", (
 	const messages = renderMessages([], { keys: "/", description: "Commands" });
 	assertStringExcludes(transition, "$_sessionLoading || $_sessionTransitionVisible");
 	assertStringExcludes(messages, "$_sessionLoading || $_sessionTransitionVisible");
-	assertStringIncludes(messages, "data-class:opacity-50");
+	assertStringIncludes(messages, "data-class:messages-loading");
 	assertStringIncludes(messages, "$_sessionLoading");
 	assertStringIncludes(messages, "$_sessionTransitionLoading");
 });

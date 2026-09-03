@@ -1,0 +1,573 @@
+@property --review-pane-ratio {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0.5;
+}
+
+@property --review-sidebar-width {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 272px;
+}
+
+@property --review-changes-ratio {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0.5;
+}
+
+@layer theme {
+	:root {
+		--review-toolbar-height: 1.875rem;
+	}
+}
+
+@layer components {
+	#workspace-review {
+		position: absolute;
+		inset: 0;
+		z-index: 30;
+		display: none;
+		min-width: 0;
+		min-height: 0;
+		grid-template-columns: minmax(0, 1fr);
+		padding: var(--workspace-inset);
+		background: var(--surface-canvas);
+		box-shadow: var(--shadow-xl);
+	}
+	.review-body {
+		display: grid;
+		grid-template-columns:
+			clamp(
+				14rem,
+				var(--review-sidebar-width, 17rem),
+				min(30rem, calc(100% - var(--workspace-gap) - 20rem))
+			)
+			var(--workspace-gap) minmax(0, 1fr);
+		min-width: 0;
+		min-height: 0;
+	}
+	.review-sidebar {
+		display: flex;
+		min-width: 0;
+		min-height: 0;
+		flex-direction: column;
+	}
+	#review-git-sidebar {
+		display: grid;
+		grid-template-rows:
+			auto
+			minmax(
+				6rem,
+				calc(
+					(100% - 2rem - var(--workspace-gap)) *
+						clamp(0.3, var(--review-changes-ratio, 0.5), 0.7)
+				)
+			)
+			var(--workspace-gap) minmax(6rem, 1fr);
+	}
+	#review-git-sidebar:has(#review-changes-section[hidden]) {
+		grid-template-rows: auto minmax(0, 1fr);
+	}
+	.review-sidebar-panel {
+		display: flex;
+		min-height: 0;
+		flex: 1;
+		flex-direction: column;
+		overflow: hidden;
+	}
+	.review-changes {
+		flex: 0 0 auto;
+	}
+	.review-tree {
+		min-height: 0;
+		flex: 1;
+		overflow: hidden;
+		padding-block-start: 0.25rem;
+		outline: 0;
+	}
+	.review-tree > file-tree-container {
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+	}
+	.review-sidebar-header {
+		display: flex;
+		height: 2rem;
+		flex-shrink: 0;
+		align-items: center;
+		gap: 0.5rem;
+		padding-inline: 0.75rem;
+		font-size: var(--text-xs);
+		font-weight: 500;
+	}
+	.review-change-count {
+		border-radius: 999px;
+		background: var(--surface-muted);
+		padding: 0.125rem 0.375rem;
+		font-size: 0.625rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.review-change-totals {
+		display: flex;
+		gap: 0.25rem;
+		margin-inline-start: auto;
+		font: 0.625rem/1 var(--font-mono);
+		font-variant-numeric: tabular-nums;
+	}
+	.review-additions {
+		color: var(--status-success);
+	}
+	.review-deletions {
+		color: var(--status-error);
+	}
+	.review-tree-empty {
+		padding: 0 0.75rem 0.5rem;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+	}
+	.review-history {
+		min-height: 0;
+		flex: 1;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: 0 0.25rem 0.25rem;
+	}
+	.review-loading {
+		padding: 0.25rem 0.5rem;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+	}
+	.review-main {
+		display: flex;
+		min-width: 0;
+		min-height: 0;
+		flex-direction: column;
+		outline: 0;
+	}
+	.review-toolbar {
+		display: flex;
+		height: var(--review-toolbar-height);
+		min-width: 0;
+		flex-shrink: 0;
+		align-items: center;
+		gap: 0.5rem;
+		margin-inline: var(--workspace-gap);
+		padding-inline: 0.25rem;
+	}
+	.review-file-heading {
+		display: flex;
+		min-width: 0;
+		flex: 1;
+		align-items: center;
+		gap: 0.5rem;
+		font: 0.6875rem/1.25 var(--font-mono);
+	}
+	.review-file-path,
+	.review-branch {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.review-file-status {
+		flex-shrink: 0;
+		font-variant-numeric: tabular-nums;
+	}
+	.review-branch {
+		font: 0.6875rem/1.25 var(--font-mono);
+	}
+	.review-toolbar-controls {
+		display: flex;
+		flex-shrink: 0;
+		align-self: flex-start;
+		align-items: center;
+		gap: 0.25rem;
+		margin-inline-start: auto;
+	}
+	#workspace-review .segmented-control {
+		border: 0;
+	}
+	.review-segment-icon,
+	.review-segment-text,
+	.workspace-mode-button {
+		line-height: 1rem;
+	}
+	#workspace-review .segmented-control > .review-segment-icon {
+		aspect-ratio: 1;
+		padding: 0.3125rem;
+	}
+	#workspace-review .segmented-control > .review-segment-text {
+		padding: 0.25rem 0.5rem;
+	}
+	.review-close {
+		color: var(--text-muted);
+	}
+	.review-close:hover {
+		color: var(--text);
+	}
+	.review-diff-canvas {
+		position: relative;
+		overflow: hidden;
+		min-width: 0;
+		min-height: 0;
+		flex: 1;
+		margin-block-end: calc(-1 * var(--workspace-inset));
+		border-radius: var(--radius-sm);
+		background: var(--surface-canvas);
+		clip-path: inset(0 round var(--radius-sm));
+	}
+	#review-diff-view {
+		border-radius: inherit;
+
+		/* Round the top while allowing side shadows below the corners. */
+		clip-path: shape(
+			from 0 var(--radius-sm),
+			curve to var(--radius-sm) 0 with 0 0,
+			line to calc(100% - var(--radius-sm)) 0,
+			curve to 100% var(--radius-sm) with 100% 0,
+			line to 100% 100%,
+			line to 0 100%,
+			close
+		);
+	}
+	.review-scroll-view {
+		position: absolute;
+		inset: 0;
+		overflow: auto;
+		overscroll-behavior: contain;
+		outline: 0;
+	}
+	.review-diff-view {
+		overflow-x: clip;
+		overflow-y: auto;
+	}
+	.review-empty {
+		pointer-events: none;
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		padding-inline: 1.5rem;
+		color: var(--text-muted);
+		font-size: var(--text-sm);
+		text-align: center;
+	}
+	.workspace-entry-error {
+		margin-block-start: 0.5rem;
+		color: var(--status-danger);
+		font-size: var(--text-sm);
+	}
+	.workspace-mode-header {
+		display: flex;
+		flex-shrink: 0;
+		margin-block-end: var(--workspace-gap);
+	}
+	#workspace-review .workspace-mode-control {
+		width: 100%;
+		border-radius: var(--radius-sm);
+		interpolate-size: allow-keywords;
+	}
+	#workspace-review .workspace-mode-control > .workspace-mode-button {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+		gap: 0;
+		border-radius: 4px;
+		padding: 0.125rem 0.5rem;
+	}
+	.workspace-mode-button .shortcut {
+		inline-size: max-content;
+		margin-inline-start: 0.5rem;
+		overflow: clip;
+		transition:
+			inline-size 100ms var(--ease-out),
+			margin-inline-start 100ms var(--ease-out),
+			opacity 80ms var(--ease-out),
+			visibility 100ms;
+	}
+	#workspace-files-sidebar:has(.review-sidebar-panel:focus-within)
+		.workspace-mode-button[data-workspace-mode="files"]
+		.shortcut,
+	#review-git-sidebar:has(.review-sidebar-panel:focus-within)
+		.workspace-mode-button[data-workspace-mode="git"]
+		.shortcut {
+		inline-size: 0;
+		margin-inline-start: 0;
+		opacity: 0;
+		visibility: hidden;
+	}
+	.review-main:focus-within > .review-toolbar .review-toolbar-controls > .shortcut {
+		visibility: hidden;
+		opacity: 0;
+	}
+
+	.review-history-message {
+		padding: 0.25rem 0.5rem;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+	}
+	.review-commit {
+		display: flex;
+		width: 100%;
+		min-width: 0;
+		flex-direction: column;
+		border-radius: var(--radius-md);
+		padding: 0.375rem 0.5rem;
+		text-align: start;
+	}
+	.review-commit:hover,
+	.review-commit[aria-pressed="true"],
+	.review-commit-file:hover,
+	.review-commit-file[aria-pressed="true"] {
+		background: var(--surface-muted);
+	}
+	.review-commit-subject,
+	.review-commit-author,
+	.review-detail-subject,
+	.review-detail-author,
+	.review-commit-file-path {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.review-commit-subject {
+		width: 100%;
+		font-size: var(--text-xs);
+	}
+	.review-commit-meta {
+		display: flex;
+		width: 100%;
+		min-width: 0;
+		align-items: baseline;
+		gap: 0.375rem;
+		font-size: 0.6875rem;
+	}
+	.review-commit-hash {
+		flex-shrink: 0;
+		font-family: var(--font-mono);
+	}
+	.review-commit-author,
+	.review-detail-author {
+		min-width: 0;
+	}
+	.review-commit-meta .formatted-date,
+	.review-detail-meta .formatted-date {
+		margin-inline-start: auto;
+	}
+	.review-history-loading {
+		padding: 0.5rem;
+		font-size: 0.625rem;
+		text-align: center;
+	}
+	#review-detail-header {
+		flex-shrink: 0;
+		margin-inline: var(--workspace-gap);
+		padding: var(--workspace-inset);
+	}
+	.review-detail-heading,
+	.review-detail-meta,
+	.review-push-group,
+	.review-commit-file {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+	}
+	.review-detail-heading {
+		gap: 0.5rem;
+	}
+	.review-detail-subject {
+		flex: 1;
+		font-size: var(--text-xs);
+		font-weight: 500;
+	}
+	.review-detail-totals {
+		display: flex;
+		flex-shrink: 0;
+		gap: 0.25rem;
+		font: 0.625rem/1 var(--font-mono);
+		font-variant-numeric: tabular-nums;
+	}
+	.review-detail-meta {
+		align-items: baseline;
+		gap: 0.5rem;
+		margin-block-start: 0.125rem;
+		font-size: 0.6875rem;
+	}
+	.review-detail-hash {
+		font-family: var(--font-mono);
+	}
+	.review-push-group {
+		gap: 0.5rem;
+		padding: 0.25rem 0.5rem;
+		font-size: 0.625rem;
+		font-weight: 500;
+	}
+	.review-push-rule {
+		flex: 1;
+		border-top: 1px solid var(--border);
+	}
+	.review-commit-files {
+		margin-inline-start: 0.75rem;
+		border-inline-start: 1px solid var(--border);
+		padding: 0.125rem 0 0.125rem 0.25rem;
+	}
+	.review-commit-file {
+		width: 100%;
+		gap: 0.375rem;
+		border-radius: var(--radius-sm);
+		padding: 0.25rem 0.5rem;
+		font-size: 0.6875rem;
+		text-align: start;
+	}
+	.review-commit-file-status {
+		width: 0.75rem;
+		flex-shrink: 0;
+		font-family: var(--font-mono);
+	}
+
+	.review-comment-wrapper {
+		width: 100%;
+		overflow: hidden;
+	}
+	.review-comment-card {
+		max-width: 42rem;
+		margin: 0.5rem 0.75rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		background: var(--surface-raised);
+		padding: 0.75rem;
+		color: var(--text);
+		font-family: var(--font-sans);
+		white-space: normal;
+		box-shadow: var(--shadow-sm);
+	}
+	.review-comment-label {
+		margin-block-end: 0.5rem;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+		font-weight: 500;
+	}
+	.review-comment-input {
+		width: 100%;
+		min-height: 5rem;
+		resize: vertical;
+		font-size: var(--text-sm);
+	}
+	.review-comment-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-block-start: 0.5rem;
+	}
+	.review-comment-body {
+		font-size: var(--text-sm);
+		line-height: 1.625;
+		white-space: pre-wrap;
+	}
+
+	@media (width <= 48rem) {
+		#review-branch {
+			display: none;
+		}
+	}
+
+	.workspace-tree-context-menu {
+		min-width: 10rem;
+		padding: 0.25rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		background: var(--surface-raised);
+		color: var(--text);
+		box-shadow: var(--shadow-lg);
+	}
+
+	.workspace-tree-context-menu-item {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		border-radius: var(--radius-sm);
+		padding: 0.375rem 0.5rem;
+		font-size: 0.75rem;
+		text-align: left;
+	}
+
+	.workspace-tree-context-menu-item:is(:hover, :focus-visible) {
+		background: light-dark(var(--surface-control), var(--surface-muted));
+		color: var(--text);
+		outline: none;
+	}
+
+	.workspace-tree-context-menu-item-destructive {
+		color: var(--status-danger);
+	}
+
+	#workspace-file-view > diffs-container {
+		display: block;
+		min-width: 100%;
+		min-height: 100%;
+		background: var(--surface-code);
+		--diffs-bg: var(--surface-code);
+		--diffs-bg-caret-override: var(--text);
+		--diffs-bg-selection-number-override: var(--selection);
+		--diffs-bg-selection-override: var(--selection);
+		--diffs-editor-selection-bg: var(--selection);
+		--diffs-selection-base: var(--text-muted);
+		--diffs-selection-color-override: var(--text-muted);
+		--diffs-font-family: var(--font-mono);
+		--diffs-font-features: normal;
+		--diffs-font-size: 13px;
+		--diffs-line-height: 22px;
+		--diffs-tab-size: 4;
+	}
+
+	:is(#workspace-file-view, #review-diff-view)
+		:is(diffs-container, .pierre-diff, .pierre-code) {
+		display: block;
+		overflow: hidden;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		background: var(--surface-pane);
+		box-shadow: var(--shadow-md);
+	}
+
+	#workspace-review #review-git-separator {
+		display: none;
+	}
+
+	#app.review-open #workspace-review {
+		display: grid;
+	}
+
+	@container workspace (width >= 88rem) {
+		#app.review-open #workspace-review {
+			position: relative;
+			inset: auto;
+			grid-row: 1;
+			grid-column: 1 / 4;
+			grid-template-columns: minmax(0, 1fr) var(--workspace-gap);
+			padding: var(--workspace-inset) 0 var(--workspace-inset)
+				var(--workspace-inset);
+			background: transparent;
+			box-shadow: none;
+		}
+
+		#app.review-open #workspace-review #review-git-separator {
+			display: block;
+		}
+
+		#app.review-open #chat-pane {
+			position: relative;
+			inset: auto;
+			grid-row: 1;
+			grid-column: 4;
+			width: auto;
+			margin: var(--workspace-inset) 0;
+		}
+	}
+
+	#review-git-separator {
+		translate: calc(-1 * var(--workspace-gap)) 0;
+	}
+}

@@ -29,6 +29,7 @@ import {
 } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { syncHtml } from "./sync-html.ts";
+import { renderThemeLab } from "./theme-lab.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
 
@@ -38,8 +39,8 @@ const sessionSidebarStartupScript = `try {
 	const stored = Number(localStorage.getItem("${sessionSidebarStorageKey}"));
 	if (Number.isFinite(stored) && stored > 0) {
 		document.documentElement.style.setProperty(
-			"--sidebar-width",
-			"clamp(var(--pi-session-sidebar-min-width), " + stored + "px, min(var(--pi-session-sidebar-max-width), 50vw))",
+			"--session-sidebar-width",
+			"clamp(var(--session-sidebar-min-width), " + stored + "px, min(var(--session-sidebar-max-width), 50vw))",
 		);
 	}
 } catch {}`;
@@ -50,6 +51,7 @@ export function renderPage(
 	keybindHints = true,
 	minimalMode = false,
 	toolOutputHidden = false,
+	themeLab = false,
 ): string {
 	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
@@ -62,13 +64,13 @@ export function renderPage(
 		(
 			<html
 				lang="en"
-				class="h-full overflow-hidden"
-				style={`--sidebar-width: var(--pi-session-sidebar-default-width); --font-sans: ${fonts.sans}; --font-mono: ${fonts.mono};`}
+				style={`--session-sidebar-width: var(--session-sidebar-default-width); --font-sans: ${fonts.sans}; --font-mono: ${fonts.mono};`}
+				data-theme-lab={themeLab || undefined}
 			>
 				<head>
 					<meta charset="utf-8" />
 					<meta name="viewport" content="width=device-width, initial-scale=1" />
-					<meta name="theme-color" content="#09090b" />
+					<meta name="theme-color" content="oklch(10% 0 none)" />
 					<meta name="apple-mobile-web-app-title" content="pi-ui" />
 					<title safe>{state.documentTitle}</title>
 					<link rel="manifest" href={`${staticBase}/manifest.webmanifest`} />
@@ -81,8 +83,16 @@ export function renderPage(
 					<script src={`${staticBase}/theme.js`}></script>
 					<script>{sessionSidebarStartupScript}</script>
 					<link rel="stylesheet" href={`${staticBase}/app.css`} />
-					<script src="/basecoat.js" defer></script>
+					{themeLab && (
+						<link rel="stylesheet" href={`${staticBase}/theme-lab.css`} />
+					)}
 					<script type="module" src={`${staticBase}/build/main.js`}></script>
+					{themeLab && (
+						<script
+							type="module"
+							src={`${staticBase}/build/theme-lab.js`}
+						></script>
+					)}
 					<script
 						type="module"
 						src={`${staticBase}/vendor/datastar.js`}
@@ -95,7 +105,6 @@ export function renderPage(
 					)}
 				</head>
 				<body
-					class="h-full overflow-hidden"
 					spellcheck="false"
 					data-keybind-hints={keybindHints}
 					data-minimal-mode={minimalMode}
@@ -174,27 +183,28 @@ export function renderPage(
 					}`}
 				>
 					{state.datastarInspector && <datastar-inspector />}
+					{themeLab && renderThemeLab()}
 					{renderDebugOverlay(state)}
 					<div
 						id="file-drop-overlay"
-						class="pointer-events-none fixed inset-0 z-50 items-center justify-center bg-background/55 opacity-0 backdrop-blur-sm transition-[opacity,display] transition-discrete duration-100 ease-out motion-reduce:duration-100 [&.file-drop-active]:opacity-100 starting:[&.file-drop-active]:opacity-0"
+						class="file-drop-overlay"
 						style="display: none;"
 						data-class:file-drop-active="$_isDraggingFile"
 						data-style:display="$_isDraggingFile ? 'flex' : 'none'"
 						aria-hidden="true"
 					>
 						<div
-							class="flex scale-95 items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card/95 px-5 py-4 text-sm text-card-foreground shadow-lg transition-[scale] duration-100 ease-out motion-reduce:scale-100 motion-reduce:transition-none [&.file-drop-card-active]:scale-100 starting:[&.file-drop-card-active]:scale-95"
+							class="file-drop-card"
 							data-class:file-drop-card-active="$_isDraggingFile"
 						>
-							<Icon icon={FileUp} class="size-8 text-muted-foreground" />
+							<Icon icon={FileUp} class="file-drop-icon" />
 							<span>Drop files to attach</span>
 						</div>
 					</div>
 					<div
 						id="app"
-						class="pi-workspace-canvas fixed inset-0 overflow-hidden"
-						data-class:pi-review-open="$_workspaceReviewOpen"
+						class="workspace-canvas app-shell"
+						data-class:review-open="$_workspaceReviewOpen"
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
@@ -208,15 +218,18 @@ export function renderPage(
 						{renderSessionSidebar(state)}
 						<div
 							id="workspace-shell"
-							class="@container/workspace absolute inset-0 grid min-h-0 min-w-0 transition-[margin] duration-150 ease-(--pi-ease-out) peer-aria-[hidden=true]/sidebar:mr-0! motion-reduce:transition-none"
-							data-style:margin-right={sessionSidebarMarginRightExpression}
+							class="workspace-shell"
+							{...{
+								"data-style:--session-sidebar-margin":
+									sessionSidebarMarginRightExpression,
+							}}
 							data-style={`{
-								'--pi-review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio || ${gitPaneRatioDefault},
+								'--review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio || ${gitPaneRatioDefault},
 							}`}
 						>
 							<section
 								id="chat-pane"
-								class="pi-raised-surface grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[width,margin-left] duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
+								class="raised-surface chat-pane"
 								aria-label="Chat"
 							>
 								{renderMessages(
@@ -256,11 +269,11 @@ export function renderPage(
 						data-signals:workspace-draft__ifmissing="''"
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="command sm:max-w-md">
-							<header class="relative pr-1">
+						<div class="command command-medium">
+							<header class="workspace-command-header">
 								<input
 									id="workspace-input"
-									class="pr-10"
+									class="workspace-command-input"
 									type="text"
 									placeholder="Type a path or search workspaces..."
 									data-attr:placeholder="$_workspaceAction === 'fork'
@@ -283,7 +296,7 @@ export function renderPage(
 								/>
 								<button
 									type="button"
-									class="btn absolute top-1/2 right-2 size-7 -translate-y-1/2"
+									class="btn workspace-browse-button"
 									data-variant="ghost"
 									data-size="icon-xs"
 									aria-label="Browse folders"
@@ -316,7 +329,7 @@ export function renderPage(
 					>
 						<div
 							id="workspace-browser-content"
-							class="flex w-[min(30rem,calc(100vw-2rem))] max-w-none items-center justify-center p-8 text-sm text-muted-foreground"
+							class="workspace-browser-loading"
 						>
 							Loading folders…
 						</div>
@@ -335,13 +348,13 @@ export function renderPage(
 						onclick="if (event.target === this) this.close()"
 					>
 						<div
-							class="command sm:max-w-6xl"
+							class="command command-tree"
 							style="height: calc(100% - 2rem)"
 							data-style:height="$treeSelectedId ? 'auto' : 'calc(100% - 2rem)'"
 							data-style:max-width="$treeSelectedId ? '24rem' : '72rem'"
 						>
 							<header data-class:sr-only="$treeSelectedId">
-								<Icon icon={Search} class="size-4" />
+								<Icon icon={Search} />
 								<input
 									id="tree-input"
 									type="text"
@@ -368,7 +381,7 @@ export function renderPage(
 						data-signals:session-search__ifmissing="''"
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="command sm:max-w-xl" data-filter="manual">
+						<div class="command command-wide" data-filter="manual">
 							<header>
 								<input
 									id="session-input"
@@ -403,13 +416,13 @@ export function renderPage(
 						aria-describedby="session-delete-description"
 						onclick="if (event.target === this) this.close()"
 					>
-						<div class="sm:max-w-md">
+						<div class="dialog-medium">
 							<header>
 								<h2 id="session-delete-title">Delete session?</h2>
 								<p id="session-delete-description">
 									Are you sure you want to delete{" "}
 									<strong
-										class="font-semibold text-foreground"
+										class="dialog-emphasis"
 										data-text="$sessionDeleteTitle"
 									>
 										the selected session

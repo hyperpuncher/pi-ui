@@ -21,10 +21,12 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<button
 			id="workspace-picker"
-			class="btn w-fit max-w-48 min-w-0 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:size-7 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
+			class="btn prompt-context-button workspace-picker"
 			data-variant="ghost"
 			data-size="sm"
 			type="button"
+			aria-haspopup="dialog"
+			aria-controls="workspace-dialog"
 			aria-label={state.workspacePath}
 			data-attr:disabled="$_sessionTransitionLoading"
 			data-on:click={openWorkspaceDialogAction()}
@@ -35,11 +37,8 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 			data-tooltip="Workspace"
 			data-tooltip-delay
 		>
-			<Icon
-				icon={Folder}
-				class="hidden size-4 group-data-[context-compact]/prompt-footer:block"
-			/>
-			<span class="truncate group-data-[context-compact]/prompt-footer:hidden" safe>
+			<Icon icon={Folder} class="prompt-context-icon" />
+			<span class="prompt-context-label" safe>
 				{label}
 			</span>
 			<ShortcutTooltip label="Workspace" shortcut="ctrl /" />
@@ -50,14 +49,13 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 export function renderThinkingPicker(state: AppStateSnapshot): string {
 	const current = state.thinkingLevel;
 	return syncHtml(
-		<div id="thinking-picker" class="min-w-0">
+		<div id="thinking-picker" class="prompt-context-picker">
 			<label class="sr-only" for="thinking-select-trigger">
 				Thinking level
 			</label>
 			<div
 				id="thinking-select"
 				class="dropdown-menu"
-				data-preserve-attr="data-dropdown-menu-initialized data-basecoat-component"
 				data-on:keydown="if (evt.code === 'Escape') evt.stopPropagation()"
 				data-on:keydown__window={`if (
 				evt.altKey &&
@@ -71,7 +69,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn w-fit max-w-40 px-3 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:size-7 group-data-[context-compact]/prompt-footer:px-0 hover:text-foreground"
+					class="btn prompt-context-button thinking-picker-button"
 					data-variant="ghost"
 					data-size="sm"
 					id="thinking-select-trigger"
@@ -84,13 +82,8 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
 				>
-					<Icon
-						icon={Brain}
-						class="hidden size-4 group-data-[context-compact]/prompt-footer:block"
-					/>
-					<span class="truncate group-data-[context-compact]/prompt-footer:hidden">
-						{thinkingLabel(current)}
-					</span>
+					<Icon icon={Brain} class="prompt-context-icon" />
+					<span class="prompt-context-label">{thinkingLabel(current)}</span>
 					<ShortcutTooltip label="Thinking" shortcut="alt T" />
 				</button>
 				<div
@@ -100,7 +93,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					data-align="end"
 					aria-hidden="true"
 					data-preserve-attr="aria-hidden"
-					class="min-w-48"
+					class="thinking-popover"
 				>
 					<div
 						role="menu"
@@ -111,7 +104,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 							<div
 								role="heading"
 								id="thinking-select-heading"
-								class="flex items-center justify-between gap-4"
+								class="picker-heading"
 							>
 								<span>Thinking</span>
 								<ShortcutKbd shortcut="alt T" />
@@ -125,14 +118,17 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 									payload: { thinkingLevel: ${JSON.stringify(level)} },
 									});`}
 								>
-									<span data-ignore data-indicator>
-										•
-									</span>
-									<span class="min-w-0">
-										<span class="block truncate">
+									<span
+										class="selection-dot"
+										data-ignore
+										data-indicator
+										aria-hidden="true"
+									/>
+									<span class="picker-option-text">
+										<span class="picker-option-title">
 											{thinkingLabel(level)}
 										</span>
-										<span class="block truncate text-xs text-muted-foreground">
+										<span class="picker-option-description">
 											{thinkingDescription(level)}
 										</span>
 									</span>
@@ -176,17 +172,17 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 	const hasModels = state.models.length > 0;
 	if (!hasModels) {
 		return syncHtml(
-			<div id="model-picker" class="min-w-0 shrink">
+			<div id="model-picker" class="prompt-context-picker model-picker">
 				<button
 					type="button"
-					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-32 hover:text-foreground"
+					class="btn prompt-context-button model-picker-button"
 					data-variant="ghost"
 					data-size="sm"
 					data-tooltip="Log in to a provider"
 					data-tooltip-delay
 					data-on:click={authDialogAction("login")}
 				>
-					no provider
+					<span class="prompt-context-label">no provider</span>
 				</button>
 			</div>,
 		);
@@ -195,7 +191,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div
 			id="model-picker"
-			class="min-w-0 shrink"
+			class="prompt-context-picker model-picker"
 			data-signals:_model-query__ifmissing="''"
 		>
 			<label class="sr-only" for="model-select-trigger">
@@ -203,8 +199,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			</label>
 			<div
 				id="model-select"
-				class="popover min-w-0"
-				data-preserve-attr="data-popover-initialized data-basecoat-component"
+				class="popover model-select"
 				data-on:keydown__window={`if (${primaryModifierExpression()} && evt.code === 'KeyL') {
 				evt.preventDefault();
 				${togglePopoverAction("model-select-trigger")};
@@ -215,7 +210,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 			>
 				<button
 					type="button"
-					class="btn w-fit max-w-56 min-w-0 font-mono text-muted-foreground group-data-[context-compact]/prompt-footer:max-w-32 hover:text-foreground"
+					class="btn prompt-context-button model-picker-button"
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
@@ -228,7 +223,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-on:click__capture={`if (el.getAttribute('aria-expanded') !== 'true')
 						@post('${endpoints.modelsRefresh}', { payload: {} })`}
 				>
-					<span class="min-w-0 truncate" safe>
+					<span class="prompt-context-label" safe>
 						{currentLabel}
 					</span>
 					<ShortcutTooltip label="Model" shortcut="ctrl L" />
@@ -240,14 +235,9 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-align="end"
 					aria-hidden="true"
 					data-preserve-attr="aria-hidden"
-					class="w-88 max-w-[calc(100vw-2rem)] p-0"
+					class="model-popover"
 				>
-					<div
-						class="command"
-						aria-label="Models"
-						data-filter="manual"
-						data-preserve-attr="data-command-initialized data-basecoat-component"
-					>
+					<div class="command" aria-label="Models" data-filter="manual">
 						<header>
 							<input
 								id="model-select-input"
@@ -269,7 +259,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 						<div
 							role="menu"
 							id="model-select-menu"
-							class="mt-1 max-h-70"
+							class="model-menu"
 							aria-labelledby="model-select-trigger"
 							data-empty="No models found."
 						>
@@ -277,7 +267,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 								<div
 									role="heading"
 									id="model-select-heading"
-									class="flex items-center justify-between gap-4"
+									class="picker-heading"
 								>
 									<span>Models</span>
 									<ShortcutKbd shortcut="ctrl L" />
@@ -291,7 +281,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 										<div
 											id={`model-option-${encodeURIComponent(value)}`}
 											role="menuitem"
-											class="group [contain-intrinsic-block-size:auto_3rem] [content-visibility:auto]"
+											class="model-option"
 											data-preserve-attr="class aria-hidden"
 											aria-current={
 												value === state.currentModel
@@ -310,15 +300,12 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
 											`}
 										>
-											<span class="min-w-0 flex-1">
-												<span
-													class="block truncate font-medium"
-													safe
-												>
+											<span class="picker-option-text">
+												<span class="picker-option-title" safe>
 													{model.id}
 												</span>
 												<span
-													class="block truncate text-xs text-muted-foreground"
+													class="picker-option-description"
 													safe
 												>
 													{model.provider}
@@ -326,22 +313,17 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												</span>
 											</span>
 											<span
-												class={
-													value === state.currentModel
-														? ""
-														: "invisible"
-												}
+												class="selection-dot model-current-indicator"
+												hidden={value !== state.currentModel}
 												aria-hidden="true"
-											>
-												•
-											</span>
+											/>
 											<button
 												type="button"
 												class={[
-													"btn h-7 shrink-0 overflow-hidden p-0",
+													"btn model-scope-button",
 													model.scoped
-														? "w-7"
-														: "w-0 opacity-0 group-hover:w-7 group-hover:opacity-100 focus-visible:w-7 focus-visible:opacity-100",
+														? "model-scope-button-active"
+														: "",
 												]}
 												data-variant={
 													model.scoped ? "secondary" : "ghost"
@@ -362,8 +344,8 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 													icon={Star}
 													class={
 														model.scoped
-															? "size-4 [&_path]:fill-current"
-															: "size-4"
+															? "model-scope-icon-active"
+															: undefined
 													}
 												/>
 											</button>

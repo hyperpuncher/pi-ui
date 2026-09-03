@@ -1,0 +1,30 @@
+@layer components {
+	:where(.pierre-diff, .pierre-code) {
+		display: block;
+		width: 100%;
+		--diffs-font-family: var(--font-mono);
+		--diffs-header-font-family: var(--font-sans);
+		--diffs-font-features: normal;
+		--diffs-font-size: 13px;
+		--diffs-line-height: 22px;
+		--diffs-tab-size: 4;
+		--diffs-gap-block: 0px;
+		--diffs-gap-inline: 0px;
+		--diffs-gap-style: 0 solid transparent;
+		--diffs-bg: var(--surface-code);
+		--diffs-light-bg: var(--surface-code);
+		--diffs-dark-bg: var(--surface-code);
+		--diffs-bg-buffer-override: transparent;
+		--diffs-bg-selection-override: var(--selection);
+		--diffs-bg-selection-number-override: var(--selection);
+		--diffs-bg-context-override: transparent;
+		--diffs-bg-context-gutter-override: transparent;
+		--diffs-editor-selection-bg: var(--selection);
+	}
+
+	.tool-output-surface :where(.pierre-diff, .pierre-code) {
+		--diffs-bg: transparent;
+		--diffs-light-bg: transparent;
+		--diffs-dark-bg: transparent;
+	}
+}

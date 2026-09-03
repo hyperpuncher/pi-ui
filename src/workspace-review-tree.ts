@@ -10,17 +10,17 @@ export function sortWorkspaceReviewEntries<T extends Readonly<{ path: string }>>
 }
 
 export const workspaceTreeStyle = [
-	"--trees-bg-override: var(--pi-surface-raised)",
-	"--trees-bg-muted-override: var(--pi-hover-background)",
+	"--trees-bg-override: var(--surface-pane)",
+	"--trees-bg-muted-override: var(--surface-muted)",
 	"--trees-border-color-override: transparent",
-	"--trees-fg-override: var(--foreground)",
+	"--trees-fg-override: var(--text)",
 	"--trees-font-family-override: var(--font-sans)",
-	"--trees-focus-ring-color-override: var(--muted-foreground)",
+	"--trees-focus-ring-color-override: var(--text-muted)",
 	"--trees-padding-inline-override: 8px",
 	"--trees-scrollbar-gutter-override: 4px",
-	"--trees-search-bg-override: var(--pi-tree-search-background)",
-	"--trees-selected-bg-override: var(--pi-selection-background)",
-	"--trees-selected-focused-border-color-override: var(--muted-foreground)",
+	"--trees-search-bg-override: light-dark(var(--surface-base), var(--surface-control))",
+	"--trees-selected-bg-override: var(--selection)",
+	"--trees-selected-focused-border-color-override: var(--text-muted)",
 ].join("; ");
 
 // Pierre has no host variables for neutral labels beside colored Git badges

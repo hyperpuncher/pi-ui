@@ -1,0 +1,22 @@
+@layer components {
+	.prompt-action {
+		line-height: 1;
+	}
+	html:not(.dark) .prompt-action[data-variant="destructive"] {
+		background: oklch(from var(--status-danger) l c h / 20%);
+	}
+	html:not(.dark) .prompt-action[data-variant="destructive"]:not(:disabled):hover {
+		background: oklch(from var(--status-danger) l c h / 30%);
+	}
+	.prompt-abort-icon {
+		width: 0.875rem;
+		height: 0.875rem;
+	}
+	.prompt-abort-icon rect {
+		fill: currentColor;
+	}
+	.prompt-send-icon {
+		width: 0.875rem;
+		height: 0.875rem;
+	}
+}

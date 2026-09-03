@@ -1,7 +1,3 @@
-interface BasecoatRefreshRoot {
-	readonly nodeType?: number;
-}
-
 interface TransferFileCollection {
 	readonly length: number;
 }
@@ -12,8 +8,10 @@ interface FileTransferData {
 }
 
 interface PiUiNamespace {
-	basecoat: {
-		refresh(root?: BasecoatRefreshRoot): void;
+	controls: {
+		refresh(root?: Document | Element): void;
+		togglePopup(triggerId: string): boolean;
+		toggleSidebar(sidebar: HTMLElement): boolean;
 	};
 	codeTheme: {
 		loadFontPreviews(light: string, dark: string): void;

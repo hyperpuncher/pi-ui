@@ -41,7 +41,7 @@ function resizeHandleAttributes(options: {
 	));`;
 	const finish = `if (el.hasPointerCapture(evt.pointerId)) {
 		${normalize}
-		document.documentElement.classList.remove('pi-resizing');
+		document.documentElement.classList.remove('is-resizing');
 		${commit}
 	}`;
 	return {
@@ -50,7 +50,7 @@ function resizeHandleAttributes(options: {
 			el.dataset.resizeScale = ${options.scale};
 			el.dataset.resizeStart = ${value} || ${options.defaultValue};
 			el.setPointerCapture(evt.pointerId);
-			document.documentElement.classList.add('pi-resizing');
+			document.documentElement.classList.add('is-resizing');
 		}`,
 		"data-on:pointermove__throttle.8ms": `if (el.hasPointerCapture(evt.pointerId)) {
 			${value} = Number(el.dataset.resizeStart) +
@@ -88,7 +88,7 @@ export function renderWorkspaceReview(
 	return syncHtml(
 		<section
 			id="workspace-review"
-			class="z-30 min-h-0 min-w-0"
+
 			aria-label="Workspace"
 			aria-keyshortcuts="Alt+E Alt+F Alt+G"
 			aria-hidden="true"
@@ -104,14 +104,14 @@ export function renderWorkspaceReview(
 		>
 			<div
 				id="review-body"
-				class="pi-review-body grid min-h-0 min-w-0"
+				class="review-body"
 				data-style={`{
-					'--pi-review-sidebar-width': ($workspaceReviewPreferences.reviewSidebarWidth || ${reviewSidebarWidthDefault}) + 'px',
+					'--review-sidebar-width': ($workspaceReviewPreferences.reviewSidebarWidth || ${reviewSidebarWidthDefault}) + 'px',
 				}`}
 			>
 				<aside
 					id="workspace-files-sidebar"
-					class="pi-review-sidebar flex min-h-0 min-w-0 flex-col"
+					class="review-sidebar"
 					style={
 						snapshot.isGitRepository && preferences.tab !== "files"
 							? "display: none"
@@ -120,10 +120,10 @@ export function renderWorkspaceReview(
 					data-show="!$_workspaceReviewGitAvailable || $workspaceReviewPreferences.tab === 'files'"
 				>
 					{renderWorkspaceModeHeader("files", snapshot.isGitRepository)}
-					<section class="pi-raised-surface flex min-h-0 flex-1 flex-col overflow-hidden">
+					<section class="raised-surface review-sidebar-panel">
 						<div
 							id="workspace-file-tree"
-							class="min-h-0 flex-1 overflow-hidden pt-1 outline-none [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+							class="review-tree"
 							aria-label="Workspace files"
 							tabindex="-1"
 						/>
@@ -132,9 +132,9 @@ export function renderWorkspaceReview(
 
 				<aside
 					id="review-git-sidebar"
-					class="pi-review-sidebar grid min-h-0 min-w-0 flex-col"
+					class="review-sidebar"
 					data-style={`{
-						'--pi-review-changes-ratio': $workspaceReviewPreferences.changesRatio || ${changesRatioDefault},
+						'--review-changes-ratio': $workspaceReviewPreferences.changesRatio || ${changesRatioDefault},
 					}`}
 					style={
 						!snapshot.isGitRepository || preferences.tab === "files"
@@ -149,30 +149,30 @@ export function renderWorkspaceReview(
 					{renderWorkspaceModeHeader("git", snapshot.isGitRepository)}
 					<section
 						id="review-changes-section"
-						class="pi-raised-surface flex min-h-0 shrink-0 flex-col overflow-hidden"
+						class="raised-surface review-sidebar-panel review-changes"
 						hidden={snapshot.changes.length === 0}
 						data-attr:hidden="!$_workspaceReviewHasChanges"
 					>
-						<header class="flex h-8 shrink-0 items-center gap-2 px-3 text-xs font-medium">
+						<header class="review-sidebar-header">
 							<span>Changes</span>
 							<span
 								id="review-change-count"
-								class="pi-fine-print rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums"
+								class="fine-print review-change-count"
 								data-text="$_workspaceReviewChangeCount"
 							>
 								{snapshot.changes.length}
 							</span>
-							<span class="ml-auto flex gap-1 font-mono text-[10px] tabular-nums">
+							<span class="review-change-totals">
 								<span
 									id="review-total-additions"
-									class="text-(--pi-diff-addition)"
+									class="review-additions"
 									data-text="'+' + $_workspaceReviewAdditions"
 								>
 									+{additions}
 								</span>
 								<span
 									id="review-total-deletions"
-									class="text-(--pi-diff-deletion)"
+									class="review-deletions"
 									data-text="'-' + $_workspaceReviewDeletions"
 								>
 									-{deletions}
@@ -181,7 +181,7 @@ export function renderWorkspaceReview(
 						</header>
 						<div
 							id="review-tree"
-							class="min-h-0 flex-1 overflow-hidden pt-1 outline-none [&>file-tree-container]:h-full [&>file-tree-container]:min-h-0 [&>file-tree-container]:w-full"
+							class="review-tree"
 							style={workspaceTreeStyle}
 							aria-label="Git changes"
 							tabindex="-1"
@@ -189,7 +189,7 @@ export function renderWorkspaceReview(
 						/>
 						<div
 							id="review-tree-empty"
-							class="px-3 pb-2 text-xs text-muted-foreground"
+							class="review-tree-empty"
 							style={
 								snapshot.changes.length > 0 ? "display: none" : undefined
 							}
@@ -200,7 +200,7 @@ export function renderWorkspaceReview(
 					</section>
 					<div
 						id="review-changes-separator"
-						class="pi-resize-handle shrink-0"
+						class="resize-handle"
 						data-orientation="horizontal"
 						role="separator"
 						tabindex="0"
@@ -220,25 +220,22 @@ export function renderWorkspaceReview(
 							scale: "Math.max(1, el.parentElement.clientHeight - el.parentElement.firstElementChild.offsetHeight - el.offsetHeight)",
 						})}
 					/>
-					<section class="pi-raised-surface flex min-h-0 flex-1 flex-col overflow-hidden">
-						<header class="flex h-8 shrink-0 items-center px-3 text-xs font-medium">
-							History
-						</header>
+					<section class="raised-surface review-sidebar-panel">
+						<header class="review-sidebar-header">History</header>
 						<div
 							id="review-history"
-							class="min-h-0 flex-1 space-y-px overflow-y-auto overscroll-contain px-1 pb-1"
+							class="review-history"
 							aria-label="Commit history"
+							tabindex="-1"
 						>
-							<p class="px-2 py-1 text-xs text-muted-foreground">
-								Loading history…
-							</p>
+							<p class="review-loading">Loading history…</p>
 						</div>
 					</section>
 				</aside>
 
 				<div
 					id="review-sidebar-separator"
-					class="pi-resize-handle"
+					class="resize-handle"
 					role="separator"
 					tabindex="0"
 					aria-label="Resize file sidebar"
@@ -258,7 +255,7 @@ export function renderWorkspaceReview(
 
 				<div
 					id="workspace-file-main"
-					class="flex min-h-0 min-w-0 flex-col outline-none"
+					class="review-main"
 					aria-label="File editor"
 					aria-keyshortcuts="Alt+E"
 					tabindex="-1"
@@ -269,167 +266,45 @@ export function renderWorkspaceReview(
 					}
 					data-show="!$_workspaceReviewGitAvailable || $workspaceReviewPreferences.tab === 'files'"
 				>
-					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center gap-2 px-1">
-						<div class="flex min-w-0 flex-1 items-center gap-2 font-mono text-[11px]">
+					<header class="review-toolbar">
+						<div class="review-file-heading">
 							<span
 								id="workspace-file-path"
-								class="pi-fine-print min-w-0 truncate"
+								class="fine-print review-file-path"
 							>
 								Select a file
 							</span>
 							<span
 								id="workspace-file-status"
-								class="pi-fine-print shrink-0 tabular-nums"
+								class="fine-print review-file-status"
 							/>
 						</div>
-						<ShortcutKbd shortcut="alt E" />
-						<div class="flex rounded-md bg-(--pi-control-well) p-0.5">
-							<button
-								id="workspace-file-wrap"
-								type="button"
-								class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
-								aria-pressed="true"
-								aria-label="Wrap long lines"
-								data-tooltip="Wrap long lines"
-								data-side="bottom"
-							>
-								<Icon icon={TextWrap} />
-							</button>
-						</div>
-						<button
-							id="workspace-file-edit"
-							type="button"
-							class="btn"
-							data-variant="ghost"
-							data-size="xs"
-							disabled
-						>
-							Save
-						</button>
-						<button
-							type="button"
-							class="btn text-muted-foreground hover:text-foreground"
-							data-variant="ghost"
-							data-size="icon-xs"
-							data-on:click="$_workspaceReviewOpen = false"
-							aria-label="Hide workspace"
-						>
-							<Icon icon={X} />
-						</button>
-					</header>
-					<div class="pi-review-diff-canvas relative min-h-0 min-w-0 flex-1">
-						<div
-							id="workspace-file-view"
-							class="absolute inset-0 overflow-auto overscroll-contain outline-none"
-							aria-label="File contents"
-							aria-keyshortcuts="Alt+E"
-							tabindex="-1"
-						/>
-						<div
-							id="workspace-file-empty"
-							class="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground"
-						>
-							Open a file from the workspace
-						</div>
-					</div>
-				</div>
-
-				<div
-					id="review-git-main"
-					class="flex min-h-0 min-w-0 flex-col"
-					style={
-						!snapshot.isGitRepository || preferences.tab === "files"
-							? "display: none"
-							: undefined
-					}
-					data-show="$_workspaceReviewGitAvailable && $workspaceReviewPreferences.tab !== 'files'"
-				>
-					<header class="pi-review-toolbar flex min-w-0 shrink-0 items-center justify-between gap-2 px-1">
-						<span
-							id="review-branch"
-							class="pi-fine-print min-w-0 truncate font-mono text-[11px]"
-							style={snapshot.branch ? undefined : "display: none"}
-							data-show="Boolean($_workspaceReviewBranch)"
-							data-text="$_workspaceReviewBranch"
-							safe
-						>
-							{snapshot.branch ?? ""}
-						</span>
-						<div class="pi-review-controls ml-auto flex shrink-0 items-center gap-1">
+						<div class="review-toolbar-controls">
 							<ShortcutKbd shortcut="alt E" />
-							<div
-								class="flex rounded-md bg-(--pi-control-well) p-0.5"
-								aria-label="Diff scope"
-							>
+							<div class="segmented-control review-icon-control">
 								<button
-									id="review-mode-all"
+									id="workspace-file-wrap"
 									type="button"
-									class="rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
-									aria-pressed="true"
-								>
-									All
-								</button>
-								<button
-									id="review-mode-selected"
-									type="button"
-									class="rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
-									aria-pressed="false"
-								>
-									Selected
-								</button>
-							</div>
-							<div
-								class="flex rounded-md bg-(--pi-control-well) p-0.5"
-								aria-label="Diff layout"
-							>
-								<button
-									id="review-layout-split"
-									type="button"
-									class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
-									aria-pressed="true"
-									aria-label="Split diff layout"
-								>
-									<Icon icon={SquareSplitHorizontal} />
-								</button>
-								<button
-									id="review-layout-stacked"
-									type="button"
-									class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
-									aria-pressed="false"
-									aria-label="Stacked diff layout"
-								>
-									<Icon icon={SquareSplitVertical} />
-								</button>
-							</div>
-							<div class="flex rounded-md bg-(--pi-control-well) p-0.5">
-								<button
-									id="review-wrap"
-									type="button"
-									class="rounded-sm p-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+									class="review-segment-icon"
 									aria-pressed="true"
 									aria-label="Wrap long lines"
-									data-tooltip="Wrap long lines"
-									data-side="bottom"
 								>
 									<Icon icon={TextWrap} />
 								</button>
 							</div>
-							<span
-								id="review-comment-status"
-								class="pi-error-foreground hidden text-xs"
-								aria-live="polite"
-							/>
 							<button
-								id="review-submit-comments"
+								id="workspace-file-edit"
 								type="button"
-								class="btn hidden"
+								class="btn"
+								data-variant="ghost"
 								data-size="xs"
+								disabled
 							>
-								Submit review
+								Save
 							</button>
 							<button
 								type="button"
-								class="btn text-muted-foreground hover:text-foreground"
+								class="btn review-close"
 								data-variant="ghost"
 								data-size="icon-xs"
 								data-on:click="$_workspaceReviewOpen = false"
@@ -439,19 +314,132 @@ export function renderWorkspaceReview(
 							</button>
 						</div>
 					</header>
-					<header id="review-detail-header" class="hidden shrink-0 px-3 py-2" />
-					<div class="pi-review-diff-canvas relative min-h-0 min-w-0 flex-1">
+					<div class="review-diff-canvas">
+						<div
+							id="workspace-file-view"
+							class="review-scroll-view"
+							aria-label="File contents"
+							aria-keyshortcuts="Alt+E"
+							tabindex="-1"
+						/>
+						<div id="workspace-file-empty" class="review-empty">
+							Open a file from the workspace
+						</div>
+					</div>
+				</div>
+
+				<div
+					id="review-git-main"
+					class="review-main"
+					style={
+						!snapshot.isGitRepository || preferences.tab === "files"
+							? "display: none"
+							: undefined
+					}
+					data-show="$_workspaceReviewGitAvailable && $workspaceReviewPreferences.tab !== 'files'"
+				>
+					<header class="review-toolbar">
+						<span
+							id="review-branch"
+							class="fine-print review-branch"
+							hidden={!snapshot.branch}
+							data-attr:hidden="!Boolean($_workspaceReviewBranch)"
+							data-text="$_workspaceReviewBranch"
+							safe
+						>
+							{snapshot.branch ?? ""}
+						</span>
+						<div class="review-toolbar-controls">
+							<ShortcutKbd shortcut="alt E" />
+							<div class="segmented-control" aria-label="Diff scope">
+								<button
+									id="review-mode-all"
+									type="button"
+									class="review-segment-text"
+									aria-pressed="true"
+								>
+									All
+								</button>
+								<button
+									id="review-mode-selected"
+									type="button"
+									class="review-segment-text"
+									aria-pressed="false"
+								>
+									Selected
+								</button>
+							</div>
+							<div
+								class="segmented-control review-icon-control"
+								aria-label="Diff layout"
+							>
+								<button
+									id="review-layout-split"
+									type="button"
+									class="review-segment-icon"
+									aria-pressed="true"
+									aria-label="Split diff layout"
+								>
+									<Icon icon={SquareSplitHorizontal} />
+								</button>
+								<button
+									id="review-layout-stacked"
+									type="button"
+									class="review-segment-icon"
+									aria-pressed="false"
+									aria-label="Stacked diff layout"
+								>
+									<Icon icon={SquareSplitVertical} />
+								</button>
+							</div>
+							<div class="segmented-control review-icon-control">
+								<button
+									id="review-wrap"
+									type="button"
+									class="review-segment-icon"
+									aria-pressed="true"
+									aria-label="Wrap long lines"
+								>
+									<Icon icon={TextWrap} />
+								</button>
+							</div>
+							<span
+								id="review-comment-status"
+								class="error-foreground review-comment-status"
+								hidden
+								aria-live="polite"
+							/>
+							<button
+								id="review-submit-comments"
+								type="button"
+								class="btn review-submit"
+								data-size="xs"
+								hidden
+							>
+								Submit review
+							</button>
+							<button
+								type="button"
+								class="btn review-close"
+								data-variant="ghost"
+								data-size="icon-xs"
+								data-on:click="$_workspaceReviewOpen = false"
+								aria-label="Hide workspace"
+							>
+								<Icon icon={X} />
+							</button>
+						</div>
+					</header>
+					<header id="review-detail-header" hidden />
+					<div class="review-diff-canvas">
 						<div
 							id="review-diff-view"
-							class="absolute inset-0 overflow-x-clip overflow-y-auto overscroll-contain outline-none"
+							class="review-scroll-view review-diff-view"
 							aria-label="Code changes"
 							aria-keyshortcuts="Alt+E"
 							tabindex="-1"
 						/>
-						<div
-							id="review-empty"
-							class="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground"
-						>
+						<div id="review-empty" class="review-empty">
 							{snapshot.isGitRepository
 								? "Loading Git data…"
 								: "Open a Git repository"}
@@ -461,7 +449,7 @@ export function renderWorkspaceReview(
 			</div>
 			<div
 				id="review-git-separator"
-				class="pi-resize-handle"
+				class="resize-handle"
 				role="separator"
 				tabindex="0"
 				aria-label="Resize Git and chat"
@@ -490,7 +478,7 @@ export function renderWorkspaceReview(
 				aria-labelledby="workspace-entry-title"
 				aria-describedby="workspace-entry-description"
 			>
-				<div class="sm:max-w-sm">
+				<div class="dialog-medium">
 					<header>
 						<h2 id="workspace-entry-title">Name item</h2>
 						<p id="workspace-entry-description" />
@@ -509,7 +497,8 @@ export function renderWorkspaceReview(
 						/>
 						<p
 							id="workspace-entry-error"
-							class="mt-2 hidden text-sm text-destructive"
+							class="workspace-entry-error"
+							hidden
 							aria-live="polite"
 						/>
 					</section>
@@ -570,17 +559,17 @@ function renderWorkspaceModeHeader(
 ): JSX.Element {
 	return (
 		<header
-			class="mb-(--pi-workspace-gap) flex shrink-0"
+			class="workspace-mode-header"
 			style={gitAvailable ? undefined : "display: none"}
 			data-show="$_workspaceReviewGitAvailable"
 		>
 			<div
-				class="flex w-full rounded-sm bg-(--pi-control-well) p-0.5"
+				class="segmented-control workspace-mode-control"
 				aria-label="Workspace view"
 			>
 				<button
 					type="button"
-					class="flex flex-1 items-center justify-center gap-2 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					class="workspace-mode-button"
 					aria-pressed={active === "files" ? "true" : "false"}
 					data-attr:aria-pressed="
 						$workspaceReviewPreferences.tab === 'files' ||
@@ -594,7 +583,7 @@ function renderWorkspaceModeHeader(
 				</button>
 				<button
 					type="button"
-					class="flex flex-1 items-center justify-center gap-2 rounded-[4px] px-2 py-1 text-xs font-medium text-muted-foreground aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+					class="workspace-mode-button"
 					aria-pressed={active === "git" ? "true" : "false"}
 					data-attr:aria-pressed="
 						$workspaceReviewPreferences.tab !== 'files' &&

@@ -22,7 +22,7 @@ export function renderPromptBox(
 	return syncHtml(
 		<div
 			id="prompt-box"
-			class="absolute inset-x-4 bottom-6 z-10 mx-auto max-w-(--pi-prompt-max-width) overflow-visible text-sm"
+			class="prompt-box"
 			data-signals__ifmissing={JSON.stringify({
 				prompt: state.promptEditorText,
 				_filePickerOpen: false,
@@ -34,11 +34,11 @@ export function renderPromptBox(
 			data-on:pointerdown__outside="window.piUi.pickers.close()"
 			data-on:pi-ui-prompt-submit-finished="$_promptSubmitting = false"
 		>
-			<div class="pointer-events-none absolute right-0 bottom-full left-0 z-30 flex flex-col items-center">
+			<div class="prompt-popovers">
 				{renderLatestButton()}
 				<div
 					id="prompt-slash-popover"
-					class="pointer-events-auto mb-2 self-stretch rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+					class="prompt-picker-popover"
 					style="display: none;"
 					data-show={`$_slashPickerOpen && (${slashPickerOpenExpression(state)})`}
 				>
@@ -46,7 +46,7 @@ export function renderPromptBox(
 				</div>
 				<div
 					id="prompt-file-popover"
-					class="pointer-events-auto mb-2 self-stretch rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+					class="prompt-picker-popover"
 					style="display: none;"
 					data-show="$_filePickerOpen"
 				>
@@ -56,7 +56,7 @@ export function renderPromptBox(
 			{renderPromptQueue(state)}
 			<div
 				id="prompt-attachments"
-				class="relative z-20 mx-3 mb-2 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 overflow-visible transition-[filter] duration-150 motion-reduce:transition-none"
+				class="prompt-attachments"
 				data-style:filter="$_promptSubmitting ? 'brightness(0.75)' : ''"
 				aria-label="Attachments"
 				data-attr:inert="$_promptSubmitting"
@@ -65,16 +65,16 @@ export function renderPromptBox(
 				hidden
 			/>
 			<div
-				class="input-group pi-raised-surface pi-prompt-surface relative z-40 overflow-visible p-3 text-sm transition-shadow duration-150 ease-(--pi-ease-out) motion-reduce:transition-none"
+				class="input-group raised-surface prompt-surface"
 				data-orientation="vertical"
 			>
-				<div class="pointer-events-none absolute top-2 right-2 z-20">
+				<div class="prompt-shortcut-hint">
 					<ShortcutKbd shortcut="alt P" />
 				</div>
 				{renderExtensionWidgets(state, "aboveEditor")}
 				<textarea
 					id="prompt-input"
-					class="field-sizing-content max-h-44 min-h-7 resize-none overflow-y-auto p-1 pr-20 text-[15px] in-data-[keybind-hints=false]:pr-1 max-md:pr-1"
+					class="prompt-input"
 					placeholder="Ask pi anything..."
 					aria-label="Message"
 					aria-keyshortcuts="Alt+P"
@@ -164,27 +164,18 @@ export function renderPromptBox(
 				{renderExtensionWidgets(state, "belowEditor")}
 				<footer
 					id="prompt-footer"
-					class="group/prompt-footer relative flex flex-nowrap items-center justify-between gap-2 p-0"
+					class="prompt-footer"
 					data-align="end"
 					data-init="window.piUi.prompt.bindLayout()"
 					data-preserve-attr="data-toolbar-compact data-context-compact"
 				>
 					{renderPromptToolbar(state, reviewAvailable)}
-					<div
-						id="prompt-context"
-						class="flex min-w-0 flex-1 items-center justify-end gap-1.5 group-data-[context-compact]/prompt-footer:gap-1 group-data-[measuring]/prompt-footer:w-max group-data-[measuring]/prompt-footer:flex-none"
-					>
+					<div id="prompt-context" class="prompt-context">
 						{renderPromptStatus(state)}
 						{renderWorkspacePicker(state)}
-						<span
-							class="h-4 w-0 shrink-0 border-l border-border group-data-[context-compact]/prompt-footer:hidden"
-							aria-hidden="true"
-						/>
+						<span class="prompt-context-divider" aria-hidden="true" />
 						{renderModelPicker(state)}
-						<span
-							class="h-4 w-0 shrink-0 border-l border-border group-data-[context-compact]/prompt-footer:hidden"
-							aria-hidden="true"
-						/>
+						<span class="prompt-context-divider" aria-hidden="true" />
 						{renderThinkingPicker(state)}
 						{renderPromptAction(state)}
 					</div>
@@ -196,11 +187,7 @@ export function renderPromptBox(
 
 export function renderPromptQueue(state: AppStateSnapshot): string {
 	return syncHtml(
-		<div
-			id="prompt-queue"
-			class="pointer-events-none mx-auto flex w-[calc(100%-2rem)] flex-col items-center sm:w-[calc(100%-4rem)]"
-			aria-live="polite"
-		>
+		<div id="prompt-queue" class="prompt-queue" aria-live="polite">
 			{renderQueuedMessages(state)}
 		</div>,
 	);
@@ -211,7 +198,7 @@ function renderLatestButton() {
 		<button
 			id="messages-latest"
 			type="button"
-			class="btn pointer-events-auto z-20 mb-4 rounded-full border-foreground/10! bg-background/60! backdrop-blur-[2px] transition-colors duration-150 ease-out hover:bg-muted/70! motion-reduce:transition-none dark:bg-input/65! hover:dark:bg-input/75!"
+			class="btn messages-latest"
 			data-variant="outline"
 			data-size="icon"
 			data-preserve-attr="hidden inert tabindex"
@@ -221,7 +208,7 @@ function renderLatestButton() {
 			inert
 			tabindex="-1"
 		>
-			<Icon icon={ArrowDown} class="size-4" />
+			<Icon icon={ArrowDown} />
 		</button>
 	);
 }
@@ -243,33 +230,35 @@ function renderQueuedMessages(state: AppStateSnapshot): string {
 	];
 	if (items.length === 0) return "";
 	return syncHtml(
-		<section class="pointer-events-auto -mx-3 -mb-3 flex max-h-40 w-[calc(100%+1.5rem)] flex-col gap-1 overflow-y-auto px-3 pt-2 pb-4">
+		<section class="prompt-queue-list">
 			{items.map(({ behavior, index, label, text }, itemIndex) => (
-				<div class="prompt-queue-item pi-raised-surface pi-prompt-surface group flex min-h-9 min-w-0 translate-y-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs opacity-100 shadow-md transition-[opacity,translate] duration-100 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity starting:translate-y-1 starting:opacity-0">
+				<div class="prompt-queue-item raised-surface">
 					<span
 						class={[
-							"size-1 shrink-0 rounded-full",
-							label === "Steering" ? "bg-amber-400" : "bg-sky-400",
+							"prompt-queue-dot",
+							label === "Steering"
+								? "prompt-queue-dot-steer"
+								: "prompt-queue-dot-follow-up",
 						]}
 						aria-hidden="true"
 					/>
 					<span
 						class={[
-							"shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+							"prompt-queue-label",
 							label === "Steering"
-								? "pi-warning-fine-print bg-amber-500/10"
-								: "pi-info-fine-print bg-sky-500/10",
+								? "warning-foreground prompt-queue-label-steer"
+								: "fine-print prompt-queue-label-follow-up",
 						]}
 					>
 						{label}
 					</span>
-					<span class="min-w-0 flex-1 truncate text-muted-foreground" safe>
+					<span class="prompt-queue-text" safe>
 						{text}
 					</span>
 					{itemIndex === 0 ? (
 						<button
 							type="button"
-							class="-my-1 flex h-7 shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							class="prompt-queue-restore"
 							data-on:click={`@post('${endpoints.promptDequeue}', { payload: {} })`}
 							aria-label="Restore all queued messages to the prompt"
 						>
@@ -281,7 +270,7 @@ function renderQueuedMessages(state: AppStateSnapshot): string {
 					)}
 					<button
 						type="button"
-						class="-my-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[color,background-color,opacity] hover:bg-muted hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:sm:opacity-100"
+						class="prompt-queue-remove"
 						data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
 						aria-label="Remove queued message"
 					>

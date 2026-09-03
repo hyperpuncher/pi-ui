@@ -1,0 +1,114 @@
+@layer components {
+	.dialog-wide {
+		width: min(32rem, calc(100vw - 2rem));
+	}
+	.dialog-extra-wide {
+		width: min(42rem, calc(100vw - 2rem));
+	}
+
+	.dialog-option-list {
+		display: grid;
+		max-height: 60dvh;
+		gap: 0.25rem;
+		overflow-y: auto;
+		padding-block: 0.25rem;
+	}
+
+	.dialog-empty {
+		padding-block: 1.5rem;
+		color: var(--text-muted);
+		text-align: center;
+	}
+
+	.dialog-option {
+		width: 100%;
+		height: auto;
+		justify-content: flex-start;
+		gap: 1rem;
+		padding: 0.5rem 0.75rem;
+		text-align: start;
+	}
+	.dialog-option-between {
+		justify-content: space-between;
+	}
+	.dialog-option-text {
+		min-width: 0;
+	}
+	.dialog-option-title,
+	.dialog-option-description {
+		display: block;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.dialog-option-description {
+		color: var(--text-muted);
+		font: var(--text-xs)/1.25 var(--font-mono);
+	}
+
+	.dialog-flow {
+		display: grid;
+		gap: 1rem;
+	}
+	.dialog-flow-compact {
+		display: grid;
+		gap: 0.5rem;
+	}
+	.dialog-link {
+		display: block;
+		overflow-wrap: anywhere;
+		color: var(--action-primary);
+		text-decoration: underline;
+	}
+	.dialog-description {
+		color: var(--text-muted);
+	}
+	.dialog-callout {
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		padding: 0.75rem;
+	}
+	.dialog-device-code {
+		display: block;
+		margin-block-start: 0.25rem;
+		font-size: var(--text-lg);
+		font-weight: 600;
+	}
+	.dialog-progress-messages {
+		display: grid;
+		gap: 0.25rem;
+		color: var(--text-muted);
+	}
+	.dialog-prompt {
+		font-weight: 500;
+	}
+	.dialog-editor {
+		min-height: 10rem;
+		resize: vertical;
+	}
+
+	.dialog-progress-heading {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		color: var(--text-muted);
+	}
+	.dialog-progress-track {
+		height: 0.5rem;
+		overflow: hidden;
+		border-radius: 999px;
+		background: var(--surface-muted);
+	}
+	.dialog-progress-value {
+		height: 100%;
+		background: var(--action-primary);
+		transition: width 150ms ease;
+	}
+	.dialog-model-name {
+		min-width: 0;
+		overflow: hidden;
+		font: var(--text-sm)/1.25 var(--font-mono);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}

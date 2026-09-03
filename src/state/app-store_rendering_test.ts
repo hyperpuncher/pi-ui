@@ -186,7 +186,7 @@ test("parallel message updates all reach their final state", async () => {
 		);
 
 		assertEqual(count(updates, "data: selector [data-message-id="), 2);
-		assertEqual(count(updates, "pi-tool-status-success"), 2);
+		assertEqual(count(updates, "tool-status-success"), 2);
 	} finally {
 		controller.abort();
 	}

@@ -10,7 +10,7 @@ export function PickerList(props: {
 		<ul
 			id={props.id}
 			role={props.role ?? "listbox"}
-			class={props.class ?? "max-h-72 list-none overflow-y-auto p-1"}
+			class={props.class ?? "picker-list"}
 		>
 			{props.children}
 		</ul>,
@@ -19,7 +19,7 @@ export function PickerList(props: {
 
 export function PickerEmpty(props: { children: JSX.Element }): string {
 	return syncHtml(
-		<li role="status" class="px-3 py-4 text-center text-sm text-muted-foreground">
+		<li role="status" class="picker-empty">
 			{props.children}
 		</li>,
 	);
@@ -37,21 +37,21 @@ export function PickerRow(props: {
 		<li
 			role="option"
 			tabindex="-1"
-			class="rounded-md aria-selected:bg-muted"
+			class="picker-row"
 			aria-selected={props.selected ? "true" : "false"}
 			data-file-row
 		>
 			<button
 				type="button"
-				class="flex w-full items-center justify-between gap-4 rounded-md border-0 bg-transparent px-3 py-2 text-left outline-none hover:bg-muted focus:bg-muted"
+				class="picker-row-button"
 				data-picker-kind={props.kind}
 				data-picker-value={props.value}
 			>
-				<span class="min-w-0">
-					<span class="block truncate font-medium" safe>
+				<span class="picker-row-content">
+					<span class="picker-row-title" safe>
 						{props.label}
 					</span>
-					<span class="block truncate text-xs text-muted-foreground" safe>
+					<span class="picker-row-description" safe>
 						{props.description}
 					</span>
 				</span>

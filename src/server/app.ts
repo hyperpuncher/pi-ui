@@ -36,12 +36,10 @@ import { registerWorkspaceReviewRoutes } from "./routes/workspace-review.ts";
 import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { SessionImageStore } from "./session-image-store.ts";
 import { createStaticAssetServer } from "./static-assets.ts";
-import { staticPath, staticRoot } from "./static-path.ts";
+import { staticRoot } from "./static-path.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
 import { readWorkspaceReviewPreferences } from "./workspace-review-preferences.ts";
-
-const basecoatJsPath = staticPath("basecoat.vendor.js");
 
 export interface AppServer {
 	fetch(request: Request, clientAddress?: ClientAddress): Response | Promise<Response>;
@@ -97,7 +95,7 @@ export async function createApp(): Promise<AppServer> {
 		keybindHints: appConfig.keybindHints !== false,
 		minimalMode: appConfig.minimalMode === true,
 		toolOutputHidden: appConfig.toolOutputHidden === true,
-		readBasecoat: async () => await Bun.file(basecoatJsPath).arrayBuffer(),
+		themeLab: process.env.PI_UI_THEME_LAB === "1",
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>
 			openWorkspace(path, store, resources, transitions, autoTitle),

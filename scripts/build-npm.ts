@@ -18,8 +18,5 @@ const result = await Bun.build({
 	define: { PI_BUNDLED_NODE: "true" },
 	banner: "#!/usr/bin/env bun",
 });
-if (!result.success) {
-	for (const log of result.logs) console.error(log);
-	process.exit(1);
-}
+for (const log of result.logs) console.warn(log);
 await chmod(executable, 0o755);
