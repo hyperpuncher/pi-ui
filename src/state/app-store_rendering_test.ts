@@ -5,6 +5,7 @@ import {
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
 
+import { SessionCatalog } from "../agent/session-catalog.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { collectElementPatches } from "../testing/element-patches.ts";
@@ -676,6 +677,14 @@ test("session pagination patches only session-owned regions", async () => {
 			text.includes("Updated active session"),
 		);
 		assertIncludes(updated, 'id="session-sidebar-content"');
+
+		new SessionCatalog(state).touch(sessions[0].path);
+		state.flush();
+		const touched = await readUntil(reader, (text) =>
+			text.includes('id="session-sidebar-content"'),
+		);
+		assertIncludes(touched, 'id="session-sidebar-content"');
+		assertNotIncludes(touched, 'id="session-menu-content"');
 
 		state.loadMoreSessions();
 		state.flush();

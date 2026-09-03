@@ -49,6 +49,7 @@ type RenderedView = {
 type DirtyRegions = {
 	pickers: boolean;
 	sessions: boolean;
+	sessionSidebar: boolean;
 	workspaceReview: boolean;
 };
 
@@ -62,6 +63,7 @@ export class UiRenderer implements AppStorePresentation {
 	private pendingEnhancements = new Set<string>();
 	private pickersDirty = false;
 	private sessionsDirty = false;
+	private sessionSidebarDirty = false;
 	private workspaceReviewDirty = false;
 	private replaceTranscriptOnCommit = false;
 
@@ -129,10 +131,12 @@ export class UiRenderer implements AppStorePresentation {
 		const dirtyRegions: DirtyRegions = {
 			pickers: this.pickersDirty,
 			sessions: this.sessionsDirty,
+			sessionSidebar: this.sessionSidebarDirty,
 			workspaceReview: this.workspaceReviewDirty,
 		};
 		this.pickersDirty = false;
 		this.sessionsDirty = false;
+		this.sessionSidebarDirty = false;
 		this.workspaceReviewDirty = false;
 		const state = this.store.snapshot();
 		if (this.hub.clientCount > 0) {
@@ -174,6 +178,8 @@ export class UiRenderer implements AppStorePresentation {
 				"{}",
 				[],
 			);
+		} else if (dirty.sessionSidebar) {
+			this.hub.patchView(renderSessionSidebarContent(snapshot), "{}", []);
 		}
 		if (dirty.workspaceReview) {
 			this.hub.patchView(
@@ -220,6 +226,9 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	sessionsChanged(): void {
 		this.sessionsDirty = true;
+	}
+	sessionSidebarChanged(): void {
+		this.sessionSidebarDirty = true;
 	}
 	workspaceReviewChanged(): void {
 		this.workspaceReviewDirty = true;

@@ -155,6 +155,7 @@ export interface AppStorePresentation {
 	messageUpdated(id: string): void;
 	pickersChanged(): void;
 	sessionsChanged(): void;
+	sessionSidebarChanged(): void;
 	workspaceReviewChanged(): void;
 	streamingMessageStarted(id: string): void;
 	streamingMessageChanged(): void;
@@ -545,6 +546,7 @@ export class AppStore {
 	updateSessionSummary(
 		path: string,
 		update: (session: AppSessionSummary) => AppSessionSummary,
+		options: { sidebarOnly?: boolean } = {},
 	): boolean {
 		const catalog = this.getSessionCatalog();
 		const index = catalog.findIndex((candidate) => candidate.path === path);
@@ -554,7 +556,8 @@ export class AppStore {
 		);
 		this.sessionIndex = sessions;
 		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
-		this.presentation?.sessionsChanged();
+		if (options.sidebarOnly) this.presentation?.sessionSidebarChanged();
+		else this.presentation?.sessionsChanged();
 		this.commit();
 		return true;
 	}

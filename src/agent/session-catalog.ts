@@ -208,11 +208,15 @@ export class SessionCatalog {
 
 	touch(path: string): void {
 		const modified = new Date();
-		this.state.updateSessionSummary(path, (session) => ({
-			...session,
-			modified: formatDateTime(modified),
-			modifiedAt: modified.toISOString(),
-		}));
+		this.state.updateSessionSummary(
+			path,
+			(session) => ({
+				...session,
+				modified: formatDateTime(modified),
+				modifiedAt: modified.toISOString(),
+			}),
+			{ sidebarOnly: true },
+		);
 	}
 
 	async refreshPath(
