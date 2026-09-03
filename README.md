@@ -25,6 +25,7 @@ keyboard-first minimal gui for [`pi`](https://pi.dev)
 
 ## built with
 
+- [`pi`](https://github.com/earendil-works/pi)
 - [`datastar`](https://data-star.dev/)
 - [`kita-jsx`](https://github.com/kitajs/html)
 - [`pierre-diffs`](https://diffs.com/)
