@@ -3,7 +3,6 @@ import {
 	cycleModelAction,
 	cycleThinkingAction,
 	openWorkspaceDialogAction,
-	togglePopoverAction,
 	toggleWorkspaceDialogAction,
 } from "../commands/actions.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
@@ -56,7 +55,6 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 			<div
 				id="thinking-select"
 				class="dropdown-menu"
-				data-on:keydown="if (evt.code === 'Escape') evt.stopPropagation()"
 				data-on:keydown__window={`if (
 				evt.altKey &&
 				!evt.ctrlKey &&
@@ -74,10 +72,9 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					data-size="sm"
 					id="thinking-select-trigger"
 					aria-haspopup="menu"
-					aria-expanded="false"
-					aria-controls="thinking-select-menu"
+					aria-controls="thinking-select-popover"
 					aria-label={`Thinking: ${thinkingLabel(current)}`}
-					data-preserve-attr="aria-expanded aria-activedescendant"
+					popovertarget="thinking-select-popover"
 					data-tooltip="Thinking"
 					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
@@ -88,53 +85,52 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 				</button>
 				<div
 					id="thinking-select-popover"
+					popover="auto"
 					data-popover
 					data-side="top"
 					data-align="end"
-					aria-hidden="true"
-					data-preserve-attr="aria-hidden"
 					class="thinking-popover"
+					role="menu"
+					aria-labelledby="thinking-select-trigger"
 				>
-					<div
-						role="menu"
-						id="thinking-select-menu"
-						aria-labelledby="thinking-select-trigger"
-					>
-						<div role="group" aria-labelledby="thinking-select-heading">
-							<div
-								role="heading"
-								id="thinking-select-heading"
-								class="picker-heading"
-							>
-								<span>Thinking</span>
-								<ShortcutKbd shortcut="alt T" />
-							</div>
-							{state.thinkingLevels.map((level) => (
-								<div
-									role="menuitemradio"
-									aria-checked={level === current ? "true" : "false"}
-									data-preserve-attr="class"
-									data-on:click={`@post('${endpoints.thinking}', {
-									payload: { thinkingLevel: ${JSON.stringify(level)} },
-									});`}
-								>
-									<span
-										class="selection-dot"
-										data-ignore
-										data-indicator
-										aria-hidden="true"
-									/>
-									<span class="picker-option-text">
-										<span class="picker-option-title">
-											{thinkingLabel(level)}
-										</span>
-										<span class="picker-option-description">
-											{thinkingDescription(level)}
-										</span>
-									</span>
-								</div>
-							))}
+					<div role="group" aria-labelledby="thinking-select-heading">
+						<div
+							role="heading"
+							id="thinking-select-heading"
+							class="picker-heading"
+						>
+							<span>Thinking</span>
+							<ShortcutKbd shortcut="alt T" />
 						</div>
+						{state.thinkingLevels.map((level) => (
+							<button
+								type="button"
+								role="menuitemradio"
+								tabindex="-1"
+								autofocus={level === current}
+								aria-checked={level === current ? "true" : "false"}
+								commandfor="thinking-select-popover"
+								command="hide-popover"
+								data-on:click={`@post('${endpoints.thinking}', {
+								payload: { thinkingLevel: ${JSON.stringify(level)} },
+								});`}
+							>
+								<span
+									class="selection-dot"
+									data-ignore
+									data-indicator
+									aria-hidden="true"
+								/>
+								<span class="picker-option-text">
+									<span class="picker-option-title">
+										{thinkingLabel(level)}
+									</span>
+									<span class="picker-option-description">
+										{thinkingDescription(level)}
+									</span>
+								</span>
+							</button>
+						))}
 					</div>
 				</div>
 			</div>
@@ -202,7 +198,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 				class="popover model-select"
 				data-on:keydown__window={`if (${primaryModifierExpression()} && evt.code === 'KeyL') {
 				evt.preventDefault();
-				${togglePopoverAction("model-select-trigger")};
+				document.getElementById('model-select-trigger')?.click();
 				} else if (${primaryModifierExpression()} && evt.code === 'KeyP') {
 				evt.preventDefault();
 				${cycleModelAction("event-shift")};
@@ -214,30 +210,31 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
-					aria-haspopup="menu"
-					aria-expanded="false"
-					aria-controls="model-select-menu"
-					data-preserve-attr="aria-expanded"
+					aria-haspopup="dialog"
+					aria-controls="model-select-popover"
+					popovertarget="model-select-popover"
 					data-tooltip="Model"
 					data-tooltip-delay
-					data-on:click__capture={`if (el.getAttribute('aria-expanded') !== 'true')
-						@post('${endpoints.modelsRefresh}', { payload: {} })`}
+					data-on:click__capture={`if (!document.getElementById('model-select-popover')?.matches(':popover-open')) {
+						$_modelQuery = '';
+						@post('${endpoints.modelsRefresh}', { payload: {} });
+					}`}
 				>
 					<span class="prompt-context-label" safe>
 						{currentLabel}
 					</span>
 					<ShortcutTooltip label="Model" shortcut="ctrl L" />
 				</button>
-				<div
+				<dialog
 					id="model-select-popover"
+					popover="auto"
 					data-popover
 					data-side="top"
 					data-align="end"
-					aria-hidden="true"
-					data-preserve-attr="aria-hidden"
 					class="model-popover"
+					aria-label="Models"
 				>
-					<div class="command" aria-label="Models" data-filter="manual">
+					<div class="command" data-filter="manual">
 						<header>
 							<input
 								id="model-select-input"
@@ -355,7 +352,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 							</div>
 						</div>
 					</div>
-				</div>
+				</dialog>
 			</div>
 		</div>,
 	);

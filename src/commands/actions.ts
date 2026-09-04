@@ -63,10 +63,6 @@ export function toggleToolOutputAction(): string {
 	return `$_toolOutputHidden = !$_toolOutputHidden; @post('${endpoints.toolOutput}', { payload: { toolOutputHidden: $_toolOutputHidden } })`;
 }
 
-export function togglePopoverAction(triggerId: string): string {
-	return `window.piUi.dialogs.togglePopover(${JSON.stringify(triggerId)})`;
-}
-
 export const commandActions = {
 	"new-chat": newSessionAction(),
 	"new-temporary-chat": newSessionAction(true),
@@ -80,7 +76,8 @@ export const commandActions = {
 	"toggle-keybind-hints": toggleKeybindHintsAction(),
 	"toggle-minimal-mode": `document.getElementById('command-dialog')?.close(); ${toggleMinimalModeAction()}`,
 	"toggle-tool-output": `document.getElementById('command-dialog')?.close(); ${toggleToolOutputAction()}`,
-	"switch-model": `setTimeout(() => ${togglePopoverAction("model-select-trigger")}, 0)`,
+	"switch-model":
+		"document.getElementById('command-dialog')?.close(); setTimeout(() => document.getElementById('model-select-trigger')?.click(), 0)",
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),

@@ -1,6 +1,6 @@
 import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
 import { bindCodeCopy } from "./code-copy.js";
-import { bindControls, refreshControls, togglePopup, toggleSidebar } from "./controls.js";
+import { bindControls, refreshControls, toggleSidebar } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
 import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
@@ -40,7 +40,7 @@ import { windowFocus } from "./window-focus.js";
 const promptHistory = createPromptHistory();
 
 window.piUi = {
-	controls: { refresh: refreshControls, togglePopup, toggleSidebar },
+	controls: { refresh: refreshControls, toggleSidebar },
 	codeTheme: { loadPreviews() {} },
 	dateTime: { hydrate: hydrateDateTime },
 	fonts: { apply() {} },
@@ -80,8 +80,7 @@ window.piUi = {
 
 function hasOpenDismissible() {
 	if (isPickerOpen() || document.querySelector("dialog[open]")) return true;
-	if (document.querySelector('[data-popover][aria-hidden="false"]')) return true;
-	return Boolean(document.querySelector('[aria-haspopup][aria-expanded="true"]'));
+	return Boolean(document.querySelector("[popover]:popover-open"));
 }
 
 // Register delegated file-link handling as soon as this module evaluates. Waiting for
@@ -98,7 +97,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 	]);
 
 	focusPromptEnd();
-	dialogs.bindDialogs();
 	bindPromptInteractions();
 	bindPickers({ fuzzyFilter });
 	bindMessageScroll();

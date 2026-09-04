@@ -156,7 +156,7 @@
 	}
 
 	.command :where([role="menuitem"]).active,
-	.dropdown-menu :where([role^="menuitem"]):is(.active, :focus-visible) {
+	.dropdown-menu :where([role^="menuitem"]):is(:hover, :focus-visible) {
 		background: var(--surface-control);
 		color: var(--text);
 		outline: 0;
@@ -192,11 +192,11 @@
 	}
 
 	[data-popover] {
-		position: absolute;
-		z-index: 60;
-		display: flex;
+		inset: auto;
+		position-try-fallbacks: flip-block;
 		flex-direction: column;
 		gap: 0.625rem;
+		margin: 0;
 		border-radius: var(--radius-lg);
 		padding: 0.625rem;
 		font-size: var(--text-sm);
@@ -205,25 +205,28 @@
 			var(--shadow-md);
 	}
 
-	[data-popover][aria-hidden="true"] {
-		display: none;
+	[data-popover]:popover-open {
+		display: flex;
+	}
+	[data-popover][data-side="top"][data-align="start"] {
+		position-area: block-start span-inline-end;
+		margin-block-end: 0.25rem;
+	}
+	[data-popover][data-side="top"][data-align="end"] {
+		position-area: block-start span-inline-start;
+		margin-block-end: 0.25rem;
+	}
+	[data-popover][data-side="bottom"][data-align="start"] {
+		position-area: block-end span-inline-end;
+		margin-block-start: 0.5rem;
+	}
+	[data-popover][data-side="bottom"][data-align="end"] {
+		position-area: block-end span-inline-start;
+		margin-block-start: 0.5rem;
 	}
 
-	[data-popover][data-side="top"] {
-		bottom: calc(100% + 0.25rem);
-	}
-	[data-popover][data-side="bottom"] {
-		top: calc(100% + 0.5rem);
-	}
-	[data-popover][data-align="start"] {
-		inset-inline-start: 0;
-	}
-	[data-popover][data-align="end"] {
-		inset-inline-end: 0;
-	}
-
-	:where(.dropdown-menu, .popover) {
-		position: relative;
+	:is(.dropdown-menu, .popover):has(> [data-popover]:popover-open) > button {
+		background: var(--surface-muted);
 	}
 
 	.dropdown-menu > [data-popover] {
@@ -368,8 +371,12 @@
 		translate: -50% 0;
 	}
 
-	[data-tooltip]:is([data-tooltip-suppressed], [aria-expanded="true"])::before,
-	[data-tooltip]:is([data-tooltip-suppressed], [aria-expanded="true"])
+	[data-tooltip][data-tooltip-suppressed]::before,
+	[data-tooltip][data-tooltip-suppressed] > [data-slot="tooltip-content"],
+	:is(.dropdown-menu, .popover):has(> [data-popover]:popover-open)
+		> [data-tooltip]::before,
+	:is(.dropdown-menu, .popover):has(> [data-popover]:popover-open)
+		> [data-tooltip]
 		> [data-slot="tooltip-content"] {
 		display: none;
 	}

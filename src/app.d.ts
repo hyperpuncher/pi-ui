@@ -10,7 +10,6 @@ interface FileTransferData {
 interface PiUiNamespace {
 	controls: {
 		refresh(root?: Document | Element): void;
-		togglePopup(triggerId: string): boolean;
 		toggleSidebar(sidebar: HTMLElement): boolean;
 	};
 	codeTheme: {
@@ -31,7 +30,6 @@ interface PiUiNamespace {
 		openWorkspace(): void;
 		openWorkspaceBrowser(): void;
 		toggleWorkspace(): boolean;
-		togglePopover(triggerId: string): boolean;
 	};
 	fileTransfer: {
 		pick(): Promise<void>;

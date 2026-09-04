@@ -1,4 +1,4 @@
-import { refreshControls, togglePopup } from "./controls.js";
+import { refreshControls } from "./controls.js";
 
 function openAndFocus(dialogId, inputId, options = {}) {
 	const dialog = document.getElementById(dialogId);
@@ -73,43 +73,6 @@ export function toggleCommand() {
 	}
 	openCommand();
 	return true;
-}
-
-export function bindDialogs() {
-	document.addEventListener(
-		"click",
-		(event) => {
-			const trigger =
-				event.target instanceof Element
-					? event.target.closest("button[aria-haspopup][aria-expanded]")
-					: undefined;
-			if (!(trigger instanceof HTMLButtonElement)) return;
-			if (trigger.getAttribute("aria-expanded") === "true") return;
-			const picker = trigger.closest(".popover, .dropdown-menu");
-			resetSearchInput(
-				picker?.querySelector("input[role='combobox'], input[type='search']"),
-			);
-		},
-		{ capture: true },
-	);
-}
-
-export function togglePopover(triggerId) {
-	const trigger = document.getElementById(triggerId);
-	if (!(trigger instanceof HTMLButtonElement)) return false;
-	const opening = trigger.getAttribute("aria-expanded") !== "true";
-	if (opening) restoreFocusWhenPopoverCloses(trigger, document.activeElement);
-	togglePopup(triggerId);
-	return opening;
-}
-
-function restoreFocusWhenPopoverCloses(trigger, origin) {
-	const observer = new MutationObserver(() => {
-		if (trigger.getAttribute("aria-expanded") === "true") return;
-		observer.disconnect();
-		restoreFocus(origin);
-	});
-	observer.observe(trigger, { attributeFilter: ["aria-expanded"] });
 }
 
 export function openWorkspace() {

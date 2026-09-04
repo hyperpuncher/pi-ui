@@ -113,38 +113,37 @@ export function renderPromptToolbar(
 					data-size="icon-sm"
 					aria-label="Message tools"
 					aria-haspopup="menu"
-					aria-expanded="false"
-					aria-controls="prompt-toolbar-menu"
-					data-preserve-attr="aria-expanded aria-activedescendant"
+					aria-controls="prompt-toolbar-popover"
+					popovertarget="prompt-toolbar-popover"
 				>
 					<Icon icon={Ellipsis} />
 				</button>
 				<div
+					id="prompt-toolbar-popover"
+					popover="auto"
 					data-popover
 					data-side="top"
 					data-align="start"
-					aria-hidden="true"
-					data-preserve-attr="aria-hidden"
 					class="prompt-toolbar-popover"
+					role="menu"
+					aria-label="Message tools"
 				>
-					<div id="prompt-toolbar-menu" role="menu" aria-label="Message tools">
-						{promptToolbarItems
-							.filter((item) => item.action !== "review" || reviewAvailable)
-							.map((item) => {
-								return (
-									<MobilePromptToolbarItem
-										label={item.menuLabel ?? item.label}
-										action={item.action}
-										active={
-											item.action === "new-temporary-chat" &&
-											state.isTemporarySession
-										}
-									>
-										<Icon icon={item.icon} />
-									</MobilePromptToolbarItem>
-								);
-							})}
-					</div>
+					{promptToolbarItems
+						.filter((item) => item.action !== "review" || reviewAvailable)
+						.map((item) => {
+							return (
+								<MobilePromptToolbarItem
+									label={item.menuLabel ?? item.label}
+									action={item.action}
+									active={
+										item.action === "new-temporary-chat" &&
+										state.isTemporarySession
+									}
+								>
+									<Icon icon={item.icon} />
+								</MobilePromptToolbarItem>
+							);
+						})}
 				</div>
 			</div>
 		</div>,
@@ -216,6 +215,10 @@ function MobilePromptToolbarItem(props: {
 		<button
 			type="button"
 			role="menuitem"
+			tabindex="-1"
+			autofocus={props.action === "new-chat"}
+			commandfor="prompt-toolbar-popover"
+			command="hide-popover"
 			aria-current={props.active ? "true" : undefined}
 			data-indicator:_new-session-pending={isSessionChangingAction(props.action)}
 			data-attr:disabled={

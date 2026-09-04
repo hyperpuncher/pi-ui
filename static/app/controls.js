@@ -1,5 +1,5 @@
 const commandSelector = ".command";
-const popupSelector = ".dropdown-menu, .popover";
+const menuPopoverSelector = "[popover][role='menu']";
 const sidebarSelector = ".sidebar";
 
 export function bindControls() {
@@ -12,19 +12,7 @@ export function bindControls() {
 
 export function refreshControls(root = document) {
 	for (const command of controlsIn(root, commandSelector)) refreshCommand(command);
-	for (const popup of controlsIn(root, popupSelector)) refreshPopup(popup);
 	for (const sidebar of controlsIn(root, sidebarSelector)) refreshSidebar(sidebar);
-}
-
-export function togglePopup(triggerId) {
-	const trigger = document.getElementById(triggerId);
-	if (!(trigger instanceof HTMLButtonElement)) return false;
-	const popup = trigger.closest(popupSelector);
-	if (!(popup instanceof HTMLElement)) return false;
-	const opening = trigger.getAttribute("aria-expanded") !== "true";
-	if (opening) openPopup(popup, false);
-	else closePopup(popup);
-	return opening;
 }
 
 export function toggleSidebar(sidebar) {
@@ -137,86 +125,23 @@ function moveCommand(command, key) {
 	item?.scrollIntoView({ block: "nearest" });
 }
 
-function popupParts(root) {
-	const trigger = root.querySelector(":scope > button");
-	const content = root.querySelector(":scope > [data-popover]");
-	const menu = content?.querySelector('[role="menu"]');
-	return { trigger, content, menu };
-}
-
-function refreshPopup(root) {
-	const { trigger, content } = popupParts(root);
-	if (!(trigger instanceof HTMLButtonElement) || !(content instanceof HTMLElement))
-		return;
-	const expanded = trigger.getAttribute("aria-expanded") === "true";
-	trigger.setAttribute("aria-expanded", String(expanded));
-	content.setAttribute("aria-hidden", String(!expanded));
-}
-
-function openPopup(root, selection = false) {
-	closeAllPopups(root);
-	refreshPopup(root);
-	const { trigger, content, menu } = popupParts(root);
-	if (!(trigger instanceof HTMLButtonElement) || !(content instanceof HTMLElement))
-		return;
-	trigger.setAttribute("aria-expanded", "true");
-	content.setAttribute("aria-hidden", "false");
-	if (root.matches(".dropdown-menu") && menu instanceof HTMLElement && selection) {
-		const items = popupItems(menu);
-		activatePopupItem(root, selection === "last" ? items.at(-1) : items[0]);
-	}
-	requestAnimationFrame(() => content.querySelector("[autofocus]")?.focus());
-}
-
-function closePopup(root, restoreFocus = true) {
-	const { trigger, content } = popupParts(root);
-	if (!(trigger instanceof HTMLButtonElement) || !(content instanceof HTMLElement))
-		return;
-	if (trigger.getAttribute("aria-expanded") !== "true") return;
-	trigger.setAttribute("aria-expanded", "false");
-	trigger.removeAttribute("aria-activedescendant");
-	content.setAttribute("aria-hidden", "true");
-	activatePopupItem(root);
-	if (restoreFocus) trigger.focus({ preventScroll: true });
-}
-
-function closeAllPopups(except) {
-	for (const popup of document.querySelectorAll(popupSelector)) {
-		if (popup !== except) closePopup(popup, false);
-	}
-}
-
-function popupItems(menu) {
-	return [...menu.querySelectorAll('[role^="menuitem"]')].filter(
+function menuPopoverItems(popover) {
+	return [...popover.querySelectorAll('[role^="menuitem"]')].filter(
 		(item) => item instanceof HTMLElement && !isDisabled(item),
 	);
 }
 
-function activatePopupItem(root, active) {
-	const { trigger, menu } = popupParts(root);
-	if (!(trigger instanceof HTMLButtonElement) || !(menu instanceof HTMLElement)) return;
-	for (const item of menu.querySelectorAll(".active")) item.classList.remove("active");
-	if (active instanceof HTMLElement) {
-		active.classList.add("active");
-		if (active.id) trigger.setAttribute("aria-activedescendant", active.id);
-	} else {
-		trigger.removeAttribute("aria-activedescendant");
-	}
-}
-
-function movePopup(root, key) {
-	const { menu } = popupParts(root);
-	if (!(menu instanceof HTMLElement)) return;
-	const items = popupItems(menu);
+function moveInMenuPopover(popover, key) {
+	const items = menuPopoverItems(popover);
 	if (items.length === 0) return;
-	const active = items.findIndex((item) => item.classList.contains("active"));
+	const active = items.indexOf(document.activeElement);
 	let index = active;
 	if (key === "ArrowDown") index = Math.min(active + 1, items.length - 1);
 	if (key === "ArrowUp")
 		index = active < 0 ? items.length - 1 : Math.max(active - 1, 0);
 	if (key === "Home") index = 0;
 	if (key === "End") index = items.length - 1;
-	activatePopupItem(root, items[index]);
+	items[index]?.focus({ preventScroll: true });
 }
 
 function handleCommandInput(event) {
@@ -248,40 +173,27 @@ function handleKeydown(event) {
 		}
 	}
 
-	const popup = event.target.closest(popupSelector);
-	if (!(popup instanceof HTMLElement)) return;
-	const { trigger } = popupParts(popup);
-	const expanded = trigger?.getAttribute("aria-expanded") === "true";
-	if (event.key === "Escape" && expanded) {
-		event.preventDefault();
-		closePopup(popup);
-		return;
-	}
-	if (!popup.matches(".dropdown-menu")) return;
-	if (!expanded && ["Enter", " ", "ArrowDown", "ArrowUp"].includes(event.key)) {
-		event.preventDefault();
-		openPopup(
-			popup,
-			event.key === "ArrowUp"
-				? "last"
-				: event.key === "ArrowDown"
-					? "first"
-					: false,
-		);
-		return;
-	}
-	if (expanded && ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-		event.preventDefault();
-		movePopup(popup, event.key);
-		return;
-	}
-	if (expanded && ["Enter", " "].includes(event.key)) {
-		const { menu } = popupParts(popup);
-		const active = menu?.querySelector(".active");
-		if (active instanceof HTMLElement) {
+	const menuPopover = event.target.closest(menuPopoverSelector);
+	if (menuPopover instanceof HTMLElement) {
+		if (event.key === "Tab") menuPopover.hidePopover();
+		if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
 			event.preventDefault();
-			active.click();
+			moveInMenuPopover(menuPopover, event.key);
 		}
+		return;
+	}
+
+	if (!(event.target instanceof HTMLButtonElement)) return;
+	const target = event.target.popoverTargetElement;
+	if (
+		target?.matches(menuPopoverSelector) &&
+		["ArrowDown", "ArrowUp"].includes(event.key)
+	) {
+		event.preventDefault();
+		event.target.click();
+		const items = menuPopoverItems(target);
+		const item = event.key === "ArrowUp" ? items.at(-1) : items[0];
+		item?.focus({ preventScroll: true });
 	}
 }
 
@@ -295,35 +207,11 @@ function handlePointerMove(event) {
 		commandItem.getAttribute("aria-hidden") !== "true"
 	) {
 		activateCommandItem(command, commandItem);
-		return;
-	}
-	const popupItem = event.target.closest('[role^="menuitem"]');
-	const popup = popupItem?.closest(".dropdown-menu");
-	if (
-		popup instanceof HTMLElement &&
-		popupItem instanceof HTMLElement &&
-		!isDisabled(popupItem)
-	) {
-		activatePopupItem(popup, popupItem);
 	}
 }
 
 function handleClick(event) {
 	if (!(event.target instanceof Element)) return;
-	const popup = event.target.closest(popupSelector);
-	if (popup instanceof HTMLElement) {
-		const { trigger } = popupParts(popup);
-		if (trigger?.contains(event.target)) {
-			if (trigger?.getAttribute("aria-expanded") === "true") closePopup(popup);
-			else openPopup(popup);
-			return;
-		}
-		const item = event.target.closest('[role^="menuitem"]');
-		if (item instanceof HTMLElement && !isDisabled(item)) closePopup(popup);
-	} else {
-		closeAllPopups();
-	}
-
 	const commandItem = event.target.closest('.command [role="menuitem"]');
 	if (
 		commandItem instanceof HTMLElement &&
