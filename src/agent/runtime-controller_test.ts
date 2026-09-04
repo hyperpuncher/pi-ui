@@ -738,6 +738,14 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 		dependencies: dependencies([a, b]),
 	});
 	controller.activate();
+	a.emit(
+		agentSessionEventStub({
+			type: "tool_execution_start",
+			toolCallId: "call",
+			toolName: "bash",
+			args: { command: "pwd" },
+		}),
+	);
 
 	for (const path of [
 		"/sessions/b.jsonl",
@@ -764,15 +772,17 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	);
 	a.emit(
 		agentSessionEventStub({
-			type: "tool_execution_start",
+			type: "tool_execution_end",
 			toolCallId: "call",
 			toolName: "bash",
-			args: { command: "pwd" },
+			result: { content: [{ type: "text", text: "/workspace" }], details: {} },
+			isError: false,
 		}),
 	);
 	assertEquals(state.queuedSteeringMessages, ["now"]);
 	assertEquals(state.queuedFollowUpMessages, ["later"]);
 	assertEquals(state.messages.length, 1);
+	assertEquals(state.messages[0]?.state, "success");
 	a.emit(agentSessionEventStub({ type: "agent_end", messages: [], willRetry: false }));
 	assertEquals(state.activityText, "Working...");
 	a.emit(agentSessionEventStub({ type: "agent_settled" }));

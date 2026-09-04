@@ -41,6 +41,51 @@ export type SessionEventToolState = {
 	startedAt: Map<string, number>;
 };
 
+export function createSessionEventToolState(): SessionEventToolState {
+	return {
+		messageIds: new Map(),
+		previewMessages: new Map(),
+		callArgs: new Map(),
+		startedAt: new Map(),
+	};
+}
+
+export function clearSessionEventToolState(tools: SessionEventToolState): void {
+	tools.messageIds.clear();
+	tools.previewMessages.clear();
+	tools.callArgs.clear();
+	tools.startedAt.clear();
+}
+
+export function cloneSessionEventToolState(
+	tools: SessionEventToolState,
+): SessionEventToolState {
+	return {
+		messageIds: new Map(tools.messageIds),
+		previewMessages: new Map(tools.previewMessages),
+		callArgs: new Map(tools.callArgs),
+		startedAt: new Map(tools.startedAt),
+	};
+}
+
+function restoreMap<Key, Value>(
+	target: Map<Key, Value>,
+	source: ReadonlyMap<Key, Value>,
+): void {
+	target.clear();
+	for (const [key, value] of source) target.set(key, value);
+}
+
+export function restoreSessionEventToolState(
+	target: SessionEventToolState,
+	source: SessionEventToolState,
+): void {
+	restoreMap(target.messageIds, source.messageIds);
+	restoreMap(target.previewMessages, source.previewMessages);
+	restoreMap(target.callArgs, source.callArgs);
+	restoreMap(target.startedAt, source.startedAt);
+}
+
 type ToolMessageView = {
 	text: string;
 	options: TranscriptMessageOptions;

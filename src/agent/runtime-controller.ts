@@ -10,7 +10,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { sessionPerformance } from "../perf/session-performance.ts";
-import { AppStore } from "../state/app-store.ts";
+import { AppStore, type BackgroundSessionStatus } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
 import {
 	notifySessionDone,
@@ -23,13 +23,10 @@ import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
 import { AuthController } from "./auth-controller.ts";
 import { type AutoTitleConfig, generateAutoTitle } from "./auto-title.ts";
 import {
+	BackgroundRuntimeOwnership,
 	ownsForegroundGeneration,
 	RuntimeOwnershipInvariantError,
 } from "./background-runtime-ownership.ts";
-import {
-	type BackgroundSession,
-	BackgroundSessionController,
-} from "./background-session-controller.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "./cache-miss.ts";
 import { ExtensionUiController } from "./extension-ui-controller.ts";
 import { LlamaController } from "./llama-controller.ts";
@@ -47,7 +44,11 @@ import {
 } from "./session-catalog-watcher.ts";
 import { type PreparedSessionList, SessionCatalog } from "./session-catalog.ts";
 import {
+	clearSessionEventToolState,
+	cloneSessionEventToolState,
+	createSessionEventToolState,
 	reduceSessionEvent,
+	restoreSessionEventToolState,
 	type SessionEventStateSink,
 	type SessionEventToolState,
 	type ToolArguments,
@@ -73,6 +74,16 @@ import { UsageController } from "./usage-controller.ts";
 
 const extensionFactories = [llamaProviderExtension];
 const modelCatalogForceIntervalMs = 30 * 60 * 1000;
+
+type BackgroundSession = {
+	runtime: AgentSessionRuntime;
+	state: TranscriptState;
+	status: BackgroundSessionStatus;
+	generation: number;
+	observedRunning: boolean;
+	tools: SessionEventToolState;
+	unsubscribe: () => void;
+};
 
 export type RuntimeControllerDependencies = Readonly<{
 	createRuntime: typeof createAgentSessionRuntime;
@@ -115,17 +126,12 @@ export type RuntimeControllerActivationOptions = {
 
 export class RuntimeController {
 	private unsubscribe: (() => void) | undefined;
-	private readonly toolMessageIds = new Map<string, string>();
-	private readonly toolPreviewMessages = new Map<
-		number,
-		{ id: string; argumentPrefix: string | undefined }
-	>();
-	private readonly toolCallArgs = new Map<string, ToolArguments>();
-	private readonly toolStartedAt = new Map<string, number>();
+	private readonly tools = createSessionEventToolState();
 	private readonly prompts: PromptLifecycle;
 	private readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
-	private readonly backgroundSessions = new BackgroundSessionController();
+	private readonly backgroundSessions =
+		new BackgroundRuntimeOwnership<BackgroundSession>();
 	private readonly catalog: SessionCatalog;
 	private readonly llama: LlamaController;
 	private readonly models: ModelController;
@@ -1032,7 +1038,9 @@ export class RuntimeController {
 	}
 
 	private unsubscribeBackgroundSession(session: BackgroundSession): void {
-		this.backgroundSessions.unsubscribe(session);
+		const unsubscribe = session.unsubscribe;
+		session.unsubscribe = () => {};
+		unsubscribe();
 	}
 
 	private bindRuntimeCallbacks(runtime: AgentSessionRuntime): void {
@@ -1094,10 +1102,7 @@ export class RuntimeController {
 		});
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
-		this.toolMessageIds.clear();
-		this.toolPreviewMessages.clear();
-		this.toolCallArgs.clear();
-		this.toolStartedAt.clear();
+		clearSessionEventToolState(this.tools);
 	}
 
 	private backgroundCurrentRuntime(): void {
@@ -1122,10 +1127,7 @@ export class RuntimeController {
 			status: "running",
 			generation: backgroundGeneration,
 			observedRunning: backgroundObservedRunning,
-			toolMessageIds: new Map(this.toolMessageIds),
-			toolPreviewMessages: new Map(this.toolPreviewMessages),
-			toolCallArgs: new Map(this.toolCallArgs),
-			toolStartedAt: new Map(this.toolStartedAt),
+			tools: cloneSessionEventToolState(this.tools),
 			unsubscribe: () => {},
 		};
 		backgroundSession.unsubscribe = this.runtime.session.subscribe((event) =>
@@ -1143,12 +1145,11 @@ export class RuntimeController {
 	): void {
 		if (event.type === "agent_start") backgroundSession.observedRunning = true;
 		if (event.type === "agent_settled") backgroundSession.observedRunning = false;
-		const outcome = this.reduceEvent(event, backgroundSession.state, {
-			messageIds: backgroundSession.toolMessageIds,
-			previewMessages: backgroundSession.toolPreviewMessages,
-			callArgs: backgroundSession.toolCallArgs,
-			startedAt: backgroundSession.toolStartedAt,
-		});
+		const outcome = this.reduceEvent(
+			event,
+			backgroundSession.state,
+			backgroundSession.tools,
+		);
 		this.updateSessionCatalogFromEvent(event, backgroundSession.runtime);
 		this.scheduleAutoTitleAfterUserMessage(backgroundSession.runtime, event);
 		if (event.type === "queue_update") {
@@ -1204,22 +1205,7 @@ export class RuntimeController {
 		this.runtime = backgroundSession.runtime;
 		this.foregroundGeneration = backgroundSession.generation;
 		this.foregroundObservedRunning = backgroundSession.observedRunning;
-		this.toolMessageIds.clear();
-		this.toolPreviewMessages.clear();
-		this.toolCallArgs.clear();
-		this.toolStartedAt.clear();
-		for (const [key, value] of backgroundSession.toolMessageIds) {
-			this.toolMessageIds.set(key, value);
-		}
-		for (const [key, value] of backgroundSession.toolPreviewMessages) {
-			this.toolPreviewMessages.set(key, value);
-		}
-		for (const [key, value] of backgroundSession.toolCallArgs) {
-			this.toolCallArgs.set(key, value);
-		}
-		for (const [key, value] of backgroundSession.toolStartedAt) {
-			this.toolStartedAt.set(key, value);
-		}
+		restoreSessionEventToolState(this.tools, backgroundSession.tools);
 		this.bindRuntimeCallbacks(this.runtime);
 		this.bindSessionState({ resetToolState: false, syncSessions: false });
 		this.state.restoreChat(backgroundSession.state.snapshot());
@@ -1254,12 +1240,7 @@ export class RuntimeController {
 			this.state.setWorkspacePath(session.sessionManager.getCwd());
 			this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
 			this.state.setTemporarySession(!session.sessionManager.isPersisted());
-			if (resetToolState) {
-				this.toolMessageIds.clear();
-				this.toolPreviewMessages.clear();
-				this.toolCallArgs.clear();
-				this.toolStartedAt.clear();
-			}
+			if (resetToolState) clearSessionEventToolState(this.tools);
 			this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
 			this.state.setActivityText(
 				session.isStreaming || this.foregroundObservedRunning
@@ -1358,16 +1339,8 @@ export class RuntimeController {
 		if (event.type === "agent_settled") this.foregroundObservedRunning = false;
 		this.state.update(
 			() => {
-				const outcome = this.reduceEvent(
-					event,
-					this.state,
-					{
-						messageIds: this.toolMessageIds,
-						previewMessages: this.toolPreviewMessages,
-						callArgs: this.toolCallArgs,
-						startedAt: this.toolStartedAt,
-					},
-					() => this.usage.sync(),
+				const outcome = this.reduceEvent(event, this.state, this.tools, () =>
+					this.usage.sync(),
 				);
 				this.updateSessionCatalogFromEvent(event, this.runtime);
 				this.scheduleAutoTitleAfterUserMessage(this.runtime, event);

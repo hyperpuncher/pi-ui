@@ -9,10 +9,10 @@ import type {
 	TranscriptMessageOptions,
 } from "../state/transcript-state.ts";
 import {
+	createSessionEventToolState,
 	reduceSessionEvent,
 	type SessionEventReducerContext,
 	type SessionEventStateSink,
-	type ToolArguments,
 } from "./session-event-reducer.ts";
 import { agentSessionEventStub } from "./test-fixtures.ts";
 
@@ -76,15 +76,7 @@ class FakeState implements SessionEventStateSink {
 
 function fixture(options: { syncUsage?: () => void } = {}) {
 	const state = new FakeState();
-	const tools = {
-		messageIds: new Map<string, string>(),
-		previewMessages: new Map<
-			number,
-			{ id: string; argumentPrefix: string | undefined }
-		>(),
-		callArgs: new Map<string, ToolArguments>(),
-		startedAt: new Map<string, number>(),
-	};
+	const tools = createSessionEventToolState();
 	const context: SessionEventReducerContext = {
 		state,
 		tools,
