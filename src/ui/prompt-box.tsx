@@ -113,7 +113,7 @@ export function renderPromptBox(
 						$_fileSearchController = '';
 						$_filePickerOpen = false;
 					`}
-					data-effect={`if ($_isSessionReady) {
+					data-effect={`if (!$_sessionTransitionLoading) {
 						el.focus({ preventScroll: true });
 						el.selectionStart = el.value.length;
 						el.selectionEnd = el.value.length;

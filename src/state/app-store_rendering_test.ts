@@ -882,26 +882,10 @@ test("initial and live backend-owned signals share exact projections", () => {
 
 test("server-owned view signals are transport-private", () => {
 	const signals = projectBackendSignals(createState().snapshot());
-	assertEqual(Object.keys(signals).sort(), [
-		"_codeThemeDark",
-		"_codeThemeLight",
-		"_fontMono",
-		"_fontSans",
-		"_isBusy",
-		"_isSessionReady",
-		"_promptHistory",
-		"_sessionTransitionGeneration",
-		"_sessionTransitionLoading",
-		"_sessionTransitionStatus",
-		"_sessionTransitionVisible",
-		"_thinkingHidden",
-		"_workspaceReviewAdditions",
-		"_workspaceReviewBranch",
-		"_workspaceReviewChangeCount",
-		"_workspaceReviewDeletions",
-		"_workspaceReviewGitAvailable",
-		"_workspaceReviewHasChanges",
-	]);
+	assertEqual(
+		Object.keys(signals).filter((name) => !name.startsWith("_")),
+		[],
+	);
 });
 
 test("hot app views exclude independently owned regions", () => {

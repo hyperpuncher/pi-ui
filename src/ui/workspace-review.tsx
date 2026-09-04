@@ -151,7 +151,7 @@ export function renderWorkspaceReview(
 						id="review-changes-section"
 						class="raised-surface review-sidebar-panel review-changes"
 						hidden={snapshot.changes.length === 0}
-						data-attr:hidden="!$_workspaceReviewHasChanges"
+						data-attr:hidden="$_workspaceReviewChangeCount === 0"
 					>
 						<header class="review-sidebar-header">
 							<span>Changes</span>
@@ -185,7 +185,7 @@ export function renderWorkspaceReview(
 							style={workspaceTreeStyle}
 							aria-label="Git changes"
 							tabindex="-1"
-							data-show="$_workspaceReviewHasChanges"
+							data-show="$_workspaceReviewChangeCount > 0"
 						/>
 						<div
 							id="review-tree-empty"
@@ -193,7 +193,7 @@ export function renderWorkspaceReview(
 							style={
 								snapshot.changes.length > 0 ? "display: none" : undefined
 							}
-							data-show="!$_workspaceReviewHasChanges"
+							data-show="$_workspaceReviewChangeCount === 0"
 						>
 							Working tree clean
 						</div>
@@ -205,7 +205,7 @@ export function renderWorkspaceReview(
 						role="separator"
 						tabindex="0"
 						hidden={snapshot.changes.length === 0}
-						data-attr:hidden="!$_workspaceReviewHasChanges"
+						data-attr:hidden="$_workspaceReviewChangeCount === 0"
 						aria-label="Resize Changes and History"
 						aria-orientation="horizontal"
 						aria-valuemin={changesRatioMin * 100}
