@@ -241,6 +241,15 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 	};
 }
 
+test("RuntimeController create prepares and activates the runtime", async () => {
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.create(new AppStore(), "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	assertEquals(fake.calls, ["create", "bindExtensions", "subscribe"]);
+	await controller.dispose();
+});
+
 test("RuntimeController production path binds callbacks before activation", async () => {
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {

@@ -7,14 +7,13 @@ import { assertEquals, assertStringIncludes } from "#testing/assertions";
 import { mkdir, remove, writeFile, writeTextFile } from "#testing/files";
 import { makeTempDir, makeTempFile } from "#testing/temp";
 
-import { AgentHost } from "../../agent/host.ts";
 import { AppStore } from "../../state/app-store.ts";
 import { assertStringExcludes } from "../../testing/assertions.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
 import { createRouter, isLoopbackAddress } from "../app.ts";
 import { DatastarClientHub } from "../datastar-client-hub.ts";
 import { SessionImageStore } from "../session-image-store.ts";
-import type { RouteContext } from "./context.ts";
+import type { RouteContext, RuntimeResource } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 test("page assets use the current immutable content version", async () => {
@@ -440,13 +439,13 @@ test("multipart prompts resize valid image attachments before passing them to pi
 	let submitted:
 		| {
 				text: string;
-				options: NonNullable<Parameters<AgentHost["prompt"]>[1]>;
+				options: NonNullable<Parameters<RuntimeResource["prompt"]>[1]>;
 		  }
 		| undefined;
 	const host = fakeHost({
 		prompt: async (
 			text: string,
-			options: NonNullable<Parameters<AgentHost["prompt"]>[1]>,
+			options: NonNullable<Parameters<RuntimeResource["prompt"]>[1]>,
 		) => {
 			submitted = { text, options };
 			return true;
@@ -708,7 +707,7 @@ function uiRendererStub<Stub extends Partial<UiRenderer>>(stub: Stub): UiRendere
 
 function fakeContext(
 	overrides: {
-		host?: AgentHost;
+		host?: RuntimeResource;
 		renderer?: UiRenderer;
 		openPath?: (path: string) => Promise<void>;
 		isLocalRequest?: (request: Request) => boolean;
@@ -747,8 +746,8 @@ function fakeContext(
 	};
 }
 
-function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
-	return Object.assign(Object.create(AgentHost.prototype), {
+function fakeHost(overrides: Partial<RuntimeResource> = {}): RuntimeResource {
+	return {
 		abort: async () => {},
 		abortBackgroundSession: async () => true,
 		closeAuth: () => {},
@@ -756,6 +755,7 @@ function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
 		cycleModel: async () => true,
 		cycleThinkingLevel: () => true,
 		deleteSession: async () => true,
+		dispose: async () => {},
 		forkSessionToWorkspace: async () => ({ status: "success" }),
 		getWorkspacePath: () => process.cwd(),
 		listSessions: async () => {},
@@ -767,6 +767,7 @@ function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
 		openLogout: () => {},
 		openLlama: () => {},
 		openTree: () => true,
+		openWorkspace: async () => true,
 		prompt: async () => true,
 		refreshModels: async () => {},
 		removeQueuedMessage: async () => true,
@@ -782,7 +783,7 @@ function fakeHost(overrides: Partial<AgentHost> = {}): AgentHost {
 		toggleLlamaModel: () => true,
 		toggleScopedModel: async () => true,
 		...overrides,
-	});
+	};
 }
 
 function fileOpenRequest(uri: string): Request {

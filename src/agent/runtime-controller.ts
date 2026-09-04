@@ -205,6 +205,16 @@ export class RuntimeController {
 			);
 	}
 
+	static async create(
+		state: AppStore,
+		cwd = defaultWorkspacePath(),
+		options: RuntimeControllerActivationOptions = {},
+	): Promise<RuntimeController> {
+		const controller = await RuntimeController.prepare(state, cwd, options);
+		controller.activate();
+		return controller;
+	}
+
 	static async prepare(
 		state: AppStore,
 		cwd = defaultWorkspacePath(),

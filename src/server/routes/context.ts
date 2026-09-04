@@ -1,12 +1,12 @@
-import type { AgentHost } from "../../agent/host.ts";
+import type { RuntimeController } from "../../agent/runtime-controller.ts";
 import type { AppStore } from "../../state/app-store.ts";
 import type { UiRenderer } from "../../ui/ui-renderer.ts";
 import { RouteError } from "../router.ts";
 import type { SessionImageStore } from "../session-image-store.ts";
 import type { TransferredFileStore } from "../transferred-files.ts";
 
-export type RouteAgentHost = Pick<
-	AgentHost,
+export type RouteRuntime = Pick<
+	RuntimeController,
 	| "abort"
 	| "abortBackgroundSession"
 	| "closeAuth"
@@ -41,8 +41,11 @@ export type RouteAgentHost = Pick<
 	| "toggleThinkingBlockVisibility"
 >;
 
+export type RuntimeResource = RouteRuntime &
+	Pick<RuntimeController, "dispose" | "openWorkspace">;
+
 export interface RouteResources {
-	host: AgentHost | undefined;
+	host: RuntimeResource | undefined;
 	sessionImages: SessionImageStore;
 }
 
@@ -62,7 +65,7 @@ export interface RouteContext {
 	serveStatic(request: Request): Promise<Response>;
 }
 
-export function requireHost(context: RouteContext): RouteAgentHost {
+export function requireHost(context: RouteContext): RouteRuntime {
 	if (!context.resources.host) {
 		throw new RouteError(503, "Session runtime unavailable.");
 	}

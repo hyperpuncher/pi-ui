@@ -1,6 +1,6 @@
 import { realpath, stat } from "node:fs/promises";
 
-import { AgentHost } from "../agent/host.ts";
+import { RuntimeController } from "../agent/runtime-controller.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
 import { setActiveFonts } from "../fonts.ts";
 import { setActiveCodeTheme } from "../pierre-theme.ts";
@@ -72,7 +72,7 @@ export async function createApp(): Promise<AppServer> {
 		store.setSessionTransition(transition),
 	);
 	installUnhandledErrorReporter();
-	const host = await AgentHost.create(store, undefined, {
+	const host = await RuntimeController.create(store, undefined, {
 		autoTitle,
 		transitionController: transitions,
 	}).catch((error: ErrorOptions["cause"]) => {
@@ -175,7 +175,7 @@ async function openWorkspace(
 			throw new Error("Not a directory");
 		}
 		if (!resources.host) {
-			resources.host = await AgentHost.create(store, realPath, {
+			resources.host = await RuntimeController.create(store, realPath, {
 				autoTitle,
 				refreshWorkspaces: false,
 				transitionController: transitions,
