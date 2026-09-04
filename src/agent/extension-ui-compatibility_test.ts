@@ -121,7 +121,6 @@ function dependencies(agentDir: string): RuntimeControllerDependencies {
 				options,
 			),
 		prepareSessions: () => Promise.resolve({ ok: true, sessions: [] }),
-		refreshSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		createSessionManager: (cwd) => SessionManager.inMemory(cwd),
 		createMemorySessionManager: (cwd) => SessionManager.inMemory(cwd),
 		forkSessionManager: SessionManager.forkFrom,

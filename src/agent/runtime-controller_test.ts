@@ -225,7 +225,6 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 			return Promise.resolve(fake.runtime);
 		},
 		prepareSessions: () => Promise.resolve({ ok: true, sessions: [] }),
-		refreshSessions: () => Promise.resolve({ ok: true, sessions: [] }),
 		createSessionManager: (cwd) => manager(undefined, true, cwd),
 		createMemorySessionManager: (cwd) => manager(undefined, false, cwd),
 		forkSessionManager: (_sourcePath, cwd) =>
@@ -402,10 +401,15 @@ test("RuntimeController replaces and trashes the current idle session", async ()
 		return { cancelled: false };
 	};
 	const trashed: string[] = [];
+	let sessionLoads = 0;
 	const store = new AppStore();
 	const controller = await RuntimeController.prepare(store, "/workspace", {
 		dependencies: {
 			...dependencies([fake]),
+			prepareSessions: () => {
+				sessionLoads += 1;
+				return Promise.resolve({ ok: true, sessions: [] });
+			},
 			moveToTrash: (path) => {
 				trashed.push(path);
 				return Promise.resolve();
@@ -413,9 +417,11 @@ test("RuntimeController replaces and trashes the current idle session", async ()
 		},
 	});
 	controller.activate();
+	assertEquals(sessionLoads, 1);
 
 	assertEquals(await controller.deleteSession("/sessions/current.jsonl"), true);
 	assertEquals(trashed, ["/sessions/current.jsonl"]);
+	assertEquals(sessionLoads, 3);
 	assertEquals(store.currentSessionPath, "/sessions/replacement.jsonl");
 	await controller.dispose();
 });

@@ -88,7 +88,6 @@ type BackgroundSession = {
 export type RuntimeControllerDependencies = Readonly<{
 	createRuntime: typeof createAgentSessionRuntime;
 	prepareSessions: typeof SessionCatalog.prepare;
-	refreshSessions: typeof SessionCatalog.prepare;
 	createSessionManager: typeof SessionManager.create;
 	createMemorySessionManager: typeof SessionManager.inMemory;
 	forkSessionManager: typeof SessionManager.forkFrom;
@@ -103,7 +102,6 @@ export type RuntimeControllerDependencies = Readonly<{
 const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	createRuntime: createAgentSessionRuntime,
 	prepareSessions: SessionCatalog.prepare,
-	refreshSessions: SessionCatalog.prepare,
 	createSessionManager: SessionManager.create,
 	createMemorySessionManager: SessionManager.inMemory,
 	forkSessionManager: SessionManager.forkFrom,
@@ -407,9 +405,7 @@ export class RuntimeController {
 				sessionManager: this.dependencies.createSessionManager(cwd),
 				sessionStartEvent: { type: "session_start", reason: "new" },
 			});
-			this.runtime = runtime;
-			this.assignNewForegroundGeneration();
-			this.bindRuntimeCallbacks(runtime);
+			this.adoptRuntime(runtime);
 		} else {
 			this.resetChatOnInvalidation = true;
 			let result: { cancelled: boolean };
@@ -421,9 +417,8 @@ export class RuntimeController {
 			if (result.cancelled) {
 				return false;
 			}
-			this.assignNewForegroundGeneration();
 			// SDK in-place replacement overwrites lifecycle callbacks before returning.
-			this.bindRuntimeCallbacks(this.runtime);
+			this.adoptRuntime(this.runtime);
 		}
 		await this.bindSession({ refreshSessions: true });
 		return true;
@@ -453,9 +448,7 @@ export class RuntimeController {
 				previousSessionFile,
 			},
 		});
-		this.runtime = runtime;
-		this.assignNewForegroundGeneration();
-		this.bindRuntimeCallbacks(runtime);
+		this.adoptRuntime(runtime);
 		await this.bindSession();
 		return true;
 	}
@@ -578,9 +571,7 @@ export class RuntimeController {
 			}
 		}
 
-		this.runtime = replacement;
-		this.assignNewForegroundGeneration();
-		this.bindRuntimeCallbacks(replacement);
+		this.adoptRuntime(replacement);
 		this.state.resetChat({ preserveEmptyHint: true });
 		this.bindSessionState();
 		return true;
@@ -730,7 +721,7 @@ export class RuntimeController {
 					this.unbindSession();
 					await this.runtime.dispose();
 				}
-				this.runtime = await sessionPerformance.measure(
+				const replacement = await sessionPerformance.measure(
 					"runtimeSwitchCreate",
 					() =>
 						this.dependencies.createRuntime(this.runtimeFactory, {
@@ -740,8 +731,7 @@ export class RuntimeController {
 						}),
 					transitionId,
 				);
-				this.assignNewForegroundGeneration();
-				this.bindRuntimeCallbacks(this.runtime);
+				this.adoptRuntime(replacement);
 				await sessionPerformance.measure(
 					"runtimeRebind",
 					() => this.bindSession(),
@@ -768,8 +758,7 @@ export class RuntimeController {
 				);
 				if (!result.cancelled) {
 					sessionPerformance.recordSessionOpen(transitionId);
-					this.assignNewForegroundGeneration();
-					this.bindRuntimeCallbacks(this.runtime);
+					this.adoptRuntime(this.runtime);
 					sessionPerformance.recordOwnershipDiagnostics(
 						{
 							sourceLocationAfter: "disposed",
@@ -1028,9 +1017,16 @@ export class RuntimeController {
 		return "disposed";
 	}
 
-	private assignNewForegroundGeneration(): void {
-		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
-		this.foregroundObservedRunning = this.runtime.session.isStreaming;
+	private adoptRuntime(
+		runtime: AgentSessionRuntime,
+		ownership?: { generation: number; observedRunning: boolean },
+	): void {
+		this.runtime = runtime;
+		this.foregroundGeneration =
+			ownership?.generation ?? this.backgroundSessions.allocateGeneration();
+		this.foregroundObservedRunning =
+			ownership?.observedRunning ?? runtime.session.isStreaming;
+		this.bindRuntimeCallbacks(runtime);
 	}
 
 	private ownedLiveRuntimeCount(): number {
@@ -1202,11 +1198,8 @@ export class RuntimeController {
 	private async activateRuntime(backgroundSession: BackgroundSession): Promise<void> {
 		await this.leaveCurrentRuntimeForReplacement();
 		this.unsubscribeBackgroundSession(backgroundSession);
-		this.runtime = backgroundSession.runtime;
-		this.foregroundGeneration = backgroundSession.generation;
-		this.foregroundObservedRunning = backgroundSession.observedRunning;
+		this.adoptRuntime(backgroundSession.runtime, backgroundSession);
 		restoreSessionEventToolState(this.tools, backgroundSession.tools);
-		this.bindRuntimeCallbacks(this.runtime);
 		this.bindSessionState({ resetToolState: false, syncSessions: false });
 		this.state.restoreChat(backgroundSession.state.snapshot());
 		this.catalog.mergeCurrentStatuses();
@@ -1308,7 +1301,7 @@ export class RuntimeController {
 
 	private async refreshSessions(): Promise<void> {
 		await this.initialCatalogLoad;
-		await this.catalog.refresh(this.dependencies.refreshSessions, {
+		await this.catalog.refresh(this.dependencies.prepareSessions, {
 			showLoading: false,
 		});
 	}
