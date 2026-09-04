@@ -57,6 +57,8 @@ let promptResizeObserver;
 export function bindPromptLayout() {
 	const footer = document.getElementById("prompt-footer");
 	if (!(footer instanceof HTMLElement)) return;
+	applyPromptLayout(footer);
+	footer.removeAttribute("data-prompt-initial");
 	promptResizeObserver ??= new ResizeObserver(schedulePromptLayout);
 	promptResizeObserver.disconnect();
 	promptResizeObserver.observe(footer);
@@ -66,21 +68,23 @@ function schedulePromptLayout() {
 	cancelAnimationFrame(promptLayoutFrame);
 	promptLayoutFrame = requestAnimationFrame(() => {
 		const footer = document.getElementById("prompt-footer");
-		if (!(footer instanceof HTMLElement)) return;
-
-		footer.removeAttribute("data-toolbar-compact");
-		footer.removeAttribute("data-context-compact");
-		footer.setAttribute("data-measuring", "");
-
-		if (footer.scrollWidth > footer.clientWidth) {
-			footer.setAttribute("data-toolbar-compact", "");
-			if (footer.scrollWidth > footer.clientWidth) {
-				footer.setAttribute("data-context-compact", "");
-			}
-		}
-
-		footer.removeAttribute("data-measuring");
+		if (footer instanceof HTMLElement) applyPromptLayout(footer);
 	});
+}
+
+function applyPromptLayout(footer) {
+	footer.removeAttribute("data-toolbar-compact");
+	footer.removeAttribute("data-context-compact");
+	footer.setAttribute("data-measuring", "");
+
+	if (footer.scrollWidth > footer.clientWidth) {
+		footer.setAttribute("data-toolbar-compact", "");
+		if (footer.scrollWidth > footer.clientWidth) {
+			footer.setAttribute("data-context-compact", "");
+		}
+	}
+
+	footer.removeAttribute("data-measuring");
 }
 
 export function bindPromptInteractions() {

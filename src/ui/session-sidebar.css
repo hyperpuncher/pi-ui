@@ -284,6 +284,7 @@
 			display: none;
 		}
 		.session-sidebar-nav {
+			z-index: 50;
 			width: calc(18rem - var(--workspace-gap));
 		}
 	}

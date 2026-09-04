@@ -165,6 +165,7 @@ export function renderPromptBox(
 					id="prompt-footer"
 					class="prompt-footer"
 					data-align="end"
+					data-prompt-initial
 					data-init="window.piUi.prompt.bindLayout()"
 					data-preserve-attr="data-toolbar-compact data-context-compact"
 				>

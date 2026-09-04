@@ -94,9 +94,13 @@
 	.prompt-footer {
 		position: relative;
 		display: flex;
+		visibility: hidden;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.5rem;
+	}
+	.prompt-footer:has(.prompt-action) {
+		visibility: visible;
 	}
 
 	.prompt-context {

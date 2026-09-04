@@ -51,6 +51,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			class="btn prompt-action"
 			data-size="icon"
 			type="button"
+			disabled={state.promptEditorText.trim() === ""}
 			data-send-trigger
 			data-attr:disabled="
 				$_promptSubmitting ||
