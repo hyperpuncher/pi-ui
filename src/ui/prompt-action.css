@@ -2,21 +2,42 @@
 	.prompt-action {
 		line-height: 1;
 	}
-	html:not(.dark) .prompt-action[data-variant="destructive"] {
-		background: oklch(from var(--status-danger) l c h / 20%);
+	.prompt-action-icons {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		overflow: clip;
+		place-items: center;
 	}
-	html:not(.dark) .prompt-action[data-variant="destructive"]:not(:disabled):hover {
-		background: oklch(from var(--status-danger) l c h / 30%);
-	}
-	.prompt-abort-icon {
+	.prompt-action-icons > svg {
 		width: 0.875rem;
 		height: 0.875rem;
+		grid-area: 1 / 1;
+		transition:
+			display 150ms allow-discrete,
+			translate 150ms var(--ease-out);
+	}
+	.prompt-action-icon-exit {
+		display: none;
+		translate: 0 -2rem;
+	}
+
+	@starting-style {
+		.prompt-action-icon-enter {
+			translate: 0 2rem;
+		}
+	}
+	.prompt-action[data-variant="destructive"] {
+		background: oklch(from var(--status-danger) l c h / 20%);
+
+		&:where(:not(:disabled):hover) {
+			background: oklch(from var(--status-danger) l c h / 30%);
+		}
 	}
 	.prompt-abort-icon rect {
 		fill: currentColor;
 	}
-	.prompt-send-icon {
-		width: 0.875rem;
-		height: 0.875rem;
+	.prompt-send-icon path {
+		stroke-width: 3;
 	}
 }

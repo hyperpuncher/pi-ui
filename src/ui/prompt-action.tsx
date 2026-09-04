@@ -30,7 +30,16 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 				data-align="end"
 				aria-label="Abort"
 			>
-				<Icon icon={Square} class="prompt-abort-icon" />
+				<span class="prompt-action-icons">
+					<Icon
+						icon={ArrowUp}
+						class="prompt-send-icon prompt-action-icon-exit"
+					/>
+					<Icon
+						icon={Square}
+						class="prompt-abort-icon prompt-action-icon-enter"
+					/>
+				</span>
 				<ShortcutTooltip label="Abort" shortcut="Esc" />
 			</button>,
 		);
@@ -60,7 +69,10 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			data-align="end"
 			aria-label="Send"
 		>
-			<Icon icon={ArrowUp} class="prompt-send-icon" />
+			<span class="prompt-action-icons">
+				<Icon icon={ArrowUp} class="prompt-send-icon prompt-action-icon-enter" />
+				<Icon icon={Square} class="prompt-abort-icon prompt-action-icon-exit" />
+			</span>
 			<ShortcutTooltip label="Send" shortcut="Enter" />
 		</button>,
 	);
