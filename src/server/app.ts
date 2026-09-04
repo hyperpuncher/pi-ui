@@ -99,20 +99,24 @@ async function openWorkspace(
 	autoTitle: AutoTitleConfig,
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
-	const transition = await transitions.run(requestedPath, async () => {
-		const realPath = await realpath(expandHomePath(requestedPath));
-		if (!(await stat(realPath)).isDirectory()) {
-			throw new Error("Not a directory");
-		}
-		if (!resources.host) {
-			resources.host = await RuntimeController.create(store, realPath, {
-				autoTitle,
-				refreshWorkspaces: false,
-				transitionController: transitions,
-			});
-			return true;
-		}
-		return await resources.host.openWorkspace(realPath);
-	});
+	const transition = await transitions.run(
+		requestedPath,
+		async () => {
+			const realPath = await realpath(expandHomePath(requestedPath));
+			if (!(await stat(realPath)).isDirectory()) {
+				throw new Error("Not a directory");
+			}
+			if (!resources.host) {
+				resources.host = await RuntimeController.create(store, realPath, {
+					autoTitle,
+					refreshWorkspaces: false,
+					transitionController: transitions,
+				});
+				return true;
+			}
+			return await resources.host.openWorkspace(realPath);
+		},
+		{ overlay: false },
+	);
 	return transition.status === "success";
 }
