@@ -10,8 +10,10 @@ import { makeTempDir, makeTempFile } from "#testing/temp";
 import { AppStore } from "../../state/app-store.ts";
 import { assertStringExcludes } from "../../testing/assertions.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
-import { createRouter, isLoopbackAddress } from "../app.ts";
 import { DatastarClientHub } from "../datastar-client-hub.ts";
+import { isLoopbackAddress } from "../lazy-app.ts";
+import { executeRoute } from "../route.ts";
+import { appRoutes } from "../routes.ts";
 import { SessionImageStore } from "../session-image-store.ts";
 import type { RouteContext, RuntimeResource } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
@@ -688,6 +690,19 @@ test("request locality uses the connection peer address", () => {
 	assertEquals(isLoopbackAddress(address("::ffff:127.0.0.1")), true);
 	assertEquals(isLoopbackAddress(address("192.168.1.20")), false);
 });
+
+function createRouter(context: RouteContext) {
+	return {
+		fetch(request: Request): Promise<Response> {
+			const handlers = appRoutes[new URL(request.url).pathname] ?? {};
+			const handler = Object.entries(handlers).find(
+				([method]) => method === request.method,
+			)?.[1];
+			if (!handler) throw new Error(`Unknown test route: ${request.method}`);
+			return executeRoute(request, context, handler);
+		},
+	};
+}
 
 function uiRendererStub<Stub extends Partial<UiRenderer>>(stub: Stub): UiRenderer {
 	return Object.assign(Object.create(UiRenderer.prototype), stub);

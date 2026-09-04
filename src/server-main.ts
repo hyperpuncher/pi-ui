@@ -33,48 +33,26 @@ async function main(): Promise<void> {
 		if (options.help) {
 			console.log(serverUsage);
 		} else {
-			let appPromise: ReturnType<typeof loadApp> | undefined;
-			const getApp = () => (appPromise ??= loadApp());
+			const { disposeApp, fallback, routes } = await import("./server/lazy-app.ts");
 			const server = Bun.serve({
 				hostname: options.hostname,
 				port: options.port,
 				idleTimeout: 0,
-				async fetch(request, server) {
-					const peer = server.requestIP(request);
-					const loaded = await getApp();
-					return loaded.compressResponse(
-						request,
-						await loaded.app.fetch(
-							request,
-							peer ? { address: peer.address } : undefined,
-						),
-					);
-				},
+				routes,
+				fetch: fallback,
 			});
 			let stopping = false;
 			const stop = async () => {
 				if (stopping) return;
 				stopping = true;
 				await server.stop();
-				const loaded = await appPromise?.catch(() => undefined);
-				await loaded?.app.dispose();
+				await disposeApp();
 			};
 			process.once("SIGINT", () => void stop());
 			process.once("SIGTERM", () => void stop());
 			console.log(`pi-ui listening on ${server.url}`);
 		}
 	}
-}
-
-async function loadApp() {
-	const [{ registerBunOAuthFlows }, { createApp }, { compressResponse }] =
-		await Promise.all([
-			import("@earendil-works/pi-ai/bun-oauth"),
-			import("./server/app.ts"),
-			import("./server/compression.ts"),
-		]);
-	registerBunOAuthFlows();
-	return { app: await createApp(), compressResponse };
 }
 
 process.on("unhandledRejection", (error) => {

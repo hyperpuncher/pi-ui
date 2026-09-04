@@ -6,68 +6,76 @@ import { renderSessionPickerContent } from "../../ui/pickers.tsx";
 import { expandHomePath } from "../../utils/workspace.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
-import { RouteError, type ExactRouter } from "../router.ts";
+import { RouteError, type RouteMap } from "../route.ts";
 import { decodeBase64Image } from "../session-image-store.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
-export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
-	router.register("POST", endpoints.sessionsNew, async (_request, context) =>
-		sessionTransitionResponse(await requireHost(context).newSession()),
-	);
-	router.register("POST", endpoints.sessionsNewTemporary, async (_request, context) =>
-		sessionTransitionResponse(await requireHost(context).newTemporarySession()),
-	);
-	router.register("GET", endpoints.sessionsSearch, async (request, context) => {
-		const query = stringField(await readActionSignals(request), "sessionSearch");
-		return datastarResponse([
-			{
-				type: "elements",
-				elements: renderSessionPickerContent({
-					activityText: context.store.activityText,
-					currentSessionPath: context.store.currentSessionPath,
-					sessions: context.store.searchSessions(query),
-					sessionsHasMore: context.store.sessionsHasMore,
-				}),
-			},
-			{ type: "effect", effect: { type: "refresh-session-picker" } },
-		]);
-	});
-	router.register("POST", endpoints.sessionsMore, (_request, context) => {
-		context.store.loadMoreSessions();
-		return datastarResponse();
-	});
-	router.register("GET", endpoints.sessionsImage, (_request, context, url) => {
-		const image = context.resources.sessionImages.get(
-			url.searchParams.get("id") ?? "",
-		);
-		if (!image) throw new RouteError(404, "Session image not found.");
-		return new Response(decodeBase64Image(image.data), {
-			headers: {
-				"cache-control": "private, max-age=3600",
-				"content-type": image.mimeType,
-				"x-content-type-options": "nosniff",
-			},
-		});
-	});
-	router.register("GET", endpoints.sessionsFavicon, async (_request, context, url) => {
-		const cwd = url.searchParams.get("cwd");
-		const knownWorkspace = context.store
-			.getSessionCatalog()
-			.some((candidate) => candidate.cwd === cwd);
-		if (!cwd || !knownWorkspace) return folderIconResponse();
+export const sessionRoutes = {
+	[endpoints.sessionsNew]: {
+		POST: async (_request, context) =>
+			sessionTransitionResponse(await requireHost(context).newSession()),
+	},
+	[endpoints.sessionsNewTemporary]: {
+		POST: async (_request, context) =>
+			sessionTransitionResponse(await requireHost(context).newTemporarySession()),
+	},
+	[endpoints.sessionsSearch]: {
+		GET: async (request, context) => {
+			const query = stringField(await readActionSignals(request), "sessionSearch");
+			return datastarResponse([
+				{
+					type: "elements",
+					elements: renderSessionPickerContent({
+						activityText: context.store.activityText,
+						currentSessionPath: context.store.currentSessionPath,
+						sessions: context.store.searchSessions(query),
+						sessionsHasMore: context.store.sessionsHasMore,
+					}),
+				},
+				{ type: "effect", effect: { type: "refresh-session-picker" } },
+			]);
+		},
+	},
+	[endpoints.sessionsMore]: {
+		POST: (_request, context) => {
+			context.store.loadMoreSessions();
+			return datastarResponse();
+		},
+	},
+	[endpoints.sessionsImage]: {
+		GET: (_request, context, url) => {
+			const image = context.resources.sessionImages.get(
+				url.searchParams.get("id") ?? "",
+			);
+			if (!image) throw new RouteError(404, "Session image not found.");
+			return new Response(decodeBase64Image(image.data), {
+				headers: {
+					"cache-control": "private, max-age=3600",
+					"content-type": image.mimeType,
+					"x-content-type-options": "nosniff",
+				},
+			});
+		},
+	},
+	[endpoints.sessionsFavicon]: {
+		GET: async (_request, context, url) => {
+			const cwd = url.searchParams.get("cwd");
+			const knownWorkspace = context.store
+				.getSessionCatalog()
+				.some((candidate) => candidate.cwd === cwd);
+			if (!cwd || !knownWorkspace) return folderIconResponse();
 
-		const favicon = await readWorkspaceFavicon(cwd);
-		return favicon
-			? new Response(favicon.bytes, {
-					headers: faviconHeaders(favicon.contentType),
-				})
-			: folderIconResponse();
-	});
-	router.register(
-		"POST",
-		endpoints.sessionsBackgroundAbort,
-		async (request, context) => {
+			const favicon = await readWorkspaceFavicon(cwd);
+			return favicon
+				? new Response(favicon.bytes, {
+						headers: faviconHeaders(favicon.contentType),
+					})
+				: folderIconResponse();
+		},
+	},
+	[endpoints.sessionsBackgroundAbort]: {
+		POST: async (request, context) => {
 			const path = requiredString(
 				await readActionSignals(request),
 				"backgroundSessionPath",
@@ -77,43 +85,49 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 			}
 			return signalsResponse({ backgroundSessionPath: "" });
 		},
-	);
-	router.register("POST", endpoints.sessionsRename, async (request, context) => {
-		const signals = await readActionSignals(request);
-		const path = requiredString(signals, "sessionRenamePath");
-		const title = requiredString(signals, "sessionRenameTitle");
-		if (!(await requireHost(context).renameSession(path, title))) {
-			throw new RouteError(409, "Session could not be renamed.");
-		}
-		return signalsResponse({ sessionRenamePath: "", sessionRenameTitle: "" });
-	});
-	router.register("POST", endpoints.sessionsDelete, async (request, context) => {
-		const path = requiredString(
-			await readActionSignals(request),
-			"sessionDeletePath",
-		);
-		if (!(await requireHost(context).deleteSession(path))) {
-			throw new RouteError(409, "Session could not be deleted.");
-		}
-		return datastarResponse([
-			{
-				type: "signals",
-				signals: { sessionDeletePath: "", sessionDeleteTitle: "" },
-			},
-			{ type: "effect", effect: { type: "session-deleted" } },
-		]);
-	});
-	router.register("POST", endpoints.sessionsResume, async (request, context) => {
-		const path = requiredString(
-			await readActionSignals(request),
-			"sessionPath",
-		).trim();
-		return sessionTransitionResponse(await requireHost(context).resumeSession(path));
-	});
-	router.register(
-		"POST",
-		endpoints.sessionsForkToWorkspace,
-		async (request, context) => {
+	},
+	[endpoints.sessionsRename]: {
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			const path = requiredString(signals, "sessionRenamePath");
+			const title = requiredString(signals, "sessionRenameTitle");
+			if (!(await requireHost(context).renameSession(path, title))) {
+				throw new RouteError(409, "Session could not be renamed.");
+			}
+			return signalsResponse({ sessionRenamePath: "", sessionRenameTitle: "" });
+		},
+	},
+	[endpoints.sessionsDelete]: {
+		POST: async (request, context) => {
+			const path = requiredString(
+				await readActionSignals(request),
+				"sessionDeletePath",
+			);
+			if (!(await requireHost(context).deleteSession(path))) {
+				throw new RouteError(409, "Session could not be deleted.");
+			}
+			return datastarResponse([
+				{
+					type: "signals",
+					signals: { sessionDeletePath: "", sessionDeleteTitle: "" },
+				},
+				{ type: "effect", effect: { type: "session-deleted" } },
+			]);
+		},
+	},
+	[endpoints.sessionsResume]: {
+		POST: async (request, context) => {
+			const path = requiredString(
+				await readActionSignals(request),
+				"sessionPath",
+			).trim();
+			return sessionTransitionResponse(
+				await requireHost(context).resumeSession(path),
+			);
+		},
+	},
+	[endpoints.sessionsForkToWorkspace]: {
+		POST: async (request, context) => {
 			const requestedPath = requiredString(
 				await readActionSignals(request),
 				"workspacePath",
@@ -126,8 +140,8 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 				await requireHost(context).forkSessionToWorkspace(workspacePath),
 			);
 		},
-	);
-}
+	},
+} satisfies RouteMap<RouteContext>;
 
 const FAVICON_CANDIDATES = [
 	"favicon.ico",

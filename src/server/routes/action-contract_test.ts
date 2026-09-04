@@ -4,7 +4,7 @@ import { assertEquals } from "#testing/assertions";
 import { readTextFile } from "#testing/files";
 
 import { assertStringExcludes } from "../../testing/assertions.ts";
-import { endpoints } from "./endpoints.ts";
+import { appRoutes } from "../routes.ts";
 
 const typescriptActionSources = [
 	"../../commands/actions.ts",
@@ -75,7 +75,7 @@ test("TypeScript write actions use endpoint constants", async () => {
 test("each literal browser action references a registered endpoint", async () => {
 	const browserActions = await readActionSources(browserActionSources);
 	assertEquals(
-		unknownActionPaths(browserActions.join("\n"), Object.values(endpoints)),
+		unknownActionPaths(browserActions.join("\n"), Object.keys(appRoutes)),
 		[],
 	);
 });

@@ -1,7 +1,7 @@
 import type { RuntimeController } from "../../agent/runtime-controller.ts";
 import type { AppStore } from "../../state/app-store.ts";
 import type { UiRenderer } from "../../ui/ui-renderer.ts";
-import { RouteError } from "../router.ts";
+import { RouteError } from "../route.ts";
 import type { SessionImageStore } from "../session-image-store.ts";
 import type { TransferredFileStore } from "../transferred-files.ts";
 

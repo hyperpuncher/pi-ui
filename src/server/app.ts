@@ -14,40 +14,14 @@ import { expandHomePath } from "../utils/workspace.ts";
 import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
 import { ensureAppConfig } from "./app-config.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
-import { ExactRouter } from "./router.ts";
-import { registerAssetRoutes } from "./routes/assets.ts";
-import { registerAuthRoutes } from "./routes/auth.ts";
-import { registerCodeThemeRoutes } from "./routes/code-theme.ts";
 import type { RouteContext, RouteResources } from "./routes/context.ts";
-import { registerDisplayPreferenceRoutes } from "./routes/display-preferences.ts";
-import { registerDisplayRefreshRoutes } from "./routes/display-refresh.ts";
-import { registerExtensionUiRoutes } from "./routes/extension-ui.ts";
-import { registerFileRoutes } from "./routes/files.ts";
-import { registerFontRoutes } from "./routes/fonts.ts";
-import { registerKeybindHintRoutes } from "./routes/keybind-hints.ts";
-import { registerLlamaRoutes } from "./routes/llama.ts";
-import { registerModelRoutes } from "./routes/models.ts";
-import { registerPromptRoutes } from "./routes/prompt.ts";
-import { registerSessionPerformanceRoutes } from "./routes/session-performance.ts";
-import { registerSessionRoutes } from "./routes/sessions.ts";
-import { registerStreamRoutes } from "./routes/stream.ts";
-import { registerTreeRoutes } from "./routes/tree.ts";
-import { registerWorkspaceReviewRoutes } from "./routes/workspace-review.ts";
-import { registerWorkspaceRoutes } from "./routes/workspace.ts";
 import { SessionImageStore } from "./session-image-store.ts";
 import { createStaticAssetServer } from "./static-assets.ts";
 import { staticRoot } from "./static-path.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
 
-export interface AppServer {
-	fetch(request: Request, clientAddress?: ClientAddress): Response | Promise<Response>;
-	dispose(): Promise<void>;
-}
-
-export type ClientAddress = Readonly<{ address: string }>;
-
-export async function createApp(): Promise<AppServer> {
+export async function createApp() {
 	const staticAssets = await createStaticAssetServer(staticRoot);
 	const appConfig = await ensureAppConfig();
 	const codeTheme = validCodeThemes(appConfig.codeTheme) ?? defaultCodeThemes();
@@ -100,18 +74,10 @@ export async function createApp(): Promise<AppServer> {
 		openPath: openWithDefaultApp,
 		isLocalRequest: (request) => localRequests.has(request),
 	};
-	const router = createRouter(context);
 	let disposal: Promise<void> | undefined;
 	return {
-		fetch: (request, clientAddress) => {
-			if (clientAddress && isLoopbackAddress(clientAddress)) {
-				localRequests.add(request);
-			}
-			const pathname = new URL(request.url).pathname;
-			if (router.has(request.method, pathname)) return router.fetch(request);
-			if (request.method === "GET") return context.serveStatic(request);
-			return router.fetch(request);
-		},
+		context,
+		localRequests,
 		dispose: () => {
 			disposal ??= (async () => {
 				workspaceReview.dispose();
@@ -123,40 +89,6 @@ export async function createApp(): Promise<AppServer> {
 			return disposal;
 		},
 	};
-}
-
-export function isLoopbackAddress(address: ClientAddress): boolean {
-	const hostname = address.address.toLowerCase();
-	return (
-		hostname === "localhost" ||
-		hostname === "::1" ||
-		hostname === "0:0:0:0:0:0:0:1" ||
-		/^127(?:\.\d{1,3}){3}$/.test(hostname) ||
-		hostname.startsWith("::ffff:127.")
-	);
-}
-
-export function createRouter(context: RouteContext): ExactRouter<RouteContext> {
-	const router = new ExactRouter(context);
-	registerAssetRoutes(router);
-	registerStreamRoutes(router);
-	registerDisplayRefreshRoutes(router);
-	registerExtensionUiRoutes(router);
-	registerCodeThemeRoutes(router);
-	registerFontRoutes(router);
-	registerKeybindHintRoutes(router);
-	registerPromptRoutes(router);
-	registerSessionRoutes(router);
-	registerSessionPerformanceRoutes(router);
-	registerWorkspaceRoutes(router);
-	registerWorkspaceReviewRoutes(router);
-	registerDisplayPreferenceRoutes(router);
-	registerModelRoutes(router);
-	registerAuthRoutes(router);
-	registerLlamaRoutes(router);
-	registerTreeRoutes(router);
-	registerFileRoutes(router);
-	return router;
 }
 
 async function openWorkspace(

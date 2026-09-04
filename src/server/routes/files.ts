@@ -9,7 +9,7 @@ import { isNotFound } from "../../utils/fs-errors.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { searchFiles } from "../file-search.ts";
-import { RouteError, type ExactRouter } from "../router.ts";
+import { RouteError, type RouteMap } from "../route.ts";
 import {
 	getTransferredFiles,
 	TransferredFileError,
@@ -19,23 +19,29 @@ import {
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
-export function registerFileRoutes(router: ExactRouter<RouteContext>): void {
-	router.register("GET", endpoints.filesSearch, async (request, context) => {
-		const signals = await readActionSignals(request);
-		const query = stringField(signals, "fileQuery");
-		const items = await searchFiles(
-			context.store.workspacePath,
-			query,
-			request.signal,
-		);
-		return datastarResponse([
-			{ type: "elements", elements: renderFilePickerResults(items, query) },
-			{ type: "signals", signals: { _filePickerOpen: items.length > 0 } },
-		]);
-	});
-	router.register("POST", endpoints.filesImport, importTransferredFiles);
-	router.register("POST", endpoints.filesOpen, openLinkedFile);
-}
+export const fileRoutes = {
+	[endpoints.filesSearch]: {
+		GET: async (request, context) => {
+			const signals = await readActionSignals(request);
+			const query = stringField(signals, "fileQuery");
+			const items = await searchFiles(
+				context.store.workspacePath,
+				query,
+				request.signal,
+			);
+			return datastarResponse([
+				{ type: "elements", elements: renderFilePickerResults(items, query) },
+				{ type: "signals", signals: { _filePickerOpen: items.length > 0 } },
+			]);
+		},
+	},
+	[endpoints.filesImport]: {
+		POST: importTransferredFiles,
+	},
+	[endpoints.filesOpen]: {
+		POST: openLinkedFile,
+	},
+} satisfies RouteMap<RouteContext>;
 
 async function openLinkedFile(
 	request: Request,

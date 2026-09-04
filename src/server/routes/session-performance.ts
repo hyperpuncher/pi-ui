@@ -2,7 +2,7 @@ import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
 import { sessionPerformance } from "../../perf/session-performance.ts";
-import { RouteError, type ExactRouter } from "../router.ts";
+import { RouteError, type RouteMap } from "../route.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
@@ -21,16 +21,16 @@ type ClientTransitionPaintInput = Parameters<
 	typeof clientTransitionPaintValidator.Check
 >[0];
 
-export function registerSessionPerformanceRoutes(
-	router: ExactRouter<RouteContext>,
-): void {
-	router.register("POST", endpoints.sessionPerformanceClient, async (request) => {
-		if (!sessionPerformance.enabled) return new Response(null, { status: 204 });
-		const metrics = parseClientTransitionPaint(await request.json());
-		sessionPerformance.recordClientTransitionPaint(metrics);
-		return new Response(null, { status: 204 });
-	});
-}
+export const sessionPerformanceRoutes = {
+	[endpoints.sessionPerformanceClient]: {
+		POST: async (request) => {
+			if (!sessionPerformance.enabled) return new Response(null, { status: 204 });
+			const metrics = parseClientTransitionPaint(await request.json());
+			sessionPerformance.recordClientTransitionPaint(metrics);
+			return new Response(null, { status: 204 });
+		},
+	},
+} satisfies RouteMap<RouteContext>;
 
 export function parseClientTransitionPaint(
 	value: ClientTransitionPaintInput,

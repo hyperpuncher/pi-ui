@@ -9,7 +9,7 @@ import {
 	requiredString,
 } from "../action-input.ts";
 import { datastarResponse, signalsResponse } from "../datastar.ts";
-import { RouteError, type ExactRouter } from "../router.ts";
+import { RouteError, type RouteMap } from "../route.ts";
 import {
 	TransferredFileError,
 	validateTransferContentLength,
@@ -18,74 +18,88 @@ import {
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
-export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
-	router.register("POST", endpoints.prompt, async (request, context) => {
-		const { prompt, images } = await readPrompt(request);
-		context.store.setPromptEditorText("", { broadcast: false });
-		const host = requireHost(context);
-		if (!(await host.prompt(prompt, { images })))
-			throw new RouteError(409, "Prompt was not accepted.");
-		return datastarResponse();
-	});
-
-	router.register("POST", endpoints.promptFollowUp, async (request, context) => {
-		const { prompt, images } = await readPrompt(request);
-		context.store.setPromptEditorText("", { broadcast: false });
-		if (
-			!(await requireHost(context).prompt(prompt, {
-				images,
-				streamingBehavior: "followUp",
-			}))
-		) {
-			throw new RouteError(409, "Prompt was not accepted.");
-		}
-		return datastarResponse();
-	});
-
-	router.register("POST", endpoints.promptDequeue, (_request, context) => {
-		const queued = requireHost(context).restoreQueuedMessages();
-		if (!queued) return datastarResponse();
-		context.store.setPromptEditorText(queued, { broadcast: false });
-		return signalsResponse({ prompt: queued });
-	});
-
-	router.register("POST", endpoints.promptQueueRemove, async (request, context) => {
-		const signals = await readActionSignals(request);
-		const streamingBehavior = enumField(signals, "queueBehavior", [
-			"steer",
-			"followUp",
-		] as const);
-		const index = nonnegativeIntegerField(signals, "queueIndex");
-		if (!(await requireHost(context).removeQueuedMessage(streamingBehavior, index))) {
-			throw new RouteError(409, "Queued message no longer exists.");
-		}
-		return datastarResponse();
-	});
-
-	router.register("POST", endpoints.abort, async (_request, context) => {
-		await requireHost(context).abort();
-		return datastarResponse();
-	});
-
-	router.register("POST", endpoints.messagesOlder, (_request, context) => {
-		const messages = context.store.loadOlderMessages();
-		if (messages.length > 0) context.renderer.patchOlderMessages(messages);
-		return datastarResponse();
-	});
-
-	router.register("POST", endpoints.messagesTrim, (_request, context) => {
-		const ids = context.store.trimOldMessages();
-		if (ids.length > 0) context.renderer.messagesRemoved(ids.length);
-		return datastarResponse();
-	});
-
-	router.register("POST", endpoints.messagesEnhance, (_request, context, url) => {
-		if (!context.renderer.enhanceMessage(url.searchParams.get("id") ?? "")) {
-			throw new RouteError(409, "Message is not deferred.");
-		}
-		return datastarResponse();
-	});
-}
+export const promptRoutes = {
+	[endpoints.prompt]: {
+		POST: async (request, context) => {
+			const { prompt, images } = await readPrompt(request);
+			context.store.setPromptEditorText("", { broadcast: false });
+			const host = requireHost(context);
+			if (!(await host.prompt(prompt, { images })))
+				throw new RouteError(409, "Prompt was not accepted.");
+			return datastarResponse();
+		},
+	},
+	[endpoints.promptFollowUp]: {
+		POST: async (request, context) => {
+			const { prompt, images } = await readPrompt(request);
+			context.store.setPromptEditorText("", { broadcast: false });
+			if (
+				!(await requireHost(context).prompt(prompt, {
+					images,
+					streamingBehavior: "followUp",
+				}))
+			) {
+				throw new RouteError(409, "Prompt was not accepted.");
+			}
+			return datastarResponse();
+		},
+	},
+	[endpoints.promptDequeue]: {
+		POST: (_request, context) => {
+			const queued = requireHost(context).restoreQueuedMessages();
+			if (!queued) return datastarResponse();
+			context.store.setPromptEditorText(queued, { broadcast: false });
+			return signalsResponse({ prompt: queued });
+		},
+	},
+	[endpoints.promptQueueRemove]: {
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			const streamingBehavior = enumField(signals, "queueBehavior", [
+				"steer",
+				"followUp",
+			] as const);
+			const index = nonnegativeIntegerField(signals, "queueIndex");
+			if (
+				!(await requireHost(context).removeQueuedMessage(
+					streamingBehavior,
+					index,
+				))
+			) {
+				throw new RouteError(409, "Queued message no longer exists.");
+			}
+			return datastarResponse();
+		},
+	},
+	[endpoints.abort]: {
+		POST: async (_request, context) => {
+			await requireHost(context).abort();
+			return datastarResponse();
+		},
+	},
+	[endpoints.messagesOlder]: {
+		POST: (_request, context) => {
+			const messages = context.store.loadOlderMessages();
+			if (messages.length > 0) context.renderer.patchOlderMessages(messages);
+			return datastarResponse();
+		},
+	},
+	[endpoints.messagesTrim]: {
+		POST: (_request, context) => {
+			const ids = context.store.trimOldMessages();
+			if (ids.length > 0) context.renderer.messagesRemoved(ids.length);
+			return datastarResponse();
+		},
+	},
+	[endpoints.messagesEnhance]: {
+		POST: (_request, context, url) => {
+			if (!context.renderer.enhanceMessage(url.searchParams.get("id") ?? "")) {
+				throw new RouteError(409, "Message is not deferred.");
+			}
+			return datastarResponse();
+		},
+	},
+} satisfies RouteMap<RouteContext>;
 
 async function readPrompt(
 	request: Request,
