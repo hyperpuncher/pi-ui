@@ -98,6 +98,7 @@ const wrapButton = requiredButton("review-wrap");
 const workspaceReviewRoot = requiredElement("workspace-review");
 const submitCommentsButton = requiredButton("review-submit-comments");
 const commentStatus = requiredElement("review-comment-status");
+const dataRegion = requiredElement("workspace-review-data-region");
 const data = requiredElement("workspace-review-data");
 
 const initialData = JSON.parse(data.textContent ?? "");
@@ -224,9 +225,10 @@ theme.observe(document.documentElement, {
 	attributes: true,
 });
 
-const reviewData = new MutationObserver(() => {
+function applyWorkspaceReviewData(): void {
 	try {
-		const value = JSON.parse(data.textContent ?? "");
+		const currentData = document.getElementById("workspace-review-data");
+		const value = JSON.parse(currentData?.textContent ?? "");
 		if (
 			isRecord(value) &&
 			isNumber(value.filesRevision) &&
@@ -243,13 +245,20 @@ const reviewData = new MutationObserver(() => {
 	} catch {
 		// A later stream morph can replace an incomplete payload.
 	}
+}
+
+const reviewData = new MutationObserver(applyWorkspaceReviewData);
+reviewData.observe(dataRegion, {
+	characterData: true,
+	childList: true,
+	subtree: true,
 });
-reviewData.observe(data, { characterData: true, childList: true, subtree: true });
 
 syncModeButtons();
 syncLayoutButtons();
 wrapButton.setAttribute("aria-pressed", String(wrap));
-renderHistory();
+applySnapshot(snapshot);
+applyWorkspaceReviewData();
 
 window.addEventListener(
 	"pagehide",

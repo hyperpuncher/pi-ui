@@ -466,7 +466,7 @@ export function renderWorkspaceReview(
 					scale: "Math.max(1, document.getElementById('workspace-shell').clientWidth - 12)",
 				})}
 			/>
-			{renderWorkspaceReviewData(
+			{renderWorkspaceReviewDataRegion(
 				workspacePath,
 				filesRevision,
 				snapshot,
@@ -602,13 +602,13 @@ function renderWorkspaceModeHeader(
 	);
 }
 
-export function renderWorkspaceReviewData(
+function workspaceReviewDataElement(
 	workspacePath: string,
 	filesRevision: number,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
-): string {
-	return syncHtml(
+): JSX.Element {
+	return (
 		<script id="workspace-review-data" type="application/json">
 			{JSON.stringify({
 				filesRevision,
@@ -616,6 +616,35 @@ export function renderWorkspaceReviewData(
 				snapshot,
 				workspacePath,
 			}).replaceAll("<", "\\u003c")}
-		</script>,
+		</script>
+	);
+}
+
+function renderWorkspaceReviewDataRegion(
+	workspacePath: string,
+	filesRevision: number,
+	snapshot: WorkspaceReviewSnapshot,
+	preferences: WorkspaceReviewPreferences,
+): JSX.Element {
+	return (
+		<div id="workspace-review-data-region" hidden>
+			{workspaceReviewDataElement(
+				workspacePath,
+				filesRevision,
+				snapshot,
+				preferences,
+			)}
+		</div>
+	);
+}
+
+export function renderWorkspaceReviewData(
+	workspacePath: string,
+	filesRevision: number,
+	snapshot: WorkspaceReviewSnapshot,
+	preferences: WorkspaceReviewPreferences,
+): string {
+	return syncHtml(
+		workspaceReviewDataElement(workspacePath, filesRevision, snapshot, preferences),
 	);
 }

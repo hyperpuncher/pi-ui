@@ -720,6 +720,8 @@ test("workspace review snapshots travel through the app stream", async () => {
 			(text) => text.includes("workspace-review-data") && text.includes("review-1"),
 		);
 		assertIncludes(output, '"branch":"main"');
+		assertIncludes(output, 'id="workspace-review-data"');
+		assertNotIncludes(output, 'id="workspace-review-data-region"');
 	} finally {
 		controller.abort();
 	}
