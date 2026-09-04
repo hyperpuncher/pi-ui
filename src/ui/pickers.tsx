@@ -18,6 +18,7 @@ import {
 } from "./picker-components.tsx";
 import { SessionRenameTitle } from "./session-rename.tsx";
 import { SessionRowAction } from "./session-row-action.tsx";
+import { renderSessionPageTrigger } from "./session-sidebar.tsx";
 import { sessionStatusLabel } from "./session-status.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
@@ -405,7 +406,7 @@ export function renderSessionPicker(state: AppStateSnapshot): string {
 
 type SessionPickerState = Pick<
 	AppStateSnapshot,
-	"activityText" | "currentSessionPath" | "sessions"
+	"activityText" | "currentSessionPath" | "sessions" | "sessionsHasMore"
 >;
 
 export function renderSessionPickerContent(state: SessionPickerState): string {
@@ -420,6 +421,9 @@ export function renderSessionPickerContent(state: SessionPickerState): string {
 					current && Boolean(state.activityText),
 				);
 			})}
+			{state.sessionsHasMore && (
+				<div data-show="$sessionSearch === ''">{renderSessionPageTrigger()}</div>
+			)}
 		</div>,
 	);
 }

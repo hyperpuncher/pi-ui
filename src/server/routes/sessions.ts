@@ -27,6 +27,7 @@ export function registerSessionRoutes(router: ExactRouter<RouteContext>): void {
 					activityText: context.store.activityText,
 					currentSessionPath: context.store.currentSessionPath,
 					sessions: context.store.searchSessions(query),
+					sessionsHasMore: context.store.sessionsHasMore,
 				}),
 			},
 			{ type: "effect", effect: { type: "refresh-session-picker" } },

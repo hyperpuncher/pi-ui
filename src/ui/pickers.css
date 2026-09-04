@@ -212,6 +212,7 @@
 
 	.session-menu {
 		max-height: 24rem;
+		overflow-x: clip;
 		margin-block-start: 0.25rem;
 	}
 	.session-menu-content {

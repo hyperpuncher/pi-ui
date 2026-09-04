@@ -76,11 +76,14 @@ test("session rows expose stable ids for resilient active descendants", () => {
 				},
 			],
 			currentSessionPath: undefined,
+			sessionsHasMore: true,
 		}),
 	);
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
 	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
 	assertStringIncludes(html, "No matching sessions.");
+	assertStringIncludes(html, "@post('/sessions/more'");
+	assertStringIncludes(html, `data-show="$sessionSearch === ''"`);
 	assertFalse(html.includes("data-session-rename-title"));
 });
 

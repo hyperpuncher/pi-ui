@@ -87,7 +87,7 @@ test("session favicons use workspace assets and fall back to a folder", async ()
 		await mkdir(`${workspace}/public`);
 		await writeFile(`${workspace}/public/favicon.png`, new Uint8Array([1, 2, 3]));
 		const context = fakeContext();
-		context.store.setSessions([
+		context.store.setSessionCatalog([
 			{
 				path: "/sessions/one.jsonl",
 				cwd: workspace,
@@ -185,15 +185,15 @@ test("older sessions expand backend-owned sidebar state", async () => {
 			modified: "Today",
 		})),
 	);
-	assertEquals(context.store.snapshot().sessionSidebarSessions.length, 30);
+	assertEquals(context.store.snapshot().sessions.length, 30);
 
 	const response = await createRouter(context).fetch(
 		new Request("http://localhost/sessions/more", { method: "POST" }),
 	);
 
 	assertEquals(response.status, 204);
-	assertEquals(context.store.snapshot().sessionSidebarSessions.length, 51);
-	assertEquals(context.store.snapshot().sessionSidebarHasMore, false);
+	assertEquals(context.store.snapshot().sessions.length, 51);
+	assertEquals(context.store.snapshot().sessionsHasMore, false);
 });
 
 test("session images are served separately from transcript HTML", async () => {

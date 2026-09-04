@@ -660,8 +660,8 @@ test("session pagination patches only session-owned regions", async () => {
 	state.setSessionCatalogLoading(false);
 	state.loadMoreSessions();
 	state.flush();
-	assertEqual(state.snapshot().sessionSidebarSessions.length, 60);
-	assertEqual(state.snapshot().sessionSidebarHasMore, true);
+	assertEqual(state.snapshot().sessions.length, 60);
+	assertEqual(state.snapshot().sessionsHasMore, true);
 
 	const controller = new AbortController();
 	try {
@@ -693,7 +693,7 @@ test("session pagination patches only session-owned regions", async () => {
 		state.flush();
 		const complete = await readUntil(reader, (text) => text.includes("Session 69"));
 		assertNotIncludes(complete, "@post('/sessions/more'");
-		assertEqual(state.snapshot().sessionSidebarHasMore, false);
+		assertEqual(state.snapshot().sessionsHasMore, false);
 	} finally {
 		controller.abort();
 	}
@@ -776,7 +776,7 @@ test("app stream refreshes current and background session statuses", async () =>
 			() => {
 				state.setCurrentSessionPath(first.path);
 				state.setActivityText("Working...");
-				state.setSessions([first, second]);
+				state.setSessionCatalog([first, second]);
 			},
 			{ flush: true },
 		);
@@ -791,7 +791,10 @@ test("app stream refreshes current and background session statuses", async () =>
 			() => {
 				state.setCurrentSessionPath(second.path);
 				state.setActivityText(undefined);
-				state.setSessions([{ ...first, backgroundStatus: "completed" }, second]);
+				state.setSessionCatalog([
+					{ ...first, backgroundStatus: "completed" },
+					second,
+				]);
 			},
 			{ flush: true },
 		);

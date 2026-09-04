@@ -302,8 +302,7 @@ test("resume renderers share loading behavior and disable controls", () => {
 	}
 	const shortcuts = renderSessionSidebar({
 		sessions: [session],
-		sessionSidebarSessions: [session],
-		sessionSidebarHasMore: false,
+		sessionsHasMore: false,
 		currentSessionPath: undefined,
 		activityText: undefined,
 		sessionCatalogLoading: false,
@@ -323,7 +322,7 @@ test("session picker command state morphs on the app stream", async () => {
 			targetPath: "/sessions/one.jsonl",
 			overlay: true,
 		});
-		state.setSessions([
+		state.setSessionCatalog([
 			{
 				path: "/sessions/one.jsonl",
 				cwd: "/workspace",

@@ -691,7 +691,7 @@ test("session catalog keeps every recent workspace", () => {
 	);
 });
 
-test("session catalog keeps recent rows small while searching every session", () => {
+test("session catalog pages rows while searching every session", () => {
 	const state = new AppStore();
 	const catalog = new SessionCatalog(state);
 	const sessions = Array.from({ length: 51 }, (_, index) =>
@@ -700,12 +700,12 @@ test("session catalog keeps recent rows small while searching every session", ()
 
 	catalog.applyPrepared({ ok: true, sessions });
 
-	assertEquals(state.sessions.length, 50);
+	assertEquals(state.sessions.length, 30);
 	assertEquals(
 		state.searchSessions("Session 50").map((session) => session.path),
 		["/session-50"],
 	);
-	assertEquals(state.searchSessions("Session").length, 50);
+	assertEquals(state.searchSessions("Session").length, 30);
 });
 
 test("session summaries keep workspace and message metadata separate", () => {

@@ -168,8 +168,7 @@ export type AppStateSnapshot = Readonly<{
 	messages: readonly TranscriptMessage[];
 	models: readonly AppModel[];
 	sessions: readonly AppSessionSummary[];
-	sessionSidebarSessions: readonly AppSessionSummary[];
-	sessionSidebarHasMore: boolean;
+	sessionsHasMore: boolean;
 	sessionCatalogLoading: boolean;
 	treeEntries: readonly AppTreeEntry[];
 	slashCommands: readonly AppSlashCommand[];
@@ -208,7 +207,6 @@ export type AppStateSnapshot = Readonly<{
 
 type AppStoreUpdateOptions = { flush?: boolean; commit?: boolean };
 
-const SESSION_PICKER_RECENT_LIMIT = 50;
 export const sessionSidebarPageSize = 30;
 
 const emptyChatHints: AppKeybindHint[] = [
@@ -247,10 +245,9 @@ export class AppStore {
 	documentTitle = "pi-ui";
 	promptEditorText = "";
 	models: AppModel[] = [];
-	sessions: AppSessionSummary[] = [];
 	sessionCatalogLoading = true;
-	private sessionIndex: AppSessionSummary[] | undefined;
-	private sessionSidebarLimit = sessionSidebarPageSize;
+	private sessionCatalog: AppSessionSummary[] = [];
+	private sessionLimit = sessionSidebarPageSize;
 	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	authDialog: AppAuthDialog | undefined;
@@ -288,6 +285,14 @@ export class AppStore {
 	get messages(): readonly TranscriptMessage[] {
 		return this.transcript.messages;
 	}
+	get sessions(): readonly AppSessionSummary[] {
+		return this.sessionCatalog.slice(0, this.sessionLimit);
+	}
+	get sessionsHasMore(): boolean {
+		return (
+			!this.sessionCatalogLoading && this.sessionLimit < this.sessionCatalog.length
+		);
+	}
 	get hasOlderMessages(): boolean {
 		return this.transcript.hasOlderMessages;
 	}
@@ -316,16 +321,14 @@ export class AppStore {
 	}
 
 	snapshot(): AppStateSnapshot {
+		const sessions = this.sessionCatalog;
 		return Object.freeze({
 			messages: this.messages.map((message) => ({ ...message })),
 			models: this.models.map((model) => ({ ...model })),
-			sessions: this.sessions.map((session) => ({ ...session })),
-			sessionSidebarSessions: this.getSessionCatalog()
-				.slice(0, this.sessionSidebarLimit)
+			sessions: sessions
+				.slice(0, this.sessionLimit)
 				.map((session) => ({ ...session })),
-			sessionSidebarHasMore:
-				!this.sessionCatalogLoading &&
-				this.sessionSidebarLimit < this.getSessionCatalog().length,
+			sessionsHasMore: this.sessionsHasMore,
 			sessionCatalogLoading: this.sessionCatalogLoading,
 			treeEntries: this.treeEntries.map((entry) => ({ ...entry })),
 			slashCommands: this.slashCommands.map((command) => ({ ...command })),
@@ -491,11 +494,6 @@ export class AppStore {
 		this.thinkingHidden = hidden;
 		this.commit();
 	}
-	setSessions(sessions: AppSessionSummary[]): void {
-		this.sessions = sessions;
-		this.presentation?.sessionsChanged();
-		this.commit();
-	}
 	setSessionCatalogLoading(loading: boolean): void {
 		if (this.sessionCatalogLoading === loading) return;
 		this.sessionCatalogLoading = loading;
@@ -503,21 +501,20 @@ export class AppStore {
 		this.commit();
 	}
 	setSessionCatalog(sessions: AppSessionSummary[]): void {
-		this.sessionIndex = sessions;
-		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
+		this.sessionCatalog = sessions;
 		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	loadMoreSessions(): void {
-		this.sessionSidebarLimit = Math.min(
-			this.sessionSidebarLimit + sessionSidebarPageSize,
+		this.sessionLimit = Math.min(
+			this.sessionLimit + sessionSidebarPageSize,
 			this.getSessionCatalog().length,
 		);
 		this.presentation?.sessionsChanged();
 		this.commit();
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
-		return this.sessionIndex ?? this.sessions;
+		return this.sessionCatalog;
 	}
 	promoteSession(path: string, options: { regroup?: boolean } = {}): boolean {
 		const catalog = this.getSessionCatalog();
@@ -530,11 +527,10 @@ export class AppStore {
 			}
 			return false;
 		}
-		this.sessionIndex = [
+		this.sessionCatalog = [
 			session,
 			...catalog.filter((candidate) => candidate.path !== path),
 		];
-		this.sessions = this.sessionIndex.slice(0, SESSION_PICKER_RECENT_LIMIT);
 		this.presentation?.sessionsChanged();
 		this.commit();
 		return true;
@@ -547,11 +543,9 @@ export class AppStore {
 		const catalog = this.getSessionCatalog();
 		const index = catalog.findIndex((candidate) => candidate.path === path);
 		if (index < 0) return false;
-		const sessions = catalog.map((session, candidateIndex) =>
+		this.sessionCatalog = catalog.map((session, candidateIndex) =>
 			candidateIndex === index ? update(session) : session,
 		);
-		this.sessionIndex = sessions;
-		this.sessions = sessions.slice(0, SESSION_PICKER_RECENT_LIMIT);
 		if (options.sidebarOnly) this.presentation?.sessionSidebarChanged();
 		else this.presentation?.sessionsChanged();
 		this.commit();
@@ -566,7 +560,7 @@ export class AppStore {
 					`${session.title} ${session.subtitle} ${session.cwd} ${session.path}`.toLowerCase();
 				return terms.every((term) => haystack.includes(term));
 			})
-			.slice(0, SESSION_PICKER_RECENT_LIMIT);
+			.slice(0, this.sessionLimit);
 	}
 	removeSession(path: string): void {
 		this.setSessionCatalog(

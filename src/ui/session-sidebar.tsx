@@ -46,9 +46,8 @@ type SessionSidebarState = Pick<
 	| "activityText"
 	| "currentSessionPath"
 	| "sessionCatalogLoading"
-	| "sessionSidebarHasMore"
-	| "sessionSidebarSessions"
 	| "sessions"
+	| "sessionsHasMore"
 >;
 
 export function renderSessionSidebar(state: SessionSidebarState): string {
@@ -142,7 +141,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 }
 
 export function renderSessionSidebarContent(state: SessionSidebarState): string {
-	const sessions = state.sessionSidebarSessions;
+	const sessions = state.sessions;
 	const groups = groupSessionsByDate(sessions);
 	return syncHtml(
 		<div id="session-sidebar-content">
@@ -172,7 +171,7 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 			{state.sessionCatalogLoading && (
 				<div class="session-sidebar-loading">{loaderIcon()}</div>
 			)}
-			{state.sessionSidebarHasMore && renderSessionPageTrigger()}
+			{state.sessionsHasMore && renderSessionPageTrigger()}
 		</div>,
 	);
 }
@@ -181,7 +180,7 @@ function sessionSidebarRowId(path: string): string {
 	return `session-sidebar-row-${encodeURIComponent(path)}`;
 }
 
-function renderSessionPageTrigger() {
+export function renderSessionPageTrigger() {
 	return (
 		<div
 			class="session-page-trigger"

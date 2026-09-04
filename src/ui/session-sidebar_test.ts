@@ -84,7 +84,7 @@ test("session sidebar groups sessions while preserving times and shortcuts", () 
 test("session sidebar initially renders 30 sessions and an infinite-scroll trigger", () => {
 	const html = renderSessionSidebar(
 		appRenderSnapshot({
-			sessions: Array.from({ length: 31 }, (_, index) => ({
+			sessions: Array.from({ length: 30 }, (_, index) => ({
 				path: `/sessions/${index + 1}.jsonl`,
 				cwd: "/workspace",
 				title: `Session ${index + 1}`,
@@ -94,11 +94,11 @@ test("session sidebar initially renders 30 sessions and an infinite-scroll trigg
 			currentSessionPath: undefined,
 			activityText: undefined,
 			sessionCatalogLoading: false,
+			sessionsHasMore: true,
 		}),
 	);
 
 	assertStringIncludes(html, "Session 30");
-	assertFalse(html.includes("Session 31"));
 	assertStringIncludes(html, "@post('/sessions/more'");
 });
 
