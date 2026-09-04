@@ -12,8 +12,8 @@ import { collectElementPatches } from "../testing/element-patches.ts";
 import { projectBackendSignals } from "../ui/backend-signals.ts";
 import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
-import { type AppMessageInput, AppStore } from "./app-store.ts";
-import { TranscriptState } from "./transcript-state.ts";
+import { AppStore } from "./app-store.ts";
+import { type TranscriptMessageInput, TranscriptState } from "./transcript-state.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
 
@@ -293,7 +293,7 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 	state.renderer.patchOlderMessages(ids);
 	await waitFor(() => renderCount === 60);
 	assertEqual(state.loadOlderMessages(), []);
-	const immediatePage = state.renderer.renderMessagesElement();
+	const immediatePage = state.renderer.messages.renderMessagesElement();
 	assertIncludes(immediatePage, "<strong>message 0</strong>");
 	assertNotIncludes(immediatePage, "**message 0**");
 	assertEqual(renderCount, 60);
@@ -429,7 +429,7 @@ test("oversized enhancement retains fallback until explicitly requested", async 
 	await settleMicrotasks();
 	assertEqual(renderCount, 0);
 	assertEqual(projectedMessages(state)[0].presentationState, "deferred");
-	assertIncludes(state.renderer.renderMessagesElement(), "Enhance formatting");
+	assertIncludes(state.renderer.messages.renderMessagesElement(), "Enhance formatting");
 	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), true);
 	await waitFor(() => renderCount === 1);
 	await settleMicrotasks();
@@ -455,7 +455,10 @@ test("skill and compaction instructions render Markdown without enhancement work
 	assertIncludes(projectedMessages(state)[1].renderedHtml ?? "", "<strong>");
 	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), false);
 	assertEqual(state.renderer.enhanceMessage(state.messages[1].id), false);
-	assertNotIncludes(state.renderer.renderMessagesElement(), "Enhance formatting");
+	assertNotIncludes(
+		state.renderer.messages.renderMessagesElement(),
+		"Enhance formatting",
+	);
 });
 
 test("assistant completion immediately flushes newest streaming content", () => {
@@ -555,7 +558,7 @@ test("enhancement errors retain the rendered Markdown fallback", async () => {
 		);
 		assertEqual(projectedMessages(state)[0].presentationState, "plain");
 		assertIncludes(
-			state.renderer.renderMessagesElement(),
+			state.renderer.messages.renderMessagesElement(),
 			"<p><strong>fallback</strong></p>",
 		);
 	} finally {
@@ -954,7 +957,7 @@ function projectedMessages(state: TestStore) {
 	return state.renderer.projectState(state.snapshot()).messages;
 }
 
-function markdownMessage(text: string): AppMessageInput {
+function markdownMessage(text: string): TranscriptMessageInput {
 	return { role: "assistant", text, timestamp };
 }
 

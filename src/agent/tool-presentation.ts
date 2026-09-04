@@ -1,4 +1,4 @@
-import type { AppMessageTitlePart } from "../state/app-store.ts";
+import type { TranscriptMessageTitlePart } from "../state/transcript-state.ts";
 import type { JsonValue } from "../utils/json-types.ts";
 import { asRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
 import { formatHomePath } from "../utils/workspace.ts";
@@ -12,7 +12,10 @@ type ToolPresentation = {
 	format?: "pre" | "diff" | "code" | "output";
 };
 
-export function toolTitleParts(toolName: string, args: JsonValue): AppMessageTitlePart[] {
+export function toolTitleParts(
+	toolName: string,
+	args: JsonValue,
+): TranscriptMessageTitlePart[] {
 	const record = asRecord(args);
 	if (toolName === "bash" && record) {
 		const timeout = isNumber(record.timeout) ? ` timeout ${record.timeout}s` : "";

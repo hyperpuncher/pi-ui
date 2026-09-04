@@ -173,7 +173,7 @@ export async function renderCodeFinal(
 	language: string,
 	options: { chrome?: boolean } = {},
 ): Promise<string> {
-	return await highlightCode(code, await codeFenceLanguageFinal(language), options);
+	return renderPlainCode(code, await codeFenceLanguageFinal(language), options);
 }
 
 function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
@@ -197,14 +197,6 @@ function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
 		highlighted = highlighted.replace(raw, replacement);
 	}
 	return highlighted;
-}
-
-async function highlightCode(
-	code: string,
-	language: string,
-	options: { chrome?: boolean } = {},
-): Promise<string> {
-	return renderPlainCode(code, language, options);
 }
 
 async function highlightCodeBlocksFinal(html: string): Promise<string> {

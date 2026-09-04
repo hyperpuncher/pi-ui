@@ -5,6 +5,7 @@ import {
 	type SelectedLineRange,
 } from "@pierre/diffs";
 
+import { hasPrimaryModifier } from "../utils/keyboard.ts";
 import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import {
 	createWorkspaceReviewCommentStore,
@@ -16,11 +17,7 @@ export type { ReviewCommentMetadata } from "./workspace-review-comment-state.ts"
 
 type ReviewCommentItem = Readonly<{ fileDiff: FileDiffMetadata }>;
 
-const isMacOS = navigator.userAgent.includes("Macintosh");
-
-function hasPrimaryModifier(event: KeyboardEvent): boolean {
-	return isMacOS ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-}
+const operatingSystem = navigator.userAgent.includes("Macintosh") ? "darwin" : "linux";
 
 type WorkspaceReviewCommentsOptions = Readonly<{
 	clearSelection(): void;
@@ -91,7 +88,10 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 			if (event.key === "Escape") {
 				event.preventDefault();
 				remove(id);
-			} else if (event.key === "Enter" && hasPrimaryModifier(event)) {
+			} else if (
+				event.key === "Enter" &&
+				hasPrimaryModifier(event, operatingSystem)
+			) {
 				event.preventDefault();
 				save();
 			}

@@ -299,10 +299,6 @@ export class UiRenderer implements AppStorePresentation {
 			messages: this.messages.projectMessages(snapshot.messages),
 		};
 	}
-	renderMessagesElement(): string {
-		return this.messages.renderMessagesElement();
-	}
-
 	renderElements(snapshot: AppRenderSnapshot): string {
 		return this.renderTranscript(snapshot) + this.renderAppElements(snapshot);
 	}

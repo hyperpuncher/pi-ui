@@ -10,7 +10,8 @@ import { makeTempDir } from "#testing/temp";
 
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { parseClientTransitionPaint } from "../server/routes/session-performance.ts";
-import { type AppMessageInput, AppStore } from "../state/app-store.ts";
+import { AppStore } from "../state/app-store.ts";
+import type { TranscriptMessageInput } from "../state/transcript-state.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { collectElementPatches } from "../testing/element-patches.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
@@ -319,7 +320,7 @@ test("20-message restore emits fallback once and targets enhancements", async ()
 	}
 });
 
-function generatedSessionFixture(count: number): AppMessageInput[] {
+function generatedSessionFixture(count: number): TranscriptMessageInput[] {
 	const timestamp = new Date("2026-01-01T00:00:00.000Z");
 	return Array.from({ length: count }, (_, index) => {
 		switch (index % 5) {

@@ -1,5 +1,10 @@
+import { isString } from "../../src/utils/type-guards.ts";
 import { fileUriToPath } from "../file-uri.js";
-import { attachmentFileIcons, attachmentFileKind } from "./attachment-file.js";
+import {
+	attachmentFileExtension,
+	attachmentFileIcons,
+	attachmentFileKind,
+} from "./attachment-file.js";
 import { closePickers } from "./pickers.js";
 import { promptInput } from "./prompt.js";
 
@@ -276,7 +281,7 @@ async function uploadTransferredFiles(files) {
 		const result = await response.json().catch(() => ({}));
 		if (!response.ok) {
 			showTransferError(
-				result.message?.constructor === String
+				isString(result.message)
 					? result.message
 					: "Could not transfer the selected files.",
 			);
@@ -392,7 +397,7 @@ function renderAttachment(attachment) {
 	item.className = "prompt-attachment prompt-attachment-file";
 	item.setAttribute("aria-label", `Remove ${name}`);
 	item.addEventListener("click", () => removeAttachment(attachment.path));
-	const extension = fileExtension(name);
+	const extension = attachmentFileExtension(name);
 	const kind = attachmentFileKind(name, attachment.file?.type);
 	const icon = document.createElement("span");
 	icon.className = "prompt-attachment-file-icon";
@@ -429,11 +434,6 @@ function removeBadge() {
 
 function displayName(path) {
 	return path.split(/[\\/]/).filter(Boolean).at(-1) || path;
-}
-
-function fileExtension(name) {
-	const extension = name.includes(".") ? name.split(".").at(-1) : "";
-	return extension.slice(0, 4).toLowerCase();
 }
 
 function attachmentFileIcon(kind) {

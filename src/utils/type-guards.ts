@@ -1,28 +1,23 @@
-import Type, { type Static } from "typebox";
-import { Compile } from "typebox/compile";
+import type { Static, TRecord, TUnknown } from "typebox";
 
-const recordSchema = Type.Record(Type.String(), Type.Unknown());
-const recordValidator = Compile(recordSchema);
-const stringValidator = Compile(Type.String());
-const numberValidator = Compile(Type.Number());
-const booleanValidator = Compile(Type.Boolean());
-export type JsonRecord = Static<typeof recordSchema>;
+export type JsonRecord = Static<TRecord<string, TUnknown>>;
+
 export function isString<Value>(value: Value): value is Value & string {
-	return stringValidator.Check(value);
+	return typeof value === "string";
 }
 
 export function isNumber<Value>(value: Value): value is Value & number {
-	return numberValidator.Check(value);
+	return typeof value === "number" && Number.isFinite(value);
 }
 
 export function isBoolean<Value>(value: Value): value is Value & boolean {
-	return booleanValidator.Check(value);
+	return typeof value === "boolean";
 }
 
 export function isRecord<Value>(value: Value): value is Value & JsonRecord {
-	return recordValidator.Check(value);
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function asRecord<Value>(value: Value): (Value & JsonRecord) | undefined {
-	return recordValidator.Check(value) ? value : undefined;
+	return isRecord(value) ? value : undefined;
 }

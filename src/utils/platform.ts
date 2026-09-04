@@ -1,8 +1,11 @@
 export type OperatingSystem = "darwin" | "linux" | "windows";
 
+const platform: string | undefined =
+	globalThis.navigator?.platform ?? globalThis.process?.platform;
+
 export const operatingSystem: OperatingSystem =
-	process.platform === "win32"
+	platform === "win32" || platform?.startsWith("Win")
 		? "windows"
-		: process.platform === "darwin"
+		: platform === "darwin" || platform?.startsWith("Mac")
 			? "darwin"
 			: "linux";

@@ -180,13 +180,14 @@ export class MessageRenderService {
 		this.initializeStreaming(id);
 	}
 	streamingMessageChanged(): void {
-		for (const id of this.streamingIds()) this.ensure(id).presentationVersion += 1;
-		this.scheduleMessages(this.streamingIds());
+		const ids = this.streamingIds();
+		for (const id of ids) this.ensure(id).presentationVersion += 1;
+		this.scheduleMessages(ids);
 	}
-	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
-		this.flushMessages(unique([ids.thoughtId, ids.assistantId]));
-		for (const id of unique([ids.thoughtId, ids.assistantId]))
-			this.deferEnhancement(id);
+	assistantFinished(activeIds: { assistantId?: string; thoughtId?: string }): void {
+		const ids = unique([activeIds.thoughtId, activeIds.assistantId]);
+		this.flushMessages(ids);
+		for (const id of ids) this.deferEnhancement(id);
 	}
 	transcriptReplacing(): void {
 		this.clearScheduledMessages();

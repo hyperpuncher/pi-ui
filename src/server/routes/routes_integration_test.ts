@@ -732,7 +732,6 @@ function fakeContext(
 			uiRendererStub({
 				createStream: () => new Response(),
 				patchOlderMessages: () => {},
-				renderMessagesElement: () => "<div id=messages></div>",
 				enhanceMessage: () => true,
 				setDisplayRefreshHz: () => true,
 			}),

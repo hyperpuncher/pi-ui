@@ -44,10 +44,6 @@ export class ExactRouter<Context> {
 		return this.#routes.has(routeKey(method.toUpperCase(), pathname));
 	}
 
-	registeredRoutes(): readonly string[] {
-		return [...this.#routes.keys()];
-	}
-
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 		const handler = this.#routes.get(routeKey(request.method, url.pathname));

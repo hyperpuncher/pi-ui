@@ -4,8 +4,10 @@ import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 
 import { assertEquals } from "#testing/assertions";
 
-import type { AppMessageOptions } from "../state/app-store.ts";
-import type { TranscriptMessage } from "../state/transcript-state.ts";
+import type {
+	TranscriptMessage,
+	TranscriptMessageOptions,
+} from "../state/transcript-state.ts";
 import {
 	reduceSessionEvent,
 	type SessionEventReducerContext,
@@ -19,7 +21,7 @@ class FakeState implements SessionEventStateSink {
 		id: string;
 		role: TranscriptMessage["role"];
 		text: string;
-		options: AppMessageOptions;
+		options: TranscriptMessageOptions;
 	}> = [];
 	readonly updates: Array<{
 		id: string;
@@ -36,7 +38,7 @@ class FakeState implements SessionEventStateSink {
 	appendMessage(
 		role: TranscriptMessage["role"],
 		text: string,
-		options: AppMessageOptions = {},
+		options: TranscriptMessageOptions = {},
 	): string {
 		const id = `message-${this.appended.length + 1}`;
 		this.appended.push({ id, role, text, options });

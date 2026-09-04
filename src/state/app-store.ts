@@ -14,14 +14,10 @@ import {
 	type TranscriptMessage,
 	type TranscriptMessageInput,
 	type TranscriptMessageOptions,
-	type TranscriptMessageTitlePart,
 	type TranscriptSnapshot,
 } from "./transcript-state.ts";
 
-export type AppMessageTitlePart = TranscriptMessageTitlePart;
-export type AppMessageOptions = TranscriptMessageOptions;
 export type AppChatSnapshot = TranscriptSnapshot;
-export type AppMessageInput = TranscriptMessageInput;
 export type AppModel = {
 	id: string;
 	provider: string;
@@ -393,7 +389,7 @@ export class AppStore {
 	appendMessage(
 		role: TranscriptMessage["role"],
 		text: string,
-		options: AppMessageOptions = {},
+		options: TranscriptMessageOptions = {},
 	): string {
 		const id = this.transcript.appendMessage(role, text, options);
 		this.presentation?.messageAppended(id);
@@ -444,7 +440,7 @@ export class AppStore {
 		this.presentation?.transcriptReplaced([], []);
 		if (options.broadcast !== false) this.commit();
 	}
-	replaceMessages(messages: AppMessageInput[]): void {
+	replaceMessages(messages: TranscriptMessageInput[]): void {
 		const end = sessionPerformance.startSpan("transcriptProjection");
 		this.presentation?.transcriptReplacing();
 		this.transcript.replaceMessages(

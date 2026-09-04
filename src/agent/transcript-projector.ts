@@ -5,8 +5,10 @@ import {
 	type SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 
-import type { AppMessageInput } from "../state/app-store.ts";
-import type { TranscriptState } from "../state/transcript-state.ts";
+import type {
+	TranscriptMessageInput,
+	TranscriptState,
+} from "../state/transcript-state.ts";
 import {
 	attachmentDisplayName,
 	splitLeadingAttachmentReferences,
@@ -57,7 +59,7 @@ export class TranscriptProjector {
 		entry: SessionEntry,
 		pending: Map<string, { name: string; args: ToolArguments }>,
 		cacheMissNotice?: string,
-	): AppMessageInput[] {
+	): TranscriptMessageInput[] {
 		const timestamp = new Date(entry.timestamp);
 		if (entry.type === "message") {
 			if (entry.message.role === "assistant") {
@@ -99,7 +101,7 @@ export class TranscriptProjector {
 		message: AgentMessage,
 		timestamp: Date,
 		options: { includeAssistantError?: boolean } = {},
-	): AppMessageInput[] {
+	): TranscriptMessageInput[] {
 		switch (message.role) {
 			case "user": {
 				const text = userContentRawText(message.content);
@@ -171,15 +173,15 @@ export class TranscriptProjector {
 export function userContentToMessages(
 	text: string,
 	timestamp: Date,
-	attachments?: AppMessageInput["attachments"],
-): AppMessageInput[] {
+	attachments?: TranscriptMessageInput["attachments"],
+): TranscriptMessageInput[] {
 	const skill = parseSkillBlock(text);
 	if (!skill) {
-		const message: AppMessageInput = { role: "user", text, timestamp };
+		const message: TranscriptMessageInput = { role: "user", text, timestamp };
 		if (attachments?.length) message.attachments = attachments;
 		return [message];
 	}
-	const messages: AppMessageInput[] = [
+	const messages: TranscriptMessageInput[] = [
 		{
 			role: "skill",
 			text: skill.content,
@@ -212,7 +214,7 @@ function userContentRawText(content: UserContent): string {
 function userContentAttachments(
 	paths: readonly string[],
 	content: UserContent,
-): AppMessageInput["attachments"] {
+): TranscriptMessageInput["attachments"] {
 	const images = Array.isArray(content)
 		? content.flatMap((part) =>
 				isRecord(part) &&
@@ -225,17 +227,20 @@ function userContentAttachments(
 			)
 		: [];
 	let imageIndex = 0;
-	const attachments: NonNullable<AppMessageInput["attachments"]> = paths.map((path) => {
-		const name = attachmentDisplayName(path);
-		const image = isImageFileName(name) ? images[imageIndex++] : undefined;
-		const attachment: NonNullable<AppMessageInput["attachments"]>[number] = {
-			name,
-			path,
-			mimeType: image?.mimeType ?? mimeTypeFromName(name),
-		};
-		if (image) attachment.image = image;
-		return attachment;
-	});
+	const attachments: NonNullable<TranscriptMessageInput["attachments"]> = paths.map(
+		(path) => {
+			const name = attachmentDisplayName(path);
+			const image = isImageFileName(name) ? images[imageIndex++] : undefined;
+			const attachment: NonNullable<TranscriptMessageInput["attachments"]>[number] =
+				{
+					name,
+					path,
+					mimeType: image?.mimeType ?? mimeTypeFromName(name),
+				};
+			if (image) attachment.image = image;
+			return attachment;
+		},
+	);
 	for (; imageIndex < images.length; imageIndex += 1) {
 		attachments.push({
 			name: `Image ${imageIndex + 1}`,
@@ -270,7 +275,7 @@ function toolResultToAppMessage(
 	message: AgentMessage & { role: "toolResult" },
 	timestamp: Date,
 	toolCall?: { name: string; args: ToolArguments },
-): AppMessageInput {
+): TranscriptMessageInput {
 	const view = formatToolResult(message.toolName, message, {
 		args: toolCall?.args,
 		isError: message.isError,
@@ -309,10 +314,10 @@ function extractToolCalls<Content>(
 export function assistantContentToMessages(
 	content: Extract<AgentMessage, { role: "assistant" }>["content"],
 	timestamp: Date,
-): AppMessageInput[] {
+): TranscriptMessageInput[] {
 	if (!Array.isArray(content))
 		return [{ role: "assistant", text: contentToText(content), timestamp }];
-	const messages: AppMessageInput[] = [];
+	const messages: TranscriptMessageInput[] = [];
 	let assistantText = "";
 	let thoughtText = "";
 	for (const part of content) {

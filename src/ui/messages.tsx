@@ -1,17 +1,15 @@
 import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
 import {
+	attachmentFileExtension,
 	attachmentFileIcons,
 	attachmentFileKind,
 } from "../../static/app/attachment-file.js";
 import { authDialogAction } from "../commands/actions.ts";
 import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
-import type {
-	AppKeybindHint,
-	AppMessageTitlePart,
-	AppSessionSummary,
-} from "../state/app-store.ts";
+import type { AppKeybindHint, AppSessionSummary } from "../state/app-store.ts";
+import type { TranscriptMessageTitlePart } from "../state/transcript-state.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { DateTime } from "./date-time.tsx";
@@ -304,7 +302,7 @@ function stripDiffMetadata(text: string): string {
 		.join("\n");
 }
 
-function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined) {
+function renderToolTitle(title: string, parts: TranscriptMessageTitlePart[] | undefined) {
 	if (!parts?.length) return <span safe>{title}</span>;
 	if (parts[0]?.text === "$ " && parts[1]?.highlight === "bash") {
 		return (
@@ -323,7 +321,7 @@ function renderToolTitle(title: string, parts: AppMessageTitlePart[] | undefined
 	return <>{parts.map(renderToolTitlePart)}</>;
 }
 
-function renderToolTitlePart(part: AppMessageTitlePart, index: number) {
+function renderToolTitlePart(part: TranscriptMessageTitlePart, index: number) {
 	return part.highlight === "bash" ? (
 		<span class={toolTitlePartClass(part, index)}>{renderInlineBash(part.text)}</span>
 	) : (
@@ -389,9 +387,7 @@ function renderDeferredEnhancement(message: AppMessage) {
 function renderUserFileAttachment(
 	attachment: NonNullable<AppMessage["attachments"]>[number],
 ) {
-	const extension = attachment.name.includes(".")
-		? attachment.name.split(".").at(-1)?.slice(0, 4).toLowerCase()
-		: undefined;
+	const extension = attachmentFileExtension(attachment.name);
 	const kind = attachmentFileKind(attachment.name, attachment.mimeType);
 	return (
 		<div class="message-file">
@@ -407,17 +403,13 @@ function renderUserFileAttachment(
 				<span class="message-file-name" safe>
 					{attachment.name}
 				</span>
-				<span class="fine-print message-file-kind">{fileKindLabel(kind)}</span>
+				<span class="fine-print message-file-kind">{kind}</span>
 			</span>
 		</div>
 	);
 }
 
 type AttachmentFileKind = keyof typeof attachmentFileIcons;
-
-function fileKindLabel(kind: AttachmentFileKind): string {
-	return kind;
-}
 
 function AttachmentFileIcon(props: { kind: AttachmentFileKind }) {
 	const icon = attachmentFileIcons[props.kind];
@@ -433,7 +425,7 @@ function AttachmentFileIcon(props: { kind: AttachmentFileKind }) {
 	);
 }
 
-function toolTitlePartClass(part: AppMessageTitlePart, index: number): string {
+function toolTitlePartClass(part: TranscriptMessageTitlePart, index: number): string {
 	const classes = [];
 	if (index === 0 && !part.mono) classes.push("tool-title-gap");
 	if (part.mono) classes.push("tool-title-mono");

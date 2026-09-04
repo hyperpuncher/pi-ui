@@ -44,6 +44,11 @@ export const attachmentFileIcons = {
 	},
 };
 
+export function attachmentFileExtension(name) {
+	const extension = name.includes(".") ? name.split(".").at(-1) : "";
+	return extension.slice(0, 4).toLowerCase();
+}
+
 export function attachmentFileKind(name, mimeType) {
 	const extension = name.split(".").at(-1)?.toLowerCase() ?? "";
 	if (mimeType === "application/pdf" || extension === "pdf") return "pdf";

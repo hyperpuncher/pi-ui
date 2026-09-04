@@ -2,7 +2,7 @@ import { test } from "bun:test";
 
 import { assertEquals, assertRejects } from "#testing/assertions";
 
-import { attachmentFileKind } from "./attachment-file.js";
+import { attachmentFileExtension, attachmentFileKind } from "./attachment-file.js";
 
 Object.defineProperty(globalThis, "ResizeObserver", {
 	configurable: true,
@@ -61,6 +61,9 @@ test("transferred files use their original paths", () => {
 });
 
 test("attachment file kinds use MIME types and extensions", () => {
+	assertEquals(attachmentFileExtension("archive.TAR.GZ"), "gz");
+	assertEquals(attachmentFileExtension("README"), "");
+	assertEquals(attachmentFileExtension("long.typescript"), "type");
 	assertEquals(attachmentFileKind("vadim.txt", "text/plain"), "text");
 	assertEquals(attachmentFileKind("recording.ogg", "audio/ogg"), "audio");
 	assertEquals(attachmentFileKind("source.ts", ""), "code");
