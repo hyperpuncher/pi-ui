@@ -207,7 +207,7 @@ export type AppStateSnapshot = Readonly<{
 
 type AppStoreUpdateOptions = { flush?: boolean; commit?: boolean };
 
-export const sessionSidebarPageSize = 30;
+const sessionSidebarPageSize = 30;
 
 const emptyChatHints: AppKeybindHint[] = [
 	...appCommandCatalog
