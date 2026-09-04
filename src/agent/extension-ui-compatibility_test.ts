@@ -64,6 +64,14 @@ test("a discovered pi extension uses the web UI bridge end to end", async () => 
 			dependencies: dependencies(agentDir),
 		});
 		controller.activate();
+		assertEquals(
+			store.slashCommands.find((command) => command.name === "ui-fixture"),
+			{
+				name: "ui-fixture",
+				description: "Exercise pi-ui extension UI compatibility",
+				source: "extension",
+			},
+		);
 
 		const command = controller.prompt("/ui-fixture");
 		await waitForDialog(store, "select");

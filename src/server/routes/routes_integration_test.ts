@@ -589,18 +589,6 @@ test("display refresh updates its connected presentation owner", async () => {
 	);
 });
 
-test("tree open remains repeatable and includes the fallback open effect", async () => {
-	let opens = 0;
-	const host = fakeHost({ openTree: () => ((opens += 1), true) });
-	const router = createRouter(fakeContext({ host }));
-	for (let index = 0; index < 2; index += 1) {
-		const response = await router.fetch(signalRequest("/tree/open", {}));
-		assertEquals(response.status, 200);
-		assertStringIncludes(await response.text(), "piUi.dialogs.openTree");
-	}
-	assertEquals(opens, 2);
-});
-
 test("tree navigation state follows mutable host ownership", async () => {
 	let resolveNavigation: (value: {
 		status: "success";

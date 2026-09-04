@@ -131,6 +131,7 @@ function fakeRuntime(
 		scopedModels: [],
 		modelRuntime,
 		promptTemplates: [],
+		extensionRunner: { getRegisteredCommands: () => [] },
 		resourceLoader: { getSkills: () => ({ skills: [] }) },
 		thinkingLevel: "off",
 		getAvailableThinkingLevels: () => ["off"],
@@ -265,6 +266,18 @@ test("RuntimeController production path binds callbacks before activation", asyn
 	await controller.dispose();
 	assertEquals(fake.calls.filter((call) => call === "unsubscribe").length, 1);
 	assertEquals(fake.disposeCount, 1);
+});
+
+test("RuntimeController opens tree commands without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	controller.activate();
+	assertEquals(await controller.prompt("/tree"), true);
+	assertEquals(fake.promptInputs, []);
+	await controller.dispose();
 });
 
 test("RuntimeController forces only the first model picker refresh within thirty minutes", async () => {

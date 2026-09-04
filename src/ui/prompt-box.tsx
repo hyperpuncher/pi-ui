@@ -152,7 +152,6 @@ export function renderPromptBox(
 							const submittedPrompt = $prompt;
 							$_promptSubmitting = true;
 							window.piUi.prompt.clear();
-							if (submittedPrompt.trim() === '/tree') window.piUi.dialogs.openTree();
 							window.piUi.fileTransfer.submit(
 								evt.altKey ? '${endpoints.promptFollowUp}' : '${endpoints.prompt}',
 								submittedPrompt,

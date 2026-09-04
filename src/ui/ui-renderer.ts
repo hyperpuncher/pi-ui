@@ -390,12 +390,17 @@ export class UiRenderer implements AppStorePresentation {
 				scripts.push(
 					"requestAnimationFrame(() => document.getElementById('model-select-input')?.focus())",
 				);
-			if (effect.type === "dialog")
-				scripts.push(
-					effect.open
-						? `{ const dialog = document.getElementById('${effect.id}'); if (dialog && !dialog.open) dialog.showModal(); }`
-						: `{ const dialog = document.getElementById('${effect.id}'); if (dialog?.open) dialog.close(); }`,
-				);
+			if (effect.type === "dialog") {
+				if (effect.open && effect.id === "tree-dialog") {
+					scripts.push("window.piUi.dialogs.openTree()");
+				} else {
+					scripts.push(
+						effect.open
+							? `{ const dialog = document.getElementById('${effect.id}'); if (dialog && !dialog.open) dialog.showModal(); }`
+							: `{ const dialog = document.getElementById('${effect.id}'); if (dialog?.open) dialog.close(); }`,
+					);
+				}
+			}
 		}
 		return [...new Set(scripts)];
 	}

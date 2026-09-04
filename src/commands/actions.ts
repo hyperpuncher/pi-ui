@@ -33,7 +33,7 @@ export function authDialogAction(mode: "login" | "logout"): string {
 }
 
 function openTreeAction(): string {
-	return `window.piUi.dialogs.openTree(); @post('${endpoints.treeOpen}', { payload: {} })`;
+	return `@post('${endpoints.treeOpen}', { payload: {} })`;
 }
 
 export function openWorkspaceDialogAction(

@@ -134,7 +134,7 @@ export type UiCommitEffect =
 	| { type: "restore-model-picker" }
 	| {
 			type: "dialog";
-			id: "auth-dialog" | "extension-dialog" | "llama-dialog";
+			id: "auth-dialog" | "extension-dialog" | "llama-dialog" | "tree-dialog";
 			open: boolean;
 	  }
 	| { type: "document-title"; title: string }
@@ -666,6 +666,10 @@ export class AppStore {
 		this.treeEntries = entries;
 		this.presentation?.pickersChanged();
 		this.commit();
+	}
+	openTreeDialog(): void {
+		this.presentation?.pickersChanged();
+		this.commit({ type: "dialog", id: "tree-dialog", open: true });
 	}
 	setUsage(value: AppUsage): void {
 		this.usage = value;

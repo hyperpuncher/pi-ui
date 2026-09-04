@@ -10,7 +10,11 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { sessionPerformance } from "../perf/session-performance.ts";
-import { AppStore, type BackgroundSessionStatus } from "../state/app-store.ts";
+import {
+	type AppSlashCommand,
+	AppStore,
+	type BackgroundSessionStatus,
+} from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
 import {
 	notifySessionDone,
@@ -74,6 +78,48 @@ import { UsageController } from "./usage-controller.ts";
 
 const extensionFactories = [llamaProviderExtension];
 const modelCatalogForceIntervalMs = 30 * 60 * 1000;
+const systemSlashCommands = [
+	{
+		name: "login",
+		description: "Log in with a subscription or API key",
+		source: "system",
+		argumentHint: "[provider]",
+	},
+	{
+		name: "logout",
+		description: "Remove stored provider credentials",
+		source: "system",
+	},
+	{
+		name: "tree",
+		description: "Navigate and branch within the current session",
+		source: "system",
+	},
+	{
+		name: "llama",
+		description: "Load or unload llama.cpp models",
+		source: "system",
+	},
+	{
+		name: "compact",
+		description: "Manually compact the session context",
+		source: "system",
+		argumentHint: "[instructions]",
+	},
+	{
+		name: "share",
+		description: "Share session as a secret GitHub gist",
+		source: "system",
+	},
+	{
+		name: "reload",
+		description: "Reload extensions, skills, prompts, and context files",
+		source: "system",
+	},
+] satisfies readonly AppSlashCommand[];
+const systemSlashCommandNames = new Set(
+	systemSlashCommands.map((command) => command.name),
+);
 
 type BackgroundSession = {
 	runtime: AgentSessionRuntime;
@@ -305,10 +351,9 @@ export class RuntimeController {
 			return false;
 		}
 		if (trimmed === "/tree") {
-			this.tree.open();
+			this.openTree();
 			return true;
 		}
-
 		if (trimmed === "/login" || trimmed.startsWith("/login ")) {
 			this.openLogin(
 				trimmed.startsWith("/login ") ? trimmed.slice(7).trim() : undefined,
@@ -793,6 +838,7 @@ export class RuntimeController {
 
 	openTree(): boolean {
 		this.tree.open();
+		this.state.openTreeDialog();
 		return true;
 	}
 
@@ -1482,58 +1528,30 @@ export class RuntimeController {
 	}
 
 	private syncSlashCommands(): void {
-		const prompts = this.runtime.session.promptTemplates.map((template) => ({
+		const session = this.runtime.session;
+		const prompts = session.promptTemplates.map((template) => ({
 			name: template.name,
 			description: template.description,
 			argumentHint: template.argumentHint,
 			source: "prompt" as const,
 		}));
-		const skills = this.runtime.session.resourceLoader
-			.getSkills()
-			.skills.map((skill) => ({
-				name: `skill:${skill.name}`,
-				description: skill.description,
-				source: "skill" as const,
+		const extensions = session.extensionRunner
+			.getRegisteredCommands()
+			.filter((command) => !systemSlashCommandNames.has(command.name))
+			.map((command) => ({
+				name: command.invocationName,
+				description: command.description ?? "",
+				source: "extension" as const,
 			}));
+		const skills = session.resourceLoader.getSkills().skills.map((skill) => ({
+			name: `skill:${skill.name}`,
+			description: skill.description,
+			source: "skill" as const,
+		}));
 		this.state.setSlashCommands([
-			{
-				name: "login",
-				description: "Log in with a subscription or API key",
-				source: "system" as const,
-				argumentHint: "[provider]",
-			},
-			{
-				name: "logout",
-				description: "Remove stored provider credentials",
-				source: "system" as const,
-			},
-			{
-				name: "tree",
-				description: "Navigate and branch within the current session",
-				source: "system" as const,
-			},
-			{
-				name: "llama",
-				description: "Load or unload llama.cpp models",
-				source: "system" as const,
-			},
-			{
-				name: "compact",
-				description: "Manually compact the session context",
-				source: "system" as const,
-				argumentHint: "[instructions]",
-			},
-			{
-				name: "share",
-				description: "Share session as a secret GitHub gist",
-				source: "system" as const,
-			},
-			{
-				name: "reload",
-				description: "Reload extensions, skills, prompts, and context files",
-				source: "system" as const,
-			},
+			...systemSlashCommands,
 			...prompts,
+			...extensions,
 			...skills,
 		]);
 	}

@@ -1,12 +1,10 @@
-import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
-
 import {
 	booleanField,
 	optionalString,
 	readActionSignals,
 	requiredString,
 } from "../action-input.ts";
-import { datastarResponse, type DatastarEvent } from "../datastar.ts";
+import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
@@ -14,7 +12,7 @@ import { endpoints } from "./endpoints.ts";
 export function registerTreeRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("POST", endpoints.treeOpen, (_request, context) => {
 		requireHost(context).openTree();
-		return datastarResponse(treeOpenEvents());
+		return datastarResponse();
 	});
 	router.register("POST", endpoints.treeNavigate, async (request, context) => {
 		const signals = await readActionSignals(request);
@@ -37,13 +35,4 @@ export function registerTreeRoutes(router: ExactRouter<RouteContext>): void {
 			{ type: "effect", effect: { type: "focus-prompt" } },
 		]);
 	});
-}
-
-export function treeOpenEvents(
-	signals: Record<string, Jsonifiable> = {},
-): DatastarEvent[] {
-	const events: DatastarEvent[] = [];
-	if (Object.keys(signals).length > 0) events.push({ type: "signals", signals });
-	events.push({ type: "effect", effect: { type: "open-tree" } });
-	return events;
 }

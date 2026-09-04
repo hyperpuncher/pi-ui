@@ -80,7 +80,6 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 				data-on:click={`
 					window.piUi.messageScroll.scrollBottom();
 					$prompt = '';
-					if (${JSON.stringify(label)} === '/tree') window.piUi.dialogs.openTree();
 					@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} } });
 				`}
 			>

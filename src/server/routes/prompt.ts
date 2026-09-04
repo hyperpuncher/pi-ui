@@ -17,17 +17,12 @@ import {
 } from "../transferred-files.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
-import { treeOpenEvents } from "./tree.ts";
 
 export function registerPromptRoutes(router: ExactRouter<RouteContext>): void {
 	router.register("POST", endpoints.prompt, async (request, context) => {
 		const { prompt, images } = await readPrompt(request);
 		context.store.setPromptEditorText("", { broadcast: false });
 		const host = requireHost(context);
-		if (prompt.trim() === "/tree") {
-			host.openTree();
-			return datastarResponse(treeOpenEvents());
-		}
 		if (!(await host.prompt(prompt, { images })))
 			throw new RouteError(409, "Prompt was not accepted.");
 		return datastarResponse();
