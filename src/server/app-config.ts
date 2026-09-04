@@ -15,7 +15,7 @@ const appConfigValidator = Compile(JsonObjectSchema);
 
 let pendingWrite = Promise.resolve();
 
-export async function readAppConfig(path = appConfigPath()): Promise<AppConfig> {
+async function readAppConfig(path = appConfigPath()): Promise<AppConfig> {
 	try {
 		const value = JSON.parse(await Bun.file(path).text());
 		return appConfigValidator.Check(value) ? value : {};

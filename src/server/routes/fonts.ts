@@ -1,7 +1,7 @@
 import { findFontOption, getActiveFonts, setActiveFonts } from "../../fonts.ts";
 import { enumField, readActionSignals, requiredString } from "../action-input.ts";
+import { updateAppConfig } from "../app-config.ts";
 import { datastarResponse } from "../datastar.ts";
-import { writeFontPreferences } from "../font-preferences.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
@@ -14,7 +14,9 @@ export function registerFontRoutes(router: ExactRouter<RouteContext>): void {
 		if (!findFontOption(kind, name)) throw new RouteError(400, "Unknown font.");
 
 		const fonts = { ...getActiveFonts(), [kind]: name };
-		await writeFontPreferences(fonts);
+		await updateAppConfig((config) => {
+			config.fonts = fonts;
+		});
 		setActiveFonts(fonts);
 		context.renderer.fontsChanged();
 		return datastarResponse();

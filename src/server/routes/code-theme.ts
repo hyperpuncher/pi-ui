@@ -3,7 +3,7 @@ import { preloadHighlighter } from "@pierre/diffs";
 import { findCodeTheme } from "../../code-themes.ts";
 import { getPierreThemes, setActiveCodeTheme } from "../../pierre-theme.ts";
 import { enumField, readActionSignals, requiredString } from "../action-input.ts";
-import { writeCodeThemePreference } from "../code-theme-preferences.ts";
+import { updateAppConfig } from "../app-config.ts";
 import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
 import type { RouteContext } from "./context.ts";
@@ -22,7 +22,9 @@ export function registerCodeThemeRoutes(router: ExactRouter<RouteContext>): void
 
 		await preloadHighlighter({ langs: [], themes: [theme.name] });
 		const themes = { ...getPierreThemes(), [appearance]: theme.name };
-		await writeCodeThemePreference(themes);
+		await updateAppConfig((config) => {
+			config.codeTheme = themes;
+		});
 		setActiveCodeTheme(themes);
 		context.renderer.codeThemeChanged();
 		return datastarResponse();

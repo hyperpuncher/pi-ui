@@ -5,9 +5,9 @@ import {
 } from "../../workspace-review-comments.ts";
 import { normalizeWorkspaceReviewPreferences } from "../../workspace-review-types.ts";
 import { readActionSignals } from "../action-input.ts";
+import { updateAppConfig } from "../app-config.ts";
 import { datastarResponse } from "../datastar.ts";
 import { RouteError, type ExactRouter } from "../router.ts";
-import { writeWorkspaceReviewPreferences } from "../workspace-review-preferences.ts";
 import {
 	discardWorkspaceChange,
 	readWorkspaceCommit,
@@ -26,7 +26,9 @@ export function registerWorkspaceReviewRoutes(router: ExactRouter<RouteContext>)
 			const preferences = normalizeWorkspaceReviewPreferences(
 				signals.workspaceReviewPreferences,
 			);
-			await writeWorkspaceReviewPreferences(preferences);
+			await updateAppConfig((config) => {
+				config.gitView = preferences;
+			});
 			context.store.setWorkspaceReviewPreferences(preferences);
 			return new Response(null, { status: 204 });
 		},
