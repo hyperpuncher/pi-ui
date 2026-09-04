@@ -142,7 +142,7 @@
 		text-align: start;
 		transition:
 			border-color 130ms ease,
-			transform 130ms var(--ease-out);
+			scale 130ms var(--ease-out);
 	}
 	.code-theme-preview {
 		display: block;
@@ -194,7 +194,7 @@
 	}
 
 	.code-theme-card:active {
-		transform: scale(0.985);
+		scale: 0.985;
 	}
 
 	.code-theme-card[aria-pressed="true"] {
@@ -217,7 +217,7 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.code-theme-card:active {
-			transform: none;
+			scale: 1;
 		}
 	}
 }

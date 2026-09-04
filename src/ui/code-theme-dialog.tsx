@@ -31,9 +31,6 @@ export function renderCodeThemeDialog(): string {
 				$codeThemeSearch = '';
 				if (!el.open) el.showModal();
 				window.piUi.codeTheme.loadPreviews();
-				requestAnimationFrame(() =>
-					document.getElementById('code-theme-search')?.focus({ preventScroll: true })
-				);
 			`}
 			data-on:pi-ui-code-theme-changed__window={`document.getElementById('code-theme-status').textContent =
 				'Applied ' + ($codeThemeAppearance === 'dark' ? $_codeThemeDark : $_codeThemeLight)`}
@@ -41,7 +38,7 @@ export function renderCodeThemeDialog(): string {
 				document.getElementById('code-theme-status').textContent =
 					'Could not apply theme. Try again.';
 			}`}
-			onclick="if (event.target === this) this.close()"
+			closedby="any"
 		>
 			<div class="code-theme-dialog-panel">
 				<header class="preference-dialog-header">
@@ -80,6 +77,7 @@ export function renderCodeThemeDialog(): string {
 						placeholder="Search themes…"
 						autocomplete="off"
 						spellcheck="false"
+						autofocus
 						data-bind:code-theme-search=""
 					/>
 				</header>
@@ -108,7 +106,8 @@ export function renderCodeThemeDialog(): string {
 						type="button"
 						class="btn"
 						data-variant="outline"
-						onclick="this.closest('dialog').close()"
+						commandfor="code-theme-dialog"
+						command="close"
 					>
 						Done
 					</button>

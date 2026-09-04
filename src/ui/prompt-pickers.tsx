@@ -115,12 +115,6 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 								payload: { thinkingLevel: ${JSON.stringify(level)} },
 								});`}
 							>
-								<span
-									class="selection-dot"
-									data-ignore
-									data-indicator
-									aria-hidden="true"
-								/>
 								<span class="picker-option-text">
 									<span class="picker-option-title">
 										{thinkingLabel(level)}
@@ -129,6 +123,12 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 										{thinkingDescription(level)}
 									</span>
 								</span>
+								<span
+									class="selection-dot"
+									data-ignore
+									data-indicator
+									aria-hidden="true"
+								/>
 							</button>
 						))}
 					</div>
@@ -279,7 +279,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 											id={`model-option-${encodeURIComponent(value)}`}
 											role="menuitem"
 											class="model-option"
-											data-preserve-attr="class aria-hidden"
+											data-preserve-attr="class hidden"
 											aria-current={
 												value === state.currentModel
 													? "true"

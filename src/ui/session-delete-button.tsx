@@ -17,6 +17,8 @@ export function SessionDeleteButton(props: {
 			data-attr:data-variant={`$sessionDeleteHover === ${path} ? 'destructive' : 'ghost'`}
 			data-size="icon-xs"
 			aria-label={`Delete session ${props.session.title}`}
+			commandfor="session-delete-dialog"
+			command="show-modal"
 			data-on:mouseenter={`$sessionDeleteHover = ${path}`}
 			data-on:mouseleave="$sessionDeleteHover = ''"
 			data-on:focus={`$sessionDeleteHover = ${path}`}
@@ -25,7 +27,6 @@ export function SessionDeleteButton(props: {
 				evt.stopPropagation();
 				$sessionDeletePath = ${path};
 				$sessionDeleteTitle = ${title};
-				document.getElementById('session-delete-dialog')?.showModal();
 			`}
 		>
 			<Icon icon={Trash2} />

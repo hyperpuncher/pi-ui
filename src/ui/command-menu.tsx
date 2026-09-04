@@ -9,7 +9,7 @@ export function renderCommandMenu(): string {
 			id="command-dialog"
 			class="command-dialog"
 			aria-label="Command menu"
-			onclick="if (event.target === this) this.close()"
+			closedby="any"
 		>
 			<div class="command">
 				<header>

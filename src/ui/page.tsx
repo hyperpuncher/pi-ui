@@ -261,15 +261,15 @@ export function renderPage(
 
 					<dialog
 						id="workspace-dialog"
-						class="command-dialog"
+						class="command-dialog command-medium"
 						aria-label="Change workspace"
 						data-attr:aria-label="$_workspaceAction === 'fork' ? 'Fork session to workspace' : 'Change workspace'"
 						data-preserve-attr="open"
 						data-signals:_workspace-action__ifmissing="'open'"
 						data-signals:workspace-draft__ifmissing="''"
-						onclick="if (event.target === this) this.close()"
+						closedby="any"
 					>
-						<div class="command command-medium">
+						<div class="command">
 							<header class="workspace-command-header">
 								<input
 									id="workspace-input"
@@ -286,6 +286,7 @@ export function renderPage(
 									role="combobox"
 									aria-expanded="true"
 									aria-controls="workspace-menu"
+									autofocus
 									data-bind:workspace-draft
 									attrs={{
 										"data-on:input__debounce.50ms": `@get('${endpoints.workspaceSearch}', {
@@ -325,7 +326,7 @@ export function renderPage(
 						aria-labelledby="workspace-browser-title"
 						data-signals:_workspace-browser-show-hidden__ifmissing="false"
 						data-preserve-attr="open"
-						onclick="if (event.target === this) this.close()"
+						closedby="any"
 					>
 						<div
 							id="workspace-browser-content"
@@ -337,7 +338,7 @@ export function renderPage(
 
 					<dialog
 						id="tree-dialog"
-						class="command-dialog"
+						class="command-dialog command-tree"
 						aria-label="Session tree"
 						data-signals__ifmissing={JSON.stringify({
 							treeSelectedId: "",
@@ -345,13 +346,13 @@ export function renderPage(
 							treeSummaryInstructions: "",
 						})}
 						data-preserve-attr="open"
-						onclick="if (event.target === this) this.close()"
+						data-style:max-width="$treeSelectedId ? '24rem' : '72rem'"
+						closedby="any"
 					>
 						<div
-							class="command command-tree"
-							style="height: calc(100% - 2rem)"
-							data-style:height="$treeSelectedId ? 'auto' : 'calc(100% - 2rem)'"
-							data-style:max-width="$treeSelectedId ? '24rem' : '72rem'"
+							class="command"
+							style="height: calc(100dvh - 2rem)"
+							data-style:height="$treeSelectedId ? 'auto' : 'calc(100dvh - 2rem)'"
 						>
 							<header data-class:sr-only="$treeSelectedId">
 								<Icon icon={Search} />
@@ -375,13 +376,13 @@ export function renderPage(
 
 					<dialog
 						id="session-dialog"
-						class="command-dialog"
+						class="command-dialog command-wide"
 						aria-label="Resume session"
 						data-preserve-attr="open"
 						data-signals:session-search__ifmissing="''"
-						onclick="if (event.target === this) this.close()"
+						closedby="any"
 					>
-						<div class="command command-wide" data-filter="manual">
+						<div class="command" data-filter="manual">
 							<header>
 								<input
 									id="session-input"
@@ -414,7 +415,7 @@ export function renderPage(
 						class="dialog"
 						aria-labelledby="session-delete-title"
 						aria-describedby="session-delete-description"
-						onclick="if (event.target === this) this.close()"
+						closedby="any"
 					>
 						<div class="dialog-medium">
 							<header>
@@ -435,7 +436,8 @@ export function renderPage(
 									type="button"
 									class="btn"
 									data-variant="outline"
-									onclick="this.closest('dialog').close()"
+									commandfor="session-delete-dialog"
+									command="close"
 								>
 									Cancel
 								</button>

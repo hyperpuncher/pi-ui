@@ -94,9 +94,8 @@
 		color: inherit;
 	}
 
-	[hidden],
-	[aria-hidden="true"][role^="menuitem"] {
-		/* stylelint-disable-next-line declaration-no-important -- hidden-state boundary */
+	[hidden] {
+		/* stylelint-disable-next-line declaration-no-important -- author styles must not override native hidden state */
 		display: none !important;
 	}
 

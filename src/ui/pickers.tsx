@@ -203,7 +203,8 @@ export function renderWorkspaceBrowserContent(
 					type="button"
 					class="btn"
 					data-variant="outline"
-					onclick="this.closest('dialog').close()"
+					commandfor="workspace-browser-dialog"
+					command="close"
 				>
 					Cancel
 				</button>
@@ -243,7 +244,8 @@ export function renderWorkspaceBrowserError(path: string): string {
 				<button
 					type="button"
 					class="btn"
-					onclick="this.closest('dialog').close()"
+					commandfor="workspace-browser-dialog"
+					command="close"
 				>
 					Close
 				</button>
@@ -460,7 +462,7 @@ function renderSessionRow(
 			tabindex="-1"
 			class="session-menu-row"
 			aria-current={current ? "true" : undefined}
-			data-preserve-attr="class aria-hidden"
+			data-preserve-attr="class hidden"
 			data-keep-command-open
 			data-filter={haystack}
 			data-keywords={haystack}

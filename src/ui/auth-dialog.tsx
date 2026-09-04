@@ -8,7 +8,7 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 			id="auth-dialog"
 			class="dialog"
 			aria-labelledby="auth-dialog-title"
-			onclick="if (event.target === this) this.close()"
+			closedby="any"
 			data-on:close={`@post('${endpoints.authClose}', { payload: {} })`}
 			data-signals__ifmissing={JSON.stringify({
 				_authSearch: "",
@@ -102,7 +102,8 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 					type="button"
 					class="btn"
 					data-variant="outline"
-					onclick="this.closest('dialog').close()"
+					commandfor="auth-dialog"
+					command="close"
 				>
 					Close
 				</button>
@@ -205,7 +206,8 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					type="button"
 					class="btn"
 					data-variant="outline"
-					onclick="this.closest('dialog').close()"
+					commandfor="auth-dialog"
+					command="close"
 				>
 					Cancel
 				</button>
@@ -288,7 +290,8 @@ function renderResult(dialog: AppAuthDialog): string {
 				<button
 					type="button"
 					class="btn"
-					onclick="this.closest('dialog').close()"
+					commandfor="auth-dialog"
+					command="close"
 				>
 					Done
 				</button>

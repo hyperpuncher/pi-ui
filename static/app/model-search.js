@@ -24,7 +24,7 @@ export function filterModelSearch(input, query) {
 
 	for (const item of orderedItems) {
 		item.classList.remove("active");
-		item.setAttribute("aria-hidden", String(!visible.has(item)));
+		item.hidden = !visible.has(item);
 		item.parentElement?.append(item);
 	}
 	refreshControls(command);

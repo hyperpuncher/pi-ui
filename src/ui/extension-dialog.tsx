@@ -8,7 +8,7 @@ export function renderExtensionDialog(dialog: AppExtensionDialog | undefined): s
 			id="extension-dialog"
 			class="dialog"
 			aria-labelledby="extension-dialog-title"
-			onclick="if (event.target === this) this.close()"
+			closedby="any"
 			data-on:close={cancelCurrentAction()}
 			data-signals__ifmissing={JSON.stringify({
 				extensionRequestId: "",
@@ -61,7 +61,7 @@ function renderSelect(dialog: Extract<AppExtensionDialog, { kind: "select" }>): 
 					</button>
 				))}
 			</div>
-			{cancelFooter(dialog.id)}
+			{cancelFooter()}
 		</>,
 	);
 }
@@ -80,7 +80,8 @@ function renderConfirm(dialog: Extract<AppExtensionDialog, { kind: "confirm" }>)
 					type="button"
 					class="btn"
 					data-variant="outline"
-					data-on:click={cancelAction(dialog.id)}
+					commandfor="extension-dialog"
+					command="close"
 				>
 					Cancel
 				</button>
@@ -137,7 +138,8 @@ function renderText(
 					type="button"
 					class="btn"
 					data-variant="outline"
-					data-on:click={cancelAction(dialog.id)}
+					commandfor="extension-dialog"
+					command="close"
 				>
 					Cancel
 				</button>
@@ -149,23 +151,20 @@ function renderText(
 	);
 }
 
-function cancelFooter(id: string): string {
+function cancelFooter(): string {
 	return syncHtml(
 		<footer>
 			<button
 				type="button"
 				class="btn"
 				data-variant="outline"
-				data-on:click={cancelAction(id)}
+				commandfor="extension-dialog"
+				command="close"
 			>
 				Cancel
 			</button>
 		</footer>,
 	);
-}
-
-function cancelAction(id: string): string {
-	return postResponse(JSON.stringify(id), "''", true);
 }
 
 function cancelCurrentAction(): string {

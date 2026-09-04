@@ -48,9 +48,7 @@ function commandItems(menu) {
 function visibleCommandItems(command) {
 	const { menu } = commandParts(command);
 	if (!(menu instanceof HTMLElement)) return [];
-	return commandItems(menu).filter(
-		(item) => item.getAttribute("aria-hidden") !== "true",
-	);
+	return commandItems(menu).filter((item) => !item.hidden);
 }
 
 function refreshSidebar(sidebar) {
@@ -88,7 +86,7 @@ function filterCommand(command) {
 			item.hasAttribute("data-force") ||
 			text.includes(query) ||
 			keywords.some((keyword) => keyword.includes(query));
-		item.setAttribute("aria-hidden", String(!matches));
+		item.hidden = !matches;
 	}
 	const first = visibleCommandItems(command)[0];
 	activateCommandItem(command, first);
@@ -204,7 +202,7 @@ function handlePointerMove(event) {
 	if (
 		command instanceof HTMLElement &&
 		commandItem instanceof HTMLElement &&
-		commandItem.getAttribute("aria-hidden") !== "true"
+		!commandItem.hidden
 	) {
 		activateCommandItem(command, commandItem);
 	}

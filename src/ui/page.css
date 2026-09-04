@@ -83,13 +83,13 @@
 	}
 
 	.command-medium {
-		max-width: 28rem;
+		--command-dialog-width: 28rem;
 	}
 	.command-wide {
-		max-width: 36rem;
+		--command-dialog-width: 36rem;
 	}
 	.command-tree {
-		max-width: 72rem;
+		--command-dialog-width: 72rem;
 	}
 
 	.workspace-command-header {

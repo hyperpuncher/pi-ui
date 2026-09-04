@@ -29,10 +29,10 @@
 			border-color 130ms ease,
 			color 130ms ease,
 			opacity 130ms ease,
-			translate 80ms var(--ease-out);
+			scale 70ms var(--ease-out);
 
 		&:not(:disabled):active {
-			translate: 0 1px;
+			scale: 0.98;
 		}
 
 		&:focus-visible {

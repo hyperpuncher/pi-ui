@@ -271,7 +271,7 @@
 		flex: 1;
 		flex-direction: column;
 	}
-	.command-tree > header {
+	.command-tree > .command > header {
 		background: var(--surface-base);
 	}
 	.tree-menu {

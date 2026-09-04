@@ -15,8 +15,6 @@ function openAndFocus(dialogId, inputId, options = {}) {
 			: undefined;
 		activeItem?.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
 		activeItem?.scrollIntoView({ block: "center" });
-		const input = document.getElementById(inputId);
-		if (input instanceof HTMLInputElement) input.focus({ preventScroll: true });
 	});
 }
 

@@ -35,7 +35,6 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	const entryDescription = requiredElement("workspace-entry-description");
 	const entryInput = requiredInput("workspace-entry-input");
 	const entryError = requiredElement("workspace-entry-error");
-	const entryCancel = requiredButton("workspace-entry-cancel");
 	const entryAction = requiredButton("workspace-entry-action");
 	const confirmDialog = requiredDialog("workspace-confirm-dialog");
 	const confirmTitle = requiredElement("workspace-confirm-title");
@@ -596,16 +595,12 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		});
 	}
 
-	entryCancel.addEventListener("click", () => entryDialog.close("cancel"));
 	entryAction.addEventListener("click", submitEntryName);
 	entryInput.addEventListener("keydown", (event) => {
 		if (event.key !== "Enter" || event.isComposing) return;
 		event.preventDefault();
 		submitEntryName();
 	});
-	confirmCancel.addEventListener("click", () => confirmDialog.close("cancel"));
-	confirmAction.addEventListener("click", () => confirmDialog.close("confirm"));
-
 	function focusTree(): void {
 		const path =
 			tree.getSelectedPaths()[0] ?? tree.getFocusedPath() ?? loadedPaths[0];

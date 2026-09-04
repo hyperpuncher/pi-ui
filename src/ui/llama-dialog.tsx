@@ -8,7 +8,7 @@ export function renderLlamaDialog(dialog: AppLlamaDialog | undefined): string {
 			id="llama-dialog"
 			class="dialog"
 			aria-labelledby="llama-dialog-title"
-			onclick="if (event.target === this) this.close()"
+			closedby="any"
 			data-on:close={`@post('${endpoints.llamaClose}', { payload: {} })`}
 			data-signals:_llama-search__ifmissing="''"
 		>
@@ -107,7 +107,8 @@ export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): st
 							type="button"
 							class="btn"
 							data-variant="outline"
-							onclick="this.closest('dialog').close()"
+							commandfor="llama-dialog"
+							command="close"
 						>
 							Close
 						</button>

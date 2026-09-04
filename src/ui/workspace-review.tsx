@@ -504,10 +504,11 @@ export function renderWorkspaceReview(
 					</section>
 					<footer>
 						<button
-							id="workspace-entry-cancel"
 							type="button"
 							class="btn"
 							data-variant="outline"
+							commandfor="workspace-entry-dialog"
+							command="close"
 						>
 							Cancel
 						</button>
@@ -529,24 +530,26 @@ export function renderWorkspaceReview(
 						<h2 id="workspace-confirm-title">Confirm action</h2>
 						<p id="workspace-confirm-description" />
 					</header>
-					<footer>
+					<form method="dialog">
 						<button
 							id="workspace-confirm-cancel"
-							type="button"
+							type="submit"
 							class="btn"
 							data-variant="outline"
+							value="cancel"
 						>
 							Cancel
 						</button>
 						<button
 							id="workspace-confirm-action"
-							type="button"
+							type="submit"
 							class="btn"
 							data-variant="destructive"
+							value="confirm"
 						>
 							Continue
 						</button>
-					</footer>
+					</form>
 				</div>
 			</dialog>
 		</section>,

@@ -30,11 +30,8 @@ export function renderFontDialog(): string {
 				$fontSearch = '';
 				if (!el.open) el.showModal();
 				window.piUi.codeTheme.loadFontPreviews($_codeThemeLight, $_codeThemeDark);
-				requestAnimationFrame(() =>
-					document.getElementById('font-search')?.focus({ preventScroll: true })
-				);
 			`}
-			onclick="if (event.target === this) this.close()"
+			closedby="any"
 		>
 			<div class="font-dialog-panel">
 				<header class="preference-dialog-header">
@@ -70,6 +67,7 @@ export function renderFontDialog(): string {
 						aria-label="Search fonts"
 						autocomplete="off"
 						spellcheck="false"
+						autofocus
 						data-bind:font-search=""
 					/>
 				</header>
@@ -92,7 +90,8 @@ export function renderFontDialog(): string {
 						type="button"
 						class="btn"
 						data-variant="outline"
-						onclick="this.closest('dialog').close()"
+						commandfor="font-dialog"
+						command="close"
 					>
 						Done
 					</button>
