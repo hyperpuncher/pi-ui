@@ -25,15 +25,13 @@
 @layer components {
 	#workspace-review {
 		position: absolute;
-		inset: 0;
+		inset: var(--workspace-inset);
 		z-index: 30;
 		display: none;
 		min-width: 0;
 		min-height: 0;
 		grid-template-columns: minmax(0, 1fr);
-		padding: var(--workspace-inset);
 		background: var(--surface-canvas);
-		box-shadow: var(--shadow-xl);
 	}
 	.review-body {
 		display: grid;
@@ -212,7 +210,6 @@
 		min-width: 0;
 		min-height: 0;
 		flex: 1;
-		margin-block-end: calc(-1 * var(--workspace-inset));
 		border-radius: var(--radius-sm);
 		background: var(--surface-canvas);
 		clip-path: inset(0 round var(--radius-sm));
@@ -550,7 +547,6 @@
 			padding: var(--workspace-inset) 0 var(--workspace-inset)
 				var(--workspace-inset);
 			background: transparent;
-			box-shadow: none;
 		}
 
 		#app.review-open #workspace-review #review-git-separator {
