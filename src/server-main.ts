@@ -77,6 +77,13 @@ async function loadApp() {
 	return { app: await createApp(), compressResponse };
 }
 
+process.on("unhandledRejection", (error) => {
+	console.error("Unhandled rejection", error);
+});
+process.on("uncaughtException", (error) => {
+	console.error("Unhandled error", error);
+});
+
 main().catch((cause) => {
 	console.error(cause);
 	process.exitCode = 1;

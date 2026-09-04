@@ -1,10 +1,5 @@
-import { defaultFonts, type FontPreferences, validFonts } from "../fonts.ts";
-import { readAppConfig, updateAppConfig } from "./app-config.ts";
-
-export async function readFontPreferences(path?: string): Promise<FontPreferences> {
-	const config = await readAppConfig(path);
-	return validFonts(config.fonts) ?? defaultFonts();
-}
+import type { FontPreferences } from "../fonts.ts";
+import { updateAppConfig } from "./app-config.ts";
 
 export async function writeFontPreferences(
 	fonts: FontPreferences,

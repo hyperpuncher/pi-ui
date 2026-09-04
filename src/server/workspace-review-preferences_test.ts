@@ -6,10 +6,7 @@ import { makeTempDir } from "#testing/temp";
 
 import { appConfigSchemaUrl } from "../config-schema.ts";
 import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
-import {
-	readWorkspaceReviewPreferences,
-	writeWorkspaceReviewPreferences,
-} from "./workspace-review-preferences.ts";
+import { writeWorkspaceReviewPreferences } from "./workspace-review-preferences.ts";
 
 test("workspace review preference defaults remain undefined", () => {
 	assertEquals(normalizeWorkspaceReviewPreferences(undefined), {});
@@ -83,7 +80,6 @@ test("workspace review preferences persist without replacing future config", asy
 	const directory = await makeTempDir();
 	const path = `${directory}/nested/preferences.json`;
 	try {
-		assertEquals(await readWorkspaceReviewPreferences(path), {});
 		await mkdir(`${directory}/nested`);
 		await writeTextFile(path, '{"futureSetting":true}\n');
 		const preferences = {
@@ -96,7 +92,6 @@ test("workspace review preferences persist without replacing future config", asy
 			wrap: false,
 		};
 		await writeWorkspaceReviewPreferences(preferences, path);
-		assertEquals(await readWorkspaceReviewPreferences(path), preferences);
 		assertEquals(JSON.parse(await readTextFile(path)), {
 			futureSetting: true,
 			gitView: preferences,

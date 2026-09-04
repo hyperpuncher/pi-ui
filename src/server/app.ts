@@ -1,19 +1,19 @@
 import { realpath, stat } from "node:fs/promises";
 
+import { parseAutoTitleConfig, type AutoTitleConfig } from "../agent/auto-title.ts";
 import { RuntimeController } from "../agent/runtime-controller.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
-import { setActiveFonts } from "../fonts.ts";
+import { defaultCodeThemes, validCodeThemes } from "../code-themes.ts";
+import { defaultFonts, setActiveFonts, validFonts } from "../fonts.ts";
 import { setActiveCodeTheme } from "../pierre-theme.ts";
 import { AppStore } from "../state/app-store.ts";
 import { loadPierreLanguage } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 import { expandHomePath } from "../utils/workspace.ts";
+import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
 import { ensureAppConfig } from "./app-config.ts";
-import { readAutoTitleConfig } from "./auto-title-config.ts";
-import { readCodeThemePreference } from "./code-theme-preferences.ts";
 import { DatastarClientHub } from "./datastar-client-hub.ts";
-import { readFontPreferences } from "./font-preferences.ts";
 import { ExactRouter } from "./router.ts";
 import { registerAssetRoutes } from "./routes/assets.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
@@ -39,7 +39,6 @@ import { createStaticAssetServer } from "./static-assets.ts";
 import { staticRoot } from "./static-path.ts";
 import { TransferredFileStore } from "./transferred-files.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
-import { readWorkspaceReviewPreferences } from "./workspace-review-preferences.ts";
 
 export interface AppServer {
 	fetch(request: Request, clientAddress?: ClientAddress): Response | Promise<Response>;
@@ -51,12 +50,12 @@ export type ClientAddress = Readonly<{ address: string }>;
 export async function createApp(): Promise<AppServer> {
 	const staticAssets = await createStaticAssetServer(staticRoot);
 	const appConfig = await ensureAppConfig();
-	const [codeTheme, fonts, autoTitle, workspaceReviewPreferences] = await Promise.all([
-		readCodeThemePreference(),
-		readFontPreferences(),
-		readAutoTitleConfig(),
-		readWorkspaceReviewPreferences(),
-	]);
+	const codeTheme = validCodeThemes(appConfig.codeTheme) ?? defaultCodeThemes();
+	const fonts = validFonts(appConfig.fonts) ?? defaultFonts();
+	const autoTitle = parseAutoTitleConfig(appConfig.autoTitle);
+	const workspaceReviewPreferences = normalizeWorkspaceReviewPreferences(
+		appConfig.gitView,
+	);
 	setActiveCodeTheme(codeTheme);
 	setActiveFonts(fonts);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
@@ -71,7 +70,6 @@ export async function createApp(): Promise<AppServer> {
 	const transitions = new SessionTransitionController((transition) =>
 		store.setSessionTransition(transition),
 	);
-	installUnhandledErrorReporter();
 	const host = await RuntimeController.create(store, undefined, {
 		autoTitle,
 		transitionController: transitions,
@@ -166,7 +164,7 @@ async function openWorkspace(
 	store: AppStore,
 	resources: RouteResources,
 	transitions: SessionTransitionController,
-	autoTitle: Awaited<ReturnType<typeof readAutoTitleConfig>>,
+	autoTitle: AutoTitleConfig,
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
 	const transition = await transitions.run(requestedPath, async () => {
@@ -185,13 +183,4 @@ async function openWorkspace(
 		return await resources.host.openWorkspace(realPath);
 	});
 	return transition.status === "success";
-}
-
-function installUnhandledErrorReporter(): void {
-	process.on("unhandledRejection", (error) => {
-		console.error("Unhandled rejection", error);
-	});
-	process.on("uncaughtException", (error) => {
-		console.error("Unhandled error", error);
-	});
 }
