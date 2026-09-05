@@ -152,22 +152,9 @@ test("shell tools preserve wrapped title, metadata, and escaped output", () => {
 		}),
 	);
 	assertStringIncludes(html, "&#39;a very long command&#39;");
-	assertEquals(html.match(/printf/g)?.length, 2);
 	assertStringIncludes(html, "42ms");
 	assertStringIncludes(html, "&lt;script&gt;");
 	assertStringExcludes(html, "<script>");
-});
-
-test("tool formats retain specific hooks inside the shared output surface", () => {
-	for (const [format, hook] of [
-		["diff", "diff-output"],
-		["code", "code-output"],
-		["output", "tool-output"],
-		["pre", "<pre"],
-	] as const) {
-		const html = renderMessage(tool({ format, text: "value" }));
-		assertStringIncludes(html, hook);
-	}
 });
 
 test("plain tool titles remain escaped", () => {

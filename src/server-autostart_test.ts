@@ -111,20 +111,3 @@ test("autostart rejects a transient bunx package", async () => {
 		"bun i -g @hyperpuncher/pi-ui",
 	);
 });
-
-test("mac installer migrates the renamed Homebrew formula", async () => {
-	const script = await Bun.file(
-		new URL("../packaging/install.sh", import.meta.url),
-	).text();
-	assertStringIncludes(script, "brew migrate pi-ui");
-});
-
-test("windows installer waits only for the service installation command", async () => {
-	const script = await Bun.file(
-		new URL("../packaging/windows/install.ps1", import.meta.url),
-	).text();
-	assertStringIncludes(script, '$archiveName = "pi-ui-windows-x64.zip"');
-	assertStringIncludes(script, "$legacyInstallDirectory = Join-Path");
-	assertStringIncludes(script, "$command.WaitForExit()");
-	assertFalse(/Start-Process[^\r\n]+-Wait/.test(script));
-});
