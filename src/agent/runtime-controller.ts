@@ -610,19 +610,12 @@ export class RuntimeController {
 			throw error;
 		}
 
-		const previous = this.runtime;
 		const action = this.currentRuntimeLeaveAction();
-		if (action === "background") {
-			this.backgroundCurrentRuntime();
-		} else if (action === "discard") {
-			await this.discardTemporaryRuntime();
-		} else {
-			this.unbindSession();
-			try {
-				await previous.dispose();
-			} catch (error) {
-				console.error("Failed to dispose previous workspace runtime", error);
-			}
+		try {
+			await this.leaveCurrentRuntimeForReplacement(action);
+		} catch (error) {
+			if (action !== "dispose") throw error;
+			console.error("Failed to dispose previous workspace runtime", error);
 		}
 
 		this.adoptRuntime(replacement);
@@ -767,14 +760,7 @@ export class RuntimeController {
 					{ leaveAction: action },
 					transitionId,
 				);
-				if (action === "background") {
-					this.backgroundCurrentRuntime();
-				} else if (action === "discard") {
-					await this.discardTemporaryRuntime();
-				} else {
-					this.unbindSession();
-					await this.runtime.dispose();
-				}
+				await this.leaveCurrentRuntimeForReplacement(action);
 				const replacement = await sessionPerformance.measure(
 					"runtimeSwitchCreate",
 					() =>
@@ -1121,17 +1107,17 @@ export class RuntimeController {
 		});
 	}
 
-	private async leaveCurrentRuntimeForReplacement(): Promise<void> {
-		if (!this.isCurrentRuntimeActive()) {
+	private async leaveCurrentRuntimeForReplacement(
+		action = this.currentRuntimeLeaveAction(),
+	): Promise<void> {
+		if (action === "background") {
+			this.backgroundCurrentRuntime();
+		} else if (action === "discard") {
+			await this.discardTemporaryRuntime();
+		} else {
 			this.unbindSession();
 			await this.runtime.dispose();
-			return;
 		}
-		if (this.runtime.session.sessionManager.isPersisted()) {
-			this.backgroundCurrentRuntime();
-			return;
-		}
-		await this.discardTemporaryRuntime();
 	}
 
 	private async discardTemporaryRuntime(): Promise<void> {

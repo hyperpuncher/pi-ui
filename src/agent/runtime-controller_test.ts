@@ -1031,6 +1031,28 @@ test("RuntimeController does not create a replacement when departure disposal fa
 	}
 });
 
+test("RuntimeController adopts a prepared workspace despite idle disposal failure", async () => {
+	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
+	const replacement = fakeRuntime(
+		"/sessions/replacement.jsonl",
+		true,
+		"/work/replacement",
+	);
+	const state = new AppStore();
+	const controller = await RuntimeController.prepare(state, "/work/source", {
+		dependencies: dependencies([source, replacement]),
+	});
+	controller.activate();
+	source.disposeError = new Error("dispose failed");
+	try {
+		assertEquals(await controller.openWorkspace("/work/replacement"), true);
+		assertEquals(state.workspacePath, "/work/replacement");
+	} finally {
+		source.disposeError = undefined;
+		await controller.dispose();
+	}
+});
+
 test("RuntimeController completes and aborts background runtimes exactly once", async () => {
 	const completed = fakeRuntime("/sessions/completed.jsonl");
 	const foreground = fakeRuntime("/sessions/foreground.jsonl");
