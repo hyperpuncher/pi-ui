@@ -298,12 +298,14 @@ export class AppStore {
 	}
 	get promptHistory(): readonly string[] {
 		const history: string[] = [];
-		for (const message of this.transcript.allMessages) {
+		const messages = this.transcript.allMessages;
+		for (let index = messages.length - 1; index >= 0; index -= 1) {
+			const message = messages[index]!;
 			if (message.role !== "user") continue;
 			const text = message.text.trim();
-			if (!text || history[0] === text) continue;
-			history.unshift(text);
-			if (history.length > 100) history.pop();
+			if (!text || history.at(-1) === text) continue;
+			history.push(text);
+			if (history.length === 100) break;
 		}
 		return history;
 	}
