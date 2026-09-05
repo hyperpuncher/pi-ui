@@ -90,12 +90,6 @@ bindFileLinks();
 
 window.addEventListener("DOMContentLoaded", async () => {
 	bindControls();
-	await Promise.all([
-		import("../../src/client/fonts.ts"),
-		import("../../src/client/code-theme.ts"),
-		import("../../src/client/workspace-review.ts"),
-	]);
-
 	focusPromptEnd();
 	bindPromptInteractions();
 	bindPickers({ fuzzyFilter });
@@ -104,6 +98,12 @@ window.addEventListener("DOMContentLoaded", async () => {
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();
 	bindDebugFps();
+
+	await Promise.all([
+		import("../../src/client/fonts.ts"),
+		import("../../src/client/code-theme.ts"),
+		import("../../src/client/workspace-review.ts"),
+	]);
 });
 
 function bindDebugFps() {
