@@ -67,10 +67,9 @@ test("detects and formats significant cache misses like pi", () => {
 	});
 	const miss = detectCacheMiss([entry(previous)], current, models);
 	assertEquals(miss?.missedTokens, 30_000);
-	assertMatch(
-		formatCacheMissNotice(miss!) ?? "",
-		/^cache miss after 6m idle: 30k tokens re-billed/,
-	);
+	const notice = formatCacheMissNotice(miss!);
+	assertEquals(notice?.title, "cache miss after 6m idle");
+	assertMatch(notice?.text ?? "", /^30k tokens re-billed/);
 });
 
 test("cache miss collection resets after compaction", () => {

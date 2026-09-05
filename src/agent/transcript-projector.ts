@@ -58,7 +58,7 @@ export class TranscriptProjector {
 	entry(
 		entry: SessionEntry,
 		pending: Map<string, { name: string; args: ToolArguments }>,
-		cacheMissNotice?: string,
+		cacheMissNotice?: ReturnType<typeof formatCacheMissNotice>,
 	): TranscriptMessageInput[] {
 		const timestamp = new Date(entry.timestamp);
 		if (entry.type === "message") {
@@ -74,7 +74,7 @@ export class TranscriptProjector {
 			}
 			const messages = this.message(entry.message, timestamp);
 			if (cacheMissNotice) {
-				messages.push({ role: "notice", text: cacheMissNotice, timestamp });
+				messages.push({ role: "notice", ...cacheMissNotice, timestamp });
 			}
 			return messages;
 		}

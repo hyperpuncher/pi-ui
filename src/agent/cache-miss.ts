@@ -71,7 +71,9 @@ export function detectCacheMiss(
 	return detectMiss(previous, message, models);
 }
 
-export function formatCacheMissNotice(miss: CacheMiss): string | undefined {
+export function formatCacheMissNotice(
+	miss: CacheMiss,
+): { title: string; text: string } | undefined {
 	if (miss.missedTokens < noticeTokenThreshold && miss.missedCost < noticeCostThreshold)
 		return undefined;
 	const cost = miss.missedCost >= 0.01 ? ` (~$${miss.missedCost.toFixed(2)})` : "";
@@ -80,7 +82,10 @@ export function formatCacheMissNotice(miss: CacheMiss): string | undefined {
 	else if (miss.idleMs >= cacheTtlMs) {
 		label = `cache miss after ${Math.round(miss.idleMs / 60_000)}m idle`;
 	}
-	return `${label}: ${formatTokens(miss.missedTokens)} tokens re-billed${cost}`;
+	return {
+		title: label,
+		text: `${formatTokens(miss.missedTokens)} tokens re-billed${cost}`,
+	};
 }
 
 function detectMiss(

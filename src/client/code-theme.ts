@@ -40,7 +40,7 @@ window.addEventListener("pi-ui-code-theme-changed", (event) => {
 });
 window.addEventListener("pi-ui-theme-mode-changed", applyStatusColors);
 
-type StatusColors = Readonly<{ error?: string; success?: string }>;
+type StatusColors = Readonly<{ error?: string; success?: string; warning?: string }>;
 
 let statusColorGeneration = 0;
 let statusThemeKey = "";
@@ -62,10 +62,12 @@ async function syncStatusColors(themes: PierreThemes): Promise<void> {
 	statusColors = {
 		light: {
 			error: light.error ?? fallbackLight.error,
+			warning: light.warning ?? fallbackLight.warning,
 			success: light.success ?? fallbackLight.success,
 		},
 		dark: {
 			error: dark.error ?? fallbackDark.error,
+			warning: dark.warning ?? fallbackDark.warning,
 			success: dark.success ?? fallbackDark.success,
 		},
 	};
@@ -80,6 +82,9 @@ function loadStatusColors(themeName: string): Promise<StatusColors> {
 			error:
 				theme.colors?.["gitDecoration.deletedResourceForeground"] ??
 				theme.colors?.["terminal.ansiRed"],
+			warning:
+				theme.colors?.["editorWarning.foreground"] ??
+				theme.colors?.["terminal.ansiYellow"],
 			success:
 				theme.colors?.["gitDecoration.addedResourceForeground"] ??
 				theme.colors?.["terminal.ansiGreen"],
@@ -93,8 +98,9 @@ function applyStatusColors(): void {
 	if (!statusColors) return;
 	const mode = document.documentElement.classList.contains("dark") ? "dark" : "light";
 	for (const [name, value] of Object.entries(statusColors[mode])) {
-		if (value) document.documentElement.style.setProperty(`--status-${name}`, value);
-		else document.documentElement.style.removeProperty(`--status-${name}`);
+		const property = `--status-${name}`;
+		if (value) document.documentElement.style.setProperty(property, value);
+		else document.documentElement.style.removeProperty(property);
 	}
 }
 

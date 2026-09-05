@@ -77,7 +77,7 @@ test("tool presentation preserves representative and malformed values", () => {
 	assertEquals(toolTitleParts("read", { path: "/tmp/file", offset: 3, limit: 2 }), [
 		{ text: "read" },
 		{ text: "/tmp/file", tone: "accent", mono: true },
-		{ text: ":3-4", tone: "warning", mono: true },
+		{ text: ":3-4", tone: "muted", mono: true },
 	]);
 	assertStringIncludes(
 		formatShellCommandDisplay(`echo ${"x".repeat(90)} && done`),

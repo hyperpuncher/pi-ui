@@ -35,7 +35,7 @@ export function toolTitleParts(
 		{ text: toolName },
 		...(target ? [{ text: target, tone: "accent", mono: true } as const] : []),
 		...(toolRange(args)
-			? [{ text: toolRange(args), tone: "warning", mono: true } as const]
+			? [{ text: toolRange(args), tone: "muted", mono: true } as const]
 			: []),
 	];
 }

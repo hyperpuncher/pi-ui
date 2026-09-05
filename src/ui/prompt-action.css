@@ -30,10 +30,11 @@
 		}
 	}
 	.prompt-action[data-variant="destructive"] {
-		background: oklch(from var(--status-danger) l c h / 20%);
+		color: var(--status-danger);
+		background: oklch(from currentColor l c h / 20%);
 
 		&:where(:not(:disabled):hover) {
-			background: oklch(from var(--status-danger) l c h / 30%);
+			background: oklch(from currentColor l c h / 30%);
 		}
 	}
 	.prompt-abort-icon rect {

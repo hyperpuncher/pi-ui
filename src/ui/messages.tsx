@@ -5,6 +5,7 @@ import {
 	attachmentFileIcons,
 	attachmentFileKind,
 } from "../../static/app/attachment-file.js";
+import { providerErrorPresentation } from "../agent/provider-error-message.ts";
 import { authDialogAction } from "../commands/actions.ts";
 import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
@@ -579,21 +580,67 @@ function renderNarrativeMessage(message: AppMessage): string {
 }
 
 function renderSystemMessage(message: AppMessage): string {
-	const isError = message.state === "error";
+	if (message.state === "error") return renderErrorMessage(message);
+	const hasStatus = message.role === "notice";
 	return syncHtml(
 		<article
 			class={[
 				"message message-narrative message-system-row",
-				isError
-					? "message-system error-foreground"
-					: message.role === "notice"
-						? "message-notice warning-foreground"
-						: "message-system message-muted",
+				hasStatus && "message-status-row tool-timeline-item",
+				hasStatus ? "message-notice" : "message-system message-muted",
 			]}
 			data-message-id={message.id}
-			role={isError ? "alert" : message.role === "notice" ? "status" : undefined}
+			role={hasStatus ? "status" : undefined}
 		>
-			<p class="message-system-text">{renderPlainTextLinks(message.text)}</p>
+			{hasStatus && (
+				<span class="tool-state-dot status-dot" aria-hidden="true">
+					<span class="tool-status-ball warning-foreground" />
+				</span>
+			)}
+			<p class={["message-system-text", hasStatus && "tool-header"]}>
+				<span class={hasStatus ? "tool-title" : undefined}>
+					{hasStatus && <span class="sr-only">Warning: </span>}
+					{message.title ? (
+						<>
+							<span safe>{message.title}</span>
+							<span class="context-meta">
+								{renderPlainTextLinks(message.text)}
+							</span>
+						</>
+					) : (
+						renderPlainTextLinks(message.text)
+					)}
+				</span>
+			</p>
+		</article>,
+	);
+}
+
+function renderErrorMessage(message: AppMessage): string {
+	const { summary, details } = providerErrorPresentation(message.text);
+	return syncHtml(
+		<article
+			class="message message-narrative message-system message-system-row message-status-row tool-timeline-item"
+			data-message-id={message.id}
+			role="alert"
+		>
+			<details class="context-details" data-preserve-attr="open">
+				<summary class="context-summary">
+					<span class="tool-state-dot status-dot" aria-hidden="true">
+						<span class="tool-status-ball tool-status-error" />
+					</span>
+					<span class="context-title">
+						error
+						<span class="context-meta" safe>
+							{summary}
+						</span>
+					</span>
+					<span class="context-chevron">
+						<Icon icon={ChevronRight} class="context-chevron-icon" />
+					</span>
+				</summary>
+				{renderPreOutput(details)}
+			</details>
 		</article>,
 	);
 }

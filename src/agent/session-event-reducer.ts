@@ -7,6 +7,7 @@ import type {
 } from "../state/transcript-state.ts";
 import type { JsonValue } from "../utils/json-types.ts";
 import { isString } from "../utils/type-guards.ts";
+import type { formatCacheMissNotice } from "./cache-miss.ts";
 import { formatProviderErrorMessage } from "./provider-error-message.ts";
 
 type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
@@ -109,7 +110,9 @@ export type SessionEventReducerContext = {
 		startedAt: number | undefined,
 	) => ToolMessageView;
 	syncUsage?: () => void;
-	cacheMissNotice?: (message: AssistantEventMessage) => string | undefined;
+	cacheMissNotice?: (
+		message: AssistantEventMessage,
+	) => ReturnType<typeof formatCacheMissNotice>;
 	now?: () => Date;
 	nowMs?: () => number;
 };
@@ -247,7 +250,10 @@ export function reduceSessionEvent(
 					);
 				}
 				const cacheMissNotice = context.cacheMissNotice?.(event.message);
-				if (cacheMissNotice) state.appendMessage("notice", cacheMissNotice);
+				if (cacheMissNotice)
+					state.appendMessage("notice", cacheMissNotice.text, {
+						title: cacheMissNotice.title,
+					});
 				for (const preview of tools.previewMessages.values()) {
 					state.updateMessage(preview.id, {
 						state: "error",

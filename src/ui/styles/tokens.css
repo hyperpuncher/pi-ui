@@ -31,7 +31,7 @@
 		--border: oklch(90.33% 0 none);
 		--focus-ring: var(--gray-4);
 		--selection: var(--gray-2);
-		--status-danger: oklch(from var(--color-7) l c var(--hue-red));
+		--status-danger: var(--status-error);
 		--status-error: oklch(from var(--color-9) l c var(--hue-red));
 		--status-warning: oklch(from var(--color-9) l c var(--hue-orange));
 		--status-success: oklch(from var(--color-7) l c var(--hue-teal));
@@ -77,7 +77,6 @@
 		--border: var(--gray-13);
 		--focus-ring: var(--gray-6);
 		--selection: var(--gray-12);
-		--status-danger: oklch(from var(--color-5) l c var(--hue-red));
 		--status-error: oklch(from var(--color-3) l c var(--hue-red));
 		--status-warning: oklch(from var(--color-3) l c var(--hue-yellow));
 		--status-success: oklch(from var(--color-4) l c var(--hue-teal));

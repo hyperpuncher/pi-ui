@@ -286,7 +286,8 @@
 		color: var(--action-primary);
 	}
 	.tool-title-muted {
-		color: var(--text-muted);
+		color: color-mix(in oklch, var(--text-muted) 80%, var(--surface-base));
+		font-weight: 400;
 	}
 	.enhance-message {
 		margin: 0.5rem;
@@ -619,8 +620,8 @@
 		margin-top: var(--message-tool-narrative-gap);
 	}
 
-	#message-list > .message + .message-notice,
-	#message-list > .message-notice + .message {
+	#message-list > .message + .message-status-row,
+	#message-list > .message-status-row + .message {
 		margin-top: var(--message-tool-narrative-gap);
 	}
 }
