@@ -11,7 +11,6 @@ import { setActiveCodeTheme } from "../pierre-theme.ts";
 import { AppStore } from "../state/app-store.ts";
 import { loadPierreLanguage } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
-import { openWithDefaultApp } from "../utils/open-with-default-app.ts";
 import { expandHomePath } from "../utils/workspace.ts";
 import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
 import { ensureAppConfig } from "./app-config.ts";
@@ -36,7 +35,6 @@ export async function createApp() {
 	setActiveCodeTheme(codeTheme);
 	setActiveFonts(fonts);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
-	const localRequests = new WeakSet<Request>();
 	const store = new AppStore();
 	store.setWorkspaceReviewPreferences(workspaceReviewPreferences);
 	const sessionImages = new SessionImageStore();
@@ -75,13 +73,10 @@ export async function createApp() {
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>
 			openWorkspace(path, store, resources, transitions, autoTitle),
-		openPath: openWithDefaultApp,
-		isLocalRequest: (request) => localRequests.has(request),
 	};
 	let disposal: Promise<void> | undefined;
 	return {
 		context,
-		localRequests,
 		dispose: () => {
 			disposal ??= (async () => {
 				workspaceReview.dispose();

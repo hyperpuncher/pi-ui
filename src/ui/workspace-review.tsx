@@ -293,10 +293,21 @@ export function renderWorkspaceReview(
 								</button>
 							</div>
 							<button
+								id="workspace-file-download"
+								type="button"
+								class="btn"
+								data-variant="outline"
+								data-size="xs"
+								title="Download the saved file"
+								disabled
+							>
+								Download
+							</button>
+							<button
 								id="workspace-file-edit"
 								type="button"
 								class="btn"
-								data-variant="ghost"
+								data-variant="outline"
 								data-size="xs"
 								disabled
 							>

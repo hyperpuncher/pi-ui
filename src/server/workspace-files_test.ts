@@ -1,4 +1,5 @@
 import { test } from "bun:test";
+import { relative } from "node:path";
 
 import { assertEquals, assertRejects } from "#testing/assertions";
 import { mkdir, remove, symlink, writeFile, writeTextFile } from "#testing/files";
@@ -105,7 +106,37 @@ test("workspace files read and save with revision conflict protection", async ()
 	}
 });
 
-test("workspace files handle unsupported files and reject unsafe paths", async () => {
+test("linked files outside the workspace read and save through absolute paths, relative paths and symlinks", async () => {
+	const workspace = await makeTempDir();
+	const outside = await makeTempFile();
+	try {
+		await symlink(outside, `${workspace}/linked`);
+		for (const filePath of [outside, relative(workspace, outside), "linked"]) {
+			await writeTextFile(outside, "original");
+			const file = await readWorkspaceFile(workspace, filePath);
+			if ("message" in file) throw new Error(file.message);
+			assertEquals(file.contents, "original");
+			const saved = await writeWorkspaceFile(
+				workspace,
+				filePath,
+				"edited",
+				file.revision,
+			);
+			assertEquals(saved.contents, "edited");
+			assertEquals(await Bun.file(outside).text(), "edited");
+			await assertRejects(
+				() => writeWorkspaceFile(workspace, filePath, "stale", file.revision),
+				WorkspaceFileError,
+				"changed on disk",
+			);
+		}
+	} finally {
+		await remove(workspace, { recursive: true });
+		await remove(outside);
+	}
+});
+
+test("workspace files handle unsupported files and keep tree mutations workspace-scoped", async () => {
 	const workspace = await makeTempDir();
 	const outside = await makeTempFile();
 	try {
@@ -138,16 +169,11 @@ test("workspace files handle unsupported files and reject unsafe paths", async (
 			size: maximumWorkspaceFileBytes + 1,
 		});
 
-		for (const [file, message] of [
-			["../secret", "outside the workspace"],
-			["outside", "outside the workspace"],
-		] as const) {
-			await assertRejects(
-				() => readWorkspaceFile(workspace, file),
-				WorkspaceFileError,
-				message,
-			);
-		}
+		await assertRejects(
+			() => readWorkspaceFile(workspace, "missing"),
+			WorkspaceFileError,
+			"File not found",
+		);
 	} finally {
 		await remove(workspace, { recursive: true });
 		await remove(outside);

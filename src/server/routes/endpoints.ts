@@ -1,5 +1,6 @@
 export const workspaceReviewBase = "/workspace/review";
 export const workspaceFilesBase = "/workspace/files";
+export const filesPreviewBase = "/files/preview/";
 
 export const endpoints = {
 	root: "/",
@@ -64,5 +65,6 @@ export const endpoints = {
 	filesSearch: "/files/search",
 	filesImport: "/files/import",
 	filesOpen: "/files/open",
+	filesPreview: `${filesPreviewBase}*`,
 	inspector: "/vendor/datastar-inspector.min.js",
 } as const;

@@ -107,21 +107,19 @@ export async function readWorkspaceFile(
 	workspacePath: string,
 	filePath: string,
 ): Promise<WorkspaceFile | WorkspaceUnavailableFile> {
-	const resolved = await resolveWorkspaceFile(workspacePath, filePath);
-	const info = await stat(resolved);
-	if (!info.isFile()) throw new WorkspaceFileError(400, "Path is not a file.");
+	const { path: resolved, size } = await resolveFile(workspacePath, filePath);
 	const path = normalizeRelativePath(filePath);
-	if (info.size > maximumWorkspaceFileBytes) {
-		return { message: "File is too large to view in pi-ui.", path, size: info.size };
+	if (size > maximumWorkspaceFileBytes) {
+		return { message: "File is too large to view in pi-ui.", path, size };
 	}
 	const bytes = await Bun.file(resolved).bytes();
 	let contents: string;
 	try {
 		contents = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 	} catch {
-		return { message: "Only text files can be viewed.", path, size: info.size };
+		return { message: "Only text files can be viewed.", path, size };
 	}
-	return { path, contents, revision: await fileRevision(bytes), size: info.size };
+	return { path, contents, revision: await fileRevision(bytes), size };
 }
 
 export type WorkspaceUnavailableFile = {
@@ -139,9 +137,10 @@ export async function writeWorkspaceFile(
 	if (new TextEncoder().encode(contents).byteLength > maximumWorkspaceFileBytes) {
 		throw new WorkspaceFileError(413, "File is too large to save in pi-ui.");
 	}
-	const resolved = await resolveWorkspaceFile(workspacePath, filePath);
-	const current = await stat(resolved);
-	validateReadableFile(current);
+	const { path: resolved, size } = await resolveFile(workspacePath, filePath);
+	if (size > maximumWorkspaceFileBytes) {
+		throw new WorkspaceFileError(413, "File is too large to view in pi-ui.");
+	}
 	const currentBytes = await Bun.file(resolved).bytes();
 	if ((await fileRevision(currentBytes)) !== expectedRevision) {
 		throw new WorkspaceFileError(
@@ -251,32 +250,28 @@ async function resolveWorkspaceTarget(
 	};
 }
 
-async function resolveWorkspaceFile(
+export async function resolveFile(
 	workspacePath: string,
 	filePath: string,
-): Promise<string> {
+): Promise<{ path: string; size: number }> {
 	const normalized = normalizeRelativePath(filePath);
-	if (!normalized || normalized.includes("\0") || path.isAbsolute(normalized)) {
-		throw new WorkspaceFileError(400, "Invalid workspace file path.");
+	if (!normalized || normalized.includes("\0")) {
+		throw new WorkspaceFileError(400, "Invalid file path.");
 	}
-	const workspace = await realpath(workspacePath);
-	const candidate = path.resolve(workspace, normalized);
-	if (!isWithinWorkspace(workspace, candidate)) {
-		throw new WorkspaceFileError(400, "File is outside the workspace.");
-	}
-	let resolved: string;
 	try {
-		resolved = await realpath(candidate);
+		const resolved = await realpath(path.resolve(workspacePath, normalized));
+		const info = await stat(resolved);
+		if (!info.isFile()) throw new WorkspaceFileError(400, "Path is not a file.");
+		return { path: resolved, size: info.size };
 	} catch (error) {
 		if (isNotFound(error)) {
 			throw new WorkspaceFileError(404, "File not found.");
 		}
+		if (isPermissionDenied(error)) {
+			throw new WorkspaceFileError(403, "Permission denied.");
+		}
 		throw error;
 	}
-	if (!isWithinWorkspace(workspace, resolved)) {
-		throw new WorkspaceFileError(400, "File is outside the workspace.");
-	}
-	return resolved;
 }
 
 function workspaceMutationError(error: ErrorOptions["cause"]): WorkspaceFileError {
@@ -304,13 +299,6 @@ function isWithinWorkspace(workspace: string, candidate: string): boolean {
 
 function normalizeRelativePath(filePath: string): string {
 	return filePath.replaceAll("\\", "/");
-}
-
-function validateReadableFile(info: Stats): void {
-	if (!info.isFile()) throw new WorkspaceFileError(400, "Path is not a file.");
-	if (info.size > maximumWorkspaceFileBytes) {
-		throw new WorkspaceFileError(413, "File is too large to view in pi-ui.");
-	}
 }
 
 function fileRevision(contents: Uint8Array): Promise<string> {

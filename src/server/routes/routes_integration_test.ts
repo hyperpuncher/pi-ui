@@ -1,4 +1,5 @@
 import { test } from "bun:test";
+import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
@@ -12,12 +13,12 @@ import { AppStore } from "../../state/app-store.ts";
 import { assertStringExcludes } from "../../testing/assertions.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
 import { DatastarClientHub } from "../datastar-client-hub.ts";
-import { isLoopbackAddress } from "../lazy-app.ts";
 import { executeRoute } from "../route.ts";
 import { appRoutes } from "../routes.ts";
 import { SessionImageStore } from "../session-image-store.ts";
 import type { RouteContext, RuntimeResource } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+import { endpoints, filesPreviewBase } from "./endpoints.ts";
+import { fileRoutes } from "./files.ts";
 
 test("page assets use the current immutable content version", async () => {
 	const context = fakeContext();
@@ -661,44 +662,199 @@ test("model catalog refresh delegates to the active host", async () => {
 	assertEquals(refreshSignal?.aborted, false);
 });
 
-test("file links open locally and download remotely", async () => {
-	const path = await makeTempFile({ suffix: "-linked file.txt" });
-	await writeTextFile(path, "linked content");
-	const uri = pathToFileURL(path).href;
+test("file links resolve inside and outside paths to the editor without downloading", async () => {
+	const workspace = await makeTempDir();
+	const name = "linked ü file.ts";
+	const path = `${workspace}/${name}`;
+	const outside = await makeTempFile({ suffix: "-linked ü file.ts" });
+	await writeTextFile(path, "export const value = 1;");
+	await writeTextFile(outside, "export const value = 1;");
 	try {
-		let openedPath: string | undefined;
-		const localRouter = createRouter(
-			fakeContext({
-				isLocalRequest: () => true,
-				openPath: (path) => {
-					openedPath = path;
-					return Promise.resolve();
-				},
-			}),
-		);
-		const local = await localRouter.fetch(fileOpenRequest(uri));
-		assertEquals(local.status, 204);
-		assertEquals(openedPath, path);
-
-		const remote = await createRouter(fakeContext()).fetch(fileOpenRequest(uri));
-		assertEquals(remote.status, 200);
-		assertEquals(remote.headers.get("content-type"), "application/octet-stream");
-		assertStringIncludes(
-			remote.headers.get("content-disposition") ?? "",
-			"attachment;",
-		);
-		assertEquals(await remote.text(), "linked content");
+		const context = fakeContext();
+		context.store.setWorkspacePath(workspace);
+		for (const [linkedPath, editorPath] of [
+			[path, name],
+			[outside, outside],
+		] as const) {
+			const response = await createRouter(context).fetch(
+				fileOpenRequest(pathToFileURL(linkedPath).href),
+			);
+			assertEquals(response.status, 200);
+			assertEquals(await response.json(), {
+				path: editorPath,
+				workspacePath: workspace,
+			});
+			assertEquals(response.headers.get("content-disposition"), null);
+		}
 	} finally {
-		await remove(path);
+		await remove(workspace, { recursive: true });
+		await remove(outside);
 	}
 });
 
-test("request locality uses the connection peer address", () => {
-	const address = (hostname: string) => ({ address: hostname });
-	assertEquals(isLoopbackAddress(address("127.0.0.1")), true);
-	assertEquals(isLoopbackAddress(address("::1")), true);
-	assertEquals(isLoopbackAddress(address("::ffff:127.0.0.1")), true);
-	assertEquals(isLoopbackAddress(address("192.168.1.20")), false);
+test("outside files can be read, edited and downloaded without changing workspaces", async () => {
+	const workspace = await makeTempDir();
+	const outside = await makeTempFile({ suffix: "-example ü.ts" });
+	const context = fakeContext();
+	context.store.setWorkspacePath(workspace);
+	const router = createRouter(context);
+	const url = `http://localhost${endpoints.workspaceFileContent}?path=${encodeURIComponent(outside)}`;
+	try {
+		await writeTextFile(outside, "export const value = 1;");
+		const response = await router.fetch(new Request(url));
+		assertEquals(response.status, 200);
+		const file = await response.json();
+		assertEquals(file.path, outside.replaceAll("\\", "/"));
+		assertEquals(file.contents, "export const value = 1;");
+		const saved = await router.fetch(
+			new Request(url, {
+				method: "PUT",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					path: file.path,
+					contents: "export const value = 2;",
+					revision: file.revision,
+				}),
+			}),
+		);
+		assertEquals(saved.status, 200);
+		assertEquals(await Bun.file(outside).text(), "export const value = 2;");
+		const downloaded = await router.fetch(new Request(`${url}&download=1`));
+		assertEquals(downloaded.status, 200);
+		assertEquals(await downloaded.text(), "export const value = 2;");
+		assertEquals(
+			downloaded.headers.get("content-disposition"),
+			`attachment; filename*=UTF-8''${encodeURIComponent(basename(outside))}`,
+		);
+		assertEquals(downloaded.headers.get("content-type"), "text/plain; charset=utf-8");
+		assertEquals(context.store.workspacePath, workspace);
+	} finally {
+		await remove(workspace, { recursive: true });
+		await remove(outside);
+	}
+});
+
+test("editor downloads support binary and large files without a text preview", async () => {
+	const workspace = await makeTempDir();
+	const context = fakeContext();
+	context.store.setWorkspacePath(workspace);
+	const router = createRouter(context);
+	try {
+		for (const [name, bytes] of [
+			["binary.bin", new Uint8Array([255, 254, 0])],
+			["large.txt", new Uint8Array(2 * 1024 * 1024 + 1).fill(65)],
+		] as const) {
+			await writeFile(`${workspace}/${name}`, bytes);
+			const response = await router.fetch(
+				new Request(
+					`http://localhost${endpoints.workspaceFileContent}?path=${encodeURIComponent(name)}&download=1`,
+				),
+			);
+			assertEquals(response.status, 200);
+			assertEquals(
+				response.headers.get("content-disposition"),
+				`attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+			);
+
+			assertEquals(await response.bytes(), bytes);
+		}
+	} finally {
+		await remove(workspace, { recursive: true });
+	}
+});
+
+test("file routes report missing files and directories", async () => {
+	const workspace = await makeTempDir();
+	const context = fakeContext();
+	context.store.setWorkspacePath(workspace);
+	const router = createRouter(context);
+	try {
+		for (const [path, status] of [
+			[`${workspace}/missing`, 404],
+			[workspace, 400],
+		] as const) {
+			const response = await router.fetch(
+				fileOpenRequest(pathToFileURL(path).href),
+			);
+			assertEquals(response.status, status);
+		}
+		for (const [path, status] of [
+			["missing", 404],
+			[".", 400],
+		] as const) {
+			const response = await router.fetch(
+				new Request(
+					`http://localhost${endpoints.workspaceFileContent}?path=${encodeURIComponent(path)}&download=1`,
+				),
+			);
+			assertEquals(response.status, status);
+		}
+	} finally {
+		await remove(workspace, { recursive: true });
+	}
+});
+
+test("HTML links render outside the workspace with relative assets", async () => {
+	const workspace = await makeTempDir();
+	const outsideDirectory = await makeTempDir();
+	const outside = `${outsideDirectory}/My ü report.HTML`;
+	const context = fakeContext();
+	context.store.setWorkspacePath(workspace);
+	const server = Bun.serve({
+		hostname: "127.0.0.1",
+		port: 0,
+		routes: {
+			[endpoints.filesOpen]: (request) =>
+				executeRoute(request, context, fileRoutes[endpoints.filesOpen].GET),
+			[endpoints.filesPreview]: (request) =>
+				executeRoute(request, context, fileRoutes[endpoints.filesPreview].GET),
+		},
+	});
+	try {
+		const html =
+			'<!doctype html><link rel="stylesheet" href="style.css"><h1>Report</h1>';
+		await writeTextFile(outside, html);
+		await writeTextFile(`${outsideDirectory}/style.css`, "h1 { color: blue; }");
+		const uri = pathToFileURL(outside).href + "?mode=dark#chart";
+		const redirect = await fetch(
+			new URL(`${endpoints.filesOpen}?uri=${encodeURIComponent(uri)}`, server.url),
+			{ redirect: "manual" },
+		);
+		assertEquals(redirect.status, 302);
+		const previewUrl = new URL(redirect.headers.get("location") ?? "", server.url);
+		assertEquals(previewUrl.search, "?mode=dark");
+		assertEquals(previewUrl.hash, "#chart");
+		// Preview URLs keep working after the user changes workspaces.
+		context.store.setWorkspacePath(outsideDirectory);
+		const preview = await fetch(previewUrl);
+		assertEquals(preview.status, 200);
+		assertStringIncludes(preview.headers.get("content-type") ?? "", "text/html");
+		assertEquals(preview.headers.get("content-disposition"), null);
+		assertEquals(await preview.text(), html);
+		const policy = preview.headers.get("content-security-policy") ?? "";
+		assertStringIncludes(policy, "sandbox allow-scripts;");
+		assertStringExcludes(policy, "allow-same-origin");
+		assertStringIncludes(policy, "connect-src 'none'");
+		assertStringIncludes(policy, "form-action 'none'");
+		const css = await fetch(new URL("style.css", previewUrl));
+		assertEquals(css.status, 200);
+		assertStringIncludes(css.headers.get("content-type") ?? "", "text/css");
+		assertEquals(await css.text(), "h1 { color: blue; }");
+		const invalidPath = await fetch(new URL(`${filesPreviewBase}%ZZ`, server.url));
+		assertEquals(invalidPath.status, 400);
+		const cssUri = pathToFileURL(`${outsideDirectory}/style.css`).href;
+		const nonHtml = await fetch(
+			new URL(
+				`${endpoints.filesOpen}?uri=${encodeURIComponent(cssUri)}`,
+				server.url,
+			),
+		);
+		assertEquals(nonHtml.status, 400);
+	} finally {
+		await server.stop(true);
+		await remove(workspace, { recursive: true });
+		await remove(outsideDirectory, { recursive: true });
+	}
 });
 
 function createRouter(context: RouteContext) {
@@ -722,8 +878,6 @@ function fakeContext(
 	overrides: {
 		host?: RuntimeResource;
 		renderer?: UiRenderer;
-		openPath?: (path: string) => Promise<void>;
-		isLocalRequest?: (request: Request) => boolean;
 		keybindHints?: boolean;
 		minimalMode?: boolean;
 		toolOutputHidden?: boolean;
@@ -753,8 +907,6 @@ function fakeContext(
 		},
 		transferredFiles: overrides.transferredFiles ?? { importFiles: async () => [] },
 		openWorkspace: async () => true,
-		openPath: overrides.openPath ?? (async () => {}),
-		isLocalRequest: overrides.isLocalRequest ?? (() => false),
 		serveStatic: async () => new Response("static"),
 	};
 }

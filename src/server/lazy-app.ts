@@ -17,12 +17,8 @@ export const routes = Object.fromEntries(
 	]),
 );
 
-export async function fallback(
-	request: Request,
-	server: Bun.Server<undefined>,
-): Promise<Response> {
+export async function fallback(request: Request): Promise<Response> {
 	const loaded = await getApp();
-	markLocal(request, server, loaded.app.localRequests);
 	const response =
 		request.method === "GET"
 			? await loaded.app.context.serveStatic(request)
@@ -35,42 +31,14 @@ export async function disposeApp(): Promise<void> {
 	await loaded?.app.dispose();
 }
 
-export function isLoopbackAddress(address: Readonly<{ address: string }>): boolean {
-	const hostname = address.address.toLowerCase();
-	return (
-		hostname === "localhost" ||
-		hostname === "::1" ||
-		hostname === "0:0:0:0:0:0:0:1" ||
-		/^127(?:\.\d{1,3}){3}$/.test(hostname) ||
-		hostname.startsWith("::ffff:127.")
-	);
-}
-
 function bindRoute(handler: RouteHandler<RouteContext>) {
-	return (request: Request, server: Bun.Server<undefined>) =>
-		dispatch(request, server, handler);
-}
-
-async function dispatch(
-	request: Request,
-	server: Bun.Server<undefined>,
-	handler: RouteHandler<RouteContext>,
-): Promise<Response> {
-	const loaded = await getApp();
-	markLocal(request, server, loaded.app.localRequests);
-	return loaded.compressResponse(
-		request,
-		await executeRoute(request, loaded.app.context, handler),
-	);
-}
-
-function markLocal(
-	request: Request,
-	server: Bun.Server<undefined>,
-	localRequests: WeakSet<Request>,
-): void {
-	const peer = server.requestIP(request);
-	if (peer && isLoopbackAddress(peer)) localRequests.add(request);
+	return async (request: Request): Promise<Response> => {
+		const loaded = await getApp();
+		return loaded.compressResponse(
+			request,
+			await executeRoute(request, loaded.app.context, handler),
+		);
+	};
 }
 
 function getApp(): ReturnType<typeof loadApp> {

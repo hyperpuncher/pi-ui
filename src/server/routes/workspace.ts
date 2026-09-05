@@ -1,3 +1,5 @@
+import { basename, extname } from "node:path";
+
 import {
 	renderWorkspaceBrowserContent,
 	renderWorkspaceBrowserError,
@@ -19,7 +21,7 @@ import {
 	moveWorkspaceEntry,
 	readWorkspaceFile,
 	removeWorkspaceEntry,
-	WorkspaceFileError,
+	resolveFile,
 	writeWorkspaceFile,
 } from "../workspace-files.ts";
 import { findGitRoot } from "../workspace-review.ts";
@@ -123,7 +125,24 @@ export const workspaceRoutes = {
 	},
 	[endpoints.workspaceFileContent]: {
 		GET: async (request, context) => {
-			const filePath = new URL(request.url).searchParams.get("path") ?? "";
+			const params = new URL(request.url).searchParams;
+			const filePath = params.get("path") ?? "";
+			if (params.get("download") === "1") {
+				const { path } = await resolveFile(context.store.workspacePath, filePath);
+				const file = Bun.file(path);
+				return new Response(file, {
+					headers: {
+						"content-type": [".ts", ".tsx", ".mts", ".cts"].includes(
+							extname(path).toLowerCase(),
+						)
+							? "text/plain; charset=utf-8"
+							: file.type,
+						"content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(basename(filePath))}`,
+						"x-content-type-options": "nosniff",
+						"cache-control": "no-store",
+					},
+				});
+			}
 			return workspaceFileResponse(() =>
 				readWorkspaceFile(context.store.workspacePath, filePath),
 			);
@@ -161,16 +180,9 @@ export const workspaceRoutes = {
 async function workspaceFileResponse<Value>(
 	operation: () => Promise<Value>,
 ): Promise<Response> {
-	try {
-		return Response.json(await operation(), {
-			headers: { "cache-control": "no-store" },
-		});
-	} catch (error) {
-		if (error instanceof WorkspaceFileError) {
-			throw new RouteError(error.status, error.message);
-		}
-		throw error;
-	}
+	return Response.json(await operation(), {
+		headers: { "cache-control": "no-store" },
+	});
 }
 
 function filterWorkspaces(workspaces: readonly string[], query: string): string[] {

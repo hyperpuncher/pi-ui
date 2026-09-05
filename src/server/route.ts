@@ -1,5 +1,6 @@
 import { ActionInputError } from "./action-input.ts";
 import { errorResponse } from "./datastar.ts";
+import { WorkspaceFileError } from "./workspace-files.ts";
 
 export type RouteHandler<Context> = (
 	request: Request,
@@ -37,7 +38,11 @@ export async function executeRoute<Context>(
 		return await handler(request, context, new URL(request.url));
 	} catch (error) {
 		if (request.signal.aborted) return new Response(null, { status: 499 });
-		if (error instanceof ActionInputError || error instanceof RouteError) {
+		if (
+			error instanceof ActionInputError ||
+			error instanceof RouteError ||
+			error instanceof WorkspaceFileError
+		) {
 			return errorResponse(error.status, error.message);
 		}
 		reportError(error, request);

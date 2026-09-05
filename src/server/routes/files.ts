@@ -1,11 +1,9 @@
-import { stat } from "node:fs/promises";
-import { basename } from "node:path";
+import { isAbsolute, relative } from "node:path";
 
 import { detectSupportedImageMimeTypeFromFile } from "@earendil-works/pi-coding-agent";
 
-import { fileUriToPath } from "../../../static/file-uri.js";
+import { fileUriToPath, isHtmlFileUri } from "../../../static/file-uri.js";
 import { renderFilePickerResults } from "../../ui/pickers.tsx";
-import { isNotFound } from "../../utils/fs-errors.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { searchFiles } from "../file-search.ts";
@@ -16,8 +14,9 @@ import {
 	validateTransferContentLength,
 	validateTransferredFiles,
 } from "../transferred-files.ts";
+import { resolveFile } from "../workspace-files.ts";
 import type { RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+import { endpoints, filesPreviewBase } from "./endpoints.ts";
 
 export const fileRoutes = {
 	[endpoints.filesSearch]: {
@@ -40,7 +39,11 @@ export const fileRoutes = {
 		POST: importTransferredFiles,
 	},
 	[endpoints.filesOpen]: {
+		GET: openLinkedFile,
 		POST: openLinkedFile,
+	},
+	[endpoints.filesPreview]: {
+		GET: previewFile,
 	},
 } satisfies RouteMap<RouteContext>;
 
@@ -48,35 +51,70 @@ async function openLinkedFile(
 	request: Request,
 	context: RouteContext,
 ): Promise<Response> {
-	const uri = requiredString(await readActionSignals(request), "uri");
+	const uri =
+		request.method === "GET"
+			? (new URL(request.url).searchParams.get("uri") ?? "")
+			: requiredString(await readActionSignals(request), "uri");
 	const path = fileUriToPath(uri);
 	if (!path) throw new RouteError(400, "Invalid file link.");
 
-	let info: Awaited<ReturnType<typeof stat>>;
+	const workspacePath = context.store.workspacePath;
+	const relativePath = relative(workspacePath, path).replaceAll("\\", "/");
+	const filePath =
+		relativePath === ".." ||
+		relativePath.startsWith("../") ||
+		isAbsolute(relativePath)
+			? path
+			: relativePath;
+	await resolveFile(workspacePath, filePath);
+	if (request.method === "GET") {
+		if (!isHtmlFileUri(uri))
+			throw new RouteError(400, "Only HTML files can be previewed.");
+		const source = new URL(uri);
+		const previewPath =
+			filesPreviewBase +
+			path.replaceAll("\\", "/").split("/").map(encodeURIComponent).join("/");
+		return new Response(null, {
+			status: 302,
+			headers: {
+				location: previewPath + source.search + source.hash,
+				"cache-control": "no-store",
+			},
+		});
+	}
+	return Response.json({ path: filePath, workspacePath });
+}
+
+async function previewFile(request: Request, context: RouteContext): Promise<Response> {
+	const url = new URL(request.url);
+	let filePath: string;
 	try {
-		info = await stat(path);
-	} catch (error) {
-		if (isNotFound(error)) {
-			throw new RouteError(404, "File not found.");
-		}
-		throw error;
+		filePath = decodeURIComponent(url.pathname.slice(filesPreviewBase.length));
+	} catch {
+		throw new RouteError(400, "Invalid file path.");
 	}
-
-	if (context.isLocalRequest(request)) {
-		await context.openPath(path);
-		return new Response(null, { status: 204 });
-	}
-	if (!info.isFile()) {
-		throw new RouteError(400, "Only files can be downloaded remotely.");
-	}
-
-	const name = basename(path) || "download";
+	const { path } = await resolveFile(context.store.workspacePath, filePath);
+	const assets = `${url.origin}${filesPreviewBase}`;
 	return new Response(Bun.file(path), {
 		headers: {
-			"content-type": "application/octet-stream",
-			"content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+			"cache-control": "no-store",
 			"x-content-type-options": "nosniff",
-			"x-pi-file-name": encodeURIComponent(name),
+			"referrer-policy": "no-referrer",
+			// Keep generated pages in an opaque origin. Allow local presentation
+			// and inline scripts, but no API requests, forms, frames or popups.
+			"content-security-policy": [
+				"sandbox allow-scripts",
+				"default-src 'none'",
+				`script-src 'unsafe-inline' ${assets}`,
+				`style-src 'unsafe-inline' ${assets}`,
+				`img-src data: ${assets}`,
+				`font-src data: ${assets}`,
+				`media-src data: ${assets}`,
+				"connect-src 'none'",
+				"base-uri 'none'",
+				"form-action 'none'",
+				"frame-ancestors 'none'",
+			].join("; "),
 		},
 	});
 }

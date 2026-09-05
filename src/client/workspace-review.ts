@@ -737,6 +737,18 @@ function setPanelMode(next: "files" | "git"): void {
 	if (next === "git") openGitView();
 }
 
+export async function openLinkedWorkspaceFile(
+	path: string,
+	linkedWorkspacePath: string,
+): Promise<void> {
+	if (linkedWorkspacePath !== workspacePath)
+		throw new Error("The workspace changed. Open the file link again.");
+	visibility.open();
+	setPanelMode("files");
+	await workspaceFiles.openFile(path);
+	focusAfterOpen(() => workspaceFiles.focusEditor());
+}
+
 function focusFiles(): void {
 	visibility.open();
 	setPanelMode("files");

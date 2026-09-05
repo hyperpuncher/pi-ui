@@ -1,3 +1,5 @@
+import { isHtmlFileUri } from "../file-uri.js";
+
 export function bindFileLinks() {
 	document.addEventListener(
 		"click",
@@ -13,7 +15,17 @@ export function bindFileLinks() {
 			// File navigation is forbidden from the HTTP UI. Claim the click even if
 			// another client handler already prevented it, then delegate to the backend.
 			event.preventDefault();
-			void followFileLink(uri);
+			if (isHtmlFileUri(uri)) {
+				const endpoint = document.body.dataset.filesOpenEndpoint;
+				if (endpoint)
+					window.open(
+						`${endpoint}?uri=${encodeURIComponent(uri)}`,
+						"_blank",
+						"noopener,noreferrer",
+					);
+			} else {
+				void followFileLink(uri);
+			}
 		},
 		{ capture: true },
 	);
@@ -38,14 +50,10 @@ async function followFileLink(uri) {
 			body: JSON.stringify({ uri }),
 		});
 		if (!response.ok) throw new Error(await responseError(response));
-		if (response.status === 204) return;
-
-		const blobUrl = URL.createObjectURL(await response.blob());
-		const download = document.createElement("a");
-		download.href = blobUrl;
-		download.download = downloadName(response);
-		download.click();
-		setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+		const { path, workspacePath } = await response.json();
+		const { openLinkedWorkspaceFile } =
+			await import("../../src/client/workspace-review.ts");
+		await openLinkedWorkspaceFile(path, workspacePath);
 	} catch (error) {
 		alert(error instanceof Error ? error.message : "Could not open the file.");
 	}
@@ -57,13 +65,5 @@ async function responseError(response) {
 		return body.error || body.message || "Could not open the file.";
 	} catch {
 		return "Could not open the file.";
-	}
-}
-
-function downloadName(response) {
-	try {
-		return decodeURIComponent(response.headers.get("x-pi-file-name")) || "download";
-	} catch {
-		return "download";
 	}
 }

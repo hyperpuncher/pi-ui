@@ -29,6 +29,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	const pathLabel = requiredElement("workspace-file-path");
 	const status = requiredElement("workspace-file-status");
 	const editButton = requiredButton("workspace-file-edit");
+	const downloadButton = requiredButton("workspace-file-download");
 	const wrapButton = requiredButton("workspace-file-wrap");
 	const entryDialog = requiredDialog("workspace-entry-dialog");
 	const entryTitle = requiredElement("workspace-entry-title");
@@ -50,6 +51,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	let loadGeneration = 0;
 	let fileGeneration = 0;
 	let current: WorkspaceFileData | undefined;
+	let selectedFilePath: string | undefined;
 	let draft = "";
 	let dirty = false;
 	let wrap = true;
@@ -89,6 +91,14 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	});
 	tree.render({ containerWrapper: treeHost });
 
+	downloadButton.addEventListener("click", () => {
+		const path = selectedFilePath;
+		if (!path) return;
+		const link = document.createElement("a");
+		link.href = `${options.endpoint}/content?path=${encodeURIComponent(path)}&download=1`;
+		link.download = path.split("/").at(-1) ?? "download";
+		link.click();
+	});
 	editButton.addEventListener("click", () => void save());
 	viewHost.addEventListener("keydown", (event) => {
 		if (
@@ -248,6 +258,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		current = undefined;
 		draft = "";
 		dirty = false;
+		setSelectedFilePath();
 		pathLabel.textContent = "Select a file";
 		setStatus("");
 		showEmpty("Open a file from the workspace");
@@ -323,6 +334,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 				if (dirty) setStatus("File changed on disk");
 				else {
 					clearCurrentFile();
+					setSelectedFilePath(file.path);
 					pathLabel.textContent = file.path;
 					setStatus(formatBytes(file.size));
 					showEmpty(file.message);
@@ -383,8 +395,10 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 				loadedPaths = data.paths;
 				tree.resetPaths(data.paths);
 			}
-			if (current && data.paths.includes(current.path)) {
-				setStatus(formatBytes(current.size));
+			// Linked files need not appear in the workspace tree. Keep the open
+			// file (including unavailable previews) selected when the tree refreshes.
+			if (selectedFilePath) {
+				if (current) setStatus(formatBytes(current.size));
 				return;
 			}
 			const initial = data.paths.includes("README.md")
@@ -420,10 +434,12 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		stopEditing();
 		dirty = false;
 		pathLabel.textContent = path;
+		setSelectedFilePath();
 		setStatus("");
 		try {
 			const file = await api.read(path);
 			if (generation !== fileGeneration) return;
+			setSelectedFilePath(file.path);
 			setStatus(formatBytes(file.size));
 			if ("message" in file) {
 				current = undefined;
@@ -500,11 +516,13 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		syncSaveButton();
 	}
 
+	function setSelectedFilePath(path?: string): void {
+		selectedFilePath = path;
+		downloadButton.disabled = !path;
+	}
+
 	function syncSaveButton(): void {
 		editButton.disabled = !current || !editor || !dirty;
-		editButton.textContent = "Save";
-		editButton.dataset.variant = dirty ? "secondary" : "ghost";
-		editButton.removeAttribute("aria-pressed");
 	}
 
 	function showEmpty(message: string): void {

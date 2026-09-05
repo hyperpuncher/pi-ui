@@ -1,4 +1,10 @@
 /** @param {string} uri */
+export function isHtmlFileUri(uri) {
+	const path = fileUriToPath(uri);
+	return path !== undefined && /\.html?$/i.test(path);
+}
+
+/** @param {string} uri */
 export function fileUriToPath(uri) {
 	try {
 		const url = new URL(uri);
