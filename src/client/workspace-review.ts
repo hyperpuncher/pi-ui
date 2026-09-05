@@ -71,14 +71,10 @@ window.addEventListener("pi-ui-code-theme-changed", (event) => {
 	const themes = event.detail;
 	setActiveCodeTheme(themes);
 	if (viewer) {
-		viewer.setOptions(viewerOptions());
-		viewer.setItems(
-			mode === "all"
-				? items
-				: selection.path && itemsByPath.has(selection.path)
-					? [itemsByPath.get(selection.path)!]
-					: [],
-		);
+		void createWorkerPool()
+			.setRenderOptions({ theme: themes })
+			.then(() => viewer?.setOptions(viewerOptions()))
+			.catch((error) => console.error("Failed to update workspace theme", error));
 	}
 });
 
