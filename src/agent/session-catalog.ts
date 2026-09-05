@@ -51,6 +51,7 @@ export type SessionCatalogLifecycle = {
 };
 
 export class SessionCatalog {
+	private disposed = false;
 	private refreshGeneration = 0;
 	private readonly pathRefreshGenerations = new Map<string, number>();
 	private readonly sessionTouchTimers = new Map<
@@ -77,13 +78,16 @@ export class SessionCatalog {
 	}
 
 	activate(): void {
-		if (this.stopWatch || !this.lifecycle?.watch) return;
+		if (this.disposed || this.stopWatch || !this.lifecycle?.watch) return;
 		this.stopWatch = this.lifecycle.watch(this.lifecycle.agentDir, (path) =>
 			this.scheduleFileRefresh(path),
 		);
 	}
 
 	dispose(): void {
+		this.disposed = true;
+		this.refreshGeneration += 1;
+		this.pathRefreshGenerations.clear();
 		this.stopWatch?.();
 		this.stopWatch = undefined;
 		for (const timer of this.sessionTouchTimers.values()) clearTimeout(timer);
@@ -94,6 +98,7 @@ export class SessionCatalog {
 	}
 
 	handleEvent(path: string, event: AgentSessionEvent, cwd?: string): void {
+		if (this.disposed) return;
 		if (event.type === "message_start") {
 			this.messageStarted(
 				path,
@@ -125,6 +130,7 @@ export class SessionCatalog {
 		prepared: PreparedSessionList,
 		options: SessionCatalogOptions = {},
 	): void {
+		if (this.disposed) return;
 		if (!prepared.ok) {
 			this.state.appendMessage(
 				"system",
@@ -141,6 +147,7 @@ export class SessionCatalog {
 		prepare: () => Promise<PreparedSessionList> = SessionCatalog.prepare,
 		options: SessionCatalogOptions = {},
 	): Promise<void> {
+		if (this.disposed) return;
 		const generation = ++this.refreshGeneration;
 		if (options.showLoading !== false) {
 			this.state.setSessionCatalogLoading(true);
@@ -223,6 +230,9 @@ export class SessionCatalog {
 		path: string,
 		options: { preserveMissing?: boolean } = {},
 	): Promise<void> {
+		if (this.disposed) return;
+		clearTimeout(this.sessionFileRefreshTimers.get(path));
+		this.sessionFileRefreshTimers.delete(path);
 		const generation = (this.pathRefreshGenerations.get(path) ?? 0) + 1;
 		this.pathRefreshGenerations.set(path, generation);
 		let candidate: SessionCandidate;
@@ -248,6 +258,7 @@ export class SessionCatalog {
 		if (indexed !== cached) {
 			await updateSessionSummaryCache({ [path]: indexed }, cachePath);
 		}
+		if (this.pathRefreshGenerations.get(path) !== generation) return;
 		const summary = this.mergeStatuses([
 			formatSessionSummary(sessionInfoFromSummary(path, indexed)),
 		])[0];
@@ -282,12 +293,11 @@ export class SessionCatalog {
 	}
 
 	private scheduleFileRefresh(path: string): void {
-		const pending = this.sessionFileRefreshTimers.get(path);
-		if (pending) clearTimeout(pending);
+		if (this.disposed) return;
+		clearTimeout(this.sessionFileRefreshTimers.get(path));
 		this.sessionFileRefreshTimers.set(
 			path,
 			setTimeout(() => {
-				this.sessionFileRefreshTimers.delete(path);
 				void this.refreshPath(path);
 			}, 200),
 		);

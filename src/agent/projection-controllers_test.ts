@@ -496,6 +496,81 @@ test("session catalog ignores an older refresh that finishes last", async () => 
 	);
 });
 
+for (const fails of [false, true]) {
+	test(`session catalog ignores a refresh completed after disposal, failure: ${fails}`, async () => {
+		const state = new AppStore();
+		const catalog = new SessionCatalog(state);
+		const pending = Promise.withResolvers<PreparedSessionList>();
+		const refresh = catalog.refresh(() => pending.promise);
+		catalog.dispose();
+		const snapshot = state.snapshot();
+		if (fails) pending.reject(new Error("late failure"));
+		else pending.resolve({ ok: true, sessions: [sessionInfo("/late", "Late")] });
+		await refresh;
+		assertEquals(state.snapshot(), snapshot);
+	});
+}
+
+for (const exists of [false, true]) {
+	test(`session catalog ignores pending and new path refreshes after disposal, file exists: ${exists}`, async () => {
+		const root = await makeTempDir({ prefix: "pi-ui-catalog-disposal-" });
+		const path = `${root}/session.jsonl`;
+		const state = new AppStore();
+		const catalog = new SessionCatalog(state);
+		catalog.applyPrepared({ ok: true, sessions: [sessionInfo(path, "Keep")] });
+		try {
+			if (exists) {
+				await writeTextFile(
+					path,
+					`${JSON.stringify({ type: "session", id: "late", cwd: root, timestamp: new Date(0).toISOString() })}\n`,
+				);
+			}
+			const pending = catalog.refreshPath(path);
+			catalog.dispose();
+			const snapshot = state.snapshot();
+			await pending;
+			await catalog.refreshPath(path);
+			await catalog.refresh(() => Promise.resolve({ ok: true, sessions: [] }));
+			assertEquals(state.snapshot(), snapshot);
+		} finally {
+			catalog.dispose();
+			await remove(root, { recursive: true });
+		}
+	});
+}
+
+test("immediate session refresh cancels a queued file refresh for a provisional row", async () => {
+	const root = await makeTempDir({ prefix: "pi-ui-catalog-refresh-" });
+	const path = `${root}/missing.jsonl`;
+	const state = new AppStore();
+	let changed = (_path: string) => {};
+	const catalog = new SessionCatalog(state, {
+		agentDir: root,
+		watch: (_agentDir, onChange) => {
+			changed = onChange;
+			return () => {};
+		},
+	});
+	catalog.applyPrepared({ ok: true, sessions: [sessionInfo(path, "Provisional")] });
+	catalog.activate();
+	try {
+		changed(path);
+		await catalog.refreshPath(path, { preserveMissing: true });
+		await Bun.sleep(300);
+		assertEquals(
+			state.sessions.map((session) => session.path),
+			[path],
+		);
+		// A later file notification must still be able to remove the missing row.
+		changed(path);
+		await Bun.sleep(300);
+		assertEquals(state.sessions, []);
+	} finally {
+		catalog.dispose();
+		await remove(root, { recursive: true });
+	}
+});
+
 function sessionInfo(
 	path: string,
 	name: string,
@@ -667,6 +742,8 @@ test("session catalog owns watcher activation and cleanup", () => {
 	changed("/agent/sessions/session.jsonl");
 	catalog.dispose();
 	catalog.dispose();
+	catalog.activate();
+	changed("/agent/sessions/session.jsonl");
 
 	assertEquals(watchCount, 1);
 	assertEquals(stopCount, 1);
