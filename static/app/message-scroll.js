@@ -183,7 +183,7 @@ export function restoreAnchor() {
 		messages.style.removeProperty("overflow-anchor");
 		return;
 	}
-	if (saved.pinnedToBottom) {
+	if (saved.pinnedToBottom && state.pinnedToBottom) {
 		messages.style.removeProperty("overflow-anchor");
 		scrollBottom();
 		return;
