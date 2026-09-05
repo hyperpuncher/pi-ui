@@ -521,9 +521,7 @@ function createItems(
 		const itemVersion = previous?.content === content ? previous.version : ++version;
 		itemRevisions.set(key, { content, version: itemVersion });
 		return {
-			// Pierre 1.3.5 incorrectly invents cache identity from filenames. An
-			// explicit content revision avoids stale highlights without remounting
-			// every unchanged file whenever the working tree changes.
+			// Cache identity follows content; unchanged files keep their revision.
 			fileDiff: { ...parsedFile, cacheKey: `pi-ui:${key}:${itemVersion}` },
 			id: `diff:${key}`,
 			type: "diff",
@@ -614,7 +612,7 @@ function hideDetailHeader(): void {
 	hideWorkspaceReviewDetailHeader(detailHeader);
 }
 
-function viewerOptions(): CodeViewOptions<ReviewCommentMetadata> {
+function viewerOptions(): CodeViewOptions<ReviewCommentMetadata, undefined> {
 	const commentsEnabled = selection.kind === "working" && comments.canAdd();
 	return {
 		diffIndicators: "none",

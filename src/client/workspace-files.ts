@@ -1,4 +1,4 @@
-import { File } from "@pierre/diffs";
+import { File, type FileOptions } from "@pierre/diffs";
 import type { Editor as PierreEditor } from "@pierre/diffs/edit";
 import {
 	type ContextMenuItem,
@@ -55,7 +55,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	let draft = "";
 	let dirty = false;
 	let wrap = true;
-	let editor: PierreEditor<undefined> | undefined;
+	let editor: PierreEditor<"file"> | undefined;
 	let detachEditor: (() => void) | undefined;
 	const viewer = new File(viewerOptions());
 	const tree = new FileTree({
@@ -269,12 +269,22 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		return current?.path === path || current?.path.startsWith(`${path}/`) === true;
 	}
 
-	function viewerOptions() {
+	function viewerOptions(): FileOptions<undefined, undefined> {
 		return {
 			disableFileHeader: true,
-			overflow: wrap ? ("wrap" as const) : ("scroll" as const),
+			overflow: wrap ? "wrap" : "scroll",
 			theme: getPierreThemes(),
-			themeType: "system" as const,
+			themeType: "system",
+			onEditChange({ file }) {
+				draft = file.contents;
+				dirty = draft !== current?.contents;
+				syncSaveButton();
+			},
+			onEditComplete({ file }) {
+				if (!current || file.contents !== current.contents) return "reject";
+				file.cacheKey = `${workspacePath}:${current.path}:${current.revision}`;
+				return "accept";
+			},
 			unsafeCSS: `
 				@media (prefers-reduced-motion: no-preference) {
 					[data-caret] {
@@ -476,13 +486,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		try {
 			const { Editor } = await import("@pierre/diffs/edit");
 			if (generation !== fileGeneration || !current) return;
-			editor = new Editor<undefined>({
-				onChange(file) {
-					draft = file.contents;
-					dirty = draft !== current?.contents;
-					syncSaveButton();
-				},
-			});
+			editor = new Editor("file");
 			detachEditor = editor.edit(viewer);
 		} catch (error) {
 			editor = undefined;
