@@ -1,4 +1,4 @@
-import Type from "typebox";
+import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
 import { isBoolean, isNumber, isRecord, type JsonRecord } from "./utils/type-guards.ts";
@@ -14,34 +14,10 @@ export const changesRatioDefault = 0.5;
 export const changesRatioMin = 0.3;
 export const changesRatioMax = 0.7;
 
-export type WorkspaceFileStatus =
-	| "added"
-	| "deleted"
-	| "modified"
-	| "renamed"
-	| "untracked";
-
-export type WorkspaceFileChange = Readonly<{
-	additions: number;
-	deletions: number;
-	path: string;
-	status: WorkspaceFileStatus;
-}>;
-
-export type WorkspaceCommit = Readonly<{
-	author: string;
-	authoredAt: string;
-	hash: string;
-	pushed: boolean | null;
-	shortHash: string;
-	subject: string;
-}>;
-
-export type WorkspaceCommitDetail = Readonly<{
-	changes: readonly WorkspaceFileChange[];
-	commit: WorkspaceCommit;
-	patch: string;
-}>;
+export type WorkspaceFileStatus = WorkspaceFileChange["status"];
+export type WorkspaceFileChange = Static<typeof workspaceFileChangeSchema>;
+export type WorkspaceCommit = Static<typeof workspaceCommitSchema>;
+export type WorkspaceCommitDetail = Static<typeof workspaceCommitDetailSchema>;
 
 export type WorkspaceReviewPreferences = Readonly<{
 	changesRatio?: number;
@@ -93,14 +69,7 @@ function normalizedNumber(
 		: undefined;
 }
 
-export type WorkspaceReviewSnapshot = Readonly<{
-	branch: string | null;
-	changes: readonly WorkspaceFileChange[];
-	commits: readonly WorkspaceCommit[];
-	isGitRepository: boolean;
-	patch: string;
-	revision: string;
-}>;
+export type WorkspaceReviewSnapshot = Static<typeof workspaceReviewSnapshotSchema>;
 
 export const emptyWorkspaceReviewSnapshot: WorkspaceReviewSnapshot = {
 	branch: null,
@@ -116,42 +85,50 @@ export const unloadedWorkspaceReviewSnapshot: WorkspaceReviewSnapshot = {
 	revision: "git-unloaded",
 };
 
-const workspaceFileChangeSchema = Type.Object({
-	additions: Type.Number(),
-	deletions: Type.Number(),
-	path: Type.String(),
-	status: Type.Union([
-		Type.Literal("added"),
-		Type.Literal("deleted"),
-		Type.Literal("modified"),
-		Type.Literal("renamed"),
-		Type.Literal("untracked"),
-	]),
-});
+const workspaceFileChangeSchema = Type.ReadonlyObject(
+	Type.Object({
+		additions: Type.Number(),
+		deletions: Type.Number(),
+		path: Type.String(),
+		status: Type.Union([
+			Type.Literal("added"),
+			Type.Literal("deleted"),
+			Type.Literal("modified"),
+			Type.Literal("renamed"),
+			Type.Literal("untracked"),
+		]),
+	}),
+);
 
-const workspaceCommitSchema = Type.Object({
-	author: Type.String(),
-	authoredAt: Type.String(),
-	hash: Type.String(),
-	pushed: Type.Union([Type.Boolean(), Type.Null()]),
-	shortHash: Type.String(),
-	subject: Type.String(),
-});
+const workspaceCommitSchema = Type.ReadonlyObject(
+	Type.Object({
+		author: Type.String(),
+		authoredAt: Type.String(),
+		hash: Type.String(),
+		pushed: Type.Union([Type.Boolean(), Type.Null()]),
+		shortHash: Type.String(),
+		subject: Type.String(),
+	}),
+);
 
-const workspaceCommitDetailSchema = Type.Object({
-	changes: Type.Array(workspaceFileChangeSchema),
-	commit: workspaceCommitSchema,
-	patch: Type.String(),
-});
+const workspaceCommitDetailSchema = Type.ReadonlyObject(
+	Type.Object({
+		changes: Type.ReadonlyObject(Type.Array(workspaceFileChangeSchema)),
+		commit: workspaceCommitSchema,
+		patch: Type.String(),
+	}),
+);
 
-const workspaceReviewSnapshotSchema = Type.Object({
-	branch: Type.Union([Type.String(), Type.Null()]),
-	changes: Type.Array(workspaceFileChangeSchema),
-	commits: Type.Array(workspaceCommitSchema),
-	isGitRepository: Type.Boolean(),
-	patch: Type.String(),
-	revision: Type.String(),
-});
+const workspaceReviewSnapshotSchema = Type.ReadonlyObject(
+	Type.Object({
+		branch: Type.Union([Type.String(), Type.Null()]),
+		changes: Type.ReadonlyObject(Type.Array(workspaceFileChangeSchema)),
+		commits: Type.ReadonlyObject(Type.Array(workspaceCommitSchema)),
+		isGitRepository: Type.Boolean(),
+		patch: Type.String(),
+		revision: Type.String(),
+	}),
+);
 
 const workspaceCommitDetailValidator = Compile(workspaceCommitDetailSchema);
 const workspaceCommitHistoryValidator = Compile(Type.Array(workspaceCommitSchema));

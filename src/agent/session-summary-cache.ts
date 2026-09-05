@@ -2,7 +2,7 @@ import { mkdir, rename, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
-import Type from "typebox";
+import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
 import { appCachePath } from "../utils/app-cache.ts";
@@ -32,18 +32,7 @@ const cacheEntrySchema = Type.Object({
 });
 const cacheEntryValidator = Compile(cacheEntrySchema);
 
-export type SessionSummaryCacheEntry = {
-	indexedBytes: number;
-	mtime: number;
-	id: string;
-	cwd: string;
-	name?: string;
-	firstMessage: string;
-	messageCount: number;
-	lastActivity: number;
-	created: number;
-	parentSessionPath?: string;
-};
+export type SessionSummaryCacheEntry = Static<typeof cacheEntrySchema>;
 
 export type SessionSummaryCache = {
 	version: 2;
@@ -171,7 +160,7 @@ async function parseSessionFile(
 	candidate: SessionSummaryCandidate,
 	cached?: SessionSummaryCacheEntry,
 ): Promise<SessionSummaryCacheEntry | undefined> {
-	const state: MutableSummary = cached
+	const state: SessionSummaryCacheEntry = cached
 		? { ...cached }
 		: {
 				indexedBytes: 0,
@@ -218,9 +207,7 @@ async function parseSessionFile(
 	}
 }
 
-type MutableSummary = SessionSummaryCacheEntry;
-
-function applyLine(state: MutableSummary, bytes: Uint8Array): void {
+function applyLine(state: SessionSummaryCacheEntry, bytes: Uint8Array): void {
 	if (bytes.length === 0) return;
 	let value: JsonValue;
 	try {
