@@ -63,7 +63,6 @@ import {
 	SessionTransitionController,
 	type SessionTransitionResult,
 } from "./session-transition-controller.ts";
-import { transitionRuntime } from "./session-transition.ts";
 import {
 	formatToolResult,
 	formatToolStart,
@@ -1138,20 +1137,16 @@ export class RuntimeController {
 	private async discardTemporaryRuntime(): Promise<void> {
 		const runtime = this.runtime;
 		this.prompts.clear(runtime);
-		await transitionRuntime({
-			action: "discard",
-			unsubscribe: () => this.unbindSession(),
-			abort: () => runtime.session.abort(),
-			dispose: () => runtime.dispose(),
-			background: () => {},
-			bindReplacement: () => {},
-			onAbortError: (error) => {
-				this.state.appendMessage(
-					"system",
-					`Failed to abort temporary session: ${errorMessage(error)}`,
-				);
-			},
-		});
+		this.unbindSession();
+		try {
+			await runtime.session.abort();
+		} catch (error) {
+			this.state.appendMessage(
+				"system",
+				`Failed to abort temporary session: ${errorMessage(error)}`,
+			);
+		}
+		await runtime.dispose();
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
 		clearSessionEventToolState(this.tools);

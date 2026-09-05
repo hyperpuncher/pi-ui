@@ -975,6 +975,62 @@ test("RuntimeController aborts and disposes an active temporary runtime", async 
 	assertEquals(replacement.disposeCount, 1);
 });
 
+for (const abortFails of [false, true]) {
+	test(`RuntimeController waits for temporary disposal before replacement, abort failure: ${abortFails}`, async () => {
+		const temporary = fakeRuntime(undefined, false);
+		const replacement = fakeRuntime("/sessions/replacement.jsonl");
+		temporary.setStreaming(true);
+		if (abortFails) {
+			temporary.runtime.session.abort = () => {
+				temporary.calls.push("abort");
+				return Promise.reject(new Error("abort failed"));
+			};
+		}
+		const started = Promise.withResolvers<void>();
+		const released = Promise.withResolvers<void>();
+		temporary.disposeResult = released.promise;
+		const dispose = temporary.runtime.dispose.bind(temporary.runtime);
+		temporary.runtime.dispose = () => {
+			started.resolve();
+			return dispose();
+		};
+		const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+			dependencies: dependencies([temporary, replacement]),
+		});
+		controller.activate();
+		const transition = controller.newSession();
+		try {
+			await started.promise;
+			assertEquals(temporary.calls.slice(-3), ["unsubscribe", "abort", "dispose"]);
+			assertEquals(replacement.calls.includes("create"), false);
+			released.resolve();
+			assertEquals(await transition, { status: "success" });
+			assertEquals(replacement.calls.includes("subscribe"), true);
+		} finally {
+			released.resolve();
+			await transition;
+			await controller.dispose();
+		}
+	});
+}
+
+test("RuntimeController does not create a replacement when departure disposal fails", async () => {
+	const source = fakeRuntime(undefined, false);
+	const replacement = fakeRuntime("/sessions/replacement.jsonl");
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([source, replacement]),
+	});
+	controller.activate();
+	source.disposeError = new Error("dispose failed");
+	try {
+		assertEquals(await controller.newSession(), { status: "error" });
+		assertEquals(replacement.calls.includes("create"), false);
+	} finally {
+		source.disposeError = undefined;
+		await controller.dispose();
+	}
+});
+
 test("RuntimeController completes and aborts background runtimes exactly once", async () => {
 	const completed = fakeRuntime("/sessions/completed.jsonl");
 	const foreground = fakeRuntime("/sessions/foreground.jsonl");
