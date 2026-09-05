@@ -13,6 +13,7 @@ import {
 	createWorkspaceFilesApi,
 	type WorkspaceFileData,
 } from "./workspace-files-api.ts";
+import { syncWorkspaceTreePaths } from "./workspace-tree.ts";
 
 type WorkspaceFilesOptions = {
 	endpoint: string;
@@ -400,11 +401,13 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			const data = await api.list();
 			if (generation !== loadGeneration || data.workspacePath !== workspacePath)
 				return;
+			syncWorkspaceTreePaths(
+				tree,
+				loadedWorkspacePath === workspacePath ? loadedPaths : undefined,
+				data.paths,
+			);
 			loadedWorkspacePath = workspacePath;
-			if (!samePaths(loadedPaths, data.paths)) {
-				loadedPaths = data.paths;
-				tree.resetPaths(data.paths);
-			}
+			loadedPaths = data.paths;
 			// Linked files need not appear in the workspace tree. Keep the open
 			// file (including unavailable previews) selected when the tree refreshes.
 			if (selectedFilePath) {
@@ -664,13 +667,6 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 
 function errorMessage(error: ErrorOptions["cause"]): string {
 	return String(error).replace(/^Error: /, "");
-}
-
-function samePaths(current: readonly string[], next: readonly string[]): boolean {
-	return (
-		current.length === next.length &&
-		current.every((path, index) => path === next[index])
-	);
 }
 
 function validEntryName(value: string | null): value is string {

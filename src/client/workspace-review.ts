@@ -48,6 +48,7 @@ import {
 	workspaceReviewLoading,
 	workspaceReviewStateChanged,
 } from "./workspace-review-state.ts";
+import { syncWorkspaceTreePaths } from "./workspace-tree.ts";
 
 type ReviewMode = NonNullable<WorkspaceReviewPreferences["mode"]>;
 type ReviewItem = CodeViewItem<ReviewCommentMetadata> & { type: "diff" };
@@ -308,6 +309,9 @@ function applyWorkspaceReview(
 function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	const wasUnloaded =
 		workspaceReviewLoading(snapshot.revision) || !initializedSelection;
+	const previousPaths = wasUnloaded
+		? undefined
+		: snapshot.changes.map(({ path }) => path);
 	const gitWasAvailable = snapshot.isGitRepository;
 	const historyState = reconcileFirstHistoryPage(
 		historyCommits,
@@ -328,7 +332,11 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	const nextWorkingItems = createItems(snapshot.changes, snapshot.patch, "working");
 	comments.reconcileItems(nextWorkingItems);
 	workingItems = withWorkingAnnotations(nextWorkingItems);
-	tree.resetPaths(snapshot.changes.map(({ path }) => path));
+	syncWorkspaceTreePaths(
+		tree,
+		previousPaths,
+		snapshot.changes.map(({ path }) => path),
+	);
 	tree.setGitStatus(snapshot.changes);
 	if (workspaceReviewLoading(snapshot.revision)) {
 		initializedSelection = false;
