@@ -645,6 +645,23 @@ test("headless updates initialize one current view and tolerate disconnect", asy
 	state.setActivityText("disconnected");
 	state.flush();
 	assertEqual(state.activityText, "disconnected");
+
+	state.replaceMessages([markdownMessage("**offline answer**")]);
+	state.flush();
+	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
+
+	const reconnect = new AbortController();
+	try {
+		const reader = state.createStream(reconnect.signal).body?.getReader();
+		if (!reader) throw new Error("Missing response body");
+		const output = await readUntil(reader, (text) =>
+			text.includes("event: datastar-patch-signals"),
+		);
+		assertIncludes(output, "<strong>offline answer</strong>");
+		assertEqual(count(output, "event: datastar-patch-elements"), 1);
+	} finally {
+		reconnect.abort();
+	}
 });
 
 test("session pagination patches only session-owned regions", async () => {

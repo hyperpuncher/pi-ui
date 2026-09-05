@@ -138,8 +138,8 @@ export class UiRenderer implements AppStorePresentation {
 		this.sessionsDirty = false;
 		this.sessionSidebarDirty = false;
 		this.workspaceReviewDirty = false;
-		const state = this.store.snapshot();
 		if (this.hub.clientCount > 0) {
+			const state = this.store.snapshot();
 			if (this.replaceTranscriptOnCommit) {
 				this.hub.replaceElement(
 					this.renderTranscript(this.projectState(state)),
