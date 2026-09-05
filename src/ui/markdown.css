@@ -29,6 +29,8 @@
 	}
 	.markdown-table-heading {
 		font-weight: 600;
+	}
+	.markdown-table-heading:not([align]) {
 		text-align: start;
 	}
 
