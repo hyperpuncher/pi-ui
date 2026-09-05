@@ -1,5 +1,7 @@
 import { realpath, stat } from "node:fs/promises";
 
+// pi does not publicly export its provisioner. A static import lets Bun bundle it.
+import { ensureTool } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
 import { parseAutoTitleConfig, type AutoTitleConfig } from "../agent/auto-title.ts";
 import { RuntimeController } from "../agent/runtime-controller.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
@@ -22,6 +24,7 @@ import { TransferredFileStore } from "./transferred-files.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
 
 export async function createApp() {
+	const fdReady = ensureTool("fd", ({ message }) => console.error(message));
 	const staticAssets = await createStaticAssetServer(staticRoot);
 	const appConfig = await ensureAppConfig();
 	const codeTheme = validCodeThemes(appConfig.codeTheme) ?? defaultCodeThemes();
@@ -56,7 +59,8 @@ export async function createApp() {
 	}
 	const workspaceReview = new WorkspaceReviewController(store);
 	workspaceReview.open(store.workspacePath);
-	const resources: RouteResources = { host, sessionImages };
+	const fdPath = await fdReady;
+	const resources: RouteResources = { host, sessionImages, fdPath };
 	const transferredFiles = await TransferredFileStore.create();
 	const context: RouteContext = {
 		store,

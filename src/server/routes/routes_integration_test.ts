@@ -7,6 +7,7 @@ import { assertEquals, assertStringIncludes } from "#testing/assertions";
 import { mkdir, remove, writeFile, writeTextFile } from "#testing/files";
 import { makeTempDir, makeTempFile } from "#testing/temp";
 
+import { getToolPath } from "../../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
 import { AppStore } from "../../state/app-store.ts";
 import { assertStringExcludes } from "../../testing/assertions.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
@@ -211,52 +212,61 @@ test("session images are served separately from transcript HTML", async () => {
 	assertEquals(new TextDecoder().decode(await response.arrayBuffer()), "image");
 });
 
-test("file search uses current workspace and escapes Datastar fragments", async () => {
-	const firstWorkspace = await makeTempDir();
-	const secondWorkspace = await makeTempDir();
-	try {
-		await writeTextFile(`${firstWorkspace}/first.txt`, "");
-		await writeTextFile(`${secondWorkspace}/<unsafe>.txt`, "");
-		const context = fakeContext();
-		context.store.setWorkspacePath(firstWorkspace);
-		const router = createRouter(context);
-		const first = await router.fetch(
-			signalGet("/files/search", { fileQuery: "first" }),
-		);
-		assertStringIncludes(await first.text(), "first.txt");
+const fdPath = getToolPath("fd") ?? undefined;
 
-		context.store.setWorkspacePath(secondWorkspace);
-		const response = await router.fetch(
-			signalGet("/files/search", { fileQuery: "unsafe" }),
-		);
-		assertEquals(response.status, 200);
-		assertEquals(response.headers.get("content-type"), "text/event-stream");
-		const body = await response.text();
-		assertStringIncludes(body, 'id="file-picker-results"');
-		assertStringIncludes(body, "&lt;unsafe&gt;.txt");
-		assertStringIncludes(body, "datastar-patch-elements");
-		assertStringIncludes(body, '"_filePickerOpen":true');
+test.skipIf(!fdPath)(
+	"file search uses current workspace and escapes Datastar fragments",
+	async () => {
+		const firstWorkspace = await makeTempDir();
+		const secondWorkspace = await makeTempDir();
+		try {
+			await writeTextFile(`${firstWorkspace}/first.txt`, "");
+			await writeTextFile(`${secondWorkspace}/<unsafe>.txt`, "");
+			const context = fakeContext();
+			context.resources.fdPath = fdPath;
+			context.store.setWorkspacePath(firstWorkspace);
+			const router = createRouter(context);
+			const first = await router.fetch(
+				signalGet("/files/search", { fileQuery: "first" }),
+			);
+			assertStringIncludes(await first.text(), "first.txt");
 
-		const empty = await router.fetch(
-			signalGet("/files/search", { fileQuery: "definitely-missing" }),
-		);
-		assertStringIncludes(await empty.text(), '"_filePickerOpen":false');
-		assertEquals((await router.fetch(signalGet("/files/search", {}))).status, 400);
-		assertEquals(
-			(
-				await router.fetch(
-					new Request("http://localhost/files/search?datastar=%7B"),
-				)
-			).status,
-			400,
-		);
-	} finally {
-		await Promise.all([
-			remove(firstWorkspace, { recursive: true }),
-			remove(secondWorkspace, { recursive: true }),
-		]);
-	}
-});
+			context.store.setWorkspacePath(secondWorkspace);
+			const response = await router.fetch(
+				signalGet("/files/search", { fileQuery: "unsafe" }),
+			);
+			assertEquals(response.status, 200);
+			assertEquals(response.headers.get("content-type"), "text/event-stream");
+			const body = await response.text();
+			assertStringIncludes(body, 'id="file-picker-results"');
+			assertStringIncludes(body, "&lt;unsafe&gt;.txt");
+			assertStringIncludes(body, "datastar-patch-elements");
+			assertStringIncludes(body, '"_filePickerOpen":true');
+
+			const empty = await router.fetch(
+				signalGet("/files/search", { fileQuery: "definitely-missing" }),
+			);
+			assertStringIncludes(await empty.text(), '"_filePickerOpen":false');
+			assertEquals(
+				(await router.fetch(signalGet("/files/search", {}))).status,
+				400,
+			);
+			assertEquals(
+				(
+					await router.fetch(
+						new Request("http://localhost/files/search?datastar=%7B"),
+					)
+				).status,
+				400,
+			);
+		} finally {
+			await Promise.all([
+				remove(firstWorkspace, { recursive: true }),
+				remove(secondWorkspace, { recursive: true }),
+			]);
+		}
+	},
+);
 
 test("workspace search returns matching directories", async () => {
 	const workspace = await makeTempDir();

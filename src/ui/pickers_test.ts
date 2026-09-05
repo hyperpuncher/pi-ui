@@ -303,10 +303,9 @@ test("file picker fragments escape dynamic values and expose list semantics", ()
 	const html = renderFilePickerResults(
 		[
 			{
-				value: `src/"<unsafe>.ts`,
+				value: `@src/"<unsafe>.ts`,
 				label: `<unsafe>.ts`,
 				description: `src/<unsafe>.ts`,
-				isDirectory: false,
 			},
 		],
 		"src",

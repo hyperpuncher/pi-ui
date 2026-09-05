@@ -1,4 +1,5 @@
-import type { FileSuggestion } from "../server/file-search.ts";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
+
 import { endpoints } from "../server/routes/endpoints.ts";
 import type {
 	WorkspaceDirectoryListing,
@@ -119,7 +120,7 @@ export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 }
 
 export function renderFilePickerResults(
-	items: readonly FileSuggestion[],
+	items: readonly AutocompleteItem[],
 	query = "",
 ): string {
 	return syncHtml(
@@ -134,8 +135,8 @@ export function renderFilePickerResults(
 						kind="file"
 						value={item.value}
 						label={item.label}
-						description={item.description}
-						metadata={item.isDirectory ? "dir" : "file"}
+						description={item.description ?? ""}
+						metadata={item.label.endsWith("/") ? "dir" : "file"}
 						selected={index === 0}
 					/>
 				))}

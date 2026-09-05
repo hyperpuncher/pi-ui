@@ -45,6 +45,7 @@ export type RuntimeResource = RouteRuntime &
 	Pick<RuntimeController, "dispose" | "openWorkspace">;
 
 export interface RouteResources {
+	fdPath?: string;
 	host: RuntimeResource | undefined;
 	sessionImages: SessionImageStore;
 }

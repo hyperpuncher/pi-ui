@@ -14,22 +14,22 @@ let slashCommandFilter;
 
 export function extractFilePrefix(value, cursor) {
 	const before = value.slice(0, cursor);
-	const delimiter = Math.max(
-		before.lastIndexOf(" "),
-		before.lastIndexOf("\n"),
-		before.lastIndexOf("\t"),
-		before.lastIndexOf("="),
-	);
-	const start = delimiter + 1;
-	const token = before.slice(start);
-	if (!token.startsWith("@") || token.includes(" ")) return undefined;
-	return { start, end: cursor, query: token.slice(1) };
+	const token = /(?:^|[\s"'=])(@(?:"[^"]*|[^\s"'=]*))$/.exec(before)?.[1];
+	if (!token) return undefined;
+	return { start: cursor - token.length, end: cursor, query: token.slice(1) };
 }
 
 export function completeFileValue(inputValue, match, value) {
-	const suffix = value.endsWith("/") ? "" : " ";
-	const text = `${inputValue.slice(0, match.start)}@${value}${suffix}${inputValue.slice(match.end)}`;
-	return { text, cursor: match.start + value.length + 1 + suffix.length };
+	const isDirectory = value.endsWith("/") || value.endsWith('/"');
+	const suffix = isDirectory ? "" : " ";
+	const after = inputValue.slice(match.end);
+	const remaining =
+		match.query.startsWith('"') && value.endsWith('"') && after.startsWith('"')
+			? after.slice(1)
+			: after;
+	const text = `${inputValue.slice(0, match.start)}${value}${suffix}${remaining}`;
+	const quoteOffset = isDirectory && value.endsWith('"') ? 1 : 0;
+	return { text, cursor: match.start + value.length + suffix.length - quoteOffset };
 }
 
 export function isFileOpen() {
@@ -178,7 +178,7 @@ function applyFileCompletion(value) {
 	input.selectionEnd = completion.cursor;
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 	input.focus();
-	if (value.endsWith("/")) queueFileSearch(input);
+	if (value.endsWith("/") || value.endsWith('/"')) queueFileSearch(input);
 	else closeFilePicker();
 }
 

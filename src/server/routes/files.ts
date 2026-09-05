@@ -28,6 +28,7 @@ export const fileRoutes = {
 				context.store.workspacePath,
 				query,
 				request.signal,
+				context.resources.fdPath,
 			);
 			return datastarResponse([
 				{ type: "elements", elements: renderFilePickerResults(items, query) },
