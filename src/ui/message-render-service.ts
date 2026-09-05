@@ -161,11 +161,9 @@ export class MessageRenderService {
 		this.clearScheduledMessages();
 		this.generation += 1;
 		this.queue.cancelAll();
-		for (const message of this.store.transcript.allMessages) {
-			releaseMarkdownStreamingState(message.id);
-		}
+		for (const id of this.presentation.keys()) releaseMarkdownStreamingState(id);
 		this.presentation.clear();
-		for (const message of this.store.transcript.allMessages) {
+		for (const message of this.store.messages) {
 			this.messageAppended(message.id);
 			if (
 				enhancementKind(message) === "markdown" &&

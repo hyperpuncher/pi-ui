@@ -301,6 +301,52 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 	assertEqual(renderCount, 60);
 });
 
+test("theme changes highlight only loaded messages and invalidate older cached pages", async () => {
+	let theme = "before";
+	const rendered: string[] = [];
+	const state = createState({
+		renderMarkdownFinal: async (text) => {
+			rendered.push(text);
+			return `<p>${theme}: ${text}</p>`;
+		},
+	});
+	connect(state);
+	state.replaceMessages(
+		Array.from({ length: 100 }, (_, index) => markdownMessage(`message ${index}`)),
+	);
+	await waitFor(() => rendered.length === 30);
+	state.renderer.patchOlderMessages(state.loadOlderMessages());
+	await waitFor(() => rendered.length === 60);
+	await settleMicrotasks();
+	state.showRecentMessages();
+	assertEqual(state.messages.length, 30);
+
+	theme = "after";
+	rendered.length = 0;
+	state.renderer.codeThemeChanged();
+	state.flush();
+	await waitFor(() =>
+		projectedMessages(state).every(
+			({ presentationState }) => presentationState === "final",
+		),
+	);
+	assertEqual(rendered.toSorted(), state.messages.map(({ text }) => text).toSorted());
+
+	state.renderer.patchOlderMessages(state.loadOlderMessages());
+	await waitFor(() =>
+		projectedMessages(state).every(
+			({ presentationState }) => presentationState === "final",
+		),
+	);
+	assertEqual(rendered.length, 60);
+	assertEqual(
+		projectedMessages(state).every(({ renderedHtml }) =>
+			renderedHtml?.includes("after:"),
+		),
+		true,
+	);
+});
+
 test("older messages insert after the trigger before rearming it", async () => {
 	const state = createState();
 	state.replaceMessages(
