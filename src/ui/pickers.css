@@ -48,7 +48,10 @@
 		min-width: 0;
 	}
 	.picker-row-title,
-	.picker-row-description {
+	.picker-row-description,
+	.command-item-title,
+	.command-item-description,
+	.slash-command-title {
 		display: block;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -57,16 +60,13 @@
 	.picker-row-title {
 		font-weight: 500;
 	}
-	.picker-row-description {
+	.picker-row-description,
+	.command-item-description {
 		color: var(--text-muted);
 		font-size: var(--text-xs);
 	}
 	.slash-command-title {
-		display: block;
-		overflow: hidden;
 		font-family: var(--font-mono);
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 	.slash-command-name {
 		color: var(--action-primary);
@@ -81,17 +81,6 @@
 	}
 	.command-item-content {
 		min-width: 0;
-	}
-	.command-item-title,
-	.command-item-description {
-		display: block;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.command-item-description {
-		color: var(--text-muted);
-		font-size: var(--text-xs);
 	}
 	.command-item-shortcut {
 		margin-inline-start: auto;
