@@ -1,6 +1,6 @@
 import {
+	CODE_THEME_PREVIEW,
 	codeThemesFor,
-	type CodeThemeAppearance,
 	type CodeThemeOption,
 } from "../code-themes.ts";
 import { getPierreThemes } from "../pierre-theme.ts";
@@ -146,16 +146,11 @@ function renderThemeCard(theme: CodeThemeOption, active: string): string {
 			aria-pressed={theme.name === active ? "true" : "false"}
 		>
 			<pre class="code-theme-preview">
-				<code safe>{sampleCode(theme.name, theme.appearance)}</code>
+				<code safe>{CODE_THEME_PREVIEW}</code>
 			</pre>
 			<span class="code-theme-meta">
 				<strong class="code-theme-name">{theme.label}</strong>
-				<small class="code-theme-group">{theme.group}</small>
 			</span>
 		</button>,
 	);
-}
-
-function sampleCode(name: string, appearance: CodeThemeAppearance): string {
-	return `const theme = {\n  name: '${name}',\n  mode: '${appearance}',\n}`;
 }

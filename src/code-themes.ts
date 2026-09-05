@@ -4,10 +4,12 @@ import { isRecord, isString } from "./utils/type-guards.ts";
 export type CodeThemeAppearance = keyof PierreThemes;
 export type CodeThemeOption = Readonly<{
 	appearance: CodeThemeAppearance;
-	group: "pierre" | "shiki";
 	label: string;
 	name: string;
 }>;
+
+export const CODE_THEME_PREVIEW =
+	"// syntax preview\nconst greet = (name: string) => {\n  return `hello, ${name}!`;\n};";
 
 const lightThemeNames = [
 	"pierre-light",
@@ -114,7 +116,6 @@ function themeLabel(name: string): string {
 function option(name: string, appearance: CodeThemeAppearance): CodeThemeOption {
 	return {
 		appearance,
-		group: name.startsWith("pierre-") ? "pierre" : "shiki",
 		label: themeLabel(name),
 		name,
 	};

@@ -21,7 +21,9 @@
 		--surface-raised: white;
 		--surface-muted: var(--gray-1);
 		--surface-control: var(--gray-1);
-		--surface-code: oklch(97.67% 0 none);
+		--surface-code-light: oklch(97.67% 0 none);
+		--surface-code-dark: oklch(15.33% 0 none);
+		--surface-code: var(--surface-code-light);
 
 		/* Text and interaction */
 		--text: var(--gray-15);
@@ -68,7 +70,7 @@
 		--surface-raised: oklch(20.33% 0 none);
 		--surface-muted: var(--gray-11);
 		--surface-control: var(--gray-13);
-		--surface-code: oklch(15.33% 0 none);
+		--surface-code: var(--surface-code-dark);
 
 		--text: var(--gray-0);
 		--text-muted: var(--gray-3);

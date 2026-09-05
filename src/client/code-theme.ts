@@ -5,7 +5,7 @@ import {
 	type ThemedToken,
 } from "@pierre/diffs";
 
-import { CODE_THEMES, type CodeThemeAppearance } from "../code-themes.ts";
+import { CODE_THEMES, CODE_THEME_PREVIEW } from "../code-themes.ts";
 import {
 	DEFAULT_PIERRE_THEMES,
 	isPierreThemes,
@@ -137,10 +137,9 @@ async function loadPreviews(): Promise<void> {
 		const cards = document.querySelectorAll<HTMLButtonElement>("[data-theme-name]");
 		for (const [index, card] of [...cards].entries()) {
 			const name = card.dataset.themeName;
-			const mode = themeAppearance(card.dataset.themeAppearance);
 			const preview = card.querySelector<HTMLElement>(".code-theme-preview");
-			if (!name || !mode || !preview) continue;
-			const result = highlighter.codeToTokens(sampleCode(name, mode), {
+			if (!name || !preview) continue;
+			const result = highlighter.codeToTokens(CODE_THEME_PREVIEW, {
 				lang: "typescript",
 				theme: name,
 			});
@@ -152,14 +151,6 @@ async function loadPreviews(): Promise<void> {
 		previewsPromise = undefined;
 		setStatus("Could not load theme previews.");
 	}
-}
-
-function themeAppearance(value: string | undefined): CodeThemeAppearance | undefined {
-	return value === "light" || value === "dark" ? value : undefined;
-}
-
-function sampleCode(name: string, mode: CodeThemeAppearance): string {
-	return `const theme = {\n  name: '${name}',\n  mode: '${mode}',\n}`;
 }
 
 function renderPreview(
