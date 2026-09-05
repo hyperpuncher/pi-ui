@@ -56,6 +56,45 @@ test("workspace review controller publishes non-Git file changes", async () => {
 	}
 });
 
+for (const linkedWorktree of [false, true]) {
+	test(`workspace watcher ignores Git internals but observes commits (${linkedWorktree ? "linked worktree" : "repository"})`, async () => {
+		const repository = await makeTempDir();
+		const workspace = linkedWorktree ? await makeTempDir() : repository;
+		const store = new AppStore();
+		const controller = new WorkspaceReviewController(store);
+		try {
+			await git(repository, "init");
+			await git(repository, "config", "user.email", "pi-ui@example.test");
+			await git(repository, "config", "user.name", "pi-ui");
+			await git(repository, "commit", "--allow-empty", "-m", "initial");
+			if (linkedWorktree)
+				await git(repository, "worktree", "add", "-b", "linked", workspace);
+			controller.open(workspace);
+			await waitFor(() => store.workspaceReview.commits.length === 1);
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			const filesRevision = store.workspaceFilesRevision;
+			await writeTextFile(`${repository}/.git/objects/pack/noise.tmp`, "noise");
+			await writeTextFile(`${repository}/.git/logs/noise`, "noise");
+			await writeTextFile(`${repository}/.git/index.lock`, "noise");
+			await new Promise((resolve) => setTimeout(resolve, 500));
+			assertEquals(store.workspaceFilesRevision, filesRevision);
+			await remove(`${repository}/.git/index.lock`);
+
+			// A worktree file named like Git metadata must not be filtered.
+			await writeTextFile(`${workspace}/output.lock`, "content");
+			await waitFor(() =>
+				store.workspaceReview.changes.some(({ path }) => path === "output.lock"),
+			);
+			await git(workspace, "commit", "--allow-empty", "-m", "next");
+			await waitFor(() => store.workspaceReview.commits.length === 2);
+		} finally {
+			controller.dispose();
+			if (linkedWorktree) await remove(workspace, { recursive: true });
+			await remove(repository, { recursive: true });
+		}
+	});
+}
+
 async function git(cwd: string, ...args: string[]): Promise<void> {
 	const output = await outputCommand("git", {
 		args: ["-C", cwd, ...args],

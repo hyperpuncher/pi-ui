@@ -67,8 +67,22 @@ export class WorkspaceReviewController {
 		if (!active()) return;
 		const gitPaths = await findGitWatchPaths(path);
 		if (!active()) return;
-		const changed = () => {
+		const changed = (watchPath: string, filename: string | null) => {
 			if (!active()) return;
+			if (gitPaths && filename) {
+				const relative = filename.replaceAll("\\", "/");
+				const metadataPrefix = watchPath === gitPaths[0] ? ".git/" : "";
+				const metadataPath = relative.startsWith(metadataPrefix)
+					? relative.slice(metadataPrefix.length)
+					: "";
+				// Refs, HEAD, index, and config still trigger refreshes when published.
+				if (
+					metadataPath.startsWith("objects/") ||
+					metadataPath.startsWith("logs/") ||
+					metadataPath.endsWith(".lock")
+				)
+					return;
+			}
 			if (this.timer !== undefined) clearTimeout(this.timer);
 			this.timer = setTimeout(() => {
 				this.timer = undefined;
@@ -82,7 +96,7 @@ export class WorkspaceReviewController {
 				{
 					recursive: gitPaths !== undefined || canWatchRecursively(path),
 				},
-				changed,
+				(_event, filename) => changed(watchPath, filename),
 			),
 		);
 	}
