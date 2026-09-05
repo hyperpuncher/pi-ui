@@ -91,14 +91,6 @@ export const promptRoutes = {
 			return datastarResponse();
 		},
 	},
-	[endpoints.messagesEnhance]: {
-		POST: (_request, context, url) => {
-			if (!context.renderer.enhanceMessage(url.searchParams.get("id") ?? "")) {
-				throw new RouteError(409, "Message is not deferred.");
-			}
-			return datastarResponse();
-		},
-	},
 } satisfies RouteMap<RouteContext>;
 
 async function readPrompt(

@@ -1,6 +1,5 @@
 import { sessionPerformance } from "../perf/session-performance.ts";
 import type { AppStore } from "../state/app-store.ts";
-import { shouldDeferEnhancement } from "../state/enhancement-policy.ts";
 import { EnhancementQueue } from "../state/enhancement-queue.ts";
 import { StreamingFrameScheduler } from "../state/streaming-frame-scheduler.ts";
 import type { TranscriptMessage } from "../state/transcript-state.ts";
@@ -209,13 +208,7 @@ export class MessageRenderService {
 	setDisplayRefreshHz(hz: number): boolean {
 		return this.streaming.setDisplayHz(hz);
 	}
-	enhanceMessage(id: string): boolean {
-		const message = this.store.transcript.getMessage(id);
-		if (!message || this.ensure(id).presentationState !== "deferred") return false;
-		this.enqueueEnhancement(id, true);
-		return true;
-	}
-	enqueueEnhancement(id: string, force = false): void {
+	enqueueEnhancement(id: string): void {
 		const message = this.store.transcript.getMessage(id);
 		const projected = message ? this.project(message) : undefined;
 		const kind = projected ? enhancementKind(projected) : undefined;
@@ -227,15 +220,9 @@ export class MessageRenderService {
 			(kind === "markdown" && this.streamingIds().includes(id)) ||
 			!message.text.trim() ||
 			value.presentationState === "enhancing" ||
-			value.presentationState === "final" ||
-			(value.presentationState === "deferred" && !force)
+			value.presentationState === "final"
 		)
 			return;
-		if (!force && shouldDeferEnhancement(kind, message.text)) {
-			value.presentationState = "deferred";
-			this.broadcast(message);
-			return;
-		}
 		const generation = this.generation;
 		const text = message.text;
 		const format = message.format;

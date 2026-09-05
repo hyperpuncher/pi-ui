@@ -368,23 +368,6 @@ function renderInlineToken(token: ThemedToken): string {
 	return `<span class="streaming-token"${styleAttribute}>${escapeHtml(token.content)}</span>`;
 }
 
-function renderDeferredEnhancement(message: AppMessage) {
-	if (message.presentationState !== "deferred") return "";
-	return (
-		<button
-			type="button"
-			class="btn enhance-message"
-			data-variant="ghost"
-			data-size="sm"
-			data-on:click={`@post('${endpoints.messagesEnhance}?id=${encodeURIComponent(message.id)}', {
-				payload: {},
-			})`}
-		>
-			Enhance formatting
-		</button>
-	);
-}
-
 function renderUserFileAttachment(
 	attachment: NonNullable<AppMessage["attachments"]>[number],
 ) {
@@ -545,7 +528,6 @@ function renderNarrativeMessage(message: AppMessage): string {
 				</div>
 				<div data-show="!$_thinkingHidden && !$_minimalMode">
 					<div class="markdown-content">{content}</div>
-					{renderDeferredEnhancement(message)}
 				</div>
 			</article>,
 		);
@@ -574,7 +556,6 @@ function renderNarrativeMessage(message: AppMessage): string {
 				</div>
 			)}
 			<div class="markdown-content">{content}</div>
-			{renderDeferredEnhancement(message)}
 		</article>,
 	);
 }
@@ -740,7 +721,6 @@ function renderToolMessage(message: AppMessage): string {
 			</p>
 			<div data-show="!$_minimalMode && !$_toolOutputHidden">
 				{renderToolOutput(message)}
-				{renderDeferredEnhancement(message)}
 			</div>
 		</article>,
 	);

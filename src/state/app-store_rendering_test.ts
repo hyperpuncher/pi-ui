@@ -417,24 +417,40 @@ test("replacement discards stale enhancement completion", async () => {
 	assertEqual(projectedMessages(state)[0].presentationState, "final");
 });
 
-test("oversized enhancement retains fallback until explicitly requested", async () => {
-	let renderCount = 0;
-	const state = createState({
-		renderMarkdownFinal: (text) => {
-			renderCount += 1;
-			return Promise.resolve(`<p>${text.length}</p>`);
-		},
+for (const message of [
+	{ role: "assistant" },
+	{ role: "thought" },
+	{ role: "tool", format: "code" },
+	{ role: "tool", format: "diff" },
+] as const) {
+	test(`oversized ${message.role === "tool" ? message.format : message.role} automatically finishes highlighting`, async () => {
+		let finish: ((html: string) => void) | undefined;
+		const render = () =>
+			new Promise<string>((resolve) => {
+				finish = resolve;
+			});
+		const state = createState({
+			renderMarkdownFinal: render,
+			renderCode: render,
+			renderDiff: render,
+		});
+		state.replaceMessages([
+			{ ...message, text: "large fallback ".repeat(3_000), timestamp },
+		]);
+		await waitFor(() => finish !== undefined);
+		assertEqual(projectedMessages(state)[0].presentationState, "enhancing");
+		const interim = state.renderer.messages.renderMessagesElement();
+		assertIncludes(interim, "large fallback");
+		assertNotIncludes(interim, "Enhance formatting");
+		finish?.("<p>highlighting finished</p>");
+		await settleMicrotasks();
+		assertEqual(projectedMessages(state)[0].presentationState, "final");
+		assertIncludes(
+			state.renderer.messages.renderMessagesElement(),
+			"highlighting finished",
+		);
 	});
-	state.replaceMessages([markdownMessage("large fallback ".repeat(2_000))]);
-	await settleMicrotasks();
-	assertEqual(renderCount, 0);
-	assertEqual(projectedMessages(state)[0].presentationState, "deferred");
-	assertIncludes(state.renderer.messages.renderMessagesElement(), "Enhance formatting");
-	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), true);
-	await waitFor(() => renderCount === 1);
-	await settleMicrotasks();
-	assertEqual(projectedMessages(state)[0].presentationState, "final");
-});
+}
 
 test("skill and compaction instructions render Markdown without enhancement work", async () => {
 	let renderCount = 0;
@@ -453,12 +469,6 @@ test("skill and compaction instructions render Markdown without enhancement work
 	assertEqual(renderCount, 0);
 	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
 	assertIncludes(projectedMessages(state)[1].renderedHtml ?? "", "<strong>");
-	assertEqual(state.renderer.enhanceMessage(state.messages[0].id), false);
-	assertEqual(state.renderer.enhanceMessage(state.messages[1].id), false);
-	assertNotIncludes(
-		state.renderer.messages.renderMessagesElement(),
-		"Enhance formatting",
-	);
 });
 
 test("assistant completion immediately flushes newest streaming content", () => {

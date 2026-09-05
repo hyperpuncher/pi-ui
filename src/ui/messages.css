@@ -289,9 +289,6 @@
 		color: color-mix(in oklch, var(--text-muted) 80%, var(--surface-base));
 		font-weight: 400;
 	}
-	.enhance-message {
-		margin: 0.5rem;
-	}
 	.message-link {
 		text-decoration: underline;
 		text-decoration-color: var(--border);

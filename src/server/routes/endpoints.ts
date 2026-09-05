@@ -19,7 +19,6 @@ export const endpoints = {
 	abort: "/abort",
 	messagesOlder: "/messages/older",
 	messagesTrim: "/messages/trim",
-	messagesEnhance: "/messages/enhance",
 	sessionsNew: "/sessions/new",
 	sessionsNewTemporary: "/sessions/new-temporary",
 	sessionsSearch: "/sessions/search",

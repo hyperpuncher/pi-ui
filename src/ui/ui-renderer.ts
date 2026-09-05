@@ -285,9 +285,6 @@ export class UiRenderer implements AppStorePresentation {
 			this.messages.enqueueEnhancement(message.id);
 		}
 	}
-	enhanceMessage(id: string): boolean {
-		return this.messages.enhanceMessage(id);
-	}
 	setDisplayRefreshHz(clientId: string, hz: number): boolean {
 		if (!this.displayClients.setHz(clientId, hz)) return false;
 		this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
