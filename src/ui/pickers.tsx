@@ -463,7 +463,6 @@ function renderSessionRow(
 			id={sessionRowId(session.path)}
 			role="menuitem"
 			tabindex="-1"
-			class="session-menu-row"
 			aria-current={current ? "true" : undefined}
 			data-preserve-attr="class hidden"
 			data-keep-command-open
