@@ -1,4 +1,4 @@
-import { test } from "bun:test";
+import { afterEach, test } from "bun:test";
 
 import {
 	assertEquals as assertEqual,
@@ -10,6 +10,7 @@ import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { collectElementPatches } from "../testing/element-patches.ts";
 import { projectBackendSignals } from "../ui/backend-signals.ts";
+import { renderMarkdownFinal } from "../ui/markdown.tsx";
 import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { AppStore } from "./app-store.ts";
@@ -284,6 +285,7 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 			return Promise.resolve(`<p>${text}</p>`);
 		},
 	});
+	connect(state);
 	state.replaceMessages(
 		Array.from({ length: 60 }, (_, index) => markdownMessage(`**message ${index}**`)),
 	);
@@ -403,6 +405,7 @@ test("replacement discards stale enhancement completion", async () => {
 		renderMarkdownFinal: (text) =>
 			new Promise<string>((resolve) => gates.push({ text, resolve })),
 	});
+	connect(state);
 	state.replaceMessages([markdownMessage("session A")]);
 	while (gates.length < 1) await Promise.resolve();
 	state.replaceMessages([markdownMessage("session B")]);
@@ -434,6 +437,7 @@ for (const message of [
 			renderCode: render,
 			renderDiff: render,
 		});
+		connect(state);
 		state.replaceMessages([
 			{ ...message, text: "large fallback ".repeat(3_000), timestamp },
 		]);
@@ -460,6 +464,7 @@ test("skill and compaction instructions render Markdown without enhancement work
 			return Promise.resolve("<p>enhanced</p>");
 		},
 	});
+	connect(state);
 	state.replaceMessages([
 		{ role: "skill", text: "**Skill instructions**", timestamp },
 		{ role: "compaction", text: "**Compaction summary**", timestamp },
@@ -473,6 +478,7 @@ test("skill and compaction instructions render Markdown without enhancement work
 
 test("assistant completion immediately flushes newest streaming content", () => {
 	const state = createState();
+	connect(state);
 	state.appendMessage("assistant", "first");
 	state.appendAssistantDelta(" **latest**");
 	state.finishAssistant();
@@ -504,6 +510,7 @@ test("running background transcript stays headless until activation", async () =
 			return Promise.resolve(`<pre>${text}</pre>`);
 		},
 	});
+	connect(foreground);
 	foreground.restoreChat(background.snapshot());
 	await settleMicrotasks();
 
@@ -548,6 +555,7 @@ test("completed background transcript enhances only after activation", async () 
 			return Promise.resolve("<p>enhanced</p>");
 		},
 	});
+	connect(foreground);
 	foreground.restoreChat(background.snapshot());
 	await waitFor(() => projectedMessages(foreground)[0]?.presentationState === "final");
 	assertEqual(enhancementCount, 1);
@@ -560,6 +568,7 @@ test("enhancement errors retain the rendered Markdown fallback", async () => {
 		const state = createState({
 			renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
 		});
+		connect(state);
 		state.replaceMessages([markdownMessage("**fallback**")]);
 		await settleMicrotasks();
 		assertEqual(
@@ -636,7 +645,13 @@ test("a thrown update still commits its completed mutations", async () => {
 });
 
 test("headless updates initialize one current view and tolerate disconnect", async () => {
-	const state = createState();
+	let renderCount = 0;
+	const state = createState({
+		renderMarkdownFinal: (text) => {
+			renderCount++;
+			return renderMarkdownFinal(text);
+		},
+	});
 	state.setWorkspacePath("/tmp/headless");
 	const controller = new AbortController();
 	const response = state.createStream(controller.signal);
@@ -658,7 +673,8 @@ test("headless updates initialize one current view and tolerate disconnect", asy
 
 	state.replaceMessages([markdownMessage("**offline answer**")]);
 	state.flush();
-	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
+	await settleMicrotasks();
+	assertEqual(renderCount, 0);
 
 	const reconnect = new AbortController();
 	try {
@@ -669,9 +685,90 @@ test("headless updates initialize one current view and tolerate disconnect", asy
 		);
 		assertIncludes(output, "<strong>offline answer</strong>");
 		assertEqual(count(output, "event: datastar-patch-elements"), 1);
+		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
+		assertEqual(renderCount, 1);
 	} finally {
 		reconnect.abort();
 	}
+});
+
+test("message work waits for a client and continues while another tab remains", async () => {
+	const rendered: string[] = [];
+	const render = async (text: string) => {
+		rendered.push(text);
+		return renderMarkdownFinal(text);
+	};
+	const state = createState({ renderMarkdownFinal: render, renderCode: render });
+	state.appendAssistantDelta("offline answer");
+	state.finishAssistant();
+	const toolId = state.appendMessage("tool", "running", {
+		format: "code",
+		state: "running",
+	});
+	state.updateMessage(toolId, { text: "finished tool", state: "success" });
+	state.flush();
+	await settleMicrotasks();
+	assertEqual(rendered, []);
+	assertEqual(
+		state.messages.map(({ text }) => text),
+		["offline answer", "finished tool"],
+	);
+
+	const first = connect(state);
+	await waitFor(() => rendered.length === 2);
+	await settleMicrotasks();
+	const second = connect(state);
+	first.abort();
+	state.appendAssistantDelta("one tab remains");
+	state.finishAssistant();
+	state.renderer.requestCommit();
+	state.flush();
+	await waitFor(() => rendered.includes("one tab remains"));
+	assertEqual(rendered.length, 3);
+
+	second.abort();
+	state.appendAssistantDelta("offline again");
+	state.finishAssistant();
+	state.flush();
+	await settleMicrotasks();
+	assertEqual(rendered.length, 3);
+});
+
+test("reconnecting during a turn resumes streaming and final highlighting", async () => {
+	const state = createState();
+	state.appendAssistantDelta("before **connection** ");
+	connect(state);
+	assertEqual(projectedMessages(state)[0].presentationState, "streaming");
+	state.appendAssistantDelta("and after");
+	state.finishAssistant();
+	state.flush();
+	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
+	assertIncludes(
+		projectedMessages(state)[0].renderedHtml ?? "",
+		"before <strong>connection</strong> and after",
+	);
+});
+
+test("last-client disconnect discards in-flight rendering before reconnect", async () => {
+	const gates: Array<{ text: string; resolve: (html: string) => void }> = [];
+	const state = createState({
+		enhancementConcurrency: 1,
+		renderMarkdownFinal: (text) =>
+			new Promise<string>((resolve) => gates.push({ text, resolve })),
+	});
+	const first = connect(state);
+	state.replaceMessages([markdownMessage("old content")]);
+	await waitFor(() => gates.length === 1);
+	first.abort();
+	state.updateMessage(state.messages[0].id, { text: "current content" });
+	connect(state);
+	gates[0].resolve("<p>stale rendering</p>");
+	await waitFor(() => gates.length === 2);
+	assertEqual(gates[1].text, "current content");
+	assertNotIncludes(state.renderer.messages.renderMessagesElement(), "stale rendering");
+	gates[1].resolve("<p>current rendering</p>");
+	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
+	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>current rendering</p>");
 });
 
 test("session pagination patches only session-owned regions", async () => {
@@ -967,6 +1064,18 @@ function createState(options: MessageRenderServiceOptions = {}): TestStore {
 		renderer,
 		createStream: (signal: AbortSignal) => renderer.createStream(signal),
 	});
+}
+
+const connections: AbortController[] = [];
+afterEach(() => {
+	for (const controller of connections.splice(0)) controller.abort();
+});
+
+function connect(state: TestStore): AbortController {
+	const controller = new AbortController();
+	connections.push(controller);
+	state.createStream(controller.signal);
+	return controller;
 }
 
 function projectedMessages(state: TestStore) {

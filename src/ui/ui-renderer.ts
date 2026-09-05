@@ -88,11 +88,36 @@ export class UiRenderer implements AppStorePresentation {
 		const disconnect = () => {
 			this.displayClients.disconnect(clientId);
 			this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
+			if (this.hub.clientCount === 0) {
+				this.pendingEnhancements.clear();
+				this.messages.transcriptReplacing();
+			}
 		};
 		try {
 			return this.hub.createStream(
 				signal,
-				() => this.renderView({}, this.projectState(this.store.snapshot())),
+				() => {
+					if (this.hub.clientCount === 1) {
+						this.messages.transcriptReplaced(
+							[
+								this.store.transcript.activeThoughtMessageId,
+								this.store.transcript.activeAssistantMessageId,
+							],
+							[],
+						);
+					}
+					const snapshot = this.store.snapshot();
+					const view = this.renderView({}, this.projectState(snapshot));
+					if (this.hub.clientCount === 1) {
+						// Send the readable initial view before starting final highlighting.
+						queueMicrotask(() => {
+							if (this.hub.clientCount === 0) return;
+							for (const message of snapshot.messages.toReversed())
+								this.messages.enqueueEnhancement(message.id);
+						});
+					}
+					return view;
+				},
 				{ onDisconnect: disconnect },
 			);
 		} catch (error) {
@@ -154,7 +179,8 @@ export class UiRenderer implements AppStorePresentation {
 			this.patchDirtyRegions(state, effects, dirtyRegions);
 		}
 		this.replaceTranscriptOnCommit = false;
-		for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
+		if (this.hub.clientCount > 0)
+			for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
 	private patchDirtyRegions(
 		snapshot: AppStateSnapshot,
@@ -195,6 +221,7 @@ export class UiRenderer implements AppStorePresentation {
 		}
 	}
 	messageAppended(id: string): void {
+		if (this.hub.clientCount === 0) return;
 		this.messages.messageAppended(id);
 		this.appendMessage(id);
 	}
@@ -219,6 +246,7 @@ export class UiRenderer implements AppStorePresentation {
 			});
 	}
 	messageUpdated(id: string): void {
+		if (this.hub.clientCount === 0) return;
 		this.messages.messageUpdated(id);
 	}
 	pickersChanged(): void {
@@ -234,7 +262,8 @@ export class UiRenderer implements AppStorePresentation {
 		this.workspaceReviewDirty = true;
 	}
 	codeThemeChanged(): void {
-		this.messages.codeThemeChanged();
+		if (this.hub.clientCount > 0) this.messages.codeThemeChanged();
+		else this.messages.transcriptReplacing();
 		this.replaceTranscriptOnCommit = true;
 		this.requestCommit();
 	}
@@ -242,13 +271,16 @@ export class UiRenderer implements AppStorePresentation {
 		this.requestCommit();
 	}
 	streamingMessageStarted(id: string): void {
+		if (this.hub.clientCount === 0) return;
 		this.messages.streamingMessageStarted(id);
 		this.appendMessage(id);
 	}
 	streamingMessageChanged(): void {
+		if (this.hub.clientCount === 0) return;
 		this.messages.streamingMessageChanged();
 	}
 	sessionTransitionChanged(scrollToBottom: boolean): void {
+		if (this.hub.clientCount === 0) return;
 		this.hub.patchView(
 			"",
 			this.renderSignals(this.store.snapshot()),
@@ -256,6 +288,7 @@ export class UiRenderer implements AppStorePresentation {
 		);
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
+		if (this.hub.clientCount === 0) return;
 		this.messages.assistantFinished(ids);
 	}
 	transcriptReplacing(): void {
@@ -266,9 +299,11 @@ export class UiRenderer implements AppStorePresentation {
 		activeIds: readonly (string | undefined)[],
 		enhancementIds: readonly string[],
 	): void {
-		this.messages.transcriptReplaced(activeIds, enhancementIds);
+		if (this.hub.clientCount > 0)
+			this.messages.transcriptReplaced(activeIds, enhancementIds);
 	}
 	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
+		if (this.hub.clientCount === 0) return;
 		this.hub.patchElement(
 			this.messages.renderOlderMessagesPatch(messages),
 			"#older-messages-trigger",
