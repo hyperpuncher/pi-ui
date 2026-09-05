@@ -193,6 +193,7 @@ export type AppStateSnapshot = Readonly<{
 	queuedFollowUpMessages: readonly string[];
 	workspacePath: string;
 	workspaceFilesRevision: number;
+	workspaceTreeRevision: number;
 	workspaceReview: WorkspaceReviewSnapshot;
 	workspaceReviewPreferences: WorkspaceReviewPreferences;
 	recentWorkspaces: readonly string[];
@@ -268,6 +269,7 @@ export class AppStore {
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
 	workspaceFilesRevision = 0;
+	workspaceTreeRevision = 0;
 	workspaceReview = unloadedWorkspaceReviewSnapshot;
 	workspaceReviewPreferences: WorkspaceReviewPreferences = {};
 	recentWorkspaces: string[] = [];
@@ -360,6 +362,7 @@ export class AppStore {
 			queuedFollowUpMessages: [...this.queuedFollowUpMessages],
 			workspacePath: this.workspacePath,
 			workspaceFilesRevision: this.workspaceFilesRevision,
+			workspaceTreeRevision: this.workspaceTreeRevision,
 			workspaceReview: structuredClone(this.workspaceReview),
 			workspaceReviewPreferences: { ...this.workspaceReviewPreferences },
 			recentWorkspaces: [...this.recentWorkspaces],
@@ -700,14 +703,16 @@ export class AppStore {
 		if (this.workspacePath === value) return;
 		this.workspacePath = value;
 		this.workspaceFilesRevision = 0;
+		this.workspaceTreeRevision = 0;
 		this.workspaceReview = unloadedWorkspaceReviewSnapshot;
 		this.presentation?.pickersChanged();
 		this.presentation?.workspaceReviewChanged();
 		this.commit();
 		this.workspacePathListener?.(value);
 	}
-	workspaceFilesChanged(): void {
+	workspaceFilesChanged(treeChanged = true): void {
 		this.workspaceFilesRevision += 1;
+		if (treeChanged) this.workspaceTreeRevision += 1;
 		this.presentation?.workspaceReviewChanged();
 		this.commit();
 	}

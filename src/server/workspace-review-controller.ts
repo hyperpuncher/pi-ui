@@ -73,11 +73,13 @@ export class WorkspaceReviewController {
 		if (!active()) return;
 		// Undefined means this batch requires a full refresh, regardless of later events.
 		let pendingPaths: Set<string> | undefined = new Set();
+		let treeChanged = false;
 		const flush = async () => {
 			if (!active()) return;
 			const paths = pendingPaths;
 			pendingPaths = new Set();
-			this.store.workspaceFilesChanged();
+			this.store.workspaceFilesChanged(treeChanged);
+			treeChanged = false;
 			if (
 				paths &&
 				gitPaths?.[0] &&
@@ -102,6 +104,8 @@ export class WorkspaceReviewController {
 				)
 					return;
 			}
+			// A later content event must not erase a structural change in this batch.
+			if (event !== "change" || !filename) treeChanged = true;
 			// Directory renames can hide tracked descendants; metadata and ignore
 			// rule changes can alter the review without changing any source file.
 			if (

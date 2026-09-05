@@ -212,6 +212,7 @@ export class UiRenderer implements AppStorePresentation {
 				renderWorkspaceReviewData(
 					snapshot.workspacePath,
 					snapshot.workspaceFilesRevision,
+					snapshot.workspaceTreeRevision,
 					snapshot.workspaceReview,
 					snapshot.workspaceReviewPreferences,
 				),
@@ -388,6 +389,7 @@ export class UiRenderer implements AppStorePresentation {
 				renderWorkspaceReviewData(
 					snapshot.workspacePath,
 					snapshot.workspaceFilesRevision,
+					snapshot.workspaceTreeRevision,
 					snapshot.workspaceReview,
 					snapshot.workspaceReviewPreferences,
 				),

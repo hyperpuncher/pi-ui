@@ -246,6 +246,7 @@ export function renderPage(
 							{renderWorkspaceReview(
 								state.workspacePath,
 								state.workspaceFilesRevision,
+								state.workspaceTreeRevision,
 								state.workspaceReview,
 								state.workspaceReviewPreferences,
 							)}

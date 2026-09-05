@@ -1,4 +1,5 @@
 import { test } from "bun:test";
+import { rename } from "node:fs/promises";
 
 import { assertEquals } from "#testing/assertions";
 import { remove, writeTextFile } from "#testing/files";
@@ -24,12 +25,14 @@ test("workspace review controller publishes Git changes to AppStore", async () =
 		await waitFor(() => store.workspaceReview.isGitRepository);
 		const revision = store.workspaceReview.revision;
 		const filesRevision = store.workspaceFilesRevision;
+		const treeRevision = store.workspaceTreeRevision;
 		await new Promise((resolve) => setTimeout(resolve, 50));
 		await writeTextFile(`${workspace}/example.txt`, "second\n");
 		await waitFor(() => store.workspaceReview.revision !== revision);
 		await waitFor(() => store.workspaceFilesRevision !== filesRevision);
 
 		assertEquals(store.workspaceReview.changes[0]?.path, "example.txt");
+		assertEquals(store.workspaceTreeRevision, treeRevision);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		const settledFilesRevision = store.workspaceFilesRevision;
 		await new Promise((resolve) => setTimeout(resolve, 300));
@@ -141,6 +144,44 @@ for (const linkedWorktree of [false, true]) {
 		}
 	});
 }
+
+test("tree revisions preserve structural changes across later content edits", async () => {
+	const workspace = await makeTempDir();
+	const store = new AppStore();
+	const controller = new WorkspaceReviewController(store);
+	try {
+		await writeTextFile(`${workspace}/existing.txt`, "initial");
+		controller.open(workspace);
+		await waitFor(() => store.workspaceReview.revision === "non-git");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		const treeRevision = store.workspaceTreeRevision;
+		await writeTextFile(`${workspace}/existing.txt`, "edited");
+		await waitFor(() => store.workspaceFilesRevision > 0);
+		assertEquals(store.workspaceTreeRevision, treeRevision);
+
+		for (const mutate of [
+			() => writeTextFile(`${workspace}/created.txt`, "created"),
+			() => rename(`${workspace}/created.txt`, `${workspace}/renamed.txt`),
+			() => remove(`${workspace}/renamed.txt`),
+		]) {
+			const before = store.workspaceTreeRevision;
+			await mutate();
+			await writeTextFile(`${workspace}/existing.txt`, String(before));
+			await waitFor(() => store.workspaceTreeRevision > before);
+			assertEquals(
+				store.snapshot().workspaceTreeRevision,
+				store.workspaceTreeRevision,
+			);
+		}
+		store.setWorkspacePath(`${workspace}/other`);
+		assertEquals(store.workspaceTreeRevision, 0);
+		assertEquals(store.workspaceFilesRevision, 0);
+	} finally {
+		controller.dispose();
+		await remove(workspace, { recursive: true });
+	}
+});
 
 async function git(cwd: string, ...args: string[]): Promise<void> {
 	const output = await outputCommand("git", {

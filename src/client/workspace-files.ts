@@ -48,6 +48,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	let workspacePath = options.initialWorkspacePath;
 	let loadedPaths: string[] = [];
 	let loadedWorkspacePath: string | undefined;
+	let treeDirty = false;
 	let visible = false;
 	let loadGeneration = 0;
 	let fileGeneration = 0;
@@ -320,8 +321,8 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		else await selectFile(path);
 	}
 
-	function refresh(): void {
-		void refreshFromDisk();
+	function refresh(treeChanged = true): void {
+		void refreshFromDisk(treeChanged);
 	}
 
 	function refreshAfterDiscard(path: string): void {
@@ -332,10 +333,10 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		void refreshFromDisk();
 	}
 
-	async function refreshFromDisk(): Promise<void> {
+	async function refreshFromDisk(treeChanged = true): Promise<void> {
 		const observed = current;
 		const observedGeneration = fileGeneration;
-		await loadFiles(true);
+		await loadFiles(treeChanged);
 		if (!observed || current !== observed || fileGeneration !== observedGeneration)
 			return;
 		try {
@@ -394,8 +395,9 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	}
 
 	async function loadFiles(force = false): Promise<void> {
-		if (!visible || (!force && loadedWorkspacePath === workspacePath)) return;
+		if (force) treeDirty = true;
 		const generation = ++loadGeneration;
+		if (!visible || (!treeDirty && loadedWorkspacePath === workspacePath)) return;
 		if (!force) setStatus("Loading files…");
 		try {
 			const data = await api.list();
@@ -408,6 +410,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			);
 			loadedWorkspacePath = workspacePath;
 			loadedPaths = data.paths;
+			treeDirty = false;
 			// Linked files need not appear in the workspace tree. Keep the open
 			// file (including unavailable previews) selected when the tree refreshes.
 			if (selectedFilePath) {

@@ -102,6 +102,7 @@ const initialData = JSON.parse(data.textContent ?? "");
 if (
 	!isRecord(initialData) ||
 	!isNumber(initialData.filesRevision) ||
+	!isNumber(initialData.treeRevision) ||
 	!isString(initialData.workspacePath) ||
 	!isWorkspaceReviewSnapshot(initialData.snapshot)
 ) {
@@ -110,6 +111,7 @@ if (
 const preferences = normalizeWorkspaceReviewPreferences(initialData.preferences);
 let workspacePath = initialData.workspacePath;
 let filesRevision = initialData.filesRevision;
+let treeRevision = initialData.treeRevision;
 let snapshot: WorkspaceReviewSnapshot = initialData.snapshot;
 let historyCommits = [...snapshot.commits];
 let historyHasMore = snapshot.commits.length === workspaceReviewHistoryPageSize;
@@ -230,15 +232,18 @@ function applyWorkspaceReviewData(): void {
 		if (
 			isRecord(value) &&
 			isNumber(value.filesRevision) &&
+			isNumber(value.treeRevision) &&
 			isString(value.workspacePath) &&
 			isWorkspaceReviewSnapshot(value.snapshot)
 		) {
 			const filesChanged =
 				value.workspacePath === workspacePath &&
 				value.filesRevision !== filesRevision;
+			const treeChanged = value.treeRevision !== treeRevision;
 			filesRevision = value.filesRevision;
+			treeRevision = value.treeRevision;
 			applyWorkspaceReview(value.workspacePath, value.snapshot);
-			if (filesChanged) workspaceFiles.refresh();
+			if (filesChanged) workspaceFiles.refresh(treeChanged);
 		}
 	} catch {
 		// A later stream morph can replace an incomplete payload.

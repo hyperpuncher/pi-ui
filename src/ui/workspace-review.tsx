@@ -74,6 +74,7 @@ function resizeHandleAttributes(options: {
 export function renderWorkspaceReview(
 	workspacePath: string,
 	filesRevision: number,
+	treeRevision: number,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): string {
@@ -480,6 +481,7 @@ export function renderWorkspaceReview(
 			{renderWorkspaceReviewDataRegion(
 				workspacePath,
 				filesRevision,
+				treeRevision,
 				snapshot,
 				preferences,
 			)}
@@ -619,6 +621,7 @@ function renderWorkspaceModeHeader(
 function workspaceReviewDataElement(
 	workspacePath: string,
 	filesRevision: number,
+	treeRevision: number,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): JSX.Element {
@@ -626,6 +629,7 @@ function workspaceReviewDataElement(
 		<script id="workspace-review-data" type="application/json">
 			{JSON.stringify({
 				filesRevision,
+				treeRevision,
 				preferences,
 				snapshot,
 				workspacePath,
@@ -637,6 +641,7 @@ function workspaceReviewDataElement(
 function renderWorkspaceReviewDataRegion(
 	workspacePath: string,
 	filesRevision: number,
+	treeRevision: number,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): JSX.Element {
@@ -645,6 +650,7 @@ function renderWorkspaceReviewDataRegion(
 			{workspaceReviewDataElement(
 				workspacePath,
 				filesRevision,
+				treeRevision,
 				snapshot,
 				preferences,
 			)}
@@ -655,10 +661,17 @@ function renderWorkspaceReviewDataRegion(
 export function renderWorkspaceReviewData(
 	workspacePath: string,
 	filesRevision: number,
+	treeRevision: number,
 	snapshot: WorkspaceReviewSnapshot,
 	preferences: WorkspaceReviewPreferences,
 ): string {
 	return syncHtml(
-		workspaceReviewDataElement(workspacePath, filesRevision, snapshot, preferences),
+		workspaceReviewDataElement(
+			workspacePath,
+			filesRevision,
+			treeRevision,
+			snapshot,
+			preferences,
+		),
 	);
 }
