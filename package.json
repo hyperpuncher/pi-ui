@@ -1,6 +1,6 @@
 {
 	"name": "@hyperpuncher/pi-ui",
-	"version": "0.40.1",
+	"version": "0.41.0",
 	"description": "keyboard-first minimal gui for pi",
 	"homepage": "https://pi-ui.app",
 	"bugs": "https://github.com/hyperpuncher/pi-ui/issues",
