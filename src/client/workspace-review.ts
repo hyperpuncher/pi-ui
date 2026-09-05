@@ -73,7 +73,7 @@ window.addEventListener("pi-ui-code-theme-changed", (event) => {
 	if (viewer) {
 		void createWorkerPool()
 			.setRenderOptions({ theme: themes })
-			.then(() => viewer?.setOptions(viewerOptions()))
+			.then(updateViewerOptions)
 			.catch((error) => console.error("Failed to update workspace theme", error));
 	}
 });
@@ -122,6 +122,7 @@ let wrap = preferences.wrap ?? true;
 let version = 0;
 const itemRevisions = new Map<string, { content: string; version: number }>();
 let viewer: CodeView<ReviewCommentMetadata> | undefined;
+let viewerCommentsEnabled: boolean | undefined;
 const comments = createWorkspaceReviewComments({
 	clearSelection: () => viewer?.clearSelectedLines(),
 	onAnnotationsChange: updateWorkingAnnotations,
@@ -204,7 +205,7 @@ wrapButton.addEventListener("click", () => {
 	wrap = !wrap;
 	wrapButton.setAttribute("aria-pressed", String(wrap));
 	writePreferences();
-	viewer?.setOptions(viewerOptions());
+	updateViewerOptions();
 });
 let observedDiffLayout = effectiveLayout();
 const resize = new ResizeObserver(() => {
@@ -212,11 +213,11 @@ const resize = new ResizeObserver(() => {
 	syncLayoutButtons(nextLayout);
 	if (nextLayout === observedDiffLayout) return;
 	observedDiffLayout = nextLayout;
-	viewer?.setOptions(viewerOptions());
+	updateViewerOptions();
 });
 resize.observe(diffRoot);
 
-const theme = new MutationObserver(() => viewer?.setOptions(viewerOptions()));
+const theme = new MutationObserver(updateViewerOptions);
 theme.observe(document.documentElement, {
 	attributeFilter: ["class"],
 	attributes: true,
@@ -375,7 +376,7 @@ function setLayout(next: DiffLayout): void {
 	observedDiffLayout = effectiveLayout();
 	syncLayoutButtons(observedDiffLayout);
 	writePreferences();
-	viewer?.setOptions(viewerOptions());
+	updateViewerOptions();
 }
 
 function selectWorking(path?: string, fromTree = false): void {
@@ -500,10 +501,12 @@ function publish(): void {
 	if (!visibility.isOpen()) return;
 	if (!viewer) {
 		observedDiffLayout = effectiveLayout();
-		viewer = new CodeView(viewerOptions(), createWorkerPool());
+		const options = viewerOptions();
+		viewer = new CodeView(options, createWorkerPool());
+		viewerCommentsEnabled = options.enableGutterUtility;
 		viewer.setup(diffRoot);
-	} else {
-		viewer.setOptions(viewerOptions());
+	} else if (viewerCommentsEnabled !== canAddComments()) {
+		updateViewerOptions();
 	}
 	viewer.setItems(visible);
 }
@@ -616,8 +619,19 @@ function hideDetailHeader(): void {
 	hideWorkspaceReviewDetailHeader(detailHeader);
 }
 
+function canAddComments(): boolean {
+	return selection.kind === "working" && comments.canAdd();
+}
+
+function updateViewerOptions(): void {
+	if (!viewer) return;
+	const options = viewerOptions();
+	viewer.setOptions(options);
+	viewerCommentsEnabled = options.enableGutterUtility;
+}
+
 function viewerOptions(): CodeViewOptions<ReviewCommentMetadata, undefined> {
-	const commentsEnabled = selection.kind === "working" && comments.canAdd();
+	const commentsEnabled = canAddComments();
 	return {
 		diffIndicators: "none",
 		enableGutterUtility: commentsEnabled,
