@@ -123,6 +123,31 @@ test("streaming scheduler reports skipped and late deadlines", () => {
 	assertNear(scheduler.stats.maximumTimerLatenessMs, 10, 0.001);
 });
 
+test("streaming scheduler skips idle gaps and exact deadlines without losing cadence", () => {
+	for (const idleMs of [7.5, 8, 8.5, 24 * 60 * 60 * 1000 + 3]) {
+		const clock = new FakeClock();
+		const rendered: string[] = [];
+		const scheduler = new StreamingFrameScheduler<string>(
+			(value) => rendered.push(value),
+			clock,
+			0,
+		);
+		scheduler.setDisplayHz(125);
+		scheduler.schedule("before idle");
+		scheduler.flush();
+		clock.advance(idleMs);
+		scheduler.schedule("after idle");
+
+		assertEqual(scheduler.stats.skippedDeadlines, Math.floor(idleMs / 8));
+		const nextDeadline = (Math.floor(idleMs / 8) + 1) * 8;
+		clock.advance(nextDeadline - idleMs - 0.25);
+		assertEqual(rendered, ["before idle"]);
+		clock.advance(0.25);
+		assertEqual(rendered, ["before idle", "after idle"]);
+		assertEqual(clock.pending, 0);
+	}
+});
+
 class FakeClock {
 	private time = 0;
 	private sequence = 0;

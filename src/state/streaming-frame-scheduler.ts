@@ -95,9 +95,10 @@ export class StreamingFrameScheduler<T> {
 		if (this.timer !== undefined || !this.dirty) return;
 		const now = this.clock.now();
 		if (this.nextDeadline === undefined) this.nextDeadline = now + this.intervalMs;
-		while (this.nextDeadline <= now) {
-			this.nextDeadline += this.intervalMs;
-			this.skippedDeadlines += 1;
+		if (this.nextDeadline <= now) {
+			const skipped = Math.floor((now - this.nextDeadline) / this.intervalMs) + 1;
+			this.nextDeadline += skipped * this.intervalMs;
+			this.skippedDeadlines += skipped;
 		}
 		const deadline = this.nextDeadline;
 		const delay = Math.max(0, deadline - now - this.schedulingToleranceMs);
