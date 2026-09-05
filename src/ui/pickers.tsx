@@ -7,6 +7,7 @@ import type {
 } from "../server/workspace-search.ts";
 import type { AppSessionSummary, AppSlashCommand } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
+import { formatMessageCount } from "../utils/format.ts";
 import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
@@ -452,7 +453,8 @@ function renderSessionRow(
 	current: boolean,
 	foregroundRunning: boolean,
 ): string {
-	const haystack = `${session.title} ${session.subtitle} ${session.path}`.toLowerCase();
+	const haystack =
+		`${session.title} ${formatMessageCount(session.messageCount)} ${session.path}`.toLowerCase();
 	const displayStatus = foregroundRunning ? "running" : session.backgroundStatus;
 	const shortcut = index < 9 && !current ? `ctrl ${index + 1}` : undefined;
 	const deletable = displayStatus !== "running";

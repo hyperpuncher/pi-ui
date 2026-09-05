@@ -71,7 +71,7 @@ test("session rows expose stable ids for resilient active descendants", () => {
 					path,
 					cwd: "/workspace",
 					title: "Session",
-					subtitle: "1 message",
+					messageCount: 1,
 					modified: "Today",
 				},
 			],
@@ -87,6 +87,29 @@ test("session rows expose stable ids for resilient active descendants", () => {
 	assertFalse(html.includes("data-session-rename-title"));
 });
 
+test("session picker formats numeric message counts", () => {
+	for (const [messageCount, label] of [
+		[0, "0 messages"],
+		[1, "1 message"],
+		[2, "2 messages"],
+	] as const) {
+		const html = renderSessionPicker(
+			appRenderSnapshot({
+				sessions: [
+					{
+						path: "/session",
+						cwd: "/workspace",
+						title: "Session",
+						messageCount,
+						modified: "Now",
+					},
+				],
+			}),
+		);
+		assertStringIncludes(html, label);
+	}
+});
+
 test("current running session is live but does not resume itself", () => {
 	const path = "/sessions/current.jsonl";
 	const html = renderSessionPicker(
@@ -96,7 +119,7 @@ test("current running session is live but does not resume itself", () => {
 					path,
 					cwd: "/workspace",
 					title: "Current session",
-					subtitle: "1 message",
+					messageCount: 1,
 					modified: "Now",
 				},
 			],
@@ -120,7 +143,7 @@ test("background sessions expose statuses and shortcuts", () => {
 					path: "/sessions/running.jsonl",
 					cwd: "/workspace",
 					title: "Running session",
-					subtitle: "1 message",
+					messageCount: 1,
 					modified: "Now",
 					backgroundStatus: "running",
 				},
@@ -128,7 +151,7 @@ test("background sessions expose statuses and shortcuts", () => {
 					path: "/sessions/completed.jsonl",
 					cwd: "/workspace",
 					title: "Completed session",
-					subtitle: "2 messages",
+					messageCount: 2,
 					modified: "Today",
 					backgroundStatus: "completed",
 				},
@@ -152,7 +175,7 @@ test("current idle session exposes deletion", () => {
 					path,
 					cwd: "/workspace",
 					title: "Current session",
-					subtitle: "1 message",
+					messageCount: 1,
 					modified: "Now",
 				},
 			],

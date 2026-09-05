@@ -537,7 +537,7 @@ test("session catalog updates a streaming session incrementally", () => {
 	);
 
 	assertEquals(state.sessions[0]?.title, "A newly submitted prompt");
-	assertEquals(state.sessions[0]?.subtitle, "1 message");
+	assertEquals(state.sessions[0]?.messageCount, 1);
 });
 
 test("session catalog shows a new session before pi creates its file", () => {
@@ -567,13 +567,13 @@ test("session catalog shows a new session before pi creates its file", () => {
 			path: session.path,
 			cwd: session.cwd,
 			title: session.title,
-			subtitle: session.subtitle,
+			messageCount: session.messageCount,
 		},
 		{
 			path: "/sessions/new.jsonl",
 			cwd: "/workspace",
 			title: "Investigate delayed session rows",
-			subtitle: "1 message",
+			messageCount: 1,
 		},
 	);
 });
@@ -708,13 +708,28 @@ test("session catalog pages rows while searching every session", () => {
 	assertEquals(state.searchSessions("Session").length, 30);
 });
 
+test("session catalog increments numeric counts and keeps message-count search", () => {
+	const state = new AppStore();
+	const catalog = new SessionCatalog(state);
+	const session = sessionInfo("/session", "Keep this title");
+	session.messageCount = 11;
+	catalog.applyPrepared({ ok: true, sessions: [session] });
+	catalog.messageStarted(session.path, "A later prompt");
+	assertEquals(state.sessions[0]?.messageCount, 12);
+	assertEquals(state.sessions[0]?.title, "Keep this title");
+	assertEquals(
+		state.searchSessions("12 messages").map((item) => item.path),
+		[session.path],
+	);
+});
+
 test("session summaries keep workspace and message metadata separate", () => {
 	const info = sessionInfo("/session", "Home session");
 	info.cwd = `${os.homedir()}/projects/pi-ui`;
 
 	const summary = formatSessionSummary(info);
 	assertEquals(summary.cwd, info.cwd);
-	assertEquals(summary.subtitle, "1 message");
+	assertEquals(summary.messageCount, 1);
 });
 
 test("catalog and usage formatting remain stable", () => {
@@ -734,10 +749,10 @@ test("catalog and usage formatting remain stable", () => {
 	assertEquals(recentSessionWorkspaces(sessions), ["/work/a"]);
 	const summary = formatSessionSummary(sessions[0]);
 	assertEquals(
-		{ title: summary.title, subtitle: summary.subtitle },
+		{ title: summary.title, messageCount: summary.messageCount },
 		{
 			title: "Named",
-			subtitle: "1 message",
+			messageCount: 1,
 		},
 	);
 	assertEquals(formatTokens(1_250), "1.3k");

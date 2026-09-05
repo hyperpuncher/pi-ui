@@ -104,7 +104,7 @@ test("empty chat shows login instead of recent sessions without auth", () => {
 				path: "/sessions/one.json",
 				cwd: "/workspace",
 				title: "One",
-				subtitle: "1 message",
+				messageCount: 1,
 				modified: "Today",
 			},
 		],
@@ -121,7 +121,7 @@ test("resume renderers share loading behavior and disable controls", () => {
 		path: "/sessions/one.json",
 		cwd: "/workspace",
 		title: "One",
-		subtitle: "1 message",
+		messageCount: 1,
 		modified: "Today",
 	};
 	const recent = renderMessages([], { keys: "ctrl 1", description: "Resume" }, false, [
@@ -165,7 +165,7 @@ test("session picker command state morphs on the app stream", async () => {
 				path: "/sessions/one.jsonl",
 				cwd: "/workspace",
 				title: "Fresh session",
-				subtitle: "1 message",
+				messageCount: 1,
 				modified: "now",
 			},
 		]);

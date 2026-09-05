@@ -173,11 +173,11 @@ export class SessionCatalog {
 		const modified = new Date();
 		const message = firstUserMessage?.trim();
 		const updated = this.state.updateSessionSummary(path, (session) => {
-			const count = sessionMessageCount(session.subtitle) + 1;
+			const count = session.messageCount + 1;
 			return {
 				...session,
 				title: count === 1 && message ? truncate(message, 96) : session.title,
-				subtitle: `${count} message${count === 1 ? "" : "s"}`,
+				messageCount: count,
 				modified: formatDateTime(modified),
 				modifiedAt: modified.toISOString(),
 			};
@@ -193,7 +193,7 @@ export class SessionCatalog {
 					path,
 					cwd,
 					title: truncate(message, 96),
-					subtitle: "1 message",
+					messageCount: 1,
 					modified: formatDateTime(modified),
 					modifiedAt: modified.toISOString(),
 				},
@@ -458,20 +458,14 @@ export function recentSessionWorkspaces(sessions: SessionInfo[]): string[] {
 
 export function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 	const title = info.name?.trim() || info.firstMessage.trim() || "Untitled session";
-	const messageLabel = `${info.messageCount} message${info.messageCount === 1 ? "" : "s"}`;
 	return {
 		path: info.path,
 		cwd: info.cwd,
 		title: truncate(title, 96),
-		subtitle: messageLabel,
+		messageCount: info.messageCount,
 		modified: formatDateTime(info.modified),
 		modifiedAt: info.modified.toISOString(),
 	};
-}
-
-function sessionMessageCount(subtitle: string): number {
-	const count = Number.parseInt(subtitle, 10);
-	return Number.isFinite(count) ? count : 0;
 }
 
 function truncate(value: string, maxLength: number): string {

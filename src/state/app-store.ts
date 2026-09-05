@@ -1,6 +1,7 @@
 import type { SessionTransitionState } from "../agent/session-transition-controller.ts";
 import { appCommandCatalog } from "../commands/catalog.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
+import { formatMessageCount } from "../utils/format.ts";
 import type { JsonObject } from "../utils/json-types.ts";
 import { formatShortcut } from "../utils/keyboard.ts";
 import { defaultWorkspacePath } from "../utils/workspace.ts";
@@ -90,7 +91,7 @@ export type AppSessionSummary = {
 	path: string;
 	cwd: string;
 	title: string;
-	subtitle: string;
+	messageCount: number;
 	modified: string;
 	modifiedAt?: string;
 	backgroundStatus?: BackgroundSessionStatus;
@@ -559,7 +560,7 @@ export class AppStore {
 		return this.getSessionCatalog()
 			.filter((session) => {
 				const haystack =
-					`${session.title} ${session.subtitle} ${session.cwd} ${session.path}`.toLowerCase();
+					`${session.title} ${formatMessageCount(session.messageCount)} ${session.cwd} ${session.path}`.toLowerCase();
 				return terms.every((term) => haystack.includes(term));
 			})
 			.slice(0, this.sessionLimit);

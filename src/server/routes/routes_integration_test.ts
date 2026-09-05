@@ -94,7 +94,7 @@ test("session favicons use workspace assets and fall back to a folder", async ()
 				path: "/sessions/one.jsonl",
 				cwd: workspace,
 				title: "One",
-				subtitle: "1 message",
+				messageCount: 1,
 				modified: "Now",
 			},
 		]);
@@ -183,7 +183,7 @@ test("older sessions expand backend-owned sidebar state", async () => {
 			path: `/sessions/${index + 1}.jsonl`,
 			cwd: "/workspace",
 			title: `Session ${index + 1}`,
-			subtitle: "1 message",
+			messageCount: 1,
 			modified: "Today",
 		})),
 	);

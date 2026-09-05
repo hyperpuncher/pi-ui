@@ -197,7 +197,7 @@ test("partial recent sessions stay visible during full catalog loading", () => {
 				path: "/sessions/recent.jsonl",
 				cwd: "/workspace",
 				title: "Recent session",
-				subtitle: "1 message",
+				messageCount: 1,
 				modified: "Now",
 			},
 		],

@@ -1,5 +1,6 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppSessionSummary } from "../state/app-store.ts";
+import { formatMessageCount } from "../utils/format.ts";
 import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
 import { syncHtml } from "./sync-html.ts";
 
@@ -24,7 +25,7 @@ export function SessionSubtitle(props: {
 					<>
 						<span class="session-subtitle-separator" aria-hidden="true" />
 						<span class="session-subtitle-text" safe>
-							{props.session.subtitle}
+							{formatMessageCount(props.session.messageCount)}
 						</span>
 					</>
 				)}

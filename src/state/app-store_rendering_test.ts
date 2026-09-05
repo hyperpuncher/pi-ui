@@ -670,7 +670,7 @@ test("session pagination patches only session-owned regions", async () => {
 		path: `/sessions/${index}.jsonl`,
 		cwd: "/workspace",
 		title: `Session ${index}`,
-		subtitle: `${index} messages`,
+		messageCount: index,
 		modified: "now",
 	}));
 	state.setSessionCatalog(sessions);
@@ -775,14 +775,14 @@ test("app stream refreshes current and background session statuses", async () =>
 		path: "/sessions/first.jsonl",
 		cwd: "/workspace",
 		title: "First session",
-		subtitle: "First subtitle",
+		messageCount: 1,
 		modified: "now",
 	};
 	const second = {
 		path: "/sessions/second.jsonl",
 		cwd: "/workspace",
 		title: "Second session",
-		subtitle: "Second subtitle",
+		messageCount: 2,
 		modified: "earlier",
 	};
 	try {
