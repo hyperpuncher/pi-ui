@@ -72,9 +72,23 @@ export async function findGitWatchPaths(
 	return paths;
 }
 
+export type WorkspaceReviewMetadataCache = {
+	value?: Awaited<ReturnType<typeof readWorkspaceMetadata>>;
+};
+
+async function readWorkspaceMetadata(root: string) {
+	const [headResult, logResult, branchResult] = await Promise.all([
+		git(root, "rev-parse", "--verify", "HEAD"),
+		git(root, "log", "-n", String(workspaceReviewHistoryPageSize), commitLogFormat),
+		git(root, "symbolic-ref", "--quiet", "--short", "HEAD"),
+	]);
+	return { root, headResult, logResult, branchResult };
+}
+
 export async function readWorkspaceReview(
 	workspacePath: string,
 	onSummary?: (snapshot: WorkspaceReviewSnapshot) => void,
+	metadataCache?: WorkspaceReviewMetadataCache,
 ): Promise<WorkspaceReviewSnapshot> {
 	const root = await findGitRoot(workspacePath);
 	if (!root) return emptyWorkspaceReviewSnapshot;
@@ -85,17 +99,26 @@ export async function readWorkspaceReview(
 		"--untracked-files=all",
 		"-z",
 	);
-	const [headResult, logResult, upstreamResult, branchResult] = await Promise.all([
-		git(root, "rev-parse", "--verify", "HEAD"),
-		git(root, "log", "-n", String(workspaceReviewHistoryPageSize), commitLogFormat),
-		git(
-			root,
-			"rev-list",
-			`--max-count=${workspaceReviewHistoryPageSize}`,
-			"@{upstream}..HEAD",
-		),
-		git(root, "symbolic-ref", "--quiet", "--short", "HEAD"),
-	]);
+	const upstreamPromise = git(
+		root,
+		"rev-list",
+		`--max-count=${workspaceReviewHistoryPageSize}`,
+		"@{upstream}..HEAD",
+	);
+	const metadata =
+		metadataCache?.value?.root === root
+			? metadataCache.value
+			: await readWorkspaceMetadata(root);
+	const { headResult, logResult, branchResult } = metadata;
+	// Failed reads must be retried, not retained as an empty history.
+	if (
+		metadataCache &&
+		headResult.code === 0 &&
+		logResult.code === 0 &&
+		(branchResult.code === 0 || branchResult.code === 1)
+	)
+		metadataCache.value = metadata;
+	const upstreamResult = await upstreamPromise;
 	const branch =
 		branchResult.code === 0
 			? branchResult.stdout.trim()

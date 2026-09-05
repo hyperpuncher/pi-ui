@@ -137,6 +137,12 @@ for (const linkedWorktree of [false, true]) {
 			);
 			await git(workspace, "commit", "--allow-empty", "-m", "next");
 			await waitFor(() => store.workspaceReview.commits.length === 2);
+			await git(workspace, "checkout", "-b", "switched");
+			await waitFor(() => store.workspaceReview.branch === "switched");
+			await git(workspace, "checkout", "--detach", "HEAD");
+			await waitFor(
+				() => store.workspaceReview.branch?.startsWith("detached@") === true,
+			);
 		} finally {
 			controller.dispose();
 			if (linkedWorktree) await remove(workspace, { recursive: true });

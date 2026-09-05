@@ -7,6 +7,7 @@ import {
 	areWorkspacePathsIgnored,
 	findGitWatchPaths,
 	readWorkspaceReview,
+	type WorkspaceReviewMetadataCache,
 } from "./workspace-review.ts";
 
 const debounceMs = 200;
@@ -39,6 +40,7 @@ export class WorkspaceReviewController {
 		let refreshing = false;
 		let refreshAgain = false;
 		let initialized = false;
+		let metadataCache: WorkspaceReviewMetadataCache = {};
 		const active = () => generation === this.generation;
 		const refresh = async () => {
 			if (refreshing) {
@@ -56,6 +58,7 @@ export class WorkspaceReviewController {
 							: (summary) => {
 									if (active()) this.store.setWorkspaceReview(summary);
 								},
+						metadataCache,
 					);
 					if (active()) {
 						this.store.setWorkspaceReview(snapshot);
@@ -71,6 +74,8 @@ export class WorkspaceReviewController {
 		if (!active()) return;
 		const gitPaths = await findGitWatchPaths(path);
 		if (!active()) return;
+		// The initial read ran before the watchers could observe metadata changes.
+		metadataCache = {};
 		// Undefined means this batch requires a full refresh, regardless of later events.
 		let pendingPaths: Set<string> | undefined = new Set();
 		let treeChanged = false;
@@ -118,7 +123,11 @@ export class WorkspaceReviewController {
 				relative.split("/").at(-1) !== ".gitignore"
 			)
 				pendingPaths?.add(filename);
-			else pendingPaths = undefined;
+			else {
+				pendingPaths = undefined;
+				// Replace the cache immediately so an in-flight read cannot refill it.
+				metadataCache = {};
+			}
 			if (this.timer !== undefined) clearTimeout(this.timer);
 			this.timer = setTimeout(() => {
 				this.timer = undefined;

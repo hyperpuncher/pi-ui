@@ -17,6 +17,7 @@ import {
 	readWorkspaceCommit,
 	readWorkspaceHistory,
 	readWorkspaceReview,
+	type WorkspaceReviewMetadataCache,
 } from "./workspace-review.ts";
 
 test("ignore checks require every path to be ignored and respect tracked files and exceptions", async () => {
@@ -43,6 +44,36 @@ test("ignore checks require every path to be ignored and respect tracked files a
 			await areWorkspacePathsIgnored(`${workspace}/missing`, ["a.log"]),
 			false,
 		);
+	} finally {
+		await remove(workspace, { recursive: true });
+	}
+});
+
+test("reused metadata preserves content updates and retries an unborn history", async () => {
+	const workspace = await makeTempDir();
+	const cache: WorkspaceReviewMetadataCache = {};
+	try {
+		await git(workspace, "init");
+		await git(workspace, "config", "user.email", "pi-ui@example.test");
+		await git(workspace, "config", "user.name", "pi-ui");
+		assertEquals(
+			(await readWorkspaceReview(workspace, undefined, cache)).commits,
+			[],
+		);
+		await writeTextFile(`${workspace}/file.txt`, "initial\n");
+		await git(workspace, "add", ".");
+		await git(workspace, "commit", "-m", "initial");
+		assertEquals(
+			await readWorkspaceReview(workspace, undefined, cache),
+			await readWorkspaceReview(workspace),
+		);
+		for (const contents of ["first edit\n", "second edit\n", "initial\n"]) {
+			await writeTextFile(`${workspace}/file.txt`, contents);
+			assertEquals(
+				await readWorkspaceReview(workspace, undefined, cache),
+				await readWorkspaceReview(workspace),
+			);
+		}
 	} finally {
 		await remove(workspace, { recursive: true });
 	}
