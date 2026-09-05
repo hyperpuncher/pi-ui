@@ -1,5 +1,7 @@
 import { test } from "bun:test";
 
+import { parsePatchFiles } from "@pierre/diffs";
+
 import { assertEquals, assertRejects, assertStringIncludes } from "#testing/assertions";
 import { mkdir, readTextFile, remove, stat, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
@@ -187,6 +189,45 @@ test("workspace review combines repository files with tracked and untracked chan
 		await remove(repository, { recursive: true });
 	}
 });
+
+for (const committed of [false, true]) {
+	test(`${committed ? "commit" : "working-tree"} patches preserve blank context and whitespace`, async () => {
+		const repository = await makeTempDir();
+		try {
+			await git(repository, "init", "--quiet");
+			await git(repository, "config", "user.email", "pi-ui@example.invalid");
+			await git(repository, "config", "user.name", "pi-ui test");
+			await writeTextFile(`${repository}/tracked.txt`, "before\n\t \n\n");
+			await git(repository, "add", ".");
+			await git(repository, "commit", "--quiet", "-m", "initial");
+			await writeTextFile(`${repository}/tracked.txt`, "after\n\t \n\n");
+			await writeTextFile(`${repository}/added.txt`, "added\n  \n\t\n");
+			if (committed) {
+				await git(repository, "add", ".");
+				await git(repository, "commit", "--quiet", "-m", "update");
+			}
+			const snapshot = await readWorkspaceReview(repository);
+			const review = committed
+				? await readWorkspaceCommit(repository, snapshot.commits[0].hash)
+				: snapshot;
+			const files = parsePatchFiles(review?.patch ?? "", undefined, true).flatMap(
+				(patch) => patch.files,
+			);
+			assertEquals(files.length, 2);
+			assertEquals(
+				files.find((file) => file.name === "tracked.txt")?.additionLines,
+				["after\n", "\t \n", "\n"],
+			);
+			assertEquals(files.find((file) => file.name === "added.txt")?.additionLines, [
+				"added\n",
+				"  \n",
+				"\t\n",
+			]);
+		} finally {
+			await remove(repository, { recursive: true });
+		}
+	});
+}
 
 test("workspace review discards one tracked or untracked file at a time", async () => {
 	const repository = await makeTempDir();

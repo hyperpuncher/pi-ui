@@ -196,10 +196,7 @@ export async function readWorkspaceReview(
 		}
 	}
 
-	const patch = patches
-		.map((value) => value.trimEnd())
-		.filter(Boolean)
-		.join("\n");
+	const patch = patches.join("");
 	changes = addStats(changes, patch);
 	return {
 		branch,
@@ -311,7 +308,7 @@ export async function readWorkspaceCommit(
 	return {
 		changes: addStats(parseNameStatus(statusResult.stdout), patchResult.stdout),
 		commit,
-		patch: patchResult.stdout.trimEnd(),
+		patch: patchResult.stdout,
 	};
 }
 
