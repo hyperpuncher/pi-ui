@@ -7,6 +7,7 @@ import { makeTempDir } from "#testing/temp";
 import { outputCommand } from "../utils/command.ts";
 import type { WorkspaceReviewSnapshot } from "../workspace-review-types.ts";
 import {
+	areWorkspacePathsIgnored,
 	discardWorkspaceChange,
 	findGitRoot,
 	findGitWatchPaths,
@@ -17,6 +18,35 @@ import {
 	readWorkspaceHistory,
 	readWorkspaceReview,
 } from "./workspace-review.ts";
+
+test("ignore checks require every path to be ignored and respect tracked files and exceptions", async () => {
+	const workspace = await makeTempDir();
+	try {
+		await git(workspace, "init");
+		await writeTextFile(`${workspace}/.gitignore`, "*.log\n!important.log\n");
+		await writeTextFile(`${workspace}/tracked.log`, "tracked\n");
+		await git(workspace, "add", "-f", "tracked.log");
+		assertEquals(
+			await areWorkspacePathsIgnored(workspace, ["a.log", "odd\nname.log"]),
+			true,
+		);
+		assertEquals(
+			await areWorkspacePathsIgnored(workspace, ["a.log", "important.log"]),
+			false,
+		);
+		assertEquals(
+			await areWorkspacePathsIgnored(workspace, ["a.log", "tracked.log"]),
+			false,
+		);
+		assertEquals(await areWorkspacePathsIgnored(workspace, []), false);
+		assertEquals(
+			await areWorkspacePathsIgnored(`${workspace}/missing`, ["a.log"]),
+			false,
+		);
+	} finally {
+		await remove(workspace, { recursive: true });
+	}
+});
 
 test("porcelain status parsing keeps rename destinations and status precedence", () => {
 	assertEquals(

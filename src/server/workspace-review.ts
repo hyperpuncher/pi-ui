@@ -24,6 +24,25 @@ const commitLogFormat = "--format=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1e";
 const decoder = new TextDecoder();
 const untrackedDiffConcurrency = 4;
 
+/** An inconclusive ignore check must never suppress a workspace refresh. */
+export async function areWorkspacePathsIgnored(
+	root: string,
+	paths: readonly string[],
+): Promise<boolean> {
+	if (paths.length === 0) return false;
+	try {
+		const result = await outputCommand("git", {
+			args: ["-C", root, "check-ignore", "--stdin", "-z"],
+			stdin: new TextEncoder().encode(`${paths.join("\0")}\0`),
+		});
+		if (!result.success) return false;
+		const ignored = new Set(decoder.decode(result.stdout).split("\0"));
+		return paths.every((path) => ignored.has(path));
+	} catch {
+		return false;
+	}
+}
+
 export async function findGitRoot(workspacePath: string): Promise<string | undefined> {
 	const result = await git(workspacePath, "rev-parse", "--show-toplevel");
 	return result.code === 0 ? result.stdout.trim() : undefined;

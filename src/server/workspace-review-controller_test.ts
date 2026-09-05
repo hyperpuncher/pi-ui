@@ -56,6 +56,53 @@ test("workspace review controller publishes non-Git file changes", async () => {
 	}
 });
 
+test("ignored writes still notify the file browser; mixed writes and ignore rules refresh Git", async () => {
+	const workspace = await makeTempDir();
+	class MeasuredStore extends AppStore {
+		refreshes = 0;
+		override setWorkspaceReview(
+			snapshot: Parameters<AppStore["setWorkspaceReview"]>[0],
+		) {
+			this.refreshes++;
+			super.setWorkspaceReview(snapshot);
+		}
+	}
+	const store = new MeasuredStore();
+	const controller = new WorkspaceReviewController(store);
+	try {
+		await git(workspace, "init");
+		await git(workspace, "config", "user.email", "pi-ui@example.test");
+		await git(workspace, "config", "user.name", "pi-ui");
+		await writeTextFile(`${workspace}/.gitignore`, "*.log\n");
+		await writeTextFile(`${workspace}/tracked.log`, "initial\n");
+		await writeTextFile(`${workspace}/ignored.log`, "initial\n");
+		await git(workspace, "add", ".gitignore");
+		await git(workspace, "add", "-f", "tracked.log");
+		await git(workspace, "commit", "-m", "initial");
+		controller.open(workspace);
+		await waitFor(() => store.workspaceReview.commits.length === 1);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		const refreshes = store.refreshes;
+		const filesRevision = store.workspaceFilesRevision;
+		await writeTextFile(`${workspace}/ignored.log`, "ignored edit\n");
+		await waitFor(() => store.workspaceFilesRevision > filesRevision);
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		assertEquals(store.refreshes, refreshes);
+		await writeTextFile(`${workspace}/ignored.log`, "mixed edit\n");
+		await writeTextFile(`${workspace}/tracked.log`, "tracked edit\n");
+		await waitFor(() =>
+			store.workspaceReview.changes.some(({ path }) => path === "tracked.log"),
+		);
+		await writeTextFile(`${workspace}/.gitignore`, "*.log\n!ignored.log\n");
+		await waitFor(() =>
+			store.workspaceReview.changes.some(({ path }) => path === "ignored.log"),
+		);
+	} finally {
+		controller.dispose();
+		await remove(workspace, { recursive: true });
+	}
+});
+
 for (const linkedWorktree of [false, true]) {
 	test(`workspace watcher ignores Git internals but observes commits (${linkedWorktree ? "linked worktree" : "repository"})`, async () => {
 		const repository = await makeTempDir();

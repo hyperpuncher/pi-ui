@@ -9,6 +9,7 @@ type OutputCommandOptions = Readonly<{
 	args?: string[];
 	env?: Record<string, string>;
 	signal?: AbortSignal;
+	stdin?: Uint8Array;
 }>;
 
 export async function outputCommand(
@@ -17,7 +18,7 @@ export async function outputCommand(
 ): Promise<CommandOutput> {
 	const child = Bun.spawn([command, ...(options.args ?? [])], {
 		env: { ...process.env, ...options.env },
-		stdin: "ignore",
+		stdin: options.stdin ?? "ignore",
 		stdout: "pipe",
 		stderr: "pipe",
 		windowsHide: true,

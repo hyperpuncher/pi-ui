@@ -3,7 +3,11 @@ import os from "node:os";
 import * as path from "node:path";
 
 import type { AppStore } from "../state/app-store.ts";
-import { findGitWatchPaths, readWorkspaceReview } from "./workspace-review.ts";
+import {
+	areWorkspacePathsIgnored,
+	findGitWatchPaths,
+	readWorkspaceReview,
+} from "./workspace-review.ts";
 
 const debounceMs = 200;
 
@@ -67,10 +71,25 @@ export class WorkspaceReviewController {
 		if (!active()) return;
 		const gitPaths = await findGitWatchPaths(path);
 		if (!active()) return;
-		const changed = (watchPath: string, filename: string | null) => {
+		// Undefined means this batch requires a full refresh, regardless of later events.
+		let pendingPaths: Set<string> | undefined = new Set();
+		const flush = async () => {
 			if (!active()) return;
-			if (gitPaths && filename) {
-				const relative = filename.replaceAll("\\", "/");
+			const paths = pendingPaths;
+			pendingPaths = new Set();
+			this.store.workspaceFilesChanged();
+			if (
+				paths &&
+				gitPaths?.[0] &&
+				(await areWorkspacePathsIgnored(gitPaths[0], [...paths]))
+			)
+				return;
+			if (active()) await refresh();
+		};
+		const changed = (watchPath: string, event: string, filename: string | null) => {
+			if (!active()) return;
+			const relative = filename?.replaceAll("\\", "/");
+			if (gitPaths && relative) {
 				const metadataPrefix = watchPath === gitPaths[0] ? ".git/" : "";
 				const metadataPath = relative.startsWith(metadataPrefix)
 					? relative.slice(metadataPrefix.length)
@@ -83,11 +102,23 @@ export class WorkspaceReviewController {
 				)
 					return;
 			}
+			// Directory renames can hide tracked descendants; metadata and ignore
+			// rule changes can alter the review without changing any source file.
+			if (
+				event === "change" &&
+				filename &&
+				relative &&
+				watchPath === gitPaths?.[0] &&
+				relative !== ".git" &&
+				!relative.startsWith(".git/") &&
+				relative.split("/").at(-1) !== ".gitignore"
+			)
+				pendingPaths?.add(filename);
+			else pendingPaths = undefined;
 			if (this.timer !== undefined) clearTimeout(this.timer);
 			this.timer = setTimeout(() => {
 				this.timer = undefined;
-				this.store.workspaceFilesChanged();
-				void refresh();
+				void flush();
 			}, debounceMs);
 		};
 		this.watchers = (gitPaths ?? [path]).map((watchPath) =>
@@ -96,7 +127,7 @@ export class WorkspaceReviewController {
 				{
 					recursive: gitPaths !== undefined || canWatchRecursively(path),
 				},
-				(_event, filename) => changed(watchPath, filename),
+				(event, filename) => changed(watchPath, event, filename),
 			),
 		);
 	}
