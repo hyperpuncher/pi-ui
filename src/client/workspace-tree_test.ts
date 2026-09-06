@@ -49,6 +49,36 @@ test("workspace refresh removes listed folders and preserves a folder when its l
 	}
 });
 
+test("changes refresh removes implicit empty ancestors but keeps populated folders", () => {
+	const paths = ["src/nested/a.ts", "src/b.ts", "scripts/check.ts", "README.md"];
+	const tree = new FileTree({ paths, initialExpansion: "open" });
+	try {
+		const next = ["src/b.ts", "README.md"];
+		syncWorkspaceTreePaths(tree, paths, next);
+		assertEquals(tree.getItem("src/nested/"), null);
+		assertEquals(tree.getItem("scripts/"), null);
+		assertEquals(directory(tree, "src/").isExpanded(), true);
+		syncWorkspaceTreePaths(tree, next, []);
+		assertEquals(tree.getItem("src/"), null);
+		assertEquals(tree.getItem("README.md"), null);
+	} finally {
+		tree.cleanUp();
+	}
+});
+
+test("workspace refresh preserves explicitly listed empty folders", () => {
+	const paths = ["docs/nested/a.md"];
+	const tree = new FileTree({ paths });
+	try {
+		syncWorkspaceTreePaths(tree, paths, ["docs/nested/"]);
+		assertEquals(tree.getItem("docs/nested/a.md"), null);
+		assertEquals(directory(tree, "docs/nested/").getPath(), "docs/nested/");
+		assertEquals(directory(tree, "docs/").getPath(), "docs/");
+	} finally {
+		tree.cleanUp();
+	}
+});
+
 test("file tree refresh keeps manually opened folders and resets for a new workspace", () => {
 	const paths = ["src/a.ts", "src/b.ts", "docs/a.md"];
 	const tree = new FileTree({ paths, initialExpansion: "closed" });
