@@ -25,8 +25,8 @@ Read relevant docs in full before implementing against them:
 
 ## Validation
 
-Before finishing code changes, run:
+Run targeted checks during development. Before committing code changes, run:
 
 ```sh
-bun run css:build && bun run fmt && bun run lint && bun run check && bun test
+bun run assets:build && bun run fmt && bun run lint && bun run check && bun test
 ```
