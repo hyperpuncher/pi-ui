@@ -310,15 +310,18 @@
 		width: 100%;
 		min-width: 0;
 		flex-direction: column;
+		gap: 0.125rem;
 		border-radius: var(--radius-md);
 		padding: 0.375rem 0.5rem;
+		color: var(--text-muted);
 		text-align: start;
 	}
 	.review-commit:hover,
 	.review-commit[aria-pressed="true"],
 	.review-commit-file:hover,
 	.review-commit-file[aria-pressed="true"] {
-		background: var(--surface-muted);
+		background: var(--surface-control);
+		color: var(--text);
 	}
 	.review-commit-subject,
 	.review-commit-author,
@@ -413,6 +416,7 @@
 	.review-commit-file {
 		width: 100%;
 		gap: 0.375rem;
+		color: var(--text-muted);
 		border-radius: var(--radius-sm);
 		padding: 0.25rem 0.5rem;
 		font-size: 0.6875rem;

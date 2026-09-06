@@ -366,11 +366,13 @@
 	}
 	.message-image-frame {
 		overflow: clip;
+		border: 1px solid var(--border);
 		border-radius: var(--radius-xl);
-		background: var(--action-primary);
-		padding: 0.375rem;
+		background: var(--surface-control);
+		padding: 0.1875rem;
 	}
 	.message-image {
+		display: block;
 		max-width: 100%;
 		max-height: 18rem;
 		border-radius: var(--radius-lg);
