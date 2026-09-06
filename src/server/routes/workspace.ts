@@ -1,4 +1,4 @@
-import { basename, extname } from "node:path";
+import { basename, extname, join } from "node:path";
 
 import {
 	renderWorkspaceBrowserContent,
@@ -13,7 +13,7 @@ import {
 	requiredString,
 	stringField,
 } from "../action-input.ts";
-import { datastarResponse } from "../datastar.ts";
+import { datastarResponse, signalsResponse } from "../datastar.ts";
 import { RouteError, type RouteMap } from "../route.ts";
 import {
 	createWorkspaceEntry,
@@ -23,6 +23,7 @@ import {
 	removeWorkspaceEntry,
 	resolveFile,
 	writeWorkspaceFile,
+	WorkspaceFileError,
 } from "../workspace-files.ts";
 import { findGitRoot } from "../workspace-review.ts";
 import { browseWorkspaceDirectories, searchWorkspaces } from "../workspace-search.ts";
@@ -65,11 +66,58 @@ export const workspaceRoutes = {
 			).catch(() => undefined);
 			return datastarResponse([
 				{
+					type: "signals",
+					signals: {
+						_workspaceFolderCreating: false,
+						_workspaceFolderName: "",
+						_workspaceFolderError: "",
+					},
+				},
+				{
 					type: "elements",
 					elements: listing
 						? renderWorkspaceBrowserContent(listing)
 						: renderWorkspaceBrowserError(value),
 				},
+			]);
+		},
+	},
+	[endpoints.workspaceCreateFolder]: {
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			const parent = requiredString(signals, "workspacePath");
+			const name = stringField(signals, "folderName").trim();
+			const showHidden = booleanField(signals, "showHidden");
+			if (!name || name === "." || name === ".." || /[/\\\0]/.test(name)) {
+				return signalsResponse({
+					_workspaceFolderError: "Enter a folder name without slashes.",
+				});
+			}
+			try {
+				await createWorkspaceEntry(parent, name, "folder");
+			} catch (cause) {
+				return signalsResponse({
+					_workspaceFolderError:
+						cause instanceof WorkspaceFileError
+							? cause.message
+							: "Could not create the folder.",
+				});
+			}
+			const listing = await browseWorkspaceDirectories(
+				context.store.workspacePath,
+				join(parent, name),
+				showHidden,
+			);
+			return datastarResponse([
+				{
+					type: "signals",
+					signals: {
+						_workspaceFolderError: "",
+						_workspaceFolderCreating: false,
+						_workspaceFolderName: "",
+					},
+				},
+				{ type: "elements", elements: renderWorkspaceBrowserContent(listing) },
 			]);
 		},
 	},

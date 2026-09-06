@@ -33,6 +33,7 @@ export const endpoints = {
 	workspaceOpen: "/workspace/open",
 	workspaceSearch: "/workspace/search",
 	workspaceBrowse: "/workspace/browse",
+	workspaceCreateFolder: "/workspace/create-folder",
 	workspaceFiles: workspaceFilesBase,
 	workspaceFileContent: `${workspaceFilesBase}/content`,
 	workspaceFileEntry: `${workspaceFilesBase}/entry`,

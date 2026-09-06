@@ -149,8 +149,23 @@ export function renderFilePickerResults(
 export function renderWorkspaceBrowserContent(
 	listing: WorkspaceDirectoryListing,
 ): string {
+	const createFolderAction = `if (!$_workspaceFolderSaving && document.getElementById('workspace-folder-name').reportValidity()) {
+		@post('${endpoints.workspaceCreateFolder}', {
+			payload: { workspacePath: ${JSON.stringify(listing.path)}, folderName: $_workspaceFolderName, showHidden: $_workspaceBrowserShowHidden },
+			retry: 'never',
+		});
+	}`;
 	return syncHtml(
-		<div id="workspace-browser-content" class="workspace-browser-panel">
+		<div
+			id="workspace-browser-content"
+			class="workspace-browser-panel"
+			data-signals__ifmissing="{
+				_workspaceFolderCreating: false,
+				_workspaceFolderName: '',
+				_workspaceFolderError: '',
+				_workspaceFolderSaving: false,
+			}"
+		>
 			<header class="workspace-browser-header">
 				<div class="workspace-browser-heading">
 					<h2 id="workspace-browser-title">
@@ -200,7 +215,63 @@ export function renderWorkspaceBrowserContent(
 					<p class="workspace-browser-empty">No folders found.</p>
 				)}
 			</div>
+			<div
+				id="workspace-folder-create"
+				class="workspace-folder-create"
+				data-show="$_workspaceFolderCreating"
+				style="display: none"
+			>
+				<label for="workspace-folder-name">Folder name</label>
+				<div
+					class="workspace-folder-controls"
+					data-indicator:_workspace-folder-saving
+				>
+					<input
+						id="workspace-folder-name"
+						class="input"
+						type="text"
+						required
+						autocomplete="off"
+						spellcheck="false"
+						data-bind:_workspace-folder-name
+						aria-describedby="workspace-folder-error"
+						data-attr:aria-invalid="Boolean($_workspaceFolderError)"
+						data-attr:disabled="$_workspaceFolderSaving"
+						data-on:input="$_workspaceFolderError = ''"
+						data-on:keydown={`if (evt.key === 'Enter' && !evt.isComposing) { evt.preventDefault(); ${createFolderAction} }`}
+					/>
+					<button
+						type="button"
+						class="btn"
+						data-attr:disabled="$_workspaceFolderSaving"
+						data-on:click={createFolderAction}
+					>
+						Create
+					</button>
+				</div>
+				<p
+					id="workspace-folder-error"
+					class="workspace-folder-error"
+					role="alert"
+					data-text="$_workspaceFolderError"
+				/>
+			</div>
 			<footer class="workspace-browser-footer">
+				<button
+					type="button"
+					class="btn workspace-new-folder"
+					data-variant="ghost"
+					aria-controls="workspace-folder-create"
+					data-attr:aria-expanded="$_workspaceFolderCreating"
+					data-attr:disabled="$_workspaceFolderSaving"
+					data-on:click="
+						$_workspaceFolderCreating = !$_workspaceFolderCreating;
+						$_workspaceFolderError = '';
+						if ($_workspaceFolderCreating) requestAnimationFrame(() => document.getElementById('workspace-folder-name').focus());
+					"
+				>
+					New folder
+				</button>
 				<button
 					type="button"
 					class="btn"

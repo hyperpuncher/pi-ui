@@ -304,6 +304,9 @@ test("workspace browser lists server directories", async () => {
 		const body = await response.text();
 		assertStringIncludes(body, "Select folder");
 		assertStringIncludes(body, "Open folder");
+		assertStringIncludes(body, "New folder");
+		assertStringIncludes(body, "Folder name");
+		assertStringIncludes(body, "/workspace/create-folder");
 		assertStringIncludes(body, "alpha");
 		assertStringIncludes(body, "beta");
 		assertStringExcludes(body, ".hidden");
@@ -317,6 +320,56 @@ test("workspace browser lists server directories", async () => {
 			}),
 		);
 		assertStringIncludes(await hiddenResponse.text(), ".hidden");
+	} finally {
+		await remove(workspace, { recursive: true });
+	}
+});
+
+test("workspace browser creates folders in the browsed directory and rejects invalid names", async () => {
+	const workspace = await makeTempDir();
+	try {
+		await mkdir(`${workspace}/parent`);
+		const context = fakeContext();
+		context.store.setWorkspacePath(workspace);
+		const router = createRouter(context);
+		const create = (folderName: string) =>
+			router.fetch(
+				signalRequest("/workspace/create-folder", {
+					workspacePath: `${workspace}/parent`,
+					folderName,
+					showHidden: false,
+				}),
+			);
+		const response = await create("new project");
+		assertEquals(response.status, 200);
+		assertStringIncludes(await response.text(), `${workspace}/parent/new project`);
+		const listing = await router.fetch(
+			signalGet("/workspace/browse", {
+				workspacePath: `${workspace}/parent`,
+				showHidden: false,
+			}),
+		);
+		assertStringIncludes(await listing.text(), "new project");
+		assertEquals(context.store.workspacePath, workspace);
+		assertStringIncludes(
+			await (await create("new project")).text(),
+			"already exists",
+		);
+		for (const name of [
+			"",
+			"  ",
+			".",
+			"..",
+			"../escape",
+			"nested/folder",
+			"nested\\folder",
+			"bad\0name",
+		]) {
+			assertStringIncludes(
+				await (await create(name)).text(),
+				"Enter a folder name without slashes.",
+			);
+		}
 	} finally {
 		await remove(workspace, { recursive: true });
 	}
