@@ -409,7 +409,7 @@ export class RuntimeController {
 		this.foregroundObservedRunning = false;
 		this.state.setActivityText(undefined);
 		this.state.setQueuedMessages([], []);
-		this.loadCurrentSessionMessages();
+		// Session events already finalized messages; reloading would discard highlighting.
 		this.usage.sync();
 		const path = this.runtime.session.sessionManager.getSessionFile();
 		if (path) await this.catalog.refreshPath(path);

@@ -251,6 +251,38 @@ test("RuntimeController create prepares and activates the runtime", async () => 
 	await controller.dispose();
 });
 
+test("RuntimeController abort preserves the live transcript and interrupted reply", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.create(state, "/workspace", {
+		dependencies: dependencies([fake]),
+	});
+	try {
+		state.appendMessage("tool", "- removed\n+ added", {
+			format: "diff",
+			state: "success",
+		});
+		state.appendAssistantDelta("partial **reply**");
+		const messages = [...state.messages];
+		fake.runtime.session.abort = async () => {
+			fake.emit(
+				agentSessionEventStub({
+					type: "message_end",
+					message: { role: "assistant", stopReason: "aborted" },
+				}),
+			);
+			fake.emit(agentSessionEventStub({ type: "agent_settled" }));
+		};
+
+		await controller.abort();
+
+		assertEquals(state.messages, messages);
+		assertEquals(state.transcript.activeAssistantMessageId, undefined);
+	} finally {
+		await controller.dispose();
+	}
+});
+
 test("RuntimeController production path binds callbacks before activation", async () => {
 	const fake = fakeRuntime();
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
