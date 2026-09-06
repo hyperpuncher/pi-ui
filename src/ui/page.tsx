@@ -429,7 +429,9 @@ export function renderPage(
 									>
 										the selected session
 									</strong>
-									? This action can’t be undone.
+									?
+									<br />
+									This action can’t be undone.
 								</p>
 							</header>
 							<footer>

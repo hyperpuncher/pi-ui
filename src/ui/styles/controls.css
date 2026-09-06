@@ -151,16 +151,10 @@
 	}
 
 	.btn:where([data-variant="destructive"]) {
-		background: light-dark(
-			oklch(from var(--status-danger) l c h / 10%),
-			oklch(from var(--status-danger) l c h / 30%)
-		);
+		background: oklch(from var(--status-danger) l c h / 20%);
 		color: var(--status-danger);
 		&:where(:not(:disabled):hover) {
-			background: light-dark(
-				oklch(from var(--status-danger) l c h / 20%),
-				oklch(from var(--status-danger) l c h / 40%)
-			);
+			background: oklch(from var(--status-danger) l c h / 30%);
 		}
 	}
 
