@@ -58,7 +58,6 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	let dirty = false;
 	let wrap = true;
 	let editor: PierreEditor<"file"> | undefined;
-	let detachEditor: (() => void) | undefined;
 	const viewer = new File(viewerOptions());
 	const tree = new FileTree({
 		composition: {
@@ -282,11 +281,6 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 				dirty = draft !== current?.contents;
 				syncSaveButton();
 			},
-			onEditComplete({ file }) {
-				if (!current || file.contents !== current.contents) return "reject";
-				file.cacheKey = `${workspacePath}:${current.path}:${current.revision}`;
-				return "accept";
-			},
 			unsafeCSS: `
 				@media (prefers-reduced-motion: no-preference) {
 					[data-caret] {
@@ -493,7 +487,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			const { Editor } = await import("@pierre/diffs/edit");
 			if (generation !== fileGeneration || !current) return;
 			editor = new Editor("file");
-			detachEditor = editor.edit(viewer);
+			editor.edit(viewer);
 		} catch (error) {
 			editor = undefined;
 			setStatus(errorMessage(error));
@@ -519,9 +513,9 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	}
 
 	function stopEditing(): void {
-		detachEditor?.();
-		detachEditor = undefined;
-		editor?.cleanUp();
+		// Saving is handled by the API. Do not install an editor completion
+		// over the disk snapshot, even when its contents are unchanged.
+		editor?.cleanUp("discard");
 		editor = undefined;
 		syncSaveButton();
 	}
