@@ -1,5 +1,7 @@
 import { afterEach, test } from "bun:test";
 
+import { attributesToString } from "@kitajs/html";
+
 import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
@@ -12,6 +14,7 @@ import { collectElementPatches } from "../testing/element-patches.ts";
 import { projectBackendSignals } from "../ui/backend-signals.ts";
 import { renderMarkdownFinal } from "../ui/markdown.tsx";
 import type { MessageRenderServiceOptions } from "../ui/message-render-service.ts";
+import { renderPage } from "../ui/page.tsx";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 import { AppStore } from "./app-store.ts";
 import { type TranscriptMessageInput, TranscriptState } from "./transcript-state.ts";
@@ -1020,7 +1023,7 @@ test("state snapshots contain domain messages only", () => {
 	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
 });
 
-test("initial and live backend-owned signals share exact projections", () => {
+test("initial page signals match live state after activity and session transitions", async () => {
 	const state = createState();
 	const cases = [
 		() => {},
@@ -1043,9 +1046,21 @@ test("initial and live backend-owned signals share exact projections", () => {
 	for (const mutate of cases) {
 		mutate();
 		const snapshot = state.snapshot();
+		let initialSignals: string | null = null;
+		await new HTMLRewriter()
+			.on("body", {
+				element: (element) => {
+					initialSignals = element.getAttribute("data-signals");
+				},
+			})
+			.transform(new Response(renderPage(state.renderer.projectState(snapshot))))
+			.text();
+		// HTMLRewriter returns the encoded attribute, not its DOM-decoded value.
 		assertEqual(
-			state.renderer.renderSignals(snapshot),
-			JSON.stringify(projectBackendSignals(snapshot)),
+			` data-signals="${initialSignals}"`,
+			attributesToString({
+				"data-signals": state.renderer.renderSignals(snapshot),
+			}),
 		);
 	}
 });

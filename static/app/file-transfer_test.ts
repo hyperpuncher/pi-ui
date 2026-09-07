@@ -100,22 +100,40 @@ test("HEIC and HEIF images are detected by MIME type or extension", () => {
 	assertEquals(isHeicImageFile({ name: "photo.avif", type: "image/avif" }), false);
 });
 
-test("AVIF conversion produces a quality 85 JPEG and closes the bitmap", async () => {
+test("AVIF conversion paints before requesting JPEG encoding and releases the bitmap", async () => {
 	const originalBitmap = Object.getOwnPropertyDescriptor(
 		globalThis,
 		"createImageBitmap",
 	);
 	const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 	let closed = false;
+	const bitmap = {
+		width: 3200,
+		height: 1800,
+		close: () => {
+			closed = true;
+		},
+	};
+	const painted: string[] = [];
+	const context = {
+		fillStyle: "",
+		fillRect: (...bounds: number[]) => {
+			assertEquals(context.fillStyle, "white");
+			assertEquals(bounds, [0, 0, 3200, 1800]);
+			painted.push("background");
+		},
+		drawImage: (image: typeof bitmap, ...bounds: number[]) => {
+			assertEquals(image === bitmap, true);
+			assertEquals(bounds, [0, 0, 3200, 1800]);
+			painted.push("image");
+		},
+	};
 	const canvas = {
 		width: 0,
 		height: 0,
-		getContext: () => ({
-			fillStyle: "",
-			fillRect: () => undefined,
-			drawImage: () => undefined,
-		}),
+		getContext: (kind: string) => (kind === "2d" ? context : null),
 		toBlob: (callback: (blob: Blob) => void, type: string, quality: number) => {
+			assertEquals(painted, ["background", "image"]);
 			assertEquals(type, "image/jpeg");
 			assertEquals(quality, 0.85);
 			callback(new Blob(["jpeg"], { type }));
@@ -123,18 +141,11 @@ test("AVIF conversion produces a quality 85 JPEG and closes the bitmap", async (
 	};
 	Object.defineProperty(globalThis, "createImageBitmap", {
 		configurable: true,
-		value: () =>
-			Promise.resolve({
-				width: 3200,
-				height: 1800,
-				close: () => {
-					closed = true;
-				},
-			}),
+		value: () => Promise.resolve(bitmap),
 	});
 	Object.defineProperty(globalThis, "document", {
 		configurable: true,
-		value: { createElement: () => canvas },
+		value: { createElement: (tag: string) => (tag === "canvas" ? canvas : null) },
 	});
 	try {
 		const converted = await convertAvifToJpeg(

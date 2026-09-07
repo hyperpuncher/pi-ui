@@ -242,15 +242,6 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 	};
 }
 
-test("RuntimeController create prepares and activates the runtime", async () => {
-	const fake = fakeRuntime();
-	const controller = await RuntimeController.create(new AppStore(), "/workspace", {
-		dependencies: dependencies([fake]),
-	});
-	assertEquals(fake.calls, ["create", "bindExtensions", "subscribe"]);
-	await controller.dispose();
-});
-
 test("RuntimeController abort preserves the live transcript and interrupted reply", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();
@@ -763,13 +754,12 @@ test("RuntimeController removes one message from the active agent queue", async 
 	await controller.dispose();
 });
 
-test("RuntimeController keeps foreground activity visible through retry events", async () => {
+test("RuntimeController create activates event handling and keeps activity visible through retries", async () => {
 	const state = new AppStore();
 	const runtime = fakeRuntime("/sessions/running.jsonl");
-	const controller = await RuntimeController.prepare(state, "/workspace", {
+	const controller = await RuntimeController.create(state, "/workspace", {
 		dependencies: dependencies([runtime]),
 	});
-	controller.activate();
 
 	runtime.emit(agentSessionEventStub({ type: "agent_start" }));
 	assertEquals(state.activityText, "Working...");
