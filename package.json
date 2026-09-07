@@ -65,5 +65,8 @@
 	"engines": {
 		"bun": ">=1.4.0"
 	},
-	"packageManager": "bun@1.4.0"
+	"packageManager": "bun@1.4.0",
+	"patchedDependencies": {
+		"@shikijs/primitive@4.4.3": "patches/@shikijs%2Fprimitive@4.4.3.patch"
+	}
 }

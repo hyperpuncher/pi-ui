@@ -22,7 +22,7 @@ export function toolTitleParts(
 		return [
 			{ text: "$ ", tone: "accent", mono: true },
 			{
-				text: formatShellCommandDisplay(stringValue(record.command)) || "...",
+				text: stringValue(record.command) || "...",
 				mono: true,
 				highlight: "bash",
 			},
@@ -38,80 +38,6 @@ export function toolTitleParts(
 			? [{ text: toolRange(args), tone: "muted", mono: true } as const]
 			: []),
 	];
-}
-
-export function formatShellCommandDisplay(command: string): string {
-	if (command.length <= 90) return command;
-
-	let result = "";
-	let quote: "'" | '"' | "`" | undefined;
-	let escaped = false;
-	let comment = false;
-	let blockDepth = 0;
-	const continuation = () => `\n${"  ".repeat(blockDepth)}`;
-
-	for (let index = 0; index < command.length; index++) {
-		const char = command[index];
-		if (comment) {
-			result += char;
-			if (char === "\n") comment = false;
-			continue;
-		}
-		if (escaped) {
-			result += char;
-			escaped = false;
-			continue;
-		}
-		if (char === "\\" && quote !== "'") {
-			result += char;
-			escaped = true;
-			continue;
-		}
-		if (quote) {
-			result += char;
-			if (char === quote) quote = undefined;
-			continue;
-		}
-		if (char === "'" || char === '"' || char === "`") {
-			quote = char;
-			result += char;
-			continue;
-		}
-		if (char === "#" && (index === 0 || /[\s;|&{(]/.test(command[index - 1]))) {
-			comment = true;
-			result += char;
-			continue;
-		}
-
-		const operator = [";;&", "&&", "||", "|&", ";;", ";&", "|", ";"].find(
-			(candidate) => command.startsWith(candidate, index),
-		);
-		if (operator) {
-			const separator = ["&&", "||", "|", "|&"].includes(operator)
-				? ` ${operator}`
-				: operator;
-			result = `${result.trimEnd()}${separator}${continuation()}`;
-			index += operator.length - 1;
-			while (command[index + 1] === " ") index++;
-			continue;
-		}
-		if (char === "{" && command[index - 1] !== "$") {
-			result += `{`;
-			blockDepth++;
-			result += continuation();
-			while (command[index + 1] === " ") index++;
-			continue;
-		}
-		if (char === "}" && blockDepth > 0) {
-			blockDepth--;
-			result = `${result.trimEnd()}${continuation()}}`;
-			while (command[index + 1] === " ") index++;
-			continue;
-		}
-		result += char;
-	}
-
-	return result.trimEnd();
 }
 
 export function toolTitle(

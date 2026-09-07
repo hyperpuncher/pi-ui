@@ -3,11 +3,7 @@ import os from "node:os";
 
 import type { SessionTreeNode } from "@earendil-works/pi-coding-agent";
 
-import {
-	assertEquals,
-	assertStrictEquals,
-	assertStringIncludes,
-} from "#testing/assertions";
+import { assertEquals, assertStrictEquals } from "#testing/assertions";
 import { mkdir, remove, utime, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
@@ -35,7 +31,6 @@ import {
 } from "./test-fixtures.ts";
 import {
 	contentToText,
-	formatShellCommandDisplay,
 	formatToolResult,
 	formatToolStart,
 	summarizeValue,
@@ -79,26 +74,8 @@ test("tool presentation preserves representative and malformed values", () => {
 		{ text: "/tmp/file", tone: "accent", mono: true },
 		{ text: ":3-4", tone: "muted", mono: true },
 	]);
-	assertStringIncludes(
-		formatShellCommandDisplay(`echo ${"x".repeat(90)} && done`),
-		"&&\ndone",
-	);
-	assertStringIncludes(
-		formatShellCommandDisplay(`echo ${"x".repeat(90)}; done`),
-		";\ndone",
-	);
-	assertStringIncludes(
-		formatShellCommandDisplay(`echo ${"x".repeat(90)} |& tee out`),
-		" |&\ntee out",
-	);
-	assertStringIncludes(
-		formatShellCommandDisplay(`case ${"x".repeat(90)} in x) one ;;& y) two ;& esac`),
-		"one;;&\ny) two;&\nesac",
-	);
-	assertStringIncludes(
-		formatShellCommandDisplay(`echo ${"x".repeat(90)} # keep ; | && unchanged`),
-		"# keep ; | && unchanged",
-	);
+	const command = `echo ${"x".repeat(90)} && bun - <<'JS'\nimport { read } from 'example';\nconst data = { value: 1 };\nJS`;
+	assertEquals(toolTitleParts("bash", { command, timeout: 10 })[1]?.text, command);
 	assertEquals(
 		contentToText([
 			{ type: "thinking", thinking: "hidden" },

@@ -3,6 +3,7 @@ import type { AppStore } from "../state/app-store.ts";
 import { EnhancementQueue } from "../state/enhancement-queue.ts";
 import { StreamingFrameScheduler } from "../state/streaming-frame-scheduler.ts";
 import type { TranscriptMessage } from "../state/transcript-state.ts";
+import { hasEmbeddedBash, loadBashLanguages } from "./bash-highlight.ts";
 import { renderPierreCode, renderPierreDiff } from "./diffs.ts";
 import {
 	releaseMarkdownStreamingState,
@@ -22,7 +23,7 @@ type MessagePresentation = Pick<
 	AppMessage,
 	"renderedHtml" | "presentationState" | "presentationVersion"
 >;
-type EnhancementKind = "markdown" | "code" | "diff";
+type EnhancementKind = "markdown" | "code" | "diff" | "bash";
 export type MessageRenderServiceOptions = {
 	enhancementConcurrency?: number;
 	renderMarkdownFinal?: (text: string) => Promise<string>;
@@ -43,7 +44,7 @@ function rendersMarkdown(role: AppMessage["role"]): boolean {
 	return markdownRoles.has(role);
 }
 function enhancementKind(
-	message: Pick<AppMessage, "format" | "role">,
+	message: Pick<AppMessage, "format" | "role" | "titleParts">,
 ): EnhancementKind | undefined {
 	if (
 		rendersMarkdown(message.role) &&
@@ -55,6 +56,12 @@ function enhancementKind(
 	if (message.role !== "tool") return undefined;
 	if (message.format === "diff") return "diff";
 	if (message.format === "code") return "code";
+	if (
+		message.titleParts?.some(
+			(part) => part.highlight === "bash" && hasEmbeddedBash(part.text),
+		)
+	)
+		return "bash";
 }
 function unique(values: readonly (string | undefined)[]): string[] {
 	return [...new Set(values.filter((value): value is string => value !== undefined))];
@@ -142,7 +149,10 @@ export class MessageRenderService {
 			presentationState: rendersMarkdown(message.role) ? "streaming" : "plain",
 			presentationVersion: 0,
 		});
-		if (message.role === "tool" && message.state !== "running") {
+		if (
+			message.role === "tool" &&
+			(message.state !== "running" || enhancementKind(message) === "bash")
+		) {
 			this.enqueueEnhancement(id);
 		}
 	}
@@ -216,7 +226,7 @@ export class MessageRenderService {
 			!kind ||
 			!value ||
 			(kind === "markdown" && this.streamingIds().includes(id)) ||
-			!message.text.trim() ||
+			(kind !== "bash" && !message.text.trim()) ||
 			value.presentationState === "enhancing" ||
 			value.presentationState === "final"
 		)
@@ -230,6 +240,11 @@ export class MessageRenderService {
 			key: `${generation}:${id}:${version}:${kind}`,
 			priority: this.store.transcript.getMessageIndex(id) ?? 0,
 			run: async (signal) => {
+				for (const part of message.titleParts ?? []) {
+					if (signal.aborted) return;
+					if (part.highlight === "bash") await loadBashLanguages(part.text);
+				}
+				if (signal.aborted) return;
 				const html = await this.renderEnhancement(kind, text);
 				if (signal.aborted) return;
 				const current = this.store.transcript.getMessage(id);
@@ -302,7 +317,10 @@ export class MessageRenderService {
 			value.presentationState = "streaming";
 		}
 		this.broadcast(message);
-		if (message.role === "tool" && message.state !== "running") {
+		if (
+			message.role === "tool" &&
+			(message.state !== "running" || enhancementKind(message) === "bash")
+		) {
 			this.enqueueEnhancement(id);
 		}
 	}
@@ -383,7 +401,8 @@ export class MessageRenderService {
 	private async renderEnhancement(
 		kind: EnhancementKind,
 		text: string,
-	): Promise<string> {
+	): Promise<string | undefined> {
+		if (kind === "bash") return undefined;
 		if (kind === "markdown")
 			return await sessionPerformance.measure("markdownEnhancement", () =>
 				this.renderMarkdownEnhancement(text),

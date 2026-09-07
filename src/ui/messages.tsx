@@ -7,17 +7,19 @@ import {
 } from "../../static/app/attachment-file.js";
 import { providerErrorPresentation } from "../agent/provider-error-message.ts";
 import { authDialogAction } from "../commands/actions.ts";
-import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
+import { getActiveCodeThemeId } from "../pierre-theme.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppKeybindHint, AppSessionSummary } from "../state/app-store.ts";
 import type { TranscriptMessageTitlePart } from "../state/transcript-state.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
+import { highlightBash } from "./bash-highlight.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
 import { ChevronRight, Loader } from "./icons.ts";
 import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 import { renderMarkdownStreaming } from "./markdown.tsx";
+import { BoundedCache } from "./render-cache.ts";
 import type { AppMessage } from "./render-state.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
 import { resumeSessionAction } from "./session-transition.tsx";
@@ -25,8 +27,8 @@ import { shikiTokenStyle } from "./shiki-token-style.ts";
 import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-const inlineBashCache = new Map<string, string>();
-const maxInlineBashCacheEntries = 500;
+type InlineBashCacheEntry = { html: string; missingLanguages: string[] };
+const inlineBashCache = new BoundedCache<string, InlineBashCacheEntry>(500);
 
 function preservesFinalizedMessageDom(message: AppMessage): boolean {
 	return (
@@ -312,19 +314,30 @@ function renderToolTitle(title: string, parts: TranscriptMessageTitlePart[] | un
 					{parts[0].text.trimEnd()}
 				</span>
 				<span class="tool-command-content">
-					{parts
-						.slice(1)
-						.map((part, index) => renderToolTitlePart(part, index + 1))}
+					{renderToolTitlePart(
+						parts[1],
+						1,
+						parts
+							.slice(2)
+							.map((part, index) => renderToolTitlePart(part, index + 2))
+							.join(""),
+					)}
 				</span>
 			</span>
 		);
 	}
-	return <>{parts.map(renderToolTitlePart)}</>;
+	return <>{parts.map((part, index) => renderToolTitlePart(part, index))}</>;
 }
 
-function renderToolTitlePart(part: TranscriptMessageTitlePart, index: number) {
+function renderToolTitlePart(
+	part: TranscriptMessageTitlePart,
+	index: number,
+	suffix = "",
+) {
 	return part.highlight === "bash" ? (
-		<span class={toolTitlePartClass(part, index)}>{renderInlineBash(part.text)}</span>
+		<span class={toolTitlePartClass(part, index)}>
+			{renderInlineBash(part.text, suffix)}
+		</span>
 	) : (
 		<span class={toolTitlePartClass(part, index)} safe>
 			{part.text}
@@ -332,34 +345,37 @@ function renderToolTitlePart(part: TranscriptMessageTitlePart, index: number) {
 	);
 }
 
-function renderInlineBash(command: string): string {
-	const cacheKey = `${getActiveCodeThemeId()}\0${command}`;
+function renderInlineBash(command: string, suffix = ""): string {
+	const cacheKey = `${getActiveCodeThemeId()}\0${command}\0${suffix}`;
 	const cached = inlineBashCache.get(cacheKey);
-	if (cached) return cached;
-
-	const highlighter = getHighlighterIfLoaded();
-	if (!highlighter) return escapeHtml(command);
+	// Only retry when one of this command's missing grammars becomes available.
+	if (
+		cached &&
+		!cached.missingLanguages.some((language) =>
+			getHighlighterIfLoaded()?.getLoadedLanguages().includes(language),
+		)
+	)
+		return cached.html;
 
 	try {
-		const result = highlighter.codeToTokens(command, {
-			lang: "bash",
-			themes: getPierreThemes(),
-		});
-		const highlighted = result.tokens
-			.map((line) => line.map(renderInlineToken).join(""))
+		const result = highlightBash(command, { format: true });
+		if (!result) return escapeHtml(command) + suffix;
+		const { tokens, missingLanguages } = result;
+		const highlighted = tokens
+			.map((line, index) => {
+				const text = line.map((token) => token.content).join("");
+				const indent = (text.match(/^[\t ]*/)?.[0] ?? "").replaceAll(
+					"\t",
+					"    ",
+				).length;
+				return `<span class="shell-line" style="--shell-indent:${indent + 2}ch">${line.map(renderInlineToken).join("")}${index === tokens.length - 1 ? suffix : ""}</span>`;
+			})
 			.join("\n");
-		cacheInlineBash(cacheKey, highlighted);
+		inlineBashCache.set(cacheKey, { html: highlighted, missingLanguages });
 		return highlighted;
 	} catch {
-		return escapeHtml(command);
+		return escapeHtml(command) + suffix;
 	}
-}
-
-function cacheInlineBash(cacheKey: string, html: string): void {
-	if (inlineBashCache.size >= maxInlineBashCacheEntries) {
-		inlineBashCache.delete(inlineBashCache.keys().next().value ?? "");
-	}
-	inlineBashCache.set(cacheKey, html);
 }
 
 function renderInlineToken(token: ThemedToken): string {

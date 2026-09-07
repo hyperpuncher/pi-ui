@@ -1,0 +1,17 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 5c954aeae6e112b730ef41eaf8f589a48d1ba41e..8caf62e07173c114eda26f329a5b7a3ffc613857 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -755,9 +755,11 @@ function codeToTokensWithThemes(primitive, code, options, codeToTokensBaseFn = c
+ 		color: i[0],
+ 		theme: i[1]
+ 	}));
+-	const themedTokens = themes.map((t) => {
++	const themedTokens = themes.map((t, index) => {
+ 		const tokens = codeToTokensBaseFn(primitive, code, {
+ 			...options,
++			// Only the first theme's explanations survive merging; token types belong to every variant.
++			includeExplanation: index === 0 || options.includeExplanation === "tokenType" ? options.includeExplanation : false,
+ 			theme: t.theme
+ 		});
+ 		return {

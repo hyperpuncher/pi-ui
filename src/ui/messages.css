@@ -280,7 +280,15 @@
 	}
 	.tool-title-bash {
 		overflow-wrap: anywhere;
+		tab-size: 4;
 		white-space: pre-wrap;
+	}
+	.shell-line {
+		display: inline-block;
+		max-inline-size: 100%;
+		padding-inline-start: var(--shell-indent);
+		text-indent: calc(-1 * var(--shell-indent));
+		vertical-align: top;
 	}
 	.tool-title-accent {
 		color: var(--action-primary);
@@ -519,6 +527,10 @@
 	.tool-title-compact-content * {
 		display: inline;
 		white-space: nowrap;
+	}
+	.tool-title-compact-content .shell-line {
+		padding-inline-start: 0;
+		text-indent: 0;
 	}
 
 	@media (width < 40rem) {
