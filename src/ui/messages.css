@@ -521,6 +521,28 @@
 		white-space: nowrap;
 	}
 
+	@media (width < 40rem) {
+		#messages {
+			--text-sm: 0.8125rem;
+
+			padding-inline: 0.75rem;
+			font-size: 0.9375rem;
+		}
+		.message-tool {
+			--text-sm: 0.75rem;
+		}
+		#messages :is(.tool-pending-output, .code-block pre) {
+			font-size: 0.75rem;
+			line-height: 1.125rem;
+		}
+		.messages-stack {
+			width: 100%;
+		}
+		.message-user {
+			max-width: 88%;
+		}
+	}
+
 	@media (width >= 40rem) {
 		#messages {
 			padding-inline: 1.5rem;

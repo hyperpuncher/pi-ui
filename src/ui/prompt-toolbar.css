@@ -35,6 +35,17 @@
 		width: max-content;
 		max-width: calc(100vw - 2rem);
 	}
+	@media (width < 40rem) {
+		.prompt-toolbar-popover [role="menuitem"] {
+			min-height: 2.75rem;
+			gap: 0.75rem;
+			padding: 0.625rem 0.75rem;
+		}
+		.prompt-toolbar-popover .prompt-toolbar-menu-label {
+			white-space: normal;
+		}
+	}
+
 	.prompt-toolbar-menu-label {
 		min-width: 0;
 		overflow: hidden;

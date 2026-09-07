@@ -73,6 +73,11 @@ function schedulePromptLayout() {
 }
 
 function applyPromptLayout(footer) {
+	if (matchMedia("(max-width: 639px)").matches) {
+		footer.setAttribute("data-toolbar-compact", "");
+		footer.setAttribute("data-context-compact", "");
+		return;
+	}
 	footer.removeAttribute("data-toolbar-compact");
 	footer.removeAttribute("data-context-compact");
 	footer.setAttribute("data-measuring", "");

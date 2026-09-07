@@ -37,10 +37,6 @@
 		align-items: center;
 		gap: 0.375rem;
 	}
-	.prompt-status-message > span,
-	.prompt-working-content > span {
-		text-box: trim-both cap alphabetic;
-	}
 	.extension-status {
 		display: none;
 		max-width: 10rem;

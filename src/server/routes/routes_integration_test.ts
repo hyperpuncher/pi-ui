@@ -20,6 +20,16 @@ import type { RouteContext, RuntimeResource } from "./context.ts";
 import { endpoints, filesPreviewBase } from "./endpoints.ts";
 import { fileRoutes } from "./files.ts";
 
+test("page opts into keyboard resizing without disabling zoom", async () => {
+	const context = fakeContext();
+	context.renderer = new UiRenderer(context.store, new DatastarClientHub());
+	const response = await createRouter(context).fetch(new Request("http://localhost/"));
+	assertStringIncludes(
+		await response.text(),
+		'name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"',
+	);
+});
+
 test("page assets use the current immutable content version", async () => {
 	const context = fakeContext();
 	context.renderer = new UiRenderer(context.store, new DatastarClientHub());

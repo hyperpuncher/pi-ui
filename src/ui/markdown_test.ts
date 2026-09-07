@@ -71,6 +71,34 @@ test("markdown fallback and final rendering reject unsafe HTML and URLs", async 
 	}
 });
 
+// Known upstream Bun bug with autolinks enabled, reproduced on 1.4.0 and 1.4.1.
+test.todo("bold bare URLs close their formatting before the rest of the page", async () => {
+	const markdown = "then open **https://hal9000.tail.igrk.net/** without `:31416`.";
+	const expected =
+		"<p>then open <strong>https://hal9000.tail.igrk.net/</strong> without <code>:31416</code>.</p>\n";
+	assertEqual(renderMarkdownStreaming(markdown), expected);
+	assertEqual(await renderMarkdownFinal(markdown), expected);
+});
+
+test("bare URLs are clickable and explicit bold links remain balanced", async () => {
+	for (const html of [
+		renderMarkdownStreaming("https://example.com/"),
+		await renderMarkdownFinal("https://example.com/"),
+	]) {
+		assertIncludes(html, 'href="https://example.com/"');
+		assertIncludes(html, ">https://example.com/</a>");
+	}
+
+	const explicit = "**[pi-ui](https://hal9000.tail.igrk.net/)**";
+	for (const html of [
+		renderMarkdownStreaming(explicit),
+		await renderMarkdownFinal(explicit),
+	]) {
+		assertIncludes(html, 'href="https://hal9000.tail.igrk.net/"');
+		assertIncludes(html, ">pi-ui</a></strong>");
+	}
+});
+
 test("plain, fenced, and incomplete markdown preserve rendering structure", async () => {
 	const plainStreaming = renderMarkdownStreaming("Hello **world**");
 	const plainFinal = await renderMarkdownFinal("Hello **world**");

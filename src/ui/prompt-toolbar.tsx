@@ -129,7 +129,7 @@ export function renderPromptToolbar(
 					aria-label="Message tools"
 				>
 					{promptToolbarItems
-						.filter((item) => item.action !== "review" || reviewAvailable)
+						.filter((item) => item.action !== "review")
 						.map((item) => {
 							return (
 								<MobilePromptToolbarItem

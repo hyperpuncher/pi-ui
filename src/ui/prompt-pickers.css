@@ -120,6 +120,14 @@
 		fill: currentColor;
 	}
 
+	@media (hover: none), (pointer: coarse) {
+		.model-scope-button {
+			min-width: 2.75rem;
+			height: 2.75rem;
+			opacity: 1;
+		}
+	}
+
 	@media (width <= 48rem) {
 		#model-select {
 			position: static;

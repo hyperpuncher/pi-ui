@@ -22,6 +22,13 @@
 		--diffs-editor-selection-bg: var(--selection);
 	}
 
+	@media (width < 40rem) {
+		#messages :where(.pierre-diff, .pierre-code) {
+			--diffs-font-size: 12px;
+			--diffs-line-height: 18px;
+		}
+	}
+
 	.tool-output-surface :where(.pierre-diff, .pierre-code) {
 		--diffs-bg: transparent;
 		--diffs-light-bg: transparent;

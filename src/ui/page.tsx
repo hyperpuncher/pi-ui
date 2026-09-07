@@ -69,8 +69,12 @@ export function renderPage(
 			>
 				<head>
 					<meta charset="utf-8" />
-					<meta name="viewport" content="width=device-width, initial-scale=1" />
-					<meta name="theme-color" content="oklch(10% 0 none)" />
+					<meta
+						name="viewport"
+						content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+					/>
+					<meta name="color-scheme" content="light dark" />
+					<meta name="theme-color" content="" />
 					<meta name="apple-mobile-web-app-title" content="pi-ui" />
 					<title safe>{state.documentTitle}</title>
 					<link rel="manifest" href={`${staticBase}/manifest.webmanifest`} />
