@@ -13,6 +13,7 @@
 	#messages {
 		min-height: 0;
 		overflow-y: auto;
+		overflow-anchor: none;
 		padding: 6rem 1rem 0;
 		outline: 0;
 		mask:
