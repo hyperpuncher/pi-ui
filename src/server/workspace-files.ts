@@ -119,7 +119,7 @@ export async function readWorkspaceFile(
 	} catch {
 		return { message: "Only text files can be viewed.", path, size };
 	}
-	return { path, contents, revision: await fileRevision(bytes), size };
+	return { path, contents, revision: fileRevision(bytes), size };
 }
 
 export type WorkspaceUnavailableFile = {
@@ -142,7 +142,7 @@ export async function writeWorkspaceFile(
 		throw new WorkspaceFileError(413, "File is too large to view in pi-ui.");
 	}
 	const currentBytes = await Bun.file(resolved).bytes();
-	if ((await fileRevision(currentBytes)) !== expectedRevision) {
+	if (fileRevision(currentBytes) !== expectedRevision) {
 		throw new WorkspaceFileError(
 			409,
 			"The file changed on disk. Reopen it before saving.",
@@ -301,6 +301,6 @@ function normalizeRelativePath(filePath: string): string {
 	return filePath.replaceAll("\\", "/");
 }
 
-function fileRevision(contents: Uint8Array): Promise<string> {
-	return Promise.resolve(new Bun.CryptoHasher("sha256").update(contents).digest("hex"));
+function fileRevision(contents: Uint8Array): string {
+	return new Bun.CryptoHasher("sha256").update(contents).digest("hex");
 }

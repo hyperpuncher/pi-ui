@@ -252,8 +252,8 @@ function isSessionChangingAction(action: PromptToolbarAction): boolean {
 
 function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
 	if (action === "review") return toggleWorkspaceReviewAction();
-	if (action === "new-chat") return newChatAction();
-	if (action === "new-temporary-chat") return newTemporaryChatAction();
+	if (action === "new-chat") return newSessionAction();
+	if (action === "new-temporary-chat") return newSessionAction(true);
 	if (action === "files") return "window.piUi.fileTransfer.pick()";
 	return undefined;
 }
@@ -275,13 +275,13 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 	if (action === "new-chat") {
 		return `if (${primaryModifier} && !evt.altKey && evt.code === 'KeyO') {
 			evt.preventDefault();
-			${newChatAction()}
+			${newSessionAction()}
 		}`;
 	}
 	if (action === "new-temporary-chat") {
 		return `if (${primaryModifier} && evt.altKey && evt.code === 'KeyO') {
 			evt.preventDefault();
-			${newTemporaryChatAction()}
+			${newSessionAction(true)}
 		}`;
 	}
 	if (action === "sessions") {
@@ -291,12 +291,4 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 		}`;
 	}
 	return undefined;
-}
-
-function newChatAction(): string {
-	return newSessionAction();
-}
-
-function newTemporaryChatAction(): string {
-	return newSessionAction(true);
 }

@@ -107,7 +107,7 @@ function toolTarget(toolName: string, args: JsonValue): string {
 		const path = stringValue(record.path);
 		return path ? `${pattern} in ${path}` : pattern;
 	}
-	return shortenPath(stringValue(record.path) || stringValue(record.file_path));
+	return formatHomePath(stringValue(record.path) || stringValue(record.file_path));
 }
 
 export function formatToolStart(toolName: string, args: JsonValue): ToolPresentation {
@@ -158,10 +158,6 @@ export function formatToolResult<Result>(
 		return { text: compactToolOutput(text), format: "output" };
 	}
 	return { text, format: "output" };
-}
-
-function shortenPath(path: string): string {
-	return formatHomePath(path);
 }
 
 // oxlint-disable-next-line no-unused-vars -- Retained while narrowing the accidental API.
