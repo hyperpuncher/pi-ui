@@ -256,30 +256,6 @@ function readDefaults() {
 
 const defaults = readDefaults();
 
-function defaultColor(mode, name) {
-	return defaults[mode][name];
-}
-
-function defaultMetric(name) {
-	return defaults.metrics[name];
-}
-
-function defaultRadius() {
-	return defaults.radius;
-}
-
-function changedColor(mode, name, value) {
-	return value !== defaults[mode][name];
-}
-
-function changedMetric(name, value) {
-	return value !== defaults.metrics[name];
-}
-
-function changedRadius(value) {
-	return Number(value) !== defaults.radius;
-}
-
 function restore() {
 	const fallback = structuredClone(defaults);
 	try {
@@ -369,15 +345,10 @@ function save(palettes, radius, metrics) {
 
 window.piUi.themeLab = {
 	apply,
-	changedColor,
-	changedMetric,
-	changedRadius,
 	copy,
 	currentMode,
 	currentPreference,
-	defaultColor,
-	defaultMetric,
-	defaultRadius,
+	defaults,
 	reset,
 	restore,
 	save,

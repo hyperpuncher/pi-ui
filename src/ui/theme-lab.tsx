@@ -205,8 +205,8 @@ function renderToken(mode: ThemeMode, name: PaletteName, label: string) {
 	return (
 		<div
 			class="theme-lab-token"
-			data-class:theme-lab-modified={`window.piUi.themeLab.changedColor('${mode}', '${name}', ${value})`}
-			data-on:dblclick={`if (!evt.target.closest('input')) ${value} = window.piUi.themeLab.defaultColor('${mode}', '${name}')`}
+			data-class:theme-lab-modified={`${value} !== window.piUi.themeLab.defaults.${mode}.${name}`}
+			data-on:dblclick={`if (!evt.target.closest('input')) ${value} = window.piUi.themeLab.defaults.${mode}.${name}`}
 			title={tokenDescription(name)}
 		>
 			<span class="theme-lab-swatch-wrap">
@@ -265,8 +265,8 @@ function renderMetric(
 	return (
 		<label
 			class="theme-lab-metric"
-			data-class:theme-lab-modified={`window.piUi.themeLab.changedMetric('${name}', ${value})`}
-			data-on:dblclick={`if (!evt.target.closest('input')) ${value} = window.piUi.themeLab.defaultMetric('${name}')`}
+			data-class:theme-lab-modified={`${value} !== window.piUi.themeLab.defaults.metrics.${name}`}
+			data-on:dblclick={`if (!evt.target.closest('input')) ${value} = window.piUi.themeLab.defaults.metrics.${name}`}
 		>
 			<span>{label}</span>
 			<input
@@ -293,8 +293,8 @@ function renderMetrics() {
 				<div class="theme-lab-metric-list">
 					<label
 						class="theme-lab-metric"
-						data-class:theme-lab-modified="window.piUi.themeLab.changedRadius($themeLabRadius)"
-						data-on:dblclick="if (!evt.target.closest('input')) $themeLabRadius = window.piUi.themeLab.defaultRadius()"
+						data-class:theme-lab-modified="Number($themeLabRadius) !== window.piUi.themeLab.defaults.radius"
+						data-on:dblclick="if (!evt.target.closest('input')) $themeLabRadius = window.piUi.themeLab.defaults.radius"
 					>
 						<span>radius</span>
 						<input
@@ -325,7 +325,7 @@ function renderMetrics() {
 					{shadowMetrics.map(([name, label]) => (
 						<label
 							class="theme-lab-shadow"
-							data-class:theme-lab-modified={`window.piUi.themeLab.changedMetric('${name}', ${metricSignal(name)})`}
+							data-class:theme-lab-modified={`${metricSignal(name)} !== window.piUi.themeLab.defaults.metrics.${name}`}
 						>
 							<span>{label}</span>
 							<input
