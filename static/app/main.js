@@ -20,7 +20,7 @@ import {
 	closePickers,
 	isFileOpen,
 	isOpen as isPickerOpen,
-	resetFilePicker,
+	syncPickerSelection,
 } from "./pickers.js";
 import { createPromptHistory } from "./prompt-history.js";
 import { bindPromptInteractions, focusPromptEnd, setPromptValue } from "./prompt.js";
@@ -53,7 +53,7 @@ window.piUi = {
 		fuzzyMatch,
 		isFileOpen,
 		isOpen: isPickerOpen,
-		resetFile: resetFilePicker,
+		sync: syncPickerSelection,
 	},
 	prompt: {
 		clear: () => setPromptValue(""),

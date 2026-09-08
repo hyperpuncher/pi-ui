@@ -28,10 +28,27 @@ test("slash picker anchors its selected result nearest the prompt", () => {
 		}),
 	);
 	assertStringIncludes(html, 'id="slash-picker-list"');
+	assertStringIncludes(html, 'aria-label="Commands"');
+	assertStringIncludes(html, 'id="slash-option-login"');
+	assertFalse(html.includes("<button"));
+	assertFalse(html.includes("tabindex="));
 	assertStringIncludes(html, 'aria-selected="true"');
 	assertStringIncludes(html, "$prompt = '';");
 	assertStringIncludes(html, "@post('/prompt'");
 	assertStringIncludes(html, "payload: { prompt: &#34;/login&#34; }");
+});
+
+test("file suggestions have stable option ids without nested focus targets", () => {
+	const html = renderFilePickerResults([
+		{ value: '@"src/my file.ts"', label: "my file.ts" },
+		{ value: "@src/", label: "src/" },
+	]);
+	assertStringIncludes(html, 'aria-label="Files"');
+	assertStringIncludes(html, 'id="file-option-%40%22src%2Fmy%20file.ts%22"');
+	assertStringIncludes(html, 'id="file-option-%40src%2F"');
+	assertStringIncludes(html, 'role="option"');
+	assertFalse(html.includes("<button"));
+	assertFalse(html.includes("tabindex="));
 });
 
 test("slash picker uses pi fuzzy matching on command names", () => {
@@ -339,16 +356,13 @@ test("thinking picker describes every supported maximum level", () => {
 });
 
 test("file picker fragments escape dynamic values and expose list semantics", () => {
-	const html = renderFilePickerResults(
-		[
-			{
-				value: `@src/"<unsafe>.ts`,
-				label: `<unsafe>.ts`,
-				description: `src/<unsafe>.ts`,
-			},
-		],
-		"src",
-	);
+	const html = renderFilePickerResults([
+		{
+			value: `@src/"<unsafe>.ts`,
+			label: `<unsafe>.ts`,
+			description: `src/<unsafe>.ts`,
+		},
+	]);
 	assertStringIncludes(html, 'id="file-picker-results"');
 	assertStringIncludes(html, 'role="listbox"');
 	assertStringIncludes(html, 'role="option"');

@@ -2,6 +2,7 @@ import { syncHtml } from "./sync-html.ts";
 
 export function PickerList(props: {
 	id: string;
+	label: string;
 	children: JSX.Element | JSX.Element[] | string[];
 	class?: string;
 	role?: "listbox" | "menu";
@@ -9,6 +10,7 @@ export function PickerList(props: {
 	return syncHtml(
 		<ul
 			id={props.id}
+			aria-label={props.label}
 			role={props.role ?? "listbox"}
 			class={props.class ?? "picker-list"}
 		>
@@ -35,18 +37,15 @@ export function PickerRow(props: {
 }): string {
 	return syncHtml(
 		<li
+			id={`file-option-${encodeURIComponent(props.value)}`}
 			role="option"
-			tabindex="-1"
+			data-picker-kind={props.kind}
+			data-picker-value={props.value}
 			class="picker-row"
 			aria-selected={props.selected ? "true" : "false"}
 			data-file-row
 		>
-			<button
-				type="button"
-				class="picker-row-button"
-				data-picker-kind={props.kind}
-				data-picker-value={props.value}
-			>
+			<div class="picker-row-button">
 				<span class="picker-row-content">
 					<span class="picker-row-title" safe>
 						{props.label}
@@ -56,7 +55,7 @@ export function PickerRow(props: {
 					</span>
 				</span>
 				<PickerMetadata text={props.metadata} />
-			</button>
+			</div>
 		</li>,
 	);
 }

@@ -32,6 +32,12 @@ export function renderPromptBox(
 				fileQuery: "",
 			})}
 			data-on:pointerdown__outside="window.piUi.pickers.close()"
+			data-effect="
+				$_filePickerOpen;
+				$_slashPickerOpen;
+				$prompt;
+				window.piUi.pickers.sync(true);
+			"
 			data-on:pi-ui-prompt-submit-finished="$_promptSubmitting = false"
 		>
 			<div class="prompt-popovers">
@@ -77,6 +83,9 @@ export function renderPromptBox(
 					class="prompt-input"
 					placeholder="Ask pi anything..."
 					aria-label="Message"
+					aria-autocomplete="list"
+					aria-haspopup="listbox"
+					data-preserve-attr="aria-controls aria-activedescendant"
 					aria-keyshortcuts="Alt+P"
 					rows="1"
 					data-bind:prompt

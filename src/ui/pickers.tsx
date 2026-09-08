@@ -40,8 +40,12 @@ export function slashPickerOpenExpression(state: AppStateSnapshot): string {
 
 export function renderSlashPicker(state: AppStateSnapshot): string {
 	return syncHtml(
-		<div id="slash-picker">
-			<PickerList id="slash-picker-list" class={bottomAnchoredPickerClass}>
+		<div id="slash-picker" data-init="window.piUi.pickers.sync(true)">
+			<PickerList
+				id="slash-picker-list"
+				label="Commands"
+				class={bottomAnchoredPickerClass}
+			>
 				{state.slashCommands.length === 0 ? (
 					<PickerEmpty>No prompts or skills found.</PickerEmpty>
 				) : (
@@ -63,28 +67,24 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 		<li
 			id={`slash-option-${encodeURIComponent(name)}`}
 			role="option"
-			tabindex="-1"
 			class="picker-row"
 			aria-selected={index === 0 ? "true" : "false"}
 			data-preserve-attr="aria-selected"
 			data-slash-row
 			data-slash-name={name}
 			data-slash-order={index}
+			data-picker-kind="slash"
+			data-on:click={`
+				window.piUi.messageScroll.scrollBottom();
+				$prompt = '';
+				@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} } });
+			`}
 			data-show={`
 				$_slashPickerOpen &&
 				window.piUi.pickers.fuzzyMatch($prompt.slice(1), ${JSON.stringify(name)}).matches
 			`}
 		>
-			<button
-				class="picker-row-button"
-				type="button"
-				data-picker-kind="slash"
-				data-on:click={`
-					window.piUi.messageScroll.scrollBottom();
-					$prompt = '';
-					@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} } });
-				`}
-			>
+			<div class="picker-row-button">
 				<span class="picker-row-content">
 					<span class="slash-command-title">
 						<span class="slash-command-name" safe>
@@ -101,7 +101,7 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 					</span>
 				</span>
 				<PickerMetadata text={item.source} />
-			</button>
+			</div>
 		</li>,
 	);
 }
@@ -120,17 +120,18 @@ export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 	);
 }
 
-export function renderFilePickerResults(
-	items: readonly AutocompleteItem[],
-	query = "",
-): string {
+export function renderFilePickerResults(items: readonly AutocompleteItem[]): string {
 	return syncHtml(
 		<div
 			id="file-picker-results"
 			aria-live="polite"
-			data-init={`window.piUi.pickers.resetFile(${JSON.stringify(query)})`}
+			data-init="window.piUi.pickers.sync(true)"
 		>
-			<PickerList id="file-picker-list" class={bottomAnchoredPickerClass}>
+			<PickerList
+				id="file-picker-list"
+				label="Files"
+				class={bottomAnchoredPickerClass}
+			>
 				{items.map((item, index) => (
 					<PickerRow
 						kind="file"

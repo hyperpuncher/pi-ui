@@ -22,35 +22,6 @@ export function focusPromptEnd() {
 	input.selectionEnd = input.value.length;
 }
 
-export function insertPromptText(text) {
-	const input = promptInput();
-	if (!input) return;
-	const start = input.selectionStart ?? input.value.length;
-	const end = input.selectionEnd ?? start;
-	input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
-	const cursor = start + text.length;
-	input.selectionStart = cursor;
-	input.selectionEnd = cursor;
-	input.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-export function deletePromptCharBeforeCursor() {
-	const input = promptInput();
-	if (!input) return;
-	const start = input.selectionStart ?? input.value.length;
-	const end = input.selectionEnd ?? start;
-	if (start !== end) {
-		input.value = `${input.value.slice(0, start)}${input.value.slice(end)}`;
-		input.selectionStart = start;
-		input.selectionEnd = start;
-	} else if (start > 0) {
-		input.value = `${input.value.slice(0, start - 1)}${input.value.slice(start)}`;
-		input.selectionStart = start - 1;
-		input.selectionEnd = start - 1;
-	}
-	input.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
 export function bindPromptInteractions() {
 	document.addEventListener("pointerdown", (event) => {
 		const target = event.target;

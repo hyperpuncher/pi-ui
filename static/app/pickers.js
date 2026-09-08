@@ -1,11 +1,4 @@
-import {
-	deletePromptCharBeforeCursor,
-	focusPromptEnd,
-	insertPromptText,
-	promptInput,
-	promptValue,
-	setPromptValue,
-} from "./prompt.js";
+import { promptInput } from "./prompt.js";
 
 let activeFilePrefix;
 let filePickerSuppressUntilInput = false;
@@ -43,10 +36,22 @@ export function isOpen() {
 export function bindPickers(options) {
 	slashCommandFilter = options.fuzzyFilter;
 	document.addEventListener("input", syncFromPrompt);
-	document.addEventListener("keyup", syncFromPrompt);
+	document.addEventListener("selectionchange", syncFromPrompt);
 	document.addEventListener("click", handleClick);
 	document.addEventListener("keydown", handleKeydown);
-	rankSlashCommands(promptValue());
+	// Keep suggestion clicks from blurring the editor without blocking touch scrolling.
+	document.addEventListener("mousedown", (event) => {
+		if (
+			event.button === 0 &&
+			event.target instanceof Element &&
+			event.target.closest("[data-picker-kind]")
+		) {
+			event.preventDefault();
+		}
+	});
+	document.addEventListener("focusout", (event) => {
+		if (event.target === promptInput()) closePickers(true);
+	});
 }
 
 function syncFromPrompt(event) {
@@ -56,25 +61,24 @@ function syncFromPrompt(event) {
 	) {
 		return;
 	}
-	if (filePickerSuppressUntilInput && event.type === "keyup") return;
+	if (event.isComposing) return;
 	if (event.type === "input") filePickerSuppressUntilInput = false;
 	queueFileSearch(event.target);
-	rankSlashCommands(event.target.value);
-	if (event.target.value.startsWith("/")) {
-		resetPicker("slash-picker-list", "[data-slash-row]");
-	}
 }
 
 function queueFileSearch(input) {
-	if (filePickerSuppressUntilInput) return;
-	const match = extractFilePrefix(
-		input.value,
-		input.selectionStart ?? input.value.length,
-	);
+	if (filePickerSuppressUntilInput || document.activeElement !== input) return;
+	const match = extractFilePrefix(input.value, input.selectionStart);
 	if (!match) {
 		closeFilePicker();
 		return;
 	}
+	if (
+		activeFilePrefix?.start === match.start &&
+		activeFilePrefix.end === match.end &&
+		activeFilePrefix.query === match.query
+	)
+		return;
 	activeFilePrefix = match;
 	clearTimeout(searchTimer);
 	searchTimer = setTimeout(() => {
@@ -96,76 +100,37 @@ function handleClick(event) {
 	if (target.closest("[data-file-trigger]")) {
 		event.preventDefault();
 		insertFilePrefix();
-	} else if (target.closest("[data-send-trigger]")) {
+	} else if (target.closest("[data-send-trigger]") || slash instanceof HTMLElement) {
 		closePickers(true);
-	} else if (slash instanceof HTMLElement) {
-		event.preventDefault();
 	} else if (file instanceof HTMLElement) {
 		event.preventDefault();
 		applyFileCompletion(file.dataset.pickerValue ?? "");
-	} else if (target instanceof HTMLTextAreaElement && target.id === "prompt-input") {
-		queueFileSearch(target);
 	}
 }
 
 function handleKeydown(event) {
-	if (event.isComposing) return;
-	if (event.ctrlKey || event.metaKey || event.altKey) return;
+	if (
+		event.target !== promptInput() ||
+		event.isComposing ||
+		event.ctrlKey ||
+		event.metaKey ||
+		event.altKey ||
+		event.shiftKey ||
+		!isOpen()
+	)
+		return;
 	if (event.code === "Escape") {
-		const pickerHadFocus = document.activeElement?.closest?.("[data-picker-kind]");
-		if (isOpen()) event.preventDefault();
+		event.preventDefault();
 		closePickers(true);
-		if (promptValue() === "/") setPromptValue("");
-		if (pickerHadFocus) promptInput()?.focus({ preventScroll: true });
 		return;
 	}
-	if (document.activeElement?.closest?.("[data-file-row]")) {
-		if (event.code === "Backspace") {
-			event.preventDefault();
-			focusPromptEnd();
-			deletePromptCharBeforeCursor();
-			return;
-		}
-		if (event.key.length === 1) {
-			event.preventDefault();
-			focusPromptEnd();
-			insertPromptText(event.key);
-			return;
-		}
-	}
-	const active = document.activeElement;
-	if (active?.id === "prompt-input") {
-		if ((event.code === "ArrowDown" || event.code === "ArrowUp") && isSlashOpen()) {
-			event.preventDefault();
-			focusPickerRow("[data-slash-row]", event.code === "ArrowDown" ? 1 : -1);
-			return;
-		}
-		if ((event.code === "ArrowDown" || event.code === "ArrowUp") && isFileOpen()) {
-			event.preventDefault();
-			focusPickerRow("[data-file-row]", event.code === "ArrowDown" ? 1 : -1);
-			return;
-		}
-		if (event.code === "Enter" && !event.shiftKey && isFileOpen()) {
-			event.preventDefault();
-			selectedPickerRow("[data-file-row]")?.querySelector("button")?.click();
-			return;
-		}
-		if (event.code === "Enter" && !event.shiftKey && isSlashOpen()) {
-			event.preventDefault();
-			selectedPickerRow("[data-slash-row]")?.querySelector("button")?.click();
-			return;
-		}
-	}
-	for (const selector of ["[data-slash-row]", "[data-file-row]"]) {
-		if (!active?.closest?.(selector)) continue;
-		if (event.code === "ArrowDown" || event.code === "ArrowUp") {
-			event.preventDefault();
-			focusPickerRow(selector, event.code === "ArrowDown" ? 1 : -1);
-		} else if (event.code === "Enter") {
-			event.preventDefault();
-			active.click();
-		}
-		return;
+	const selector = isFileOpen() ? "[data-file-row]" : "[data-slash-row]";
+	if (event.code === "ArrowDown" || event.code === "ArrowUp") {
+		event.preventDefault();
+		selectPickerRow(selector, event.code === "ArrowDown" ? 1 : -1);
+	} else if (event.code === "Enter") {
+		event.preventDefault();
+		selectedPickerRow(selector)?.click();
 	}
 }
 
@@ -186,13 +151,10 @@ function insertFilePrefix() {
 	const input = promptInput();
 	if (!input) return;
 	filePickerSuppressUntilInput = false;
-	const cursor = input.selectionStart ?? input.value.length;
+	const cursor = input.selectionStart;
 	const needsSpace = cursor > 0 && !/\s/.test(input.value[cursor - 1] ?? "");
 	const insert = `${needsSpace ? " " : ""}@`;
-	input.value = `${input.value.slice(0, cursor)}${insert}${input.value.slice(input.selectionEnd ?? cursor)}`;
-	const nextCursor = cursor + insert.length;
-	input.selectionStart = nextCursor;
-	input.selectionEnd = nextCursor;
+	input.setRangeText(insert, cursor, input.selectionEnd, "end");
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 	input.focus();
 	queueFileSearch(input);
@@ -218,31 +180,18 @@ function isSlashOpen() {
 
 function isPopoverVisible(id) {
 	const popover = document.getElementById(id);
-	return popover instanceof HTMLElement && popover.style.display !== "none";
+	return popover instanceof HTMLElement && popover.checkVisibility();
 }
 
 function visibleRows(selector) {
 	return [...document.querySelectorAll(selector)].filter(
-		(row) => row instanceof HTMLElement && getComputedStyle(row).display !== "none",
+		(row) => row instanceof HTMLElement && row.checkVisibility(),
 	);
 }
 
 function selectedPickerRow(selector) {
 	const rows = visibleRows(selector);
 	return rows.find((row) => row.getAttribute("aria-selected") === "true") ?? rows[0];
-}
-
-function selectDefaultPickerRow(selector) {
-	const rows = visibleRows(selector);
-	for (const [index, row] of rows.entries()) {
-		row.setAttribute("aria-selected", index === 0 ? "true" : "false");
-	}
-}
-
-function resetPicker(listId, rowSelector) {
-	const list = document.getElementById(listId);
-	if (list instanceof HTMLElement) list.scrollTop = 0;
-	selectDefaultPickerRow(rowSelector);
 }
 
 function rankSlashCommands(prompt) {
@@ -262,28 +211,52 @@ function rankSlashCommands(prompt) {
 	list.append(...ranked, ...rows.filter((row) => !matches.has(row)));
 }
 
-export function resetFilePicker() {
-	resetPicker("file-picker-list", "[data-file-row]");
-}
-
 export function nextPickerIndex(length, activeIndex, direction) {
 	if (length <= 0) return -1;
 	if (activeIndex === -1) return 0;
 	return Math.max(0, Math.min(length - 1, activeIndex - direction));
 }
 
-function focusPickerRow(selector, direction) {
+function selectPickerRow(selector, direction) {
 	const rows = visibleRows(selector);
 	if (rows.length === 0) return;
-	const activeRow = document.activeElement?.closest?.(selector);
-	let activeIndex = rows.findIndex((row) => row === activeRow);
-	if (activeIndex === -1) {
-		activeIndex = rows.findIndex(
-			(row) => row.getAttribute("aria-selected") === "true",
-		);
-	}
+	const activeIndex = rows.findIndex(
+		(row) => row.getAttribute("aria-selected") === "true",
+	);
 	const nextIndex = nextPickerIndex(rows.length, activeIndex, direction);
 	for (const row of rows) row.setAttribute("aria-selected", "false");
 	rows[nextIndex]?.setAttribute("aria-selected", "true");
-	rows[nextIndex]?.querySelector("button")?.focus();
+	rows[nextIndex]?.scrollIntoView({ block: "nearest", behavior: "instant" });
+	syncPickerSelection();
+}
+
+export function syncPickerSelection(reset = false) {
+	// Read after Datastar has applied visibility changes and result patches.
+	queueMicrotask(() => {
+		const input = promptInput();
+		if (!input) return;
+		const listId = isFileOpen()
+			? "file-picker-list"
+			: isSlashOpen()
+				? "slash-picker-list"
+				: undefined;
+		if (reset && listId) {
+			if (listId === "slash-picker-list") rankSlashCommands(input.value);
+			document.getElementById(listId).scrollTop = 0;
+			for (const [index, option] of visibleRows(
+				`#${listId} [role="option"]`,
+			).entries()) {
+				option.setAttribute("aria-selected", index === 0 ? "true" : "false");
+			}
+		}
+		const row = listId && selectedPickerRow(`#${listId} [role="option"]`);
+		if (row && document.activeElement === input) {
+			row.setAttribute("aria-selected", "true");
+			input.setAttribute("aria-controls", listId);
+			input.setAttribute("aria-activedescendant", row.id);
+		} else {
+			input.removeAttribute("aria-controls");
+			input.removeAttribute("aria-activedescendant");
+		}
+	});
 }

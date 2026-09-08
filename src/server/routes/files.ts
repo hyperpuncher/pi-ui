@@ -30,7 +30,7 @@ export const fileRoutes = {
 				context.resources.fdPath,
 			);
 			return datastarResponse([
-				{ type: "elements", elements: renderFilePickerResults(items, query) },
+				{ type: "elements", elements: renderFilePickerResults(items) },
 				{ type: "signals", signals: { _filePickerOpen: items.length > 0 } },
 			]);
 		},
