@@ -1,10 +1,10 @@
 import { test } from "bun:test";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { assertEquals, assertStringIncludes } from "#testing/assertions";
-import { remove, writeFile, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { createBunReadToolDefinition } from "./read-tool.ts";
@@ -27,11 +27,11 @@ test("Bun read tool preserves text reads", async () => {
 	const root = await makeTempDir();
 	try {
 		const path = join(root, "notes.txt");
-		await writeTextFile(path, "one\ntwo");
+		await Bun.write(path, "one\ntwo");
 		const result = await readPath(root, path);
 		assertEquals(result.content, [{ type: "text", text: "one\ntwo" }]);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -40,7 +40,7 @@ test("Bun read tool preserves images within the provider limits", async () => {
 	try {
 		const source = await Bun.file(iconPath).bytes();
 		const path = join(root, "small.png");
-		await writeFile(path, source);
+		await Bun.write(path, source);
 
 		const result = await readPath(root, path);
 		assertEquals(result.content, [
@@ -48,7 +48,7 @@ test("Bun read tool preserves images within the provider limits", async () => {
 			{ type: "image", data: source.toBase64(), mimeType: "image/png" },
 		]);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -61,7 +61,7 @@ test("Bun read tool resizes images and reports coordinate scaling", async () => 
 			.png()
 			.bytes();
 		const path = join(root, "large.png");
-		await writeFile(path, enlarged);
+		await Bun.write(path, enlarged);
 
 		const result = await readPath(root, path);
 		const text = result.content.find((item) => item.type === "text");
@@ -76,6 +76,6 @@ test("Bun read tool resizes images and reports coordinate scaling", async () => 
 			format: "png",
 		});
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });

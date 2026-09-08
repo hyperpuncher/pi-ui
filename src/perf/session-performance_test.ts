@@ -1,11 +1,11 @@
 import { test } from "bun:test";
+import { rm } from "node:fs/promises";
 
 import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
 	assertThrows,
 } from "#testing/assertions";
-import { readTextFile, remove } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
@@ -240,11 +240,11 @@ test("performance records append to the configured JSONL file", async () => {
 		appendSessionPerformanceRecord({ id: 1 });
 		appendSessionPerformanceRecord({ id: 2 });
 		await flushSessionPerformanceLog();
-		assertEqual(await readTextFile(path), '{"id":1}\n{"id":2}\n');
+		assertEqual(await Bun.file(path).text(), '{"id":1}\n{"id":2}\n');
 	} finally {
 		if (previous === undefined) delete process.env.PI_UI_PERF_FILE;
 		else process.env.PI_UI_PERF_FILE = previous;
-		await remove(directory, { recursive: true });
+		await rm(directory, { recursive: true });
 	}
 });
 

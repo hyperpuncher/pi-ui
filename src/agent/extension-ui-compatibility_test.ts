@@ -1,4 +1,5 @@
 import { test } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
 
 import {
 	createAgentSessionFromServices,
@@ -8,7 +9,6 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { assertEquals } from "#testing/assertions";
-import { mkdir, remove, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { AppStore } from "../state/app-store.ts";
@@ -54,7 +54,7 @@ test("a discovered pi extension uses the web UI bridge end to end", async () => 
 	const cwd = `${root}/workspace`;
 	await mkdir(`${agentDir}/extensions`, { recursive: true });
 	await mkdir(cwd);
-	await writeTextFile(`${agentDir}/extensions/ui-fixture.js`, fixtureSource);
+	await Bun.write(`${agentDir}/extensions/ui-fixture.js`, fixtureSource);
 
 	const store = new AppStore();
 	store.setPromptEditorText("browser draft");
@@ -101,7 +101,7 @@ test("a discovered pi extension uses the web UI bridge end to end", async () => 
 		);
 	} finally {
 		await controller?.dispose();
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 

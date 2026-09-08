@@ -1,8 +1,8 @@
 import { test } from "bun:test";
+import { appendFile, mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import { assertEquals, assertFalse } from "#testing/assertions";
-import { mkdir, remove, stat, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { listCachedSessions } from "./session-catalog.ts";
@@ -16,7 +16,7 @@ test("sessions reuse and incrementally update the summary cache", async () => {
 	const cachePath = join(root, "cache", "session-index.json");
 	await mkdir(workspace, { recursive: true });
 	try {
-		await writeTextFile(
+		await Bun.write(
 			sessionPath,
 			lines([
 				{
@@ -46,11 +46,7 @@ test("sessions reuse and incrementally update the summary cache", async () => {
 		assertEquals(firstEntry.indexedBytes, (await stat(sessionPath)).size);
 		assertFalse("size" in firstEntry);
 
-		await writeTextFile(
-			sessionPath,
-			lines([message("user", "Appended prompt", 4_000)]),
-			{ append: true },
-		);
+		await appendFile(sessionPath, lines([message("user", "Appended prompt", 4_000)]));
 		const updated = await listCachedSessions(sessionsRoot, cachePath);
 		assertEquals(updated[0].messageCount, 3);
 		assertEquals(updated[0].firstMessage, "First prompt");
@@ -62,7 +58,7 @@ test("sessions reuse and incrementally update the summary cache", async () => {
 			(await stat(sessionPath)).size,
 		);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -74,7 +70,7 @@ test("the cached catalog indexes every session and drops deleted files", async (
 	await mkdir(workspace, { recursive: true });
 	try {
 		for (const index of [1, 2]) {
-			await writeTextFile(
+			await Bun.write(
 				join(workspace, `session-${index}.jsonl`),
 				lines([
 					{
@@ -95,13 +91,13 @@ test("the cached catalog indexes every session and drops deleted files", async (
 			2,
 		);
 
-		await remove(join(workspace, "session-1.jsonl"));
+		await rm(join(workspace, "session-1.jsonl"));
 		assertEquals((await listCachedSessions(sessionsRoot, cachePath)).length, 1);
 		assertEquals(Object.keys((await readSessionSummaryCache(cachePath)).sessions), [
 			join(workspace, "session-2.jsonl"),
 		]);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -118,7 +114,7 @@ test("attachment references produce readable session titles", async () => {
 			"@/tmp/pi-ui-transfers/file-a1-image.png\nwhy is the sidebar visible?",
 		];
 		for (const [index, prompt] of prompts.entries()) {
-			await writeTextFile(
+			await Bun.write(
 				join(workspace, `session-${index}.jsonl`),
 				lines([
 					{
@@ -143,7 +139,7 @@ test("attachment references produce readable session titles", async () => {
 			"session-2": "why is the sidebar visible?",
 		});
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -156,8 +152,8 @@ test("a corrupt summary cache is rebuilt", async () => {
 	await mkdir(workspace, { recursive: true });
 	await mkdir(join(root, "cache"), { recursive: true });
 	try {
-		await writeTextFile(cachePath, "not json");
-		await writeTextFile(
+		await Bun.write(cachePath, "not json");
+		await Bun.write(
 			sessionPath,
 			lines([
 				{
@@ -175,7 +171,7 @@ test("a corrupt summary cache is rebuilt", async () => {
 		assertEquals(sessions[0].firstMessage, "Recovered");
 		assertEquals((await readSessionSummaryCache(cachePath)).version, 2);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 

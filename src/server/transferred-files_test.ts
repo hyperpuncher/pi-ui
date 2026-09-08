@@ -1,14 +1,7 @@
 import { test } from "bun:test";
+import { readdir, rm, stat } from "node:fs/promises";
 
 import { assert, assertEquals, assertRejects } from "#testing/assertions";
-import {
-	isNotFoundError,
-	readDir,
-	readTextFile,
-	remove,
-	stat,
-	writeTextFile,
-} from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import {
@@ -140,8 +133,8 @@ test("store sanitizes names and generates collision-safe paths", async () => {
 					"Expected a sanitized basename",
 				);
 			}
-			assertEquals(await readTextFile(paths[0]), "first");
-			assertEquals(await readTextFile(paths[1]), "second");
+			assertEquals(await Bun.file(paths[0]).text(), "first");
+			assertEquals(await Bun.file(paths[1]).text(), "second");
 		} finally {
 			await store.dispose();
 		}
@@ -162,9 +155,7 @@ test("store removes all files from a failed import", async () => {
 					},
 				]),
 			);
-			const entries = [];
-			for (const entry of await readDir(store.rootPath)) entries.push(entry);
-			assertEquals(entries.length, 0);
+			assertEquals(await readdir(store.rootPath), []);
 		} finally {
 			await store.dispose();
 		}
@@ -174,7 +165,7 @@ test("store removes all files from a failed import", async () => {
 test("store disposal is idempotent and scoped to its owned root", async () => {
 	await withTempRoot(async (tempRoot) => {
 		const sibling = `${tempRoot}/keep.txt`;
-		await writeTextFile(sibling, "keep");
+		await Bun.write(sibling, "keep");
 		const store = await TransferredFileStore.create({ tempRoot });
 		await store.importFiles([memoryFile("remove.txt", "remove")]);
 
@@ -200,8 +191,6 @@ async function withTempRoot(callback: (path: string) => Promise<void>): Promise<
 	try {
 		await callback(path);
 	} finally {
-		await remove(path, { recursive: true }).catch((error) => {
-			if (!isNotFoundError(error)) throw error;
-		});
+		await rm(path, { recursive: true, force: true });
 	}
 }

@@ -19,7 +19,6 @@
 	"type": "module",
 	"imports": {
 		"#testing/assertions": "./src/testing/assertions.ts",
-		"#testing/files": "./src/testing/files.ts",
 		"#testing/temp": "./src/testing/temp.ts"
 	},
 	"publishConfig": {

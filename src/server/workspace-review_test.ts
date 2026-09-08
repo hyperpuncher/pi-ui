@@ -1,9 +1,9 @@
 import { test } from "bun:test";
+import { mkdir, rm, stat } from "node:fs/promises";
 
 import { parsePatchFiles } from "@pierre/diffs";
 
 import { assertEquals, assertRejects, assertStringIncludes } from "#testing/assertions";
-import { mkdir, readTextFile, remove, stat, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { outputCommand } from "../utils/command.ts";
@@ -26,8 +26,8 @@ test("ignore checks require every path to be ignored and respect tracked files a
 	const workspace = await makeTempDir();
 	try {
 		await git(workspace, "init");
-		await writeTextFile(`${workspace}/.gitignore`, "*.log\n!important.log\n");
-		await writeTextFile(`${workspace}/tracked.log`, "tracked\n");
+		await Bun.write(`${workspace}/.gitignore`, "*.log\n!important.log\n");
+		await Bun.write(`${workspace}/tracked.log`, "tracked\n");
 		await git(workspace, "add", "-f", "tracked.log");
 		assertEquals(
 			await areWorkspacePathsIgnored(workspace, ["a.log", "odd\nname.log"]),
@@ -47,7 +47,7 @@ test("ignore checks require every path to be ignored and respect tracked files a
 			false,
 		);
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -62,7 +62,7 @@ test("reused metadata preserves content updates and retries an unborn history", 
 			(await readWorkspaceReview(workspace, undefined, cache)).commits,
 			[],
 		);
-		await writeTextFile(`${workspace}/file.txt`, "initial\n");
+		await Bun.write(`${workspace}/file.txt`, "initial\n");
 		await git(workspace, "add", ".");
 		await git(workspace, "commit", "-m", "initial");
 		assertEquals(
@@ -70,14 +70,14 @@ test("reused metadata preserves content updates and retries an unborn history", 
 			await readWorkspaceReview(workspace),
 		);
 		for (const contents of ["first edit\n", "second edit\n", "initial\n"]) {
-			await writeTextFile(`${workspace}/file.txt`, contents);
+			await Bun.write(`${workspace}/file.txt`, contents);
 			assertEquals(
 				await readWorkspaceReview(workspace, undefined, cache),
 				await readWorkspaceReview(workspace),
 			);
 		}
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -125,14 +125,14 @@ test("workspace review combines repository files with tracked and untracked chan
 		await git(repository, "config", "user.email", "pi-ui@example.invalid");
 		await git(repository, "config", "user.name", "pi-ui test");
 		await mkdir(`${repository}/src`);
-		await writeTextFile(`${repository}/src/old.ts`, "export const old = 1;\n");
-		await writeTextFile(`${repository}/README.md`, "before\n");
+		await Bun.write(`${repository}/src/old.ts`, "export const old = 1;\n");
+		await Bun.write(`${repository}/README.md`, "before\n");
 		await git(repository, "add", ".");
 		await git(repository, "commit", "--quiet", "-m", "initial");
 
 		await git(repository, "mv", "src/old.ts", "src/new.ts");
-		await writeTextFile(`${repository}/README.md`, "after\n");
-		await writeTextFile(`${repository}/notes.txt`, "untracked\n");
+		await Bun.write(`${repository}/README.md`, "after\n");
+		await Bun.write(`${repository}/notes.txt`, "untracked\n");
 
 		const nestedWorkspace = `${repository}/src`;
 		assertEquals(await findGitRoot(nestedWorkspace), repository);
@@ -182,11 +182,11 @@ test("workspace review combines repository files with tracked and untracked chan
 		assertStringIncludes(snapshot.patch, "diff --git a/notes.txt b/notes.txt");
 		assertEquals(snapshot.revision.length, 64);
 
-		await writeTextFile(`${repository}/notes.txt`, "changed again\n");
+		await Bun.write(`${repository}/notes.txt`, "changed again\n");
 		const updated = await readWorkspaceReview(repository);
 		assertEquals(updated.revision === snapshot.revision, false);
 	} finally {
-		await remove(repository, { recursive: true });
+		await rm(repository, { recursive: true });
 	}
 });
 
@@ -197,11 +197,11 @@ for (const committed of [false, true]) {
 			await git(repository, "init", "--quiet");
 			await git(repository, "config", "user.email", "pi-ui@example.invalid");
 			await git(repository, "config", "user.name", "pi-ui test");
-			await writeTextFile(`${repository}/tracked.txt`, "before\n\t \n\n");
+			await Bun.write(`${repository}/tracked.txt`, "before\n\t \n\n");
 			await git(repository, "add", ".");
 			await git(repository, "commit", "--quiet", "-m", "initial");
-			await writeTextFile(`${repository}/tracked.txt`, "after\n\t \n\n");
-			await writeTextFile(`${repository}/added.txt`, "added\n  \n\t\n");
+			await Bun.write(`${repository}/tracked.txt`, "after\n\t \n\n");
+			await Bun.write(`${repository}/added.txt`, "added\n  \n\t\n");
 			if (committed) {
 				await git(repository, "add", ".");
 				await git(repository, "commit", "--quiet", "-m", "update");
@@ -224,7 +224,7 @@ for (const committed of [false, true]) {
 				"\t\n",
 			]);
 		} finally {
-			await remove(repository, { recursive: true });
+			await rm(repository, { recursive: true });
 		}
 	});
 }
@@ -235,17 +235,17 @@ test("workspace review discards one tracked or untracked file at a time", async 
 		await git(repository, "init", "--quiet");
 		await git(repository, "config", "user.email", "pi-ui@example.invalid");
 		await git(repository, "config", "user.name", "pi-ui test");
-		await writeTextFile(`${repository}/keep.txt`, "before\n");
-		await writeTextFile(`${repository}/old.txt`, "rename me\n");
+		await Bun.write(`${repository}/keep.txt`, "before\n");
+		await Bun.write(`${repository}/old.txt`, "rename me\n");
 		await git(repository, "add", ".");
 		await git(repository, "commit", "--quiet", "-m", "initial");
 
-		await writeTextFile(`${repository}/keep.txt`, "after\n");
-		await writeTextFile(`${repository}/untracked.txt`, "temporary\n");
+		await Bun.write(`${repository}/keep.txt`, "after\n");
+		await Bun.write(`${repository}/untracked.txt`, "temporary\n");
 		await git(repository, "mv", "old.txt", "new.txt");
 
 		await discardWorkspaceChange(repository, "new.txt");
-		assertEquals(await readTextFile(`${repository}/old.txt`), "rename me\n");
+		assertEquals(await Bun.file(`${repository}/old.txt`).text(), "rename me\n");
 		await assertRejects(() => stat(`${repository}/new.txt`));
 		assertEquals(
 			(await readWorkspaceReview(repository)).changes.map(({ path }) => path),
@@ -255,10 +255,10 @@ test("workspace review discards one tracked or untracked file at a time", async 
 		await discardWorkspaceChange(repository, "untracked.txt");
 		await assertRejects(() => stat(`${repository}/untracked.txt`));
 		await discardWorkspaceChange(repository, "keep.txt");
-		assertEquals(await readTextFile(`${repository}/keep.txt`), "before\n");
+		assertEquals(await Bun.file(`${repository}/keep.txt`).text(), "before\n");
 		assertEquals((await readWorkspaceReview(repository)).changes, []);
 	} finally {
-		await remove(repository, { recursive: true });
+		await rm(repository, { recursive: true });
 	}
 });
 
@@ -272,7 +272,7 @@ test("workspace review reports non-repositories without throwing", async () => {
 		assertEquals(snapshot.patch, "");
 		assertEquals(snapshot.revision, "non-git");
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 

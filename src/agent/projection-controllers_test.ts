@@ -1,10 +1,10 @@
 import { test } from "bun:test";
+import { mkdir, rm, utimes } from "node:fs/promises";
 import os from "node:os";
 
 import type { SessionTreeNode } from "@earendil-works/pi-coding-agent";
 
 import { assertEquals, assertStrictEquals } from "#testing/assertions";
-import { mkdir, remove, utime, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { AppStore } from "../state/app-store.ts";
@@ -416,7 +416,7 @@ test("session discovery indexes every candidate in newest-first order", async ()
 		for (let index = 1; index <= 4; index++) {
 			const timestamp = new Date(index * 1_000);
 			const path = `${workspace}/${index}.jsonl`;
-			await writeTextFile(
+			await Bun.write(
 				path,
 				`${JSON.stringify({
 					type: "session",
@@ -436,7 +436,7 @@ test("session discovery indexes every candidate in newest-first order", async ()
 					},
 				})}\n`,
 			);
-			await utime(path, timestamp, timestamp);
+			await utimes(path, timestamp, timestamp);
 		}
 
 		const sessions = await listCachedSessions(root, `${root}/session-index.json`);
@@ -446,7 +446,7 @@ test("session discovery indexes every candidate in newest-first order", async ()
 		);
 		assertEquals(sessions[0]?.firstMessage, "Message 4");
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -497,7 +497,7 @@ for (const exists of [false, true]) {
 		catalog.applyPrepared({ ok: true, sessions: [sessionInfo(path, "Keep")] });
 		try {
 			if (exists) {
-				await writeTextFile(
+				await Bun.write(
 					path,
 					`${JSON.stringify({ type: "session", id: "late", cwd: root, timestamp: new Date(0).toISOString() })}\n`,
 				);
@@ -511,7 +511,7 @@ for (const exists of [false, true]) {
 			assertEquals(state.snapshot(), snapshot);
 		} finally {
 			catalog.dispose();
-			await remove(root, { recursive: true });
+			await rm(root, { recursive: true });
 		}
 	});
 }
@@ -544,7 +544,7 @@ test("immediate session refresh cancels a queued file refresh for a provisional 
 		assertEquals(state.sessions, []);
 	} finally {
 		catalog.dispose();
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 

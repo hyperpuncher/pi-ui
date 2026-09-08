@@ -1,11 +1,11 @@
 import { test } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { relative } from "node:path";
 
 import { CombinedAutocompleteProvider } from "@earendil-works/pi-tui";
 
 import { assertEquals, assertRejects } from "#testing/assertions";
-import { mkdir, remove, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { getToolPath } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
@@ -25,13 +25,10 @@ test.skipIf(!fdPath)(
 					.success,
 				true,
 			);
-			await writeTextFile(`${workspace}/.gitignore`, "ignored/\n*.log\n");
-			await writeTextFile(`${workspace}/.ignore`, "extra/\n");
+			await Bun.write(`${workspace}/.gitignore`, "ignored/\n*.log\n");
+			await Bun.write(`${workspace}/.ignore`, "extra/\n");
 			await mkdir(`${workspace}/src/deep/a/b/c`, { recursive: true });
-			await writeTextFile(
-				`${workspace}/src/.gitignore`,
-				"*.tmp\n!target-keep.tmp\n",
-			);
+			await Bun.write(`${workspace}/src/.gitignore`, "*.tmp\n!target-keep.tmp\n");
 			for (const directory of ["ignored", "extra", ".hidden"])
 				await mkdir(`${workspace}/${directory}`);
 			for (const file of [
@@ -44,7 +41,7 @@ test.skipIf(!fdPath)(
 				"extra/target.txt",
 				"target.log",
 			]) {
-				await writeTextFile(`${workspace}/${file}`, "");
+				await Bun.write(`${workspace}/${file}`, "");
 			}
 			const results = await searchFiles(workspace, "target", undefined, fdPath);
 			assertEquals(results.map((item) => item.value).sort(), [
@@ -54,7 +51,7 @@ test.skipIf(!fdPath)(
 				"@target.txt",
 			]);
 		} finally {
-			await remove(workspace, { recursive: true });
+			await rm(workspace, { recursive: true });
 		}
 	},
 );
@@ -66,9 +63,9 @@ test.skipIf(!fdPath)(
 		try {
 			await mkdir(`${workspace}/src`);
 			await mkdir(`${workspace}/space dir`);
-			await writeTextFile(`${workspace}/space dir/space file.txt`, "");
+			await Bun.write(`${workspace}/space dir/space file.txt`, "");
 			for (let i = 0; i < 25; i++)
-				await writeTextFile(`${workspace}/src/target-${i}.txt`, "");
+				await Bun.write(`${workspace}/src/target-${i}.txt`, "");
 			const provider = new CombinedAutocompleteProvider([], workspace, fdPath);
 			for (const query of [
 				"",
@@ -94,7 +91,7 @@ test.skipIf(!fdPath)(
 				20,
 			);
 		} finally {
-			await remove(workspace, { recursive: true });
+			await rm(workspace, { recursive: true });
 		}
 	},
 );
@@ -102,7 +99,7 @@ test.skipIf(!fdPath)(
 test("unavailable fd never falls back to manual completion", async () => {
 	const workspace = await makeTempDir();
 	try {
-		await writeTextFile(`${workspace}/fallback.txt`, "");
+		await Bun.write(`${workspace}/fallback.txt`, "");
 		for (const executable of [undefined, `${workspace}/missing-fd`]) {
 			for (const query of ["", "fallback", `${workspace}/fallback`]) {
 				assertEquals(
@@ -112,7 +109,7 @@ test("unavailable fd never falls back to manual completion", async () => {
 			}
 		}
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -131,7 +128,7 @@ test.skipIf(!fdPath)(
 				"cancelled file search",
 			);
 		} finally {
-			await remove(workspace, { recursive: true });
+			await rm(workspace, { recursive: true });
 		}
 	},
 );

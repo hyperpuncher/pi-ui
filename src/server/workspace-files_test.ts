@@ -1,8 +1,8 @@
 import { test } from "bun:test";
+import { mkdir, rm, symlink } from "node:fs/promises";
 import { relative } from "node:path";
 
 import { assertEquals, assertRejects } from "#testing/assertions";
-import { mkdir, remove, symlink, writeFile, writeTextFile } from "#testing/files";
 import { makeTempDir, makeTempFile } from "#testing/temp";
 
 import {
@@ -23,10 +23,10 @@ test("workspace files list source files without dependencies or symlinks", async
 		await mkdir(`${workspace}/src`, { recursive: true });
 		await mkdir(`${workspace}/node_modules/package`, { recursive: true });
 		await mkdir(`${workspace}/.github`, { recursive: true });
-		await writeTextFile(`${workspace}/src/main.ts`, "main");
-		await writeTextFile(`${workspace}/.gitignore`, "dist");
-		await writeTextFile(`${workspace}/.github/workflow.yml`, "jobs: {}");
-		await writeTextFile(`${workspace}/node_modules/package/index.js`, "ignored");
+		await Bun.write(`${workspace}/src/main.ts`, "main");
+		await Bun.write(`${workspace}/.gitignore`, "dist");
+		await Bun.write(`${workspace}/.github/workflow.yml`, "jobs: {}");
+		await Bun.write(`${workspace}/node_modules/package/index.js`, "ignored");
 		await symlink(outside, `${workspace}/outside.txt`);
 
 		assertEquals(await listWorkspaceFiles(workspace), [
@@ -37,8 +37,8 @@ test("workspace files list source files without dependencies or symlinks", async
 			"src/main.ts",
 		]);
 	} finally {
-		await remove(workspace, { recursive: true });
-		await remove(outside);
+		await rm(workspace, { recursive: true });
+		await rm(outside);
 	}
 });
 
@@ -47,16 +47,16 @@ test("workspace files can omit hidden directories outside Git repositories", asy
 	try {
 		await mkdir(`${workspace}/.cache`, { recursive: true });
 		await mkdir(`${workspace}/src`, { recursive: true });
-		await writeTextFile(`${workspace}/.cache/generated.json`, "{}");
-		await writeTextFile(`${workspace}/.env`, "VALUE=1");
-		await writeTextFile(`${workspace}/src/main.ts`, "main");
+		await Bun.write(`${workspace}/.cache/generated.json`, "{}");
+		await Bun.write(`${workspace}/.env`, "VALUE=1");
+		await Bun.write(`${workspace}/src/main.ts`, "main");
 
 		assertEquals(
 			await listWorkspaceFiles(workspace, { includeHiddenDirectories: false }),
 			[".env", "src/", "src/main.ts"],
 		);
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -77,14 +77,14 @@ test("workspace entries create, rename, and remove files and folders", async () 
 		await removeWorkspaceEntry(workspace, "src");
 		assertEquals(await listWorkspaceFiles(workspace), []);
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
 test("workspace files read and save with revision conflict protection", async () => {
 	const workspace = await makeTempDir();
 	try {
-		await writeTextFile(`${workspace}/value.ts`, "export const value = 1;\n");
+		await Bun.write(`${workspace}/value.ts`, "export const value = 1;\n");
 		const first = await readWorkspaceFile(workspace, "value.ts");
 		if ("message" in first) throw new Error(first.message);
 		assertEquals(first.contents, "export const value = 1;\n");
@@ -102,7 +102,7 @@ test("workspace files read and save with revision conflict protection", async ()
 			"changed on disk",
 		);
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -112,7 +112,7 @@ test("linked files outside the workspace read and save through absolute paths, r
 	try {
 		await symlink(outside, `${workspace}/linked`);
 		for (const filePath of [outside, relative(workspace, outside), "linked"]) {
-			await writeTextFile(outside, "original");
+			await Bun.write(outside, "original");
 			const file = await readWorkspaceFile(workspace, filePath);
 			if ("message" in file) throw new Error(file.message);
 			assertEquals(file.contents, "original");
@@ -131,8 +131,8 @@ test("linked files outside the workspace read and save through absolute paths, r
 			);
 		}
 	} finally {
-		await remove(workspace, { recursive: true });
-		await remove(outside);
+		await rm(workspace, { recursive: true });
+		await rm(outside);
 	}
 });
 
@@ -140,8 +140,8 @@ test("workspace files handle unsupported files and keep tree mutations workspace
 	const workspace = await makeTempDir();
 	const outside = await makeTempFile();
 	try {
-		await writeFile(`${workspace}/binary`, new Uint8Array([0xff, 0xfe]));
-		await writeFile(
+		await Bun.write(`${workspace}/binary`, new Uint8Array([0xff, 0xfe]));
+		await Bun.write(
 			`${workspace}/large`,
 			new Uint8Array(maximumWorkspaceFileBytes + 1),
 		);
@@ -175,7 +175,7 @@ test("workspace files handle unsupported files and keep tree mutations workspace
 			"File not found",
 		);
 	} finally {
-		await remove(workspace, { recursive: true });
-		await remove(outside);
+		await rm(workspace, { recursive: true });
+		await rm(outside);
 	}
 });

@@ -1,8 +1,8 @@
 import { test } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
 import * as path from "node:path";
 
 import { assertEquals } from "#testing/assertions";
-import { mkdir, remove, writeTextFile } from "#testing/files";
 import { makeTempDir } from "#testing/temp";
 
 import { browseWorkspaceDirectories, searchWorkspaces } from "./workspace-search.ts";
@@ -14,7 +14,7 @@ test("workspace search completes matching directories", async () => {
 		await mkdir(path.join(root, "alpine"));
 		await mkdir(path.join(root, "beta"));
 		await mkdir(path.join(root, ".hidden"));
-		await writeTextFile(path.join(root, "alphabet.txt"), "");
+		await Bun.write(path.join(root, "alphabet.txt"), "");
 
 		assertEquals(await searchWorkspaces(root, path.join(root, "alp")), [
 			{ path: path.join(root, "alpha") },
@@ -24,7 +24,7 @@ test("workspace search completes matching directories", async () => {
 			{ path: path.join(root, ".hidden") },
 		]);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -34,7 +34,7 @@ test("workspace browser lists directories and resolves relative paths", async ()
 		await mkdir(path.join(root, "alpha"));
 		await mkdir(path.join(root, "beta"));
 		await mkdir(path.join(root, ".hidden"));
-		await writeTextFile(path.join(root, "file.txt"), "");
+		await Bun.write(path.join(root, "file.txt"), "");
 
 		assertEquals(await browseWorkspaceDirectories(root, ".", false), {
 			path: root,
@@ -48,7 +48,7 @@ test("workspace browser lists directories and resolves relative paths", async ()
 			path.join(root, "beta"),
 		]);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });
 
@@ -62,6 +62,6 @@ test("workspace search resolves relative paths from the active workspace", async
 			{ path: path.join(root, "projects", "pi-ui") },
 		]);
 	} finally {
-		await remove(root, { recursive: true });
+		await rm(root, { recursive: true });
 	}
 });

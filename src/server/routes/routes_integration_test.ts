@@ -1,11 +1,11 @@
 import { test } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 
 import { assertEquals, assertStringIncludes } from "#testing/assertions";
-import { mkdir, remove, writeFile, writeTextFile } from "#testing/files";
 import { makeTempDir, makeTempFile } from "#testing/temp";
 
 import { getToolPath } from "../../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
@@ -98,7 +98,7 @@ test("session favicons use workspace assets and fall back to a folder", async ()
 	const workspace = await makeTempDir();
 	try {
 		await mkdir(`${workspace}/public`);
-		await writeFile(`${workspace}/public/favicon.png`, new Uint8Array([1, 2, 3]));
+		await Bun.write(`${workspace}/public/favicon.png`, new Uint8Array([1, 2, 3]));
 		const context = fakeContext();
 		context.store.setSessionCatalog([
 			{
@@ -131,7 +131,7 @@ test("session favicons use workspace assets and fall back to a folder", async ()
 		);
 		assertStringIncludes(await fallback.text(), "M20 20a2 2");
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -231,8 +231,8 @@ test.skipIf(!fdPath)(
 		const firstWorkspace = await makeTempDir();
 		const secondWorkspace = await makeTempDir();
 		try {
-			await writeTextFile(`${firstWorkspace}/first.txt`, "");
-			await writeTextFile(`${secondWorkspace}/<unsafe>.txt`, "");
+			await Bun.write(`${firstWorkspace}/first.txt`, "");
+			await Bun.write(`${secondWorkspace}/<unsafe>.txt`, "");
 			const context = fakeContext();
 			context.resources.fdPath = fdPath;
 			context.store.setWorkspacePath(firstWorkspace);
@@ -272,8 +272,8 @@ test.skipIf(!fdPath)(
 			);
 		} finally {
 			await Promise.all([
-				remove(firstWorkspace, { recursive: true }),
-				remove(secondWorkspace, { recursive: true }),
+				rm(firstWorkspace, { recursive: true }),
+				rm(secondWorkspace, { recursive: true }),
 			]);
 		}
 	},
@@ -291,7 +291,7 @@ test("workspace search returns matching directories", async () => {
 		assertEquals(response.status, 200);
 		assertStringIncludes(await response.text(), "alpha");
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -301,7 +301,7 @@ test("workspace browser lists server directories", async () => {
 		await mkdir(`${workspace}/alpha`);
 		await mkdir(`${workspace}/beta`);
 		await mkdir(`${workspace}/.hidden`);
-		await writeTextFile(`${workspace}/file.txt`, "not a directory");
+		await Bun.write(`${workspace}/file.txt`, "not a directory");
 		const context = fakeContext();
 		context.store.setWorkspacePath(workspace);
 		const response = await createRouter(context).fetch(
@@ -331,7 +331,7 @@ test("workspace browser lists server directories", async () => {
 		);
 		assertStringIncludes(await hiddenResponse.text(), ".hidden");
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -381,7 +381,7 @@ test("workspace browser creates folders in the browsed directory and rejects inv
 			);
 		}
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -406,7 +406,7 @@ test("sessions can be forked to another workspace", async () => {
 		assertEquals(response.status, 204);
 		assertEquals(target, workspace);
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -481,7 +481,7 @@ test("file imports report content-detected image MIME types", async () => {
 	const path = `${tempDir}/screenshot.bin`;
 	const imageData =
 		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-	await writeFile(path, Uint8Array.fromBase64(imageData));
+	await Bun.write(path, Uint8Array.fromBase64(imageData));
 	try {
 		const formData = new FormData();
 		formData.set("file", new File(["ignored"], "screenshot.bin"));
@@ -498,7 +498,7 @@ test("file imports report content-detected image MIME types", async () => {
 			imports: [{ path, mimeType: "image/png" }],
 		});
 	} finally {
-		await remove(tempDir, { recursive: true });
+		await rm(tempDir, { recursive: true });
 	}
 });
 
@@ -730,8 +730,8 @@ test("file links resolve inside and outside paths to the editor without download
 	const name = "linked ü file.ts";
 	const path = `${workspace}/${name}`;
 	const outside = await makeTempFile({ suffix: "-linked ü file.ts" });
-	await writeTextFile(path, "export const value = 1;");
-	await writeTextFile(outside, "export const value = 1;");
+	await Bun.write(path, "export const value = 1;");
+	await Bun.write(outside, "export const value = 1;");
 	try {
 		const context = fakeContext();
 		context.store.setWorkspacePath(workspace);
@@ -750,8 +750,8 @@ test("file links resolve inside and outside paths to the editor without download
 			assertEquals(response.headers.get("content-disposition"), null);
 		}
 	} finally {
-		await remove(workspace, { recursive: true });
-		await remove(outside);
+		await rm(workspace, { recursive: true });
+		await rm(outside);
 	}
 });
 
@@ -763,7 +763,7 @@ test("outside files can be read, edited and downloaded without changing workspac
 	const router = createRouter(context);
 	const url = `http://localhost${endpoints.workspaceFileContent}?path=${encodeURIComponent(outside)}`;
 	try {
-		await writeTextFile(outside, "export const value = 1;");
+		await Bun.write(outside, "export const value = 1;");
 		const response = await router.fetch(new Request(url));
 		assertEquals(response.status, 200);
 		const file = await response.json();
@@ -792,8 +792,8 @@ test("outside files can be read, edited and downloaded without changing workspac
 		assertEquals(downloaded.headers.get("content-type"), "text/plain; charset=utf-8");
 		assertEquals(context.store.workspacePath, workspace);
 	} finally {
-		await remove(workspace, { recursive: true });
-		await remove(outside);
+		await rm(workspace, { recursive: true });
+		await rm(outside);
 	}
 });
 
@@ -807,7 +807,7 @@ test("editor downloads support binary and large files without a text preview", a
 			["binary.bin", new Uint8Array([255, 254, 0])],
 			["large.txt", new Uint8Array(2 * 1024 * 1024 + 1).fill(65)],
 		] as const) {
-			await writeFile(`${workspace}/${name}`, bytes);
+			await Bun.write(`${workspace}/${name}`, bytes);
 			const response = await router.fetch(
 				new Request(
 					`http://localhost${endpoints.workspaceFileContent}?path=${encodeURIComponent(name)}&download=1`,
@@ -822,7 +822,7 @@ test("editor downloads support binary and large files without a text preview", a
 			assertEquals(await response.bytes(), bytes);
 		}
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -853,7 +853,7 @@ test("file routes report missing files and directories", async () => {
 			assertEquals(response.status, status);
 		}
 	} finally {
-		await remove(workspace, { recursive: true });
+		await rm(workspace, { recursive: true });
 	}
 });
 
@@ -876,8 +876,8 @@ test("HTML links render outside the workspace with relative assets", async () =>
 	try {
 		const html =
 			'<!doctype html><link rel="stylesheet" href="style.css"><h1>Report</h1>';
-		await writeTextFile(outside, html);
-		await writeTextFile(`${outsideDirectory}/style.css`, "h1 { color: blue; }");
+		await Bun.write(outside, html);
+		await Bun.write(`${outsideDirectory}/style.css`, "h1 { color: blue; }");
 		const uri = pathToFileURL(outside).href + "?mode=dark#chart";
 		const redirect = await fetch(
 			new URL(`${endpoints.filesOpen}?uri=${encodeURIComponent(uri)}`, server.url),
@@ -915,8 +915,8 @@ test("HTML links render outside the workspace with relative assets", async () =>
 		assertEquals(nonHtml.status, 400);
 	} finally {
 		await server.stop(true);
-		await remove(workspace, { recursive: true });
-		await remove(outsideDirectory, { recursive: true });
+		await rm(workspace, { recursive: true });
+		await rm(outsideDirectory, { recursive: true });
 	}
 });
 
