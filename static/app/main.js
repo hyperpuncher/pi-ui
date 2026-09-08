@@ -1,8 +1,7 @@
 import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
 import { bindCodeCopy } from "./code-copy.js";
-import { bindControls, refreshControls } from "./controls.js";
+import { activateCommandItem, bindControls, refreshControls } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
-import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
 import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
@@ -35,11 +34,10 @@ import { windowFocus } from "./window-focus.js";
 const promptHistory = createPromptHistory();
 
 window.piUi = {
-	controls: { refresh: refreshControls },
+	controls: { refresh: refreshControls, activate: activateCommandItem },
 	codeTheme: { loadPreviews() {} },
 	dateTime: { hydrate: hydrateDateTime },
 	fonts: { apply() {} },
-	dialogs,
 	fileTransfer,
 	messageScroll: {
 		bindResize: bindMessageResize,

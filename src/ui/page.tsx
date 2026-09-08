@@ -10,7 +10,7 @@ import { gitPaneRatioDefault } from "../workspace-review-types.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
-import { renderCommandMenu } from "./command-menu.tsx";
+import { renderCommandMenu, resetCommandDialogOnOpen } from "./command-menu.tsx";
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
@@ -276,6 +276,7 @@ export function renderPage(
 						id="workspace-dialog"
 						class="command-dialog command-medium"
 						aria-label="Change workspace"
+						data-on:toggle={resetCommandDialogOnOpen}
 						data-attr:aria-label="$_workspaceAction === 'fork' ? 'Fork session to workspace' : 'Change workspace'"
 						data-preserve-attr="open"
 						data-signals:_workspace-action__ifmissing="'open'"
@@ -314,12 +315,14 @@ export function renderPage(
 									data-variant="ghost"
 									data-size="icon-xs"
 									aria-label="Browse folders"
+									commandfor="workspace-browser-dialog"
+									command="show-modal"
 									data-on:click={`
 										$_workspaceBrowserShowHidden = false;
-										window.piUi.dialogs.openWorkspaceBrowser();
+										el.closest('dialog').close();
 										@get('${endpoints.workspaceBrowse}', {
 										payload: {
-											workspacePath: document.getElementById('workspace-input')?.value || ${JSON.stringify(state.workspacePath)},
+											workspacePath: $workspaceDraft || ${JSON.stringify(state.workspacePath)},
 											showHidden: false,
 										},
 										requestCancellation: 'cleanup',
@@ -353,6 +356,15 @@ export function renderPage(
 						id="tree-dialog"
 						class="command-dialog command-tree"
 						aria-label="Session tree"
+						data-on:beforetoggle="if (evt.newState === 'open') $treeSelectedId = ''"
+						data-on:toggle={`${resetCommandDialogOnOpen}
+						if (evt.newState === 'open') {
+						const active = el.querySelector('[data-active-tree-row]');
+						if (active) {
+						window.piUi.controls.activate(el.querySelector('.command'), active);
+						active.scrollIntoView({ block: 'center' });
+						}
+						}`}
 						data-signals__ifmissing={JSON.stringify({
 							treeSelectedId: "",
 							treeCustomSummary: false,
@@ -391,6 +403,7 @@ export function renderPage(
 						id="session-dialog"
 						class="command-dialog command-wide"
 						aria-label="Resume session"
+						data-on:toggle={resetCommandDialogOnOpen}
 						data-preserve-attr="open"
 						data-signals:session-search__ifmissing="''"
 						closedby="any"

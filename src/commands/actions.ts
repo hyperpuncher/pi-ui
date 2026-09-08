@@ -6,8 +6,8 @@ export function newSessionAction(temporary = false): string {
 	return `if (!$_newSessionPending && !$_sessionTransitionLoading) { @post('${endpoint}', { payload: {} }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }`;
 }
 
-export function openSessionDialogAction(): string {
-	return "window.piUi.dialogs.toggleSession()";
+export function toggleDialogAction(): string {
+	return "const dialog = el.commandForElement; dialog.open ? dialog.close() : dialog.showModal();";
 }
 
 type CycleDirection = "forward" | "backward" | "event-shift";
@@ -40,11 +40,7 @@ export function openWorkspaceDialogAction(
 	closeCommandDialog = false,
 	action: "open" | "fork" = "open",
 ): string {
-	return `${closeCommandDialog ? "document.getElementById('command-dialog')?.close(); " : ""}$_workspaceAction = '${action}'; window.piUi.dialogs.openWorkspace()`;
-}
-
-export function toggleWorkspaceDialogAction(): string {
-	return "window.piUi.dialogs.toggleWorkspace()";
+	return `${closeCommandDialog ? "document.getElementById('command-dialog')?.close(); " : ""}$_workspaceAction = '${action}'; document.getElementById('workspace-dialog').showModal()`;
 }
 
 export function toggleWorkspaceReviewAction(): string {
@@ -66,7 +62,7 @@ export function toggleToolOutputAction(): string {
 export const commandActions = {
 	"new-chat": newSessionAction(),
 	"new-temporary-chat": newSessionAction(true),
-	"resume-session": openSessionDialogAction(),
+	"resume-session": "document.getElementById('session-dialog').showModal()",
 	"session-tree": openTreeAction(),
 	"command-palette": "document.getElementById('command-input')?.focus()",
 	"change-code-theme":

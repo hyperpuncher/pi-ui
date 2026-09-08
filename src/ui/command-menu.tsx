@@ -3,12 +3,20 @@ import { appCommandCatalog, type AppCommandMetadata } from "../commands/catalog.
 import { ShortcutKbd } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
+export const resetCommandDialogOnOpen = `if (evt.newState === 'open') {
+	const input = el.querySelector('header input');
+	input.value = '';
+	input.dispatchEvent(new Event('input', { bubbles: true }));
+	window.piUi.controls.refresh(el);
+}`;
+
 export function renderCommandMenu(): string {
 	return syncHtml(
 		<dialog
 			id="command-dialog"
 			class="command-dialog"
 			aria-label="Command menu"
+			data-on:toggle={resetCommandDialogOnOpen}
 			closedby="any"
 		>
 			<div class="command">

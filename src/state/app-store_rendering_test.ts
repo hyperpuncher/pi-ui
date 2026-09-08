@@ -916,7 +916,9 @@ test("initial streams reopen active backend dialogs", async () => {
 		if (!reader) throw new Error("Missing response body");
 		const output = await readUntil(
 			reader,
-			(text) => text.includes("auth-dialog") && text.includes("showModal"),
+			(text) =>
+				text.includes("auth-dialog") &&
+				text.includes("if (dialog && !dialog.open) dialog.showModal()"),
 		);
 		assertIncludes(output, "if (dialog && !dialog.open) dialog.showModal()");
 	} finally {

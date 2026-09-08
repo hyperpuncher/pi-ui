@@ -10,6 +10,7 @@ interface FileTransferData {
 interface PiUiNamespace {
 	controls: {
 		refresh(root?: Document | Element): void;
+		activate(command: HTMLElement, active: HTMLElement): void;
 	};
 	codeTheme: {
 		loadFontPreviews(light: string, dark: string): void;
@@ -20,15 +21,6 @@ interface PiUiNamespace {
 	};
 	fonts: {
 		apply(mono: string, sans: string): void;
-	};
-	dialogs: {
-		toggleSession(): boolean;
-		openTree(): void;
-		openCommand(): void;
-		toggleCommand(): boolean;
-		openWorkspace(): void;
-		openWorkspaceBrowser(): void;
-		toggleWorkspace(): boolean;
 	};
 	fileTransfer: {
 		pick(): Promise<void>;

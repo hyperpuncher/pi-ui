@@ -1,6 +1,6 @@
 import {
 	newSessionAction,
-	openSessionDialogAction,
+	toggleDialogAction,
 	toggleWorkspaceReviewAction,
 } from "../commands/actions.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
@@ -26,6 +26,11 @@ type PromptToolbarAction =
 	| "new-temporary-chat"
 	| "files"
 	| "sessions";
+
+const toolbarDialogTargets: Partial<Record<PromptToolbarAction, string>> = {
+	commands: "command-dialog",
+	sessions: "session-dialog",
+};
 
 type PromptToolbarItem = {
 	action: PromptToolbarAction;
@@ -165,6 +170,8 @@ function PromptToolbarButton(props: {
 			class="btn prompt-toolbar-button"
 			data-variant={props.variant ?? "ghost"}
 			data-pi-ui-action={props.action}
+			commandfor={toolbarDialogTargets[props.action]}
+			command={toolbarDialogTargets[props.action] ? "show-modal" : undefined}
 			aria-pressed={props.pressed ? "true" : undefined}
 			data-attr:aria-pressed={
 				props.action === "review"
@@ -217,8 +224,8 @@ function MobilePromptToolbarItem(props: {
 			role="menuitem"
 			tabindex="-1"
 			autofocus={props.action === "new-chat"}
-			commandfor="prompt-toolbar-popover"
-			command="hide-popover"
+			commandfor={toolbarDialogTargets[props.action] ?? "prompt-toolbar-popover"}
+			command={toolbarDialogTargets[props.action] ? "show-modal" : "hide-popover"}
 			aria-current={props.active ? "true" : undefined}
 			data-indicator:_new-session-pending={isSessionChangingAction(props.action)}
 			data-attr:disabled={
@@ -226,7 +233,11 @@ function MobilePromptToolbarItem(props: {
 					? "$_newSessionPending || $_sessionTransitionLoading"
 					: undefined
 			}
-			data-on:click={promptToolbarClickAction(props.action)}
+			data-on:click={
+				toolbarDialogTargets[props.action]
+					? "el.closest('[popover]').hidePopover()"
+					: promptToolbarClickAction(props.action)
+			}
 		>
 			{props.children}
 			<span class="prompt-toolbar-menu-label">{props.label}</span>
@@ -240,11 +251,9 @@ function isSessionChangingAction(action: PromptToolbarAction): boolean {
 }
 
 function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
-	if (action === "commands") return openCommandPaletteAction();
 	if (action === "review") return toggleWorkspaceReviewAction();
 	if (action === "new-chat") return newChatAction();
 	if (action === "new-temporary-chat") return newTemporaryChatAction();
-	if (action === "sessions") return openSessionDialogAction();
 	if (action === "files") return "window.piUi.fileTransfer.pick()";
 	return undefined;
 }
@@ -254,7 +263,7 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 	if (action === "commands") {
 		return `if (${primaryModifier} && evt.code === 'KeyK') {
 			evt.preventDefault();
-			${toggleCommandPaletteAction()}
+			${toggleDialogAction()}
 		}`;
 	}
 	if (action === "review") {
@@ -278,18 +287,10 @@ function promptToolbarKeydownAction(action: PromptToolbarAction): string | undef
 	if (action === "sessions") {
 		return `if (${primaryModifier} && evt.code === 'KeyR') {
 			evt.preventDefault();
-			${openSessionDialogAction()}
+			${toggleDialogAction()}
 		}`;
 	}
 	return undefined;
-}
-
-function openCommandPaletteAction(): string {
-	return "window.piUi.dialogs.openCommand()";
-}
-
-function toggleCommandPaletteAction(): string {
-	return "window.piUi.dialogs.toggleCommand()";
 }
 
 function newChatAction(): string {

@@ -69,7 +69,7 @@ function filterCommand(command) {
 	else first?.scrollIntoView({ block: "nearest" });
 }
 
-function activateCommandItem(command, active) {
+export function activateCommandItem(command, active) {
 	const { input, menu } = commandParts(command);
 	if (!(input instanceof HTMLInputElement) || !(menu instanceof HTMLElement)) return;
 	for (const item of menu.querySelectorAll('[role="menuitem"].active')) {

@@ -2,8 +2,7 @@ import {
 	authDialogAction,
 	cycleModelAction,
 	cycleThinkingAction,
-	openWorkspaceDialogAction,
-	toggleWorkspaceDialogAction,
+	toggleDialogAction,
 } from "../commands/actions.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppThinkingLevel } from "../state/app-store.ts";
@@ -28,10 +27,12 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 			aria-controls="workspace-dialog"
 			aria-label={state.workspacePath}
 			data-attr:disabled="$_sessionTransitionLoading"
-			data-on:click={openWorkspaceDialogAction()}
+			commandfor="workspace-dialog"
+			command="show-modal"
+			data-on:click="$_workspaceAction = 'open'"
 			data-on:keydown__window={`if (${primaryModifierExpression()} && !evt.altKey && !evt.shiftKey && evt.code === 'Slash') {
 			evt.preventDefault();
-			${toggleWorkspaceDialogAction()}
+			${toggleDialogAction()}
 			}`}
 			data-tooltip="Workspace"
 			data-tooltip-delay

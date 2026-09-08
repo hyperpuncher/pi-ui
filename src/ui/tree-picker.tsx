@@ -14,7 +14,6 @@ const treeLabelClasses = {
 export function renderTreePicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div id="tree-picker">
-			<input id="tree-selected-id" type="hidden" data-bind:tree-selected-id />
 			<div
 				role="menu"
 				id="tree-menu"
