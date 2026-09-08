@@ -308,6 +308,7 @@
 		padding: 0.375rem 0.75rem;
 		color: var(--surface-base);
 		font-size: var(--text-xs);
+		font-weight: 500;
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;

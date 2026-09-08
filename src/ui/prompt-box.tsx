@@ -166,8 +166,7 @@ export function renderPromptBox(
 					class="prompt-footer"
 					data-align="end"
 					data-prompt-initial
-					data-init="window.piUi.prompt.bindLayout()"
-					data-preserve-attr="data-toolbar-compact data-context-compact"
+					data-init="el.removeAttribute('data-prompt-initial')"
 				>
 					{renderPromptToolbar(state, reviewAvailable)}
 					<div id="prompt-context" class="prompt-context">

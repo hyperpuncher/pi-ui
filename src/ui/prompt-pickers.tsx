@@ -210,6 +210,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-variant="ghost"
 					data-size="sm"
 					id="model-select-trigger"
+					aria-label={`Model: ${currentLabel}`}
 					aria-haspopup="dialog"
 					aria-controls="model-select-popover"
 					popovertarget="model-select-popover"

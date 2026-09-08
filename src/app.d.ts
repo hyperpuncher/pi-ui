@@ -64,7 +64,6 @@ interface PiUiNamespace {
 		resetFile(): void;
 	};
 	prompt: {
-		bindLayout(): void;
 		clear(): void;
 	};
 	promptHistory: {

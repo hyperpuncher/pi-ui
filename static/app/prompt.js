@@ -51,47 +51,6 @@ export function deletePromptCharBeforeCursor() {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-let promptLayoutFrame;
-let promptResizeObserver;
-
-export function bindPromptLayout() {
-	const footer = document.getElementById("prompt-footer");
-	if (!(footer instanceof HTMLElement)) return;
-	applyPromptLayout(footer);
-	footer.removeAttribute("data-prompt-initial");
-	promptResizeObserver ??= new ResizeObserver(schedulePromptLayout);
-	promptResizeObserver.disconnect();
-	promptResizeObserver.observe(footer);
-}
-
-function schedulePromptLayout() {
-	cancelAnimationFrame(promptLayoutFrame);
-	promptLayoutFrame = requestAnimationFrame(() => {
-		const footer = document.getElementById("prompt-footer");
-		if (footer instanceof HTMLElement) applyPromptLayout(footer);
-	});
-}
-
-function applyPromptLayout(footer) {
-	if (matchMedia("(max-width: 639px)").matches) {
-		footer.setAttribute("data-toolbar-compact", "");
-		footer.setAttribute("data-context-compact", "");
-		return;
-	}
-	footer.removeAttribute("data-toolbar-compact");
-	footer.removeAttribute("data-context-compact");
-	footer.setAttribute("data-measuring", "");
-
-	if (footer.scrollWidth > footer.clientWidth) {
-		footer.setAttribute("data-toolbar-compact", "");
-		if (footer.scrollWidth > footer.clientWidth) {
-			footer.setAttribute("data-context-compact", "");
-		}
-	}
-
-	footer.removeAttribute("data-measuring");
-}
-
 export function bindPromptInteractions() {
 	document.addEventListener("pointerdown", (event) => {
 		const target = event.target;

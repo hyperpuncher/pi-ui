@@ -310,6 +310,22 @@ test("model picker shows only the final model name in its trigger", () => {
 	assertStringIncludes(html, ">deepseek-ai/DeepSeek-R1</span>");
 });
 
+test("model trigger retains full names for CSS truncation and accessible labels", () => {
+	for (const name of ["12345678901234567", "123456789012345678"]) {
+		const html = renderModelPicker(
+			appRenderSnapshot({
+				models: [
+					{ id: name, provider: "test", name, configured: true, scoped: false },
+				],
+				currentModel: `test/${name}`,
+			}),
+		);
+		assertStringIncludes(html, `>${name}</span>`);
+		assertStringIncludes(html, `aria-label="Model: ${name}"`);
+		assertStringIncludes(html, "<span>Model</span>");
+	}
+});
+
 test("thinking picker describes every supported maximum level", () => {
 	const html = renderThinkingPicker(
 		appRenderSnapshot({

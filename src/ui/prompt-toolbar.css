@@ -2,9 +2,6 @@
 	.prompt-toolbar {
 		flex-shrink: 0;
 	}
-	.prompt-footer[data-measuring] .prompt-toolbar {
-		flex: none;
-	}
 
 	.prompt-toolbar-buttons {
 		display: flex;
@@ -15,11 +12,13 @@
 	.prompt-toolbar-menu {
 		display: none;
 	}
-	.prompt-footer[data-toolbar-compact] .prompt-toolbar-buttons {
-		display: none;
-	}
-	.prompt-footer[data-toolbar-compact] .prompt-toolbar-menu {
-		display: block;
+	@container prompt (width < 32rem) {
+		.prompt-toolbar-buttons {
+			display: none;
+		}
+		.prompt-toolbar-menu {
+			display: block;
+		}
 	}
 
 	.prompt-toolbar-button {

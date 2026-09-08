@@ -24,12 +24,7 @@ import {
 	resetFilePicker,
 } from "./pickers.js";
 import { createPromptHistory } from "./prompt-history.js";
-import {
-	bindPromptInteractions,
-	bindPromptLayout,
-	focusPromptEnd,
-	setPromptValue,
-} from "./prompt.js";
+import { bindPromptInteractions, focusPromptEnd, setPromptValue } from "./prompt.js";
 import {
 	readTransitionState,
 	startSessionPerformanceMeasurement,
@@ -63,7 +58,6 @@ window.piUi = {
 		resetFile: resetFilePicker,
 	},
 	prompt: {
-		bindLayout: bindPromptLayout,
 		clear: () => setPromptValue(""),
 	},
 	promptHistory,
