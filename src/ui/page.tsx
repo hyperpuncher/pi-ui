@@ -15,29 +15,25 @@ import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
 import { Icon } from "./icon.tsx";
-import { FileUp, FolderOpen, Search } from "./icons.ts";
+import { FileUp, FolderOpen, PanelRight, Search } from "./icons.ts";
 import { altShortcutAction } from "./keyboard.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
-import {
-	renderSessionSidebar,
-	sessionSidebarMarginRightExpression,
-	sessionSidebarStorageKey,
-} from "./session-sidebar.tsx";
+import { renderSessionSidebar, sessionSidebarStorageKey } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { syncHtml } from "./sync-html.ts";
 import { renderThemeLab } from "./theme-lab.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
 
-// Restore the persisted width before CSS can paint. Datastar takes ownership
-// after initialization, avoiding a transition from the default on every reload.
+// Restore width before CSS paints; the sidebar restores its own open state.
 const sessionSidebarStartupScript = `try {
 	const stored = Number(localStorage.getItem("${sessionSidebarStorageKey}"));
 	if (Number.isFinite(stored) && stored > 0) {
+		document.documentElement.dataset.sessionSidebarWidth = String(stored);
 		document.documentElement.style.setProperty(
 			"--session-sidebar-width",
 			"clamp(var(--session-sidebar-min-width), " + stored + "px, min(var(--session-sidebar-max-width), 50vw))",
@@ -223,10 +219,6 @@ export function renderPage(
 						<div
 							id="workspace-shell"
 							class="workspace-shell"
-							{...{
-								"data-style:--session-sidebar-margin":
-									sessionSidebarMarginRightExpression,
-							}}
 							data-style={`{
 								'--review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio || ${gitPaneRatioDefault},
 							}`}
@@ -236,6 +228,22 @@ export function renderPage(
 								class="raised-surface chat-pane"
 								aria-label="Chat"
 							>
+								<button
+									id="session-sidebar-toggle"
+									type="button"
+									class="btn session-sidebar-toggle"
+									data-variant="ghost"
+									data-size="icon-sm"
+									aria-label="Toggle sessions"
+									commandfor="session-sidebar"
+									command="--toggle"
+									aria-controls="session-sidebar"
+									aria-expanded="false"
+									data-attr:aria-expanded="$_sessionSidebarOpen ? 'true' : 'false'"
+									title="Toggle sessions"
+								>
+									<Icon icon={PanelRight} />
+								</button>
 								{renderMessages(
 									state.messages,
 									state.emptyChatHint,

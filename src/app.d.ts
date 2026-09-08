@@ -10,7 +10,6 @@ interface FileTransferData {
 interface PiUiNamespace {
 	controls: {
 		refresh(root?: Document | Element): void;
-		toggleSidebar(sidebar: HTMLElement): boolean;
 	};
 	codeTheme: {
 		loadFontPreviews(light: string, dark: string): void;

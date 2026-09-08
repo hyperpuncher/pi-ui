@@ -63,12 +63,10 @@
 		min-width: 0;
 		min-height: 0;
 		container: workspace / inline-size;
-		margin-inline-end: var(--session-sidebar-margin, 0);
-		transition: margin 150ms var(--ease-out);
 	}
 
-	#session-sidebar[aria-hidden="true"] ~ .workspace-shell {
-		margin-inline-end: 0;
+	#session-sidebar[open]:not(:modal) ~ .workspace-shell {
+		margin-inline-end: var(--session-sidebar-width);
 	}
 
 	.chat-pane {
@@ -122,12 +120,6 @@
 	.dialog-emphasis {
 		color: var(--text);
 		font-weight: 600;
-	}
-
-	@media (width <= 48rem) {
-		#workspace-shell {
-			margin-inline-end: 0;
-		}
 	}
 
 	#workspace-shell {

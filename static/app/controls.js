@@ -1,6 +1,5 @@
 const commandSelector = ".command";
 const menuPopoverSelector = "[popover][role='menu']";
-const sidebarSelector = ".sidebar";
 
 export function bindControls() {
 	document.addEventListener("input", handleCommandInput);
@@ -12,16 +11,6 @@ export function bindControls() {
 
 export function refreshControls(root = document) {
 	for (const command of controlsIn(root, commandSelector)) refreshCommand(command);
-	for (const sidebar of controlsIn(root, sidebarSelector)) refreshSidebar(sidebar);
-}
-
-export function toggleSidebar(sidebar) {
-	if (!(sidebar instanceof HTMLElement) || !sidebar.matches(sidebarSelector)) {
-		return false;
-	}
-	const opening = sidebar.getAttribute("aria-hidden") === "true";
-	setSidebarOpen(sidebar, opening);
-	return opening;
 }
 
 function controlsIn(root, selector) {
@@ -49,20 +38,6 @@ function visibleCommandItems(command) {
 	const { menu } = commandParts(command);
 	if (!(menu instanceof HTMLElement)) return [];
 	return commandItems(menu).filter((item) => !item.hidden);
-}
-
-function refreshSidebar(sidebar) {
-	if (sidebar.hasAttribute("aria-hidden")) return;
-	const breakpoint = Number.parseInt(sidebar.dataset.breakpoint || "768", 10);
-	const desktopOpen = sidebar.dataset.initialOpen !== "false";
-	const mobileOpen = sidebar.dataset.initialMobileOpen === "true";
-	setSidebarOpen(sidebar, window.innerWidth >= breakpoint ? desktopOpen : mobileOpen);
-}
-
-function setSidebarOpen(sidebar, open) {
-	sidebar.setAttribute("aria-hidden", String(!open));
-	if (open) sidebar.removeAttribute("inert");
-	else sidebar.setAttribute("inert", "");
 }
 
 function refreshCommand(command) {

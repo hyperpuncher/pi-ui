@@ -4,7 +4,7 @@ import { assertEquals, assertStringIncludes } from "#testing/assertions";
 
 import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
 
-test("alt shortcuts use physical keys and ignore open dialogs", () => {
+test("alt shortcuts use physical keys and ignore open modal dialogs", () => {
 	const run = new Function(
 		"evt",
 		"document",
@@ -27,7 +27,7 @@ test("alt shortcuts use physical keys and ignore open dialogs", () => {
 			{ ...scenario, preventDefault: () => prevented++ },
 			{
 				querySelector: (selector: string) =>
-					selector === "dialog[open]" && scenario.dialogOpen ? {} : null,
+					selector === ":modal" && scenario.dialogOpen ? {} : null,
 			},
 			() => focused++,
 		);

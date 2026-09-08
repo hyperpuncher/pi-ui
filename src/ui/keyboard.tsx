@@ -8,7 +8,7 @@ export function altShortcutAction(code: string, action: string): string {
 		!evt.shiftKey &&
 		!evt.ctrlKey &&
 		!evt.metaKey &&
-		!document.querySelector('dialog[open]')
+		!document.querySelector(':modal')
 	) {
 		evt.preventDefault();
 		${action}

@@ -15,6 +15,7 @@ export const FolderOpen = icons.icons["folder-open"];
 export const Loader = icons.icons.loader;
 export const MessageCircleDashed = icons.icons["message-circle-dashed"];
 export const MessageCirclePlus = icons.icons["message-circle-plus"];
+export const PanelRight = icons.icons["panel-right"];
 export const Paperclip = icons.icons.paperclip;
 export const RotateCcw = icons.icons["rotate-ccw"];
 export const Search = icons.icons.search;

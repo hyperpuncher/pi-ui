@@ -20,25 +20,34 @@ import { syncHtml } from "./sync-html.ts";
 const sidebarWidth = { min: 224, default: 288, max: 384 } as const;
 const sidebarWidthCss =
 	"clamp(var(--session-sidebar-min-width), ${$_sessionSidebarWidth}px, min(var(--session-sidebar-max-width), 50vw))";
-export const sessionSidebarMarginRightExpression = `\`${sidebarWidthCss}\``;
 export const sessionSidebarStorageKey = "pi-ui-session-sidebar-width";
-const sidebarHandleRightExpression = `\`calc(${sidebarWidthCss} + var(--workspace-inset) - var(--workspace-gap))\``;
-const sidebarNavWidthExpression = `\`calc(${sidebarWidthCss} - var(--workspace-gap))\``;
 const sidebarPointerWidthExpression = `Math.round(Math.min(
 	Math.max(${sidebarWidth.min}, Math.min(${sidebarWidth.max}, innerWidth * 0.5)),
 	Math.max(${sidebarWidth.min}, $_sessionSidebarWidth + $_sessionSidebarPointerX - evt.clientX),
 ))`;
 const sidebarResizeFinish = `document.documentElement.classList.remove('is-resizing');
-localStorage.setItem('${sessionSidebarStorageKey}', String($_sessionSidebarWidth));`;
+try { localStorage.setItem('${sessionSidebarStorageKey}', String($_sessionSidebarWidth)); } catch {}`;
+// Shared by the prepaint script and the breakpoint-change handler.
+const restoreSessionSidebar = `
+	el.removeAttribute('data-animate-open');
+	el.close();
+	const mobile = matchMedia('(width <= 48rem)').matches;
+	el.closedBy = mobile ? 'any' : 'none';
+	let open = !mobile;
+	try {
+		const saved = localStorage.getItem('pi-ui-session-sidebar-' + (mobile ? 'mobile' : 'desktop') + '-open');
+		if (saved === 'true' || saved === 'false') open = saved === 'true';
+	} catch {}
+	if (open) mobile ? el.showModal() : el.show();
+	el.querySelector('.session-sidebar-scroller').scrollLeft = 0;
+`;
 const focusSessionSidebarShortcut = altShortcutAction(
 	"KeyS",
-	`el.open?.();
-	requestAnimationFrame(() => {
-		const target = el.querySelector(
-			'li > button[aria-current="true"], li > button[data-active="true"], li > button',
-		) ?? el.querySelector('nav');
-		target?.focus({ preventScroll: true });
-	});`,
+	`el.dispatchEvent(new CommandEvent('command', { command: '--show' }));
+	const target = el.querySelector(
+		'li > button[aria-current="true"], li > button[data-active="true"], li > button',
+	) ?? el.querySelector('nav');
+	target?.focus({ preventScroll: true });`,
 );
 
 type SessionSidebarState = Pick<
@@ -52,91 +61,123 @@ type SessionSidebarState = Pick<
 
 export function renderSessionSidebar(state: SessionSidebarState): string {
 	return syncHtml(
-		<aside
-			id="session-sidebar"
-			class="sidebar"
-			data-side="right"
-			data-initial-open={state.sessions.length === 0 && "false"}
-			aria-keyshortcuts="Control+B Meta+B"
-			data-signals:_session-sidebar-width__ifmissing={`
-				Number(localStorage.getItem('${sessionSidebarStorageKey}')) ||
-				${sidebarWidth.default}
-			`}
-			data-signals:_session-sidebar-pointer-x__ifmissing="0"
-			data-signals:session-delete-hover__ifmissing="''"
-			data-on:keydown__window={`if (evt.code === 'KeyB' && !evt.altKey && !evt.shiftKey && ${primaryModifierExpression()}) {
-			evt.preventDefault();
-			window.piUi.controls.toggleSidebar(el);
-			}
-			${focusSessionSidebarShortcut}`}
-		>
-			<div
-				id="session-sidebar-separator"
-				class="resize-handle session-sidebar-resize"
-				aria-hidden="true"
-				data-style:right={sidebarHandleRightExpression}
-				data-on:click__stop="true"
-				data-on:pointerdown__prevent={`if (evt.button === 0) {
-					$_sessionSidebarPointerX = evt.clientX;
-					el.setPointerCapture(evt.pointerId);
-					document.documentElement.classList.add('is-resizing');
+		<>
+			<dialog
+				id="session-sidebar"
+				class="session-sidebar"
+				aria-label="Sessions"
+				closedby="any"
+				aria-keyshortcuts="Control+B Meta+B"
+				data-signals:_session-sidebar-open__ifmissing="el.open"
+				data-on:toggle={`
+					$_sessionSidebarOpen = el.open;
+					try {
+					localStorage.setItem('pi-ui-session-sidebar-' + (el.closedBy === 'any' ? 'mobile' : 'desktop') + '-open', String(el.open));
+				} catch {};
+				`}
+				data-on:command={`
+					if (evt.command === '--toggle' && el.open) el.close();
+					else if (evt.command === '--toggle' || evt.command === '--show') {
+					el.toggleAttribute('data-animate-open', evt.source !== null && !evt.source.matches(':focus-visible'));
+					if (!el.open) el.closedBy === 'any' ? el.showModal() : el.show();
+					el.querySelector('.session-sidebar-scroller').scrollLeft = 0;
+				};
+				`}
+				data-on:resize__window={`if (matchMedia('(width <= 48rem)').matches !== (el.closedBy === 'any')) {
+				${restoreSessionSidebar}
 				}`}
-				{...{
-					"data-on:pointermove__throttle.8ms": `if (el.hasPointerCapture(evt.pointerId)) {
+				data-on:click={`
+					if (!el.matches(':modal')) return;
+					const row = evt.target.closest('.session-sidebar-row-button');
+					if (row && row.getAttribute('aria-disabled') !== 'true') el.close();
+					if (!('closedBy' in HTMLDialogElement.prototype) && evt.target === el) el.close();
+				`}
+				data-signals:_session-sidebar-width__ifmissing={`
+					Number(document.documentElement.dataset.sessionSidebarWidth) ||
+					${sidebarWidth.default}
+				`}
+				data-effect={`document.documentElement.style.setProperty('--session-sidebar-width', \`${sidebarWidthCss}\`)`}
+				data-signals:_session-sidebar-pointer-x__ifmissing="0"
+				data-signals:session-delete-hover__ifmissing="''"
+				data-on:keydown__window={`if (evt.code === 'KeyB' && !evt.altKey && !evt.shiftKey && ${primaryModifierExpression()}) {
+				evt.preventDefault();
+				el.dispatchEvent(new CommandEvent('command', { command: '--toggle' }));
+				}
+				${focusSessionSidebarShortcut}`}
+			>
+				<div
+					id="session-sidebar-separator"
+					class="resize-handle session-sidebar-resize"
+					aria-hidden="true"
+					data-on:click__stop="true"
+					data-on:pointerdown__prevent={`if (evt.button === 0) {
+						$_sessionSidebarPointerX = evt.clientX;
+						el.setPointerCapture(evt.pointerId);
+						document.documentElement.classList.add('is-resizing');
+					}`}
+					{...{
+						"data-on:pointermove__throttle.8ms": `if (el.hasPointerCapture(evt.pointerId)) {
 						$_sessionSidebarWidth = ${sidebarPointerWidthExpression};
 						$_sessionSidebarPointerX = evt.clientX;
 					}`,
-				}}
-				data-on:pointerup={sidebarResizeFinish}
-				data-on:pointercancel={sidebarResizeFinish}
-				data-on:dblclick={`
-					$_sessionSidebarWidth = ${sidebarWidth.default};
-					localStorage.setItem('${sessionSidebarStorageKey}', '${sidebarWidth.default}');
-				`}
-			/>
-			<nav
-				class="raised-surface session-sidebar-nav"
-				aria-label="Sessions"
-				aria-keyshortcuts="Alt+S"
-				tabindex="-1"
-				{...{
-					"data-style:--session-sidebar-width": sidebarNavWidthExpression,
-				}}
-				data-on:keydown={`if (
-					!evt.altKey &&
-					!evt.ctrlKey &&
-					!evt.metaKey &&
-					!evt.shiftKey &&
-					['ArrowDown', 'ArrowUp', 'KeyJ', 'KeyK'].includes(evt.code)
-				) {
-					const rows = [...el.querySelectorAll('li > button:not(:disabled)')];
-					const current = rows.indexOf(document.activeElement);
-					if (current >= 0) {
-						evt.preventDefault();
-						const direction = ['ArrowDown', 'KeyJ'].includes(evt.code) ? 1 : -1;
-						const next = Math.max(0, Math.min(rows.length - 1, current + direction));
-						rows[next]?.focus({ preventScroll: true });
-						rows[next]?.scrollIntoView({ block: 'nearest' });
-					}
-				}`}
-			>
-				<header class="session-sidebar-header">
-					<div class="session-sidebar-heading">
-						<span>Sessions</span>
-						<ShortcutKbd shortcut="alt S" />
-					</div>
-				</header>
-				<section>
-					<div
-						role="group"
-						class="session-sidebar-group"
-						aria-label="Recent sessions"
+					}}
+					data-on:pointerup={sidebarResizeFinish}
+					data-on:pointercancel={sidebarResizeFinish}
+					data-on:dblclick={`
+						$_sessionSidebarWidth = ${sidebarWidth.default};
+						try { localStorage.setItem('${sessionSidebarStorageKey}', '${sidebarWidth.default}'); } catch {};
+					`}
+				/>
+				<div
+					class="session-sidebar-scroller"
+					data-on:scrollend={`if (el.scrollLeft < -1 && el.scrollWidth + el.scrollLeft <= el.clientWidth + 1) {
+						el.closest('dialog').close();
+					}`}
+				>
+					<nav
+						class="raised-surface session-sidebar-nav"
+						aria-label="Sessions"
+						aria-keyshortcuts="Alt+S"
+						tabindex="-1"
+						autofocus
+						data-on:keydown={`if (
+							!evt.altKey &&
+							!evt.ctrlKey &&
+							!evt.metaKey &&
+							!evt.shiftKey &&
+							['ArrowDown', 'ArrowUp', 'KeyJ', 'KeyK'].includes(evt.code)
+						) {
+							const rows = [...el.querySelectorAll('li > button:not(:disabled)')];
+							const current = rows.indexOf(document.activeElement);
+							if (current >= 0) {
+								evt.preventDefault();
+								const direction = ['ArrowDown', 'KeyJ'].includes(evt.code) ? 1 : -1;
+								const next = Math.max(0, Math.min(rows.length - 1, current + direction));
+								rows[next]?.focus({ preventScroll: true });
+								rows[next]?.scrollIntoView({ block: 'nearest' });
+							}
+						}`}
 					>
-						{renderSessionSidebarContent(state)}
-					</div>
-				</section>
-			</nav>
-		</aside>,
+						<header class="session-sidebar-header">
+							<div class="session-sidebar-heading">
+								<span>Sessions</span>
+								<ShortcutKbd shortcut="alt S" />
+							</div>
+						</header>
+						<section>
+							<div
+								role="group"
+								class="session-sidebar-group"
+								aria-label="Recent sessions"
+							>
+								{renderSessionSidebarContent(state)}
+							</div>
+						</section>
+					</nav>
+				</div>
+			</dialog>
+			<script>{`{ const el = document.getElementById('session-sidebar'); ${restoreSessionSidebar} }`}</script>
+		</>,
 	);
 }
 

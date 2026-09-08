@@ -1,6 +1,6 @@
 import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
 import { bindCodeCopy } from "./code-copy.js";
-import { bindControls, refreshControls, toggleSidebar } from "./controls.js";
+import { bindControls, refreshControls } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
 import * as dialogs from "./dialogs.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
@@ -40,7 +40,7 @@ import { windowFocus } from "./window-focus.js";
 const promptHistory = createPromptHistory();
 
 window.piUi = {
-	controls: { refresh: refreshControls, toggleSidebar },
+	controls: { refresh: refreshControls },
 	codeTheme: { loadPreviews() {} },
 	dateTime: { hydrate: hydrateDateTime },
 	fonts: { apply() {} },
@@ -79,7 +79,7 @@ window.piUi = {
 };
 
 function hasOpenDismissible() {
-	if (isPickerOpen() || document.querySelector("dialog[open]")) return true;
+	if (isPickerOpen() || document.querySelector(":modal")) return true;
 	return Boolean(document.querySelector("[popover]:popover-open"));
 }
 

@@ -25,7 +25,7 @@ export function bindVimScroll() {
 			pendingG = false;
 			return;
 		}
-		if (document.querySelector("dialog[open]")) return;
+		if (document.querySelector(":modal")) return;
 		if (pendingG) {
 			pendingG = false;
 			if (event.code === "KeyG" && !event.shiftKey) {
