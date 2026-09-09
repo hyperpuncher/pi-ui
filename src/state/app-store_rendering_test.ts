@@ -493,7 +493,16 @@ for (const message of [
 		await waitFor(() => finish !== undefined);
 		assertEqual(projectedMessages(state)[0].presentationState, "enhancing");
 		const interim = state.renderer.messages.renderMessagesElement();
-		assertIncludes(interim, "large fallback");
+		let text = "";
+		await new HTMLRewriter()
+			.on("main", {
+				text(chunk) {
+					text += chunk.text;
+				},
+			})
+			.transform(new Response(interim))
+			.text();
+		assertIncludes(text, "large fallback");
 		assertNotIncludes(interim, "Enhance formatting");
 		finish?.("<p>highlighting finished</p>");
 		await settleMicrotasks();

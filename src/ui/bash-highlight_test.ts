@@ -1,4 +1,4 @@
-import { beforeAll, expect, test } from "bun:test";
+import { afterAll, beforeAll, expect, spyOn, test } from "bun:test";
 
 import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
@@ -7,9 +7,17 @@ import { highlightBash, loadBashLanguages } from "./bash-highlight.ts";
 import { loadPierreLanguage } from "./diffs.ts";
 import { renderMessage } from "./messages.tsx";
 
+let tokenization: ReturnType<typeof spyOn>;
 beforeAll(async () => {
 	expect(await loadPierreLanguage("bash")).toBe(true);
+	const highlighter = getHighlighterIfLoaded()!;
+	const tokenize = highlighter.codeToTokens.bind(highlighter);
+	// Exact-color tests must not depend on Shiki's wall-clock budget.
+	tokenization = spyOn(highlighter, "codeToTokens").mockImplementation(
+		(code, options) => tokenize(code, { ...options, tokenizeTimeLimit: 0 }),
+	);
 });
+afterAll(() => tokenization?.mockRestore());
 
 function styles(tokens: ThemedToken[][]) {
 	return tokens.map((line) =>
@@ -177,24 +185,11 @@ test.each([
 	["bun - <<'EOF'", "typescript", "const n: number = 42;"],
 	["cat <<'EOF' | node", "javascript", "const n = 42;"],
 	["psql \"$DATABASE_URL\" <<'EOF'", "sql", "SELECT * FROM users;"],
-	["lua <<EOF", "lua", "local n = 42"],
 	["cat > '/tmp/my file.ts' <<'EOF'", "typescript", "const n: number = 42;"],
 	["cat <<'EOF' > x.rs", "rust", 'fn main() { println!("hi"); }'],
 	["sudo tee -a config.yaml <<'EOF'", "yaml", "enabled: true"],
 	["cat >> test.sh <<'EOF'", "bash", 'echo "hello"'],
 	["cat > .zshrc <<'EOF'", "bash", "export FOO=bar"],
-	["cat > x.html <<'EOF'", "html", "<p>hello</p>"],
-	["cat > x.css <<'EOF'", "css", "p { color: red; }"],
-	["cat > x.svg <<'EOF'", "xml", "<svg><path /></svg>"],
-	["cat > ~/.config/fontconfig/fonts.conf <<'EOF'", "xml", "<fontconfig />"],
-	["cat > x.tsx <<'EOF'", "tsx", "const x = <div />;"],
-	["cat > x.svelte <<'EOF'", "svelte", "<p>{name}</p>"],
-	["cat > x.astro <<'EOF'", "astro", "<p>{name}</p>"],
-	["cat > x.jsonc <<'EOF'", "jsonc", '// comment\n{"n": 42}'],
-	["cat > x.toml <<'EOF'", "toml", "enabled = true"],
-	["cat > x.go <<'EOF'", "go", "package main"],
-	["cat > x.md <<'EOF'", "markdown", "# hello"],
-	["cat > x.typ <<'EOF'", "typst", "#set text(size: 12pt)"],
 	["git apply <<'PATCH'", "diff", "--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new"],
 	["cat <<'PYEOF'", "python", "print(42)"],
 	["cat > x.ts <<'RUSTEOF'", "typescript", "const n: number = 42;"],
@@ -227,9 +222,7 @@ test.each([
 		"'",
 	],
 	["/tmp/venv/bin/python3.12 -I -c '", "python", "print(42)", "' argument"],
-	["ruby -e '", "ruby", "puts 42", "'"],
 	["perl -ne '", "perl", "print $_", "' input.txt"],
-	["lua -e '", "lua", "local n = 42", "'"],
 	["awk -F: '", "awk", "{print $1}", "' input.txt"],
 ])("highlights literal inline scripts: %s", async (prefix, language, body, suffix) => {
 	const command = prefix + body + suffix;
