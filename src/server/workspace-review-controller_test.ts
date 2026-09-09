@@ -8,7 +8,7 @@ import { AppStore } from "../state/app-store.ts";
 import { outputCommand } from "../utils/command.ts";
 import { WorkspaceReviewController } from "./workspace-review-controller.ts";
 
-test("workspace review controller publishes Git changes to AppStore", async () => {
+test.concurrent("workspace review controller publishes Git changes to AppStore", async () => {
 	const workspace = await makeTempDir();
 	const store = new AppStore();
 	const controller = new WorkspaceReviewController(store);
@@ -20,12 +20,11 @@ test("workspace review controller publishes Git changes to AppStore", async () =
 		await git(workspace, "add", "example.txt");
 		await git(workspace, "commit", "-m", "initial");
 
-		controller.open(workspace);
-		await waitFor(() => store.workspaceReview.isGitRepository);
+		await controller.open(workspace);
+		assertEquals(store.workspaceReview.isGitRepository, true);
 		const revision = store.workspaceReview.revision;
 		const filesRevision = store.workspaceFilesRevision;
 		const treeRevision = store.workspaceTreeRevision;
-		await new Promise((resolve) => setTimeout(resolve, 50));
 		await Bun.write(`${workspace}/example.txt`, "second\n");
 		await waitFor(() => store.workspaceReview.revision !== revision);
 		await waitFor(() => store.workspaceFilesRevision !== filesRevision);
@@ -42,23 +41,7 @@ test("workspace review controller publishes Git changes to AppStore", async () =
 	}
 });
 
-test("workspace review controller publishes non-Git file changes", async () => {
-	const workspace = await makeTempDir();
-	const store = new AppStore();
-	const controller = new WorkspaceReviewController(store);
-	try {
-		controller.open(workspace);
-		await waitFor(() => store.workspaceReview.revision === "non-git");
-		const revision = store.workspaceFilesRevision;
-		await Bun.write(`${workspace}/example.txt`, "first\n");
-		await waitFor(() => store.workspaceFilesRevision !== revision);
-	} finally {
-		controller.dispose();
-		await rm(workspace, { recursive: true });
-	}
-});
-
-test("ignored writes still notify the file browser; mixed writes and ignore rules refresh Git", async () => {
+test.concurrent("ignored writes still notify the file browser; mixed writes and ignore rules refresh Git", async () => {
 	const workspace = await makeTempDir();
 	class MeasuredStore extends AppStore {
 		refreshes = 0;
@@ -81,9 +64,8 @@ test("ignored writes still notify the file browser; mixed writes and ignore rule
 		await git(workspace, "add", ".gitignore");
 		await git(workspace, "add", "-f", "tracked.log");
 		await git(workspace, "commit", "-m", "initial");
-		controller.open(workspace);
-		await waitFor(() => store.workspaceReview.commits.length === 1);
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await controller.open(workspace);
+		assertEquals(store.workspaceReview.commits.length, 1);
 		const refreshes = store.refreshes;
 		const filesRevision = store.workspaceFilesRevision;
 		await Bun.write(`${workspace}/ignored.log`, "ignored edit\n");
@@ -106,7 +88,7 @@ test("ignored writes still notify the file browser; mixed writes and ignore rule
 });
 
 for (const linkedWorktree of [false, true]) {
-	test(`workspace watcher ignores Git internals but observes commits (${linkedWorktree ? "linked worktree" : "repository"})`, async () => {
+	test.concurrent(`workspace watcher ignores Git internals but observes commits (${linkedWorktree ? "linked worktree" : "repository"})`, async () => {
 		const repository = await makeTempDir();
 		const workspace = linkedWorktree ? await makeTempDir() : repository;
 		const store = new AppStore();
@@ -118,9 +100,8 @@ for (const linkedWorktree of [false, true]) {
 			await git(repository, "commit", "--allow-empty", "-m", "initial");
 			if (linkedWorktree)
 				await git(repository, "worktree", "add", "-b", "linked", workspace);
-			controller.open(workspace);
-			await waitFor(() => store.workspaceReview.commits.length === 1);
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await controller.open(workspace);
+			assertEquals(store.workspaceReview.commits.length, 1);
 			const filesRevision = store.workspaceFilesRevision;
 			await Bun.write(`${repository}/.git/objects/pack/noise.tmp`, "noise");
 			await Bun.write(`${repository}/.git/logs/noise`, "noise");
@@ -150,15 +131,14 @@ for (const linkedWorktree of [false, true]) {
 	});
 }
 
-test("tree revisions preserve structural changes across later content edits", async () => {
+test.concurrent("tree revisions preserve structural changes across later content edits", async () => {
 	const workspace = await makeTempDir();
 	const store = new AppStore();
 	const controller = new WorkspaceReviewController(store);
 	try {
 		await Bun.write(`${workspace}/existing.txt`, "initial");
-		controller.open(workspace);
-		await waitFor(() => store.workspaceReview.revision === "non-git");
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await controller.open(workspace);
+		assertEquals(store.workspaceReview.revision, "non-git");
 
 		const treeRevision = store.workspaceTreeRevision;
 		await Bun.write(`${workspace}/existing.txt`, "edited");

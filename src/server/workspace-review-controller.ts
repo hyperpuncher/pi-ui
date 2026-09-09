@@ -22,10 +22,10 @@ export class WorkspaceReviewController {
 		store.listenForWorkspacePath((path) => this.open(path));
 	}
 
-	open(path: string): void {
+	open(path: string): Promise<void> {
 		const generation = ++this.generation;
 		this.stopWatcher();
-		void this.watch(path, generation).catch((error: ErrorOptions["cause"]) => {
+		return this.watch(path, generation).catch((error: ErrorOptions["cause"]) => {
 			if (generation === this.generation)
 				console.error("Failed to watch workspace", error);
 		});
