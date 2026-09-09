@@ -145,6 +145,7 @@ const comments = createWorkspaceReviewComments({
 let workingItems: ReviewItem[] = [];
 let workingRequest: AbortController | undefined;
 let workingKey: string | undefined;
+let displayedWorkingKey: string | undefined;
 let workingError: string | undefined;
 let items = workingItems;
 let itemsByPath = itemMap(items);
@@ -349,6 +350,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		initializedSelection = false;
 		renderHistory();
 		viewer?.setItems([]);
+		displayedWorkingKey = undefined;
 		showEmpty("Loading Git data…");
 		return;
 	}
@@ -413,6 +415,7 @@ function activateWorking(path?: string): void {
 
 async function activateCommit(hash: string, path?: string): Promise<void> {
 	cancelWorkingDiff();
+	displayedWorkingKey = undefined;
 	selection = { hash, kind: "commit", path };
 	clearTreeSelection();
 	renderHistory();
@@ -519,8 +522,11 @@ async function loadWorkingDiff(key: string): Promise<void> {
 	workingKey = key;
 	const request = new AbortController();
 	workingRequest = request;
-	viewer?.setItems([]);
-	showEmpty("Loading diff…");
+	if (displayedWorkingKey !== key) {
+		displayedWorkingKey = undefined;
+		viewer?.setItems([]);
+		showEmpty("Loading diff…");
+	}
 	const path = mode === "selected" ? selection.path : undefined;
 	const changes = snapshot.changes.filter(
 		(change) => path === undefined || change.path === path,
@@ -534,9 +540,12 @@ async function loadWorkingDiff(key: string): Promise<void> {
 			new Set(snapshot.changes.map((change) => change.path)),
 		);
 		workingItems = withWorkingAnnotations(nextItems);
+		displayedWorkingKey = key;
 	} catch (error) {
 		if (request.signal.aborted) return;
 		workingItems = [];
+		displayedWorkingKey = undefined;
+		viewer?.setItems([]);
 		workingError = error instanceof Error ? error.message : "Unable to load diff";
 	} finally {
 		if (!request.signal.aborted) {
@@ -553,13 +562,17 @@ function publish(): void {
 		snapshot.changes.length > 0 &&
 		!workspaceReviewLoading(snapshot.revision)
 	) {
-		const key = JSON.stringify([mode, mode === "selected" ? selection.path : null]);
+		const key = JSON.stringify([
+			workspacePath,
+			mode,
+			mode === "selected" ? selection.path : null,
+		]);
 		if (workingKey !== key) {
 			void loadWorkingDiff(key);
 			return;
 		}
 		if (workingRequest || workingError) {
-			showEmpty(workingError ?? "Loading diff…");
+			if (displayedWorkingKey !== key) showEmpty(workingError ?? "Loading diff…");
 			return;
 		}
 	}
@@ -570,6 +583,7 @@ function publish(): void {
 				? [itemsByPath.get(selection.path)!]
 				: [];
 	if (visible.length === 0) {
+		displayedWorkingKey = undefined;
 		viewer?.setItems([]);
 		showEmpty(emptyMessage());
 		return;
