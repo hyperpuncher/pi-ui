@@ -440,7 +440,7 @@ function attachmentFileIcon(kind) {
 	const namespace = "http://www.w3.org/2000/svg";
 	const icon = attachmentFileIcons[kind] ?? attachmentFileIcons.file;
 	const svg = document.createElementNS(namespace, "svg");
-	svg.setAttribute("class", "size-5");
+	svg.setAttribute("class", "prompt-attachment-file-type-icon");
 	svg.setAttribute("viewBox", "0 0 24 24");
 	svg.setAttribute("fill", "none");
 	svg.setAttribute("stroke", "currentColor");

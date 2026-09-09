@@ -24,5 +24,5 @@ export const SquareSplitHorizontal = icons.icons["square-split-horizontal"];
 export const SquareSplitVertical = icons.icons["square-split-vertical"];
 export const Star = icons.icons.star;
 export const TextWrap = icons.icons["text-wrap"];
-export const Trash2 = icons.icons["trash-2"];
+export const Trash2 = icons.icons.trash;
 export const X = icons.icons.x;
