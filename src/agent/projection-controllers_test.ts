@@ -658,7 +658,7 @@ test("session catalog promotes user-relevant activity", () => {
 	);
 });
 
-test("session catalog status changes preserve live row order", () => {
+test("session catalog status changes prioritize unopened completions without losing activity order", () => {
 	const state = new AppStore();
 	const statuses = new Map<string, "running" | "completed">();
 	const catalog = new SessionCatalog(state, {
@@ -683,7 +683,7 @@ test("session catalog status changes preserve live row order", () => {
 	catalog.touch("/second");
 	assertEquals(
 		state.sessions.map((session) => session.path),
-		["/first", "/second", "/third"],
+		["/third", "/first", "/second"],
 	);
 
 	statuses.set("/second", "completed");

@@ -5,8 +5,13 @@ import type {
 	WorkspaceDirectoryListing,
 	WorkspaceSuggestion,
 } from "../server/workspace-search.ts";
-import type { AppSessionSummary, AppSlashCommand } from "../state/app-store.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
+import {
+	sessionStatus,
+	type AppSessionSummary,
+	type AppSlashCommand,
+	type AppStateSnapshot,
+	type BackgroundSessionStatus,
+} from "../state/app-store.ts";
 import { formatMessageCount } from "../utils/format.ts";
 import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
@@ -493,7 +498,7 @@ export function renderSessionPickerContent(state: SessionPickerState): string {
 					session,
 					index,
 					current,
-					current && Boolean(state.activityText),
+					sessionStatus(session, state),
 				);
 			})}
 			{state.sessionsHasMore && (
@@ -523,11 +528,10 @@ function renderSessionRow(
 	session: AppSessionSummary,
 	index: number,
 	current: boolean,
-	foregroundRunning: boolean,
+	displayStatus: BackgroundSessionStatus | undefined,
 ): string {
 	const haystack =
 		`${session.title} ${formatMessageCount(session.messageCount)} ${session.path}`.toLowerCase();
-	const displayStatus = foregroundRunning ? "running" : session.backgroundStatus;
 	const shortcut = index < 9 && !current ? `ctrl ${index + 1}` : undefined;
 	const deletable = displayStatus !== "running";
 	return syncHtml(

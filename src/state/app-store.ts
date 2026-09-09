@@ -96,6 +96,15 @@ export type AppSessionSummary = {
 	modifiedAt?: string;
 	backgroundStatus?: BackgroundSessionStatus;
 };
+export function sessionStatus(
+	session: AppSessionSummary,
+	state: Pick<AppStateSnapshot, "currentSessionPath" | "activityText">,
+): BackgroundSessionStatus | undefined {
+	if (session.path === state.currentSessionPath)
+		return state.activityText ? "running" : undefined;
+	return session.backgroundStatus;
+}
+
 export type AppTreeEntry = {
 	id: string;
 	parentId: string | null;
@@ -289,7 +298,16 @@ export class AppStore {
 		return this.transcript.messages;
 	}
 	get sessions(): readonly AppSessionSummary[] {
-		return this.sessionCatalog.slice(0, this.sessionLimit);
+		return this.orderedSessions.slice(0, this.sessionLimit);
+	}
+	private get orderedSessions(): AppSessionSummary[] {
+		const priority = (session: AppSessionSummary) => {
+			const status = sessionStatus(session, this);
+			return status === "running" ? 0 : status === "completed" ? 1 : 2;
+		};
+		return this.sessionCatalog.toSorted(
+			(left, right) => priority(left) - priority(right),
+		);
 	}
 	get sessionsHasMore(): boolean {
 		return (
@@ -326,13 +344,10 @@ export class AppStore {
 	}
 
 	snapshot(): AppStateSnapshot {
-		const sessions = this.sessionCatalog;
 		return Object.freeze({
 			messages: this.messages.map((message) => ({ ...message })),
 			models: this.models.map((model) => ({ ...model })),
-			sessions: sessions
-				.slice(0, this.sessionLimit)
-				.map((session) => ({ ...session })),
+			sessions: this.sessions.map((session) => ({ ...session })),
 			sessionsHasMore: this.sessionsHasMore,
 			sessionCatalogLoading: this.sessionCatalogLoading,
 			treeEntries: this.treeEntries.map((entry) => ({ ...entry })),
@@ -560,7 +575,7 @@ export class AppStore {
 	searchSessions(query: string): AppSessionSummary[] {
 		const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
 		if (terms.length === 0) return [...this.sessions];
-		return this.getSessionCatalog()
+		return this.orderedSessions
 			.filter((session) => {
 				const haystack =
 					`${session.title} ${formatMessageCount(session.messageCount)} ${session.cwd} ${session.path}`.toLowerCase();

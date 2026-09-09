@@ -1,5 +1,9 @@
 import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppSessionSummary, AppStateSnapshot } from "../state/app-store.ts";
+import {
+	sessionStatus,
+	type AppSessionSummary,
+	type AppStateSnapshot,
+} from "../state/app-store.ts";
 import { calendarDayDifference } from "../utils/date-time-format.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
@@ -182,8 +186,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 }
 
 export function renderSessionSidebarContent(state: SessionSidebarState): string {
-	const sessions = state.sessions;
-	const groups = groupSessionsByDate(sessions);
+	const groups = groupSessionsByDate(state);
 	return syncHtml(
 		<div id="session-sidebar-content">
 			{groups.map((group) => (
@@ -247,23 +250,26 @@ type SessionDateGroup = {
 };
 
 function groupSessionsByDate(
-	sessions: readonly AppSessionSummary[],
+	state: SessionSidebarState,
 	now = new Date(),
 ): SessionDateGroup[] {
 	const groups = new Map<string, SessionDateGroup>();
-	for (const [index, session] of sessions.entries()) {
+	for (const [index, session] of state.sessions.entries()) {
+		const status = sessionStatus(session, state);
 		const date = sessionDate(session.modifiedAt);
-		const key = date ? localDateKey(date) : "unknown";
+		const key = status ?? (date ? localDateKey(date) : "unknown");
 		let group = groups.get(key);
 		if (!group) {
 			const difference = date ? calendarDayDifference(date, now) : undefined;
 			group = {
 				key,
-				label:
-					date && difference !== undefined
+				label: status
+					? undefined
+					: date && difference !== undefined
 						? sessionGroupLabel(date, difference, now)
 						: "Unknown date",
-				showRowDate: difference === 0 || difference === undefined,
+				showRowDate:
+					Boolean(status) || difference === 0 || difference === undefined,
 				sessions: [],
 			};
 			groups.set(key, group);
@@ -307,7 +313,7 @@ function renderSessionSidebarRow(
 	showDate: boolean,
 ): string {
 	const current = session.path === state.currentSessionPath;
-	const status = current && state.activityText ? "running" : session.backgroundStatus;
+	const status = sessionStatus(session, state);
 	const shortcut = index < 9 ? `ctrl ${index + 1}` : undefined;
 	const deletable = status !== "running";
 	return syncHtml(
