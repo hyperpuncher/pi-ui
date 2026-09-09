@@ -6,7 +6,9 @@ import type { AppUsage } from "../state/app-store.ts";
 import { agentSessionRuntimeStub } from "./test-fixtures.ts";
 import { cumulativeCacheHitPercent, UsageController } from "./usage-controller.ts";
 
-test("keeps cached Codex usage while switching models", async () => {
+test("keeps cached Codex usage through failed refreshes and model switches", async () => {
+	let failure: "empty" | "timeout" | undefined;
+	let usedPercent = 22;
 	const codexModel = { provider: "openai-codex", id: "gpt-5" };
 	let model = codexModel;
 	let rendered: AppUsage | undefined;
@@ -30,9 +32,12 @@ test("keeps cached Codex usage while switching models", async () => {
 	const controller = new UsageController(
 		() => runtime,
 		state,
-		async () => ({
-			primary: { usedPercent: 22, windowSeconds: 604_800 },
-		}),
+		async () => {
+			if (failure === "timeout")
+				throw new DOMException("The operation was aborted.", "AbortError");
+			if (failure === "empty") return undefined;
+			return { primary: { usedPercent, windowSeconds: 604_800 } };
+		},
 	);
 
 	controller.refresh();
@@ -50,6 +55,18 @@ test("keeps cached Codex usage while switching models", async () => {
 		],
 	});
 
+	for (const outcome of ["timeout", "empty"] as const) {
+		failure = outcome;
+		controller.refresh(true);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		assertEquals(rendered?.limits?.windows[0]?.remainingPercent, 78);
+	}
+	failure = undefined;
+	usedPercent = 23;
+	controller.refresh(true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assertEquals(rendered?.limits?.windows[0]?.remainingPercent, 77);
+
 	model = { provider: "anthropic", id: "claude" };
 	controller.suspend();
 	controller.sync();
@@ -58,11 +75,12 @@ test("keeps cached Codex usage while switching models", async () => {
 	model = codexModel;
 	controller.suspend();
 	controller.sync();
-	assertEquals(rendered?.limits?.windows[0]?.remainingPercent, 78);
+	assertEquals(rendered?.limits?.windows[0]?.remainingPercent, 77);
 	controller.dispose();
 });
 
-test("shows OpenCode Go usage for OpenCode Go models", async () => {
+test("shows OpenCode Go usage and retains it after an unavailable refresh", async () => {
+	let available = false;
 	const model = { provider: "opencode-go", id: "kimi-k2.5" };
 	let rendered: AppUsage | undefined;
 	const session = {
@@ -84,14 +102,21 @@ test("shows OpenCode Go usage for OpenCode Go models", async () => {
 		() => runtime,
 		state,
 		async () => undefined,
-		async () => ({
-			rolling: { usedPercent: 12 },
-			weekly: { usedPercent: 8 },
-			monthly: { usedPercent: 35 },
-		}),
+		async () =>
+			available
+				? {
+						rolling: { usedPercent: 12 },
+						weekly: { usedPercent: 8 },
+						monthly: { usedPercent: 35 },
+					}
+				: undefined,
 	);
 
 	controller.refresh();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assertEquals(rendered?.limits?.status, "unavailable");
+	available = true;
+	controller.refresh(true);
 	await new Promise((resolve) => setTimeout(resolve, 0));
 	assertEquals(rendered?.limits, {
 		label: "OpenCode Go usage",
@@ -117,6 +142,10 @@ test("shows OpenCode Go usage for OpenCode Go models", async () => {
 			},
 		],
 	});
+	available = false;
+	controller.refresh(true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assertEquals(rendered?.limits?.windows[0]?.remainingPercent, 88);
 	controller.dispose();
 });
 

@@ -105,7 +105,9 @@ export class UsageController {
 			})
 			.catch((error: ErrorOptions["cause"]) => {
 				if (!this.owns(request)) return;
-				console.warn(`Failed to fetch ${provider} usage`, error);
+				if (error instanceof DOMException && error.name === "AbortError")
+					console.warn(`${provider} usage request timed out`);
+				else console.warn(`Failed to fetch ${provider} usage`, error);
 				this.setUsageResult({ provider, usage: undefined }, "unavailable");
 				this.sync();
 			})
@@ -155,12 +157,12 @@ export class UsageController {
 	private setUsageResult(result: LimitUsageResult, status: string): void {
 		if (result.provider === "codex") {
 			this.codexStatus = status;
-			this.codexUsage = result.usage;
+			this.codexUsage = result.usage ?? this.codexUsage;
 			this.codexFetchedAt = Date.now();
 			return;
 		}
 		this.opencodeGoStatus = status;
-		this.opencodeGoUsage = result.usage;
+		this.opencodeGoUsage = result.usage ?? this.opencodeGoUsage;
 		this.opencodeGoFetchedAt = Date.now();
 	}
 
