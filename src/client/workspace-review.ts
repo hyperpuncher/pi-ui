@@ -117,7 +117,7 @@ let historyCommits = [...snapshot.commits];
 let historyHasMore = snapshot.commits.length === workspaceReviewHistoryPageSize;
 let historyLoading = false;
 let historyGeneration = 0;
-let mode: ReviewMode = preferences.mode ?? "all";
+let mode: ReviewMode = preferences.mode ?? "selected";
 let selection: Selection = { kind: "working", path: snapshot.changes[0]?.path };
 let layout: DiffLayout | undefined = preferences.layout;
 let wrap = preferences.wrap ?? true;
@@ -129,7 +129,7 @@ const comments = createWorkspaceReviewComments({
 	clearSelection: () => viewer?.clearSelectedLines(),
 	onAnnotationsChange: updateWorkingAnnotations,
 	onSubmitted() {
-		workingItems = createItems(snapshot.changes, snapshot.patch, "working");
+		workingItems = withWorkingAnnotations(workingItems);
 		if (selection.kind === "working") {
 			items = workingItems;
 			itemsByPath = itemMap(items);
@@ -142,9 +142,10 @@ const comments = createWorkspaceReviewComments({
 	submit: submitWorkspaceReviewComments,
 	submitButton: submitCommentsButton,
 });
-let workingItems = withWorkingAnnotations(
-	createItems(snapshot.changes, snapshot.patch, "working"),
-);
+let workingItems: ReviewItem[] = [];
+let workingRequest: AbortController | undefined;
+let workingKey: string | undefined;
+let workingError: string | undefined;
 let items = workingItems;
 let itemsByPath = itemMap(items);
 let initializedSelection = snapshot.revision !== "git-unloaded";
@@ -162,6 +163,7 @@ let panelMode = initialPanelMode(preferredPanelMode, snapshot.isGitRepository);
 const visibility = createVisibility(app, true, (open) => {
 	workspaceFiles.setVisible(open && panelMode === "files");
 	if (open && panelMode === "git") openGitView();
+	else cancelWorkingDiff();
 });
 for (const button of modeButtons) {
 	button.addEventListener("click", () => {
@@ -185,7 +187,7 @@ const tree = new FileTree({
 	paths: snapshot.changes.map(({ path }) => path),
 	onSelectionChange(paths) {
 		const path = paths.length === 1 ? paths[0] : undefined;
-		if (path) selectWorking(path, true);
+		if (path && !tree.getItem(path)?.isDirectory()) selectWorking(path, true);
 	},
 });
 tree.render({ containerWrapper: treeHost });
@@ -242,8 +244,12 @@ function applyWorkspaceReviewData(): void {
 			const treeChanged = value.treeRevision !== treeRevision;
 			filesRevision = value.filesRevision;
 			treeRevision = value.treeRevision;
+			if (filesChanged) invalidateWorkingDiff();
 			applyWorkspaceReview(value.workspacePath, value.snapshot);
-			if (filesChanged) workspaceFiles.refresh(treeChanged);
+			if (filesChanged) {
+				workspaceFiles.refresh(treeChanged);
+				if (selection.kind === "working") activateWorking(selection.path);
+			}
 		}
 	} catch {
 		// A later stream morph can replace an incomplete payload.
@@ -272,6 +278,7 @@ window.addEventListener(
 		tree.cleanUp();
 		workspaceFiles.cleanUp();
 		viewer?.cleanUp();
+		cancelWorkingDiff();
 		terminateWorkerPoolSingleton();
 	},
 	{ once: true },
@@ -331,9 +338,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	if (!snapshot.isGitRepository) panelMode = "files";
 	else if (!gitWasAvailable && preferredPanelMode !== "files") panelMode = "git";
 	workspaceFiles.setVisible(visibility.isOpen() && panelMode === "files");
-	const nextWorkingItems = createItems(snapshot.changes, snapshot.patch, "working");
-	comments.reconcileItems(nextWorkingItems);
-	workingItems = withWorkingAnnotations(nextWorkingItems);
+	invalidateWorkingDiff();
 	syncWorkspaceTreePaths(
 		tree,
 		previousPaths,
@@ -385,6 +390,11 @@ function setLayout(next: DiffLayout): void {
 }
 
 function selectWorking(path?: string, fromTree = false): void {
+	if (fromTree && workingError && mode === "all") {
+		mode = "selected";
+		syncModeButtons();
+		writePreferences();
+	}
 	activateWorking(path);
 	renderHistory();
 	if (path && !fromTree) {
@@ -402,6 +412,7 @@ function activateWorking(path?: string): void {
 }
 
 async function activateCommit(hash: string, path?: string): Promise<void> {
+	cancelWorkingDiff();
 	selection = { hash, kind: "commit", path };
 	clearTreeSelection();
 	renderHistory();
@@ -490,7 +501,68 @@ function clearTreeSelection(): void {
 	for (const path of tree.getSelectedPaths()) tree.getItem(path)?.deselect();
 }
 
+function cancelWorkingDiff(): void {
+	workingRequest?.abort();
+	workingRequest = undefined;
+	workingKey = undefined;
+	workingError = undefined;
+}
+
+function invalidateWorkingDiff(): void {
+	cancelWorkingDiff();
+	workingItems = [];
+	comments.reconcileItems([], new Set(snapshot.changes.map((change) => change.path)));
+}
+
+async function loadWorkingDiff(key: string): Promise<void> {
+	cancelWorkingDiff();
+	workingKey = key;
+	const request = new AbortController();
+	workingRequest = request;
+	viewer?.setItems([]);
+	showEmpty("Loading diff…");
+	const path = mode === "selected" ? selection.path : undefined;
+	const changes = snapshot.changes.filter(
+		(change) => path === undefined || change.path === path,
+	);
+	try {
+		const patch = await api.loadDiff(workspacePath, path, request.signal);
+		if (request.signal.aborted) return;
+		const nextItems = createItems(changes, patch, "working");
+		comments.reconcileItems(
+			nextItems,
+			new Set(snapshot.changes.map((change) => change.path)),
+		);
+		workingItems = withWorkingAnnotations(nextItems);
+	} catch (error) {
+		if (request.signal.aborted) return;
+		workingItems = [];
+		workingError = error instanceof Error ? error.message : "Unable to load diff";
+	} finally {
+		if (!request.signal.aborted) {
+			workingRequest = undefined;
+			activateWorking(selection.path);
+		}
+	}
+}
+
 function publish(): void {
+	if (!visibility.isOpen() || panelMode !== "git") return;
+	if (
+		selection.kind === "working" &&
+		snapshot.changes.length > 0 &&
+		!workspaceReviewLoading(snapshot.revision)
+	) {
+		const key = JSON.stringify([mode, mode === "selected" ? selection.path : null]);
+		if (workingKey !== key) {
+			void loadWorkingDiff(key);
+			return;
+		}
+		if (workingRequest || workingError) {
+			showEmpty(workingError ?? "Loading diff…");
+			return;
+		}
+	}
 	const visible =
 		mode === "all"
 			? items
@@ -503,7 +575,6 @@ function publish(): void {
 		return;
 	}
 	showEmpty();
-	if (!visibility.isOpen()) return;
 	if (!viewer) {
 		observedDiffLayout = effectiveLayout();
 		const options = viewerOptions();
@@ -756,6 +827,7 @@ function setPanelMode(next: "files" | "git"): void {
 	if (!visibility.isOpen()) return;
 	workspaceFiles.setVisible(next === "files");
 	if (next === "git") openGitView();
+	else cancelWorkingDiff();
 }
 
 export async function openLinkedWorkspaceFile(

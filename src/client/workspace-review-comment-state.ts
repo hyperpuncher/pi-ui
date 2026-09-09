@@ -58,9 +58,13 @@ export function createWorkspaceReviewCommentStore() {
 		return undefined;
 	}
 
-	function reconcileFiles(files: ReadonlyMap<string, string>): string[] {
+	function reconcileFiles(
+		files: ReadonlyMap<string, string>,
+		pendingPaths?: ReadonlySet<string>,
+	): string[] {
 		const removed: string[] = [];
 		for (const path of annotations.keys()) {
+			if (!files.has(path) && pendingPaths?.has(path)) continue;
 			if (files.get(path) === fileVersions.get(path)) continue;
 			annotations.delete(path);
 			fileVersions.delete(path);

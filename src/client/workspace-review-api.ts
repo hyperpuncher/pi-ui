@@ -8,6 +8,23 @@ import {
 
 export function createWorkspaceReviewApi(endpoint: string) {
 	return {
+		async loadDiff(
+			workspacePath: string,
+			path: string | undefined,
+			signal: AbortSignal,
+		): Promise<string> {
+			const query = new URLSearchParams({ workspacePath });
+			if (path !== undefined) query.set("path", path);
+			const response = await fetch(`${endpoint}/diff?${query}`, { signal });
+			if (response.ok) return response.text();
+			const value: unknown = await response.json();
+			throw new Error(
+				isRecord(value) && isString(value.error)
+					? value.error
+					: `Unable to load diff (${response.status})`,
+			);
+		},
+
 		async discard(path: string): Promise<void> {
 			const response = await fetch(`${endpoint}/discard`, {
 				method: "POST",

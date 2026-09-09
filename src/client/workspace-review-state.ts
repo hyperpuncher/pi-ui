@@ -5,7 +5,7 @@ import {
 } from "../workspace-review-types.ts";
 
 export function workspaceReviewLoading(revision: string): boolean {
-	return revision === "git-unloaded" || revision.startsWith("git-summary:");
+	return revision === "git-unloaded";
 }
 
 export function workspaceReviewStateChanged(

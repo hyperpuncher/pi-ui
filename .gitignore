@@ -12,3 +12,4 @@ static/build/
 /docs
 
 /scratch/
+/.playwright-cli/

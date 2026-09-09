@@ -76,7 +76,7 @@ export const emptyWorkspaceReviewSnapshot: WorkspaceReviewSnapshot = {
 	changes: [],
 	commits: [],
 	isGitRepository: false,
-	patch: "",
+	changeCount: 0,
 	revision: "non-git",
 };
 
@@ -125,7 +125,7 @@ const workspaceReviewSnapshotSchema = Type.ReadonlyObject(
 		changes: Type.ReadonlyObject(Type.Array(workspaceFileChangeSchema)),
 		commits: Type.ReadonlyObject(Type.Array(workspaceCommitSchema)),
 		isGitRepository: Type.Boolean(),
-		patch: Type.String(),
+		changeCount: Type.Number(),
 		revision: Type.String(),
 	}),
 );

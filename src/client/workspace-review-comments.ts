@@ -157,13 +157,17 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 		options.status.textContent = statusMessage ?? "";
 	}
 
-	function reconcileItems(items: readonly ReviewCommentItem[]): void {
+	function reconcileItems(
+		items: readonly ReviewCommentItem[],
+		pendingPaths?: ReadonlySet<string>,
+	): void {
 		const removed = store.reconcileFiles(
 			new Map(
 				items
 					.filter((item) => store.annotations.has(item.fileDiff.name))
 					.map((item) => [item.fileDiff.name, fileVersion(item.fileDiff)]),
 			),
+			pendingPaths,
 		);
 		if (removed.length === 0) return;
 		options.clearSelection();

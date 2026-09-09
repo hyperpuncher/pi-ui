@@ -71,6 +71,8 @@ test("review comment store removes comments when their diff changes", () => {
 
 	assertEquals(store.reconcileFiles(new Map([["src/app.ts", "version-1"]])), []);
 	assertEquals(store.annotations.size, 1);
+	assertEquals(store.reconcileFiles(new Map(), new Set(["src/app.ts"])), []);
+	assertEquals(store.annotations.size, 1);
 	assertEquals(store.reconcileFiles(new Map([["src/app.ts", "version-2"]])), [
 		"src/app.ts",
 	]);

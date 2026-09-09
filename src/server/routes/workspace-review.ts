@@ -11,6 +11,7 @@ import { RouteError, type RouteMap } from "../route.ts";
 import {
 	discardWorkspaceChange,
 	readWorkspaceCommit,
+	readWorkspaceDiff,
 	readWorkspaceHistory,
 	WorkspaceReviewError,
 } from "../workspace-review.ts";
@@ -70,6 +71,31 @@ export const workspaceReviewRoutes = {
 				throw error;
 			}
 			return new Response(null, { status: 204 });
+		},
+	},
+	[endpoints.workspaceReviewDiff]: {
+		GET: async (request, context) => {
+			const query = new URL(request.url).searchParams;
+			const workspacePath = context.store.workspacePath;
+			if (query.get("workspacePath") !== workspacePath)
+				throw new RouteError(409, "Workspace changed. Reopen the diff.");
+			try {
+				const patch = await readWorkspaceDiff(
+					workspacePath,
+					query.get("path") ?? undefined,
+					request.signal,
+				);
+				return new Response(patch, {
+					headers: {
+						"content-type": "text/plain; charset=utf-8",
+						"cache-control": "no-store",
+					},
+				});
+			} catch (error) {
+				if (error instanceof WorkspaceReviewError)
+					throw new RouteError(error.status, error.message);
+				throw error;
+			}
 		},
 	},
 	[endpoints.workspaceReviewCommit]: {

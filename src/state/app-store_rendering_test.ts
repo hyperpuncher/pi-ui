@@ -876,10 +876,15 @@ test("workspace review snapshots travel through the app stream", async () => {
 	const state = createState();
 	state.setWorkspaceReview({
 		branch: "main",
-		changes: [],
+		changes: ["new/a.txt", "new/b.txt"].map((path) => ({
+			path,
+			status: "untracked",
+			additions: 0,
+			deletions: 0,
+		})),
 		commits: [],
 		isGitRepository: true,
-		patch: "",
+		changeCount: 1,
 		revision: "review-1",
 	});
 	state.flush();
@@ -893,6 +898,9 @@ test("workspace review snapshots travel through the app stream", async () => {
 			(text) => text.includes("workspace-review-data") && text.includes("review-1"),
 		);
 		assertIncludes(output, '"branch":"main"');
+		const signals = projectBackendSignals(state.snapshot());
+		assertEqual(signals._workspaceReviewChangeCount, 1);
+		assertEqual(signals._workspaceReviewStatsKnown, false);
 		assertIncludes(output, 'id="workspace-review-data"');
 		assertNotIncludes(output, 'id="workspace-review-data-region"');
 	} finally {

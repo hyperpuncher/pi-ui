@@ -39,7 +39,6 @@ export class WorkspaceReviewController {
 	private async watch(path: string, generation: number): Promise<void> {
 		let refreshing = false;
 		let refreshAgain = false;
-		let initialized = false;
 		let metadataCache: WorkspaceReviewMetadataCache = {};
 		const active = () => generation === this.generation;
 		const refresh = async () => {
@@ -51,19 +50,8 @@ export class WorkspaceReviewController {
 			try {
 				do {
 					refreshAgain = false;
-					const snapshot = await readWorkspaceReview(
-						path,
-						initialized
-							? undefined
-							: (summary) => {
-									if (active()) this.store.setWorkspaceReview(summary);
-								},
-						metadataCache,
-					);
-					if (active()) {
-						this.store.setWorkspaceReview(snapshot);
-						initialized = true;
-					}
+					const snapshot = await readWorkspaceReview(path, metadataCache);
+					if (active()) this.store.setWorkspaceReview(snapshot);
 				} while (refreshAgain && active());
 			} finally {
 				refreshing = false;

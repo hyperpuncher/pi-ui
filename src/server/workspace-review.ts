@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+
 import { parsePatchFiles } from "@pierre/diffs";
 
 import { outputCommand } from "../utils/command.ts";
@@ -22,7 +24,8 @@ export type {
 type GitResult = Readonly<{ code: number; stderr: string; stdout: string }>;
 const commitLogFormat = "--format=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1e";
 const decoder = new TextDecoder();
-const untrackedDiffConcurrency = 4;
+export const maximumWorkspaceDiffBytes = 2 * 1024 * 1024;
+const maximumAllDiffFiles = 100;
 
 /** An inconclusive ignore check must never suppress a workspace refresh. */
 export async function areWorkspacePathsIgnored(
@@ -87,7 +90,6 @@ async function readWorkspaceMetadata(root: string) {
 
 export async function readWorkspaceReview(
 	workspacePath: string,
-	onSummary?: (snapshot: WorkspaceReviewSnapshot) => void,
 	metadataCache?: WorkspaceReviewMetadataCache,
 ): Promise<WorkspaceReviewSnapshot> {
 	const root = await findGitRoot(workspacePath);
@@ -97,6 +99,13 @@ export async function readWorkspaceReview(
 		"status",
 		"--porcelain=v1",
 		"--untracked-files=all",
+		"-z",
+	);
+	const summaryPromise = git(
+		root,
+		"status",
+		"--porcelain=v1",
+		"--untracked-files=normal",
 		"-z",
 	);
 	const upstreamPromise = git(
@@ -135,77 +144,141 @@ export async function readWorkspaceReview(
 		upstreamResult.stdout,
 		branchResult.stdout,
 	];
-	if (onSummary) {
-		onSummary({
-			branch,
-			changes: [],
-			commits,
-			isGitRepository: true,
-			patch: "",
-			revision: `git-summary:${await hash(JSON.stringify(metadataRevisionInputs))}`,
-		});
-	}
-	const statusResult = await statusPromise;
+	const [statusResult, summaryResult] = await Promise.all([
+		statusPromise,
+		summaryPromise,
+	]);
 	assertGit(statusResult, "read repository status");
+	assertGit(summaryResult, "read grouped repository status");
+	const changeCount = parsePorcelainEntries(summaryResult.stdout).length;
 	let changes = sortWorkspaceReviewEntries(parsePorcelainStatus(statusResult.stdout));
-	const revisionInputs = [statusResult.stdout, ...metadataRevisionInputs];
-	if (changes.length === 0) {
-		return {
-			branch,
-			changes,
-			commits,
-			isGitRepository: true,
-			patch: "",
-			revision: await hash(JSON.stringify([revisionInputs, ""])),
-		};
-	}
-	const tracked = await git(
-		root,
-		"diff",
-		"--no-color",
-		"--no-ext-diff",
-		"--find-renames",
-		"--unified=3",
-		...(headResult.code === 0 ? ["HEAD"] : ["--cached"]),
-		"--",
-	);
-	assertGit(tracked, "read tracked changes");
-
-	const patches = [tracked.stdout];
-	const untracked = changes.filter(({ status }) => status === "untracked");
-	for (let index = 0; index < untracked.length; index += untrackedDiffConcurrency) {
-		const batch = untracked.slice(index, index + untrackedDiffConcurrency);
-		const results = await Promise.all(
-			batch.map(({ path }) =>
-				git(
-					root,
-					"diff",
-					"--no-index",
-					"--no-color",
-					"--no-ext-diff",
-					"--unified=3",
-					"--",
-					"/dev/null",
-					path,
-				),
-			),
+	const revisionInputs = [
+		statusResult.stdout,
+		summaryResult.stdout,
+		...metadataRevisionInputs,
+	];
+	let counts = "";
+	if (changes.some((change) => change.status !== "untracked")) {
+		const stats = await git(
+			root,
+			"diff",
+			"--numstat",
+			"--find-renames",
+			"-z",
+			"--no-ext-diff",
+			"--no-textconv",
+			...(headResult.code === 0 ? ["HEAD"] : ["--cached"]),
+			"--",
 		);
-		for (const result of results) {
-			if (result.code > 1) assertGit(result, "read untracked change");
-			patches.push(result.stdout);
-		}
+		assertGit(stats, "read change counts");
+		counts = stats.stdout;
+		changes = addNumStats(changes, counts);
 	}
-
-	const patch = patches.join("");
-	changes = addStats(changes, patch);
 	return {
 		branch,
 		changes,
 		commits,
 		isGitRepository: true,
-		patch,
-		revision: await hash(JSON.stringify([revisionInputs, patch])),
+		changeCount,
+		revision: await hash(JSON.stringify([revisionInputs, counts])),
 	};
+}
+
+// Diff contents never belong in the live workspace snapshot. Read them only
+// for an explicit review request, bounded before buffering or parsing them.
+export async function readWorkspaceDiff(
+	workspacePath: string,
+	path?: string,
+	signal?: AbortSignal,
+): Promise<string> {
+	const root = await findGitRoot(workspacePath);
+	if (!root) throw new WorkspaceReviewError(404, "Git repository not found.");
+	const status = await boundedGit(
+		root,
+		["status", "--porcelain=v1", "--untracked-files=all", "-z"],
+		signal,
+	);
+	const entries = parsePorcelainEntries(status);
+	const selected =
+		path === undefined ? entries : entries.filter((entry) => entry.path === path);
+	if (path !== undefined && selected.length === 0)
+		throw new WorkspaceReviewError(404, "Changed file not found.");
+	if (selected.length > maximumAllDiffFiles)
+		throw new WorkspaceReviewError(
+			413,
+			"Too many changes for All files. Select a file to review.",
+		);
+	if (selected.length === 0) return "";
+	const options = [
+		"diff",
+		"--find-renames",
+		"--no-color",
+		"--no-ext-diff",
+		"--no-textconv",
+		"--unified=3",
+	];
+	const tracked = selected.filter((entry) => entry.code !== "??");
+	let patch = "";
+	if (tracked.length > 0) {
+		const head = await git(root, "rev-parse", "--verify", "HEAD");
+		const paths = tracked.flatMap((entry) =>
+			entry.sourcePath ? [entry.path, entry.sourcePath] : [entry.path],
+		);
+		patch = await boundedGit(
+			root,
+			[...options, ...(head.code === 0 ? ["HEAD"] : ["--cached"]), "--", ...paths],
+			signal,
+		);
+	}
+	for (const entry of selected.filter((entry) => entry.code === "??")) {
+		patch += await boundedGit(
+			root,
+			[...options, "--no-index", "--", "/dev/null", entry.path],
+			signal,
+			maximumWorkspaceDiffBytes - Buffer.byteLength(patch),
+		);
+	}
+	return patch;
+}
+
+function boundedGit(
+	root: string,
+	args: string[],
+	signal?: AbortSignal,
+	maxBuffer = maximumWorkspaceDiffBytes,
+): Promise<string> {
+	signal?.throwIfAborted();
+	if (maxBuffer <= 0)
+		throw new WorkspaceReviewError(
+			413,
+			"Diff too large to preview. Select a smaller file.",
+		);
+	return new Promise((resolve, reject) => {
+		execFile(
+			"git",
+			["-C", root, "--literal-pathspecs", "-c", "core.quotePath=false", ...args],
+			{
+				encoding: "utf8",
+				maxBuffer,
+				signal,
+				windowsHide: true,
+				env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
+			},
+			(error, stdout) => {
+				if (signal?.aborted) reject(signal.reason);
+				else if (error?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER")
+					reject(
+						new WorkspaceReviewError(
+							413,
+							"Diff too large to preview. Select a smaller file.",
+						),
+					);
+				else if (error && !(args[0] === "diff" && error.code === 1))
+					reject(error);
+				else resolve(stdout);
+			},
+		);
+	});
 }
 
 export async function discardWorkspaceChange(
@@ -414,6 +487,28 @@ export function parseNameStatus(output: string): WorkspaceFileChange[] {
 		});
 	}
 	return changes;
+}
+
+function addNumStats(
+	changes: readonly WorkspaceFileChange[],
+	output: string,
+): WorkspaceFileChange[] {
+	const records = output.split("\0");
+	const stats = new Map<string, { additions: number; deletions: number }>();
+	for (let index = 0; index < records.length; index++) {
+		const match = /^(\d+|-)\t(\d+|-)\t([\s\S]*)$/.exec(records[index]!);
+		if (!match) continue;
+		let path = match[3]!;
+		if (!path) {
+			index += 2; // A rename has separate old and new path records.
+			path = records[index]!;
+		}
+		stats.set(path, {
+			additions: Number(match[1]) || 0,
+			deletions: Number(match[2]) || 0,
+		});
+	}
+	return changes.map((change) => ({ ...change, ...stats.get(change.path) }));
 }
 
 function addStats(

@@ -7,7 +7,6 @@ import { assertEquals, assertRejects, assertStringIncludes } from "#testing/asse
 import { makeTempDir } from "#testing/temp";
 
 import { outputCommand } from "../utils/command.ts";
-import type { WorkspaceReviewSnapshot } from "../workspace-review-types.ts";
 import {
 	areWorkspacePathsIgnored,
 	discardWorkspaceChange,
@@ -17,6 +16,9 @@ import {
 	parseNameStatus,
 	parsePorcelainStatus,
 	readWorkspaceCommit,
+	readWorkspaceDiff,
+	maximumWorkspaceDiffBytes,
+	WorkspaceReviewError,
 	readWorkspaceHistory,
 	readWorkspaceReview,
 	type WorkspaceReviewMetadataCache,
@@ -58,21 +60,18 @@ test("reused metadata preserves content updates and retries an unborn history", 
 		await git(workspace, "init");
 		await git(workspace, "config", "user.email", "pi-ui@example.test");
 		await git(workspace, "config", "user.name", "pi-ui");
-		assertEquals(
-			(await readWorkspaceReview(workspace, undefined, cache)).commits,
-			[],
-		);
+		assertEquals((await readWorkspaceReview(workspace, cache)).commits, []);
 		await Bun.write(`${workspace}/file.txt`, "initial\n");
 		await git(workspace, "add", ".");
 		await git(workspace, "commit", "-m", "initial");
 		assertEquals(
-			await readWorkspaceReview(workspace, undefined, cache),
+			await readWorkspaceReview(workspace, cache),
 			await readWorkspaceReview(workspace),
 		);
 		for (const contents of ["first edit\n", "second edit\n", "initial\n"]) {
 			await Bun.write(`${workspace}/file.txt`, contents);
 			assertEquals(
-				await readWorkspaceReview(workspace, undefined, cache),
+				await readWorkspaceReview(workspace, cache),
 				await readWorkspaceReview(workspace),
 			);
 		}
@@ -137,14 +136,9 @@ test("workspace review combines repository files with tracked and untracked chan
 		const nestedWorkspace = `${repository}/src`;
 		assertEquals(await findGitRoot(nestedWorkspace), repository);
 		assertEquals(await findGitWatchPaths(nestedWorkspace), [repository]);
-		let summary: WorkspaceReviewSnapshot | undefined;
-		const snapshot = await readWorkspaceReview(nestedWorkspace, (value) => {
-			summary = value;
-		});
-		assertEquals(summary?.commits.length, 1);
-		assertEquals(summary?.patch, "");
-		assertEquals(summary?.revision.startsWith("git-summary:"), true);
+		const snapshot = await readWorkspaceReview(nestedWorkspace);
 		assertEquals(snapshot.isGitRepository, true);
+		assertEquals(snapshot.changeCount, 3);
 		assertEquals(snapshot.commits.length, 1);
 		assertEquals(Boolean(snapshot.branch), true);
 		assertEquals(snapshot.commits[0].subject, "initial");
@@ -165,7 +159,7 @@ test("workspace review combines repository files with tracked and untracked chan
 				status: "renamed",
 			},
 			{
-				additions: 1,
+				additions: 0,
 				deletions: 0,
 				path: "notes.txt",
 				status: "untracked",
@@ -177,14 +171,28 @@ test("workspace review combines repository files with tracked and untracked chan
 				status: "modified",
 			},
 		]);
-		assertStringIncludes(snapshot.patch, "diff --git a/README.md b/README.md");
-		assertStringIncludes(snapshot.patch, "diff --git a/src/old.ts b/src/new.ts");
-		assertStringIncludes(snapshot.patch, "diff --git a/notes.txt b/notes.txt");
+		assertEquals("patch" in snapshot, false);
+		const patch = await readWorkspaceDiff(nestedWorkspace);
+		assertStringIncludes(patch, "diff --git a/README.md b/README.md");
+		assertStringIncludes(patch, "diff --git a/src/old.ts b/src/new.ts");
+		assertStringIncludes(patch, "diff --git a/notes.txt b/notes.txt");
+		const renamed = parsePatchFiles(
+			await readWorkspaceDiff(repository, "src/new.ts"),
+		).flatMap((patch) => patch.files);
+		assertEquals(
+			renamed.map((file) => file.name),
+			["src/new.ts"],
+		);
+		assertEquals(renamed[0]?.type, "rename-pure");
 		assertEquals(snapshot.revision.length, 64);
 
 		await Bun.write(`${repository}/notes.txt`, "changed again\n");
 		const updated = await readWorkspaceReview(repository);
-		assertEquals(updated.revision === snapshot.revision, false);
+		assertEquals(updated.revision, snapshot.revision);
+		assertStringIncludes(
+			await readWorkspaceDiff(repository, "notes.txt"),
+			"+changed again",
+		);
 	} finally {
 		await rm(repository, { recursive: true });
 	}
@@ -209,7 +217,7 @@ for (const committed of [false, true]) {
 			const snapshot = await readWorkspaceReview(repository);
 			const review = committed
 				? await readWorkspaceCommit(repository, snapshot.commits[0].hash)
-				: snapshot;
+				: { patch: await readWorkspaceDiff(repository) };
 			const files = parsePatchFiles(review?.patch ?? "", undefined, true).flatMap(
 				(patch) => patch.files,
 			);
@@ -228,6 +236,73 @@ for (const committed of [false, true]) {
 		}
 	});
 }
+
+test("large untracked trees stay metadata-only; explicit diffs are bounded and cancellable", async () => {
+	const repository = await makeTempDir();
+	try {
+		await git(repository, "init", "--quiet");
+		await Bun.write(
+			`${repository}/node_modules/large.js`,
+			"x".repeat(maximumWorkspaceDiffBytes * 2),
+		);
+		await Promise.all(
+			Array.from({ length: 120 }, (_, index) =>
+				Bun.write(
+					`${repository}/node_modules/${index}.js`,
+					`export const n = ${index};\n`,
+				),
+			),
+		);
+		await Bun.write(`${repository}/[new]\tfile.txt`, "visible new file\n");
+		const snapshot = await readWorkspaceReview(repository);
+		assertEquals(snapshot.changes.length, 122);
+		assertEquals(snapshot.changeCount, 2);
+		assertEquals("patch" in snapshot, false);
+		assertStringIncludes(
+			await readWorkspaceDiff(repository, "[new]\tfile.txt"),
+			"+visible new file",
+		);
+		assertStringIncludes(
+			await readWorkspaceDiff(repository, "node_modules/0.js"),
+			"+export const n = 0;",
+		);
+		await assertRejects(
+			() => readWorkspaceDiff(repository),
+			WorkspaceReviewError,
+			"Too many changes",
+		);
+		await assertRejects(
+			() => readWorkspaceDiff(repository, "node_modules/large.js"),
+			WorkspaceReviewError,
+			"Diff too large",
+		);
+		await assertRejects(
+			() => readWorkspaceDiff(repository, "missing"),
+			WorkspaceReviewError,
+			"not found",
+		);
+		await assertRejects(
+			() =>
+				readWorkspaceDiff(
+					repository,
+					"node_modules/0.js",
+					AbortSignal.abort(new Error("cancelled")),
+				),
+			Error,
+			"cancelled",
+		);
+		await Bun.write(`${repository}/.gitignore`, "node_modules/\n");
+		await git(repository, "add", "-f", "node_modules/0.js");
+		assertEquals(
+			(await readWorkspaceReview(repository)).changes
+				.map((file) => file.path)
+				.sort(),
+			[".gitignore", "[new]\tfile.txt", "node_modules/0.js"],
+		);
+	} finally {
+		await rm(repository, { recursive: true });
+	}
+});
 
 test("workspace review discards one tracked or untracked file at a time", async () => {
 	const repository = await makeTempDir();
@@ -269,7 +344,7 @@ test("workspace review reports non-repositories without throwing", async () => {
 		assertEquals(snapshot.isGitRepository, false);
 		assertEquals(snapshot.changes, []);
 		assertEquals(snapshot.commits, []);
-		assertEquals(snapshot.patch, "");
+		assertEquals("patch" in snapshot, false);
 		assertEquals(snapshot.revision, "non-git");
 	} finally {
 		await rm(workspace, { recursive: true });

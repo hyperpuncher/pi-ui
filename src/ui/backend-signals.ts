@@ -20,6 +20,7 @@ export type BackendSignals = {
 	_workspaceReviewDeletions: number;
 	_workspaceReviewGitAvailable: boolean;
 	_workspaceReviewChangeCount: number;
+	_workspaceReviewStatsKnown: boolean;
 };
 
 export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
@@ -49,6 +50,9 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 			0,
 		),
 		_workspaceReviewGitAvailable: state.workspaceReview.isGitRepository,
-		_workspaceReviewChangeCount: state.workspaceReview.changes.length,
+		_workspaceReviewChangeCount: state.workspaceReview.changeCount,
+		_workspaceReviewStatsKnown: !state.workspaceReview.changes.some(
+			(change) => change.status === "untracked",
+		),
 	};
 }

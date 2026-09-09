@@ -28,9 +28,8 @@ function change(path: string): WorkspaceFileChange {
 	return { additions: 1, deletions: 0, path, status: "modified" };
 }
 
-test("summary and unloaded revisions represent loading state", () => {
+test("unloaded revision represents loading state", () => {
 	assertEquals(workspaceReviewLoading("git-unloaded"), true);
-	assertEquals(workspaceReviewLoading("git-summary:abc"), true);
 	assertEquals(workspaceReviewLoading("abc"), false);
 });
 

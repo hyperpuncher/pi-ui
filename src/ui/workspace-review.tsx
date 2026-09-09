@@ -158,12 +158,19 @@ export function renderWorkspaceReview(
 							<span>Changes</span>
 							<span
 								id="review-change-count"
+								title="Changed files and untracked folders"
 								class="fine-print review-change-count"
 								data-text="$_workspaceReviewChangeCount"
 							>
-								{snapshot.changes.length}
+								{snapshot.changeCount}
 							</span>
-							<span class="review-change-totals">
+							<span
+								class="review-change-totals"
+								data-attr:hidden="!$_workspaceReviewStatsKnown"
+								hidden={snapshot.changes.some(
+									(change) => change.status === "untracked",
+								)}
+							>
 								<span
 									id="review-total-additions"
 									class="review-additions"
