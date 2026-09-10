@@ -196,7 +196,7 @@ function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
 		const replacement = cacheKeyPrefix
 			? highlightStreamingCodeBlock(code, language, `${cacheKeyPrefix}:${index}`)
 			: renderStreamingPlainCodeBlock(code, language);
-		highlighted = highlighted.replace(raw, replacement);
+		highlighted = highlighted.replace(raw, () => replacement);
 	}
 	return highlighted;
 }
@@ -221,7 +221,7 @@ async function highlightCodeBlocksFinal(html: string): Promise<string> {
 				source={code}
 			/>,
 		);
-		highlighted = highlighted.replace(raw, replacement);
+		highlighted = highlighted.replace(raw, () => replacement);
 	}
 	return highlighted;
 }
@@ -331,12 +331,13 @@ function renderPlainCode(
 
 function CodeBlock(props: { pre: string; language: string; source?: string }) {
 	return (
-		<div class="code-block" data-code-block>
-			{props.source !== undefined && (
-				<script type="text/plain" data-code-source safe>
-					{props.source}
-				</script>
-			)}
+		<div
+			class="code-block"
+			data-code-block
+			data-code-source={
+				props.source === undefined ? undefined : escapeHtml(props.source)
+			}
+		>
 			<div class="code-block-header">
 				<span safe>{props.language}</span>
 				<button

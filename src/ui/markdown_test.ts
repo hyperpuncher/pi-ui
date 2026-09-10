@@ -165,6 +165,34 @@ test("growing streaming code fences preserve the latest complete source", () => 
 	releaseMarkdownStreamingState(key);
 });
 
+test("code source is escaped in the copy attribute", async () => {
+	const markdown = '```text\nvalue </script><div class="x">a & b</div>\n```';
+	for (const html of [
+		renderMarkdownStreaming(markdown),
+		await renderMarkdownFinal(markdown),
+	]) {
+		const source = /data-code-source="([^"]*)"/.exec(html)?.[1] ?? "";
+		assertIncludes(source, "&lt;/script&gt;");
+		assertNotIncludes(source, "</script>");
+		assertIncludes(source, "&lt;div class=&quot;x&quot;&gt;a &amp; b&lt;/div&gt;");
+	}
+});
+
+test("code blocks keep dollar sequences literal", async () => {
+	const markdown =
+		"ZZBEFOREZZ\n\n```text\nvalue $` and $' and $& end\n```\n\nZZAFTERZZ\n";
+	for (const html of [
+		renderMarkdownStreaming(markdown),
+		await renderMarkdownFinal(markdown),
+	]) {
+		// A string replacement would expand `$\`` into everything before the
+		// match, duplicating surrounding HTML and corrupting the document.
+		assertEqual(html.match(/ZZBEFOREZZ/g)?.length, 1);
+		assertEqual(html.match(/ZZAFTERZZ/g)?.length, 1);
+		assertIncludes(html, "value $` and $&#39; and $&amp; end");
+	}
+});
+
 test("code blocks omit the parser-added terminal display line", async () => {
 	await preloadPierreHighlighter();
 	const markdown = "```ts\none\n\nthree\n```";

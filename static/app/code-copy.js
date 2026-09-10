@@ -5,11 +5,8 @@ export function bindCodeCopy() {
 		const button = target.closest("[data-copy-code]");
 		if (!(button instanceof HTMLButtonElement)) return;
 		const block = button.closest("[data-code-block]");
-		const source = block?.querySelector("[data-code-source]");
 		const code = block?.querySelector("code");
-		const text = source?.textContent
-			? decodeHtmlEntities(source.textContent)
-			: code?.textContent;
+		const text = block?.getAttribute("data-code-source") || code?.textContent;
 		if (!text) return;
 		try {
 			await navigator.clipboard.writeText(text);
@@ -23,10 +20,4 @@ export function bindCodeCopy() {
 			button.setAttribute("aria-label", "Copy failed");
 		}
 	});
-}
-
-function decodeHtmlEntities(text) {
-	const textarea = document.createElement("textarea");
-	textarea.innerHTML = text;
-	return textarea.value;
 }
