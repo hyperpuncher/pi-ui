@@ -12,6 +12,7 @@ export type BackendSignals = {
 	_promptHistory: readonly string[];
 	_isBusy: boolean;
 	_thinkingHidden: boolean;
+	_temporarySession: boolean;
 	_sessionTransitionGeneration: number;
 	_sessionTransitionLoading: boolean;
 	_sessionTransitionStatus: AppStateSnapshot["sessionTransition"]["status"];
@@ -35,6 +36,7 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 		_promptHistory: state.promptHistory,
 		_isBusy: Boolean(state.activityText),
 		_thinkingHidden: state.thinkingHidden,
+		_temporarySession: state.isTemporarySession,
 		_sessionTransitionGeneration: state.sessionTransition.generation,
 		_sessionTransitionLoading: state.sessionTransition.status === "loading",
 		_sessionTransitionStatus: state.sessionTransition.status,

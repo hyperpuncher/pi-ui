@@ -404,6 +404,14 @@
 		);
 		color: currentColor;
 	}
+	#app.temporary-chat .message-user-text {
+		border: 2px dashed oklch(from var(--text-muted) l c h / 55%);
+		background: var(--surface-control);
+		color: var(--text);
+	}
+	#app.temporary-chat .message-user-text::selection {
+		background: var(--selection);
+	}
 
 	.message-narrative,
 	.message-context,

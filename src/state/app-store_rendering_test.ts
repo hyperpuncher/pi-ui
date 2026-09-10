@@ -669,6 +669,7 @@ test("nested state updates commit one fat morph and one signal patch", async () 
 		assertEqual(count(output, "event: datastar-patch-elements"), 1);
 		assertEqual(count(output, "event: datastar-patch-signals"), 1);
 		assertIncludes(output, '"_isBusy":true');
+		assertIncludes(output, '"_temporarySession":true');
 		assertNotIncludes(output, '"thinkingLevel"');
 		assertNotIncludes(output, '"model"');
 	} finally {

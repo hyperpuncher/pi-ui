@@ -77,7 +77,12 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 					<textarea
 						id="prompt-input"
 						class="prompt-input"
-						placeholder="Ask pi anything..."
+						placeholder={
+							state.isTemporarySession
+								? "Temporary chat"
+								: "Ask pi anything..."
+						}
+						data-attr:placeholder="$_temporarySession ? 'Temporary chat' : 'Ask pi anything...'"
 						aria-label="Message"
 						aria-autocomplete="list"
 						aria-haspopup="listbox"

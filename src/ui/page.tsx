@@ -204,8 +204,12 @@ export function renderPage(
 					</div>
 					<div
 						id="app"
-						class="workspace-canvas app-shell"
+						class={[
+							"workspace-canvas app-shell",
+							state.isTemporarySession && "temporary-chat",
+						]}
 						data-class:review-open="$_workspaceReviewOpen"
+						data-class:temporary-chat="$_temporarySession"
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
