@@ -280,7 +280,6 @@ export function renderPage(
 						data-attr:aria-label="$_workspaceAction === 'fork' ? 'Fork session to workspace' : 'Change workspace'"
 						data-preserve-attr="open"
 						data-signals:_workspace-action__ifmissing="'open'"
-						data-signals:workspace-draft__ifmissing="''"
 						closedby="any"
 					>
 						<div class="command">
@@ -393,6 +392,11 @@ export function renderPage(
 									aria-expanded="true"
 									aria-controls="tree-menu"
 									autofocus
+									data-bind:_tree-query
+									data-effect="
+										$_treeQuery;
+										queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
+									"
 								/>
 							</header>
 							{renderTreePicker(state)}
@@ -405,10 +409,9 @@ export function renderPage(
 						aria-label="Resume session"
 						data-on:toggle={resetCommandDialogOnOpen}
 						data-preserve-attr="open"
-						data-signals:session-search__ifmissing="''"
 						closedby="any"
 					>
-						<div class="command" data-filter="manual">
+						<div class="command">
 							<header>
 								<input
 									id="session-input"

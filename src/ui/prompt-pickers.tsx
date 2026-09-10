@@ -186,11 +186,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 	}
 	const currentLabel = current ? modelTriggerLabel(current) : "choose model";
 	return syncHtml(
-		<div
-			id="model-picker"
-			class="prompt-context-picker model-picker"
-			data-signals:_model-query__ifmissing="''"
-		>
+		<div id="model-picker" class="prompt-context-picker model-picker">
 			<label class="sr-only" for="model-select-trigger">
 				Model
 			</label>
@@ -237,7 +233,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					aria-label="Models"
 					data-on:beforetoggle="if (evt.newState === 'closed') window.piUi.controls.refresh(el)"
 				>
-					<div class="command" data-filter="manual">
+					<div class="command">
 						<header>
 							<input
 								id="model-select-input"
@@ -288,8 +284,8 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 													? "true"
 													: "false"
 											}
-											data-filter={`${model.id} ${model.provider}`}
-											data-keywords={model.name}
+											data-model-search-text={`${model.id} ${model.provider}`}
+											data-model-search-keywords={model.name}
 											data-model-search-order={index}
 											data-on:click={`
 												$_modelQuery = '';

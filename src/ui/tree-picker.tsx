@@ -101,7 +101,6 @@ function SummaryOption(props: {
 			id={props.id}
 			role="menuitem"
 			tabindex="-1"
-			data-filter={props.label}
 			data-keep-command-open={props.keepOpen || undefined}
 			data-show="!$treeCustomSummary"
 			data-attr:aria-disabled="!$treeSelectedId ? 'true' : 'false'"
@@ -138,8 +137,7 @@ function renderTreeRow(entry: AppTreeEntry): string {
 				entry.active && "tree-row-active",
 			]}
 			aria-current={entry.active ? "true" : undefined}
-			data-filter={haystack}
-			data-keywords={haystack}
+			data-attr:hidden={`!${JSON.stringify(haystack)}.includes($_treeQuery.trim().toLowerCase())`}
 			data-keep-command-open
 			data-active-tree-row={entry.active}
 			data-attr:aria-disabled="$treeSelectedId ? 'true' : 'false'"
@@ -178,8 +176,7 @@ function selectTreeEntryAction(entryId: string): string {
 	return `
 		$treeSelectedId = ${JSON.stringify(entryId)};
 		$treeCustomSummary = false;
-		const search = document.getElementById('tree-input');
-		if (search) search.value = '';
+		$_treeQuery = '';
 		requestAnimationFrame(() => {
 			window.piUi.controls.refresh(document.getElementById('tree-dialog'));
 			document.getElementById('tree-summary-no')?.dispatchEvent(

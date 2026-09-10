@@ -2,7 +2,6 @@ const commandSelector = ".command";
 const menuPopoverSelector = "[popover][role='menu']";
 
 export function bindControls() {
-	document.addEventListener("input", handleCommandInput);
 	document.addEventListener("keydown", handleKeydown);
 	document.addEventListener("mousemove", handlePointerMove);
 	document.addEventListener("click", handleClick);
@@ -43,30 +42,8 @@ function visibleCommandItems(command) {
 function refreshCommand(command) {
 	const { input, menu } = commandParts(command);
 	if (!(input instanceof HTMLInputElement) || !(menu instanceof HTMLElement)) return;
-	if (command.dataset.filter !== "manual") filterCommand(command);
-	else {
-		menu.scrollTop = 0;
-		activateCommandItem(command, visibleCommandItems(command)[0]);
-	}
-}
-
-function filterCommand(command) {
-	const { input, menu } = commandParts(command);
-	if (!(input instanceof HTMLInputElement) || !(menu instanceof HTMLElement)) return;
-	const query = input.value.trim().toLowerCase();
-	for (const item of commandItems(menu)) {
-		const text = (item.dataset.filter || item.textContent || "").trim().toLowerCase();
-		const keywords = (item.dataset.keywords || "").toLowerCase().split(/[\s,]+/);
-		const matches =
-			item.hasAttribute("data-force") ||
-			text.includes(query) ||
-			keywords.some((keyword) => keyword.includes(query));
-		item.hidden = !matches;
-	}
-	const first = visibleCommandItems(command)[0];
-	activateCommandItem(command, first);
-	if (query === "") menu.scrollTop = 0;
-	else first?.scrollIntoView({ block: "nearest" });
+	menu.scrollTop = 0;
+	activateCommandItem(command, visibleCommandItems(command)[0]);
 }
 
 export function activateCommandItem(command, active) {
@@ -117,18 +94,11 @@ function moveInMenuPopover(popover, key) {
 	items[index]?.focus({ preventScroll: true });
 }
 
-function handleCommandInput(event) {
-	if (!(event.target instanceof HTMLInputElement)) return;
-	const command = event.target.closest(commandSelector);
-	if (command instanceof HTMLElement && command.dataset.filter !== "manual") {
-		filterCommand(command);
-	}
-}
-
 function handleKeydown(event) {
 	if (!(event.target instanceof Element)) return;
 	const command = event.target.closest(commandSelector);
 	if (command instanceof HTMLElement && event.target.matches("header input")) {
+		if (event.isComposing) return;
 		if (event.key === "Enter") {
 			const active = visibleCommandItems(command).find((item) =>
 				item.classList.contains("active"),

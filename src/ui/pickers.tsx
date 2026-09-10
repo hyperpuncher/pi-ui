@@ -12,7 +12,6 @@ import {
 	type AppStateSnapshot,
 	type BackgroundSessionStatus,
 } from "../state/app-store.ts";
-import { formatMessageCount } from "../utils/format.ts";
 import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
@@ -401,8 +400,6 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-preserve-attr="class"
 			tabindex="-1"
 			aria-current={current ? "true" : undefined}
-			data-filter={`${label} ${workspacePath}`}
-			data-keywords={`${label} ${workspacePath}`}
 			data-indicator:_session-loading
 			data-attr:aria-disabled="$_sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
@@ -530,8 +527,6 @@ function renderSessionRow(
 	current: boolean,
 	displayStatus: BackgroundSessionStatus | undefined,
 ): string {
-	const haystack =
-		`${session.title} ${formatMessageCount(session.messageCount)} ${session.path}`.toLowerCase();
 	const shortcut = index < 9 && !current ? `ctrl ${index + 1}` : undefined;
 	const deletable = displayStatus !== "running";
 	return syncHtml(
@@ -540,10 +535,8 @@ function renderSessionRow(
 			role="menuitem"
 			tabindex="-1"
 			aria-current={current ? "true" : undefined}
-			data-preserve-attr="class hidden"
+			data-preserve-attr="class"
 			data-keep-command-open
-			data-filter={haystack}
-			data-keywords={haystack}
 			data-indicator:_session-loading
 			data-attr:aria-disabled="$_sessionTransitionLoading ? 'true' : 'false'"
 			data-on:click={

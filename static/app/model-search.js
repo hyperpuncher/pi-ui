@@ -15,7 +15,10 @@ export function filterModelSearch(input, query) {
 			Number(second.dataset.modelSearchOrder),
 	);
 	const matches = fuzzyFilter(originalItems, query, (item) =>
-		modelSearchText(item.dataset.filter ?? "", item.dataset.keywords ?? ""),
+		modelSearchText(
+			item.dataset.modelSearchText ?? "",
+			item.dataset.modelSearchKeywords ?? "",
+		),
 	);
 	const visible = new Set(matches);
 	const orderedItems = query.trim()

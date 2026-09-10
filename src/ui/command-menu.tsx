@@ -33,6 +33,11 @@ export function renderCommandMenu(): string {
 						aria-expanded="true"
 						aria-controls="command-menu"
 						autofocus
+						data-bind:_command-query
+						data-effect="
+							$_commandQuery;
+							queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
+						"
 					/>
 				</header>
 				<div
@@ -56,12 +61,12 @@ export function renderCommandMenu(): string {
 }
 
 function renderCommandRow(item: AppCommandMetadata): string {
+	const searchText = `${item.title} ${item.description} ${item.id}`.toLowerCase();
 	return syncHtml(
 		<div
 			role="menuitem"
 			tabindex="-1"
-			data-filter={item.title}
-			data-keywords={`${item.description} ${item.id}`}
+			data-attr:hidden={`!${JSON.stringify(searchText)}.includes($_commandQuery.trim().toLowerCase())`}
 			data-on:click={commandActions[item.id]}
 		>
 			<span class="command-item-content">

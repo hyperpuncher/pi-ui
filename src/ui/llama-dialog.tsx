@@ -10,7 +10,6 @@ export function renderLlamaDialog(dialog: AppLlamaDialog | undefined): string {
 			aria-labelledby="llama-dialog-title"
 			closedby="any"
 			data-on:close={`@post('${endpoints.llamaClose}', { payload: {} })`}
-			data-signals:_llama-search__ifmissing="''"
 		>
 			{renderLlamaDialogContent(dialog)}
 		</dialog>,
