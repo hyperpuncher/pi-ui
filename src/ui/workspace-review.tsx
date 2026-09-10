@@ -6,6 +6,7 @@ import {
 	gitPaneRatioDefault,
 	gitPaneRatioMax,
 	gitPaneRatioMin,
+	hasTrackedWorkspaceChanges,
 	reviewSidebarWidthDefault,
 	reviewSidebarWidthMax,
 	reviewSidebarWidthMin,
@@ -166,10 +167,9 @@ export function renderWorkspaceReview(
 							</span>
 							<span
 								class="review-change-totals"
+								title="Tracked line changes"
 								data-attr:hidden="!$_workspaceReviewStatsKnown"
-								hidden={snapshot.changes.some(
-									(change) => change.status === "untracked",
-								)}
+								hidden={!hasTrackedWorkspaceChanges(snapshot.changes)}
 							>
 								<span
 									id="review-total-additions"

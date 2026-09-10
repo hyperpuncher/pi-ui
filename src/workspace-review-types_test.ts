@@ -2,7 +2,25 @@ import { test } from "bun:test";
 
 import { assertEquals } from "#testing/assertions";
 
-import { normalizeWorkspaceReviewPreferences } from "./workspace-review-types.ts";
+import {
+	hasTrackedWorkspaceChanges,
+	normalizeWorkspaceReviewPreferences,
+	type WorkspaceFileStatus,
+} from "./workspace-review-types.ts";
+
+test("workspace review line totals are known when tracked changes exist", () => {
+	const change = (status: WorkspaceFileStatus) => ({
+		additions: 0,
+		deletions: 0,
+		path: `${status}.txt`,
+		status,
+	});
+	assertEquals(hasTrackedWorkspaceChanges([change("untracked")]), false);
+	assertEquals(
+		hasTrackedWorkspaceChanges([change("untracked"), change("modified")]),
+		true,
+	);
+});
 
 test("workspace review preferences default to empty", () => {
 	assertEquals(normalizeWorkspaceReviewPreferences(undefined), {});

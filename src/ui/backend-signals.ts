@@ -2,6 +2,7 @@ import { sessionTransitionOverlayVisible } from "../agent/session-transition-con
 import { getActiveFonts } from "../fonts.ts";
 import { getPierreThemes } from "../pierre-theme.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
+import { hasTrackedWorkspaceChanges } from "../workspace-review-types.ts";
 
 export type BackendSignals = {
 	_codeThemeDark: string;
@@ -51,8 +52,8 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 		),
 		_workspaceReviewGitAvailable: state.workspaceReview.isGitRepository,
 		_workspaceReviewChangeCount: state.workspaceReview.changeCount,
-		_workspaceReviewStatsKnown: !state.workspaceReview.changes.some(
-			(change) => change.status === "untracked",
+		_workspaceReviewStatsKnown: hasTrackedWorkspaceChanges(
+			state.workspaceReview.changes,
 		),
 	};
 }

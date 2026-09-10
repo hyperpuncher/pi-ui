@@ -19,6 +19,12 @@ export type WorkspaceFileChange = Static<typeof workspaceFileChangeSchema>;
 export type WorkspaceCommit = Static<typeof workspaceCommitSchema>;
 export type WorkspaceCommitDetail = Static<typeof workspaceCommitDetailSchema>;
 
+export function hasTrackedWorkspaceChanges(
+	changes: readonly WorkspaceFileChange[],
+): boolean {
+	return changes.some((change) => change.status !== "untracked");
+}
+
 export type WorkspaceReviewPreferences = Readonly<{
 	changesRatio?: number;
 	gitPaneRatio?: number;
