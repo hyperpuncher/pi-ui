@@ -401,8 +401,10 @@ export class UiRenderer implements AppStorePresentation {
 		return Object.assign(
 			{},
 			...effects
+				.values()
 				.filter((effect) => effect.type === "signal-overrides")
-				.map((effect) => effect.values),
+				.map((effect) => effect.values)
+				.toArray(),
 		);
 	}
 	private mainEffectScripts(effects: readonly UiCommitEffect[]): string[] {
@@ -440,10 +442,12 @@ export class UiRenderer implements AppStorePresentation {
 			["extension-dialog", snapshot.extensionDialog],
 			["llama-dialog", snapshot.llamaDialog],
 		]
+			.values()
 			.filter((entry) => Boolean(entry[1]))
 			.map(
 				([id]) =>
 					`{ const dialog = document.getElementById('${id}'); if (dialog && !dialog.open) dialog.showModal(); }`,
-			);
+			)
+			.toArray();
 	}
 }

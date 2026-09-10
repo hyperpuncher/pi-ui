@@ -164,8 +164,13 @@ export function createWorkspaceReviewComments(options: WorkspaceReviewCommentsOp
 		const removed = store.reconcileFiles(
 			new Map(
 				items
+					.values()
 					.filter((item) => store.annotations.has(item.fileDiff.name))
-					.map((item) => [item.fileDiff.name, fileVersion(item.fileDiff)]),
+					.map((item): [string, string] => [
+						item.fileDiff.name,
+						fileVersion(item.fileDiff),
+					])
+					.toArray(),
 			),
 			pendingPaths,
 		);

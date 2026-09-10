@@ -336,8 +336,10 @@ export class SessionCatalog {
 		const knownPaths = new Set(currentOrder);
 		const order = [
 			...sessions
+				.values()
 				.filter((session) => !knownPaths.has(session.path))
-				.map((session) => session.path),
+				.map((session) => session.path)
+				.toArray(),
 			...currentOrder.filter((path) => paths.has(path)),
 		];
 		const sessionsByPath = new Map(
