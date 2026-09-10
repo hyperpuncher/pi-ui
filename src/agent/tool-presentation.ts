@@ -57,18 +57,9 @@ export function toolTitle(
 }
 
 export function toolMeta(toolName: string, args: JsonValue): string | undefined {
-	const record = asRecord(args);
-	if (!record) return undefined;
-	const details: string[] = [];
-	if (toolName === "edit" && Array.isArray(record.edits)) {
-		details.push(
-			`${record.edits.length} edit${record.edits.length === 1 ? "" : "s"}`,
-		);
-	}
-	if (isNumber(record.limit)) {
-		details.push(`limit ${record.limit}`);
-	}
-	return details.join(" • ") || undefined;
+	const edits = asRecord(args)?.edits;
+	if (toolName !== "edit" || !Array.isArray(edits)) return undefined;
+	return `${edits.length} edit${edits.length === 1 ? "" : "s"}`;
 }
 
 export function toolEndMeta(startedAt: number | undefined): string | undefined {
