@@ -8,12 +8,10 @@ import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { Icon } from "./icon.tsx";
 import {
 	Command,
-	Ellipsis,
 	FileDiff,
 	type IconData,
 	MessageCircleDashed,
 	MessageCirclePlus,
-	Paperclip,
 	RotateCcw,
 } from "./icons.ts";
 import { ShortcutTooltip } from "./keyboard.tsx";
@@ -24,7 +22,6 @@ type PromptToolbarAction =
 	| "review"
 	| "new-chat"
 	| "new-temporary-chat"
-	| "files"
 	| "sessions";
 
 const toolbarDialogTargets: Partial<Record<PromptToolbarAction, string>> = {
@@ -36,9 +33,15 @@ type PromptToolbarItem = {
 	action: PromptToolbarAction;
 	icon: IconData;
 	label: string;
-	menuLabel?: string;
 	shortcut?: string;
 	tooltipAlign?: "start" | "center" | "end";
+};
+
+const reviewToolbarItem: PromptToolbarItem = {
+	action: "review",
+	icon: FileDiff,
+	label: "Review workspace",
+	shortcut: "ctrl G",
 };
 
 const promptToolbarItems: readonly PromptToolbarItem[] = [
@@ -48,13 +51,6 @@ const promptToolbarItems: readonly PromptToolbarItem[] = [
 		label: "Commands",
 		shortcut: "ctrl K",
 		tooltipAlign: "start",
-	},
-	{
-		action: "files",
-		icon: Paperclip,
-		label: "Files",
-		menuLabel: "Attach files",
-		shortcut: "@",
 	},
 	{
 		action: "sessions",
@@ -74,12 +70,6 @@ const promptToolbarItems: readonly PromptToolbarItem[] = [
 		label: "New temporary chat",
 		shortcut: "ctrl alt O",
 	},
-	{
-		action: "review",
-		icon: FileDiff,
-		label: "Review workspace",
-		shortcut: "ctrl G",
-	},
 ];
 
 export function renderPromptToolbar(
@@ -88,70 +78,40 @@ export function renderPromptToolbar(
 ): string {
 	return syncHtml(
 		<div id="prompt-toolbar" class="prompt-toolbar" aria-label="Message tools">
-			<div class="prompt-toolbar-buttons">
-				{promptToolbarItems.map((item) => {
-					const temporary = item.action === "new-temporary-chat";
-					return (
-						<PromptToolbarButton
-							label={item.label}
-							action={item.action}
-							shortcut={item.shortcut}
-							tooltipAlign={item.tooltipAlign}
-							variant={
-								temporary && state.isTemporarySession
-									? "secondary"
-									: "ghost"
-							}
-							pressed={temporary && state.isTemporarySession}
-							unavailable={item.action === "review" && !reviewAvailable}
-						>
-							<Icon icon={item.icon} />
-						</PromptToolbarButton>
-					);
-				})}
+			<div class="prompt-toolbar-review">
+				<PromptToolbarItemButton
+					item={reviewToolbarItem}
+					state={state}
+					unavailable={!reviewAvailable}
+				/>
 			</div>
-			<div class="dropdown-menu prompt-toolbar-menu">
-				<button
-					type="button"
-					class="btn prompt-toolbar-button"
-					data-variant="ghost"
-					data-size="icon-sm"
-					aria-label="Message tools"
-					aria-haspopup="menu"
-					aria-controls="prompt-toolbar-popover"
-					popovertarget="prompt-toolbar-popover"
-				>
-					<Icon icon={Ellipsis} />
-				</button>
-				<div
-					id="prompt-toolbar-popover"
-					popover="auto"
-					data-popover
-					data-side="top"
-					data-align="start"
-					class="prompt-toolbar-popover"
-					role="menu"
-					aria-label="Message tools"
-				>
-					{promptToolbarItems
-						.filter((item) => item.action !== "review")
-						.map((item) => {
-							return (
-								<MobilePromptToolbarItem
-									label={item.menuLabel ?? item.label}
-									action={item.action}
-									active={
-										item.action === "new-temporary-chat" &&
-										state.isTemporarySession
-									}
-								>
-									<Icon icon={item.icon} />
-								</MobilePromptToolbarItem>
-							);
-						})}
-				</div>
+			<div class="prompt-toolbar-actions">
+				{promptToolbarItems.map((item) => (
+					<PromptToolbarItemButton item={item} state={state} />
+				))}
 			</div>
 		</div>,
+	);
+}
+
+function PromptToolbarItemButton(props: {
+	item: PromptToolbarItem;
+	state: AppStateSnapshot;
+	unavailable?: boolean;
+}) {
+	const temporary = props.item.action === "new-temporary-chat";
+	return (
+		<PromptToolbarButton
+			label={props.item.label}
+			action={props.item.action}
+			shortcut={props.item.shortcut}
+			tooltipAlign={props.item.tooltipAlign}
+			variant={temporary && props.state.isTemporarySession ? "secondary" : "ghost"}
+			pressed={temporary && props.state.isTemporarySession}
+			unavailable={props.unavailable}
+		>
+			<Icon icon={props.item.icon} />
+		</PromptToolbarButton>
 	);
 }
 
@@ -201,6 +161,7 @@ function PromptToolbarButton(props: {
 			data-on:click={promptToolbarClickAction(props.action)}
 			data-on:keydown__window={promptToolbarKeydownAction(props.action)}
 			data-tooltip={props.label}
+			data-tooltip-delay
 			data-align={props.tooltipAlign}
 			aria-label={props.label}
 		>
@@ -208,40 +169,6 @@ function PromptToolbarButton(props: {
 			{props.shortcut && (
 				<ShortcutTooltip label={props.label} shortcut={props.shortcut} />
 			)}
-		</button>
-	);
-}
-
-function MobilePromptToolbarItem(props: {
-	label: string;
-	action: PromptToolbarAction;
-	active?: boolean;
-	children: JSX.Element;
-}) {
-	return (
-		<button
-			type="button"
-			role="menuitem"
-			tabindex="-1"
-			autofocus={props.action === "new-chat"}
-			commandfor={toolbarDialogTargets[props.action] ?? "prompt-toolbar-popover"}
-			command={toolbarDialogTargets[props.action] ? "show-modal" : "hide-popover"}
-			aria-current={props.active ? "true" : undefined}
-			data-indicator:_new-session-pending={isSessionChangingAction(props.action)}
-			data-attr:disabled={
-				isSessionChangingAction(props.action)
-					? "$_newSessionPending || $_sessionTransitionLoading"
-					: undefined
-			}
-			data-on:click={
-				toolbarDialogTargets[props.action]
-					? "el.closest('[popover]').hidePopover()"
-					: promptToolbarClickAction(props.action)
-			}
-		>
-			{props.children}
-			<span class="prompt-toolbar-menu-label">{props.label}</span>
-			{props.active && <span class="selection-dot" aria-hidden="true" />}
 		</button>
 	);
 }
@@ -254,7 +181,6 @@ function promptToolbarClickAction(action: PromptToolbarAction): string | undefin
 	if (action === "review") return toggleWorkspaceReviewAction();
 	if (action === "new-chat") return newSessionAction();
 	if (action === "new-temporary-chat") return newSessionAction(true);
-	if (action === "files") return "window.piUi.fileTransfer.pick()";
 	return undefined;
 }
 

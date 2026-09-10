@@ -14,7 +14,7 @@
 		height: 0.875rem;
 		grid-area: 1 / 1;
 	}
-	.prompt-footer:not([data-prompt-initial]) .prompt-action-icons > svg {
+	.prompt-surface:not([data-prompt-initial]) .prompt-action-icons > svg {
 		transition:
 			display 150ms allow-discrete,
 			translate 150ms var(--ease-out);
@@ -25,7 +25,7 @@
 	}
 
 	@starting-style {
-		.prompt-footer:not([data-prompt-initial]) .prompt-action-icon-enter {
+		.prompt-surface:not([data-prompt-initial]) .prompt-action-icon-enter {
 			translate: 0 2rem;
 		}
 	}

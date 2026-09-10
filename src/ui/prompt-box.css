@@ -8,8 +8,9 @@
 	.prompt-box {
 		position: absolute;
 		inset-inline: 1rem;
-		bottom: 1.5rem;
+		bottom: 0.5rem;
 		z-index: 10;
+		container: prompt / inline-size;
 		max-width: var(--prompt-max-width);
 		margin-inline: auto;
 		font-size: var(--text-sm);
@@ -49,25 +50,24 @@
 		transition: filter 150ms ease;
 	}
 
-	:is(.prompt-surface, .prompt-queue-item) {
+	:is(.prompt-surface, .prompt-footer, .prompt-queue-item) {
 		background: var(--surface-raised);
 	}
 
 	.prompt-surface {
-		container: prompt / inline-size;
+		--prompt-surface-padding: 0.625rem;
+
 		position: relative;
 		z-index: 40;
 		overflow: visible;
-		padding: 0.75rem;
+		border-radius: var(--radius-xl);
+		padding: var(--prompt-surface-padding);
 		font-size: var(--text-sm);
 		transition: box-shadow 150ms var(--ease-out);
 	}
 
 	.prompt-shortcut-hint {
-		position: absolute;
-		top: 0.5rem;
-		inset-inline-end: 0.5rem;
-		z-index: 20;
+		align-self: center;
 		pointer-events: none;
 	}
 	.prompt-surface:focus-within .prompt-shortcut-hint .shortcut {
@@ -75,59 +75,64 @@
 		opacity: 0;
 	}
 
+	.prompt-editor-row {
+		display: flex;
+		min-width: 0;
+		align-items: flex-end;
+		gap: 0.5rem;
+	}
+
 	.prompt-input {
 		field-sizing: content;
 		width: 100%;
-		min-height: 1.75rem;
+		min-height: 2rem;
 		max-height: 11rem;
 		resize: none;
 		overflow-y: auto;
 		outline: 0;
 		background: transparent;
-		padding: 0.25rem 5rem 0.25rem 0.25rem;
+		padding: 0.25rem;
 		font-size: 0.9375rem;
 	}
 
-	body:not([data-keybind-hints]) .prompt-input {
-		padding-inline-end: 0.25rem;
+	.prompt-editor-actions {
+		display: flex;
+		flex-shrink: 0;
+		align-items: flex-end;
+		gap: 0.25rem;
+	}
+	.prompt-file-button {
+		color: var(--text-muted);
+	}
+	.prompt-file-button:is(:hover, :focus-visible) {
+		color: var(--text);
 	}
 
 	.prompt-footer {
 		position: relative;
+		z-index: 40;
 		display: flex;
-		visibility: hidden;
+		width: calc(100% - 4rem);
 		align-items: center;
-		justify-content: space-between;
 		gap: 0.5rem;
-	}
-	.prompt-footer:has(.prompt-action) {
-		visibility: visible;
+		margin: 0 auto;
+		border-block-start: 0;
+		border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+		padding: 0.125rem;
+		font-size: var(--text-xs);
+		box-shadow:
+			inset 0 0.25rem 0.375rem -0.375rem oklch(0% 0 none / 18%),
+			var(--shadow-md);
 	}
 
 	.prompt-context {
 		display: flex;
 		min-width: 0;
-		flex: 1;
+		flex: 0 1 auto;
 		align-items: center;
+		margin-inline-start: auto;
 		justify-content: flex-end;
-		gap: 0.3125rem;
-	}
-
-	.prompt-context-divider {
-		width: 0;
-		height: 1rem;
-		flex-shrink: 0;
-		margin-inline: -0.125rem;
-		border-inline-start: 1px solid var(--border);
-	}
-
-	@container prompt (width < 40rem) {
-		.prompt-context {
-			gap: 0.1875rem;
-		}
-		.prompt-context-divider {
-			display: none;
-		}
+		gap: 0.125rem;
 	}
 
 	.prompt-queue {
@@ -371,35 +376,27 @@
 	@media (width <= 639px) {
 		.prompt-box {
 			inset-inline: 0.5rem;
-			bottom: 0.5rem;
+			bottom: 0.25rem;
 		}
 		.prompt-surface {
-			padding: 0.5rem;
+			--prompt-surface-padding: 0.5rem;
 		}
 		.prompt-input {
 			font-size: 1rem;
 		}
 		.prompt-footer {
-			min-height: 2.75rem;
 			gap: 0.375rem;
-		}
-		.prompt-context,
-		.prompt-footer .prompt-status {
-			display: contents;
 		}
 		.prompt-footer :is(.prompt-status-message, .prompt-working-status) {
 			min-width: 1rem;
 			max-width: max-content;
 			flex: 1;
 		}
-		.prompt-toolbar {
-			margin-inline-end: auto;
-		}
 		#thinking-picker {
 			flex-shrink: 0;
 		}
-		.prompt-footer
-			.btn:is(.prompt-toolbar-button, .prompt-context-button, .prompt-action) {
+		:is(.prompt-footer, .prompt-editor-row)
+			.btn:is(.prompt-context-button, .prompt-file-button, .prompt-action) {
 			--button-size: 2rem;
 
 			position: relative;
@@ -407,12 +404,8 @@
 			min-width: 0;
 			padding: 0;
 		}
-		.prompt-footer
-			.btn:is(
-				.prompt-toolbar-button,
-				.prompt-context-button,
-				.prompt-action
-			)::after {
+		:is(.prompt-footer, .prompt-editor-row)
+			.btn:is(.prompt-context-button, .prompt-file-button, .prompt-action)::after {
 			position: absolute;
 			inset: -0.375rem -0.125rem;
 			content: "";
@@ -439,14 +432,8 @@
 		}
 	}
 
-	@media (width <= 48rem) {
-		.prompt-input {
-			padding-inline-end: 0.25rem;
-		}
-	}
-
 	.prompt-surface:focus-within {
 		border-color: var(--border);
-		box-shadow: var(--shadow-xl);
+		box-shadow: var(--shadow-lg);
 	}
 }

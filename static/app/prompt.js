@@ -27,7 +27,7 @@ export function bindPromptInteractions() {
 		const target = event.target;
 		if (!(target instanceof Element)) return;
 		const trigger = target.closest("[data-tooltip]");
-		if (!(trigger instanceof HTMLElement)) return;
+		if (!(trigger instanceof HTMLElement) || event.pointerType === "touch") return;
 		trigger.setAttribute("data-tooltip-suppressed", "");
 		trigger.addEventListener(
 			"pointerleave",

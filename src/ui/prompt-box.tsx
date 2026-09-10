@@ -2,8 +2,8 @@ import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { Icon } from "./icon.tsx";
-import { ArrowDown, X } from "./icons.ts";
-import { altShortcutAction, ShortcutKbd } from "./keyboard.tsx";
+import { ArrowDown, Paperclip, X } from "./icons.ts";
+import { altShortcutAction, ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
 import {
@@ -12,13 +12,9 @@ import {
 	renderWorkspacePicker,
 } from "./prompt-pickers.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
-import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-export function renderPromptBox(
-	state: AppStateSnapshot,
-	reviewAvailable = false,
-): string {
+export function renderPromptBox(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div
 			id="prompt-box"
@@ -73,67 +69,67 @@ export function renderPromptBox(
 			<div
 				class="input-group raised-surface prompt-surface"
 				data-orientation="vertical"
+				data-prompt-initial
+				data-init="el.removeAttribute('data-prompt-initial')"
 			>
-				<div class="prompt-shortcut-hint">
-					<ShortcutKbd shortcut="alt P" />
-				</div>
 				{renderExtensionWidgets(state, "aboveEditor")}
-				<textarea
-					id="prompt-input"
-					class="prompt-input"
-					placeholder="Ask pi anything..."
-					aria-label="Message"
-					aria-autocomplete="list"
-					aria-haspopup="listbox"
-					data-preserve-attr="aria-controls aria-activedescendant"
-					aria-keyshortcuts="Alt+P"
-					rows="1"
-					data-bind:prompt
-					attrs={{
-						"data-on:input__debounce.150ms": `@post('${endpoints.extensionUiEditor}', { payload: { prompt: $prompt } })`,
-						"data-on:keydown__window": altShortcutAction(
-							"KeyP",
-							`el.focus({ preventScroll: true });
+				<div class="prompt-editor-row">
+					<textarea
+						id="prompt-input"
+						class="prompt-input"
+						placeholder="Ask pi anything..."
+						aria-label="Message"
+						aria-autocomplete="list"
+						aria-haspopup="listbox"
+						data-preserve-attr="aria-controls aria-activedescendant"
+						aria-keyshortcuts="Alt+P"
+						rows="1"
+						data-bind:prompt
+						attrs={{
+							"data-on:input__debounce.150ms": `@post('${endpoints.extensionUiEditor}', { payload: { prompt: $prompt } })`,
+							"data-on:keydown__window": altShortcutAction(
+								"KeyP",
+								`el.focus({ preventScroll: true });
 							el.selectionStart = el.value.length;
 							el.selectionEnd = el.value.length;`,
-						),
-					}}
-					data-on:input="
-						window.piUi.promptHistory.handleInput();
-						$_slashPickerOpen = $prompt.startsWith('/') &&
+							),
+						}}
+						data-on:input="
+							window.piUi.promptHistory.handleInput();
+							$_slashPickerOpen = $prompt.startsWith('/') &&
 						!$prompt.includes(' ');
-					"
-					data-on:pi-ui-picker-close="$_slashPickerOpen = false"
-					data-on:pi-ui-file-query={`
-						if (typeof $_fileSearchController?.abort === 'function') {
+						"
+						data-on:pi-ui-picker-close="$_slashPickerOpen = false"
+						data-on:pi-ui-file-query={`
+							if (typeof $_fileSearchController?.abort === 'function') {
 							$_fileSearchController.abort();
 						}
 						$_fileSearchController = new AbortController();
-						$fileQuery = evt.detail.query;
-						@get('${endpoints.filesSearch}', {
+							$fileQuery = evt.detail.query;
+							@get('${endpoints.filesSearch}', {
 						payload: { fileQuery: $fileQuery },
 						requestCancellation: $_fileSearchController,
 					});
-					`}
-					data-on:pi-ui-file-close={`
-						if (typeof $_fileSearchController?.abort === 'function') {
+						`}
+						data-on:pi-ui-file-close={`
+							if (typeof $_fileSearchController?.abort === 'function') {
 							$_fileSearchController.abort();
 						}
 						$_fileSearchController = '';
-						$_filePickerOpen = false;
-					`}
-					data-effect={`if (!$_sessionTransitionLoading) {
-						el.focus({ preventScroll: true });
-						el.selectionStart = el.value.length;
-						el.selectionEnd = el.value.length;
-					}`}
-					data-on:paste={`if (window.piUi.fileTransfer.hasFiles(evt.clipboardData)) {
-						evt.preventDefault();
-						window.piUi.fileTransfer.insert(evt.clipboardData);
-					}`}
-					data-on:keydown={`
-						window.piUi.promptHistory.handleKeydown(evt, $_promptHistory);
-						if (
+							$_filePickerOpen = false;
+						`}
+						data-effect={`if (!$_sessionTransitionLoading) {
+							el.focus({ preventScroll: true });
+							el.selectionStart = el.value.length;
+							el.selectionEnd = el.value.length;
+						}`}
+						data-on:paste={`if (window.piUi.fileTransfer.hasFiles(evt.clipboardData)) {
+							evt.preventDefault();
+							window.piUi.fileTransfer.insert(evt.clipboardData);
+						}`}
+						data-on:keydown={`
+							window.piUi.promptHistory.handleKeydown(evt, $_promptHistory);
+							if (
 							evt.code === 'Escape' &&
 							!evt.ctrlKey &&
 							!evt.metaKey &&
@@ -167,28 +163,39 @@ export function renderPromptBox(
 								evt.altKey ? 'followUp' : undefined,
 							);
 						};
-					`}
-				></textarea>
-				{renderExtensionWidgets(state, "belowEditor")}
-				<footer
-					id="prompt-footer"
-					class="prompt-footer"
-					data-align="end"
-					data-prompt-initial
-					data-init="el.removeAttribute('data-prompt-initial')"
-				>
-					{renderPromptToolbar(state, reviewAvailable)}
-					<div id="prompt-context" class="prompt-context">
-						{renderPromptStatus(state)}
-						{renderWorkspacePicker(state)}
-						<span class="prompt-context-divider" aria-hidden="true" />
-						{renderModelPicker(state)}
-						<span class="prompt-context-divider" aria-hidden="true" />
-						{renderThinkingPicker(state)}
+						`}
+					></textarea>
+					<div class="prompt-editor-actions">
+						<div class="prompt-shortcut-hint">
+							<ShortcutKbd shortcut="alt P" />
+						</div>
+						<button
+							type="button"
+							class="btn prompt-file-button"
+							data-variant="ghost"
+							data-size="icon"
+							data-on:click="window.piUi.fileTransfer.pick()"
+							data-tooltip="Files"
+							data-tooltip-delay
+							data-align="center"
+							aria-label="Files"
+						>
+							<Icon icon={Paperclip} />
+							<ShortcutTooltip label="Files" shortcut="@" />
+						</button>
 						{renderPromptAction(state)}
 					</div>
-				</footer>
+				</div>
+				{renderExtensionWidgets(state, "belowEditor")}
 			</div>
+			<footer id="prompt-footer" class="raised-surface prompt-footer">
+				{renderWorkspacePicker(state)}
+				{renderPromptStatus(state)}
+				<div id="prompt-context" class="prompt-context">
+					{renderModelPicker(state)}
+					{renderThinkingPicker(state)}
+				</div>
+			</footer>
 		</div>,
 	);
 }

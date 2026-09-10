@@ -16,11 +16,12 @@ import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
 import { Icon } from "./icon.tsx";
 import { FileUp, FolderOpen, PanelRight, Search } from "./icons.ts";
-import { altShortcutAction } from "./keyboard.tsx";
+import { altShortcutAction, ShortcutTooltip } from "./keyboard.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
+import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebar, sessionSidebarStorageKey } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
@@ -228,22 +229,6 @@ export function renderPage(
 								class="raised-surface chat-pane"
 								aria-label="Chat"
 							>
-								<button
-									id="session-sidebar-toggle"
-									type="button"
-									class="btn session-sidebar-toggle"
-									data-variant="ghost"
-									data-size="icon-sm"
-									aria-label="Toggle sessions"
-									commandfor="session-sidebar"
-									command="--toggle"
-									aria-controls="session-sidebar"
-									aria-expanded="false"
-									data-attr:aria-expanded="$_sessionSidebarOpen ? 'true' : 'false'"
-									title="Toggle sessions"
-								>
-									<Icon icon={PanelRight} />
-								</button>
 								{renderMessages(
 									state.messages,
 									state.emptyChatHint,
@@ -253,8 +238,34 @@ export function renderPage(
 									state.sessionCatalogLoading,
 								)}
 								{renderSessionTransition(state)}
-								{renderPromptBox(state, true)}
+								{renderPromptBox(state)}
 							</section>
+							<div class="prompt-canvas-toolbar">
+								{renderPromptToolbar(state, true)}
+								<button
+									id="session-sidebar-toggle"
+									type="button"
+									class="btn session-sidebar-toggle"
+									data-variant="ghost"
+									data-attr:data-variant="$_sessionSidebarOpen ? 'secondary' : 'ghost'"
+									data-size="icon-sm"
+									aria-label="Toggle sessions"
+									commandfor="session-sidebar"
+									command="--toggle"
+									aria-controls="session-sidebar"
+									aria-expanded="false"
+									data-attr:aria-expanded="$_sessionSidebarOpen ? 'true' : 'false'"
+									data-tooltip="Toggle sessions"
+									data-tooltip-delay
+									data-align="end"
+								>
+									<Icon icon={PanelRight} />
+									<ShortcutTooltip
+										label="Toggle sessions"
+										shortcut="ctrl B"
+									/>
+								</button>
+							</div>
 							{renderWorkspaceReview(
 								state.workspacePath,
 								state.workspaceFilesRevision,

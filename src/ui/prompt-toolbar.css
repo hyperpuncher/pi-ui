@@ -1,55 +1,16 @@
 @layer components {
 	.prompt-toolbar {
-		flex-shrink: 0;
+		display: contents;
 	}
 
-	.prompt-toolbar-buttons {
+	.prompt-toolbar-review {
+		grid-column: 1;
+		justify-self: start;
+	}
+	.prompt-toolbar-actions {
 		display: flex;
+		grid-column: 2;
 		align-items: center;
 		gap: 0.125rem;
-	}
-
-	.prompt-toolbar-menu {
-		display: none;
-	}
-	@container prompt (width < 32rem) {
-		.prompt-toolbar-buttons {
-			display: none;
-		}
-		.prompt-toolbar-menu {
-			display: block;
-		}
-	}
-
-	.prompt-toolbar-button {
-		line-height: 1;
-	}
-	.btn.prompt-toolbar-button[data-variant="ghost"] {
-		color: var(--text-muted);
-	}
-	.btn.prompt-toolbar-button[data-variant="ghost"]:hover {
-		color: var(--text);
-	}
-	.prompt-toolbar-popover {
-		width: max-content;
-		max-width: calc(100vw - 2rem);
-	}
-	@media (width < 40rem) {
-		.prompt-toolbar-popover [role="menuitem"] {
-			min-height: 2.75rem;
-			gap: 0.75rem;
-			padding: 0.625rem 0.75rem;
-		}
-		.prompt-toolbar-popover .prompt-toolbar-menu-label {
-			white-space: normal;
-		}
-	}
-
-	.prompt-toolbar-menu-label {
-		min-width: 0;
-		overflow: hidden;
-		text-align: start;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 }

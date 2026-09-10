@@ -34,35 +34,39 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 					{status.text}
 				</span>
 			))}
-			<span class="usage-indicators">{renderUsageIndicator(state.usage)}</span>
+			{renderUsageIndicators(state.usage)}
 		</span>,
 	);
 }
 
-function renderUsageIndicator(usage: AppUsage): string {
+export function renderUsageIndicators(usage: AppUsage): string {
 	const contextPercent = usage.contextPercent ?? 0;
 	const limitPercent = usage.limits
 		? Math.max(0, ...usage.limits.windows.map((window) => window.usedPercent))
 		: 0;
 	return syncHtml(
 		<span class="usage-indicators">
-			<span
+			<button
+				type="button"
 				class="usage-indicator"
 				data-tooltip="Context usage"
+				data-on:click="el.focus()"
 				aria-label={usage.text}
 			>
 				{usageRing(contextPercent, usageColor(contextPercent))}
 				{renderContextTooltip(usage)}
-			</span>
+			</button>
 			{usage.limits && (
-				<span
+				<button
+					type="button"
 					class="usage-indicator"
 					data-tooltip={usage.limits.label}
+					data-on:click="el.focus()"
 					aria-label={formatLimitsAriaLabel(usage.limits)}
 				>
 					{usageRing(limitPercent, usageColor(limitPercent))}
 					{renderLimitsTooltip(usage.limits)}
-				</span>
+				</button>
 			)}
 		</span>,
 	);

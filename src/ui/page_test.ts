@@ -27,9 +27,9 @@ test("one native sidebar dialog initializes before the workspace is parsed", () 
 	);
 });
 
-for (const mobile of [false, true]) {
-	for (const saved of ["true", "false", "invalid", null, undefined]) {
-		test(`sidebar restores ${mobile ? "mobile" : "desktop"} preference ${String(saved)} before datastar`, () => {
+test("sidebar restores responsive preferences before datastar", () => {
+	for (const mobile of [false, true]) {
+		for (const saved of ["true", "false", "invalid", null, undefined]) {
 			let shownAs = "closed";
 			let storageKey = "";
 			const dialog = {
@@ -66,9 +66,9 @@ for (const mobile of [false, true]) {
 				storageKey,
 				`pi-ui-session-sidebar-${mobile ? "mobile" : "desktop"}-open`,
 			);
-		});
+		}
 	}
-}
+});
 
 test("saved sidebar width is restored before styles, with invalid storage ignored", () => {
 	assertEquals(widthScript.length > 0, true);
