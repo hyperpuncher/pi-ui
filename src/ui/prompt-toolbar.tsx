@@ -42,6 +42,7 @@ const reviewToolbarItem: PromptToolbarItem = {
 	icon: FileDiff,
 	label: "Review workspace",
 	shortcut: "ctrl G",
+	tooltipAlign: "start",
 };
 
 const promptToolbarItems: readonly PromptToolbarItem[] = [
