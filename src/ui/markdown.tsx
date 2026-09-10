@@ -190,7 +190,9 @@ function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
 	for (const [index, block] of blocks.entries()) {
 		const [raw, rawLanguage, rawCode] = block;
 		const language = codeFenceLanguage(rawLanguage);
-		const code = decodeHtml(rawCode).replace(/\n$/, "");
+		const code = decodeHtml(rawCode)
+			.replace(/\n$/, "")
+			.replace(/\n`{1,2}[ \t]*$/, "");
 		const replacement = cacheKeyPrefix
 			? highlightStreamingCodeBlock(code, language, `${cacheKeyPrefix}:${index}`)
 			: renderStreamingPlainCodeBlock(code, language);

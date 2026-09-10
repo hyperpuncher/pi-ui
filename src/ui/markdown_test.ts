@@ -52,6 +52,14 @@ test("streaming code has line numbers without highlighting state", () => {
 	assertEqual(html.match(/streaming-code-line-number/g)?.length, 3);
 });
 
+test("streaming code does not show a partial closing fence", () => {
+	const source = "```html\n<div>";
+	const expected = renderMarkdownStreaming(source);
+	assertEqual(renderMarkdownStreaming(`${source}\n\``), expected);
+	assertEqual(renderMarkdownStreaming(`${source}\n\`\``), expected);
+	assertEqual(renderMarkdownStreaming(`${source}\n\`\`\``), expected);
+});
+
 test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
 	const markdown =
 		'<script>alert("xss")</script>\n\n[unsafe label](javascript:alert(1)) ![bad image](data:text/html,bad) [local file](file:///tmp/example.txt)';
