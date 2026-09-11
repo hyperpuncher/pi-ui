@@ -36,11 +36,16 @@ export function ShortcutKbd(props: { shortcut: string }) {
 	);
 }
 
-export function ShortcutTooltip(props: { label: string; shortcut: string }) {
+export function ShortcutTooltip(props: { label: string; shortcut?: string }) {
 	return (
-		<span class="shortcut-tooltip" role="tooltip" data-slot="tooltip-content">
+		<span
+			class="shortcut-tooltip"
+			role="tooltip"
+			data-slot="tooltip-content"
+			popover="manual"
+		>
 			<span>{props.label}</span>
-			<ShortcutKbd shortcut={props.shortcut} />
+			{props.shortcut && <ShortcutKbd shortcut={props.shortcut} />}
 		</span>
 	);
 }

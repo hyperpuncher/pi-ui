@@ -83,6 +83,7 @@ function renderContextTooltip(usage: AppUsage): string {
 		<span
 			role="tooltip"
 			data-slot="tooltip-content"
+			popover="manual"
 			class="usage-tooltip usage-tooltip-context"
 		>
 			{hasContext ? (
@@ -136,6 +137,7 @@ function renderLimitsTooltip(limits: AppUsageLimits): string {
 		<span
 			role="tooltip"
 			data-slot="tooltip-content"
+			popover="manual"
 			class="usage-tooltip usage-tooltip-limits"
 		>
 			<strong class="usage-tooltip-label">{limits.label}</strong>

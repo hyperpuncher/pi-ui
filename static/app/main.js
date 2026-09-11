@@ -28,6 +28,7 @@ import {
 	readTransitionState,
 	startSessionPerformanceMeasurement,
 } from "./session-performance.js";
+import { bindTooltips } from "./tooltips.js";
 import { bindVimScroll } from "./vim-scroll.js";
 import { windowFocus } from "./window-focus.js";
 
@@ -72,7 +73,11 @@ window.piUi = {
 
 function hasOpenDismissible() {
 	if (isPickerOpen() || document.querySelector(":modal")) return true;
-	return Boolean(document.querySelector("[popover]:popover-open"));
+	return Boolean(
+		document.querySelector(
+			"[popover]:popover-open:not([data-slot='tooltip-content'])",
+		),
+	);
 }
 
 // Register delegated file-link handling as soon as this module evaluates. Waiting for
@@ -87,6 +92,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	bindPickers({ fuzzyFilter });
 	bindMessageScroll();
 	bindCodeCopy();
+	bindTooltips();
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();
 	bindDebugFps();

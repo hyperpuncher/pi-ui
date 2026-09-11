@@ -182,17 +182,6 @@
 		grid-column: 3;
 		justify-self: end;
 	}
-	.toolbar .shortcut-tooltip {
-		top: 100%;
-		bottom: auto;
-		margin-block: 0.375rem 0;
-		translate: 0 -0.5rem;
-	}
-	.toolbar
-		:where([data-tooltip]:not([data-align]), [data-tooltip][data-align="center"])
-		> .shortcut-tooltip {
-		translate: -50% -0.5rem;
-	}
 	.toolbar .btn[data-variant="ghost"] {
 		color: var(--text-muted);
 	}

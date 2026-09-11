@@ -180,6 +180,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-on:click={authDialogAction("login")}
 				>
 					<span class="prompt-context-label">no provider</span>
+					<ShortcutTooltip label="Log in to a provider" />
 				</button>
 			</div>,
 		);
