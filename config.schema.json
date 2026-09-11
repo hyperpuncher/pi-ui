@@ -23,7 +23,7 @@
 					},
 					"default": [
 						"openai-codex/gpt-5.6-luna:minimal",
-						"opencode-go/deepseek-v4-flash:off"
+						"opencode-go/deepseek-v4.1-flash:off"
 					],
 					"description": "Models to try in order."
 				},

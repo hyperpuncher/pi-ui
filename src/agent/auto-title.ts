@@ -17,7 +17,7 @@ export type AutoTitleConfig = Readonly<{
 
 export const defaultAutoTitleConfig: AutoTitleConfig = {
 	enabled: true,
-	models: ["openai-codex/gpt-5.6-luna:minimal", "opencode-go/deepseek-v4-flash:off"],
+	models: ["openai-codex/gpt-5.6-luna:minimal", "opencode-go/deepseek-v4.1-flash:off"],
 	prompt: "use lowercase",
 };
 

@@ -131,7 +131,7 @@ all options with their defaults:
 		"enabled": true,
 		"models": [
 			"openai-codex/gpt-5.6-luna:minimal",
-			"opencode-go/deepseek-v4-flash:off"
+			"opencode-go/deepseek-v4.1-flash:off"
 		],
 		"prompt": "use lowercase"
 	},
