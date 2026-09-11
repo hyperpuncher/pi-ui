@@ -20,10 +20,16 @@ export function resumeSessionAction(
 	}`;
 }
 
-export function resumeSessionShortcutAction(path: string, index: number): string {
-	return `if (${primaryModifierExpression()} && evt.code === 'Digit${index + 1}') {
+export function resumeSessionShortcutAction(
+	path: string,
+	index: number,
+	options: { inDialog?: boolean } = {},
+): string {
+	const dialogOpen = "document.getElementById('session-dialog')?.open";
+	const scope = options.inDialog ? dialogOpen : `!(${dialogOpen})`;
+	return `if (${scope} && ${primaryModifierExpression()} && evt.code === 'Digit${index + 1}') {
 		evt.preventDefault();
-		${resumeSessionAction(path)}
+		${resumeSessionAction(path, { closeDialog: options.inDialog })}
 	}`;
 }
 

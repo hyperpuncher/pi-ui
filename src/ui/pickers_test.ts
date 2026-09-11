@@ -181,6 +181,9 @@ test("background sessions expose statuses and shortcuts", () => {
 	assertStringIncludes(html, 'aria-label="Background session completed"');
 	assertStringIncludes(html, '<kbd class="kbd">1</kbd>');
 	assertStringIncludes(html, '<kbd class="kbd">2</kbd>');
+	assertStringIncludes(html, "evt.code === 'Digit1'");
+	// The picker owns ctrl+number while its dialog is open, using the filtered order.
+	assertStringIncludes(html, "document.getElementById('session-dialog')?.open &&");
 });
 
 test("current idle session exposes deletion", () => {

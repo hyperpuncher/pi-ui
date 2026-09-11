@@ -120,6 +120,8 @@ test("session sidebar assigns shortcuts to only the first nine sessions", () => 
 
 	assertStringIncludes(html, "evt.code === 'Digit1'");
 	assertStringIncludes(html, "evt.code === 'Digit9'");
+	// The sidebar only handles ctrl+number while no session picker is open.
+	assertStringIncludes(html, "!(document.getElementById('session-dialog')?.open)");
 	assertStringIncludes(html, ">1</kbd>");
 	assertStringIncludes(html, ">9</kbd>");
 	assertFalse(html.includes("Digit10"));

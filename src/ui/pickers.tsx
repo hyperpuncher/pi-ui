@@ -27,7 +27,10 @@ import { SessionRowAction } from "./session-row-action.tsx";
 import { renderSessionPageTrigger } from "./session-sidebar.tsx";
 import { sessionStatusLabel } from "./session-status.ts";
 import { SessionSubtitle } from "./session-summary.tsx";
-import { resumeSessionAction } from "./session-transition.tsx";
+import {
+	resumeSessionAction,
+	resumeSessionShortcutAction,
+} from "./session-transition.tsx";
 import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -543,6 +546,11 @@ function renderSessionRow(
 				current
 					? currentSessionPickerClickAction
 					: resumeSessionAction(session.path, { closeDialog: true })
+			}
+			data-on:keydown__window={
+				shortcut
+					? resumeSessionShortcutAction(session.path, index, { inDialog: true })
+					: undefined
 			}
 		>
 			<span class="session-menu-heading">
