@@ -17,27 +17,27 @@ import {
 import { ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-type PromptToolbarAction =
+type ToolbarAction =
 	| "commands"
 	| "review"
 	| "new-chat"
 	| "new-temporary-chat"
 	| "sessions";
 
-const toolbarDialogTargets: Partial<Record<PromptToolbarAction, string>> = {
+const toolbarDialogTargets: Partial<Record<ToolbarAction, string>> = {
 	commands: "command-dialog",
 	sessions: "session-dialog",
 };
 
-type PromptToolbarItem = {
-	action: PromptToolbarAction;
+type ToolbarItem = {
+	action: ToolbarAction;
 	icon: IconData;
 	label: string;
 	shortcut?: string;
 	tooltipAlign?: "start" | "center" | "end";
 };
 
-const reviewToolbarItem: PromptToolbarItem = {
+const reviewToolbarItem: ToolbarItem = {
 	action: "review",
 	icon: FileDiff,
 	label: "Review workspace",
@@ -45,7 +45,7 @@ const reviewToolbarItem: PromptToolbarItem = {
 	tooltipAlign: "start",
 };
 
-const promptToolbarItems: readonly PromptToolbarItem[] = [
+const toolbarItems: readonly ToolbarItem[] = [
 	{
 		action: "commands",
 		icon: Command,
@@ -73,36 +73,33 @@ const promptToolbarItems: readonly PromptToolbarItem[] = [
 	},
 ];
 
-export function renderPromptToolbar(
-	state: AppStateSnapshot,
-	reviewAvailable = false,
-): string {
+export function renderToolbar(state: AppStateSnapshot, reviewAvailable = false): string {
 	return syncHtml(
-		<div id="prompt-toolbar" class="prompt-toolbar" aria-label="Message tools">
-			<div class="prompt-toolbar-review">
-				<PromptToolbarItemButton
+		<div id="toolbar" aria-label="Message tools">
+			<div class="toolbar-review">
+				<ToolbarItemButton
 					item={reviewToolbarItem}
 					state={state}
 					unavailable={!reviewAvailable}
 				/>
 			</div>
-			<div class="prompt-toolbar-actions">
-				{promptToolbarItems.map((item) => (
-					<PromptToolbarItemButton item={item} state={state} />
+			<div class="toolbar-actions">
+				{toolbarItems.map((item) => (
+					<ToolbarItemButton item={item} state={state} />
 				))}
 			</div>
 		</div>,
 	);
 }
 
-function PromptToolbarItemButton(props: {
-	item: PromptToolbarItem;
+function ToolbarItemButton(props: {
+	item: ToolbarItem;
 	state: AppStateSnapshot;
 	unavailable?: boolean;
 }) {
 	const temporary = props.item.action === "new-temporary-chat";
 	return (
-		<PromptToolbarButton
+		<ToolbarButton
 			label={props.item.label}
 			action={props.item.action}
 			shortcut={props.item.shortcut}
@@ -112,13 +109,13 @@ function PromptToolbarItemButton(props: {
 			unavailable={props.unavailable}
 		>
 			<Icon icon={props.item.icon} />
-		</PromptToolbarButton>
+		</ToolbarButton>
 	);
 }
 
-function PromptToolbarButton(props: {
+function ToolbarButton(props: {
 	label: string;
-	action: PromptToolbarAction;
+	action: ToolbarAction;
 	shortcut?: string;
 	variant?: "primary" | "secondary" | "ghost";
 	unavailable?: boolean;
@@ -128,7 +125,7 @@ function PromptToolbarButton(props: {
 }) {
 	return (
 		<button
-			class="btn prompt-toolbar-button"
+			class="btn toolbar-button"
 			data-variant={props.variant ?? "ghost"}
 			data-pi-ui-action={props.action}
 			commandfor={toolbarDialogTargets[props.action]}
@@ -159,8 +156,8 @@ function PromptToolbarButton(props: {
 					? "$_newSessionPending || $_sessionTransitionLoading"
 					: undefined
 			}
-			data-on:click={promptToolbarClickAction(props.action)}
-			data-on:keydown__window={promptToolbarKeydownAction(props.action)}
+			data-on:click={toolbarClickAction(props.action)}
+			data-on:keydown__window={toolbarKeydownAction(props.action)}
 			data-tooltip={props.label}
 			data-tooltip-delay
 			data-align={props.tooltipAlign}
@@ -174,18 +171,18 @@ function PromptToolbarButton(props: {
 	);
 }
 
-function isSessionChangingAction(action: PromptToolbarAction): boolean {
+function isSessionChangingAction(action: ToolbarAction): boolean {
 	return action === "new-chat" || action === "new-temporary-chat";
 }
 
-function promptToolbarClickAction(action: PromptToolbarAction): string | undefined {
+function toolbarClickAction(action: ToolbarAction): string | undefined {
 	if (action === "review") return toggleWorkspaceReviewAction();
 	if (action === "new-chat") return newSessionAction();
 	if (action === "new-temporary-chat") return newSessionAction(true);
 	return undefined;
 }
 
-function promptToolbarKeydownAction(action: PromptToolbarAction): string | undefined {
+function toolbarKeydownAction(action: ToolbarAction): string | undefined {
 	const primaryModifier = primaryModifierExpression();
 	if (action === "commands") {
 		return `if (${primaryModifier} && evt.code === 'KeyK') {

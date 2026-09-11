@@ -8,7 +8,6 @@ import { displayRefreshRoutes } from "./routes/display-refresh.ts";
 import { extensionUiRoutes } from "./routes/extension-ui.ts";
 import { fileRoutes } from "./routes/files.ts";
 import { fontRoutes } from "./routes/fonts.ts";
-import { keybindHintRoutes } from "./routes/keybind-hints.ts";
 import { llamaRoutes } from "./routes/llama.ts";
 import { modelRoutes } from "./routes/models.ts";
 import { promptRoutes } from "./routes/prompt.ts";
@@ -26,7 +25,6 @@ export const appRoutes: RouteMap<RouteContext> = {
 	...extensionUiRoutes,
 	...codeThemeRoutes,
 	...fontRoutes,
-	...keybindHintRoutes,
 	...promptRoutes,
 	...sessionRoutes,
 	...sessionPerformanceRoutes,

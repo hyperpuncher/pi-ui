@@ -11,6 +11,7 @@ export const endpoints = {
 	keybindHints: "/keybind-hints",
 	minimalMode: "/minimal-mode",
 	toolOutput: "/tool-output",
+	toolbar: "/toolbar",
 	sessionPerformanceClient: "/session-performance/client",
 	prompt: "/prompt",
 	promptFollowUp: "/prompt/follow-up",

@@ -21,12 +21,12 @@ import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
-import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebar, sessionSidebarStorageKey } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { syncHtml } from "./sync-html.ts";
 import { renderThemeLab } from "./theme-lab.tsx";
+import { renderToolbar } from "./toolbar.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
 
@@ -48,6 +48,7 @@ export function renderPage(
 	keybindHints = true,
 	minimalMode = false,
 	toolOutputHidden = false,
+	toolbarHidden = false,
 	themeLab = false,
 ): string {
 	const staticBase = `/static/${appVersion}`;
@@ -117,6 +118,7 @@ export function renderPage(
 					data-code-theme-dark={codeThemes.dark}
 					data-attr:data-code-theme-light="$_codeThemeLight"
 					data-attr:data-code-theme-dark="$_codeThemeDark"
+					data-toolbar-hidden={toolbarHidden}
 					data-signals={initialSignals}
 					data-signals:_minimal-mode__ifmissing={minimalMode ? "true" : "false"}
 					data-signals:_tool-output-hidden__ifmissing={
@@ -244,8 +246,8 @@ export function renderPage(
 								{renderSessionTransition(state)}
 								{renderPromptBox(state)}
 							</section>
-							<div class="prompt-canvas-toolbar">
-								{renderPromptToolbar(state, true)}
+							<div class="toolbar">
+								{renderToolbar(state, true)}
 								<button
 									id="session-sidebar-toggle"
 									type="button"

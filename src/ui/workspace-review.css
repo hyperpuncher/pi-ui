@@ -564,10 +564,10 @@
 			grid-row: 2;
 			grid-column: 4;
 			width: auto;
-			margin: 0 0 var(--workspace-inset);
+			margin: var(--workspace-inset) 0 var(--workspace-inset);
 		}
 
-		#app.review-open .prompt-canvas-toolbar {
+		#app.review-open .toolbar {
 			grid-column: 4;
 			margin-inline: 0;
 		}

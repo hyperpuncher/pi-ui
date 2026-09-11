@@ -141,11 +141,11 @@
 		position: relative;
 		grid-row: 2;
 		grid-column: 1 / -1;
-		margin: 0 var(--workspace-inset) var(--workspace-inset);
+		margin: var(--workspace-inset) var(--workspace-inset) var(--workspace-inset);
 		container-type: inline-size;
 	}
 
-	.prompt-canvas-toolbar {
+	.toolbar {
 		position: relative;
 		z-index: 50;
 		display: grid;
@@ -153,40 +153,69 @@
 		grid-column: 1 / -1;
 		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 		align-items: center;
+		interpolate-size: allow-keywords;
 		margin-inline: var(--workspace-inset);
 		margin-block-start: var(--workspace-inset);
-		padding-block-end: var(--workspace-inset);
 		padding-inline: var(--workspace-inset);
 		container: prompt / inline-size;
+		opacity: 1;
+		translate: 0;
 	}
-	.prompt-canvas-toolbar .session-sidebar-toggle {
+	body[data-toolbar-animated] .toolbar {
+		transition:
+			display 150ms,
+			block-size 150ms var(--ease-out),
+			margin-block-start 150ms var(--ease-out),
+			opacity 150ms var(--ease-out),
+			translate 150ms var(--ease-out);
+		transition-behavior: allow-discrete;
+	}
+	@starting-style {
+		body[data-toolbar-animated] .toolbar {
+			block-size: 0;
+			margin-block-start: 0;
+			opacity: 0;
+			translate: 0 -1.75rem;
+		}
+	}
+	.toolbar .session-sidebar-toggle {
 		grid-column: 3;
 		justify-self: end;
 	}
-	.prompt-canvas-toolbar .shortcut-tooltip {
+	.toolbar .shortcut-tooltip {
 		top: 100%;
 		bottom: auto;
 		margin-block: 0.375rem 0;
 		translate: 0 -0.5rem;
 	}
-	.prompt-canvas-toolbar
+	.toolbar
 		:where([data-tooltip]:not([data-align]), [data-tooltip][data-align="center"])
 		> .shortcut-tooltip {
 		translate: -50% -0.5rem;
 	}
-	.prompt-canvas-toolbar .btn[data-variant="ghost"] {
+	.toolbar .btn[data-variant="ghost"] {
 		color: var(--text-muted);
 	}
-	.prompt-canvas-toolbar
+	.toolbar
 		.btn:is([data-variant="secondary"], [data-variant="ghost"]:not(:disabled):hover) {
 		background: var(--selection);
 		color: var(--text);
+	}
+	@media (hover: hover) and (pointer: fine) {
+		body[data-toolbar-hidden] .toolbar {
+			display: none;
+			block-size: 0;
+			margin-block-start: 0;
+			opacity: 0;
+			translate: 0 -1.75rem;
+			pointer-events: none;
+		}
 	}
 	@container (width >= calc(50vw + 28rem)) {
 		#app:not(.review-open) :is(#prompt-box, #session-transition > *) {
 			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
 		}
-		#app:not(.review-open) .prompt-toolbar-actions {
+		#app:not(.review-open) .toolbar-actions {
 			translate: calc(
 					50vw - var(--workspace-inset) - var(--workspace-inset) - 50cqw
 				)

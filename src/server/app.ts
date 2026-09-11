@@ -69,6 +69,7 @@ export async function createApp() {
 		keybindHints: appConfig.keybindHints !== false,
 		minimalMode: appConfig.minimalMode === true,
 		toolOutputHidden: appConfig.toolOutputHidden === true,
+		toolbarHidden: appConfig.toolbarHidden === true,
 		themeLab: process.env.PI_UI_THEME_LAB === "1",
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>

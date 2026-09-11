@@ -59,6 +59,10 @@ export function toggleToolOutputAction(): string {
 	return `$_toolOutputHidden = !$_toolOutputHidden; @post('${endpoints.toolOutput}', { payload: { toolOutputHidden: $_toolOutputHidden } })`;
 }
 
+export function toggleToolbarAction(): string {
+	return `document.body.setAttribute('data-toolbar-animated', ''); document.body.toggleAttribute('data-toolbar-hidden'); @post('${endpoints.toolbar}', { payload: { toolbarHidden: document.body.hasAttribute('data-toolbar-hidden') } })`;
+}
+
 export const commandActions = {
 	"new-chat": newSessionAction(),
 	"new-temporary-chat": newSessionAction(true),
@@ -72,6 +76,7 @@ export const commandActions = {
 	"toggle-keybind-hints": toggleKeybindHintsAction(),
 	"toggle-minimal-mode": `document.getElementById('command-dialog')?.close(); ${toggleMinimalModeAction()}`,
 	"toggle-tool-output": `document.getElementById('command-dialog')?.close(); ${toggleToolOutputAction()}`,
+	"toggle-toolbar": `document.getElementById('command-dialog')?.close(); ${toggleToolbarAction()}`,
 	"switch-model":
 		"document.getElementById('command-dialog')?.close(); setTimeout(() => document.getElementById('model-select-trigger')?.click(), 0)",
 	"cycle-model": cycleModelAction("forward"),

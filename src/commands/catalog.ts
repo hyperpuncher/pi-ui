@@ -9,6 +9,7 @@ export type AppCommandId =
 	| "toggle-keybind-hints"
 	| "toggle-minimal-mode"
 	| "toggle-tool-output"
+	| "toggle-toolbar"
 	| "switch-model"
 	| "cycle-model"
 	| "cycle-thinking"
@@ -87,6 +88,12 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Toggle tool output",
 		description: "Show tool calls as compact one-line entries.",
 		shortcut: "alt O",
+	},
+	{
+		id: "toggle-toolbar",
+		title: "Toggle toolbar",
+		description: "Hide the toolbar.",
+		shortcut: "",
 	},
 	{
 		id: "switch-model",

@@ -13,6 +13,7 @@ export const assetRoutes = {
 					context.keybindHints,
 					context.minimalMode,
 					context.toolOutputHidden,
+					context.toolbarHidden,
 					context.themeLab,
 				),
 				{

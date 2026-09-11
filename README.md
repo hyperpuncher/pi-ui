@@ -154,7 +154,8 @@ all options with their defaults:
 	},
 	"keybindHints": true,
 	"minimalMode": false,
-	"toolOutputHidden": false
+	"toolOutputHidden": false,
+	"toolbarHidden": false
 }
 ```
 

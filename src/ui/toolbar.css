@@ -1,13 +1,13 @@
 @layer components {
-	.prompt-toolbar {
+	#toolbar {
 		display: contents;
 	}
 
-	.prompt-toolbar-review {
+	.toolbar-review {
 		grid-column: 1;
 		justify-self: start;
 	}
-	.prompt-toolbar-actions {
+	.toolbar-actions {
 		display: flex;
 		grid-column: 2;
 		align-items: center;

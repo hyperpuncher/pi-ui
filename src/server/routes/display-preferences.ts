@@ -5,31 +5,25 @@ import type { RouteMap } from "../route.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
-export const displayPreferenceRoutes = {
-	[endpoints.minimalMode]: {
-		POST: async (request, context) => {
-			const minimalMode = booleanField(
-				await readActionSignals(request),
-				"minimalMode",
-			);
-			await updateAppConfig((config) => {
-				config.minimalMode = minimalMode;
-			});
-			context.minimalMode = minimalMode;
-			return datastarResponse();
+const booleanPreferences = [
+	{ endpoint: endpoints.keybindHints, signal: "keybindHints" },
+	{ endpoint: endpoints.minimalMode, signal: "minimalMode" },
+	{ endpoint: endpoints.toolOutput, signal: "toolOutputHidden" },
+	{ endpoint: endpoints.toolbar, signal: "toolbarHidden" },
+] as const;
+
+export const displayPreferenceRoutes = Object.fromEntries(
+	booleanPreferences.map(({ endpoint, signal }) => [
+		endpoint,
+		{
+			POST: async (request: Request, context: RouteContext) => {
+				const value = booleanField(await readActionSignals(request), signal);
+				await updateAppConfig((config) => {
+					config[signal] = value;
+				});
+				context[signal] = value;
+				return datastarResponse();
+			},
 		},
-	},
-	[endpoints.toolOutput]: {
-		POST: async (request, context) => {
-			const toolOutputHidden = booleanField(
-				await readActionSignals(request),
-				"toolOutputHidden",
-			);
-			await updateAppConfig((config) => {
-				config.toolOutputHidden = toolOutputHidden;
-			});
-			context.toolOutputHidden = toolOutputHidden;
-			return datastarResponse();
-		},
-	},
-} satisfies RouteMap<RouteContext>;
+	]),
+) satisfies RouteMap<RouteContext>;

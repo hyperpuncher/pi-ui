@@ -32,10 +32,10 @@ import {
 	renderWorkspacePicker,
 } from "./prompt-pickers.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
-import { renderPromptToolbar } from "./prompt-toolbar.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebarContent } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
+import { renderToolbar } from "./toolbar.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 
@@ -349,7 +349,7 @@ export class UiRenderer implements AppStorePresentation {
 		return (
 			renderPromptAction(snapshot) +
 			renderPromptQueue(snapshot) +
-			renderPromptToolbar(snapshot) +
+			renderToolbar(snapshot) +
 			renderPromptStatus(snapshot) +
 			renderExtensionWidgets(snapshot, "aboveEditor") +
 			renderExtensionWidgets(snapshot, "belowEditor") +

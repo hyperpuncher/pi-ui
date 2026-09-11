@@ -157,6 +157,12 @@ const schema = Type.Object(
 				description: "Hide tool output and show compact one-line tool calls.",
 			}),
 		),
+		toolbarHidden: Type.Optional(
+			Type.Boolean({
+				default: false,
+				description: "Hide the toolbar.",
+			}),
+		),
 	},
 	{
 		$schema: "https://json-schema.org/draft/2020-12/schema",

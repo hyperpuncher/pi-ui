@@ -58,12 +58,14 @@ test("page assets use the current immutable content version", async () => {
 	context.keybindHints = false;
 	context.minimalMode = true;
 	context.toolOutputHidden = true;
+	context.toolbarHidden = true;
 	const hiddenHintsPage = await createRouter(context).fetch(
 		new Request("http://localhost/"),
 	);
 	const quietPageHtml = await hiddenHintsPage.text();
 	assertStringExcludes(quietPageHtml, " data-keybind-hints ");
 	assertStringIncludes(quietPageHtml, " data-minimal-mode ");
+	assertStringIncludes(quietPageHtml, " data-toolbar-hidden ");
 });
 
 test("stale main streams reload the page before connecting", async () => {
@@ -944,6 +946,7 @@ function fakeContext(
 		keybindHints?: boolean;
 		minimalMode?: boolean;
 		toolOutputHidden?: boolean;
+		toolbarHidden?: boolean;
 		themeLab?: boolean;
 		transferredFiles?: RouteContext["transferredFiles"];
 	} = {},
@@ -954,6 +957,7 @@ function fakeContext(
 		keybindHints: overrides.keybindHints ?? true,
 		minimalMode: overrides.minimalMode ?? false,
 		toolOutputHidden: overrides.toolOutputHidden ?? false,
+		toolbarHidden: overrides.toolbarHidden ?? false,
 		themeLab: overrides.themeLab ?? false,
 		store,
 		renderer:

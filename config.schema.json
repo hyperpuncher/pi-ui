@@ -260,6 +260,11 @@
 			"type": "boolean",
 			"default": false,
 			"description": "Hide tool output and show compact one-line tool calls."
+		},
+		"toolbarHidden": {
+			"type": "boolean",
+			"default": false,
+			"description": "Hide the toolbar."
 		}
 	},
 	"$schema": "https://json-schema.org/draft/2020-12/schema",

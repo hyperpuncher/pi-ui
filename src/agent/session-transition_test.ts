@@ -9,13 +9,13 @@ import { AppStore } from "../state/app-store.ts";
 import { assertStringExcludes } from "../testing/assertions.ts";
 import { renderMessages } from "../ui/messages.tsx";
 import { renderSessionPicker } from "../ui/pickers.tsx";
-import { renderPromptToolbar } from "../ui/prompt-toolbar.tsx";
 import { renderSessionSidebar } from "../ui/session-sidebar.tsx";
 import {
 	renderSessionTransition,
 	resumeSessionAction,
 } from "../ui/session-transition.tsx";
 import { appRenderSnapshot } from "../ui/test-fixtures.ts";
+import { renderToolbar } from "../ui/toolbar.tsx";
 import { UiRenderer } from "../ui/ui-renderer.ts";
 test("session transition renderer escapes targets and renders loading and errors", () => {
 	const targetPath = '<session name="bad">';
@@ -62,7 +62,7 @@ test("session transition renderer escapes targets and renders loading and errors
 test("new session actions lock without driving the transition overlay", () => {
 	const action = newSessionAction();
 	assertStringIncludes(action, "$_newSessionPending");
-	const toolbar = renderPromptToolbar(appRenderSnapshot({ isTemporarySession: false }));
+	const toolbar = renderToolbar(appRenderSnapshot({ isTemporarySession: false }));
 	assertStringIncludes(toolbar, "data-indicator:_new-session-pending");
 	assertStringIncludes(toolbar, "Review workspace");
 	assertStringExcludes(toolbar, "data-indicator:_session-loading");

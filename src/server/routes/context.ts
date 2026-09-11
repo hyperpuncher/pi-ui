@@ -55,6 +55,7 @@ export interface RouteContext {
 	keybindHints: boolean;
 	minimalMode: boolean;
 	toolOutputHidden: boolean;
+	toolbarHidden: boolean;
 	themeLab: boolean;
 	store: AppStore;
 	renderer: UiRenderer;

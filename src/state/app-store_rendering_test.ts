@@ -1106,7 +1106,7 @@ test("hot app views exclude independently owned regions", () => {
 			"messages",
 			"prompt-action",
 			"prompt-queue",
-			"prompt-toolbar",
+			"toolbar",
 			"prompt-status",
 			"workspace-picker",
 			"session-transition",
