@@ -522,8 +522,8 @@ test("immediate session refresh cancels a queued file refresh for a provisional 
 	const state = new AppStore();
 	let changed = (_path: string) => {};
 	const catalog = new SessionCatalog(state, {
-		agentDir: root,
-		watch: (_agentDir, onChange) => {
+		sessionDir: root,
+		watch: (_sessionDir, onChange) => {
 			changed = onChange;
 			return () => {};
 		},
@@ -662,7 +662,7 @@ test("session catalog status changes prioritize unopened completions without los
 	const state = new AppStore();
 	const statuses = new Map<string, "running" | "completed">();
 	const catalog = new SessionCatalog(state, {
-		agentDir: "",
+		sessionDir: "",
 		backgroundStatuses: () => statuses,
 	});
 	catalog.applyPrepared({
@@ -704,8 +704,8 @@ test("session catalog owns watcher activation and cleanup", () => {
 	let stopCount = 0;
 	let changed = (_path: string) => {};
 	const catalog = new SessionCatalog(state, {
-		agentDir: "/agent",
-		watch: (_agentDir, onChange) => {
+		sessionDir: "/agent",
+		watch: (_sessionDir, onChange) => {
 			watchCount += 1;
 			changed = onChange;
 			return () => {

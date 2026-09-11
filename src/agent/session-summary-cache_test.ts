@@ -1,5 +1,5 @@
 import { test } from "bun:test";
-import { appendFile, mkdir, rm, stat } from "node:fs/promises";
+import { appendFile, mkdir, rm, stat, symlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { assertEquals, assertFalse } from "#testing/assertions";
@@ -96,6 +96,59 @@ test("the cached catalog indexes every session and drops deleted files", async (
 		assertEquals(Object.keys((await readSessionSummaryCache(cachePath)).sessions), [
 			join(workspace, "session-2.jsonl"),
 		]);
+	} finally {
+		await rm(root, { recursive: true });
+	}
+});
+
+test("flat custom session dirs and symlinked workspaces are discovered", async () => {
+	const root = await makeTempDir();
+	const sessionsRoot = join(root, "sessions");
+	const cachePath = join(root, "cache", "session-index.json");
+	await mkdir(sessionsRoot, { recursive: true });
+	try {
+		// A custom session dir stores files directly in the root.
+		await Bun.write(
+			join(sessionsRoot, "flat.jsonl"),
+			lines([
+				{
+					type: "session",
+					version: 3,
+					id: "flat",
+					timestamp: "2026-01-01T00:00:00.000Z",
+					cwd: "/flat",
+				},
+				message("user", "Flat session", 1_000),
+			]),
+		);
+
+		// The default layout uses workspace subdirectories, which may be symlinks.
+		const linkedWorkspace = join(root, "linked-workspace");
+		await mkdir(linkedWorkspace, { recursive: true });
+		await Bun.write(
+			join(linkedWorkspace, "linked.jsonl"),
+			lines([
+				{
+					type: "session",
+					version: 3,
+					id: "linked",
+					timestamp: "2026-01-02T00:00:00.000Z",
+					cwd: "/linked",
+				},
+				message("user", "Linked session", 2_000),
+			]),
+		);
+		await symlink(linkedWorkspace, join(sessionsRoot, "workspace"));
+
+		const sessions = await listCachedSessions(sessionsRoot, cachePath);
+		assertEquals(
+			sessions.map((session) => session.id),
+			["linked", "flat"],
+		);
+		assertEquals(
+			Object.fromEntries(sessions.map((session) => [session.id, session.cwd])),
+			{ flat: "/flat", linked: "/linked" },
+		);
 	} finally {
 		await rm(root, { recursive: true });
 	}

@@ -4,16 +4,15 @@ import { join } from "node:path";
 const sessionExtension = ".jsonl";
 
 export type SessionCatalogWatch = (
-	agentDir: string,
+	sessionDir: string,
 	onChange: (path: string) => void,
 ) => () => void;
 
-export const watchSessionCatalog: SessionCatalogWatch = (agentDir, onChange) => {
-	const root = join(agentDir, "sessions");
+export const watchSessionCatalog: SessionCatalogWatch = (sessionDir, onChange) => {
 	try {
-		const watcher = watch(root, { recursive: true }, (_event, fileName) => {
+		const watcher = watch(sessionDir, { recursive: true }, (_event, fileName) => {
 			if (!fileName) return;
-			const path = join(root, fileName.toString());
+			const path = join(sessionDir, fileName.toString());
 			if (path.endsWith(sessionExtension)) onChange(path);
 		});
 		watcher.on("error", (error) => {

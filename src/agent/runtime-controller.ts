@@ -48,6 +48,7 @@ import {
 	watchSessionCatalog,
 } from "./session-catalog-watcher.ts";
 import { type PreparedSessionList, SessionCatalog } from "./session-catalog.ts";
+import { resolveSessionDir, sessionDirOverride } from "./session-dir.ts";
 import {
 	clearSessionEventToolState,
 	cloneSessionEventToolState,
@@ -191,6 +192,7 @@ export class RuntimeController {
 	private initialCatalogLoad: Promise<void> | undefined;
 	private lastForcedModelRefreshAt: number | undefined;
 	private readonly dependencies: RuntimeControllerDependencies;
+	private readonly sessionDir: string | undefined;
 	private readonly autoTitlesInFlight = new Set<string>();
 
 	private constructor(
@@ -198,10 +200,12 @@ export class RuntimeController {
 		private readonly state: AppStore,
 		private readonly runtimeFactory: CreateAgentSessionRuntimeFactory,
 		private readonly preparedSessions: Promise<PreparedSessionList>,
+		sessionDir: string | undefined,
 		private readonly activationOptions: RuntimeControllerActivationOptions,
 	) {
 		this.dependencies =
 			activationOptions.dependencies ?? runtimeControllerDependencies;
+		this.sessionDir = sessionDir;
 		this.extensionUi = new ExtensionUiController(state);
 		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
 		this.foregroundObservedRunning = runtime.session.isStreaming;
@@ -223,7 +227,7 @@ export class RuntimeController {
 			() => this.foregroundGeneration,
 		);
 		this.catalog = new SessionCatalog(state, {
-			agentDir: this.dependencies.getAgentDir(),
+			sessionDir: resolveSessionDir(this.dependencies.getAgentDir()),
 			backgroundStatuses: () =>
 				new Map(
 					[...this.backgroundSessions.entries()].map(([path, session]) => [
@@ -321,10 +325,11 @@ export class RuntimeController {
 			};
 		};
 
+		const sessionDir = sessionDirOverride();
 		const runtime = await dependencies.createRuntime(createRuntime, {
 			cwd,
 			agentDir: dependencies.getAgentDir(),
-			sessionManager: dependencies.createSessionManager(cwd),
+			sessionManager: dependencies.createSessionManager(cwd, sessionDir),
 		});
 		try {
 			const host = new RuntimeController(
@@ -332,6 +337,7 @@ export class RuntimeController {
 				state,
 				createRuntime,
 				sessionsPromise,
+				sessionDir,
 				options,
 			);
 			host.bindRuntimeCallbacks(runtime);
@@ -461,7 +467,10 @@ export class RuntimeController {
 			const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
 				cwd,
 				agentDir: this.dependencies.getAgentDir(),
-				sessionManager: this.dependencies.createSessionManager(cwd),
+				sessionManager: this.dependencies.createSessionManager(
+					cwd,
+					this.sessionDir,
+				),
 				sessionStartEvent: { type: "session_start", reason: "new" },
 			});
 			this.adoptRuntime(runtime);
@@ -521,7 +530,10 @@ export class RuntimeController {
 		const nextName = name.replace(/[\r\n]+/g, " ").trim();
 		if (!nextName) return false;
 		try {
-			const manager = this.dependencies.openSessionManager(sessionPath);
+			const manager = this.dependencies.openSessionManager(
+				sessionPath,
+				this.sessionDir,
+			);
 			const target = manager.getSessionFile();
 			if (!target) return false;
 			const current = this.runtime.session;
@@ -545,7 +557,7 @@ export class RuntimeController {
 
 	async deleteSession(sessionPath: string): Promise<boolean> {
 		const targetSessionFile = this.dependencies
-			.openSessionManager(sessionPath)
+			.openSessionManager(sessionPath, this.sessionDir)
 			.getSessionFile();
 		if (!targetSessionFile) {
 			return false;
@@ -603,7 +615,7 @@ export class RuntimeController {
 		const replacement = await this.dependencies.createRuntime(this.runtimeFactory, {
 			cwd,
 			agentDir: this.dependencies.getAgentDir(),
-			sessionManager: this.dependencies.createSessionManager(cwd),
+			sessionManager: this.dependencies.createSessionManager(cwd, this.sessionDir),
 		});
 		try {
 			await replacement.session.bindExtensions({
@@ -643,7 +655,7 @@ export class RuntimeController {
 			`Fork to ${formatHomePath(cwd)}`,
 			async () => {
 				const targetPath = this.dependencies
-					.forkSessionManager(sourcePath, cwd)
+					.forkSessionManager(sourcePath, cwd, this.sessionDir)
 					.getSessionFile();
 				return targetPath
 					? await this.resumeSessionTransition(targetPath)
@@ -754,7 +766,7 @@ export class RuntimeController {
 			openSession: (path) => {
 				const manager = sessionPerformance.measureSync(
 					"sessionManagerOpen",
-					() => this.dependencies.openSessionManager(path),
+					() => this.dependencies.openSessionManager(path, this.sessionDir),
 					transitionId,
 				);
 				sessionPerformance.recordSessionOpen(transitionId);

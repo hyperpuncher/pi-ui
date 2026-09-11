@@ -3,7 +3,6 @@ import { join } from "node:path";
 
 import {
 	type AgentSessionEvent,
-	getAgentDir,
 	type SessionInfo,
 } from "@earendil-works/pi-coding-agent";
 
@@ -18,6 +17,7 @@ import { formatDateTime } from "../utils/locale.ts";
 import { isRecord, isString } from "../utils/type-guards.ts";
 import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
 import type { SessionCatalogWatch } from "./session-catalog-watcher.ts";
+import { resolveSessionDir } from "./session-dir.ts";
 import {
 	loadSessionSummary,
 	readSessionSummaryCache,
@@ -45,7 +45,7 @@ const SESSION_INDEX_CONCURRENCY = 4;
 const noBackgroundStatuses = new Map<string, BackgroundSessionStatus>();
 
 export type SessionCatalogLifecycle = {
-	agentDir: string;
+	sessionDir: string;
 	backgroundStatuses?: () => ReadonlyMap<string, BackgroundSessionStatus>;
 	watch?: SessionCatalogWatch;
 };
@@ -79,7 +79,7 @@ export class SessionCatalog {
 
 	activate(): void {
 		if (this.disposed || this.stopWatch || !this.lifecycle?.watch) return;
-		this.stopWatch = this.lifecycle.watch(this.lifecycle.agentDir, (path) =>
+		this.stopWatch = this.lifecycle.watch(this.lifecycle.sessionDir, (path) =>
 			this.scheduleFileRefresh(path),
 		);
 	}
@@ -367,7 +367,7 @@ function sessionEventMessageText<Content>(content: Content): string {
 }
 
 export async function listCachedSessions(
-	sessionsRoot = join(getAgentDir(), "sessions"),
+	sessionsRoot = resolveSessionDir(),
 	cachePath = sessionSummaryCachePath(),
 ): Promise<SessionInfo[]> {
 	const [candidates, cache] = await Promise.all([
@@ -419,15 +419,19 @@ export async function listCachedSessions(
 async function sessionCandidates(sessionsRoot: string): Promise<SessionCandidate[]> {
 	const paths: string[] = [];
 	try {
-		for (const workspace of await readdir(sessionsRoot, { withFileTypes: true })) {
-			if (!workspace.isDirectory()) continue;
-			const workspacePath = join(sessionsRoot, workspace.name);
+		for (const entry of await readdir(sessionsRoot, { withFileTypes: true })) {
+			const entryPath = join(sessionsRoot, entry.name);
+			// A custom session dir holds files directly; the default layout groups them
+			// by workspace subdirectory.
+			if (entry.name.endsWith(".jsonl") && !entry.isDirectory()) {
+				paths.push(entryPath);
+				continue;
+			}
+			if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
 			try {
-				for (const entry of await readdir(workspacePath, {
-					withFileTypes: true,
-				})) {
-					if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-						paths.push(join(workspacePath, entry.name));
+				for (const file of await readdir(entryPath, { withFileTypes: true })) {
+					if (file.name.endsWith(".jsonl")) {
+						paths.push(join(entryPath, file.name));
 					}
 				}
 			} catch {
