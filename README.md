@@ -5,14 +5,14 @@ keyboard-first minimal gui for [`pi`](https://pi.dev)
 <div>
 	<picture>
 		<source
-			srcset=".github/assets/screenshot-dark.png"
+			srcset=".github/assets/demo-dark.webp"
 			media="(prefers-color-scheme: dark)"
 		>
 		<source
-			srcset=".github/assets/screenshot-light.png"
+			srcset=".github/assets/demo-light.webp"
 			media="(prefers-color-scheme: light)"
 		>
-		<img src=".github/assets/screenshot-dark.png" alt="pi-ui screenshot">
+		<img src=".github/assets/demo-dark.webp" alt="pi-ui demo">
 	</picture>
 </div>
 
