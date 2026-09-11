@@ -16,7 +16,7 @@ import {
 } from "../transferred-files.ts";
 import { resolveFile } from "../workspace-files.ts";
 import type { RouteContext } from "./context.ts";
-import { endpoints, filesPreviewBase } from "./endpoints.ts";
+import { endpoints, filesPreviewBase, filePreviewUrl } from "./endpoints.ts";
 
 export const fileRoutes = {
 	[endpoints.filesSearch]: {
@@ -71,13 +71,10 @@ async function openLinkedFile(
 		if (!isHtmlFileUri(uri))
 			throw new RouteError(400, "Only HTML files can be previewed.");
 		const source = new URL(uri);
-		const previewPath =
-			filesPreviewBase +
-			path.replaceAll("\\", "/").split("/").map(encodeURIComponent).join("/");
 		return new Response(null, {
 			status: 302,
 			headers: {
-				location: previewPath + source.search + source.hash,
+				location: filePreviewUrl(path) + source.search + source.hash,
 				"cache-control": "no-store",
 			},
 		});

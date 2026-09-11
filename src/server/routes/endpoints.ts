@@ -2,6 +2,14 @@ export const workspaceReviewBase = "/workspace/review";
 export const workspaceFilesBase = "/workspace/files";
 export const filesPreviewBase = "/files/preview/";
 
+/** URL that serves a local file through the preview route. */
+export function filePreviewUrl(path: string): string {
+	return (
+		filesPreviewBase +
+		path.replaceAll("\\", "/").split("/").map(encodeURIComponent).join("/")
+	);
+}
+
 export const endpoints = {
 	root: "/",
 	stream: "/stream",

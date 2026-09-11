@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+
 import {
 	getFiletypeFromFileName,
 	getHighlighterIfLoaded,
@@ -6,7 +9,9 @@ import {
 	type ThemedToken,
 } from "@pierre/diffs";
 
+import { fileUriToPath } from "../../static/file-uri.js";
 import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
+import { filePreviewUrl } from "../server/routes/endpoints.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
@@ -69,7 +74,12 @@ const markdownHtmlRewriter = new HTMLRewriter()
 	.on("img", {
 		element(element) {
 			const src = element.getAttribute("src");
-			if (!src || !safeUrl(src, { allowDataImage: true })) element.remove();
+			if (!src || !safeUrl(src, { allowDataImage: true })) {
+				element.remove();
+				return;
+			}
+			const local = localImageUrl(src);
+			if (local) element.setAttribute("src", local);
 		},
 	})
 	.on("table", {
@@ -428,6 +438,22 @@ function loadedCodeLanguage(language: string): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+const localImagePattern = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i;
+
+// The browser cannot load local files, so route existing image files through the
+// server's preview endpoint.
+function localImageUrl(source: string): string | undefined {
+	const path = source.startsWith("file:")
+		? fileUriToPath(source)
+		: source.startsWith("~/")
+			? `${homedir()}${source.slice(1)}`
+			: source.startsWith("/")
+				? source
+				: undefined;
+	if (!path || !localImagePattern.test(path) || !existsSync(path)) return undefined;
+	return filePreviewUrl(path);
 }
 
 function safeUrl(value: string, options: { allowDataImage: boolean }): boolean {

@@ -1,9 +1,12 @@
 import { test } from "bun:test";
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 
 import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
+import { makeTempDir } from "#testing/temp";
 
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { loadPierreLanguage, preloadPierreHighlighter } from "./diffs.ts";
@@ -58,6 +61,33 @@ test("streaming code does not show a partial closing fence", () => {
 	assertEqual(renderMarkdownStreaming(`${source}\n\``), expected);
 	assertEqual(renderMarkdownStreaming(`${source}\n\`\``), expected);
 	assertEqual(renderMarkdownStreaming(`${source}\n\`\`\``), expected);
+});
+
+test("local image sources are served through the file preview route", async () => {
+	const dir = await makeTempDir({ prefix: "pi-ui-markdown-image-" });
+	const image = join(dir, "shot.png");
+	await Bun.write(image, new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+	try {
+		const expected = `/files/preview/${image
+			.split("/")
+			.map(encodeURIComponent)
+			.join("/")}`;
+		for (const source of [image, `file://${image}`]) {
+			for (const html of [
+				renderMarkdownStreaming(`![shot](${source})`),
+				await renderMarkdownFinal(`![shot](${source})`),
+			]) {
+				assertIncludes(html, `src="${expected}"`);
+			}
+		}
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+});
+
+test("missing local image sources are left untouched", () => {
+	const html = renderMarkdownStreaming("![shot](/definitely/missing/pi-ui-image.png)");
+	assertIncludes(html, 'src="/definitely/missing/pi-ui-image.png"');
 });
 
 test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
