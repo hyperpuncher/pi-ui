@@ -12,6 +12,7 @@ Read relevant docs in full before implementing against them:
 ## Project conventions
 
 - Runtime: Bun server with a browser UI.
+- Browser target: Baseline newly available. Prefer native platform features; do not add non-Baseline features or polyfills for unsupported browsers.
 - Interactivity: Datastar, using `@starfederation/datastar-sdk` server-side.
 - HTML rendering: Kita JSX (`@kitajs/html`), not React.
 - Markdown rendering: Bun Markdown with HTMLRewriter sanitization plus Shiki for finalized code highlighting.
