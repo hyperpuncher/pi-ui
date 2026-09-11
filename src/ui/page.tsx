@@ -6,6 +6,7 @@ import {
 	workspaceFilesBase,
 	workspaceReviewBase,
 } from "../server/routes/endpoints.ts";
+import { sessionSidebarWidthDefault } from "../session-sidebar-types.ts";
 import { gitPaneRatioDefault } from "../workspace-review-types.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
@@ -22,7 +23,7 @@ import { renderMessages } from "./messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
-import { renderSessionSidebar, sessionSidebarStorageKey } from "./session-sidebar.tsx";
+import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { renderSessionTransition } from "./session-transition.tsx";
 import { syncHtml } from "./sync-html.ts";
 import { renderThemeLab } from "./theme-lab.tsx";
@@ -30,26 +31,29 @@ import { renderToolbar } from "./toolbar.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
 
-// Restore width before CSS paints; the sidebar restores its own open state.
-const sessionSidebarStartupScript = `try {
-	const stored = Number(localStorage.getItem("${sessionSidebarStorageKey}"));
-	if (Number.isFinite(stored) && stored > 0) {
-		document.documentElement.dataset.sessionSidebarWidth = String(stored);
-		document.documentElement.style.setProperty(
-			"--session-sidebar-width",
-			"clamp(var(--session-sidebar-min-width), " + stored + "px, min(var(--session-sidebar-max-width), 50vw))",
-		);
-	}
-} catch {}`;
+export type PageRenderOptions = {
+	appVersion?: string;
+	keybindHints?: boolean;
+	minimalMode?: boolean;
+	sessionSidebarOpen?: boolean;
+	sessionSidebarWidth?: number;
+	toolOutputHidden?: boolean;
+	toolbarHidden?: boolean;
+	themeLab?: boolean;
+};
 
 export function renderPage(
 	state: AppRenderSnapshot,
-	appVersion = "development",
-	keybindHints = true,
-	minimalMode = false,
-	toolOutputHidden = false,
-	toolbarHidden = false,
-	themeLab = false,
+	{
+		appVersion = "development",
+		keybindHints = true,
+		minimalMode = false,
+		sessionSidebarOpen = true,
+		sessionSidebarWidth = sessionSidebarWidthDefault,
+		toolOutputHidden = false,
+		toolbarHidden = false,
+		themeLab = false,
+	}: PageRenderOptions = {},
 ): string {
 	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
@@ -62,7 +66,7 @@ export function renderPage(
 		(
 			<html
 				lang="en"
-				style={`--session-sidebar-width: var(--session-sidebar-default-width); --font-sans: ${fonts.sans}; --font-mono: ${fonts.mono};`}
+				style={`--session-sidebar-preferred-width: ${sessionSidebarWidth}px; --font-sans: ${fonts.sans}; --font-mono: ${fonts.mono};`}
 				data-theme-lab={themeLab || undefined}
 			>
 				<head>
@@ -83,7 +87,6 @@ export function renderPage(
 					/>
 					<link rel="apple-touch-icon" href={`${staticBase}/icon-180.png`} />
 					<script src={`${staticBase}/theme.js`}></script>
-					<script>{sessionSidebarStartupScript}</script>
 					<link rel="stylesheet" href={`${staticBase}/app.css`} />
 					{themeLab && (
 						<link rel="stylesheet" href={`${staticBase}/theme-lab.css`} />
@@ -222,7 +225,10 @@ export function renderPage(
 						requestCancellation: 'cleanup',
 					})`}
 					>
-						{renderSessionSidebar(state)}
+						{renderSessionSidebar(state, {
+							open: sessionSidebarOpen,
+							width: sessionSidebarWidth,
+						})}
 						<div
 							id="workspace-shell"
 							class="workspace-shell"

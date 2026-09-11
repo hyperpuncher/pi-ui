@@ -5,6 +5,11 @@ import { codeThemesFor, defaultCodeThemes } from "../src/code-themes.ts";
 import { appConfigSchemaUrl } from "../src/config-schema.ts";
 import { defaultFonts, FONT_OPTIONS } from "../src/fonts.ts";
 import {
+	sessionSidebarWidthDefault,
+	sessionSidebarWidthMax,
+	sessionSidebarWidthMin,
+} from "../src/session-sidebar-types.ts";
+import {
 	changesRatioDefault,
 	changesRatioMax,
 	changesRatioMin,
@@ -150,6 +155,31 @@ const schema = Type.Object(
 				default: false,
 				description: "Hide thinking details, keybind hints, and tool output.",
 			}),
+		),
+		sessionSidebar: Type.Optional(
+			Type.Object(
+				{
+					open: Type.Optional(
+						Type.Boolean({
+							default: true,
+							description:
+								"Open the session sidebar on desktop (mobile always starts closed).",
+						}),
+					),
+					width: Type.Optional(
+						Type.Number({
+							minimum: sessionSidebarWidthMin,
+							maximum: sessionSidebarWidthMax,
+							default: sessionSidebarWidthDefault,
+							description: "Session sidebar width in pixels on desktop.",
+						}),
+					),
+				},
+				{
+					description: "Session sidebar preferences.",
+					additionalProperties: false,
+				},
+			),
 		),
 		toolOutputHidden: Type.Optional(
 			Type.Boolean({

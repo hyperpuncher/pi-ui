@@ -7,15 +7,16 @@ export const assetRoutes = {
 	[endpoints.root]: {
 		GET: (_request, context) =>
 			new Response(
-				renderPage(
-					context.renderer.projectState(context.store.snapshot()),
-					context.appVersion,
-					context.keybindHints,
-					context.minimalMode,
-					context.toolOutputHidden,
-					context.toolbarHidden,
-					context.themeLab,
-				),
+				renderPage(context.renderer.projectState(context.store.snapshot()), {
+					appVersion: context.appVersion,
+					keybindHints: context.keybindHints,
+					minimalMode: context.minimalMode,
+					sessionSidebarOpen: context.sessionSidebarOpen,
+					sessionSidebarWidth: context.sessionSidebarWidth,
+					toolOutputHidden: context.toolOutputHidden,
+					toolbarHidden: context.toolbarHidden,
+					themeLab: context.themeLab,
+				}),
 				{
 					headers: {
 						"cache-control": "no-store",

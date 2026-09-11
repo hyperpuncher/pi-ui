@@ -13,6 +13,7 @@ export const endpoints = {
 	toolOutput: "/tool-output",
 	toolbar: "/toolbar",
 	sessionPerformanceClient: "/session-performance/client",
+	sessionSidebar: "/session-sidebar",
 	prompt: "/prompt",
 	promptFollowUp: "/prompt/follow-up",
 	promptDequeue: "/prompt/dequeue",

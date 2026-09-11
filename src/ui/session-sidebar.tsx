@@ -1,5 +1,10 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import {
+	sessionSidebarWidthDefault,
+	sessionSidebarWidthMax,
+	sessionSidebarWidthMin,
+} from "../session-sidebar-types.ts";
+import {
 	sessionStatus,
 	type AppSessionSummary,
 	type AppStateSnapshot,
@@ -21,30 +26,23 @@ import {
 import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-const sidebarWidth = { min: 224, default: 288, max: 384 } as const;
-const sidebarWidthCss =
-	"clamp(var(--session-sidebar-min-width), ${$_sessionSidebarWidth}px, min(var(--session-sidebar-max-width), 50vw))";
-export const sessionSidebarStorageKey = "pi-ui-session-sidebar-width";
 const sidebarPointerWidthExpression = `Math.round(Math.min(
-	Math.max(${sidebarWidth.min}, Math.min(${sidebarWidth.max}, innerWidth * 0.5)),
-	Math.max(${sidebarWidth.min}, $_sessionSidebarWidth + $_sessionSidebarPointerX - evt.clientX),
+	Math.max(${sessionSidebarWidthMin}, Math.min(${sessionSidebarWidthMax}, innerWidth * 0.5)),
+	Math.max(${sessionSidebarWidthMin}, $_sessionSidebarWidth + $_sessionSidebarPointerX - evt.clientX),
 ))`;
 const sidebarResizeFinish = `document.documentElement.classList.remove('is-resizing');
-try { localStorage.setItem('${sessionSidebarStorageKey}', String($_sessionSidebarWidth)); } catch {}`;
-// Shared by the prepaint script and the breakpoint-change handler.
-const restoreSessionSidebar = `
+@post('${endpoints.sessionSidebar}', { payload: { sessionSidebar: { width: $_sessionSidebarWidth } } });`;
+// Shared by the inline restore script and the breakpoint-change handler.
+function restoreSessionSidebar(desktopOpen: boolean): string {
+	return `
 	el.removeAttribute('data-animate-open');
 	el.close();
 	const mobile = matchMedia('(width <= 48rem)').matches;
 	el.closedBy = mobile ? 'any' : 'none';
-	let open = !mobile;
-	try {
-		const saved = localStorage.getItem('pi-ui-session-sidebar-' + (mobile ? 'mobile' : 'desktop') + '-open');
-		if (saved === 'true' || saved === 'false') open = saved === 'true';
-	} catch {}
-	if (open) mobile ? el.showModal() : el.show();
+	if (!mobile && ${desktopOpen}) el.show();
 	el.querySelector('.session-sidebar-scroller').scrollLeft = 0;
 `;
+}
 const focusSessionSidebarShortcut = altShortcutAction(
 	"KeyS",
 	`el.dispatchEvent(new CommandEvent('command', { command: '--show' }));
@@ -63,7 +61,12 @@ type SessionSidebarState = Pick<
 	| "sessionsHasMore"
 >;
 
-export function renderSessionSidebar(state: SessionSidebarState): string {
+export function renderSessionSidebar(
+	state: SessionSidebarState,
+	options: { open?: boolean; width?: number } = {},
+): string {
+	const desktopOpen = options.open ?? true;
+	const width = options.width ?? sessionSidebarWidthDefault;
 	return syncHtml(
 		<>
 			<dialog
@@ -73,12 +76,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 				closedby="any"
 				aria-keyshortcuts="Control+B Meta+B"
 				data-signals:_session-sidebar-open__ifmissing="el.open"
-				data-on:toggle={`
-					$_sessionSidebarOpen = el.open;
-					try {
-					localStorage.setItem('pi-ui-session-sidebar-' + (el.closedBy === 'any' ? 'mobile' : 'desktop') + '-open', String(el.open));
-				} catch {};
-				`}
+				data-on:toggle={`$_sessionSidebarOpen = el.open`}
 				data-on:command={`
 					if (evt.command === '--toggle' && el.open) el.close();
 					else if (evt.command === '--toggle' || evt.command === '--show') {
@@ -86,9 +84,10 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					if (!el.open) el.closedBy === 'any' ? el.showModal() : el.show();
 					el.querySelector('.session-sidebar-scroller').scrollLeft = 0;
 				};
+					if (evt.command === '--toggle' && el.closedBy !== 'any') @post('${endpoints.sessionSidebar}', { payload: { sessionSidebar: { open: el.open } } });
 				`}
 				data-on:resize__window={`if (matchMedia('(width <= 48rem)').matches !== (el.closedBy === 'any')) {
-				${restoreSessionSidebar}
+				${restoreSessionSidebar(desktopOpen)}
 				}`}
 				data-on:click={`
 					if (!el.matches(':modal')) return;
@@ -96,11 +95,11 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					if (row && row.getAttribute('aria-disabled') !== 'true') el.close();
 					if (!('closedBy' in HTMLDialogElement.prototype) && evt.target === el) el.close();
 				`}
-				data-signals:_session-sidebar-width__ifmissing={`
-					Number(document.documentElement.dataset.sessionSidebarWidth) ||
-					${sidebarWidth.default}
-				`}
-				data-effect={`document.documentElement.style.setProperty('--session-sidebar-width', \`${sidebarWidthCss}\`)`}
+				data-signals:_session-sidebar-width__ifmissing={String(width)}
+				data-effect={`document.documentElement.style.setProperty(
+					'--session-sidebar-preferred-width',
+					$_sessionSidebarWidth + 'px',
+				)`}
 				data-signals:_session-sidebar-pointer-x__ifmissing="0"
 				data-signals:session-delete-hover__ifmissing="''"
 				data-on:keydown__window={`if (evt.code === 'KeyB' && !evt.altKey && !evt.shiftKey && ${primaryModifierExpression()}) {
@@ -128,8 +127,8 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					data-on:pointerup={sidebarResizeFinish}
 					data-on:pointercancel={sidebarResizeFinish}
 					data-on:dblclick={`
-						$_sessionSidebarWidth = ${sidebarWidth.default};
-						try { localStorage.setItem('${sessionSidebarStorageKey}', '${sidebarWidth.default}'); } catch {};
+						$_sessionSidebarWidth = ${sessionSidebarWidthDefault};
+						@post('${endpoints.sessionSidebar}', { payload: { sessionSidebar: { width: ${sessionSidebarWidthDefault} } } });
 					`}
 				/>
 				<div
@@ -180,7 +179,7 @@ export function renderSessionSidebar(state: SessionSidebarState): string {
 					</nav>
 				</div>
 			</dialog>
-			<script>{`{ const el = document.getElementById('session-sidebar'); ${restoreSessionSidebar} }`}</script>
+			<script>{`{ const el = document.getElementById('session-sidebar'); ${restoreSessionSidebar(desktopOpen)} }`}</script>
 		</>,
 	);
 }

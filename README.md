@@ -154,6 +154,10 @@ all options with their defaults:
 	},
 	"keybindHints": true,
 	"minimalMode": false,
+	"sessionSidebar": {
+		"open": true,
+		"width": 288
+	},
 	"toolOutputHidden": false,
 	"toolbarHidden": false
 }

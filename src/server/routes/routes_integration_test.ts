@@ -9,6 +9,7 @@ import { assertEquals, assertStringIncludes } from "#testing/assertions";
 import { makeTempDir, makeTempFile } from "#testing/temp";
 
 import { getToolPath } from "../../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
+import { sessionSidebarWidthDefault } from "../../session-sidebar-types.ts";
 import { AppStore } from "../../state/app-store.ts";
 import { assertStringExcludes } from "../../testing/assertions.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
@@ -956,6 +957,8 @@ function fakeContext(
 		appVersion: "test-version",
 		keybindHints: overrides.keybindHints ?? true,
 		minimalMode: overrides.minimalMode ?? false,
+		sessionSidebarOpen: true,
+		sessionSidebarWidth: sessionSidebarWidthDefault,
 		toolOutputHidden: overrides.toolOutputHidden ?? false,
 		toolbarHidden: overrides.toolbarHidden ?? false,
 		themeLab: overrides.themeLab ?? false,

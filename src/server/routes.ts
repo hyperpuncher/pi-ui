@@ -12,6 +12,7 @@ import { llamaRoutes } from "./routes/llama.ts";
 import { modelRoutes } from "./routes/models.ts";
 import { promptRoutes } from "./routes/prompt.ts";
 import { sessionPerformanceRoutes } from "./routes/session-performance.ts";
+import { sessionSidebarRoutes } from "./routes/session-sidebar.ts";
 import { sessionRoutes } from "./routes/sessions.ts";
 import { streamRoutes } from "./routes/stream.ts";
 import { treeRoutes } from "./routes/tree.ts";
@@ -28,6 +29,7 @@ export const appRoutes: RouteMap<RouteContext> = {
 	...promptRoutes,
 	...sessionRoutes,
 	...sessionPerformanceRoutes,
+	...sessionSidebarRoutes,
 	...workspaceRoutes,
 	...workspaceReviewRoutes,
 	...displayPreferenceRoutes,

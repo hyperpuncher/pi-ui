@@ -256,6 +256,25 @@
 			"default": false,
 			"description": "Hide thinking details, keybind hints, and tool output."
 		},
+		"sessionSidebar": {
+			"type": "object",
+			"properties": {
+				"open": {
+					"type": "boolean",
+					"default": true,
+					"description": "Open the session sidebar on desktop (mobile always starts closed)."
+				},
+				"width": {
+					"type": "number",
+					"minimum": 224,
+					"maximum": 384,
+					"default": 288,
+					"description": "Session sidebar width in pixels on desktop."
+				}
+			},
+			"description": "Session sidebar preferences.",
+			"additionalProperties": false
+		},
 		"toolOutputHidden": {
 			"type": "boolean",
 			"default": false,

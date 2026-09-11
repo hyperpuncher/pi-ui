@@ -1,12 +1,13 @@
 @layer theme {
 	:root {
 		--session-sidebar-min-width: 14rem;
-		--session-sidebar-default-width: clamp(
+		--session-sidebar-max-width: 24rem;
+		--session-sidebar-preferred-width: 288px;
+		--session-sidebar-width: clamp(
 			var(--session-sidebar-min-width),
-			288px,
+			var(--session-sidebar-preferred-width),
 			min(var(--session-sidebar-max-width), 50vw)
 		);
-		--session-sidebar-max-width: 24rem;
 	}
 }
 

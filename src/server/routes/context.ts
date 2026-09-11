@@ -54,6 +54,8 @@ export interface RouteContext {
 	appVersion: string;
 	keybindHints: boolean;
 	minimalMode: boolean;
+	sessionSidebarOpen: boolean;
+	sessionSidebarWidth: number;
 	toolOutputHidden: boolean;
 	toolbarHidden: boolean;
 	themeLab: boolean;

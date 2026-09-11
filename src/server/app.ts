@@ -8,6 +8,10 @@ import { SessionTransitionController } from "../agent/session-transition-control
 import { defaultCodeThemes, validCodeThemes } from "../code-themes.ts";
 import { defaultFonts, setActiveFonts, validFonts } from "../fonts.ts";
 import { setActiveCodeTheme } from "../pierre-theme.ts";
+import {
+	normalizeSessionSidebarPreferences,
+	sessionSidebarWidthDefault,
+} from "../session-sidebar-types.ts";
 import { AppStore } from "../state/app-store.ts";
 import { loadPierreLanguage } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
@@ -32,6 +36,7 @@ export async function createApp() {
 	const workspaceReviewPreferences = normalizeWorkspaceReviewPreferences(
 		appConfig.gitView,
 	);
+	const sessionSidebar = normalizeSessionSidebarPreferences(appConfig.sessionSidebar);
 	setActiveCodeTheme(codeTheme);
 	setActiveFonts(fonts);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
@@ -68,6 +73,8 @@ export async function createApp() {
 		appVersion: staticAssets.version,
 		keybindHints: appConfig.keybindHints !== false,
 		minimalMode: appConfig.minimalMode === true,
+		sessionSidebarOpen: sessionSidebar.open !== false,
+		sessionSidebarWidth: sessionSidebar.width ?? sessionSidebarWidthDefault,
 		toolOutputHidden: appConfig.toolOutputHidden === true,
 		toolbarHidden: appConfig.toolbarHidden === true,
 		themeLab: process.env.PI_UI_THEME_LAB === "1",

@@ -6,13 +6,20 @@ import { assertEquals, assertFalse, assertStringIncludes } from "#testing/assert
 import { renderPage } from "./page.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
-const html = renderPage({ ...appRenderSnapshot({}), messages: [] });
-const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(
-	(match) => match[1] ?? "",
-);
-const widthScript = scripts[0] ?? "";
-const sidebarScript =
-	scripts.find((script) => script.includes("getElementById('session-sidebar')")) ?? "";
+function renderSidebarPage(options: { sessionSidebarOpen?: boolean } = {}): string {
+	return renderPage({ ...appRenderSnapshot({}), messages: [] }, options);
+}
+
+function sidebarScriptFrom(page: string): string {
+	return (
+		[...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].find((match) =>
+			match[1]?.includes("getElementById('session-sidebar')"),
+		)?.[1] ?? ""
+	);
+}
+
+const html = renderSidebarPage();
+const sidebarScript = sidebarScriptFrom(html);
 
 test("one native sidebar dialog initializes before the workspace is parsed", () => {
 	assertStringIncludes(html, '<dialog id="session-sidebar"');
@@ -28,72 +35,51 @@ test("one native sidebar dialog initializes before the workspace is parsed", () 
 });
 
 test("sidebar restores responsive preferences before datastar", () => {
-	for (const mobile of [false, true]) {
-		for (const saved of ["true", "false", "invalid", null, undefined]) {
-			let shownAs = "closed";
-			let storageKey = "";
-			const dialog = {
-				closedBy: "any",
-				removeAttribute() {},
-				close() {
-					shownAs = "closed";
-				},
-				show() {
-					shownAs = "nonmodal";
-				},
-				showModal() {
-					shownAs = "modal";
-				},
-				querySelector() {
-					return { scrollLeft: 0 };
-				},
-			};
-			runInNewContext(sidebarScript, {
+	for (const [desktopOpen, mobile, expected] of [
+		[true, false, "nonmodal"],
+		[true, true, "closed"],
+		[false, false, "closed"],
+		[false, true, "closed"],
+	] as const) {
+		let shownAs = "closed";
+		const dialog = {
+			closedBy: "any",
+			removeAttribute() {},
+			close() {
+				shownAs = "closed";
+			},
+			show() {
+				shownAs = "nonmodal";
+			},
+			showModal() {
+				shownAs = "modal";
+			},
+			querySelector() {
+				return { scrollLeft: 0 };
+			},
+		};
+		runInNewContext(
+			sidebarScriptFrom(renderSidebarPage({ sessionSidebarOpen: desktopOpen })),
+			{
 				document: { getElementById: () => dialog },
 				matchMedia: () => ({ matches: mobile }),
-				localStorage: {
-					getItem(key: string) {
-						storageKey = key;
-						if (saved === undefined) throw new Error("Storage blocked");
-						return saved;
-					},
-				},
-			});
-			const open = saved === "true" || (saved !== "false" && !mobile);
-			assertEquals(shownAs, open ? (mobile ? "modal" : "nonmodal") : "closed");
-			assertEquals(dialog.closedBy, mobile ? "any" : "none");
-			assertEquals(
-				storageKey,
-				`pi-ui-session-sidebar-${mobile ? "mobile" : "desktop"}-open`,
-			);
-		}
+			},
+		);
+		assertEquals(shownAs, expected);
+		assertEquals(dialog.closedBy, mobile ? "any" : "none");
 	}
 });
 
-test("saved sidebar width is restored before styles, with invalid storage ignored", () => {
-	assertEquals(widthScript.length > 0, true);
-	assertEquals(html.indexOf(widthScript) < html.indexOf('rel="stylesheet"'), true);
-	for (const saved of ["354", "NaN", "-1", "0", "Infinity", null]) {
-		const styles = new Map<string, string>();
-		runInNewContext(widthScript, {
-			document: {
-				documentElement: {
-					dataset: {},
-					style: {
-						setProperty: (key: string, value: string) =>
-							styles.set(key, value),
-					},
-				},
-			},
-			localStorage: {
-				getItem() {
-					if (saved === null) throw new Error("Storage blocked");
-					return saved;
-				},
-			},
-		});
-		if (saved === "354")
-			assertStringIncludes(styles.get("--session-sidebar-width") ?? "", "354px");
-		else assertEquals(styles.size, 0);
-	}
+test("configured sidebar width is applied before styles", () => {
+	assertStringIncludes(html, "--session-sidebar-preferred-width: 288px");
+	const custom = renderPage(
+		{ ...appRenderSnapshot({}), messages: [] },
+		{ sessionSidebarWidth: 354 },
+	);
+	assertStringIncludes(custom, "--session-sidebar-preferred-width: 354px");
+	assertEquals(
+		custom.indexOf("--session-sidebar-preferred-width: 354px") <
+			custom.indexOf('rel="stylesheet"'),
+		true,
+	);
 });
