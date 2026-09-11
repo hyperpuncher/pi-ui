@@ -1,3 +1,4 @@
+import { responseErrorMessage } from "../../src/utils/errors.ts";
 import { isHtmlFileUri } from "../file-uri.js";
 
 export function bindFileLinks() {
@@ -49,21 +50,16 @@ async function followFileLink(uri) {
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ uri }),
 		});
-		if (!response.ok) throw new Error(await responseError(response));
+		if (!response.ok) {
+			throw new Error(
+				await responseErrorMessage(response, "Could not open the file."),
+			);
+		}
 		const { path, workspacePath } = await response.json();
 		const { openLinkedWorkspaceFile } =
 			await import("../../src/client/workspace-review.ts");
 		await openLinkedWorkspaceFile(path, workspacePath);
 	} catch (error) {
 		alert(error instanceof Error ? error.message : "Could not open the file.");
-	}
-}
-
-async function responseError(response) {
-	try {
-		const body = await response.json();
-		return body.error || body.message || "Could not open the file.";
-	} catch {
-		return "Could not open the file.";
 	}
 }

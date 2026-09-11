@@ -9,7 +9,7 @@ import {
 	type AppSessionSummary,
 	type AppStateSnapshot,
 } from "../state/app-store.ts";
-import { calendarDayDifference } from "../utils/date-time-format.ts";
+import { calendarDayDifference, formatCalendarDay } from "../utils/date-time-format.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
@@ -295,14 +295,7 @@ function sessionGroupLabel(
 ): string | undefined {
 	if (difference === 0) return undefined;
 	if (difference === 1) return "Yesterday";
-	if (difference > 1 && difference < 7) {
-		return date.toLocaleDateString(systemTimeLocale, { weekday: "long" });
-	}
-	return date.toLocaleDateString(systemTimeLocale, {
-		month: "short",
-		day: "numeric",
-		year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
-	});
+	return formatCalendarDay(date, now, systemTimeLocale);
 }
 
 function renderSessionSidebarRow(

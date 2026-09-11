@@ -1,6 +1,8 @@
 import Type, { type Static, type StaticParse, type TSchema } from "typebox";
 import { Parse } from "typebox/value";
 
+import { responseErrorMessage } from "../utils/errors.ts";
+
 const workspaceFileSchema = Type.Object({
 	path: Type.String(),
 	contents: Type.String(),
@@ -20,7 +22,6 @@ const workspaceFilesSchema = Type.Object({
 	workspacePath: Type.String(),
 });
 const workspaceEntrySchema = Type.Object({ path: Type.String() });
-const errorSchema = Type.Object({ error: Type.String() });
 
 export type WorkspaceFileData = Static<typeof workspaceFileSchema>;
 type WorkspaceFilesData = Static<typeof workspaceFilesSchema>;
@@ -87,13 +88,9 @@ async function requestJson<Schema extends TSchema>(
 		headers: { accept: "application/json", ...init?.headers },
 	});
 	if (!response.ok) {
-		let message = `Request failed (${response.status})`;
-		try {
-			message = Parse(errorSchema, await response.json()).error;
-		} catch {
-			// Keep the status fallback when the response is not valid error JSON.
-		}
-		throw new Error(message);
+		throw new Error(
+			await responseErrorMessage(response, `Request failed (${response.status})`),
+		);
 	}
 	return Parse(schema, await response.json());
 }

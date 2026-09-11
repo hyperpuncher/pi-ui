@@ -13,6 +13,12 @@ export function formatAdaptiveDateTime(
 	if (dayDifference === 1) {
 		return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-1, "day");
 	}
+	return formatCalendarDay(date, now, locale);
+}
+
+/** Weekday for the current week, otherwise a compact month and day. */
+export function formatCalendarDay(date: Date, now = new Date(), locale?: string): string {
+	const dayDifference = calendarDayDifference(date, now);
 	if (dayDifference > 1 && dayDifference < 7) {
 		return date.toLocaleDateString(locale, { weekday: "long" });
 	}

@@ -1,4 +1,4 @@
-import { isRecord, isString } from "../utils/type-guards.ts";
+import { responseErrorMessage } from "../utils/errors.ts";
 import {
 	isWorkspaceCommitDetail,
 	isWorkspaceCommitHistory,
@@ -17,11 +17,11 @@ export function createWorkspaceReviewApi(endpoint: string) {
 			if (path !== undefined) query.set("path", path);
 			const response = await fetch(`${endpoint}/diff?${query}`, { signal });
 			if (response.ok) return response.text();
-			const value: unknown = await response.json();
 			throw new Error(
-				isRecord(value) && isString(value.error)
-					? value.error
-					: `Unable to load diff (${response.status})`,
+				await responseErrorMessage(
+					response,
+					`Unable to load diff (${response.status})`,
+				),
 			);
 		},
 
@@ -32,16 +32,12 @@ export function createWorkspaceReviewApi(endpoint: string) {
 				body: JSON.stringify({ path }),
 			});
 			if (response.ok) return;
-			let message = `Request failed (${response.status})`;
-			try {
-				const value: unknown = await response.json();
-				if (isRecord(value) && isString(value.error)) {
-					message = value.error;
-				}
-			} catch {
-				// Keep the status fallback when the response is not JSON.
-			}
-			throw new Error(message);
+			throw new Error(
+				await responseErrorMessage(
+					response,
+					`Request failed (${response.status})`,
+				),
+			);
 		},
 
 		async loadCommit(hash: string): Promise<WorkspaceCommitDetail | undefined> {
