@@ -28,6 +28,7 @@ import {
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
+import { requiredButton, requiredElement } from "./dom.ts";
 import { createWorkspaceFiles } from "./workspace-files.ts";
 import { createWorkspaceReviewApi } from "./workspace-review-api.ts";
 import {
@@ -1197,18 +1198,4 @@ function updateWorkingAnnotations(path: string): void {
 		itemsByPath = itemMap(items);
 		publish();
 	}
-}
-
-function requiredElement(id: string): HTMLElement {
-	const element = document.getElementById(id);
-	if (!(element instanceof HTMLElement)) throw new Error(`Missing #${id}`);
-	return element;
-}
-
-function requiredButton(id: string): HTMLButtonElement {
-	const element = document.getElementById(id);
-	if (!(element instanceof HTMLButtonElement)) {
-		throw new Error(`Missing #${id}`);
-	}
-	return element;
 }

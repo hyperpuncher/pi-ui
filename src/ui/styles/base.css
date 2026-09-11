@@ -6,7 +6,7 @@
 
 	@keyframes spin {
 		to {
-			transform: rotate(1turn);
+			rotate: 1turn;
 		}
 	}
 

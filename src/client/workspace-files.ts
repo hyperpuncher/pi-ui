@@ -8,7 +8,9 @@ import {
 } from "@pierre/trees";
 
 import { getPierreThemes } from "../pierre-theme.ts";
+import { errorMessage } from "../utils/errors.ts";
 import { workspaceTreeStyle, workspaceTreeUnsafeCss } from "../workspace-review-tree.ts";
+import { requiredButton, requiredDialog, requiredElement, requiredInput } from "./dom.ts";
 import {
 	createWorkspaceFilesApi,
 	type WorkspaceFileData,
@@ -662,10 +664,6 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	};
 }
 
-function errorMessage(error: ErrorOptions["cause"]): string {
-	return String(error).replace(/^Error: /, "");
-}
-
 function validEntryName(value: string | null): value is string {
 	return Boolean(
 		value &&
@@ -690,28 +688,4 @@ function formatBytes(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`;
 	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
 	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function requiredElement(id: string): HTMLElement {
-	const element = document.getElementById(id);
-	if (!(element instanceof HTMLElement)) throw new Error(`Missing #${id}`);
-	return element;
-}
-
-function requiredButton(id: string): HTMLButtonElement {
-	const element = document.getElementById(id);
-	if (!(element instanceof HTMLButtonElement)) throw new Error(`Missing #${id}`);
-	return element;
-}
-
-function requiredDialog(id: string): HTMLDialogElement {
-	const element = document.getElementById(id);
-	if (!(element instanceof HTMLDialogElement)) throw new Error(`Missing #${id}`);
-	return element;
-}
-
-function requiredInput(id: string): HTMLInputElement {
-	const element = document.getElementById(id);
-	if (!(element instanceof HTMLInputElement)) throw new Error(`Missing #${id}`);
-	return element;
 }

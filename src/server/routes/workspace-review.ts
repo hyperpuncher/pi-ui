@@ -29,7 +29,7 @@ export const workspaceReviewRoutes = {
 				config.gitView = preferences;
 			});
 			context.store.setWorkspaceReviewPreferences(preferences);
-			return new Response(null, { status: 204 });
+			return datastarResponse();
 		},
 	},
 	[endpoints.workspaceReviewSubmit]: {
@@ -70,7 +70,7 @@ export const workspaceReviewRoutes = {
 				}
 				throw error;
 			}
-			return new Response(null, { status: 204 });
+			return datastarResponse();
 		},
 	},
 	[endpoints.workspaceReviewDiff]: {
