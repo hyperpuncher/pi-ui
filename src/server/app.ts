@@ -15,6 +15,7 @@ import {
 import { AppStore } from "../state/app-store.ts";
 import { loadPierreLanguage } from "../ui/diffs.ts";
 import { UiRenderer } from "../ui/ui-renderer.ts";
+import { checkForUpdate } from "../update-check.ts";
 import { expandHomePath } from "../utils/workspace.ts";
 import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
 import { ensureAppConfig } from "./app-config.ts";
@@ -41,6 +42,11 @@ export async function createApp() {
 	setActiveFonts(fonts);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
 	const store = new AppStore();
+	if (appConfig.updateCheck !== false && process.env.PI_UI_NO_UPDATE_CHECK !== "1") {
+		void checkForUpdate().then((update) => {
+			if (update) store.setUpdateAvailable(update);
+		});
+	}
 	store.setWorkspaceReviewPreferences(workspaceReviewPreferences);
 	const sessionImages = new SessionImageStore();
 	const renderer = new UiRenderer(store, new DatastarClientHub(), {

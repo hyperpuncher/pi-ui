@@ -159,7 +159,8 @@ all options with their defaults:
 		"width": 288
 	},
 	"toolOutputHidden": false,
-	"toolbarHidden": false
+	"toolbarHidden": false,
+	"updateCheck": true
 }
 ```
 

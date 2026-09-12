@@ -135,6 +135,14 @@
 		gap: 0.125rem;
 	}
 
+	.prompt-start {
+		display: flex;
+		min-width: 0;
+		flex: 0 1 auto;
+		align-items: center;
+		gap: 0.125rem;
+	}
+
 	.prompt-queue {
 		display: flex;
 		width: calc(100% - 2rem);

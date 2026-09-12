@@ -193,6 +193,12 @@ const schema = Type.Object(
 				description: "Hide the toolbar.",
 			}),
 		),
+		updateCheck: Type.Optional(
+			Type.Boolean({
+				default: true,
+				description: "Check for a newer pi-ui release and show an update notice.",
+			}),
+		),
 	},
 	{
 		$schema: "https://json-schema.org/draft/2020-12/schema",

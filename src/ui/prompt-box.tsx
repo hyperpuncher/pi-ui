@@ -6,11 +6,8 @@ import { ArrowDown, Paperclip, X } from "./icons.ts";
 import { altShortcutAction, ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
-import {
-	renderModelPicker,
-	renderThinkingPicker,
-	renderWorkspacePicker,
-} from "./prompt-pickers.tsx";
+import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
+import { renderPromptStart } from "./prompt-start.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -194,7 +191,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 				{renderExtensionWidgets(state, "belowEditor")}
 			</div>
 			<footer id="prompt-footer" class="raised-surface prompt-footer">
-				{renderWorkspacePicker(state)}
+				{renderPromptStart(state)}
 				{renderPromptStatus(state)}
 				<div id="prompt-context" class="prompt-context">
 					{renderModelPicker(state)}

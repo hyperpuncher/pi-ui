@@ -26,11 +26,8 @@ import {
 } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
 import { renderPromptQueue } from "./prompt-box.tsx";
-import {
-	renderModelPicker,
-	renderThinkingPicker,
-	renderWorkspacePicker,
-} from "./prompt-pickers.tsx";
+import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
+import { renderPromptStart } from "./prompt-start.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebarContent } from "./session-sidebar.tsx";
@@ -353,7 +350,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderPromptStatus(snapshot) +
 			renderExtensionWidgets(snapshot, "aboveEditor") +
 			renderExtensionWidgets(snapshot, "belowEditor") +
-			renderWorkspacePicker(snapshot) +
+			renderPromptStart(snapshot) +
 			renderSessionTransition(snapshot) +
 			renderDebugOverlay(snapshot)
 		);

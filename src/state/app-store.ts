@@ -1,6 +1,7 @@
 import type { SessionTransitionState } from "../agent/session-transition-controller.ts";
 import { appCommandCatalog } from "../commands/catalog.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
+import type { AvailableUpdate } from "../update-check.ts";
 import { formatMessageCount } from "../utils/format.ts";
 import type { JsonObject } from "../utils/json-types.ts";
 import { formatShortcut } from "../utils/keyboard.ts";
@@ -210,6 +211,7 @@ export type AppStateSnapshot = Readonly<{
 	debugUi: boolean;
 	datastarInspector: boolean;
 	documentTitle: string;
+	updateAvailable: AvailableUpdate | undefined;
 	hasOlderMessages: boolean;
 	promptHistory: readonly string[];
 	promptEditorText: string;
@@ -254,6 +256,7 @@ export class AppStore {
 	readonly debugUi = debugUiEnabled();
 	readonly datastarInspector = datastarInspectorEnabled();
 	documentTitle = "pi-ui";
+	updateAvailable: AvailableUpdate | undefined;
 	promptEditorText = "";
 	models: AppModel[] = [];
 	sessionCatalogLoading = true;
@@ -385,6 +388,7 @@ export class AppStore {
 			debugUi: this.debugUi,
 			datastarInspector: this.datastarInspector,
 			documentTitle: this.documentTitle,
+			updateAvailable: this.updateAvailable,
 			hasOlderMessages: this.hasOlderMessages,
 			promptHistory: [...this.promptHistory],
 			promptEditorText: this.promptEditorText,
@@ -712,6 +716,10 @@ export class AppStore {
 	}
 	setTemporarySession(value: boolean): void {
 		this.isTemporarySession = value;
+		this.commit();
+	}
+	setUpdateAvailable(value: AvailableUpdate): void {
+		this.updateAvailable = value;
 		this.commit();
 	}
 	setWorkspacePath(value: string): void {
