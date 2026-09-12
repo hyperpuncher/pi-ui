@@ -137,11 +137,14 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							!evt.metaKey &&
 							!evt.altKey &&
 							!evt.shiftKey &&
-							!$_isBusy &&
 							!window.piUi.pickers.isOpen()
 						) {
 							evt.preventDefault();
-							el.blur();
+							if ($_isBusy) {
+								@post('${endpoints.abort}', { payload: {} });
+							} else {
+								el.blur();
+							}
 						}
 						if (evt.altKey && evt.code === 'ArrowUp') {
 							evt.preventDefault();
