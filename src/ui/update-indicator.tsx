@@ -18,7 +18,7 @@ export function renderUpdateBadge(update: AvailableUpdate): string {
 			data-tooltip="Update available"
 			data-tooltip-delay
 		>
-			<Icon icon={ArrowUp} class="update-badge-icon" />
+			<Icon icon={ArrowUp} class="prompt-context-icon update-badge-icon" />
 			<span class="prompt-context-label">Update</span>
 			<ShortcutTooltip label="Update available" />
 		</button>,

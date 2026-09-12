@@ -9,6 +9,7 @@
 	.btn.prompt-context-button {
 		width: fit-content;
 		min-width: 0;
+		gap: 0.375rem;
 		padding-inline: 0.5rem;
 		color: var(--text-muted);
 		font-weight: 400;
@@ -35,8 +36,10 @@
 
 	.prompt-context-icon {
 		display: none;
-		width: 1rem;
-		height: 1rem;
+		width: 0.875rem;
+		height: 0.875rem;
+		flex-shrink: 0;
+		opacity: 0.8;
 	}
 	.prompt-context-label,
 	.picker-option-title,
@@ -53,14 +56,15 @@
 	}
 
 	@container prompt (width < 40rem) {
-		.btn:is(.workspace-picker, .thinking-picker-button) {
+		.btn:is(.workspace-picker, .thinking-picker-button, .update-badge) {
 			width: var(--button-size);
 			padding: 0;
 		}
 		.prompt-context-icon {
 			display: block;
 		}
-		:is(.workspace-picker, .thinking-picker-button) .prompt-context-label {
+		:is(.workspace-picker, .thinking-picker-button, .update-badge)
+			.prompt-context-label {
 			display: none;
 		}
 	}

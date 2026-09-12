@@ -194,9 +194,6 @@
 	}
 
 	.update-badge-icon {
-		width: 0.75rem;
-		height: 0.75rem;
-		flex-shrink: 0;
 		color: var(--action-primary);
 	}
 
@@ -252,11 +249,5 @@
 	}
 	.update-release-link:is(:hover, :focus-visible) {
 		color: var(--text);
-	}
-
-	@container prompt (width < 40rem) {
-		.update-badge .prompt-context-label {
-			display: none;
-		}
 	}
 }
