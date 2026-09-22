@@ -1,7 +1,11 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppSessionSummary } from "../state/app-store.ts";
 import { formatMessageCount } from "../utils/format.ts";
-import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
+import {
+	formatHomePath,
+	managedWorktreeParts,
+	workspaceDisplayName,
+} from "../utils/workspace.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function SessionSubtitle(props: {
@@ -10,9 +14,12 @@ export function SessionSubtitle(props: {
 	workspaceNameOnly?: boolean;
 	showSubtitle?: boolean;
 }): string {
-	const workspace = props.workspaceNameOnly
-		? workspaceDisplayName(props.session.cwd)
-		: formatHomePath(props.session.cwd);
+	const managed = managedWorktreeParts(props.session.cwd);
+	const workspace = managed
+		? `${managed.project} · ${managed.branch}`
+		: props.workspaceNameOnly
+			? workspaceDisplayName(props.session.cwd)
+			: formatHomePath(props.session.cwd);
 	const faviconUrl = `${endpoints.sessionsFavicon}?cwd=${encodeURIComponent(props.session.cwd)}`;
 	return syncHtml(
 		<span class={props.class}>

@@ -22,6 +22,9 @@
 	.workspace-picker {
 		max-width: 12rem;
 	}
+	.worktree-picker {
+		max-width: 10rem;
+	}
 	.thinking-picker-button {
 		max-width: min(10rem, 100%);
 	}
@@ -57,14 +60,19 @@
 	}
 
 	@container prompt (width < 30rem) {
-		.btn:is(.workspace-picker, .thinking-picker-button, .update-badge) {
+		.btn:is(
+			.workspace-picker,
+			.worktree-picker,
+			.thinking-picker-button,
+			.update-badge
+		) {
 			width: var(--button-size);
 			padding: 0;
 		}
 		.prompt-context-icon {
 			display: block;
 		}
-		:is(.workspace-picker, .thinking-picker-button, .update-badge)
+		:is(.workspace-picker, .worktree-picker, .thinking-picker-button, .update-badge)
 			.prompt-context-label {
 			display: none;
 		}

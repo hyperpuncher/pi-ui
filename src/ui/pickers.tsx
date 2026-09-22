@@ -116,7 +116,7 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 }
 
 export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
-	const workspaces = uniqueWorkspaces([state.workspacePath, ...state.recentWorkspaces]);
+	const workspaces = uniqueWorkspaces([state.projectRoot, ...state.recentWorkspaces]);
 	return syncHtml(
 		<div
 			role="menu"
@@ -124,7 +124,7 @@ export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 			class="command-menu"
 			aria-orientation="vertical"
 		>
-			{renderWorkspaceSearchResults(workspaces, [], state.workspacePath)}
+			{renderWorkspaceSearchResults(workspaces, [], state.projectRoot)}
 		</div>,
 	);
 }

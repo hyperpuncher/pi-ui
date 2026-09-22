@@ -15,6 +15,7 @@ import {
 	renderModelPicker,
 	renderThinkingPicker,
 	renderWorkspacePicker,
+	renderWorktreePicker,
 } from "./prompt-pickers.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
@@ -245,6 +246,26 @@ test("workspace picker shows only the workspace folder name", () => {
 		}),
 	);
 	assertStringIncludes(home, ">~</span>");
+});
+
+test("worktree picker shows the current branch only for Git workspaces", () => {
+	const git = renderWorktreePicker(
+		appRenderSnapshot({
+			workspaceReview: {
+				branch: "feature/plain-name",
+				changes: [],
+				commits: [],
+				isGitRepository: true,
+				changeCount: 0,
+				revision: "git",
+			},
+		}),
+	);
+	assertStringIncludes(git, ">feature/plain-name</span>");
+	assertStringIncludes(git, 'aria-label="Branch: feature/plain-name"');
+
+	const nonGit = renderWorktreePicker(appRenderSnapshot({}));
+	assertFalse(nonGit.includes("worktree-picker"));
 });
 
 test("workspace rows show each collapsed path once", () => {

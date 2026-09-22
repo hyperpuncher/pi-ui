@@ -96,6 +96,7 @@ for (const linkedWorktree of [false, true]) {
 				await git(repository, "worktree", "add", "-b", "linked", workspace);
 			await controller.open(workspace);
 			assertEquals(store.workspaceReview.commits.length, 1);
+			assertEquals(store.projectRoot, repository);
 			const filesRevision = store.workspaceFilesRevision;
 			await Bun.write(`${repository}/.git/objects/pack/noise.tmp`, "noise");
 			await Bun.write(`${repository}/.git/logs/noise`, "noise");

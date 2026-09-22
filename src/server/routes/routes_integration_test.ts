@@ -13,6 +13,7 @@ import { sessionSidebarWidthDefault } from "../../session-sidebar-types.ts";
 import { AppStore } from "../../state/app-store.ts";
 import { assertStringExcludes } from "../../testing/assertions.ts";
 import { UiRenderer } from "../../ui/ui-renderer.ts";
+import { outputCommand } from "../../utils/command.ts";
 import { DatastarClientHub } from "../datastar-client-hub.ts";
 import { executeRoute } from "../route.ts";
 import { appRoutes } from "../routes.ts";
@@ -411,6 +412,89 @@ test("workspace browser creates folders in the browsed directory and rejects inv
 		}
 	} finally {
 		await rm(workspace, { recursive: true });
+	}
+});
+
+test("removing a worktree previews ignored paths and keeps its branch", async () => {
+	const repository = await makeTempDir();
+	const worktrees = await makeTempDir();
+	const linked = `${worktrees}/linked`;
+	const git = async (cwd: string, ...args: string[]) => {
+		const result = await outputCommand("git", {
+			cwd,
+			args,
+			env: {
+				GIT_AUTHOR_NAME: "Test",
+				GIT_AUTHOR_EMAIL: "test@example.com",
+				GIT_COMMITTER_NAME: "Test",
+				GIT_COMMITTER_EMAIL: "test@example.com",
+			},
+		});
+		assertEquals(result.success, true);
+	};
+	try {
+		await git(repository, "init", "-b", "main");
+		await Bun.write(`${repository}/.gitignore`, "*.secret\n");
+		await git(repository, "add", ".gitignore");
+		await git(repository, "commit", "-m", "initial");
+		await git(repository, "worktree", "add", "-b", "feature", linked);
+		await Bun.write(`${linked}/<private>.secret`, "do not lose\n");
+
+		let running = false;
+		const context = fakeContext({
+			host: fakeHost({ hasRunningSessionInWorktree: async () => running }),
+		});
+		context.store.setWorkspacePath(repository);
+		const router = createRouter(context);
+		const preview = await router.fetch(
+			signalGet(endpoints.worktreeRemove, { path: linked }),
+		);
+		const html = await preview.text();
+		assertStringIncludes(html, "&lt;private&gt;.secret");
+		const revision = /"_worktreeRemoveRevision":"([a-f0-9]+)"/.exec(html)?.[1];
+		if (!revision) throw new Error("Missing ignored paths revision");
+
+		await Bun.write(`${linked}/new.secret`, "new\n");
+		const stale = await router.fetch(
+			signalRequest(endpoints.worktreeRemove, { path: linked, revision }),
+		);
+		assertStringIncludes(await stale.text(), "Ignored files changed");
+		assertEquals(await Bun.file(`${linked}/new.secret`).exists(), true);
+
+		const refreshed = await router.fetch(
+			signalGet(endpoints.worktreeRemove, { path: linked }),
+		);
+		const nextRevision = /"_worktreeRemoveRevision":"([a-f0-9]+)"/.exec(
+			await refreshed.text(),
+		)?.[1];
+		if (!nextRevision) throw new Error("Missing refreshed ignored paths revision");
+		running = true;
+		const blocked = await router.fetch(
+			signalRequest(endpoints.worktreeRemove, {
+				path: linked,
+				revision: nextRevision,
+			}),
+		);
+		assertStringIncludes(
+			await blocked.text(),
+			"A session is running in this checkout",
+		);
+		assertEquals(await Bun.file(`${linked}/new.secret`).exists(), true);
+		running = false;
+		const removed = await router.fetch(
+			signalRequest(endpoints.worktreeRemove, {
+				path: linked,
+				revision: nextRevision,
+			}),
+		);
+		assertStringIncludes(await removed.text(), "worktree-remove-dialog");
+		assertEquals(await Bun.file(`${linked}/new.secret`).exists(), false);
+		await git(repository, "show-ref", "--verify", "refs/heads/feature");
+	} finally {
+		await Promise.all([
+			rm(repository, { recursive: true, force: true }),
+			rm(worktrees, { recursive: true, force: true }),
+		]);
 	}
 });
 
@@ -1115,6 +1199,7 @@ function fakeHost(overrides: Partial<RuntimeResource> = {}): RuntimeResource {
 		dispose: async () => {},
 		forkSessionToWorkspace: async () => ({ status: "success" }),
 		getWorkspacePath: () => process.cwd(),
+		hasRunningSessionInWorktree: async () => false,
 		listSessions: async () => {},
 		logout: () => true,
 		navigateTree: async () => ({ status: "success", editorText: "" }),

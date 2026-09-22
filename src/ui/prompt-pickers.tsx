@@ -10,12 +10,12 @@ import type { AppThinkingLevel } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
 import { Icon } from "./icon.tsx";
-import { Brain, Folder, Star } from "./icons.ts";
+import { Brain, Folder, GitBranch, Star } from "./icons.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
 export function renderWorkspacePicker(state: AppStateSnapshot): string {
-	const label = workspaceDisplayName(state.workspacePath);
+	const label = workspaceDisplayName(state.projectRoot);
 	return syncHtml(
 		<button
 			id="workspace-picker"
@@ -25,7 +25,7 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 			type="button"
 			aria-haspopup="dialog"
 			aria-controls="workspace-dialog"
-			aria-label={state.workspacePath}
+			aria-label={state.projectRoot}
 			data-attr:disabled="$_sessionTransitionStatus === 'loading'"
 			commandfor="workspace-dialog"
 			command="show-modal"
@@ -45,6 +45,38 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 				label="Workspace"
 				shortcut={activeKeybind("change-workspace")}
 			/>
+		</button>,
+	);
+}
+
+export function renderWorktreePicker(state: AppStateSnapshot): string {
+	if (!state.workspaceReview.isGitRepository) return "";
+	const branch = state.workspaceReview.branch;
+	const label = branch && !branch.startsWith("detached@") ? branch : "detached";
+	return syncHtml(
+		<button
+			id="worktree-picker"
+			class="btn prompt-context-button worktree-picker"
+			data-variant="ghost"
+			data-size="sm"
+			type="button"
+			aria-haspopup="dialog"
+			aria-controls="worktree-dialog"
+			aria-label={`Branch: ${label}`}
+			data-attr:disabled="$_sessionTransitionStatus === 'loading'"
+			commandfor="worktree-dialog"
+			command="show-modal"
+			data-on:click={`@get('${endpoints.worktrees}', {
+				payload: {},
+				requestCancellation: 'cleanup',
+			})`}
+			data-tooltip="Branch"
+			data-tooltip-delay
+		>
+			<Icon icon={GitBranch} class="prompt-context-icon" />
+			<span class="prompt-context-label" safe>
+				{label}
+			</span>
 		</button>,
 	);
 }

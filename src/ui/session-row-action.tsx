@@ -16,9 +16,7 @@ export function SessionRowAction(props: {
 					<ShortcutKbd shortcut={props.shortcut} />
 				</span>
 			)}
-			{props.deletable && (
-				<SessionDeleteButton session={props.session} class="session-row-delete" />
-			)}
+			{props.deletable && <SessionDeleteButton session={props.session} />}
 		</span>,
 	);
 }

@@ -16,6 +16,7 @@ export type RouteRuntime = Pick<
 	| "deleteSession"
 	| "forkSessionToWorkspace"
 	| "getWorkspacePath"
+	| "hasRunningSessionInWorktree"
 	| "listSessions"
 	| "logout"
 	| "navigateTree"

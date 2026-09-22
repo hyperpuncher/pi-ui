@@ -3,6 +3,7 @@ import os from "node:os";
 import * as path from "node:path";
 
 import type { AppStore } from "../state/app-store.ts";
+import { findGitProjectRoot } from "./git-worktrees.ts";
 import {
 	areWorkspacePathsIgnored,
 	findGitWatchPaths,
@@ -58,7 +59,12 @@ export class WorkspaceReviewController {
 			}
 		};
 
-		await refresh();
+		await Promise.all([
+			refresh(),
+			findGitProjectRoot(path).then((projectRoot) => {
+				if (active()) this.store.setProjectRoot(projectRoot ?? path);
+			}),
+		]);
 		if (!active()) return;
 		const gitPaths = await findGitWatchPaths(path);
 		if (!active()) return;

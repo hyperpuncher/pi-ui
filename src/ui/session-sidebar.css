@@ -131,30 +131,14 @@
 	.session-row-shortcut {
 		transition: opacity 150ms ease;
 	}
-	.session-row-delete {
-		opacity: 0;
-		pointer-events: none;
-		transition: opacity 150ms ease;
-	}
 	:where(.session-sidebar-row, [role="menuitem"]):is(:hover, :focus-within)
 		.session-row-shortcut {
 		opacity: 0;
 	}
 	:where(.session-sidebar-row, [role="menuitem"]):is(:hover, :focus-within)
-		.session-row-delete {
+		.row-action {
 		opacity: 1;
 		pointer-events: auto;
-	}
-	.session-delete-button {
-		flex-shrink: 0;
-
-		&:is(:hover, :focus) {
-			background: oklch(from var(--status-danger) l c h / 20%);
-			color: var(--status-danger);
-		}
-		&:hover {
-			background: oklch(from var(--status-danger) l c h / 30%);
-		}
 	}
 
 	.session-sidebar {

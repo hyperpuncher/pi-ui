@@ -26,6 +26,8 @@ export type ClientEffect =
 	| { type: "refresh-session-picker" }
 	| { type: "refresh-workspace-picker" }
 	| { type: "close-workspace-picker" }
+	| { type: "close-worktree-picker" }
+	| { type: "close-worktree-remove-dialog" }
 	| { type: "session-deleted" }
 	| { type: "workspace-review-submitted" };
 
@@ -97,6 +99,10 @@ function clientEffectScript(effect: ClientEffect): string {
 			return "window.piUi.controls.refresh(document.getElementById('workspace-dialog'))";
 		case "close-workspace-picker":
 			return "document.getElementById('workspace-dialog')?.close()";
+		case "close-worktree-picker":
+			return "document.getElementById('worktree-dialog')?.close()";
+		case "close-worktree-remove-dialog":
+			return "document.getElementById('worktree-remove-dialog')?.close()";
 		case "session-deleted":
 			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.controls.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
 		case "workspace-review-submitted":

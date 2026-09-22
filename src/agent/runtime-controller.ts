@@ -1,3 +1,6 @@
+import { realpath } from "node:fs/promises";
+import { sep } from "node:path";
+
 import {
 	type AgentSessionEvent,
 	type AgentSessionRuntime,
@@ -622,6 +625,20 @@ export class RuntimeController {
 
 	getWorkspacePath(): string {
 		return this.runtime.session.sessionManager.getCwd();
+	}
+
+	async hasRunningSessionInWorktree(path: string): Promise<boolean> {
+		const runningCwds: string[] = [];
+		if (this.isCurrentRuntimeActive()) runningCwds.push(this.getWorkspacePath());
+		for (const session of this.backgroundSessions.values()) {
+			if (session.status === "running")
+				runningCwds.push(session.runtime.session.sessionManager.getCwd());
+		}
+		for (const cwd of runningCwds) {
+			const resolved = await realpath(cwd).catch(() => cwd);
+			if (resolved === path || resolved.startsWith(`${path}${sep}`)) return true;
+		}
+		return false;
 	}
 
 	async openWorkspace(cwd: string): Promise<boolean> {

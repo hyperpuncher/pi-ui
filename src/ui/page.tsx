@@ -31,6 +31,11 @@ import { renderThemeLab } from "./theme-lab.tsx";
 import { renderToolbar } from "./toolbar.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReview } from "./workspace-review.tsx";
+import {
+	renderBranchDeleteDialog,
+	renderWorktreeDialog,
+	renderWorktreeRemoveDialog,
+} from "./worktree-dialog.tsx";
 
 export type PageRenderOptions = {
 	appVersion?: string;
@@ -296,6 +301,9 @@ export function renderPage(
 					{renderAuthDialog(state.authDialog)}
 					{renderExtensionDialog(state.extensionDialog)}
 					{renderLlamaDialog(state.llamaDialog)}
+					{renderWorktreeDialog()}
+					{renderWorktreeRemoveDialog()}
+					{renderBranchDeleteDialog()}
 
 					<dialog
 						id="workspace-dialog"

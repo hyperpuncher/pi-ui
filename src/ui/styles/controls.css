@@ -310,4 +310,30 @@
 			box-shadow: var(--shadow-sm);
 		}
 	}
+
+	/* Row actions stay hidden until their row is hovered or focused. */
+	.row-action {
+		flex-shrink: 0;
+		color: var(--text-muted);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 150ms ease;
+	}
+	.row-action:focus-visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+	.row-action-danger:is(:hover, :focus-visible) {
+		background: oklch(from var(--status-danger) l c h / 20%);
+		color: var(--status-danger);
+	}
+	.row-action-danger:hover {
+		background: oklch(from var(--status-danger) l c h / 30%);
+	}
+	@media (hover: none), (pointer: coarse) {
+		.row-action {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
 }

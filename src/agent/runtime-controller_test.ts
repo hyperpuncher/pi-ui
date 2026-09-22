@@ -909,6 +909,30 @@ test("RuntimeController forks the current session to another workspace", async (
 	await controller.dispose();
 });
 
+test("RuntimeController detects running sessions in a checkout, including background sessions", async () => {
+	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source/nested");
+	const replacement = fakeRuntime(
+		"/sessions/replacement.jsonl",
+		true,
+		"/work/replacement",
+	);
+	const controller = await activate(
+		new AppStore(),
+		[source, replacement],
+		"/work/source/nested",
+	);
+	assertEquals(await controller.hasRunningSessionInWorktree("/work/source"), false);
+	source.setStreaming(true);
+	assertEquals(await controller.hasRunningSessionInWorktree("/work/source"), true);
+	assertEquals(await controller.hasRunningSessionInWorktree("/work/sour"), false);
+	await controller.openWorkspace("/work/replacement");
+	assertEquals(await controller.hasRunningSessionInWorktree("/work/source"), true);
+	source.emit(agentSessionEventStub({ type: "agent_end" }));
+	source.emit(agentSessionEventStub({ type: "agent_settled" }));
+	assertEquals(await controller.hasRunningSessionInWorktree("/work/source"), false);
+	await controller.dispose();
+});
+
 test("RuntimeController preserves a streaming session across workspace changes", async () => {
 	const state = new AppStore();
 	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");

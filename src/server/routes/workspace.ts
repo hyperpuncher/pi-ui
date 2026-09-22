@@ -6,6 +6,10 @@ import {
 	renderWorkspaceBrowserError,
 	renderWorkspaceSearchResults,
 } from "../../ui/pickers.tsx";
+import {
+	renderWorktreeDialogContent,
+	renderWorktreeIgnoredPaths,
+} from "../../ui/worktree-dialog.tsx";
 import { isRecord, isString } from "../../utils/type-guards.ts";
 import { formatHomePath } from "../../utils/workspace.ts";
 import {
@@ -15,6 +19,16 @@ import {
 	stringField,
 } from "../action-input.ts";
 import { datastarResponse, signalsResponse } from "../datastar.ts";
+import {
+	createGitBranch,
+	createGitWorktree,
+	deleteGitBranch,
+	GitWorktreeError,
+	ignoredWorktreePaths,
+	inspectGitWorktrees,
+	removeGitWorktree,
+	switchGitBranch,
+} from "../git-worktrees.ts";
 import { RouteError, type RouteMap } from "../route.ts";
 import {
 	createWorkspaceEntry,
@@ -37,7 +51,7 @@ export const workspaceRoutes = {
 		GET: async (request, context) => {
 			const query = stringField(await readActionSignals(request), "workspaceDraft");
 			const recent = filterWorkspaces(
-				[context.store.workspacePath, ...context.store.recentWorkspaces],
+				[context.store.projectRoot, ...context.store.recentWorkspaces],
 				query,
 			);
 			const search = query.trim()
@@ -49,7 +63,7 @@ export const workspaceRoutes = {
 					elements: renderWorkspaceSearchResults(
 						recent,
 						search,
-						context.store.workspacePath,
+						context.store.projectRoot,
 					),
 				},
 				{ type: "effect", effect: { type: "refresh-workspace-picker" } },
@@ -245,7 +259,159 @@ export const workspaceRoutes = {
 			return datastarResponse();
 		},
 	},
+	[endpoints.worktrees]: {
+		GET: async (_request, context) => await worktreeDialogResponse(context, true),
+	},
+	[endpoints.branchSwitch]: {
+		POST: (request, context) =>
+			worktreeAction(async () => {
+				const branch = requiredString(await readActionSignals(request), "branch");
+				await switchGitBranch(context.store.workspacePath, branch);
+				return closeWorktreeDialog();
+			}),
+	},
+	[endpoints.branchCreate]: {
+		POST: (request, context) =>
+			worktreeAction(async () => {
+				const branch = requiredString(await readActionSignals(request), "branch");
+				await createGitBranch(context.store.workspacePath, branch);
+				return closeWorktreeDialog();
+			}),
+	},
+	[endpoints.branchDelete]: {
+		POST: (request, context) =>
+			worktreeAction(async () => {
+				const branch = requiredString(await readActionSignals(request), "branch");
+				await deleteGitBranch(context.store.workspacePath, branch);
+				return await worktreeDialogResponse(context);
+			}),
+	},
+	[endpoints.worktreeRemove]: {
+		GET: (request, context) =>
+			worktreeAction(async () => {
+				const path = requiredString(await readActionSignals(request), "path");
+				const { target } = await removableWorktree(context, path);
+				return await worktreeRemovalPreview(target.path);
+			}, "_worktreeRemoveError"),
+		POST: (request, context) =>
+			worktreeAction(async () => {
+				const signals = await readActionSignals(request);
+				const path = requiredString(signals, "path");
+				const revision = requiredString(signals, "revision");
+				const { projectRoot, target } = await removableWorktree(context, path);
+				try {
+					await removeGitWorktree(projectRoot, target.path, revision);
+				} catch (error) {
+					if (!(error instanceof GitWorktreeError)) throw error;
+					return await worktreeRemovalPreview(target.path, error.message);
+				}
+				const worktrees = await inspectGitWorktrees(context.store.workspacePath);
+				return datastarResponse([
+					{
+						type: "elements",
+						elements: renderWorktreeDialogContent(worktrees),
+					},
+					{ type: "effect", effect: { type: "close-worktree-remove-dialog" } },
+				]);
+			}, "_worktreeRemoveError"),
+	},
+	[endpoints.worktreeCreate]: {
+		POST: (request, context) =>
+			worktreeAction(async () => {
+				const signals = await readActionSignals(request);
+				const branch = requiredString(signals, "branch");
+				const base = requiredString(signals, "base");
+				const workspacePath = context.store.workspacePath;
+				const created = await createGitWorktree(workspacePath, branch, base);
+				if (!(await context.openWorkspace(created.sessionPath))) {
+					// Roll back the new branch only when opening its checkout failed.
+					await removeGitWorktree(created.projectRoot, created.path)
+						.then(() => deleteGitBranch(created.projectRoot, created.branch))
+						.catch(() => {});
+					return signalsResponse({
+						_worktreeError: "Could not open the new worktree.",
+					});
+				}
+				return closeWorktreeDialog();
+			}),
+	},
 } satisfies RouteMap<RouteContext>;
+
+async function removableWorktree(context: RouteContext, path: string) {
+	const mentioned = await inspectGitWorktrees(context.store.workspacePath);
+	const target = mentioned?.worktrees.find((worktree) => worktree.path === path);
+	if (!mentioned || !target || target.current || target.path === mentioned.projectRoot)
+		throw new GitWorktreeError("This checkout cannot be removed.");
+	if (!context.resources.host)
+		throw new GitWorktreeError(
+			"Session runtime unavailable. Cannot remove the checkout.",
+		);
+	if (await context.resources.host.hasRunningSessionInWorktree(target.path))
+		throw new GitWorktreeError(
+			"A session is running in this checkout. Wait for it to finish before removing the checkout.",
+		);
+	return { projectRoot: mentioned.projectRoot, target };
+}
+
+async function worktreeRemovalPreview(path: string, error = ""): Promise<Response> {
+	const { paths, revision } = await ignoredWorktreePaths(path);
+	return datastarResponse([
+		{ type: "elements", elements: renderWorktreeIgnoredPaths(paths) },
+		{
+			type: "signals",
+			signals: {
+				_worktreeRemoveReady: true,
+				_worktreeRemoveCount: paths.length,
+				_worktreeRemoveRevision: revision,
+				_worktreeRemoveError: error,
+			},
+		},
+	]);
+}
+
+async function worktreeDialogResponse(
+	context: RouteContext,
+	reset = false,
+): Promise<Response> {
+	const worktrees = await inspectGitWorktrees(context.store.workspacePath);
+	const resetSignals = {
+		_worktreeBase:
+			worktrees?.branches.find(
+				(branch) => branch.ref === `refs/heads/${worktrees.currentBranch}`,
+			)?.ref ?? "HEAD",
+		_worktreeBranch: "",
+		_branchName: "",
+		_worktreeCreating: false,
+		_worktreeError: "",
+		_worktreeTab: "branches",
+	};
+	return datastarResponse([
+		{
+			type: "signals",
+			signals: reset ? resetSignals : { _worktreeError: "" },
+		},
+		{ type: "elements", elements: renderWorktreeDialogContent(worktrees) },
+	]);
+}
+
+function closeWorktreeDialog(): Response {
+	return datastarResponse([
+		{ type: "effect", effect: { type: "close-worktree-picker" } },
+	]);
+}
+
+/** Surfaces a git failure as the dialog's inline error; anything else propagates. */
+async function worktreeAction(
+	run: () => Promise<Response>,
+	errorSignal = "_worktreeError",
+): Promise<Response> {
+	try {
+		return await run();
+	} catch (error) {
+		if (!(error instanceof GitWorktreeError)) throw error;
+		return signalsResponse({ [errorSignal]: error.message });
+	}
+}
 
 async function workspaceFileResponse<Value>(
 	operation: () => Promise<Value>,

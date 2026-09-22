@@ -6,7 +6,7 @@ import type { AvailableUpdate } from "../update-check.ts";
 import { formatMessageCount } from "../utils/format.ts";
 import type { JsonObject } from "../utils/json-types.ts";
 import { formatShortcut } from "../utils/keyboard.ts";
-import { defaultWorkspacePath } from "../utils/workspace.ts";
+import { defaultWorkspacePath, managedWorktreeParts } from "../utils/workspace.ts";
 import {
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
@@ -204,6 +204,7 @@ export type AppStateSnapshot = Readonly<{
 	queuedSteeringMessages: readonly string[];
 	queuedFollowUpMessages: readonly string[];
 	workspacePath: string;
+	projectRoot: string;
 	workspaceFilesRevision: number;
 	workspaceTreeRevision: number;
 	workspaceReview: WorkspaceReviewSnapshot;
@@ -286,6 +287,7 @@ export class AppStore {
 	thinkingHidden = false;
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
+	projectRoot = this.workspacePath;
 	workspaceFilesRevision = 0;
 	workspaceTreeRevision = 0;
 	workspaceReview = unloadedWorkspaceReviewSnapshot;
@@ -389,6 +391,7 @@ export class AppStore {
 			queuedSteeringMessages: this.queuedSteeringMessages,
 			queuedFollowUpMessages: this.queuedFollowUpMessages,
 			workspacePath: this.workspacePath,
+			projectRoot: this.projectRoot,
 			workspaceFilesRevision: this.workspaceFilesRevision,
 			workspaceTreeRevision: this.workspaceTreeRevision,
 			workspaceReview: this.workspaceReview,
@@ -602,8 +605,7 @@ export class AppStore {
 	}
 	setRecentWorkspaces(values: string[]): void {
 		this.recentWorkspaces = uniqueStrings([
-			this.workspacePath,
-			...values,
+			...values.filter((path) => !managedWorktreeParts(path)),
 			...this.recentWorkspaces,
 		]);
 		this.presentation?.pickersChanged();
@@ -750,6 +752,12 @@ export class AppStore {
 		this.presentation?.workspaceReviewChanged();
 		this.commit();
 		this.workspacePathListener?.(value);
+	}
+	setProjectRoot(value: string): void {
+		if (this.projectRoot === value) return;
+		this.projectRoot = value;
+		this.presentation?.pickersChanged();
+		this.commit();
 	}
 	workspaceFilesChanged(treeChanged = true): void {
 		this.workspaceFilesRevision += 1;
