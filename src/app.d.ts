@@ -1,3 +1,11 @@
+// Matches bun-types' `*.txt` declaration (extensions.d.ts) for a Bun `type: "text"`
+// import assertion, which bun-types doesn't cover for `.md` — used to embed
+// pi-coding-agent's CHANGELOG.md into the compiled binary for `/changelog`.
+declare module "*.md" {
+	const content: string;
+	export default content;
+}
+
 interface TransferFileCollection {
 	readonly length: number;
 }
@@ -76,6 +84,17 @@ interface PiUiNamespace {
 		focusEditor(): void;
 		focusFiles(): void;
 		focusGit(): void;
+	};
+	liveWorkspace: {
+		applyOpen(open: boolean): void;
+		requestNotificationPermission(): void;
+	};
+	terminal: {
+		encodeKey(event: KeyboardEvent): string | undefined;
+		encodePaste(text: string): string;
+		encodeWheel(event: WheelEvent): string | undefined;
+		fitColumns(element: HTMLElement): number | undefined;
+		send(endpoint: string, surfaceId: string, data: string): void;
 	};
 	shouldAbortOnEscape(event: KeyboardEvent): boolean;
 }

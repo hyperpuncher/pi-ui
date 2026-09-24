@@ -1,10 +1,18 @@
 import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
+import { shouldAutofocusPromptOnLoad } from "./autofocus.js";
 import { bindCodeCopy } from "./code-copy.js";
 import { activateCommandItem, bindControls, refreshControls } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
 import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
+import {
+	bindExtensionKeys,
+	promptInputBusy,
+	promptLevelInputActive,
+	takesPromptKey,
+} from "./extension-keys.js";
 import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
+import { bindDismissibleHistory } from "./history-stack.js";
 import {
 	bindMessageResize,
 	bindMessageScroll,
@@ -19,6 +27,7 @@ import {
 	bindPickers,
 	closePickers,
 	completeSlashCommand,
+	copyLastAssistantMessage,
 	isFileOpen,
 	isOpen as isPickerOpen,
 	syncPickerSelection,
@@ -29,6 +38,8 @@ import {
 	readTransitionState,
 	startSessionPerformanceMeasurement,
 } from "./session-performance.js";
+import { bindStreamReconnect } from "./stream-reconnect.js";
+import { bindTerminalSurfaces } from "./terminal-keys.js";
 import { bindTooltips } from "./tooltips.js";
 import { bindVimScroll } from "./vim-scroll.js";
 import { windowFocus } from "./window-focus.js";
@@ -39,6 +50,7 @@ window.piUi = {
 	controls: { refresh: refreshControls, activate: activateCommandItem },
 	codeTheme: { loadPreviews() {} },
 	dateTime: { hydrate: hydrateDateTime },
+	extensionKeys: { promptInputBusy, promptLevelInputActive, takesPromptKey },
 	fonts: { apply() {} },
 	fileTransfer,
 	messageScroll: {
@@ -53,6 +65,7 @@ window.piUi = {
 	pickers: {
 		close: closePickers,
 		complete: completeSlashCommand,
+		copyLastMessage: copyLastAssistantMessage,
 		fuzzyMatch,
 		isFileOpen,
 		isOpen: isPickerOpen,
@@ -68,6 +81,7 @@ window.piUi = {
 	},
 	windowFocus,
 	workspaceReview: { applyOpen: () => {} },
+	liveWorkspace: { applyOpen: () => {} },
 	shouldAbortOnEscape(event) {
 		return !event.defaultPrevented && !hasOpenDismissible();
 	},
@@ -89,19 +103,24 @@ bindFileLinks();
 
 window.addEventListener("DOMContentLoaded", async () => {
 	bindControls();
-	focusPromptEnd();
+	if (shouldAutofocusPromptOnLoad()) focusPromptEnd();
+	bindDismissibleHistory();
 	bindPickers({ fuzzyFilter });
 	bindMessageScroll();
 	bindCodeCopy();
 	bindTooltips();
 	bindVimScroll();
 	bindDisplayRefreshMeasurement();
+	bindStreamReconnect();
+	bindTerminalSurfaces();
+	bindExtensionKeys();
 	bindDebugFps();
 
 	await Promise.all([
 		import("../../src/client/fonts.ts"),
 		import("../../src/client/code-theme.ts"),
 		import("../../src/client/workspace-review.ts"),
+		import("../../src/client/live-workspace.ts"),
 	]);
 });
 

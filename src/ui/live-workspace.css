@@ -1,0 +1,485 @@
+@property --live-workspace-ratio {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0.32;
+}
+
+@layer components {
+	/*
+	 * A#14: click-to-close scrim behind the pane whenever it floats above the chat instead of
+	 * being grid-docked (mobile sheet, and the 48-64rem drawer). Docked mode (the `@container`
+	 * block below) hides it outright — the pane is part of the layout there, not an overlay.
+	 */
+	#live-workspace-backdrop {
+		position: absolute;
+
+		/*
+		 * Placed in `#workspace-shell`'s content row (like the drawer itself) so its containing
+		 * block stops below `.toolbar`: the scrim must not swallow clicks meant for the
+		 * toolbar's other buttons (session sidebar, command palette, …) while the pane is open.
+		 */
+		grid-row: 2 / 3;
+		grid-column: 1 / -1;
+		inset: 0;
+		z-index: 55;
+		display: block;
+
+		/* O8: the scrim read as barely visible at the audited alpha; raised a little so the
+		   pane reads as clearly above the chat, matching `.dialog`'s own backdrop weight. */
+		background: light-dark(oklch(0% 0 none / 32%), oklch(0% 0 none / 55%));
+		opacity: 0;
+		transition:
+			opacity 180ms var(--ease-out),
+			display 180ms allow-discrete;
+		transition-behavior: allow-discrete;
+	}
+
+	#live-workspace-backdrop[hidden] {
+		display: none;
+		opacity: 0;
+	}
+
+	#app.live-workspace-open #live-workspace-backdrop:not([hidden]) {
+		opacity: 1;
+	}
+
+	@starting-style {
+		#app.live-workspace-open #live-workspace-backdrop:not([hidden]) {
+			opacity: 0;
+		}
+	}
+
+	/*
+	 * Base (mobile) shape: a bottom sheet anchored to the viewport's bottom edge. Widened
+	 * breakpoints below progressively turn it into a right-side drawer, then (at the
+	 * `workspace` container's 64rem breakpoint, mirroring workspace-review.css's 88rem dock
+	 * breakpoint) a true grid-docked column — unless #workspace-review is also open, in which
+	 * case Review keeps the dock and Live Workspace stays an overlay (see page.css / this
+	 * file's `@container` block below).
+	 */
+	#live-workspace {
+		position: fixed;
+		inset-inline: 0;
+		bottom: 0;
+		z-index: 60;
+		display: none;
+		max-height: min(80dvh, 34rem);
+		grid-template-rows: auto minmax(0, 1fr);
+		border-start-start-radius: var(--radius-xl);
+		border-start-end-radius: var(--radius-xl);
+		background: var(--surface-canvas);
+		padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+		padding-bottom: env(safe-area-inset-bottom);
+		box-shadow: var(--shadow-lg);
+		translate: 0 100%;
+		transition:
+			translate 180ms var(--ease-out),
+			display 180ms allow-discrete;
+		transition-behavior: allow-discrete;
+	}
+
+	#app.live-workspace-open #live-workspace {
+		display: grid;
+		translate: 0 0;
+	}
+
+	@starting-style {
+		#app.live-workspace-open #live-workspace {
+			translate: 0 100%;
+		}
+	}
+
+	#live-workspace-drag-handle {
+		display: block;
+		justify-self: center;
+		width: 2.5rem;
+		height: 0.25rem;
+		margin-block: 0.5rem;
+		border-radius: 999px;
+		background: var(--border);
+	}
+
+	#live-workspace-separator {
+		display: none;
+	}
+
+	.live-workspace-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		padding-inline: 0.75rem;
+		padding-block-end: 0.5rem;
+	}
+
+	.live-workspace-tabs {
+		display: flex;
+
+		/* A#26: icon-only buttons (see live-workspace.tsx) never need to wrap, even at the
+		   drawer's 26rem width with all 5 tabs — no-wrap keeps that a guarantee, not a hope. */
+		flex-wrap: nowrap;
+		gap: 0.125rem;
+	}
+
+	.live-workspace-tab-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		border-radius: var(--radius-sm);
+
+		/* A fixed-size icon button: the generic button padding would squeeze the icon. */
+		padding: 0;
+		color: var(--text-muted);
+	}
+
+	.live-workspace-tab-button svg {
+		flex-shrink: 0;
+		width: 0.9375rem;
+		height: 0.9375rem;
+	}
+
+	.live-workspace-tab-button[aria-pressed="true"] {
+		background: var(--selection);
+		color: var(--text);
+	}
+
+	.live-workspace-tab-button:hover {
+		color: var(--text);
+	}
+
+	/* Matches styles/controls.css's systemic `.btn` touch-target floor; these aren't `.btn`. */
+	@media (pointer: coarse) {
+		.live-workspace-tab-button {
+			width: 2.75rem;
+			height: 2.75rem;
+		}
+	}
+
+	.live-workspace-header-actions {
+		display: flex;
+		flex-shrink: 0;
+		align-items: center;
+		gap: 0.125rem;
+	}
+
+	.live-workspace-close {
+		flex-shrink: 0;
+	}
+
+	.live-workspace-body {
+		min-height: 0;
+		overflow-y: auto;
+		padding: 0.75rem;
+	}
+
+	.live-workspace-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.live-workspace-section-heading {
+		margin: 0;
+		color: var(--text-muted);
+		font-size: var(--text-3xs);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.live-workspace-empty {
+		color: var(--text-muted);
+	}
+
+	.live-workspace-queue-note {
+		margin: 0;
+		color: var(--text-muted);
+	}
+
+	.live-workspace-turn-banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		background: var(--surface-muted);
+		padding: 0.5rem 0.75rem;
+		font-size: var(--text-sm);
+	}
+
+	.live-workspace-turn-banner[data-turn-phase="retrying"],
+	.live-workspace-turn-banner[data-turn-phase="waiting-for-extension"] {
+		border-color: var(--status-warning, var(--border));
+	}
+
+	.live-workspace-turn-text {
+		display: flex;
+		align-items: baseline;
+		gap: 0.375rem;
+		min-width: 0;
+	}
+
+	.live-workspace-turn-countdown {
+		flex-shrink: 0;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.live-workspace-tool-list,
+	.live-workspace-agent-list,
+	.live-workspace-activity-list,
+	.live-workspace-channel-list,
+	.live-workspace-limits-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.live-workspace-tool-row,
+	.live-workspace-agent-row,
+	.live-workspace-activity-row,
+	.live-workspace-channel-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.375rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		padding: 0.5rem 0.625rem;
+		font-size: var(--text-xs);
+	}
+
+	.live-workspace-tool-name,
+	.live-workspace-agent-label,
+	.live-workspace-channel-name {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		color: var(--text);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font: var(--text-xs) / 1.4 var(--font-mono);
+	}
+
+	.live-workspace-tool-elapsed,
+	.live-workspace-activity-time,
+	.live-workspace-agent-status,
+	.live-workspace-agent-tokens,
+	.live-workspace-agent-tools {
+		flex-shrink: 0;
+		color: var(--text-muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.live-workspace-tool-preview {
+		flex-basis: 100%;
+		margin: 0;
+		overflow-x: auto;
+		border-radius: var(--radius-sm);
+		background: var(--surface-code);
+		padding: 0.375rem 0.5rem;
+		color: var(--text-muted);
+		font: var(--text-3xs) / 1.4 var(--font-mono);
+		white-space: pre-wrap;
+	}
+
+	.live-workspace-activity-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.live-workspace-activity-header-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.live-workspace-agents-extra-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem;
+	}
+
+	.live-workspace-extra-panel:empty {
+		display: none;
+	}
+
+	.live-workspace-activity-text {
+		flex: 1 1 auto;
+		min-width: 0;
+		color: var(--text);
+	}
+
+	.live-workspace-channel-row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.live-workspace-channel-row header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.live-workspace-channel-payload {
+		margin: 0;
+		max-height: 12rem;
+		overflow: auto;
+		border-radius: var(--radius-sm);
+		background: var(--surface-code);
+		padding: 0.375rem 0.5rem;
+		color: var(--text-muted);
+		font: var(--text-3xs) / 1.4 var(--font-mono);
+		white-space: pre-wrap;
+	}
+
+	.live-workspace-usage-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+		gap: 0.5rem;
+		margin: 0;
+	}
+
+	.live-workspace-usage-grid dt {
+		color: var(--text-muted);
+		font-size: var(--text-3xs);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.live-workspace-usage-grid dd {
+		margin: 0;
+		color: var(--text);
+		font-size: var(--text-sm);
+	}
+
+	.live-workspace-meter-track {
+		height: 0.375rem;
+		border-radius: 999px;
+		background: var(--surface-muted);
+		overflow: hidden;
+	}
+
+	.live-workspace-meter-fill {
+		height: 100%;
+		border-radius: inherit;
+		background: var(--status-accent, var(--text));
+		transition: width 200ms var(--ease-out);
+	}
+
+	.live-workspace-limits-list li {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.toolbar-end {
+		display: flex;
+		align-items: center;
+		gap: 0.125rem;
+		grid-column: 3;
+		justify-self: end;
+	}
+
+	/* 48rem: the bottom sheet becomes a right-side drawer that no longer spans full width. */
+	@media (width > 48rem) {
+		#live-workspace {
+			position: absolute;
+
+			/*
+			 * A#14: an explicit grid area, not just `position: absolute`, so the containing
+			 * block this pane's `inset` resolves against is `#workspace-shell`'s second grid
+			 * row (below `.toolbar`, which owns row 1) instead of the shell's whole padding
+			 * box — otherwise the drawer starts at the very top and covers the toolbar's
+			 * Live Workspace and sessions buttons.
+			 */
+			grid-row: 2 / 3;
+			grid-column: 1 / -1;
+			inset: var(--workspace-inset);
+			left: auto;
+			width: min(26rem, calc(100% - 2 * var(--workspace-inset)));
+			max-height: none;
+			border-radius: var(--radius-lg);
+
+			/* No longer a bottom sheet: only the trailing edge can still sit under a notch. */
+			padding-inline: 0 env(safe-area-inset-right);
+			padding-bottom: 0;
+			translate: 100% 0;
+		}
+
+		#live-workspace-drag-handle {
+			display: none;
+		}
+	}
+
+	/* Docked mode below folds the pane into the grid; it's no longer an overlay to dismiss. */
+	@container workspace (width >= 64rem) {
+		#app.live-workspace-open:not(.review-open) #live-workspace-backdrop {
+			display: none;
+		}
+
+		#app.live-workspace-open:not(.review-open) #live-workspace {
+			position: relative;
+			inset: auto;
+			grid-row: 1 / 3;
+			grid-column: 4 / 6;
+			width: auto;
+			max-height: none;
+			border-radius: 0;
+			padding: var(--workspace-inset) var(--workspace-inset) var(--workspace-inset)
+				var(--workspace-gap);
+			background: transparent;
+			box-shadow: none;
+			translate: none;
+		}
+
+		#app.live-workspace-open:not(.review-open) #workspace-shell {
+			grid-template-columns:
+				var(--workspace-inset) minmax(0, 1fr) var(--workspace-gap)
+				minmax(
+					0,
+					calc(
+						(100% - 2 * var(--workspace-inset) - var(--workspace-gap)) *
+							clamp(0.22, var(--live-workspace-ratio, 0.32), 0.5)
+					)
+				)
+				var(--workspace-inset);
+		}
+
+		#app.live-workspace-open:not(.review-open) #live-workspace-separator {
+			display: block;
+			position: absolute;
+			inset-block: 0;
+			inset-inline-start: 0;
+		}
+
+		#app.live-workspace-open:not(.review-open) #live-workspace-drag-handle {
+			display: none;
+		}
+
+		#app.live-workspace-open:not(.review-open) #chat-pane {
+			grid-row: 2;
+			grid-column: 2;
+			margin: var(--workspace-inset) 0 var(--workspace-inset);
+		}
+
+		#app.live-workspace-open:not(.review-open) .toolbar {
+			grid-column: 2;
+			margin-inline: 0;
+		}
+	}
+}
+
+@layer components {
+	/* On/off icon pair inside one icon button; `data-show` hides the inactive one. */
+	.live-workspace-icon-state {
+		display: contents;
+	}
+}

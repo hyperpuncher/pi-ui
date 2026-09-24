@@ -1,10 +1,11 @@
 import { test } from "bun:test";
 
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type { AgentSessionEvent, CustomEntry } from "@earendil-works/pi-coding-agent";
 
 import { assertEquals } from "#testing/assertions";
 
 import type {
+	FinishedAssistantIds,
 	TranscriptMessage,
 	TranscriptMessageOptions,
 } from "../state/transcript-state.ts";
@@ -14,7 +15,7 @@ import {
 	type SessionEventReducerContext,
 	type SessionEventStateSink,
 } from "./session-event-reducer.ts";
-import { agentSessionEventStub } from "./test-fixtures.ts";
+import { agentSessionEventStub, sessionEntryStub } from "./test-fixtures.ts";
 
 class FakeState implements SessionEventStateSink {
 	readonly appended: Array<{
@@ -49,16 +50,28 @@ class FakeState implements SessionEventStateSink {
 		this.updates.push({ id, patch });
 	}
 
+	private activeAssistantId: string | undefined;
+	private activeThoughtId: string | undefined;
+
 	appendThoughtDelta(delta: string): void {
 		this.thoughts.push(delta);
+		this.activeThoughtId ??= "thought-active";
 	}
 
 	appendAssistantDelta(delta: string): void {
 		this.assistant.push(delta);
+		this.activeAssistantId ??= "assistant-active";
 	}
 
-	finishAssistant(): void {
+	finishAssistant(): FinishedAssistantIds {
 		this.finishCount += 1;
+		const ids = {
+			assistantId: this.activeAssistantId,
+			thoughtId: this.activeThoughtId,
+		};
+		this.activeAssistantId = undefined;
+		this.activeThoughtId = undefined;
+		return ids;
 	}
 
 	showRecentMessages(): void {
@@ -233,6 +246,79 @@ test("does not surface a canonical abort as a provider error", () => {
 
 	assertEquals(state.finishCount, 1);
 	assertEquals(state.appended, []);
+});
+
+test("marks an aborted assistant message as stopped instead of erroring (round-4 O6)", () => {
+	const { state, context } = fixture();
+	state.appendAssistantDelta("partial reply");
+	reduceSessionEvent(
+		event({
+			type: "message_end",
+			message: {
+				role: "assistant",
+				content: [],
+				stopReason: "error",
+				errorMessage: "The operation was aborted.",
+			},
+		}),
+		context,
+	);
+
+	assertEquals(state.finishCount, 1);
+	assertEquals(state.appended, []);
+	assertEquals(state.updates, [{ id: "assistant-active", patch: { meta: "Stopped" } }]);
+});
+
+test("marks a dedicated-stopReason abort as stopped (round-4 O6)", () => {
+	// The SDK's actual abort path reports `stopReason: "aborted"` directly (no
+	// `errorMessage` at all), distinct from the `"error"` + abort-worded-message
+	// case covered above — both must produce the same muted marker.
+	const { state, context } = fixture();
+	state.appendAssistantDelta("partial reply");
+	reduceSessionEvent(
+		event({
+			type: "message_end",
+			message: { role: "assistant", content: [], stopReason: "aborted" },
+		}),
+		context,
+	);
+
+	assertEquals(state.finishCount, 1);
+	assertEquals(state.appended, []);
+	assertEquals(state.updates, [{ id: "assistant-active", patch: { meta: "Stopped" } }]);
+});
+
+test("marks the thinking block stopped when an abort lands before any reply text", () => {
+	const { state, context } = fixture();
+	state.appendThoughtDelta("still thinking");
+	reduceSessionEvent(
+		event({
+			type: "message_end",
+			message: { role: "assistant", content: [], stopReason: "aborted" },
+		}),
+		context,
+	);
+
+	assertEquals(state.appended, []);
+	assertEquals(state.updates, [{ id: "thought-active", patch: { meta: "Stopped" } }]);
+});
+
+test("does not mark anything stopped when an abort lands before any assistant text streamed", () => {
+	const { state, context } = fixture();
+	reduceSessionEvent(
+		event({
+			type: "message_end",
+			message: {
+				role: "assistant",
+				content: [],
+				stopReason: "error",
+				errorMessage: "The operation was aborted.",
+			},
+		}),
+		context,
+	);
+
+	assertEquals(state.updates, []);
 });
 
 test("uses a fallback when a provider omits its error message", () => {
@@ -563,4 +649,77 @@ test("failed compaction appends the error", () => {
 		text: "Compaction failed",
 		options: {},
 	});
+});
+
+test("entry_appended renders a CustomEntry through convertEntry", () => {
+	const { state, context } = fixture();
+	const entry = sessionEntryStub({
+		type: "custom",
+		customType: "memory",
+		data: { note: "hi" },
+	}) as CustomEntry;
+	let received: CustomEntry | undefined;
+	const ctx: SessionEventReducerContext = {
+		...context,
+		convertEntry: (input, timestamp) => {
+			received = input;
+			return [
+				{
+					role: "custom",
+					text: "",
+					timestamp,
+					meta: input.customType,
+					customRenderHtml: ["<span>rendered</span>"],
+				},
+			];
+		},
+	};
+
+	reduceSessionEvent(agentSessionEventStub({ type: "entry_appended", entry }), ctx);
+
+	assertEquals(received, entry);
+	assertEquals(state.appended, [
+		{
+			id: "message-1",
+			role: "custom",
+			text: "",
+			options: {
+				meta: "memory",
+				customRenderHtml: ["<span>rendered</span>"],
+				customRenderError: undefined,
+			},
+		},
+	]);
+});
+
+test("entry_appended ignores entry types other than custom", () => {
+	const { state, context } = fixture();
+	const ctx: SessionEventReducerContext = {
+		...context,
+		convertEntry: () => {
+			throw new Error("must not be called for a non-custom entry");
+		},
+	};
+
+	reduceSessionEvent(
+		agentSessionEventStub({
+			type: "entry_appended",
+			entry: sessionEntryStub({ type: "label", targetId: "x", label: "y" }),
+		}),
+		ctx,
+	);
+
+	assertEquals(state.appended, []);
+});
+
+test("entry_appended is a no-op with no convertEntry hook", () => {
+	const { state, context } = fixture();
+	const entry = sessionEntryStub({
+		type: "custom",
+		customType: "memory",
+	}) as CustomEntry;
+
+	reduceSessionEvent(agentSessionEventStub({ type: "entry_appended", entry }), context);
+
+	assertEquals(state.appended, []);
 });

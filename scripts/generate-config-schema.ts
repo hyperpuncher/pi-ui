@@ -1,10 +1,17 @@
 import Type from "typebox";
 
 import { defaultAutoTitleConfig } from "../src/agent/auto-title.ts";
+import { defaultExtensionsConfig } from "../src/agent/extensions-config.ts";
 import { codeThemesFor, defaultCodeThemes } from "../src/code-themes.ts";
 import { appConfigSchemaUrl } from "../src/config-schema.ts";
 import { defaultFonts, FONT_OPTIONS } from "../src/fonts.ts";
 import { keybindIds } from "../src/keybinds.ts";
+import {
+	liveWorkspaceRatioDefault,
+	liveWorkspaceRatioMax,
+	liveWorkspaceRatioMin,
+	liveWorkspaceTabs,
+} from "../src/live-workspace-types.ts";
 import {
 	sessionSidebarWidthDefault,
 	sessionSidebarWidthMax,
@@ -86,6 +93,28 @@ const schema = Type.Object(
 				},
 			),
 		),
+		extensions: Type.Optional(
+			Type.Object(
+				{
+					mode: Type.Optional(
+						Type.String({
+							enum: ["tui", "rpc"],
+							default: defaultExtensionsConfig.mode,
+							description:
+								'How pi SDK extensions are bound. "tui" (default) unlocks ' +
+								'custom() overlays, component widgets, and ctx.mode === "tui" ' +
+								"gated extension behavior, all rendered as terminal surfaces. " +
+								'"rpc" is the pre-terminal-surface behavior, kept as an escape ' +
+								"hatch.",
+						}),
+					),
+				},
+				{
+					description: "How pi-ui binds pi SDK extensions.",
+					additionalProperties: false,
+				},
+			),
+		),
 		fonts: Type.Optional(
 			Type.Object(
 				{
@@ -162,6 +191,32 @@ const schema = Type.Object(
 				{
 					description:
 						"Keyboard shortcut overrides by action id, for example ctrl O, ctrl alt O, or alt shift T.",
+					additionalProperties: false,
+				},
+			),
+		),
+		liveWorkspace: Type.Optional(
+			Type.Object(
+				{
+					open: Type.Optional(
+						Type.Boolean({
+							default: false,
+							description: "Open the Live Workspace pane on desktop.",
+						}),
+					),
+					ratio: Type.Optional(
+						Type.Number({
+							minimum: liveWorkspaceRatioMin,
+							maximum: liveWorkspaceRatioMax,
+							default: liveWorkspaceRatioDefault,
+						}),
+					),
+					tab: Type.Optional(
+						Type.Union(liveWorkspaceTabs.map((tab) => Type.Literal(tab))),
+					),
+				},
+				{
+					description: "Live Workspace pane preferences.",
 					additionalProperties: false,
 				},
 			),

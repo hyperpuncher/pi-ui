@@ -1,6 +1,7 @@
 import { toggleMinimalModeAction, toggleToolOutputAction } from "../commands/actions.ts";
 import { activeFontStacks } from "../fonts.ts";
 import { activeKeybind, keybindActions } from "../keybinds.ts";
+import { liveWorkspaceRatioDefault } from "../live-workspace-types.ts";
 import { getPierreThemes } from "../pierre-theme.ts";
 import {
 	endpoints,
@@ -16,17 +17,21 @@ import { renderCommandMenu, resetCommandDialogOnOpen } from "./command-menu.tsx"
 import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
+import { renderHotkeysDialog } from "./hotkeys-dialog.tsx";
 import { Icon } from "./icon.tsx";
 import { FileUp, FolderOpen, PanelRight, Search } from "./icons.ts";
 import { ShortcutTooltip } from "./keyboard.tsx";
+import { renderLiveWorkspace, renderLiveWorkspaceToggle } from "./live-workspace.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
+import { renderPiUiSheets } from "./pi-ui-elements.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
 import { renderPromptBox } from "./prompt-box.tsx";
 import type { AppRenderSnapshot } from "./render-state.ts";
 import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { previousSessionAction, renderSessionTransition } from "./session-transition.tsx";
 import { syncHtml } from "./sync-html.ts";
+import { renderTerminalSurfaceOverlays } from "./terminal-surface.tsx";
 import { renderThemeLab } from "./theme-lab.tsx";
 import { renderToolbar } from "./toolbar.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
@@ -61,6 +66,16 @@ export function renderPage(
 	const fonts = activeFontStacks();
 	const displayClientId = crypto.randomUUID();
 	const initialSignals = JSON.stringify(projectBackendSignals(state));
+	// Shared by the initial connection and the forced-reconnect handler below, so
+	// a stale mobile connection is re-opened with the exact same options. Passing
+	// 'cleanup' aborts any still-open request under this same key before starting
+	// the new one, so re-issuing this action is always safe to call again.
+	const streamConnectAction = `@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
+						payload: {},
+						retry: 'always',
+						retryMaxCount: Infinity,
+						requestCancellation: 'cleanup',
+					})`;
 
 	return syncHtml(
 		"<!doctype html>" +
@@ -74,7 +89,7 @@ export function renderPage(
 					<meta charset="utf-8" />
 					<meta
 						name="viewport"
-						content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+						content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
 					/>
 					<meta name="color-scheme" content="light dark" />
 					<meta name="theme-color" content="" />
@@ -114,6 +129,11 @@ export function renderPage(
 					spellcheck="false"
 					data-keybind-hints={keybindHints}
 					data-minimal-mode={minimalMode}
+					// R7-B item 1: the only way a plain JS module (`terminal-keys.js`'s `sendResize`,
+					// a direct `fetch`, not a templated `data-on:`/`@post` action) can reach this
+					// connection's own per-tab id, the same one `streamConnectAction`/`displayRefresh`/
+					// the viewport report already carry as an embedded literal.
+					data-display-client-id={displayClientId}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-workspace-files-endpoint={workspaceFilesBase}
@@ -145,6 +165,17 @@ export function renderPage(
 					data-on:pi-ui-display-refresh={`@post('${endpoints.displayRefresh}', {
 						payload: { clientId: '${displayClientId}', hz: evt.detail.hz },
 					})`}
+					data-on:pi-ui-terminal-viewport={`@post('${endpoints.terminalViewport}', {
+						payload: {
+							clientId: '${displayClientId}',
+							cols: evt.detail.cols,
+							rows: evt.detail.rows,
+							promptCols: evt.detail.promptCols,
+							overlayPercentCols: evt.detail.overlayPercentCols,
+							transcriptCols: evt.detail.transcriptCols,
+						},
+						requestCancellation: 'disabled',
+					})`}
 					data-on:pi-ui-session-performance={`@post('${endpoints.sessionPerformanceClient}', { payload: evt.detail })`}
 					data-on:pi-ui-workspace-review-preferences={`
 						$workspaceReviewPreferences = {
@@ -161,12 +192,22 @@ export function renderPage(
 							filterSignals: { include: /^workspaceReviewComments\\./ },
 						});
 					`}
+					data-on:pi-ui-live-workspace-preferences={`
+						$liveWorkspacePreferences = {
+							...$liveWorkspacePreferences,
+							...evt.detail,
+						};
+						@post('${endpoints.liveWorkspacePreferences}', {
+							filterSignals: { include: /^liveWorkspacePreferences\\./ },
+						});
+					`}
 					data-signals__ifmissing={JSON.stringify({
 						_isDraggingFile: false,
 						_sessionLoading: false,
 						_newSessionPending: false,
 						workspaceReviewComments: { comments: [] },
 						workspaceReviewPreferences: state.workspaceReviewPreferences,
+						liveWorkspacePreferences: state.liveWorkspacePreferences,
 						sessionDeletePath: "",
 						sessionDeleteTitle: "",
 						sessionRenamePath: "",
@@ -215,17 +256,24 @@ export function renderPage(
 							"workspace-canvas app-shell",
 							state.isTemporarySession && "temporary-chat",
 						]}
+						// Seed the pane signals before any attribute below reads them: Datastar applies an
+						// element's attributes in order, and an earlier read (data-class) would create the
+						// signal first, so `__ifmissing` would skip the saved `open` preference (A#15).
+						data-signals:_workspace-review-open__ifmissing="false"
+						data-signals:_live-workspace-open__ifmissing={
+							state.liveWorkspacePreferences.open ? "true" : "false"
+						}
 						data-class:review-open="$_workspaceReviewOpen"
+						data-class:live-workspace-open="$_liveWorkspaceOpen"
 						data-class:temporary-chat="$_temporarySession"
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
-						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
-						data-signals:_workspace-review-open__ifmissing="false"
-						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
-						payload: {},
-						retry: 'always',
-						retryMaxCount: Infinity,
-						requestCancellation: 'cleanup',
-					})`}
+						data-on:pi-ui-live-workspace-open={`$_liveWorkspaceOpen = evt.detail.open`}
+						data-effect={`
+							window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen);
+							window.piUi.liveWorkspace.applyOpen($_liveWorkspaceOpen);
+						`}
+						data-init={streamConnectAction}
+						data-on:pi-ui-stream-reconnect__window={streamConnectAction}
 					>
 						{renderSessionSidebar(state, {
 							open: sessionSidebarOpen,
@@ -236,6 +284,7 @@ export function renderPage(
 							class="workspace-shell"
 							data-style={`{
 								'--review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio || ${gitPaneRatioDefault},
+								'--live-workspace-ratio': $liveWorkspacePreferences.ratio || ${liveWorkspaceRatioDefault},
 							}`}
 						>
 							<section
@@ -256,29 +305,32 @@ export function renderPage(
 							</section>
 							<div class="toolbar">
 								{renderToolbar(state, true)}
-								<button
-									id="session-sidebar-toggle"
-									type="button"
-									class="btn session-sidebar-toggle"
-									data-variant="ghost"
-									data-attr:data-variant="$_sessionSidebarOpen ? 'secondary' : 'ghost'"
-									data-size="icon-sm"
-									aria-label="Toggle sessions"
-									commandfor="session-sidebar"
-									command="--toggle"
-									aria-controls="session-sidebar"
-									aria-expanded="false"
-									data-attr:aria-expanded="$_sessionSidebarOpen ? 'true' : 'false'"
-									data-tooltip="Toggle sessions"
-									data-tooltip-delay
-									data-align="end"
-								>
-									<Icon icon={PanelRight} />
-									<ShortcutTooltip
-										label="Toggle sessions"
-										shortcut={activeKeybind("toggle-sessions")}
-									/>
-								</button>
+								<div class="toolbar-end">
+									{renderLiveWorkspaceToggle(state)}
+									<button
+										id="session-sidebar-toggle"
+										type="button"
+										class="btn session-sidebar-toggle"
+										data-variant="ghost"
+										data-attr:data-variant="$_sessionSidebarOpen ? 'secondary' : 'ghost'"
+										data-size="icon-sm"
+										aria-label="Toggle sessions"
+										commandfor="session-sidebar"
+										command="--toggle"
+										aria-controls="session-sidebar"
+										aria-expanded="false"
+										data-attr:aria-expanded="$_sessionSidebarOpen ? 'true' : 'false'"
+										data-tooltip="Toggle sessions"
+										data-tooltip-delay
+										data-align="end"
+									>
+										<Icon icon={PanelRight} />
+										<ShortcutTooltip
+											label="Toggle sessions"
+											shortcut={activeKeybind("toggle-sessions")}
+										/>
+									</button>
+								</div>
 							</div>
 							{renderWorkspaceReview(
 								state.workspacePath,
@@ -287,15 +339,24 @@ export function renderPage(
 								state.workspaceReview,
 								state.workspaceReviewPreferences,
 							)}
+							{renderLiveWorkspace(
+								state.liveWorkspace,
+								state.liveWorkspacePreferences,
+								state.usage,
+								state,
+							)}
 						</div>
 					</div>
 
-					{renderCommandMenu()}
+					{renderCommandMenu(state)}
 					{renderCodeThemeDialog()}
 					{renderFontDialog()}
+					{renderHotkeysDialog(state)}
 					{renderAuthDialog(state.authDialog)}
 					{renderExtensionDialog(state.extensionDialog)}
 					{renderLlamaDialog(state.llamaDialog)}
+					{renderPiUiSheets(state, displayClientId)}
+					{renderTerminalSurfaceOverlays(state)}
 
 					<dialog
 						id="workspace-dialog"
@@ -400,8 +461,8 @@ export function renderPage(
 					>
 						<div
 							class="command"
-							style="height: calc(100dvh - 2rem)"
-							data-style:height="$treeSelectedId ? 'auto' : 'calc(100dvh - 2rem)'"
+							style="height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))"
+							data-style:height="$treeSelectedId ? 'auto' : 'calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))'"
 						>
 							<header data-class:sr-only="$treeSelectedId">
 								<Icon icon={Search} />

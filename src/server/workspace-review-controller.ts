@@ -86,14 +86,31 @@ export class WorkspaceReviewController {
 			const relative = filename?.replaceAll("\\", "/");
 			if (gitPaths && relative) {
 				const metadataPrefix = watchPath === gitPaths[0] ? ".git/" : "";
-				const metadataPath = relative.startsWith(metadataPrefix)
-					? relative.slice(metadataPrefix.length)
-					: "";
-				// Refs, HEAD, index, and config still trigger refreshes when published.
+				const isRootMetadataPath =
+					metadataPrefix === ".git/" && relative === ".git";
+				const metadataPath = isRootMetadataPath
+					? ""
+					: relative.startsWith(metadataPrefix)
+						? relative.slice(metadataPrefix.length)
+						: undefined;
+				// Refs, HEAD, index, and config still trigger refreshes when
+				// published. `metadataPath === ""`/"objects"/"logs" (rather than
+				// only their `/`-suffixed forms) also matches a *bare* directory
+				// change with no deeper path segment — recursive native watchers
+				// (Windows, and FSEvents on macOS) bubble a containing directory's
+				// own mtime change up as its own event whenever a file changes
+				// inside it, alongside the real, deeper event for the file itself.
+				// That bubble carries no information the real event doesn't
+				// already carry, so it must be dropped exactly like the deeper
+				// form — otherwise it forces a spurious refresh (and revision
+				// bump) for changes entirely inside `.git/`.
 				if (
-					metadataPath.startsWith("objects/") ||
-					metadataPath.startsWith("logs/") ||
-					metadataPath.endsWith(".lock")
+					metadataPath === "" ||
+					metadataPath === "objects" ||
+					metadataPath?.startsWith("objects/") ||
+					metadataPath === "logs" ||
+					metadataPath?.startsWith("logs/") ||
+					metadataPath?.endsWith(".lock")
 				)
 					return;
 			}

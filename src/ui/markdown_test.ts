@@ -8,6 +8,7 @@ import {
 } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
 
+import { filePreviewUrl } from "../server/routes/endpoints.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { loadPierreLanguage, preloadPierreHighlighter } from "./diffs.ts";
 import {
@@ -68,11 +69,19 @@ test("local image sources are served through the file preview route", async () =
 	const image = join(dir, "shot.png");
 	await Bun.write(image, new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
 	try {
-		const expected = `/files/preview/${image
-			.split("/")
-			.map(encodeURIComponent)
-			.join("/")}`;
-		for (const source of [image, `file://${image}`]) {
+		// Build the expected preview URL through the same helper the app uses
+		// (which normalizes `\` to `/` before encoding), rather than assuming
+		// `image` is already `/`-separated — it isn't on Windows.
+		const expected = filePreviewUrl(image);
+		// CommonMark treats a backslash before any character in a link
+		// destination as an escape sequence and drops it, in both a bare path
+		// and a `file://` URI alike — a raw Windows path typed straight into
+		// markdown image syntax with `\` separators would be mangled by any
+		// compliant parser, not just this one. Tools that embed a local path
+		// in markdown on Windows use `/` for exactly this reason (the OS
+		// accepts it just as well).
+		const posixImage = image.replaceAll("\\", "/");
+		for (const source of [posixImage, `file://${posixImage}`]) {
 			for (const html of [
 				renderMarkdownStreaming(`![shot](${source})`),
 				await renderMarkdownFinal(`![shot](${source})`),

@@ -110,6 +110,10 @@
 	.warning-foreground {
 		color: var(--status-warning);
 	}
+
+	.info-foreground {
+		color: var(--status-info);
+	}
 }
 
 @layer utilities {

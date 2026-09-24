@@ -1,7 +1,7 @@
 import { formatShortcut, shortcutParts } from "../utils/keyboard.ts";
 import { operatingSystem } from "../utils/platform.ts";
 
-function shortcutGlyph(part: string): string {
+export function shortcutGlyph(part: string): string {
 	const key = part.toLowerCase();
 	if (key === "alt") return "⌥";
 	if (key === "shift") return "⇧";

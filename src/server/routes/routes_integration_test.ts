@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
@@ -27,7 +27,7 @@ test("page opts into keyboard resizing without disabling zoom", async () => {
 	const response = await createRouter(context).fetch(new Request("http://localhost/"));
 	assertStringIncludes(
 		await response.text(),
-		'name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"',
+		'name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"',
 	);
 });
 
@@ -261,7 +261,10 @@ test.skipIf(!fdPath)(
 		const secondWorkspace = await makeTempDir();
 		try {
 			await Bun.write(`${firstWorkspace}/first.txt`, "");
-			await Bun.write(`${secondWorkspace}/<unsafe>.txt`, "");
+			// `<`, `>` and `"` are reserved characters NTFS refuses in a filename;
+			// `&` and `'` still need HTML-escaping and are valid everywhere, and
+			// keeping "unsafe" contiguous preserves the fuzzy-search query below.
+			await Bun.write(`${secondWorkspace}/unsafe'&.txt`, "");
 			const context = fakeContext();
 			context.resources.fdPath = fdPath;
 			context.store.setWorkspacePath(firstWorkspace);
@@ -279,7 +282,7 @@ test.skipIf(!fdPath)(
 			assertEquals(response.headers.get("content-type"), "text/event-stream");
 			const body = await response.text();
 			assertStringIncludes(body, 'id="file-picker-results"');
-			assertStringIncludes(body, "&lt;unsafe&gt;.txt");
+			assertStringIncludes(body, "unsafe&#x27;&amp;.txt");
 			assertStringIncludes(body, "datastar-patch-elements");
 			assertStringIncludes(body, '"_filePickerOpen":true');
 
@@ -307,6 +310,78 @@ test.skipIf(!fdPath)(
 		}
 	},
 );
+
+test("argument completions route renders picker results from the active runtime", async () => {
+	const calls: Array<{ command: string; argumentPrefix: string }> = [];
+	const context = fakeContext({
+		host: fakeHost({
+			getArgumentCompletions: async (command, argumentPrefix) => {
+				calls.push({ command, argumentPrefix });
+				return [
+					{
+						value: "anthropic/opus",
+						label: "anthropic/opus",
+						description: "Opus",
+					},
+				];
+			},
+		}),
+	});
+	const router = createRouter(context);
+
+	const response = await router.fetch(
+		signalGet(endpoints.commandArgumentCompletions, {
+			argumentCommand: "model",
+			argumentPrefix: "op",
+		}),
+	);
+	assertEquals(response.status, 200);
+	assertEquals(response.headers.get("content-type"), "text/event-stream");
+	assertEquals(calls, [{ command: "model", argumentPrefix: "op" }]);
+	const body = await response.text();
+	assertStringIncludes(body, 'id="argument-picker-results"');
+	assertStringIncludes(body, "anthropic/opus");
+	assertStringIncludes(body, "datastar-patch-elements");
+	assertStringIncludes(body, '"_argumentPickerOpen":true');
+});
+
+test("argument completions route reports no results and requires a command", async () => {
+	const context = fakeContext({
+		host: fakeHost({ getArgumentCompletions: async () => [] }),
+	});
+	const router = createRouter(context);
+
+	const empty = await router.fetch(
+		signalGet(endpoints.commandArgumentCompletions, {
+			argumentCommand: "unknown",
+			argumentPrefix: "",
+		}),
+	);
+	assertStringIncludes(await empty.text(), '"_argumentPickerOpen":false');
+
+	assertEquals(
+		(
+			await router.fetch(
+				signalGet(endpoints.commandArgumentCompletions, { argumentPrefix: "x" }),
+			)
+		).status,
+		400,
+	);
+});
+
+test("argument completions route returns 503 when no runtime is available", async () => {
+	const context = fakeContext();
+	context.resources.host = undefined;
+	const router = createRouter(context);
+
+	const response = await router.fetch(
+		signalGet(endpoints.commandArgumentCompletions, {
+			argumentCommand: "model",
+			argumentPrefix: "",
+		}),
+	);
+	assertEquals(response.status, 503);
+});
 
 test("workspace search returns matching directories", async () => {
 	const workspace = await makeTempDir();
@@ -381,7 +456,12 @@ test("workspace browser creates folders in the browsed directory and rejects inv
 			);
 		const response = await create("new project");
 		assertEquals(response.status, 200);
-		assertStringIncludes(await response.text(), `${workspace}/parent/new project`);
+		// The route reports the folder's native (backslash, on Windows) path,
+		// not a `/`-joined one.
+		assertStringIncludes(
+			await response.text(),
+			join(workspace, "parent", "new project"),
+		);
 		const listing = await router.fetch(
 			signalGet("/workspace/browse", {
 				workspacePath: `${workspace}/parent`,
@@ -503,6 +583,101 @@ test("host-dependent actions return 503 when runtime is absent", async () => {
 		signalRequest("/prompt", { prompt: "hello" }),
 	);
 	assertEquals(response.status, 503);
+});
+
+test("clearing the Live Workspace activity log delegates to the runtime", async () => {
+	let cleared = 0;
+	const context = fakeContext({
+		host: fakeHost({ clearLiveWorkspaceActivity: () => (cleared += 1) }),
+	});
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/live-workspace/clear-activity", {
+			method: "POST",
+		}),
+	);
+	assertEquals(response.status, 204);
+	assertEquals(cleared, 1);
+});
+
+test("clearing the Live Workspace activity log returns 503 when runtime is absent", async () => {
+	const context = fakeContext();
+	context.resources.host = undefined;
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/live-workspace/clear-activity", {
+			method: "POST",
+		}),
+	);
+	assertEquals(response.status, 503);
+});
+
+test("the Live Workspace activity export is a downloadable JSON snapshot of the current log", async () => {
+	const context = fakeContext();
+	context.store.setLiveWorkspace({
+		revision: 1,
+		turn: undefined,
+		activeTools: [],
+		queuedSteering: 0,
+		queuedFollowUp: 0,
+		agents: [],
+		activity: [
+			{
+				id: "1",
+				at: 500,
+				kind: "retry",
+				text: "Retrying (1/3)",
+				background: false,
+			},
+		],
+	});
+	const response = await createRouter(context).fetch(
+		new Request("http://localhost/live-workspace/activity/export"),
+	);
+	assertEquals(response.status, 200);
+	assertStringIncludes(response.headers.get("content-disposition") ?? "", "attachment");
+	const body = (await response.json()) as unknown[];
+	assertEquals(body.length, 1);
+});
+
+test("the Live Workspace workflow journal route patches the panel from the current workspace", async () => {
+	const home = await makeTempDir({ prefix: "pi-ui-workflow-route-test-" });
+	const originalHome = process.env.HOME;
+	const originalProfile = process.env.USERPROFILE;
+	process.env.HOME = home;
+	process.env.USERPROFILE = home;
+	try {
+		const context = fakeContext();
+		context.store.setWorkspacePath("/workspace/no-run-yet");
+		const response = await createRouter(context).fetch(
+			new Request("http://localhost/live-workspace/workflow-journal"),
+		);
+		assertEquals(response.status, 200);
+		assertStringIncludes(
+			await response.text(),
+			"No workflow run found for this workspace.",
+		);
+	} finally {
+		if (originalHome === undefined) delete process.env.HOME;
+		else process.env.HOME = originalHome;
+		if (originalProfile === undefined) delete process.env.USERPROFILE;
+		else process.env.USERPROFILE = originalProfile;
+		await rm(home, { recursive: true });
+	}
+});
+
+test("the Live Workspace delegate ledger route patches the panel from the delegate directory", async () => {
+	const original = process.env.PI_HERDR_DELEGATE_DIR;
+	process.env.PI_HERDR_DELEGATE_DIR = "/definitely/not/on/disk";
+	try {
+		const context = fakeContext();
+		const response = await createRouter(context).fetch(
+			new Request("http://localhost/live-workspace/delegate-ledger"),
+		);
+		assertEquals(response.status, 200);
+		assertStringIncludes(await response.text(), "No delegations recorded.");
+	} finally {
+		if (original === undefined) delete process.env.PI_HERDR_DELEGATE_DIR;
+		else process.env.PI_HERDR_DELEGATE_DIR = original;
+	}
 });
 
 test("file imports report content-detected image MIME types", async () => {
@@ -627,6 +802,348 @@ test("extension UI responses return to the active agent backend", async () => {
 		value: "selected",
 		cancelled: false,
 	});
+});
+
+test("extension UI actions route to the active extension's pi_ui_event handler", async () => {
+	let dispatched: unknown;
+	const host = fakeHost({
+		dispatchExtensionUiAction: async (request) => {
+			dispatched = request;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest("/extensions/ui/action", {
+			elementId: "panel",
+			actionId: "submit",
+			value: { note: "typed value" },
+		}),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(dispatched, {
+		elementId: "panel",
+		actionId: "submit",
+		value: { note: "typed value" },
+	});
+});
+
+test("extension UI actions accept an action with no value", async () => {
+	let dispatched: unknown;
+	const host = fakeHost({
+		dispatchExtensionUiAction: async (request) => {
+			dispatched = request;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest("/extensions/ui/action", {
+			elementId: "roster",
+			actionId: "dismiss",
+		}),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(dispatched, {
+		elementId: "roster",
+		actionId: "dismiss",
+		value: undefined,
+	});
+});
+
+test("extension UI actions reject a missing elementId without dispatching", async () => {
+	let dispatched = false;
+	const host = fakeHost({
+		dispatchExtensionUiAction: async () => {
+			dispatched = true;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest("/extensions/ui/action", { actionId: "submit" }),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(dispatched, false);
+});
+
+test("extension UI actions reject an oversized elementId without dispatching", async () => {
+	let dispatched = false;
+	const host = fakeHost({
+		dispatchExtensionUiAction: async () => {
+			dispatched = true;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest("/extensions/ui/action", {
+			elementId: "x".repeat(600),
+			actionId: "submit",
+		}),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(dispatched, false);
+});
+
+test("extension UI actions reject an oversized value without dispatching", async () => {
+	let dispatched = false;
+	const host = fakeHost({
+		dispatchExtensionUiAction: async () => {
+			dispatched = true;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest("/extensions/ui/action", {
+			elementId: "panel",
+			actionId: "submit",
+			value: { note: "x".repeat(70_000) },
+		}),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(dispatched, false);
+});
+
+test("the client's reported color scheme reaches AppStore without needing a bound runtime", async () => {
+	const context = fakeContext();
+	const router = createRouter(context);
+	assertEquals(context.store.clientColorScheme, "dark");
+
+	const response = await router.fetch(
+		signalRequest(endpoints.extensionUiColorScheme, { colorScheme: "light" }),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(context.store.clientColorScheme, "light");
+});
+
+test("an invalid color scheme value is rejected", async () => {
+	const context = fakeContext();
+	const router = createRouter(context);
+	const response = await router.fetch(
+		signalRequest(endpoints.extensionUiColorScheme, { colorScheme: "purple" }),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(context.store.clientColorScheme, "dark");
+});
+
+test("the client's reported viewport carries the optional prompt-column and overlay-percent hints", async () => {
+	const context = fakeContext();
+	const router = createRouter(context);
+	assertEquals(context.store.clientViewportCells, undefined);
+
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalViewport, {
+			cols: 158,
+			rows: 43,
+			promptCols: 92,
+			overlayPercentCols: 150,
+			transcriptCols: 88,
+		}),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(context.store.clientViewportCells, {
+		columns: 158,
+		rows: 43,
+		promptColumns: 92,
+		overlayPercentColumns: 150,
+		transcriptColumns: 88,
+	});
+});
+
+test("the client's reported column hints are clamped to a usable width", async () => {
+	const context = fakeContext();
+	const router = createRouter(context);
+
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalViewport, {
+			cols: 100,
+			rows: 30,
+			promptCols: 0,
+			overlayPercentCols: 100_000,
+			transcriptCols: 3,
+		}),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(context.store.clientViewportCells, {
+		columns: 100,
+		rows: 30,
+		promptColumns: 10,
+		overlayPercentColumns: 500,
+		transcriptColumns: 10,
+	});
+});
+
+test("the client's reported viewport tolerates missing prompt-column and overlay-percent hints", async () => {
+	const context = fakeContext();
+	const router = createRouter(context);
+
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalViewport, { cols: 100, rows: 30 }),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(context.store.clientViewportCells, {
+		columns: 100,
+		rows: 30,
+		promptColumns: undefined,
+		overlayPercentColumns: undefined,
+		transcriptColumns: undefined,
+	});
+});
+
+test("terminal surface input routes a raw byte sequence to the active runtime", async () => {
+	let received: { surfaceId: string; data: string } | undefined;
+	const host = fakeHost({
+		handleTerminalSurfaceInput: (surfaceId, data) => {
+			received = { surfaceId, data };
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalSurfaceInput, {
+			surfaceId: "overlay-1",
+			data: "\r",
+		}),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(received, { surfaceId: "overlay-1", data: "\r" });
+});
+
+test("terminal surface input rejects a missing surfaceId without reaching the runtime", async () => {
+	let called = false;
+	const host = fakeHost({
+		handleTerminalSurfaceInput: () => {
+			called = true;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalSurfaceInput, { data: "x" }),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(called, false);
+});
+
+test("terminal surface input rejects an oversized payload without reaching the runtime", async () => {
+	let called = false;
+	const host = fakeHost({
+		handleTerminalSurfaceInput: () => {
+			called = true;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalSurfaceInput, {
+			surfaceId: "overlay-1",
+			data: "x".repeat(70_000),
+		}),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(called, false);
+});
+
+test("terminal surface resize forwards the client-measured grid to the active runtime", async () => {
+	let received: { surfaceId: string; cols: number; rows: number } | undefined;
+	const host = fakeHost({
+		resizeTerminalSurface: (surfaceId, cols, rows) => {
+			received = { surfaceId, cols, rows };
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalSurfaceResize, {
+			surfaceId: "overlay-1",
+			cols: 80,
+			rows: 24,
+		}),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(received, { surfaceId: "overlay-1", cols: 80, rows: 24 });
+});
+
+test("terminal surface resize forwards the reporting client's id", async () => {
+	let receivedClientId: string | undefined;
+	const clientId = crypto.randomUUID();
+	const host = fakeHost({
+		resizeTerminalSurface: (_surfaceId, _cols, _rows, thisClientId) => {
+			receivedClientId = thisClientId;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalSurfaceResize, {
+			surfaceId: "widget-1",
+			cols: 80,
+			rows: 24,
+			clientId,
+		}),
+	);
+
+	assertEquals(response.status, 204);
+	assertEquals(receivedClientId, clientId);
+});
+
+test("terminal surface resize rejects a malformed client id without reaching the runtime", async () => {
+	let called = false;
+	const host = fakeHost({
+		resizeTerminalSurface: () => {
+			called = true;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalSurfaceResize, {
+			surfaceId: "widget-1",
+			cols: 80,
+			rows: 24,
+			clientId: "not-a-uuid",
+		}),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(called, false);
+});
+
+test("terminal surface resize rejects a negative grid size without reaching the runtime", async () => {
+	let called = false;
+	const host = fakeHost({
+		resizeTerminalSurface: () => {
+			called = true;
+			return true;
+		},
+	});
+	const router = createRouter(fakeContext({ host }));
+	const response = await router.fetch(
+		signalRequest(endpoints.terminalSurfaceResize, {
+			surfaceId: "overlay-1",
+			cols: -1,
+			rows: 24,
+		}),
+	);
+
+	assertEquals(response.status, 400);
+	assertEquals(called, false);
 });
 
 test("main stream binds a validated display client identity", async () => {
@@ -766,7 +1283,10 @@ test("file links resolve inside and outside paths to the editor without download
 		context.store.setWorkspacePath(workspace);
 		for (const [linkedPath, editorPath] of [
 			[path, name],
-			[outside, outside],
+			// An "outside" file's reported `path` is normalized to `/`
+			// separators (see the sibling "outside files can be read, edited
+			// and downloaded" test), not the raw native-separator path.
+			[outside, outside.replaceAll("\\", "/")],
 		] as const) {
 			const response = await createRouter(context).fetch(
 				fileOpenRequest(pathToFileURL(linkedPath).href),
@@ -1107,14 +1627,21 @@ function fakeHost(overrides: Partial<RuntimeResource> = {}): RuntimeResource {
 	return {
 		abort: async () => {},
 		abortBackgroundSession: async () => true,
+		clearLiveWorkspaceActivity: () => {},
 		closeAuth: () => {},
 		closeLlama: () => {},
 		cycleModel: async () => true,
 		cycleThinkingLevel: () => true,
 		deleteSession: async () => true,
+		dispatchExtensionUiAction: async () => true,
 		dispose: async () => {},
+		forgetTerminalSurfaceClient: () => {},
 		forkSessionToWorkspace: async () => ({ status: "success" }),
+		getArgumentCompletions: async () => [],
 		getWorkspacePath: () => process.cwd(),
+		handlePromptLevelInput: () => ({ consumed: false }),
+		handleTerminalSurfaceInput: () => true,
+		invokeExtensionShortcut: () => true,
 		listSessions: async () => {},
 		logout: () => true,
 		navigateTree: async () => ({ status: "success", editorText: "" }),
@@ -1129,6 +1656,7 @@ function fakeHost(overrides: Partial<RuntimeResource> = {}): RuntimeResource {
 		refreshModels: async () => {},
 		removeQueuedMessage: async () => true,
 		renameSession: async () => true,
+		resizeTerminalSurface: () => true,
 		respondExtensionUi: () => true,
 		restoreQueuedMessages: () => "",
 		resumeSession: async () => ({ status: "success" }),

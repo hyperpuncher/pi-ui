@@ -18,6 +18,14 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+
+	/* The flex container's own text-overflow doesn't reach its label span; without this a
+	   long "Waiting for extension input: …" label was cut mid-word on phones. */
+	.prompt-status-message > span {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 	.prompt-working-status {
 		display: inline-flex;
 		min-width: 0;
@@ -42,6 +50,119 @@
 	.prompt-working-content > svg {
 		flex-shrink: 0;
 	}
+
+	/*
+	 * Extension-configured working indicator (`ctx.ui.setWorkingIndicator()`).
+	 * Each frame is stacked and shown for its own slice of the cycle via a
+	 * negative `animation-delay` (set inline per frame, since it depends on
+	 * the frame's index) against one of the fixed-step keyframes below,
+	 * chosen server-side by frame count (see `prompt-status.tsx`).
+	 */
+	.working-indicator-frames {
+		position: relative;
+		display: inline-block;
+		width: 1em;
+		height: 1em;
+		flex-shrink: 0;
+		line-height: 1;
+	}
+	.working-indicator-frame {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		animation-iteration-count: infinite;
+		animation-timing-function: steps(1, jump-none);
+	}
+	@keyframes working-indicator-cycle-2 {
+		0%,
+		49.9999% {
+			opacity: 1;
+		}
+		50%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-3 {
+		0%,
+		33.3233% {
+			opacity: 1;
+		}
+		33.3333%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-4 {
+		0%,
+		24.9999% {
+			opacity: 1;
+		}
+		25%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-5 {
+		0%,
+		19.9999% {
+			opacity: 1;
+		}
+		20%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-6 {
+		0%,
+		16.6566% {
+			opacity: 1;
+		}
+		16.6667%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-7 {
+		0%,
+		14.2757% {
+			opacity: 1;
+		}
+		14.2857%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-8 {
+		0%,
+		12.4999% {
+			opacity: 1;
+		}
+		12.5%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-9 {
+		0%,
+		11.1011% {
+			opacity: 1;
+		}
+		11.1111%,
+		100% {
+			opacity: 0;
+		}
+	}
+	@keyframes working-indicator-cycle-10 {
+		0%,
+		9.9999% {
+			opacity: 1;
+		}
+		10%,
+		100% {
+			opacity: 0;
+		}
+	}
 	.extension-status {
 		display: none;
 		max-width: 10rem;
@@ -51,6 +172,20 @@
 		line-height: 1.25;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* F1 §2: flashed by `static/app/extension-keys.ts` while a prompt-level key
+	   was just claimed by an extension's `ctx.ui.onTerminalInput` listener. A
+	   plain `.badge` (see `controls.css`) with the same muted-secondary
+	   treatment status chips already use elsewhere, so it reads as "part of
+	   pi-ui" rather than a foreign notification. */
+	.extension-capture-indicator {
+		flex-shrink: 0;
+		gap: 0.3125rem;
+	}
+	.extension-capture-dot {
+		width: 0.5rem;
+		height: 0.5rem;
 	}
 	.usage-indicators {
 		order: 1;

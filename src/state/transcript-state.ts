@@ -7,7 +7,8 @@ export type TranscriptMessageRole =
 	| "thought"
 	| "compaction"
 	| "summary"
-	| "skill";
+	| "skill"
+	| "custom";
 
 export type TranscriptMessageTitlePart = {
 	text: string;
@@ -34,11 +35,52 @@ export type TranscriptMessage = {
 	meta?: string;
 	state?: "running" | "success" | "error";
 	format?: "pre" | "diff" | "code" | "output";
+	/**
+	 * Severity for a `role: "notice"` message (an extension's `ctx.ui.notify()`,
+	 * or a pi-ui system notice). Defaults to `"warning"` when omitted, matching
+	 * every notice appended before this field existed. `renderSystemMessage`
+	 * uses it to give each level its own status-dot color and prefix instead of
+	 * labelling every notice "Warning:" (see r1-audit #24).
+	 */
+	noticeTone?: "info" | "warning" | "error";
+	/**
+	 * Generic collapsible payload for `role: "custom"` messages (an extension's
+	 * `pi.sendMessage`/`pi.appendEntry` `details`/`data`), pre-formatted as text by the
+	 * caller (see `tool-presentation.ts`'s `summarizeValue`). Never LLM context.
+	 */
+	details?: string;
+	/**
+	 * Pre-rendered HTML lines from an extension's `pi.registerMessageRenderer`/
+	 * `registerEntryRenderer` (a `pi-tui` `Component`), produced by
+	 * `CustomRendererHost` through the same ANSI→HTML pipeline
+	 * `TerminalSurfaceController` uses for `custom()` overlays. Already safe,
+	 * pre-escaped HTML (see `ansiLineToHtml`) — never raw ANSI or untrusted
+	 * markup. `role: "custom"` only; when present it renders instead of
+	 * `text`'s markdown (round-7 "custom message + entry renderers").
+	 */
+	customRenderHtml?: readonly string[];
+	/**
+	 * Set only when a `registerEntryRenderer` (never a message renderer — see
+	 * `CustomRendererHost`'s doc comment) throws. Mirrors the real interactive
+	 * mode's `CustomEntryComponent`: a visible `"[type] renderer failed: …"`
+	 * line instead of silently falling back, since a `CustomEntry` has no
+	 * text/markdown fallback to fall back to.
+	 */
+	customRenderError?: string;
 };
 
 export type TranscriptMessageOptions = Pick<
 	TranscriptMessage,
-	"title" | "titleParts" | "meta" | "state" | "format" | "attachments"
+	| "title"
+	| "titleParts"
+	| "meta"
+	| "state"
+	| "format"
+	| "attachments"
+	| "noticeTone"
+	| "details"
+	| "customRenderHtml"
+	| "customRenderError"
 >;
 
 export type TranscriptMessageInput = Omit<TranscriptMessage, "id">;

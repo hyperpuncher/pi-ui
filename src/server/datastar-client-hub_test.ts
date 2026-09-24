@@ -4,7 +4,7 @@ import { assertEquals, assertStringIncludes } from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
 import { DatastarClientHub, type DatastarClient } from "./datastar-client-hub.ts";
-import { DatastarStream } from "./datastar.ts";
+import { datastarStream, DatastarStream } from "./datastar.ts";
 
 test("hub connects, sends an initial view, broadcasts fat and targeted patches, and aborts", async () => {
 	const hub = new DatastarClientHub();
@@ -61,6 +61,35 @@ test("hub runs disconnect lifecycle once across overlapping close signals", () =
 	controller.abort();
 	assertEquals(disconnects, 1);
 	return response.body?.cancel();
+});
+
+test("hub sends a periodic empty signal-patch heartbeat to keep idle connections alive", async () => {
+	let scheduled: (() => void) | undefined;
+	const hub = new DatastarClientHub(datastarStream, false, 15_000, (callback) => {
+		scheduled = callback;
+		return 1 as unknown as ReturnType<typeof setInterval>;
+	});
+	const controller = new AbortController();
+	const response = hub.createStream(controller.signal, () => ({
+		elements: "",
+		signals: "{}",
+	}));
+	scheduled?.();
+	controller.abort();
+
+	const body = await response.text();
+	const heartbeats = body.match(/signals \{\}/g) ?? [];
+	assertEquals(heartbeats.length, 2);
+});
+
+test("hub heartbeat is a no-op with no connected clients", () => {
+	let scheduled: (() => void) | undefined;
+	new DatastarClientHub(datastarStream, false, 15_000, (callback) => {
+		scheduled = callback;
+		return 1 as unknown as ReturnType<typeof setInterval>;
+	});
+	// Must not throw when nothing is connected to broadcast to.
+	scheduled?.();
 });
 
 test("hub removes a client after a failed send", () => {

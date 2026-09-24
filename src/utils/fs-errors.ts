@@ -13,3 +13,7 @@ export function isNotFound(cause: unknown): boolean {
 export function isPermissionDenied(cause: unknown): boolean {
 	return hasFileSystemCode(cause, "EACCES") || hasFileSystemCode(cause, "EPERM");
 }
+
+export function isBusy(cause: unknown): boolean {
+	return hasFileSystemCode(cause, "EBUSY");
+}

@@ -134,6 +134,22 @@
 			"description": "Code themes selected for each appearance.",
 			"additionalProperties": false
 		},
+		"extensions": {
+			"type": "object",
+			"properties": {
+				"mode": {
+					"type": "string",
+					"enum": [
+						"tui",
+						"rpc"
+					],
+					"default": "tui",
+					"description": "How pi SDK extensions are bound. \"tui\" (default) unlocks custom() overlays, component widgets, and ctx.mode === \"tui\" gated extension behavior, all rendered as terminal surfaces. \"rpc\" is the pre-terminal-surface behavior, kept as an escape hatch."
+				}
+			},
+			"description": "How pi-ui binds pi SDK extensions.",
+			"additionalProperties": false
+		},
 		"fonts": {
 			"type": "object",
 			"required": [
@@ -306,6 +322,10 @@
 					"type": "string",
 					"pattern": "^[a-zA-Z0-9^/]+( [a-zA-Z0-9^/]+)*$"
 				},
+				"toggle-live-workspace": {
+					"type": "string",
+					"pattern": "^[a-zA-Z0-9^/]+( [a-zA-Z0-9^/]+)*$"
+				},
 				"change-workspace": {
 					"type": "string",
 					"pattern": "^[a-zA-Z0-9^/]+( [a-zA-Z0-9^/]+)*$"
@@ -344,6 +364,48 @@
 				}
 			},
 			"description": "Keyboard shortcut overrides by action id, for example ctrl O, ctrl alt O, or alt shift T.",
+			"additionalProperties": false
+		},
+		"liveWorkspace": {
+			"type": "object",
+			"properties": {
+				"open": {
+					"type": "boolean",
+					"default": false,
+					"description": "Open the Live Workspace pane on desktop."
+				},
+				"ratio": {
+					"type": "number",
+					"minimum": 0.22,
+					"maximum": 0.5,
+					"default": 0.32
+				},
+				"tab": {
+					"anyOf": [
+						{
+							"type": "string",
+							"const": "now"
+						},
+						{
+							"type": "string",
+							"const": "agents"
+						},
+						{
+							"type": "string",
+							"const": "usage"
+						},
+						{
+							"type": "string",
+							"const": "activity"
+						},
+						{
+							"type": "string",
+							"const": "extensions"
+						}
+					]
+				}
+			},
+			"description": "Live Workspace pane preferences.",
 			"additionalProperties": false
 		},
 		"minimalMode": {

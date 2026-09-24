@@ -19,7 +19,12 @@
 	"type": "module",
 	"imports": {
 		"#testing/assertions": "./src/testing/assertions.ts",
-		"#testing/temp": "./src/testing/temp.ts"
+		"#testing/temp": "./src/testing/temp.ts",
+		"#testing/symlink": "./src/testing/symlink.ts",
+		"#testing/element-patches": "./src/testing/element-patches.ts",
+		"#testing/streams": "./src/testing/streams.ts",
+		"#testing/fake-stream-provider": "./src/testing/fake-stream-provider.ts",
+		"#testing/e2e-streaming-harness": "./src/testing/e2e-streaming-harness.ts"
 	},
 	"publishConfig": {
 		"access": "public"

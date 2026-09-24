@@ -111,6 +111,54 @@ export function shortcutMatchExpression(
 	return conditions.join(" && ");
 }
 
+// A `Map` (rather than an indexed `Record<string, string>`) so this lookup table's own
+// declaration carries no open-dictionary type annotation — `formatKeyId` below indexes it
+// with an arbitrary token straight from `keyId.split("+")`.
+const keyIdTokenLabels = new Map<string, string>([
+	["ctrl", "ctrl"],
+	["alt", "alt"],
+	["shift", "shift"],
+	["super", "cmd"],
+	["escape", "Esc"],
+	["esc", "Esc"],
+	["enter", "Enter"],
+	["return", "Enter"],
+	["tab", "Tab"],
+	["space", "Space"],
+	["backspace", "Backspace"],
+	["delete", "Del"],
+	["insert", "Ins"],
+	["clear", "Clear"],
+	["home", "Home"],
+	["end", "End"],
+	["pageup", "PgUp"],
+	["pagedown", "PgDn"],
+	["up", "↑"],
+	["down", "↓"],
+	["left", "←"],
+	["right", "→"],
+]);
+
+/**
+ * A display label for a pi-tui `KeyId` string (`"alt+o"` → `"alt O"`,
+ * `"ctrl+shift+p"` → `"ctrl shift P"`, `"escape"` → `"Esc"`) — a plain
+ * `Map` lookup rather than routing through `ShortcutSpec` (which only
+ * covers pi-ui's own narrower letter/digit/`/`/`^` catalog and would drop
+ * every special key an extension shortcut is free to use). Only used for
+ * display (the `/hotkeys` dialog); matching still goes through
+ * `static/app/extension-keys.ts`'s own token table.
+ */
+export function formatKeyId(keyId: string): string {
+	return keyId
+		.split("+")
+		.map(
+			(token) =>
+				keyIdTokenLabels.get(token) ??
+				(token.length === 1 ? token.toUpperCase() : token),
+		)
+		.join(" ");
+}
+
 export function ariaKeyshortcuts(spec: ShortcutSpec): string {
 	const combos: string[] = [];
 	const bases = spec.primary ? ["Control", "Meta"] : [""];

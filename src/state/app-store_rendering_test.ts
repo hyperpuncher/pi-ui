@@ -8,6 +8,8 @@ import {
 } from "#testing/assertions";
 
 import { SessionCatalog } from "../agent/session-catalog.ts";
+import type { PiUiElement } from "../extension-surface-types.ts";
+import { emptyLiveWorkspaceSnapshot } from "../live-workspace-types.ts";
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 import { collectElementPatches } from "../testing/element-patches.ts";
@@ -1026,6 +1028,276 @@ test("server-owned view signals are transport-private", () => {
 	);
 });
 
+test("state snapshots reuse the extension/live-workspace references instead of deep-cloning on every read (A#12)", () => {
+	const state = createState();
+	state.setExtensionElements([piUiWidget("w1", { revision: 1 })]);
+	state.setExtensionChannels([
+		{ channel: "demo", payload: { ok: true }, updatedAt: 0 },
+	]);
+	state.setLiveWorkspace({ ...emptyLiveWorkspaceSnapshot, revision: 1 });
+
+	const first = state.snapshot();
+	const second = state.snapshot();
+	assertEqual(first.extensionElements === second.extensionElements, true);
+	assertEqual(first.extensionChannels === second.extensionChannels, true);
+	assertEqual(first.liveWorkspace === second.liveWorkspace, true);
+});
+
+test("PIUI widgets and sheets patch only when extension elements change, not on every commit (A#11)", async () => {
+	const state = createState();
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+
+		state.update(() => state.setExtensionElements([piUiWidget("w1")]), {
+			flush: true,
+		});
+		const withWidget = await readUntil(reader, (text) =>
+			text.includes('data-piui-element="demo:w1"'),
+		);
+		assertEqual(count(withWidget, 'id="piui-widgets"'), 1);
+
+		// A storm of unrelated commits (chat/usage updates, exactly what used to re-render
+		// `renderAppElements` — and with it PIUI — on every single one) must not re-send the
+		// PIUI region at all. (Each commit's main region patch alone is tens of KB, so this
+		// stays small enough for the test transport's read budget.)
+		for (let index = 0; index < 5; index += 1) {
+			state.update(
+				() => state.setUsage({ text: `${index} tokens`, costText: "$0.00" }),
+				{ flush: true },
+			);
+		}
+		const afterStorm = await readUntil(reader, (text) => text.includes("4 tokens"));
+		assertEqual(count(afterStorm, 'id="piui-widgets"'), 0);
+
+		// A genuine element change still patches it, exactly once.
+		state.update(
+			() => state.setExtensionElements([piUiWidget("w1", { revision: 2 })]),
+			{ flush: true },
+		);
+		const afterUpdate = await readUntil(reader, (text) => text.includes("updated"));
+		assertEqual(count(afterUpdate, 'id="piui-widgets"'), 1);
+	} finally {
+		controller.abort();
+	}
+});
+
+test("a live workspace fleet storm patches only the agents tab, not usage/now/activity/extensions (A#13)", async () => {
+	const state = createState();
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+		state.update(() => state.setLiveWorkspacePreferences({ tab: "agents" }), {
+			flush: true,
+		});
+		// A preference change dirties all five regions (patched in a fixed order ending
+		// with "extensions" — see `patchDirtyRegions`); wait for the last one so none of
+		// the setup's own patches leak into the storm assertions below.
+		await readUntil(reader, (text) =>
+			text.includes('id="live-workspace-extensions"'),
+		);
+
+		let revision = 1;
+		// Each commit's main region patch alone is tens of KB, so this stays small enough
+		// for the test transport's read budget.
+		const storms = 5;
+		for (let index = 0; index < storms; index += 1) {
+			state.update(
+				() =>
+					state.setLiveWorkspace({
+						...emptyLiveWorkspaceSnapshot,
+						revision: revision++,
+						agents: [
+							{
+								id: "scout",
+								kind: "channel-entry",
+								source: "subagents:fleet",
+								label: `scout-${index}`,
+								status: index % 2 === 0 ? "running" : "idle",
+								depth: 0,
+							},
+						],
+					}),
+				{ flush: true },
+			);
+		}
+		const output = await readUntil(reader, (text) =>
+			text.includes(`scout-${storms - 1}`),
+		);
+		assertEqual(count(output, 'id="live-workspace-agents"'), storms);
+		assertEqual(count(output, 'id="live-workspace-now"'), 0);
+		assertEqual(count(output, 'id="live-workspace-activity"'), 0);
+		assertEqual(count(output, 'id="live-workspace-usage"'), 0);
+		assertEqual(count(output, 'id="live-workspace-extensions"'), 0);
+		assertEqual(count(output, 'id="piui-widgets"'), 0);
+		// Morph-bytes budget: each agents-tab patch carries only that tab's small fragment,
+		// never a whole-pane re-render.
+		const agentPatchBytes = output
+			.split("event: ")
+			.filter((event) => event.includes('id="live-workspace-agents"'))
+			.map((event) => new TextEncoder().encode(event).byteLength);
+		assertEqual(agentPatchBytes.length, storms);
+		assertEqual(
+			agentPatchBytes.every((bytes) => bytes < 4096),
+			true,
+			`agents patch sizes: ${agentPatchBytes.join(", ")}`,
+		);
+	} finally {
+		controller.abort();
+	}
+});
+
+test("a dismissed PIUI sheet is not reopened on the next connection while its open generation is unchanged (A#16)", async () => {
+	const state = createState();
+	state.setExtensionElements([
+		{
+			id: "panel",
+			ns: "ask-user",
+			kind: "panel",
+			placement: "sheet",
+			data: {},
+			revision: 3,
+			openGeneration: 3,
+			updatedAt: 0,
+		},
+	]);
+	// The dismiss handler and the reopen-guard script both reference the same storage key,
+	// so wait for the guard's own distinguishing text (not just the shared key substring,
+	// which the dismiss handler's `data-on:close` attribute emits earlier in the stream).
+	const output = await readStateOutput(state, (text) =>
+		text.includes("dismissedGeneration"),
+	);
+	assertIncludes(
+		output,
+		'localStorage.getItem("piui-dismissed-piui-sheet-ask-user-panel")',
+	);
+	assertIncludes(output, 'dismissedGeneration !== "3"');
+	assertIncludes(output, "document.getElementById('piui-sheet-ask-user-panel')");
+});
+
+test("re-set()-ing an existing, dismissed sheet id gets a fresh open effect (M4a/M4b)", async () => {
+	const state = createState();
+	const baseSheet = {
+		id: "panel",
+		ns: "ask-user",
+		kind: "panel" as const,
+		placement: "sheet" as const,
+		data: {},
+		updatedAt: 0,
+	};
+	// The exact open-effect script `pickerEffectScripts` emits for this dialog id (see
+	// `ui-renderer.ts`'s "dialog" effect branch) — counted below rather than just checked for
+	// presence, so a stray leftover from an earlier update in the same accumulated read can't
+	// pass the assertion by coincidence.
+	const openScript =
+		"document.getElementById('piui-sheet-ask-user-panel'); let dismissedGeneration;";
+	const controller = new AbortController();
+	try {
+		// Start from an empty connection so the whole sequence below is observed as
+		// incremental patches, not folded into the initial page render. Accumulate every read
+		// into one running buffer: dirtying `extensionElements` also dirties `pickers` (the
+		// open-effect script's own region), and those two patches can land in either order
+		// within — or split across — the transport's read chunks, so per-read isolation is
+		// unreliable; a cumulative count at each checkpoint is not.
+		const reader = await openInitializedStateStream(state, controller.signal);
+		let acc = "";
+		// Reads until both `marker` (this update's own distinguishing content) and at least
+		// `expectedOpenScripts` occurrences of the open-effect script have arrived — the two
+		// patches (extension elements, pickers) can land in either read chunk, so waiting on
+		// `marker` alone can race ahead of an open-effect script still in flight.
+		const readMore = async (marker: string, expectedOpenScripts: number) => {
+			acc += await readUntil(
+				reader,
+				(text) =>
+					(acc + text).includes(marker) &&
+					count(acc + text, openScript) >= expectedOpenScripts,
+			);
+			return acc;
+		};
+
+		// A genuinely new sheet id gets an open effect.
+		state.update(
+			() =>
+				state.setExtensionElements([
+					{
+						...baseSheet,
+						revision: 1,
+						openGeneration: 1,
+						data: { sections: [{ kind: "status", text: "hello" }] },
+					},
+				]),
+			{ flush: true },
+		);
+		await readMore("hello", 1);
+		assertEqual(count(acc, openScript), 1);
+
+		// Simulate the user dismissing it: the store itself doesn't track dismissal (that's
+		// client-side `localStorage`), so only the element list changes here. A `patch`-style
+		// content update (same `openGeneration`) must NOT get another open effect. There's
+		// nothing further to wait for here, so read once and assert the count held steady.
+		state.update(
+			() =>
+				state.setExtensionElements([
+					{
+						...baseSheet,
+						revision: 2,
+						openGeneration: 1,
+						data: { sections: [{ kind: "status", text: "streaming" }] },
+					},
+				]),
+			{ flush: true },
+		);
+		await readMore("streaming", 1);
+		assertEqual(count(acc, openScript), 1);
+
+		// A deliberate re-`set` (a fresh `openGeneration`) DOES get a new open effect, even
+		// though the id was already known.
+		state.update(
+			() =>
+				state.setExtensionElements([
+					{
+						...baseSheet,
+						revision: 3,
+						openGeneration: 2,
+						data: { sections: [{ kind: "status", text: "again" }] },
+					},
+				]),
+			{ flush: true },
+		);
+		await readMore("again", 2);
+		assertEqual(count(acc, openScript), 2);
+		assertIncludes(acc, 'dismissedGeneration !== "2"');
+
+		// `/new`, `/reload` and session switches unbind (clearing the list) and then restore
+		// the same elements: the resulting open effect must stay dismissal-aware, so a sheet
+		// the user already closed at this generation doesn't pop back over the prompt.
+		state.update(() => state.setExtensionElements([]), { flush: true });
+		state.update(
+			() =>
+				state.setExtensionElements([
+					{
+						...baseSheet,
+						revision: 3,
+						openGeneration: 2,
+						data: { sections: [{ kind: "status", text: "restored" }] },
+					},
+				]),
+			{ flush: true },
+		);
+		await readMore("restored", 3);
+		assertEqual(count(acc, openScript), 3);
+		assertEqual(
+			count(
+				acc,
+				"document.getElementById('piui-sheet-ask-user-panel'); if (dialog && !dialog.open) dialog.showModal();",
+			),
+			0,
+		);
+	} finally {
+		controller.abort();
+	}
+});
+
 test("hot app views exclude independently owned regions", () => {
 	const previous = process.env.PI_UI_DEBUG;
 	process.env.PI_UI_DEBUG = "1";
@@ -1137,6 +1409,21 @@ function projectedMessages(state: TestStore) {
 
 function markdownMessage(text: string): TranscriptMessageInput {
 	return { role: "assistant", text, timestamp };
+}
+
+function piUiWidget(id: string, overrides: Partial<PiUiElement> = {}): PiUiElement {
+	const revision = overrides.revision ?? 1;
+	return {
+		id,
+		ns: "demo",
+		kind: "widget",
+		placement: "pinned",
+		data: { lines: [revision === 1 ? "hello" : "updated"] },
+		revision,
+		openGeneration: overrides.openGeneration ?? revision,
+		updatedAt: 0,
+		...overrides,
+	};
 }
 
 async function settleMicrotasks(): Promise<void> {

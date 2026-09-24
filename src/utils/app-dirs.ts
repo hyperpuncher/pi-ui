@@ -17,8 +17,25 @@ const fallbackDirectories = {
 	data: join(".local", "share"),
 } as const;
 
+/**
+ * Round 6 F5: `bun test` must never touch the real cache directory —
+ * `session-summary-cache.ts`'s cache-file rename raced a live app there
+ * intermittently (round-5 audit finding 7, an EPERM on
+ * `%LOCALAPPDATA%\pi-ui\Cache`). `scripts/test-env.ts` (this repo's
+ * `bunfig.toml` `[test]` preload, so it runs before any test file imports
+ * anything) sets this to a fresh temp directory for the whole `bun test`
+ * process; unset outside of tests, so production behavior is unchanged.
+ */
+function cacheDirectoryOverride(): string | undefined {
+	return process.env.PI_UI_CACHE_DIR?.trim() || undefined;
+}
+
 /** Platform directory that holds this app's cache, config, or data files. */
 function appDirectory(kind: AppDirectory): string {
+	if (kind === "cache") {
+		const override = cacheDirectoryOverride();
+		if (override) return override;
+	}
 	const home = os.homedir();
 	if (operatingSystem === "windows") {
 		if (kind === "config")

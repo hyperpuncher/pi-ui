@@ -19,7 +19,11 @@ export const streamRoutes = {
 					},
 				});
 			}
-			return context.renderer.createStream(request.signal, clientId);
+			return context.renderer.createStream(request.signal, clientId, () => {
+				// The current host at disconnect time, whichever `RuntimeController` that is —
+				// see `UiRenderer.createStream`'s doc comment on this parameter.
+				context.resources.host?.forgetTerminalSurfaceClient(clientId);
+			});
 		},
 	},
 } satisfies RouteMap<RouteContext>;

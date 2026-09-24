@@ -37,6 +37,7 @@
 		--status-error: oklch(from var(--color-9) l c var(--hue-red));
 		--status-warning: oklch(from var(--color-9) l c var(--hue-orange));
 		--status-success: oklch(from var(--color-7) l c var(--hue-teal));
+		--status-info: oklch(from var(--color-9) l c var(--hue-blue));
 
 		/* Typography */
 		--font-sans: ui-sans-serif, system-ui, sans-serif;
@@ -88,6 +89,7 @@
 		--status-error: oklch(from var(--color-3) l c var(--hue-red));
 		--status-warning: oklch(from var(--color-3) l c var(--hue-yellow));
 		--status-success: oklch(from var(--color-4) l c var(--hue-teal));
+		--status-info: oklch(from var(--color-3) l c var(--hue-blue));
 
 		--shadow-sm: 0 1px 2px -1px oklch(0% 0 none / 34%);
 		--shadow-md:

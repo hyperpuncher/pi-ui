@@ -3,11 +3,17 @@ import { realpath, stat } from "node:fs/promises";
 // pi does not publicly export its provisioner. A static import lets Bun bundle it.
 import { ensureTool } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
 import { parseAutoTitleConfig, type AutoTitleConfig } from "../agent/auto-title.ts";
+import {
+	applyExtensionsHostMarker,
+	type ExtensionsMode,
+	parseExtensionsConfig,
+} from "../agent/extensions-config.ts";
 import { RuntimeController } from "../agent/runtime-controller.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
 import { defaultCodeThemes, validCodeThemes } from "../code-themes.ts";
 import { defaultFonts, setActiveFonts, validFonts } from "../fonts.ts";
 import { parseKeybindOverrides, setActiveKeybinds } from "../keybinds.ts";
+import { normalizeLiveWorkspacePreferences } from "../live-workspace-types.ts";
 import { setActiveCodeTheme } from "../pierre-theme.ts";
 import {
 	normalizeSessionSidebarPreferences,
@@ -36,8 +42,15 @@ export async function createApp() {
 	const codeTheme = validCodeThemes(appConfig.codeTheme) ?? defaultCodeThemes();
 	const fonts = validFonts(appConfig.fonts) ?? defaultFonts();
 	const autoTitle = parseAutoTitleConfig(appConfig.autoTitle);
+	const extensions = parseExtensionsConfig(appConfig.extensions);
+	// Must run before the first `RuntimeController.create()` below, which loads
+	// extensions synchronously with session creation.
+	applyExtensionsHostMarker(extensions);
 	const workspaceReviewPreferences = normalizeWorkspaceReviewPreferences(
 		appConfig.gitView,
+	);
+	const liveWorkspacePreferences = normalizeLiveWorkspacePreferences(
+		appConfig.liveWorkspace,
 	);
 	const sessionSidebar = normalizeSessionSidebarPreferences(appConfig.sessionSidebar);
 	setActiveCodeTheme(codeTheme);
@@ -50,8 +63,10 @@ export async function createApp() {
 		});
 	}
 	store.setWorkspaceReviewPreferences(workspaceReviewPreferences);
+	store.setLiveWorkspacePreferences(liveWorkspacePreferences);
 	const sessionImages = new SessionImageStore();
-	const renderer = new UiRenderer(store, new DatastarClientHub(), {
+	const hub = new DatastarClientHub();
+	const renderer = new UiRenderer(store, hub, {
 		registerImage: (image) => sessionImages.register(image),
 		clearImages: () => sessionImages.clear(),
 	});
@@ -60,6 +75,7 @@ export async function createApp() {
 	);
 	const host = await RuntimeController.create(store, undefined, {
 		autoTitle,
+		extensionsMode: extensions.mode,
 		transitionController: transitions,
 	}).catch((error: ErrorOptions["cause"]) => {
 		console.error("Failed to start pi SDK runtime", error);
@@ -88,7 +104,14 @@ export async function createApp() {
 		themeLab: process.env.PI_UI_THEME_LAB === "1",
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>
-			openWorkspace(path, store, resources, transitions, autoTitle),
+			openWorkspace(
+				path,
+				store,
+				resources,
+				transitions,
+				autoTitle,
+				extensions.mode,
+			),
 	};
 	let disposal: Promise<void> | undefined;
 	return {
@@ -96,6 +119,8 @@ export async function createApp() {
 		dispose: () => {
 			disposal ??= (async () => {
 				workspaceReview.dispose();
+				// Stops the SSE heartbeat timer.
+				hub.dispose();
 				await Promise.allSettled([
 					transferredFiles.dispose(),
 					resources.host?.dispose(),
@@ -112,6 +137,7 @@ async function openWorkspace(
 	resources: RouteResources,
 	transitions: SessionTransitionController,
 	autoTitle: AutoTitleConfig,
+	extensionsMode: ExtensionsMode,
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
 	const transition = await transitions.run(
@@ -124,6 +150,7 @@ async function openWorkspace(
 			if (!resources.host) {
 				resources.host = await RuntimeController.create(store, realPath, {
 					autoTitle,
+					extensionsMode,
 					refreshWorkspaces: false,
 					transitionController: transitions,
 				});

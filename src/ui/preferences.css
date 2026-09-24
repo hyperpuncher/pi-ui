@@ -1,6 +1,7 @@
 @layer components {
 	.font-dialog-panel,
-	.code-theme-dialog-panel {
+	.code-theme-dialog-panel,
+	.hotkeys-dialog-panel {
 		display: flex;
 		height: min(48rem, calc(100dvh - 2rem));
 		max-width: none;
@@ -14,6 +15,9 @@
 	}
 	.code-theme-dialog-panel {
 		width: min(48rem, calc(100vw - 2rem));
+	}
+	.hotkeys-dialog-panel {
+		width: min(32rem, calc(100vw - 2rem));
 	}
 
 	.preference-dialog-header {
@@ -67,6 +71,53 @@
 	}
 	.preference-dialog-footer-between {
 		justify-content: space-between;
+	}
+
+	.hotkeys-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		list-style: none;
+	}
+	.hotkeys-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		border-radius: var(--radius-md);
+		padding: 0.5rem;
+	}
+	.hotkeys-row:hover {
+		background: var(--surface-control);
+	}
+	.hotkeys-row-clickable {
+		width: 100%;
+		cursor: pointer;
+		text-align: start;
+	}
+
+	/* A keyboard-focused row reads like a hovered one; the ring sits inside the
+	   row so the dialog's scroll container never clips it. */
+	.hotkeys-row-clickable:focus-visible {
+		outline-offset: -2px;
+		background: var(--surface-control);
+	}
+	.hotkeys-row-content {
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* `pi.registerShortcut()` shortcuts (F1 §1) get their own heading, since
+	   they come from whatever the current session's extensions loaded rather
+	   than pi-ui's own fixed catalog — same treatment as the command palette's
+	   "Extensions" group heading (`overlays.css`), so both lists read alike. */
+	.hotkeys-section-heading {
+		padding: 0.375rem 0.5rem;
+		color: var(--text-muted);
+		font-size: var(--text-xs);
+		font-weight: 500;
+	}
+	.hotkeys-section-heading:hover {
+		background: none;
 	}
 
 	.font-card {

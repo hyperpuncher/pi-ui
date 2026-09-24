@@ -19,6 +19,7 @@ export type AppCommandId =
 	| "change-workspace"
 	| "fork-session-to-workspace"
 	| "toggle-review"
+	| "toggle-live-workspace"
 	| "login"
 	| "logout";
 
@@ -132,6 +133,12 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Toggle workspace",
 		description: "Show or hide workspace files and Git history.",
 		shortcut: "ctrl G",
+	},
+	{
+		id: "toggle-live-workspace",
+		title: "Toggle Live Workspace",
+		description: "Show or hide live session, agent, and usage activity.",
+		shortcut: "alt L",
 	},
 	{
 		id: "login",

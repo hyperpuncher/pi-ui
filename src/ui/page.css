@@ -155,8 +155,9 @@
 		align-items: center;
 		interpolate-size: allow-keywords;
 		margin-inline: var(--workspace-inset);
-		margin-block-start: var(--workspace-inset);
-		padding-inline: var(--workspace-inset);
+		margin-block-start: max(var(--workspace-inset), env(safe-area-inset-top));
+		padding-inline: calc(var(--workspace-inset) + env(safe-area-inset-left))
+			calc(var(--workspace-inset) + env(safe-area-inset-right));
 		container: prompt / inline-size;
 		opacity: 1;
 		translate: 0;
@@ -178,10 +179,6 @@
 			translate: 0 -1.75rem;
 		}
 	}
-	.toolbar .session-sidebar-toggle {
-		grid-column: 3;
-		justify-self: end;
-	}
 	.toolbar .btn[data-variant="ghost"] {
 		color: var(--text-muted);
 	}
@@ -200,11 +197,19 @@
 			pointer-events: none;
 		}
 	}
+
+	/*
+	 * Suppressed whenever either sibling pane is open, matching how #workspace-review's own
+	 * docking breakpoint is handled: this doesn't check whether the pane is actually docked
+	 * at the current width (only one of the two ever is, see live-workspace.css), just whether
+	 * it's open, which is the same simplification #workspace-review already relies on.
+	 */
 	@container (width >= calc(50vw + 28rem)) {
-		#app:not(.review-open) :is(#prompt-box, #session-transition > *) {
+		#app:not(.review-open, .live-workspace-open)
+			:is(#prompt-box, #session-transition > *) {
 			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
 		}
-		#app:not(.review-open) .toolbar-actions {
+		#app:not(.review-open, .live-workspace-open) .toolbar-actions {
 			translate: calc(
 					50vw - var(--workspace-inset) - var(--workspace-inset) - 50cqw
 				)
@@ -213,7 +218,7 @@
 	}
 
 	@container (width >= calc(50vw + 26rem)) {
-		#app:not(.review-open) #messages > .messages-stack {
+		#app:not(.review-open, .live-workspace-open) #messages > .messages-stack {
 			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
 		}
 	}
@@ -249,7 +254,7 @@
 		background: var(--focus-ring);
 	}
 
-	.is-resizing :is(#workspace-shell, #chat-pane, #workspace-review) {
+	.is-resizing :is(#workspace-shell, #chat-pane, #workspace-review, #live-workspace) {
 		transition: none;
 	}
 

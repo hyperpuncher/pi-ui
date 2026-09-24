@@ -10,7 +10,8 @@
 		overflow: visible;
 		border: 0;
 		background: transparent;
-		padding: 0;
+		padding: env(safe-area-inset-top) env(safe-area-inset-right)
+			env(safe-area-inset-bottom) env(safe-area-inset-left);
 		color: inherit;
 
 		&[open] {
@@ -36,7 +37,9 @@
 	:where(.dialog, .alert-dialog) > * {
 		display: flex;
 		width: min(24rem, calc(100vw - 2rem));
-		max-height: calc(100dvh - 2rem);
+		max-height: calc(
+			100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+		);
 		flex-direction: column;
 		gap: 1rem;
 		overflow: auto;
@@ -105,6 +108,15 @@
 		}
 	}
 
+	@media (pointer: coarse) {
+		:where(.dialog, .alert-dialog)
+			> *
+			> :where(footer, form[method="dialog"])
+			> .btn {
+			min-height: 2.75rem;
+		}
+	}
+
 	.command-dialog > .command,
 	[data-popover] {
 		border: 0;
@@ -124,7 +136,10 @@
 		display: flex;
 		width: 100%;
 		max-width: 100%;
-		max-height: min(40rem, calc(100dvh - 2rem));
+		max-height: min(
+			40rem,
+			calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))
+		);
 		flex-direction: column;
 		overflow: hidden;
 		border-radius: var(--radius-xl);

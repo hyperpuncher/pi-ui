@@ -145,6 +145,26 @@
 		opacity: 1;
 		pointer-events: auto;
 	}
+
+	/* There is no hover on touch, and the row button covers the full row, so
+	   the delete action must stay reachable without a prior hover/focus state.
+	   The meta row is a fixed 1.5rem tall, so keep the visible button compact
+	   and reach 44px with invisible hit-slop instead of growing the control
+	   itself (which would overflow the row). */
+	@media (hover: none), (pointer: coarse) {
+		.session-delete-button.session-row-delete[data-size="icon-xs"] {
+			--button-size: 1.5rem;
+
+			position: relative;
+			opacity: 1;
+			pointer-events: auto;
+		}
+		.session-row-delete::after {
+			position: absolute;
+			inset: -0.625rem;
+			content: "";
+		}
+	}
 	.session-delete-button {
 		flex-shrink: 0;
 
@@ -237,6 +257,12 @@
 		display: flex;
 		justify-content: center;
 		padding: 1rem 0.5rem;
+		color: var(--text-muted);
+	}
+	.session-sidebar-empty {
+		margin: 0;
+		padding: 1.5rem 1rem;
+		text-align: center;
 		color: var(--text-muted);
 	}
 	.session-page-trigger {

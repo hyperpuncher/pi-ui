@@ -289,6 +289,13 @@
 		color: var(--action-primary-text);
 	}
 
+	/* An extension shortcut pi-ui's own keybind already claims (F1 §1) — the chord shown
+	   here doesn't fire in the browser, so it's muted rather than styled like a working one;
+	   the row itself stays clickable. */
+	.shortcut[data-variant="muted"] .kbd {
+		opacity: 0.55;
+	}
+
 	.segmented-control {
 		display: flex;
 		padding: 0.125rem;
@@ -308,6 +315,28 @@
 			background: var(--surface-base);
 			color: var(--text);
 			box-shadow: var(--shadow-sm);
+		}
+	}
+
+	/*
+	 * Systemic touch-target floor: every button reaches a real 44px hit area on
+	 * coarse pointers instead of relying on invisible hit-slop. Packed rows (the
+	 * toolbar, session rows) leave no gap for overlapping ::after hitboxes between
+	 * adjacent buttons, so we grow the button itself; components that need a
+	 * tighter visual footprint (e.g. the prompt composer's icon row) define their
+	 * own more-specific coarse-pointer rule and continue to win the cascade.
+	 * Selectors are repeated to match (not lose to) the `[data-size="…"]` rules above.
+	 */
+	@media (pointer: coarse) {
+		.btn,
+		.btn[data-size="xs"],
+		.btn[data-size="sm"],
+		.btn[data-size="lg"],
+		.btn[data-size="icon"],
+		.btn[data-size="icon-xs"],
+		.btn[data-size="icon-sm"],
+		.btn[data-size="icon-lg"] {
+			--button-size: 2.75rem;
 		}
 	}
 }

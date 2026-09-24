@@ -433,12 +433,23 @@ function toolTitlePartClass(part: TranscriptMessageTitlePart, index: number): st
 	return classes.join(" ");
 }
 
+// Beyond bare http(s) URLs, also auto-links the workspace file download endpoint
+// specifically — not paths in general (tool output routinely contains absolute paths that
+// must never become clickable app links) — so /export's system-message notice can offer a
+// same-origin "Download" link without a bespoke rich-text message type.
+const downloadLinkPattern = new RegExp(
+	`(https?://\\S+|${endpoints.workspaceFileContent.replaceAll("/", "\\/")}\\?\\S+)`,
+	"gu",
+);
+
 function renderPlainTextLinks(text: string): string {
-	const parts = text.split(/(https?:\/\/\S+)/gu);
+	const parts = text.split(downloadLinkPattern);
 	return syncHtml(
 		<>
 			{parts.filter(Boolean).map((part) =>
-				part.startsWith("http://") || part.startsWith("https://") ? (
+				part.startsWith("http://") ||
+				part.startsWith("https://") ||
+				part.startsWith(endpoints.workspaceFileContent) ? (
 					<a
 						class="message-link"
 						href={part}
@@ -446,7 +457,9 @@ function renderPlainTextLinks(text: string): string {
 						rel="noreferrer"
 						safe
 					>
-						{part}
+						{part.startsWith(endpoints.workspaceFileContent)
+							? "Download"
+							: part}
 					</a>
 				) : (
 					<span safe>{part}</span>
@@ -467,7 +480,8 @@ export function renderMessage(message: AppMessage): string {
 	if (
 		message.role === "compaction" ||
 		message.role === "summary" ||
-		message.role === "skill"
+		message.role === "skill" ||
+		message.role === "custom"
 	) {
 		return renderContextMessage(message);
 	}
@@ -542,6 +556,11 @@ function renderNarrativeMessage(message: AppMessage): string {
 				<div data-show="!$_thinkingHidden && !$_minimalMode">
 					<div class="markdown-content">{content}</div>
 				</div>
+				{message.meta && (
+					<p class="message-stopped-note" safe>
+						{message.meta}
+					</p>
+				)}
 			</article>,
 		);
 	}
@@ -569,13 +588,37 @@ function renderNarrativeMessage(message: AppMessage): string {
 				</div>
 			)}
 			<div class="markdown-content">{content}</div>
+			{message.role === "assistant" && message.meta && (
+				<p class="message-stopped-note" safe>
+					{message.meta}
+				</p>
+			)}
 		</article>,
 	);
 }
 
+/** Screen-reader prefix and status-dot color per `notice` severity (r1-audit #24). */
+const noticeToneLabels: Record<
+	NonNullable<AppMessage["noticeTone"]>,
+	{ prefix: string; className: string }
+> = {
+	info: { prefix: "Info: ", className: "info-foreground" },
+	warning: { prefix: "Warning: ", className: "warning-foreground" },
+	error: { prefix: "Error: ", className: "error-foreground" },
+};
+
 function renderSystemMessage(message: AppMessage): string {
 	if (message.state === "error") return renderErrorMessage(message);
 	const hasStatus = message.role === "notice";
+	// Notices appended before `noticeTone` existed (and pi-ui's own internal
+	// notices, e.g. "Usage: /name <title>") default to "warning", matching
+	// their look before this field was introduced.
+	const tone = noticeToneLabels[message.noticeTone ?? "warning"];
+	// Notices read as chat prose, not tool output: the body font unless the
+	// sender explicitly asked for preformatted text (`format: "pre"`, e.g.
+	// /session's stat block) — bold monospace on every notice clashed with the
+	// rest of the transcript (r2-audit m11).
+	const isPre = message.format === "pre";
 	return syncHtml(
 		<article
 			class={[
@@ -588,12 +631,18 @@ function renderSystemMessage(message: AppMessage): string {
 		>
 			{hasStatus && (
 				<span class="tool-state-dot status-dot" aria-hidden="true">
-					<span class="tool-status-ball warning-foreground" />
+					<span class={`tool-status-ball ${tone.className}`} />
 				</span>
 			)}
-			<p class={["message-system-text", hasStatus && "tool-header"]}>
-				<span class={hasStatus ? "tool-title" : undefined}>
-					{hasStatus && <span class="sr-only">Warning: </span>}
+			<p
+				class={[
+					"message-system-text",
+					hasStatus && "notice-header",
+					isPre && "notice-pre",
+				]}
+			>
+				<span class={hasStatus ? "notice-title" : undefined}>
+					{hasStatus && <span class="sr-only">{tone.prefix}</span>}
 					{message.title ? (
 						<>
 							<span safe>{message.title}</span>
@@ -639,9 +688,33 @@ function renderErrorMessage(message: AppMessage): string {
 	);
 }
 
+function renderCustomComponentOutput(message: AppMessage): string {
+	if (message.customRenderError) {
+		return syncHtml(
+			<p class="message-custom-render-error" safe>
+				{message.customRenderError}
+			</p>,
+		);
+	}
+	// `customRenderHtml` lines are already safe, pre-escaped HTML from
+	// `CustomRendererHost` (`ansiLineToHtml`, the same pipeline
+	// `terminal-surface.tsx` uses for `custom()` overlays) — never re-escaped
+	// here, matching how that module embeds the same kind of output.
+	return syncHtml(
+		<div class="message-custom-render">
+			{(message.customRenderHtml ?? []).join("\n")}
+		</div>,
+	);
+}
+
 function renderContextMessage(message: AppMessage): string {
-	const label =
-		message.role === "compaction"
+	const isCustom = message.role === "custom";
+	const hasCustomRender = Boolean(
+		isCustom && (message.customRenderHtml || message.customRenderError),
+	);
+	const label = isCustom
+		? message.meta || "custom"
+		: message.role === "compaction"
 			? "compaction"
 			: message.role === "summary"
 				? "summarize"
@@ -652,20 +725,30 @@ function renderContextMessage(message: AppMessage): string {
 				"message message-context tool-timeline-item",
 				message.role === "compaction"
 					? "message-compaction"
-					: message.role === "skill"
+					: message.role === "skill" || isCustom
 						? "message-skill"
 						: undefined,
 			]}
 			data-message-id={message.id}
 		>
-			<details class="context-details" data-preserve-attr="open">
+			{/* Custom messages are a command's own output (memory-info, rtk-status, …) —
+			the extension already opted in by setting `display`, so the point of the
+			message is to be read, not hidden behind a click (r2-audit M2). Compaction
+			and skill/summary context stay collapsed by default, as before. */}
+			<details class="context-details" data-preserve-attr="open" open={isCustom}>
 				<summary class="context-summary">
 					<span class="tool-state-dot status-dot" aria-hidden="true">
-						<span class="tool-status-ball tool-status-success" />
+						<span
+							class={`tool-status-ball ${
+								message.customRenderError
+									? "tool-status-error"
+									: "tool-status-success"
+							}`}
+						/>
 					</span>
 					<span class="context-title">
 						<span safe>{label}</span>
-						{message.meta && (
+						{!isCustom && message.meta && (
 							<span class="context-meta" safe>
 								{message.meta}
 							</span>
@@ -676,12 +759,30 @@ function renderContextMessage(message: AppMessage): string {
 					</span>
 				</summary>
 				<div class="tool-output-surface context-output">
-					<div class="markdown-content">
-						<div>
-							{message.renderedHtml ??
-								renderMarkdownStreaming(message.text)}
+					{hasCustomRender ? (
+						renderCustomComponentOutput(message)
+					) : (
+						<div class="markdown-content">
+							<div>
+								{message.renderedHtml ??
+									renderMarkdownStreaming(message.text)}
+							</div>
 						</div>
-					</div>
+					)}
+					{isCustom && message.details && (
+						<details class="context-details context-details-nested">
+							<summary class="context-summary context-summary-nested">
+								<span class="context-title">Details</span>
+								<span class="context-chevron">
+									<Icon
+										icon={ChevronRight}
+										class="context-chevron-icon"
+									/>
+								</span>
+							</summary>
+							{renderPreOutput(message.details)}
+						</details>
+					)}
 				</div>
 			</details>
 		</article>,

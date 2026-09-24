@@ -1,5 +1,6 @@
 import { test } from "bun:test";
 import { readdir, rm, stat } from "node:fs/promises";
+import { sep } from "node:path";
 
 import { assert, assertEquals, assertRejects } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
@@ -124,8 +125,9 @@ test("store sanitizes names and generates collision-safe paths", async () => {
 			]);
 			assert(paths[0] !== paths[1], "Expected unique imported paths");
 			for (const path of paths) {
+				// The store joins with `node:path`'s native separator, not `/`.
 				assert(
-					path.startsWith(`${store.rootPath}/`),
+					path.startsWith(`${store.rootPath}${sep}`),
 					"Expected imports inside the owned root",
 				);
 				assert(

@@ -5,6 +5,33 @@ import { assertFalse, assertStringIncludes } from "#testing/assertions";
 import { renderSessionSidebar } from "./session-sidebar.tsx";
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
+test("session sidebar shows an empty state with no sessions and nothing loading", () => {
+	const html = renderSessionSidebar(
+		appRenderSnapshot({
+			sessions: [],
+			currentSessionPath: undefined,
+			activityText: undefined,
+			sessionCatalogLoading: false,
+		}),
+	);
+
+	assertStringIncludes(html, "No sessions yet.");
+});
+
+test("session sidebar hides the empty state while the catalog is still loading", () => {
+	const html = renderSessionSidebar(
+		appRenderSnapshot({
+			sessions: [],
+			currentSessionPath: undefined,
+			activityText: undefined,
+			sessionCatalogLoading: true,
+		}),
+	);
+
+	assertFalse(html.includes("No sessions yet."));
+	assertStringIncludes(html, 'aria-label="Loading"');
+});
+
 test("session sidebar keeps loading visible beneath partial results", () => {
 	const html = renderSessionSidebar(
 		appRenderSnapshot({

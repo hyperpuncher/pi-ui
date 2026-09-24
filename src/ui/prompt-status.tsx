@@ -1,30 +1,50 @@
-import type { AppUsage, AppUsageLimits } from "../state/app-store.ts";
+import type {
+	AppExtensionWorkingIndicator,
+	AppUsage,
+	AppUsageLimits,
+} from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
 import { Icon } from "./icon.tsx";
 import { Loader } from "./icons.ts";
+import { renderPiUiStatusChips } from "./pi-ui-elements.tsx";
+import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
+
+// Pure-CSS frame counts the working-indicator animation ships keyframes for
+// (see prompt-status.css). Extensions rarely animate more than a handful of
+// glyphs (spinners/braille dots); anything wider falls back to a static
+// first frame rather than growing the stylesheet for an unbounded count.
+const animatedFrameCounts = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
 export function renderPromptStatus(state: AppStateSnapshot): string {
 	const activityText = state.extensionWorkingMessage ?? state.activityText;
+	// The turn phase (from raw session/extension-hook events — see `LiveWorkspaceController`'s
+	// `recordUiPromptStart`/`recordUiPromptEnd`, also used by the Live Workspace "Now" tab's
+	// turn banner) already distinguishes an extension dialog or inline `custom()` waiting on
+	// the user from an ordinary running turn; "Sending..." staying up through that wait reads
+	// as a hang rather than a prompt for input (round-2 audit m6).
+	const turn = state.liveWorkspace.turn;
+	const waitingForExtension = turn?.phase === "waiting-for-extension";
+	const sendingLabel = waitingForExtension
+		? turn?.waitingTitle
+			? `Waiting for extension input: ${turn.waitingTitle}`
+			: "Waiting for extension input"
+		: "Sending...";
 	return syncHtml(
 		<span id="prompt-status" class="prompt-status">
 			<span
 				class="prompt-status-message"
-				data-show="$_promptSubmitting"
+				data-show={waitingForExtension ? "true" : "$_promptSubmitting"}
 				style="display: none"
 			>
 				{loaderIcon()}
-				<span>Sending...</span>
+				<span safe>{sendingLabel}</span>
 			</span>
 			{state.extensionWorkingVisible && activityText && (
 				<span class="prompt-working-status">
 					<span class="prompt-working-content">
-						{state.extensionWorkingIndicator === undefined
-							? loaderIcon()
-							: state.extensionWorkingIndicator && (
-									<span safe>{state.extensionWorkingIndicator}</span>
-								)}
+						{renderWorkingIndicator(state.extensionWorkingIndicator)}
 						<span safe>{activityText}</span>
 					</span>
 				</span>
@@ -34,8 +54,55 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 					{status.text}
 				</span>
 			))}
+			{renderPiUiStatusChips(state)}
+			{/* extension-keys.js flashes `hidden` client-side; a status re-render
+			    (e.g. the notice the consumed key triggers) must not reset it. */}
+			<span
+				class="extension-capture-indicator badge"
+				id="extension-capture-indicator"
+				data-ignore-morph
+				data-variant="secondary"
+				data-tooltip="An extension is listening for the next keystroke"
+				hidden
+			>
+				<StatusDot
+					state="running"
+					label="Listening"
+					class="extension-capture-dot"
+				/>
+				Listening
+			</span>
 			{renderUsageIndicators(state.usage)}
+			{renderExtensionShortcutsData(state)}
 		</span>,
+	);
+}
+
+/**
+ * Hidden data island (F1 §1/§2): every currently-registered `pi.registerShortcut()`
+ * key, plus whether any `ctx.ui.onTerminalInput` listener is active outside a
+ * focused terminal surface. `static/app/extension-keys.ts` re-reads this DOM
+ * on every keydown rather than caching it, so it never needs its own
+ * SSE/signal plumbing and always reflects the latest `AppStore.commit()` —
+ * see `renderAppElements`'s doc comment on why this cheap a region doesn't
+ * need its own dirty flag.
+ */
+function renderExtensionShortcutsData(state: AppStateSnapshot) {
+	return (
+		<span
+			id="extension-shortcuts-data"
+			data-terminal-input-active={state.extensionTerminalInputActive}
+			hidden
+		>
+			{state.extensionShortcuts.map((shortcut) => (
+				<span
+					data-key={shortcut.key}
+					data-description={shortcut.description ?? ""}
+					data-extension={shortcut.extensionPath}
+					data-reachable={shortcut.reachableByKeyboard}
+				/>
+			))}
+		</span>
 	);
 }
 
@@ -224,4 +291,38 @@ function clampPercent(value: number): number {
 
 export function loaderIcon() {
 	return <Icon icon={Loader} label="Loading" role="status" class="icon-spin" />;
+}
+
+/**
+ * Renders `ctx.ui.setWorkingIndicator()`'s configuration:
+ * - `undefined` (no override) restores the default animated spinner icon.
+ * - `frames: []` hides the indicator glyph entirely (the working message
+ *   text can still show).
+ * - a single frame renders as a static glyph.
+ * - multiple frames cycle client-side via a pure-CSS animation (see
+ *   `.working-indicator-frames` in prompt-status.css) when the frame count
+ *   has precomputed keyframes, else falls back to a static first frame.
+ */
+function renderWorkingIndicator(indicator: AppExtensionWorkingIndicator | undefined) {
+	if (indicator === undefined) return loaderIcon();
+	const { frames } = indicator;
+	if (frames.length === 0) return undefined;
+	if (frames.length === 1 || !animatedFrameCounts.has(frames.length)) {
+		return <span safe>{frames[0]}</span>;
+	}
+	const intervalMs = indicator.intervalMs ?? 120;
+	const duration = frames.length * intervalMs;
+	return (
+		<span class="working-indicator-frames">
+			{frames.map((frame, index) => (
+				<span
+					class="working-indicator-frame"
+					style={`animation-name: working-indicator-cycle-${frames.length}; animation-duration: ${duration}ms; animation-delay: ${-1 * index * intervalMs}ms`}
+					safe
+				>
+					{frame}
+				</span>
+			))}
+		</span>
+	);
 }

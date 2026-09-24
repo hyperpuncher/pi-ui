@@ -6,9 +6,12 @@
 
 @layer components {
 	.prompt-box {
+		--prompt-inset-start: max(1rem, env(safe-area-inset-left));
+		--prompt-inset-end: max(1rem, env(safe-area-inset-right));
+
 		position: absolute;
-		inset-inline: 1rem;
-		bottom: 0.5rem;
+		inset-inline: var(--prompt-inset-start) var(--prompt-inset-end);
+		bottom: max(0.5rem, env(safe-area-inset-bottom));
 		z-index: 10;
 		max-width: var(--prompt-max-width);
 		margin-inline: auto;
@@ -36,6 +39,17 @@
 		color: var(--text);
 		box-shadow: var(--shadow-md);
 		pointer-events: auto;
+	}
+
+	/*
+	 * O2: the picker popover grows upward from the prompt box's top edge. When PIUI widgets or
+	 * terminal surfaces already stack inside the prompt box (each capped in
+	 * pi-ui-elements.css / terminal-surface.css), a short desktop viewport doesn't have room
+	 * for `.picker-list`'s default 18rem above them, so the list — the one scroll container —
+	 * gets a tighter, viewport-relative cap only in that case.
+	 */
+	.prompt-box:has(.piui-element, .terminal-surface-grid) .picker-list {
+		max-height: min(22dvh, 12rem);
 	}
 
 	.prompt-attachments {
@@ -384,8 +398,10 @@
 	/* Viewport-specific touch spacing; control density follows the footer width. */
 	@media (width <= 639px) {
 		.prompt-box {
-			inset-inline: 0.5rem;
-			bottom: 0.25rem;
+			--prompt-inset-start: max(0.5rem, env(safe-area-inset-left));
+			--prompt-inset-end: max(0.5rem, env(safe-area-inset-right));
+
+			bottom: max(0.25rem, env(safe-area-inset-bottom));
 		}
 		.prompt-surface {
 			--prompt-surface-padding: 0.5rem;

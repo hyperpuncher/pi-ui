@@ -1,4 +1,6 @@
 import { test } from "bun:test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type {
 	AgentSessionEvent,
@@ -6,7 +8,7 @@ import type {
 	SessionManager,
 } from "@earendil-works/pi-coding-agent";
 
-import { assertEquals, assertRejects } from "#testing/assertions";
+import { assertEquals, assertRejects, waitForCondition } from "#testing/assertions";
 
 import { AppStore } from "../state/app-store.ts";
 import type { SessionDoneNotification } from "../system-notifications.ts";
@@ -18,6 +20,7 @@ import type { PreparedSessionList } from "./session-catalog.ts";
 import {
 	agentSessionEventStub,
 	agentSessionRuntimeStub,
+	sessionEntryStub,
 	sessionManagerStub,
 } from "./test-fixtures.ts";
 
@@ -114,8 +117,10 @@ function fakeRuntime(
 	const modelRuntime = {
 		getModels: () => [],
 		getModel: () => undefined,
+		getProvider: () => undefined,
 		getProviders: () => [],
 		hasConfiguredAuth: () => false,
+		listCredentials: () => Promise.resolve([]),
 		refresh: (options?: { force?: boolean }) => {
 			fake.modelRefreshForces.push(options?.force);
 			return Promise.resolve({ aborted: false, errors: new Map() });
@@ -131,7 +136,10 @@ function fakeRuntime(
 		scopedModels: [],
 		modelRuntime,
 		promptTemplates: [],
-		extensionRunner: { getRegisteredCommands: () => [] },
+		extensionRunner: {
+			getRegisteredCommands: () => [],
+			getShortcuts: () => new Map(),
+		},
 		resourceLoader: { getSkills: () => ({ skills: [] }) },
 		thinkingLevel: "off",
 		getAvailableThinkingLevels: () => ["off"],
@@ -146,9 +154,13 @@ function fakeRuntime(
 			return Promise.resolve();
 		},
 		waitForIdle: () => Promise.resolve(),
-		reload: () => {
+		reload: async (options?: { beforeSessionStart?: () => void | Promise<void> }) => {
 			fake.reloadCount += 1;
-			return Promise.resolve();
+			await options?.beforeSessionStart?.();
+			// Like the SDK, reloaded extensions re-run `session_start` through the bound UI context.
+			fake.extensionBindings
+				.at(-1)
+				?.uiContext?.setStatus("reloaded", "after reload");
 		},
 		compact: () => compact(),
 		abort: () => {
@@ -337,7 +349,9 @@ test("RuntimeController production path binds callbacks before activation", asyn
 		dependencies: dependencies([fake]),
 	});
 	assertEquals(fake.calls, ["create", "bindExtensions"]);
-	assertEquals(fake.extensionBindings[0]?.mode, "rpc");
+	// Default binding (R4-A, O1): "tui" unlocks custom()/component/ctx.mode ===
+	// "tui" gated extension behavior via pi-ui's terminal-surface host.
+	assertEquals(fake.extensionBindings[0]?.mode, "tui");
 	assertEquals(Boolean(fake.extensionBindings[0]?.uiContext), true);
 	assertEquals(fake.beforeInvalidate.length, 1);
 	assertEquals(fake.rebind.length, 1);
@@ -346,6 +360,16 @@ test("RuntimeController production path binds callbacks before activation", asyn
 	await controller.dispose();
 	assertEquals(fake.calls.filter((call) => call === "unsubscribe").length, 1);
 	assertEquals(fake.disposeCount, 1);
+});
+
+test('RuntimeController extensionsMode: "rpc" is an escape hatch back to the pre-Round-4 binding', async () => {
+	const fake = fakeRuntime();
+	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
+		dependencies: dependencies([fake]),
+		extensionsMode: "rpc",
+	});
+	assertEquals(fake.extensionBindings[0]?.mode, "rpc");
+	await controller.dispose();
 });
 
 test("RuntimeController opens tree commands without prompting the model", async () => {
@@ -612,6 +636,177 @@ test("RuntimeController ignores callbacks captured before in-place replacement",
 	await controller.dispose();
 });
 
+// Each `session.bindExtensions()` call unconditionally re-emits `session_start`
+// (the SDK's own behavior — see `agent-session.js`'s `bindExtensions()`), so
+// counting `bindExtensions` calls is exactly counting `session_start`
+// deliveries. These regression tests cover every session transition: a
+// transition that binds extensions twice here would deliver `session_start`
+// to every extension twice for real.
+function bindExtensionsCount(fake: RuntimeFake): number {
+	return fake.calls.filter((call) => call === "bindExtensions").length;
+}
+
+test("RuntimeController delivers session_start exactly once for /new from an idle saved session", async () => {
+	const fake = fakeRuntime("/sessions/a.jsonl"); // persisted, idle: the in-place path.
+	const store = new AppStore();
+	const controller = await activate(store, [fake], "/workspace");
+	// Like the SDK's in-place `newSession()`: invalidate, replace the session,
+	// then run the rebind callback — all before `newSession()` resolves.
+	fake.runtime.newSession = async () => {
+		await fake.beforeInvalidate.at(-1)?.();
+		fake.runtime.session.sessionManager.getSessionFile = () => "/sessions/new.jsonl";
+		await fake.rebind.at(-1)?.();
+		return { cancelled: false };
+	};
+	const before = bindExtensionsCount(fake);
+
+	assertEquals((await controller.newSession()).status, "success");
+
+	assertEquals(bindExtensionsCount(fake) - before, 1);
+	// The final bind stays live, not just present.
+	fake.extensionBindings.at(-1)?.uiContext?.setStatus("after-new", "still live");
+	assertEquals(store.extensionStatuses, [{ key: "after-new", text: "still live" }]);
+	await controller.dispose();
+});
+
+test("RuntimeController delivers session_start exactly once for /new that replaces an active runtime", async () => {
+	const foreground = fakeRuntime("/sessions/a.jsonl");
+	const replacement = fakeRuntime("/sessions/b.jsonl");
+	foreground.setStreaming(true);
+	const controller = await activate(
+		new AppStore(),
+		[foreground, replacement],
+		"/workspace",
+	);
+
+	assertEquals((await controller.newSession()).status, "success");
+
+	assertEquals(bindExtensionsCount(replacement), 1);
+	await controller.dispose();
+});
+
+test("RuntimeController delivers session_start exactly once for a new temporary session", async () => {
+	const current = fakeRuntime("/sessions/a.jsonl");
+	const temporary = fakeRuntime(undefined, false);
+	const controller = await activate(new AppStore(), [current, temporary], "/workspace");
+
+	assertEquals((await controller.newTemporarySession()).status, "success");
+
+	assertEquals(bindExtensionsCount(temporary), 1);
+	await controller.dispose();
+});
+
+test("RuntimeController delivers session_start exactly once for an in-place session switch", async () => {
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	const controller = await activate(new AppStore(), [fake], "/workspace");
+	fake.runtime.switchSession = async (sessionPath) => {
+		await fake.beforeInvalidate.at(-1)?.();
+		fake.runtime.session.sessionManager.getSessionFile = () => sessionPath;
+		await fake.rebind.at(-1)?.();
+		return { cancelled: false };
+	};
+	const before = bindExtensionsCount(fake);
+
+	assertEquals(await controller.resumeSession("/sessions/b.jsonl"), {
+		status: "success",
+	});
+
+	assertEquals(bindExtensionsCount(fake) - before, 1);
+	await controller.dispose();
+});
+
+test("RuntimeController delivers session_start exactly once for a resume that replaces an active runtime", async () => {
+	const foreground = fakeRuntime("/sessions/a.jsonl");
+	const replacement = fakeRuntime("/sessions/b.jsonl");
+	foreground.setStreaming(true);
+	const controller = await activate(
+		new AppStore(),
+		[foreground, replacement],
+		"/workspace",
+	);
+
+	assertEquals(await controller.resumeSession("/sessions/b.jsonl"), {
+		status: "success",
+	});
+
+	assertEquals(bindExtensionsCount(replacement), 1);
+	await controller.dispose();
+});
+
+test("RuntimeController delivers session_start exactly once for /fork", async () => {
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	const controller = await activate(new AppStore(), [fake], "/workspace");
+	fake.runtime.fork = async (entryId, options) => {
+		void entryId;
+		void options;
+		await fake.beforeInvalidate.at(-1)?.();
+		fake.runtime.session.sessionManager.getSessionFile = () => "/sessions/fork.jsonl";
+		await fake.rebind.at(-1)?.();
+		return { cancelled: false };
+	};
+	const actions = fake.extensionBindings.at(-1)?.commandContextActions;
+	if (!actions) throw new Error("missing extension command context actions");
+	const before = bindExtensionsCount(fake);
+
+	assertEquals(await actions.fork("entry-1", {}), { cancelled: false });
+
+	assertEquals(bindExtensionsCount(fake) - before, 1);
+	await controller.dispose();
+});
+
+test("RuntimeController delivers session_start exactly once for /clone", async () => {
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	const store = new AppStore();
+	const controller = await activate(store, [fake], "/workspace");
+	fake.runtime.switchSession = async (sessionPath) => {
+		await fake.beforeInvalidate.at(-1)?.();
+		fake.runtime.session.sessionManager.getSessionFile = () => sessionPath;
+		await fake.rebind.at(-1)?.();
+		return { cancelled: false };
+	};
+	const before = bindExtensionsCount(fake);
+
+	assertEquals(await controller.prompt("/clone"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(bindExtensionsCount(fake) - before, 1);
+	assertEquals(store.messages.at(-1)?.text, "Session cloned.");
+	await controller.dispose();
+});
+
+test("RuntimeController delivers session_start exactly once for /import", async () => {
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	const store = new AppStore();
+	const controller = await activate(store, [fake], "/workspace");
+	fake.runtime.switchSession = async (sessionPath) => {
+		await fake.beforeInvalidate.at(-1)?.();
+		fake.runtime.session.sessionManager.getSessionFile = () => sessionPath;
+		await fake.rebind.at(-1)?.();
+		return { cancelled: false };
+	};
+	const importPath = join(tmpdir(), `pi-ui-import-${crypto.randomUUID()}.jsonl`);
+	await Bun.write(importPath, "");
+	const before = bindExtensionsCount(fake);
+
+	assertEquals(await controller.prompt(`/import ${importPath}`), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(bindExtensionsCount(fake) - before, 1);
+	await controller.dispose();
+});
+
+test("RuntimeController does not re-bind extensions for /reload (the SDK's own session_start suffices)", async () => {
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	const controller = await activate(new AppStore(), [fake], "/workspace");
+	const before = bindExtensionsCount(fake);
+
+	assertEquals(await controller.reload(), true);
+
+	assertEquals(bindExtensionsCount(fake) - before, 0);
+	assertEquals(fake.reloadCount, 1);
+	await controller.dispose();
+});
+
 test("RuntimeController disposal awaits and attempts foreground and background runtimes", async () => {
 	const foreground = fakeRuntime();
 	const replacement = fakeRuntime("/sessions/b.jsonl");
@@ -719,6 +914,19 @@ test("RuntimeController reloads resources without sending the command to the mod
 		state.slashCommands.some((command) => command.name === "reload"),
 		true,
 	);
+	await controller.dispose();
+});
+
+test("RuntimeController keeps extension UI that reloaded extensions set during /reload", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+	fake.extensionBindings.at(-1)?.uiContext?.setStatus("stale", "before reload");
+
+	assertEquals(await controller.prompt("/reload"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(state.extensionStatuses, [{ key: "reloaded", text: "after reload" }]);
 	await controller.dispose();
 });
 
@@ -858,6 +1066,88 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	assertEquals(b.disposeCount, 1);
 });
 
+test("RuntimeController keeps a backgrounded session's PIUI elements and restores them on re-foreground (A#23)", async () => {
+	const state = new AppStore();
+	const [a, b] = streamingRuntimes();
+	const controller = await activate(state, [a, b]);
+	const uiA = a.extensionBindings[0]?.uiContext;
+	if (!uiA) throw new Error("missing uiContext for runtime a");
+
+	uiA.notify(
+		`PIUI ${JSON.stringify({
+			v: 1,
+			op: "set",
+			el: {
+				id: "panel",
+				ns: "advisor",
+				kind: "panel",
+				placement: "sheet",
+				title: "v1",
+			},
+		})}`,
+		"info",
+	);
+	assertEquals(state.extensionElements.length, 1);
+	assertEquals(state.extensionElements[0]?.title, "v1");
+
+	// Backgrounding `a` (switching foreground to `b`) must not show `a`'s
+	// elements under `b`, but must not discard them either.
+	assertEquals(await controller.resumeSession("/sessions/b.jsonl"), {
+		status: "success",
+	});
+	assertEquals(state.extensionElements, []);
+
+	// The backgrounded runtime's own extension keeps updating its element —
+	// this must be captured even though `a` is not currently foreground.
+	uiA.notify(
+		`PIUI ${JSON.stringify({
+			v: 1,
+			op: "set",
+			el: {
+				id: "panel",
+				ns: "advisor",
+				kind: "panel",
+				placement: "sheet",
+				title: "v2",
+			},
+		})}`,
+		"info",
+	);
+	assertEquals(state.extensionElements, []);
+
+	// Re-foregrounding `a` restores its latest elements, not an empty view.
+	assertEquals(await controller.resumeSession("/sessions/a.jsonl"), {
+		status: "success",
+	});
+	assertEquals(state.extensionElements.length, 1);
+	assertEquals(state.extensionElements[0]?.title, "v2");
+
+	await controller.dispose();
+});
+
+test("RuntimeController cancels a pending extension dialog on session switch", async () => {
+	const state = new AppStore();
+	const [a, b] = streamingRuntimes();
+	const controller = await activate(state, [a, b]);
+	const uiA = a.extensionBindings[0]?.uiContext;
+	if (!uiA) throw new Error("missing uiContext for runtime a");
+
+	const selected = uiA.select("Pick one", ["x", "y"]);
+	assertEquals(state.extensionDialog?.kind, "select");
+
+	assertEquals(await controller.resumeSession("/sessions/b.jsonl"), {
+		status: "success",
+	});
+
+	// The dialog left pending on the now-backgrounded runtime resolves as
+	// cancelled instead of hanging forever, and the foreground view (now
+	// `b`'s) no longer shows it.
+	assertEquals(await selected, undefined);
+	assertEquals(state.extensionDialog, undefined);
+
+	await controller.dispose();
+});
+
 test("RuntimeController tracks the previous session for alternate jumps", async () => {
 	const state = new AppStore();
 	const [a, b] = streamingRuntimes();
@@ -924,6 +1214,9 @@ test("RuntimeController preserves a streaming session across workspace changes",
 	assertEquals(state.workspacePath, "/work/replacement");
 	assertEquals(source.disposeCount, 0);
 	assertEquals(source.calls.filter((call) => call === "unsubscribe").length, 1);
+	// openWorkspace() binds extensions on its own call site (runtime-controller.ts,
+	// separate from bindSessionExtensions()) — must honor the same configured mode.
+	assertEquals(replacement.extensionBindings[0]?.mode, "tui");
 
 	assertEquals(await controller.resumeSession("/sessions/source.jsonl"), {
 		status: "success",
@@ -1221,4 +1514,600 @@ test("RuntimeController disposes a prepared runtime when extension binding fails
 	);
 	assertEquals(fake.disposeCount, 1);
 	assertEquals(fake.events.length, 0);
+});
+
+test("RuntimeController opens the command palette for /settings and /hotkeys without prompting the model", async () => {
+	for (const name of ["/settings", "/hotkeys"]) {
+		const fake = fakeRuntime();
+		const controller = await activate(new AppStore(), [fake], "/workspace");
+		assertEquals(await controller.prompt(name), true);
+		assertEquals(fake.promptInputs, []);
+		await controller.dispose();
+	}
+});
+
+test("RuntimeController opens the session picker for /resume without prompting the model", async () => {
+	const fake = fakeRuntime();
+	const controller = await activate(new AppStore(), [fake], "/workspace");
+	assertEquals(await controller.prompt("/resume"), true);
+	assertEquals(fake.promptInputs, []);
+	await controller.dispose();
+});
+
+test("RuntimeController shows session stats for /session without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	fake.runtime.session.getSessionStats = () => ({
+		sessionFile: "/sessions/a.jsonl",
+		sessionId: "session-id",
+		userMessages: 2,
+		assistantMessages: 3,
+		toolCalls: 4,
+		toolResults: 4,
+		totalMessages: 9,
+		tokens: { input: 10, output: 20, cacheRead: 0, cacheWrite: 0, total: 30 },
+		cost: 0.125,
+	});
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/session"), true);
+	assertEquals(fake.promptInputs, []);
+	const text = state.messages.at(-1)?.text ?? "";
+	assertEquals(text.includes("2 user, 3 assistant, 4 tool calls"), true);
+	assertEquals(text.includes("$0.1250"), true);
+	await controller.dispose();
+});
+
+test("RuntimeController reports the current thinking level for a bare /thinking", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/thinking"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(
+		state.messages.at(-1)?.text.includes("Current thinking level: off"),
+		true,
+	);
+	await controller.dispose();
+});
+
+test("RuntimeController rejects an invalid /thinking level without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/thinking turbo"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(
+		state.messages.at(-1)?.text.includes("Invalid thinking level: turbo"),
+		true,
+	);
+	await controller.dispose();
+});
+
+test("RuntimeController rejects a syntactically valid /thinking level the session doesn't offer", async () => {
+	// "high" is a real AppThinkingLevel, unlike "turbo" above — the bug this
+	// guards was reporting success for any recognized level name even when
+	// the session's own getAvailableThinkingLevels() (here: only "off") didn't
+	// include it.
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/thinking high"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(
+		state.messages.at(-1)?.text.includes("Invalid thinking level: high"),
+		true,
+	);
+	await controller.dispose();
+});
+
+test("RuntimeController opens the model picker for a bare /model, without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+	state.setModels(
+		[
+			{
+				id: "opus",
+				provider: "anthropic",
+				name: "Claude Opus",
+				configured: true,
+				scoped: false,
+			},
+		],
+		"anthropic/opus",
+	);
+	let opened = false;
+	state.requestOpenModelPicker = () => {
+		opened = true;
+	};
+
+	assertEquals(await controller.prompt("/model"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(opened, true);
+	await controller.dispose();
+});
+
+test("RuntimeController opens the login dialog for /model when no model is available", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+	state.setModels([], undefined);
+	let pickerOpened = false;
+	state.requestOpenModelPicker = () => {
+		pickerOpened = true;
+	};
+	let loginOpened = 0;
+	controller.openLogin = () => {
+		loginOpened += 1;
+	};
+
+	assertEquals(await controller.prompt("/model"), true);
+	assertEquals(await controller.prompt("/scoped-models"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(pickerOpened, false);
+	assertEquals(loginOpened, 2);
+	await controller.dispose();
+});
+
+test("RuntimeController opens the model picker for /scoped-models, without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+	state.setModels(
+		[
+			{
+				id: "opus",
+				provider: "anthropic",
+				name: "Claude Opus",
+				configured: true,
+				scoped: true,
+			},
+			{
+				id: "gpt-5",
+				provider: "openai",
+				name: "GPT-5",
+				configured: true,
+				scoped: false,
+			},
+		],
+		"anthropic/opus",
+	);
+	let opened = false;
+	state.requestOpenModelPicker = () => {
+		opened = true;
+	};
+
+	assertEquals(await controller.prompt("/scoped-models"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(opened, true);
+	await controller.dispose();
+});
+
+test("RuntimeController requires a title for /name and reports temporary sessions cannot be renamed", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/name"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.messages.at(-1)?.text, "Usage: /name <title>");
+
+	fake.runtime.session.sessionManager.getSessionFile = () => undefined;
+	assertEquals(await controller.prompt("/name new title"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.messages.at(-1)?.text, "Temporary sessions cannot be renamed.");
+	await controller.dispose();
+});
+
+test("RuntimeController renames the session for /name <title> without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime("/sessions/current.jsonl");
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/name  My Session  "), true);
+	// The rename refreshes the session catalog with a real `fs.stat`, which can take more
+	// than one macrotask under full-suite load, so wait for the confirmation instead.
+	await waitForCondition(
+		() => state.messages.at(-1)?.text?.startsWith("Session renamed") ?? false,
+		{
+			timeoutMs: 2_000,
+			message: "/name never confirmed the rename",
+		},
+	);
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(fake.setSessionNames, ["My Session"]);
+	// Previously silent: confirm the rename so the command gives feedback.
+	assertEquals(state.messages.at(-1)?.text, 'Session renamed to "My Session".');
+	await controller.dispose();
+});
+
+test("RuntimeController reports nothing-to-copy when the client forwards a failed /copy", async () => {
+	// The client (pickers.tsx / prompt-box.tsx) only ever posts "/copy" to the
+	// server after its own clipboard copy failed — see static/app/pickers.js.
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/copy"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.messages.at(-1)?.text, "Nothing to copy yet.");
+
+	// The client reports a clipboard failure (API missing/denied and the execCommand
+	// fallback failed too) as "/copy unavailable" — a distinct, visible notice.
+	assertEquals(await controller.prompt("/copy unavailable"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assertEquals(
+		state.messages.at(-1)?.text,
+		"Couldn't copy: this browser blocked clipboard access.",
+	);
+	await controller.dispose();
+});
+
+test("RuntimeController includes the matching changelog entry for /changelog", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/changelog"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	const notice = state.messages.at(-1);
+	assertEquals(notice?.format, "pre");
+	assertEquals(notice?.text.startsWith("## ["), true);
+	await controller.dispose();
+});
+
+test("RuntimeController reports /bug and /quit as unsupported without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/bug"), true);
+	assertEquals(await controller.prompt("/quit"), true);
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.messages.length, 2);
+	await controller.dispose();
+});
+
+test("RuntimeController confirms a successful /clone (round-4 O5)", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime("/sessions/source.jsonl");
+	const cloned = fakeRuntime("/sessions/fork.jsonl");
+	// A non-streaming, persisted source takes `executeSessionResume`'s in-place
+	// `switchSession` branch instead (not covered by any test fixture here), so mark it
+	// streaming to exercise the same open-a-new-runtime path `forkSessionToWorkspace`'s test
+	// does, and consume the second fixture.
+	source.setStreaming(true);
+	const controller = await activate(state, [source, cloned], "/workspace");
+
+	assertEquals(await controller.prompt("/clone"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(source.promptInputs, []);
+	assertEquals(state.currentSessionPath, "/sessions/fork.jsonl");
+	assertEquals(state.messages.at(-1)?.text, "Session cloned.");
+	await controller.dispose();
+});
+
+test("RuntimeController reports temporary sessions cannot be cloned without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	fake.runtime.session.sessionManager.getSessionFile = () => undefined;
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/clone"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.messages.at(-1)?.text, "Temporary sessions cannot be cloned.");
+	await controller.dispose();
+});
+
+test("RuntimeController opens the login dialog for /login without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/login"), true);
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.authDialog?.mode, "login");
+	await controller.dispose();
+});
+
+test("RuntimeController opens the logout dialog for /logout without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/logout"), true);
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.authDialog?.mode, "logout");
+	await controller.dispose();
+});
+
+test("RuntimeController requires a path for /import without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/import"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.messages.at(-1)?.text, "Usage: /import <path to .jsonl file>");
+	await controller.dispose();
+});
+
+test("RuntimeController rejects /import of a missing file instead of starting a new session there", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+	const missing = join(tmpdir(), `pi-ui-missing-${crypto.randomUUID()}.jsonl`);
+
+	assertEquals(await controller.prompt(`/import ${missing}`), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(state.currentSessionPath, "/sessions/a.jsonl");
+	assertEquals(state.messages.at(-1)?.noticeTone, "error");
+	await controller.dispose();
+});
+
+test("RuntimeController starts a new session for /new without prompting the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime("/sessions/current.jsonl");
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/new"), true);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	assertEquals(fake.promptInputs, []);
+	// The new session's welcome empty state is the confirmation; no notice hides it.
+	assertEquals(state.messages.length, 0);
+	await controller.dispose();
+});
+
+test("RuntimeController reports an unrecognized slash command without sending it to the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/not-a-real-command with args"), true);
+
+	assertEquals(fake.promptInputs, []);
+	assertEquals(
+		state.messages.at(-1)?.text,
+		"Unknown command: /not-a-real-command. Type / to see available commands.",
+	);
+	await controller.dispose();
+});
+
+test("RuntimeController sends a prompt that starts with a file path to the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/Users/me/app.ts fails to compile"), true);
+
+	assertEquals(fake.promptInputs, [
+		{ text: "/Users/me/app.ts fails to compile", streamingBehavior: undefined },
+	]);
+	await controller.dispose();
+});
+
+test("RuntimeController forwards a registered extension slash command to the model", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	fake.runtime.session.extensionRunner.getRegisteredCommands = () => [
+		{
+			name: "custom",
+			invocationName: "custom",
+			description: "Custom command",
+			sourceInfo: {
+				path: "/extensions/custom.ts",
+				source: "custom",
+				scope: "project",
+				origin: "top-level",
+			},
+			handler: async () => {},
+		},
+	];
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/custom do the thing"), true);
+
+	assertEquals(fake.promptInputs, [
+		{ text: "/custom do the thing", streamingBehavior: undefined },
+	]);
+	await controller.dispose();
+});
+
+test("RuntimeController forwards a mixed-case extension slash command instead of reporting it unknown", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	fake.runtime.session.extensionRunner.getRegisteredCommands = () => [
+		{
+			name: "FixtureCmd",
+			invocationName: "FixtureCmd",
+			description: "Mixed-case command",
+			sourceInfo: {
+				path: "/extensions/fixture.ts",
+				source: "fixture",
+				scope: "project",
+				origin: "top-level",
+			},
+			handler: async () => {},
+		},
+	];
+	const controller = await activate(state, [fake], "/workspace");
+
+	assertEquals(await controller.prompt("/FixtureCmd hello"), true);
+
+	assertEquals(fake.promptInputs, [
+		{ text: "/FixtureCmd hello", streamingBehavior: undefined },
+	]);
+	await controller.dispose();
+});
+
+test("RuntimeController hides the internal pi_ui_event reverse channel from the slash catalog", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const sourceInfo = {
+		path: "/extensions/bridge.ts",
+		source: "bridge",
+		scope: "project" as const,
+		origin: "top-level" as const,
+	};
+	fake.runtime.session.extensionRunner.getRegisteredCommands = () => [
+		{
+			name: "pi_ui_event",
+			invocationName: "pi_ui_event",
+			description: "Internal bridge",
+			sourceInfo,
+			handler: async () => {},
+		},
+		{
+			name: "visible",
+			invocationName: "visible",
+			description: "Visible command",
+			sourceInfo,
+			handler: async () => {},
+		},
+	];
+	const controller = await activate(state, [fake], "/workspace");
+
+	const names = state.slashCommands.map((command) => command.name);
+	assertEquals(names.includes("pi_ui_event"), false);
+	assertEquals(names.includes("visible"), true);
+	await controller.dispose();
+});
+
+test("RuntimeController rejects /export targets that name a directory", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime("/sessions/current.jsonl");
+	const controller = await activate(state, [fake], "/workspace");
+
+	for (const target of ["..", ".", "../.."]) {
+		assertEquals(await controller.prompt(`/export ${target}`), true);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		assertEquals(
+			state.messages.at(-1)?.text.startsWith("Usage: /export"),
+			true,
+			target,
+		);
+	}
+	assertEquals(fake.promptInputs, []);
+	await controller.dispose();
+});
+
+test("RuntimeController renders a background session's custom entries with that session's own renderers", async () => {
+	const state = new AppStore();
+	const [a, b] = streamingRuntimes();
+	const controller = await activate(state, [a, b]);
+	const rendered: string[] = [];
+	a.runtime.session.extensionRunner.getEntryRenderer = (customType) =>
+		customType === "demo"
+			? (entry) => {
+					rendered.push(`a:${entry.id}`);
+					return { render: () => ["from a"], invalidate: () => {} };
+				}
+			: undefined;
+	b.runtime.session.extensionRunner.getEntryRenderer = () => () => {
+		rendered.push("b");
+		return { render: () => ["from b"], invalidate: () => {} };
+	};
+
+	// Foreground `b`; `a` keeps streaming in the background.
+	assertEquals(await controller.resumeSession("/sessions/b.jsonl"), {
+		status: "success",
+	});
+	a.emit(
+		agentSessionEventStub({
+			type: "entry_appended",
+			entry: sessionEntryStub({ type: "custom", customType: "demo", id: "e1" }),
+		}),
+	);
+
+	assertEquals(rendered, ["a:e1"]);
+	// Nothing from the background session reaches the foreground transcript.
+	assertEquals(state.messages, []);
+	await controller.dispose();
+});
+
+test("RuntimeController keeps extension UI live after an in-place session switch", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	const controller = await activate(state, [fake], "/workspace");
+	// Like the SDK: invalidate, swap the session, then run the rebind callback.
+	fake.runtime.switchSession = async (sessionPath) => {
+		await fake.beforeInvalidate.at(-1)?.();
+		fake.runtime.session.sessionManager.getSessionFile = () => sessionPath;
+		await fake.rebind.at(-1)?.();
+		return { cancelled: false };
+	};
+
+	assertEquals(await controller.resumeSession("/sessions/b.jsonl"), {
+		status: "success",
+	});
+	assertEquals(state.currentSessionPath, "/sessions/b.jsonl");
+	// The resumed session's extensions talk to the UI through the context bound during rebind.
+	fake.extensionBindings.at(-1)?.uiContext?.setStatus("resumed", "still live");
+	assertEquals(state.extensionStatuses, [{ key: "resumed", text: "still live" }]);
+	await controller.dispose();
+});
+
+test("RuntimeController renders same-millisecond custom messages of one type with their own content", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime("/sessions/a.jsonl");
+	const controller = await activate(state, [fake]);
+	fake.runtime.session.extensionRunner.getMessageRenderer = (customType) =>
+		customType === "memory-info"
+			? (message) => ({
+					render: () => [`body:${String(message.content)}`],
+					invalidate: () => {},
+				})
+			: undefined;
+	const timestamp = 1_700_000_000_000;
+	for (const content of ["first", "second"]) {
+		fake.emit(
+			agentSessionEventStub({
+				type: "message_start",
+				message: {
+					role: "custom",
+					customType: "memory-info",
+					content,
+					display: true,
+					timestamp,
+				},
+			}),
+		);
+	}
+
+	assertEquals(
+		state.messages.map((message) => message.customRenderHtml),
+		[["body:first"], ["body:second"]],
+	);
+	await controller.dispose();
 });

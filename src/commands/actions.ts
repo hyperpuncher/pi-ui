@@ -48,6 +48,31 @@ export function toggleWorkspaceReviewAction(): string {
 	return "$_workspaceReviewOpen = !$_workspaceReviewOpen";
 }
 
+/**
+ * Sets `$_liveWorkspaceOpen` and persists the new value as the saved preference (A#15):
+ * `$_liveWorkspaceOpen` is the live, instantly-applied signal the pane's CSS reads, while
+ * `$liveWorkspacePreferences.open` is what's posted to the backend and seeds the signal on the
+ * next load — the same split `pi-ui-live-workspace-preferences` event already uses for `tab`
+ * and `ratio`.
+ */
+function setLiveWorkspaceOpenAction(valueExpression: string): string {
+	return `
+		$_liveWorkspaceOpen = ${valueExpression};
+		document.body.dispatchEvent(new CustomEvent(
+			'pi-ui-live-workspace-preferences',
+			{ detail: { open: $_liveWorkspaceOpen } },
+		));
+	`;
+}
+
+export function toggleLiveWorkspaceAction(): string {
+	return setLiveWorkspaceOpenAction("!$_liveWorkspaceOpen");
+}
+
+export function closeLiveWorkspaceAction(): string {
+	return setLiveWorkspaceOpenAction("false");
+}
+
 function toggleKeybindHintsAction(): string {
 	return `document.body.toggleAttribute('data-keybind-hints'); @post('${endpoints.keybindHints}', { payload: { keybindHints: document.body.hasAttribute('data-keybind-hints') } })`;
 }
@@ -88,6 +113,7 @@ export const commandActions = {
 	"change-workspace": openWorkspaceDialogAction(true),
 	"fork-session-to-workspace": openWorkspaceDialogAction(true, "fork"),
 	"toggle-review": toggleWorkspaceReviewAction(),
+	"toggle-live-workspace": toggleLiveWorkspaceAction(),
 	login: authDialogAction("login"),
 	logout: authDialogAction("logout"),
 } satisfies Record<AppCommandId, string>;

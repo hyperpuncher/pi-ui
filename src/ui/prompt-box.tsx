@@ -5,12 +5,14 @@ import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { Icon } from "./icon.tsx";
 import { ArrowDown, Paperclip, X } from "./icons.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
+import { renderPiUiWidgets } from "./pi-ui-elements.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
 import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
 import { renderPromptStart } from "./prompt-start.tsx";
 import { renderPromptStatus } from "./prompt-status.tsx";
 import { syncHtml } from "./sync-html.ts";
+import { renderTerminalSurfacePersistent } from "./terminal-surface.tsx";
 
 export function renderPromptBox(state: AppStateSnapshot): string {
 	return syncHtml(
@@ -21,6 +23,8 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 				prompt: state.promptEditorText,
 				_filePickerOpen: false,
 				_fileSearchController: "",
+				_argumentPickerOpen: false,
+				_argumentSearchController: "",
 				_slashPickerOpen: false,
 				_promptSubmitting: false,
 				fileQuery: "",
@@ -28,6 +32,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 			data-on:pointerdown__outside="window.piUi.pickers.close()"
 			data-effect="
 				$_filePickerOpen;
+				$_argumentPickerOpen;
 				$_slashPickerOpen;
 				$prompt;
 				window.piUi.pickers.sync(true);
@@ -52,6 +57,14 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 				>
 					<div id="file-picker-results" aria-live="polite" />
 				</div>
+				<div
+					id="prompt-argument-popover"
+					class="prompt-picker-popover"
+					style="display: none;"
+					data-show="$_argumentPickerOpen"
+				>
+					<div id="argument-picker-results" aria-live="polite" />
+				</div>
 			</div>
 			{renderPromptQueue(state)}
 			<div
@@ -71,6 +84,8 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 				data-init="el.removeAttribute('data-prompt-initial')"
 			>
 				{renderExtensionWidgets(state, "aboveEditor")}
+				{renderPiUiWidgets(state)}
+				{renderTerminalSurfacePersistent(state, "aboveEditor")}
 				<div class="prompt-editor-row">
 					<textarea
 						id="prompt-input"
@@ -101,6 +116,27 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 									});
 								}
 							`,
+							// Aborting the previous controller before creating a fresh one (rather
+							// than passing requestCancellation: "auto", which only dedupes by
+							// method+URL) guarantees a slower, older completions response can
+							// never land after — and overwrite — a newer one: its fetch is
+							// cancelled synchronously, in this same handler, before the next
+							// request is ever issued. See argument-completions.ts for the
+							// matching result-count cap (the other half of the stale/unbounded
+							// completions gap).
+							"data-on:pi-ui-argument-query__debounce.20ms": `
+								if (typeof evt.detail?.command === 'string') {
+									$_argumentSearchController?.abort?.();
+									$_argumentSearchController = new AbortController();
+									@get('${endpoints.commandArgumentCompletions}', {
+										payload: {
+											argumentCommand: evt.detail.command,
+											argumentPrefix: evt.detail.prefix,
+										},
+										requestCancellation: $_argumentSearchController,
+									});
+								}
+							`,
 							"data-on:keydown__window": keybindAction(
 								"focus-prompt",
 								`el.focus({ preventScroll: true });
@@ -119,7 +155,15 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							$_fileSearchController = '';
 							$_filePickerOpen = false;
 						`}
-						data-effect={`if ($_sessionTransitionStatus !== 'loading') {
+						data-on:pi-ui-argument-close={`
+							$_argumentSearchController?.abort?.();
+							$_argumentSearchController = '';
+							$_argumentPickerOpen = false;
+						`}
+						data-effect={`if (
+							$_sessionTransitionStatus !== 'loading' &&
+							!window.matchMedia('(pointer: coarse)').matches
+						) {
 							el.focus({ preventScroll: true });
 							el.selectionStart = el.value.length;
 							el.selectionEnd = el.value.length;
@@ -129,7 +173,9 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							window.piUi.fileTransfer.insert(evt.clipboardData);
 						}`}
 						data-on:keydown={`
-							window.piUi.promptHistory.handleKeydown(evt, $_promptHistory);
+							if (!window.piUi.extensionKeys.takesPromptKey(evt)) {
+								window.piUi.promptHistory.handleKeydown(evt, $_promptHistory);
+							}
 							if (
 							evt.code === 'Escape' &&
 							!evt.ctrlKey &&
@@ -137,7 +183,8 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							!evt.altKey &&
 							!evt.shiftKey &&
 							!window.piUi.pickers.isOpen() &&
-							document.querySelector('[data-send-trigger]')
+							document.querySelector('[data-send-trigger]') &&
+							!window.piUi.extensionKeys.promptLevelInputActive()
 						) {
 							evt.preventDefault();
 							el.blur();
@@ -150,10 +197,21 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							evt.key === 'Enter' &&
 							!evt.shiftKey &&
 							!evt.isComposing &&
+							!window.piUi.extensionKeys.promptInputBusy() &&
 							window.piUi.fileTransfer.canSubmit($prompt) &&
 							!window.piUi.pickers.isOpen()
 						) {
 							evt.preventDefault();
+							if ($prompt.trim() === '/copy') {
+								window.piUi.prompt.clear();
+								// Only the browser can reach the clipboard; when there is
+								// nothing to copy, fall through to the server so it can
+								// show a notice instead of silently doing nothing.
+								if (!window.piUi.pickers.copyLastMessage()) {
+									@post('${endpoints.prompt}', { payload: { prompt: '/copy' } });
+								}
+								return;
+							}
 							window.piUi.messageScroll.scrollBottom();
 							const submittedPrompt = $prompt;
 							$_promptSubmitting = true;
@@ -188,6 +246,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 					</div>
 				</div>
 				{renderExtensionWidgets(state, "belowEditor")}
+				{renderTerminalSurfacePersistent(state, "belowEditor")}
 			</div>
 			<footer id="prompt-footer" class="raised-surface prompt-footer">
 				{renderPromptStart(state)}

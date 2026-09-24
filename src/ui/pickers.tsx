@@ -71,11 +71,21 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 	const label = `/${item.name}`;
 	const name = slashCommandName(item);
 	const runsImmediately = item.source === "system" && !item.argumentHint;
-	const clickAction = runsImmediately
-		? `window.piUi.messageScroll.scrollBottom();
+	// "/copy" is a browser-only action (clipboard access) — never post it to the
+	// server on success; when there is nothing to copy, fall through to the
+	// server so it can show a notice instead of silently doing nothing.
+	const clickAction =
+		name === "copy"
+			? `window.piUi.pickers.close();
+			$prompt = '';
+			if (!window.piUi.pickers.copyLastMessage()) {
+				@post('${endpoints.prompt}', { payload: { prompt: '/copy' } });
+			}`
+			: runsImmediately
+				? `window.piUi.messageScroll.scrollBottom();
 			$prompt = '';
 			@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} } });`
-		: `window.piUi.pickers.complete(${JSON.stringify(item.name)});`;
+				: `window.piUi.pickers.complete(${JSON.stringify(item.name)});`;
 	return syncHtml(
 		<li
 			id={`slash-option-${encodeURIComponent(name)}`}
@@ -110,6 +120,58 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 					</span>
 				</span>
 				<PickerMetadata text={item.source} />
+			</div>
+		</li>,
+	);
+}
+
+/**
+ * Per-argument completions for "/command <partial argument>" (e.g. `/model <partial>`,
+ * or an extension command's own `getArgumentCompletions`). Mirrors `renderFilePickerResults`'
+ * shape/ids so `static/app/pickers.js` can reuse the same list-navigation helpers, but under
+ * its own element ids so it doesn't collide with the file picker when both could in principle
+ * be open (they're mutually exclusive today, but keeping them distinct avoids relying on that).
+ */
+export function renderArgumentPickerResults(items: readonly AutocompleteItem[]): string {
+	return syncHtml(
+		<div
+			id="argument-picker-results"
+			aria-live="polite"
+			data-init="window.piUi.pickers.sync(true)"
+		>
+			<PickerList
+				id="argument-picker-list"
+				label="Arguments"
+				class={bottomAnchoredPickerClass}
+			>
+				{items.map((item, index) => renderArgumentCompletionRow(item, index))}
+			</PickerList>
+		</div>,
+	);
+}
+
+function renderArgumentCompletionRow(item: AutocompleteItem, index: number): string {
+	return syncHtml(
+		<li
+			id={`argument-option-${encodeURIComponent(item.value)}`}
+			role="option"
+			data-picker-kind="argument"
+			data-picker-value={item.value}
+			class="picker-row"
+			aria-selected={index === 0 ? "true" : "false"}
+			data-argument-row
+		>
+			<div class="picker-row-button">
+				<span class="picker-row-content">
+					<span class="picker-row-title" safe>
+						{item.label}
+					</span>
+					{item.description && (
+						<span class="picker-row-description" safe>
+							{item.description}
+						</span>
+					)}
+				</span>
 			</div>
 		</li>,
 	);

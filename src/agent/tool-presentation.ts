@@ -1,7 +1,13 @@
 import { stripAnsi } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/ansi.js";
 import type { TranscriptMessageTitlePart } from "../state/transcript-state.ts";
 import type { JsonValue } from "../utils/json-types.ts";
-import { asRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
+import {
+	asRecord,
+	isNumber,
+	isRecord,
+	isString,
+	type JsonRecord,
+} from "../utils/type-guards.ts";
 import { formatHomePath } from "../utils/workspace.ts";
 
 const bashPreviewLines = 4;
@@ -84,6 +90,46 @@ function toolRange(args: JsonValue): string {
 	return `:${record.offset}-${record.offset + record.limit - 1}`;
 }
 
+// Extension tools (subagent_*, ask_user, jev_decompose, advisor, todo, goal_*, delegate*,
+// memory_*, web_search/fetch_content/source_check/get_search_content, mcp__*) have no
+// built-in special case above and no `path`/`file_path` argument for the fallback below to
+// find, so their title reads as just the bare tool name. Rather than hardcoding each
+// extension's argument shape one by one, this small table names, per tool-name pattern,
+// which argument key(s) are likely to hold a human-meaningful "target" — the same role
+// `command`/`pattern`/`path` play for the built-ins above. First match wins; first
+// non-empty key wins. New extension tools not listed here still get a sensible title (the
+// bare tool name), so this table is an enhancement, never a requirement.
+const extensionToolTargets: readonly {
+	pattern: RegExp;
+	argKeys: readonly string[];
+}[] = [
+	{ pattern: /^ask_user$/, argKeys: ["question"] },
+	{ pattern: /^subagent_start$/, argKeys: ["tasks"] },
+	{ pattern: /^subagent_/, argKeys: ["id", "ids", "jobId"] },
+	{ pattern: /^jev_decompose$/, argKeys: ["workstreams"] },
+	{ pattern: /^advisor$/, argKeys: ["request", "purpose"] },
+	{ pattern: /^todo$/, argKeys: ["action", "subject"] },
+	{ pattern: /^goal_/, argKeys: ["objective", "step", "reason"] },
+	{ pattern: /^delegate/i, argKeys: ["task", "objective"] },
+	{ pattern: /^memory_/, argKeys: ["key", "query"] },
+	{
+		pattern: /^(?:web_search|source_check|fetch_content|get_search_content)$/,
+		argKeys: ["query", "url"],
+	},
+	{ pattern: /^mcp__/, argKeys: ["query", "path", "id", "name"] },
+];
+
+function extensionToolTarget(toolName: string, record: JsonRecord): string {
+	const spec = extensionToolTargets.find((entry) => entry.pattern.test(toolName));
+	if (!spec) return "";
+	for (const key of spec.argKeys) {
+		const value = record[key];
+		if (isString(value) && value.trim()) return value.trim();
+		if (Array.isArray(value) && value.length > 0) return `${value.length} ${key}`;
+	}
+	return "";
+}
+
 function toolTarget(toolName: string, args: JsonValue): string {
 	const record = asRecord(args);
 	if (!record) return "";
@@ -98,7 +144,10 @@ function toolTarget(toolName: string, args: JsonValue): string {
 		const path = stringValue(record.path);
 		return path ? `${pattern} in ${path}` : pattern;
 	}
-	return formatHomePath(stringValue(record.path) || stringValue(record.file_path));
+	const path = formatHomePath(
+		stringValue(record.path) || stringValue(record.file_path),
+	);
+	return path || extensionToolTarget(toolName, record);
 }
 
 export function formatToolStart(toolName: string, args: JsonValue): ToolPresentation {

@@ -4,7 +4,11 @@ import { assertEquals } from "#testing/assertions";
 
 import type { AppUsage } from "../state/app-store.ts";
 import { agentSessionRuntimeStub } from "./test-fixtures.ts";
-import { cumulativeCacheHitPercent, UsageController } from "./usage-controller.ts";
+import {
+	cumulativeCacheHitPercent,
+	ProviderUsagePool,
+	UsageController,
+} from "./usage-controller.ts";
 
 const sessionStats = {
 	getSessionStats: () => ({
@@ -38,6 +42,9 @@ function usageHarness(
 	fetchers: {
 		codex?: ConstructorParameters<typeof UsageController>[2];
 		openCodeGo?: ConstructorParameters<typeof UsageController>[3];
+		// Each harness gets its own pool by default, matching a lone `UsageController`'s prior
+		// per-instance state exactly; the dedup/sharing tests below pass one explicitly instead.
+		pool?: ProviderUsagePool;
 	} = {},
 ) {
 	let rendered: AppUsage | undefined;
@@ -51,6 +58,7 @@ function usageHarness(
 		},
 		fetchers.codex ?? (async () => undefined),
 		fetchers.openCodeGo ?? (async () => undefined),
+		fetchers.pool ?? new ProviderUsagePool(),
 	);
 	return { controller, rendered: () => rendered };
 }
@@ -166,6 +174,67 @@ test("shows OpenCode Go usage and retains it after an unavailable refresh", asyn
 	await flush();
 	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 88);
 	controller.dispose();
+});
+
+test("a freshly created controller reuses another controller's still-fresh cached quota via a shared pool (R2-C)", async () => {
+	const model = { provider: "openai-codex", id: "gpt-5" };
+	const pool = new ProviderUsagePool();
+	let fetchCount = 0;
+	const codex = async () => {
+		fetchCount += 1;
+		return { primary: { usedPercent: 40, windowSeconds: 604_800 } };
+	};
+
+	const first = usageHarness({ model, ...sessionStats }, { codex, pool });
+	first.controller.refresh();
+	await flush();
+	assertEquals(first.rendered()?.limits?.windows[0]?.usedPercent, 40);
+	assertEquals(fetchCount, 1);
+	first.controller.dispose();
+
+	// A second, independently-constructed controller sharing the same pool (standing in for a
+	// runtime host recreated after a failure) must see the cached quota immediately — not a
+	// blank "loading" state — and must not issue a second fetch within the TTL window.
+	const second = usageHarness({ model, ...sessionStats }, { codex, pool });
+	second.controller.sync();
+	assertEquals(second.rendered()?.limits?.windows[0]?.usedPercent, 40);
+	second.controller.refresh();
+	await flush();
+	assertEquals(fetchCount, 1);
+	second.controller.dispose();
+});
+
+test("two controllers sharing a pool join one in-flight request instead of fetching twice", async () => {
+	const model = { provider: "opencode-go", id: "kimi-k2.5" };
+	const pool = new ProviderUsagePool();
+	let fetchCount = 0;
+	let resolveFetch: (() => void) | undefined;
+	const openCodeGo = async () => {
+		fetchCount += 1;
+		await new Promise<void>((resolveWait) => {
+			resolveFetch = resolveWait;
+		});
+		return {
+			rolling: { usedPercent: 5 },
+			weekly: { usedPercent: 5 },
+			monthly: { usedPercent: 5 },
+		};
+	};
+
+	const first = usageHarness({ model, ...sessionStats }, { openCodeGo, pool });
+	const second = usageHarness({ model, ...sessionStats }, { openCodeGo, pool });
+	first.controller.refresh();
+	second.controller.refresh();
+	await flush();
+	assertEquals(fetchCount, 1);
+
+	resolveFetch?.();
+	await flush();
+	await flush();
+	assertEquals(first.rendered()?.limits?.windows[0]?.usedPercent, 5);
+	assertEquals(second.rendered()?.limits?.windows[0]?.usedPercent, 5);
+	first.controller.dispose();
+	second.controller.dispose();
 });
 
 test("uses the cumulative session cache hit rate", () => {

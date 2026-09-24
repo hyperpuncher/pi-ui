@@ -134,6 +134,115 @@ test("system messages make share URLs actionable and escape text", () => {
 	assertStringIncludes(html, 'target="_blank"');
 });
 
+test("notices render in the body font by default, not bold monospace", () => {
+	const html = renderMessage({
+		id: "notice-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "notice",
+		noticeTone: "info",
+		text: "Set to gpt-5.",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "notice-header");
+	assertStringIncludes(html, "notice-title");
+	assertStringExcludes(html, "notice-pre");
+	assertStringExcludes(html, "tool-header");
+	assertStringExcludes(html, "tool-title");
+});
+
+test("a pre-formatted notice keeps the monospace treatment", () => {
+	const html = renderMessage({
+		id: "notice-2",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "notice",
+		noticeTone: "info",
+		format: "pre",
+		text: "tokens: 1,234\ncost: $0.01",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "notice-header notice-pre");
+});
+
+test("custom messages render their customType as the label and markdown content", () => {
+	const html = renderMessage({
+		id: "custom-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "custom",
+		text: "**bold** status",
+		meta: "deploy_status",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "deploy_status");
+	assertStringIncludes(html, "<strong>bold</strong>");
+	assertStringExcludes(html, "Details");
+});
+
+test("custom messages with details render a nested collapsible with escaped text", () => {
+	const html = renderMessage({
+		id: "custom-2",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "custom",
+		text: "build failed",
+		meta: "ci_result",
+		details: '<script>alert("x")</script>\nexit code 1',
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "Details");
+	assertStringIncludes(html, "&lt;script&gt;");
+	assertStringExcludes(html, "<script>");
+});
+
+test("a custom message without a customType falls back to a generic label", () => {
+	const html = renderMessage({
+		id: "custom-3",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "custom",
+		text: "hi",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "custom");
+});
+
+test("custom messages (command output such as memory-info, rtk-status) render expanded", () => {
+	const html = renderMessage({
+		id: "custom-4",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "custom",
+		text: "3 memories stored",
+		meta: "memory-info",
+		timestamp: new Date(0),
+	});
+	assertStringIncludes(html, "<details");
+	assertStringIncludes(html, 'data-preserve-attr="open" open>');
+});
+
+test("compaction and skill context messages stay collapsed by default", () => {
+	const compaction = renderMessage({
+		id: "compaction-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "compaction",
+		text: "summary text",
+		timestamp: new Date(0),
+	});
+	assertStringExcludes(compaction, 'data-preserve-attr="open" open>');
+	const skill = renderMessage({
+		id: "skill-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "skill",
+		text: "skill body",
+		timestamp: new Date(0),
+	});
+	assertStringExcludes(skill, 'data-preserve-attr="open" open>');
+});
+
 test("bodyless tools show only their title", () => {
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "Read file");
@@ -208,4 +317,30 @@ test("partial recent sessions stay visible during full catalog loading", () => {
 	);
 	assertStringIncludes(loading, "Recent session");
 	assertStringExcludes(loading, 'aria-label="Loading recent sessions"');
+});
+
+test("stopped replies and thinking blocks show the muted Stopped note", () => {
+	for (const role of ["assistant", "thought"] as const) {
+		const html = renderMessage({
+			id: `${role}-stopped`,
+			presentationState: "final",
+			presentationVersion: 1,
+			role,
+			text: "partial",
+			meta: "Stopped",
+			timestamp: new Date(0),
+		});
+		assertStringIncludes(html, '<p class="message-stopped-note">Stopped</p>');
+	}
+	assertStringExcludes(
+		renderMessage({
+			id: "thought-plain",
+			presentationState: "final",
+			presentationVersion: 1,
+			role: "thought",
+			text: "done thinking",
+			timestamp: new Date(0),
+		}),
+		"message-stopped-note",
+	);
 });

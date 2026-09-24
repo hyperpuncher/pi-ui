@@ -1,12 +1,14 @@
 import { test } from "bun:test";
-import { appendFile, mkdir, rm, stat, symlink } from "node:fs/promises";
+import { appendFile, mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import { assertEquals, assertFalse } from "#testing/assertions";
+import { symlinkDir } from "#testing/symlink";
 import { makeTempDir } from "#testing/temp";
 
+import { operatingSystem } from "../utils/platform.ts";
 import { listCachedSessions } from "./session-catalog.ts";
-import { readSessionSummaryCache } from "./session-summary-cache.ts";
+import { openableSessionPath, readSessionSummaryCache } from "./session-summary-cache.ts";
 
 test("sessions reuse and incrementally update the summary cache", async () => {
 	const { root, sessionsRoot, workspace, cachePath } = await makeSessionDirs();
@@ -130,7 +132,7 @@ test("flat custom session dirs and symlinked workspaces are discovered", async (
 				message("user", "Linked session", 2_000),
 			]),
 		);
-		await symlink(linkedWorkspace, join(sessionsRoot, "workspace"));
+		await symlinkDir(linkedWorkspace, join(sessionsRoot, "workspace"));
 
 		const sessions = await listCachedSessions(sessionsRoot, cachePath);
 		assertEquals(
@@ -213,6 +215,37 @@ test("a corrupt summary cache is rebuilt", async () => {
 		await rm(root, { recursive: true });
 	}
 });
+
+// round-4 (r3-merge.md): a session file whose full path is at or beyond Windows' MAX_PATH
+// (260 chars) silently dropped out of the sidebar, because Bun's file APIs treat such a path
+// as missing rather than opening it. `openableSessionPath` is the fix — see its own docs.
+test.skipIf(operatingSystem !== "windows")(
+	"openableSessionPath adds the \\\\?\\ extended-length prefix past MAX_PATH on Windows",
+	() => {
+		const short = "C:\\Users\\me\\sessions\\a.jsonl";
+		assertEquals(openableSessionPath(short), short);
+
+		const long = `C:\\Users\\me\\${"deeply-nested-".repeat(20)}\\a.jsonl`;
+		assertEquals(long.length >= 260, true);
+		assertEquals(openableSessionPath(long), `\\\\?\\${long}`);
+
+		// Forward slashes are never normalized under the `\\?\` prefix, so they must be
+		// converted before it's applied.
+		const longForwardSlashes = long.replaceAll("\\", "/");
+		assertEquals(openableSessionPath(longForwardSlashes), `\\\\?\\${long}`);
+
+		// A UNC path needs `UNC` spliced in after the prefix instead of its leading `\\`.
+		const longUnc = `\\\\server\\share\\${"deeply-nested-".repeat(20)}\\a.jsonl`;
+		assertEquals(
+			openableSessionPath(longUnc),
+			`\\\\?\\UNC\\server\\share\\${"deeply-nested-".repeat(20)}\\a.jsonl`,
+		);
+
+		// Already prefixed — passed through unchanged, not double-prefixed.
+		const alreadyPrefixed = `\\\\?\\${long}`;
+		assertEquals(openableSessionPath(alreadyPrefixed), alreadyPrefixed);
+	},
+);
 
 async function makeSessionDirs() {
 	const root = await makeTempDir();

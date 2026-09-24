@@ -12,6 +12,7 @@ import {
 	ActionInputError,
 	booleanField,
 	enumField,
+	jsonSizeField,
 	optionalString,
 	readActionSignals,
 	requiredString,
@@ -61,6 +62,31 @@ test("action input errors redact signal values including secrets", () => {
 	);
 	assertStringExcludes(error.message, secret);
 	assertStringIncludes(error.message, "authInput");
+});
+
+test("requiredString enforces an optional max length", () => {
+	assertEquals(requiredString({ id: "ab" }, "id", { maxLength: 5 }), "ab");
+	assertRejects(
+		async () => requiredString({ id: "abcdef" }, "id", { maxLength: 5 }),
+		ActionInputError,
+	);
+});
+
+test("jsonSizeField passes through small values and undefined", () => {
+	assertEquals(jsonSizeField({ value: { a: 1 } }, "value", { maxBytes: 1024 }), {
+		a: 1,
+	});
+	assertEquals(jsonSizeField({}, "value", { maxBytes: 1024 }), undefined);
+});
+
+test("jsonSizeField rejects a payload over the byte cap", async () => {
+	await assertRejects(
+		async () =>
+			jsonSizeField({ value: { note: "x".repeat(2000) } }, "value", {
+				maxBytes: 100,
+			}),
+		ActionInputError,
+	);
 });
 
 function actionRequest(body: string): Request {

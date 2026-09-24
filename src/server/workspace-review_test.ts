@@ -131,8 +131,12 @@ test("workspace review combines repository files with tracked and untracked chan
 		await Bun.write(`${repository}/notes.txt`, "untracked\n");
 
 		const nestedWorkspace = `${repository}/src`;
-		assertEquals(await findGitRoot(nestedWorkspace), repository);
-		assertEquals(await findGitWatchPaths(nestedWorkspace), [repository]);
+		// `git rev-parse` always normalizes to forward slashes, even on Windows,
+		// so compare against the same normalized form rather than the raw
+		// (backslash-separated, on Windows) temp dir path.
+		const canonicalRepository = repository.replaceAll("\\", "/");
+		assertEquals(await findGitRoot(nestedWorkspace), canonicalRepository);
+		assertEquals(await findGitWatchPaths(nestedWorkspace), [canonicalRepository]);
 		const snapshot = await readWorkspaceReview(nestedWorkspace);
 		assertEquals(snapshot.isGitRepository, true);
 		assertEquals(snapshot.changeCount, 3);
@@ -246,13 +250,16 @@ test("large untracked trees stay metadata-only; explicit diffs are bounded and c
 				),
 			),
 		);
-		await Bun.write(`${repository}/[new]\tfile.txt`, "visible new file\n");
+		// A filename with brackets, a space, and a non-ASCII character —
+		// deliberately unusual, but a literal tab (0x09) is a reserved
+		// control character NTFS refuses to create, so it's avoided here.
+		await Bun.write(`${repository}/[new] café file.txt`, "visible new file\n");
 		const snapshot = await readWorkspaceReview(repository);
 		assertEquals(snapshot.changes.length, 122);
 		assertEquals(snapshot.changeCount, 2);
 		assertEquals("patch" in snapshot, false);
 		assertStringIncludes(
-			await readWorkspaceDiff(repository, "[new]\tfile.txt"),
+			await readWorkspaceDiff(repository, "[new] café file.txt"),
 			"+visible new file",
 		);
 		assertStringIncludes(
@@ -290,7 +297,7 @@ test("large untracked trees stay metadata-only; explicit diffs are bounded and c
 			(await readWorkspaceReview(repository)).changes
 				.map((file) => file.path)
 				.sort(),
-			[".gitignore", "[new]\tfile.txt", "node_modules/0.js"],
+			[".gitignore", "[new] café file.txt", "node_modules/0.js"],
 		);
 	} finally {
 		await rm(repository, { recursive: true });
@@ -346,6 +353,12 @@ async function makeGitRepository(): Promise<string> {
 	await git(repository, "init", "--quiet");
 	await git(repository, "config", "user.email", "pi-ui@example.invalid");
 	await git(repository, "config", "user.name", "pi-ui test");
+	// Pin line-ending behavior for this repo regardless of the machine's global
+	// git config: `discardWorkspaceChange` materializes file content straight
+	// from Git (checkout), and a global `core.autocrlf=true` (common on
+	// Windows) would silently convert the `\n` fixtures below to `\r\n` on
+	// write-back, which is a machine setting, not something this suite tests.
+	await git(repository, "config", "core.autocrlf", "false");
 	return repository;
 }
 

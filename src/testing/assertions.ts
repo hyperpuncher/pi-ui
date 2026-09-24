@@ -103,3 +103,20 @@ export function assertThrows(
 	}
 	return thrown;
 }
+
+/** Polls `predicate` until it returns true or the timeout elapses. */
+export async function waitForCondition(
+	predicate: () => boolean,
+	options: { timeoutMs?: number; intervalMs?: number; message?: string } = {},
+): Promise<void> {
+	const timeoutMs = options.timeoutMs ?? 10_000;
+	const intervalMs = options.intervalMs ?? 5;
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		if (predicate()) return;
+		if (Date.now() >= deadline) {
+			throw new Error(options.message ?? "condition did not become true in time");
+		}
+		await new Promise((resolve) => setTimeout(resolve, intervalMs));
+	}
+}

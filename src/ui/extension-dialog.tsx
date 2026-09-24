@@ -61,7 +61,10 @@ function renderSelect(dialog: Extract<AppExtensionDialog, { kind: "select" }>): 
 					</button>
 				))}
 			</div>
-			{cancelFooter()}
+			{/* Some extensions already include their own "Cancel" option in the list above
+			 * (e.g. compact-pct) — skip the generic footer so the dialog doesn't show two
+			 * (round-2 audit m8). */}
+			{!dialog.hasOwnCancel && cancelFooter()}
 		</>,
 	);
 }

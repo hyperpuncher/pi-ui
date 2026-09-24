@@ -1,6 +1,7 @@
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type { AgentSessionEvent, CustomEntry } from "@earendil-works/pi-coding-agent";
 
 import type {
+	FinishedAssistantIds,
 	TranscriptMessage,
 	TranscriptMessageInput,
 	TranscriptMessageOptions,
@@ -32,7 +33,7 @@ export type SessionEventStateSink = {
 	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void;
 	appendThoughtDelta(delta: string): void;
 	appendAssistantDelta(delta: string): void;
-	finishAssistant(): void;
+	finishAssistant(): FinishedAssistantIds;
 	showRecentMessages(): void;
 	setActivityText(activityText: string | undefined): void;
 	setQueuedMessages(steering: readonly string[], followUp: readonly string[]): void;
@@ -100,6 +101,19 @@ export type SessionEventReducerContext = {
 	tools: SessionEventToolState;
 	convertMessage: (
 		message: EventOf<"message_start">["message"],
+		timestamp: Date,
+	) => readonly TranscriptMessageInput[];
+	/**
+	 * Projects an `entry_appended` event's `CustomEntry` (`pi.appendEntry`,
+	 * `type: "custom"`) into transcript messages — see
+	 * `TranscriptProjector.customEntry`. `entry_appended` also fires for
+	 * ordinary message/context-edit/label/cache-warming entries already
+	 * covered by their own dedicated events, so the reducer below only calls
+	 * this for `entry.type === "custom"`; every other entry type is ignored
+	 * here to avoid double-appending it to the transcript.
+	 */
+	convertEntry?: (
+		entry: CustomEntry,
 		timestamp: Date,
 	) => readonly TranscriptMessageInput[];
 	formatToolStart: (event: EventOf<"tool_execution_start">) => ToolMessageView;
@@ -171,6 +185,12 @@ export function reduceSessionEvent(
 				};
 				if (message.attachments?.length) {
 					options.attachments = message.attachments;
+				}
+				if (message.details !== undefined) {
+					options.details = message.details;
+				}
+				if (message.customRenderHtml !== undefined) {
+					options.customRenderHtml = message.customRenderHtml;
 				}
 				state.appendMessage(message.role, message.text, options);
 			}
@@ -244,16 +264,29 @@ export function reduceSessionEvent(
 		}
 		case "message_end":
 			if (event.message.role === "assistant") {
-				state.finishAssistant();
-				if (
-					event.message.stopReason === "error" &&
-					!isAbortErrorMessage(event.message.errorMessage)
-				) {
+				const finished = state.finishAssistant();
+				// A canonical abort surfaces either as its own dedicated stop reason
+				// (the common case — a user hitting stop mid-stream) or, for some
+				// providers, as an `"error"` stop reason whose message just says the
+				// request was aborted (round-4 O6).
+				const aborted =
+					event.message.stopReason === "aborted" ||
+					(event.message.stopReason === "error" &&
+						isAbortErrorMessage(event.message.errorMessage));
+				if (event.message.stopReason === "error" && !aborted) {
 					state.appendMessage(
 						"system",
 						formatProviderErrorMessage(event.message.errorMessage),
 						{ state: "error" },
 					);
+				} else if (aborted) {
+					// A canonical abort isn't a provider error (the branch above stays
+					// silent for it), but it still deserves a visible marker instead of
+					// the reply just trailing off with no explanation (round-4 O6). A stop
+					// that lands while the model is still thinking has no reply text yet, so
+					// the marker goes on the thinking block instead.
+					const stoppedId = finished.assistantId ?? finished.thoughtId;
+					if (stoppedId) state.updateMessage(stoppedId, { meta: "Stopped" });
 				}
 				const cacheMissNotice = context.cacheMissNotice?.(event.message);
 				if (cacheMissNotice)
@@ -303,6 +336,23 @@ export function reduceSessionEvent(
 		}
 		case "queue_update":
 			state.setQueuedMessages(event.steering, event.followUp);
+			break;
+		case "entry_appended":
+			// Every other `entry_appended` entry type (message, context_edit, label,
+			// cache-warming) already reaches the transcript through its own dedicated
+			// event — see `convertEntry`'s doc comment.
+			if (event.entry.type === "custom" && context.convertEntry) {
+				for (const message of context.convertEntry(
+					event.entry,
+					context.now?.() ?? new Date(),
+				)) {
+					state.appendMessage(message.role, message.text, {
+						meta: message.meta,
+						customRenderHtml: message.customRenderHtml,
+						customRenderError: message.customRenderError,
+					});
+				}
+			}
 			break;
 		case "agent_end":
 			break;

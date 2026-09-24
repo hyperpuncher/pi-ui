@@ -415,6 +415,13 @@ function loadedCodeLanguage(language: string): string | undefined {
 
 const localImagePattern = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i;
 const safeUrlProtocols = new Set(["http:", "https:", "mailto:", "file:"]);
+// A bare Windows absolute path (`C:\...` or `C:/...`) — as opposed to a
+// `file://` URI, which already round-trips correctly below. Left as-is, its
+// `C:` prefix looks like a URI *scheme* to the URL parser (any `letter:` is a
+// syntactically valid, if unrecognized, scheme), which would make
+// `safeUrl`/`localImageUrl` treat it as an unsafe foreign-protocol link and
+// drop the image entirely instead of routing it through the preview route.
+const windowsDrivePathPattern = /^[a-zA-Z]:[\\/]/;
 
 function rewriteRelativeImageSources(html: string, basePath: string): string {
 	return new HTMLRewriter()
@@ -446,7 +453,7 @@ function localImageUrl(source: string): string | undefined {
 		? fileUriToPath(source)
 		: source.startsWith("~/")
 			? `${homedir()}${source.slice(1)}`
-			: source.startsWith("/")
+			: source.startsWith("/") || windowsDrivePathPattern.test(source)
 				? source
 				: undefined;
 	if (!path || !localImagePattern.test(path) || !existsSync(path)) return undefined;
@@ -454,7 +461,13 @@ function localImageUrl(source: string): string | undefined {
 }
 
 function safeUrl(value: string, options: { allowDataImage: boolean }): URL | undefined {
-	const url = URL.parse(value, "http://pi-ui.local");
+	// See `windowsDrivePathPattern`: reparse a bare Windows absolute path as
+	// the `file://` URI it means, rather than letting its drive letter be
+	// mistaken for an arbitrary URI scheme.
+	const source = windowsDrivePathPattern.test(value)
+		? `file:///${value.replaceAll("\\", "/")}`
+		: value;
+	const url = URL.parse(source, "http://pi-ui.local");
 	if (!url) return undefined;
 	if (url.protocol === "data:") {
 		return options.allowDataImage &&

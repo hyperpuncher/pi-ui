@@ -5,6 +5,7 @@ import { assertEquals, assertStringIncludes, assertThrows } from "#testing/asser
 import {
 	defaultServerHostname,
 	defaultServerPort,
+	isLoopbackHostname,
 	parseServerOptions,
 	serverUsage,
 } from "./server-options.ts";
@@ -54,4 +55,48 @@ test("server options reject invalid input", () => {
 	assertThrows(() => parseServerOptions(["-H", "localhost"]), Error, "unknown option");
 	assertThrows(() => parseServerOptions(["-p", "1234"]), Error, "unknown option");
 	assertThrows(() => parseServerOptions(["--unknown"]), Error, "unknown option");
+	assertThrows(() => parseServerOptions(["--auth-token"]), Error, "non-empty token");
+	assertThrows(() => parseServerOptions(["--auth-token="]), Error, "non-empty token");
+});
+
+test("server options accept an opt-in auth token from a flag or the environment", () => {
+	assertEquals(parseServerOptions(["--auth-token", "secret"]), {
+		hostname: defaultServerHostname,
+		port: defaultServerPort,
+		help: false,
+		authToken: "secret",
+	});
+	assertEquals(parseServerOptions(["--auth-token=secret"]), {
+		hostname: defaultServerHostname,
+		port: defaultServerPort,
+		help: false,
+		authToken: "secret",
+	});
+	assertEquals(parseServerOptions([], { authToken: "from-env" }), {
+		hostname: defaultServerHostname,
+		port: defaultServerPort,
+		help: false,
+		authToken: "from-env",
+	});
+	// A flag overrides the environment, same as --host/--port.
+	assertEquals(parseServerOptions(["--auth-token", "flag"], { authToken: "env" }), {
+		hostname: defaultServerHostname,
+		port: defaultServerPort,
+		help: false,
+		authToken: "flag",
+	});
+});
+
+test("server options omit authToken entirely when not set, unlike an empty string", () => {
+	const options = parseServerOptions([], { authToken: "  " });
+	assertEquals("authToken" in options, false);
+});
+
+test("isLoopbackHostname recognizes loopback addresses only", () => {
+	assertEquals(isLoopbackHostname("127.0.0.1"), true);
+	assertEquals(isLoopbackHostname("::1"), true);
+	assertEquals(isLoopbackHostname("localhost"), true);
+	assertEquals(isLoopbackHostname("LOCALHOST"), true);
+	assertEquals(isLoopbackHostname("0.0.0.0"), false);
+	assertEquals(isLoopbackHostname("192.168.1.5"), false);
 });

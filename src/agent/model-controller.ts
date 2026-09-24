@@ -106,7 +106,16 @@ export class ModelController {
 
 	setThinking(level: string): boolean {
 		if (!isThinkingLevel(level)) return false;
-		this.getRuntime().session.setThinkingLevel(level);
+		const session = this.getRuntime().session;
+		// `session.setThinkingLevel` accepts any `ThinkingLevel` string without
+		// checking whether the current model actually supports it — it silently
+		// keeps the previous level, but still leaves callers with no way to tell
+		// success from a no-op. Reject anything outside the model's own
+		// available levels here so `/thinking <level>` reports failure instead
+		// of a false "set" confirmation.
+		const available = session.getAvailableThinkingLevels().filter(isThinkingLevel);
+		if (!available.includes(level)) return false;
+		session.setThinkingLevel(level);
 		this.syncThinking();
 		return true;
 	}

@@ -209,6 +209,9 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 					</ul>
 				</div>
 			))}
+			{groups.length === 0 && !state.sessionCatalogLoading && (
+				<p class="fine-print session-sidebar-empty">No sessions yet.</p>
+			)}
 			{state.sessionCatalogLoading && (
 				<div class="session-sidebar-loading">{loaderIcon()}</div>
 			)}

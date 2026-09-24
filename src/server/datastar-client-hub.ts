@@ -10,15 +10,40 @@ export type DatastarClientStreamOptions = {
 	onDisconnect?: () => void;
 };
 
+/**
+ * Default interval between empty signal-patch heartbeats sent to every connected
+ * client. A mobile carrier NAT/proxy or a backgrounded Android WebView commonly
+ * drops an idle connection after 30-60s without notifying either end; sending real
+ * SSE bytes on a shorter cadence keeps the connection alive and lets the transport
+ * notice a genuinely dead socket (and disconnect it) instead of leaving a zombie
+ * client registered indefinitely, since `idleTimeout: 0` never does that for us.
+ */
+const defaultHeartbeatIntervalMs = 20_000;
+
 /** Owns long-lived Datastar clients and accepts only rendered presentation data. */
 export class DatastarClientHub {
 	private readonly clients = new Map<string, DatastarClient>();
 	private readonly disconnectCallbacks = new Map<string, () => void>();
+	private readonly heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 
 	constructor(
 		private readonly streamFactory: DatastarStreamFactory = datastarStream,
 		private readonly recordPerformance = true,
-	) {}
+		heartbeatIntervalMs: number = defaultHeartbeatIntervalMs,
+		scheduleInterval: (
+			callback: () => void,
+			intervalMs: number,
+		) => ReturnType<typeof setInterval> = setInterval,
+	) {
+		if (heartbeatIntervalMs <= 0) return;
+		this.heartbeatTimer = scheduleInterval(
+			() => this.sendHeartbeat(),
+			heartbeatIntervalMs,
+		);
+		// SAFETY: Bun/Node timers expose `unref`; browsers/tests do not, and a
+		// heartbeat that merely fails to unref is a harmless idle timer, not a bug.
+		(this.heartbeatTimer as { unref?: () => void }).unref?.();
+	}
 
 	get clientCount(): number {
 		return this.clients.size;
@@ -119,6 +144,18 @@ export class DatastarClientHub {
 				this.disconnect(id, client);
 			}
 		}
+	}
+
+	/** Stops the heartbeat timer; call on server shutdown to let the process exit. */
+	dispose(): void {
+		if (this.heartbeatTimer !== undefined) clearInterval(this.heartbeatTimer);
+	}
+
+	private sendHeartbeat(): void {
+		if (this.clients.size === 0) return;
+		// An empty JSON Merge Patch changes no signal, so this is invisible to the
+		// client beyond keeping the connection warm.
+		this.patchSignals("{}");
 	}
 
 	private patchClient(
