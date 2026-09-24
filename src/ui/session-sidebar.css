@@ -277,6 +277,9 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	.session-sidebar-row:is(:hover, :focus-within) .session-sidebar-title {
+		color: var(--text);
+	}
 	.session-sidebar-row-meta {
 		display: flex;
 		min-width: 0;
