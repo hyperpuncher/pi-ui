@@ -39,7 +39,7 @@
 		"lint:css": "bunx stylelint \"src/**/*.css\"",
 		"lint:fix": "bunx oxlint --fix && bun run lint:css --fix",
 		"check": "bun run schema:check && bunx tsc --noEmit",
-		"test": "bun test",
+		"test": "bun test --parallel=8",
 		"audit": "bunx fallow audit"
 	},
 	"devDependencies": {
