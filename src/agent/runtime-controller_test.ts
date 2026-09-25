@@ -1,4 +1,4 @@
-import { test } from "bun:test";
+import { setSystemTime, spyOn, test } from "bun:test";
 
 import type {
 	AgentSessionEvent,
@@ -363,18 +363,17 @@ test("RuntimeController forces only the first model picker refresh within thirty
 		dependencies: dependencies([fake]),
 	});
 
-	const originalNow = Date.now;
-	let now = originalNow();
-	Date.now = () => now;
+	const now = Date.now();
+	setSystemTime(now);
 	try {
 		await controller.refreshModels();
-		now += 30 * 60 * 1000 - 1;
+		setSystemTime(now + 30 * 60 * 1000 - 1);
 		await controller.refreshModels();
-		now += 1;
+		setSystemTime(now + 30 * 60 * 1000);
 		await controller.refreshModels();
 		assertEquals(fake.modelRefreshForces, [true, false, true]);
 	} finally {
-		Date.now = originalNow;
+		setSystemTime();
 		await controller.dispose();
 	}
 });
@@ -1114,10 +1113,17 @@ test("RuntimeController adopts a prepared workspace despite idle disposal failur
 	const state = new AppStore();
 	const controller = await activate(state, [source, replacement], "/work/source");
 	source.disposeError = new Error("dispose failed");
+	const errorLog = spyOn(console, "error").mockImplementation(() => {});
 	try {
 		assertEquals(await controller.openWorkspace("/work/replacement"), true);
 		assertEquals(state.workspacePath, "/work/replacement");
+		assertEquals(errorLog.mock.calls.length, 1);
+		assertEquals(
+			errorLog.mock.calls[0]?.[0],
+			"Failed to dispose previous workspace runtime",
+		);
 	} finally {
+		errorLog.mockRestore();
 		source.disposeError = undefined;
 		await controller.dispose();
 	}

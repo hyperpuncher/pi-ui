@@ -1,4 +1,4 @@
-import { test } from "bun:test";
+import { onTestFinished, spyOn, test } from "bun:test";
 
 import { assertEquals } from "#testing/assertions";
 
@@ -66,6 +66,7 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 		},
 		...sessionStats,
 	};
+	const warning = spyOn(console, "warn").mockImplementation(() => {});
 	const { controller, rendered } = usageHarness(session, {
 		codex: async () => {
 			if (failure === "timeout")
@@ -73,6 +74,10 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 			if (failure === "empty") return undefined;
 			return { primary: { usedPercent, windowSeconds: 604_800 } };
 		},
+	});
+	onTestFinished(() => {
+		warning.mockRestore();
+		controller.dispose();
 	});
 
 	controller.refresh();
@@ -96,6 +101,10 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 		await flush();
 		assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 78);
 	}
+	assertEquals(
+		warning.mock.calls.map(([message]) => message),
+		["codex usage request timed out"],
+	);
 	failure = undefined;
 	usedPercent = 23;
 	controller.refresh(true);
@@ -111,7 +120,6 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 	controller.suspend();
 	controller.sync();
 	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 77);
-	controller.dispose();
 });
 
 test("shows OpenCode Go usage and retains it after an unavailable refresh", async () => {
