@@ -153,23 +153,17 @@ export const sessionRoutes = {
 	},
 } satisfies RouteMap<RouteContext>;
 
-const FAVICON_CANDIDATES = [
-	"favicon.ico",
-	"favicon.svg",
-	"favicon.png",
-	"public/favicon.ico",
-	"public/favicon.svg",
-	"public/favicon.png",
-	"static/favicon.ico",
-	"static/favicon.svg",
-	"static/favicon.png",
-	"app/favicon.ico",
-	"app/favicon.svg",
-	"app/favicon.png",
-	"src/app/favicon.ico",
-	"src/app/favicon.svg",
-	"src/app/favicon.png",
+const FAVICON_DIRECTORIES = [
+	"",
+	"public",
+	"static",
+	"site",
+	"site/public",
+	"site/static",
+	"app",
+	"src/app",
 ] as const;
+const FAVICON_EXTENSIONS = ["ico", "svg", "png"] as const;
 
 const FAVICON_CONTENT_TYPES = new Map([
 	["ico", "image/x-icon"],
@@ -182,9 +176,13 @@ const FOLDER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="
 async function readWorkspaceFavicon(
 	cwd: string,
 ): Promise<{ bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined> {
-	for (const candidate of FAVICON_CANDIDATES) {
-		const favicon = await readFaviconFile(join(cwd, candidate));
-		if (favicon) return favicon;
+	for (const directory of FAVICON_DIRECTORIES) {
+		for (const extension of FAVICON_EXTENSIONS) {
+			const favicon = await readFaviconFile(
+				join(cwd, directory, `favicon.${extension}`),
+			);
+			if (favicon) return favicon;
+		}
 	}
 
 	return undefined;

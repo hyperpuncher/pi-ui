@@ -126,6 +126,21 @@ test("session favicons use workspace assets and fall back to a folder", async ()
 			new Uint8Array([1, 2, 3]),
 		);
 
+		await rm(`${workspace}/public/favicon.png`);
+		for (const directory of ["site", "site/public", "site/static"]) {
+			await mkdir(`${workspace}/${directory}`, { recursive: true });
+			const path = `${workspace}/${directory}/favicon.svg`;
+			await Bun.write(path, `<svg>${directory}</svg>`);
+			const response = await router.fetch(
+				new Request(
+					`http://localhost/sessions/favicon?cwd=${encodeURIComponent(workspace)}`,
+				),
+			);
+			assertEquals(response.headers.get("content-type"), "image/svg+xml");
+			assertEquals(await response.text(), `<svg>${directory}</svg>`);
+			await rm(path);
+		}
+
 		const fallback = await router.fetch(
 			new Request("http://localhost/sessions/favicon?cwd=unknown"),
 		);
