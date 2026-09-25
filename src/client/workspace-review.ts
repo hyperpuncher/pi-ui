@@ -95,6 +95,7 @@ const splitButton = requiredButton("review-layout-split");
 const stackedButton = requiredButton("review-layout-stacked");
 const wrapButton = requiredButton("review-wrap");
 const workspaceReviewRoot = requiredElement("workspace-review");
+const workspaceShell = requiredElement("workspace-shell");
 const submitCommentsButton = requiredButton("review-submit-comments");
 const commentStatus = requiredElement("review-comment-status");
 const dataRegion = requiredElement("workspace-review-data-region");
@@ -215,7 +216,15 @@ wrapButton.addEventListener("click", () => {
 	updateViewerOptions();
 });
 let observedDiffLayout = effectiveLayout();
+const isSideBySide = () =>
+	getComputedStyle(workspaceReviewRoot)
+		.getPropertyValue("--review-side-by-side")
+		.trim() === "1";
+let wasSideBySide = isSideBySide();
 const resize = new ResizeObserver(() => {
+	const sideBySide = isSideBySide();
+	if (wasSideBySide && !sideBySide && visibility.isOpen()) visibility.close();
+	wasSideBySide = sideBySide;
 	const nextLayout = effectiveLayout();
 	syncLayoutButtons(nextLayout);
 	if (nextLayout === observedDiffLayout) return;
@@ -223,6 +232,7 @@ const resize = new ResizeObserver(() => {
 	updateViewerOptions();
 });
 resize.observe(diffRoot);
+resize.observe(workspaceShell);
 
 const theme = new MutationObserver(updateViewerOptions);
 theme.observe(document.documentElement, {
@@ -1102,6 +1112,7 @@ function createVisibility(
 	applyOpen(app.classList.contains("review-open"));
 	return {
 		applyOpen,
+		close: () => requestOpen(false),
 		isAvailable: () => available,
 		isOpen: () => open,
 		open: () => requestOpen(true),

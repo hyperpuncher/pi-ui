@@ -24,6 +24,8 @@
 
 @layer components {
 	#workspace-review {
+		--review-side-by-side: 0;
+
 		position: absolute;
 		inset: var(--workspace-inset);
 		z-index: 60;
@@ -607,6 +609,10 @@
 	}
 
 	@container workspace (width >= 88rem) {
+		#workspace-review {
+			--review-side-by-side: 1;
+		}
+
 		#app.review-open #workspace-review {
 			position: relative;
 			inset: auto;
