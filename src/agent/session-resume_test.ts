@@ -1,11 +1,7 @@
 import { test } from "bun:test";
 import path from "node:path";
 
-import {
-	assertEquals as assertEqual,
-	assertEquals as assertEvents,
-	assertRejects,
-} from "#testing/assertions";
+import { assertEquals, assertRejects } from "#testing/assertions";
 
 import {
 	executeSessionResume,
@@ -80,12 +76,12 @@ async function expectResume(
 		events: string[];
 	},
 ): Promise<void> {
-	assertEqual(
+	assertEquals(
 		await executeSessionResume(expected.path ?? "session.jsonl", fake.operations),
 		expected.accepted ?? true,
 	);
-	assertEqual(fake.logicalOpenCount, expected.logicalOpenCount);
-	assertEvents(fake.events, expected.events);
+	assertEquals(fake.logicalOpenCount, expected.logicalOpenCount);
+	assertEquals(fake.events, expected.events);
 }
 
 test("idle persisted resume delegates to one SDK logical open", async () => {
@@ -135,7 +131,7 @@ test("temporary foreground opens once and preserves cross-workspace cwd", async 
 		logicalOpenCount: 1,
 		events: ["open", "discard", "create"],
 	});
-	assertEqual(fake.replacementManager?.cwd, "/another-workspace");
+	assertEquals(fake.replacementManager?.cwd, "/another-workspace");
 });
 
 test("idle temporary foreground opens once and disposes the runtime", async () => {
@@ -152,7 +148,7 @@ test("malformed replacement target fails before runtime invalidation", async () 
 		{ openError: new Error("malformed") },
 	);
 	await assertRejects(() => executeSessionResume("bad.jsonl", fake.operations));
-	assertEvents(fake.events, ["open"]);
+	assertEquals(fake.events, ["open"]);
 });
 
 test("extension cancellation keeps the idle persisted runtime", async () => {

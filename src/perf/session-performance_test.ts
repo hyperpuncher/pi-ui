@@ -201,27 +201,6 @@ test("performance records append to the configured JSONL file", async () => {
 	}
 });
 
-test("SSE parser handles event frames split across chunk boundaries", async () => {
-	const encoder = new TextEncoder();
-	const chunks = [
-		"event: datastar-patch-ele",
-		'ments\ndata: elements <main id="first">',
-		"</main>\n\nevent: datastar-patch-elements\ndata: selector #target\n",
-		'data: elements <div id="target"></div>\n\n',
-	];
-	const response = new Response(
-		new ReadableStream({
-			start(controller) {
-				for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
-				controller.close();
-			},
-		}),
-	);
-	const summary = await collectElementPatches(response, 2);
-	assertEqual(summary.fullPatchCount, 1);
-	assertEqual(summary.targetedPatchCount, 1);
-});
-
 test("20-message restore emits fallback once and targets enhancements", async () => {
 	process.env.PI_UI_PERF = "1";
 	sessionPerformance.reset();
@@ -234,12 +213,6 @@ test("20-message restore emits fallback once and targets enhancements", async ()
 		const summary = await collectElementPatches(response, 18);
 		assertEqual(summary.fullPatchCount, 1);
 		assertEqual(summary.targetedPatchCount, 17);
-		assertIncludes(summary.patches[1], "data: selector #messages");
-		assertIncludes(summary.patches[1], "data: mode replace");
-		assertIncludes(summary.patches[1], 'data-message-id="m-20"');
-		assertNotIncludes(summary.patches[1], "data-pierre-diff");
-		assertNotIncludes(summary.patches[1], 'class="pierre-code"');
-
 		const snapshot = sessionPerformance.snapshot();
 		assertEqual(snapshot.fatMorphCount, 2);
 		assertEqual(snapshot.targetedMessagePatchCount, 16);

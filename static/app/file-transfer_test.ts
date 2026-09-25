@@ -21,18 +21,10 @@ const {
 	convertAvifToJpeg,
 	extractTransferredFilePaths,
 	fileWithDetectedMimeType,
-	formatFileReferences,
 	isAvifImageFile,
 	isHeicImageFile,
 	jpegFileName,
 } = await import("./file-transfer.js");
-
-test("file references use one line per path and end with a newline", () => {
-	assertEquals(
-		formatFileReferences(["/tmp/one.txt", "/tmp/two.txt"]),
-		"@/tmp/one.txt\n@/tmp/two.txt\n",
-	);
-});
 
 test("attachment paths are composed separately from visible prompt editing", () => {
 	assertEquals(

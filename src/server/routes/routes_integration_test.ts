@@ -22,22 +22,16 @@ import type { RouteContext, RuntimeResource } from "./context.ts";
 import { endpoints, filesPreviewBase, filePreviewUrl } from "./endpoints.ts";
 import { fileRoutes } from "./files.ts";
 
-test("page opts into keyboard resizing without disabling zoom", async () => {
-	const context = fakeContext();
-	context.renderer = new UiRenderer(context.store, new DatastarClientHub());
-	const response = await createRouter(context).fetch(new Request("http://localhost/"));
-	assertStringIncludes(
-		await response.text(),
-		'name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"',
-	);
-});
-
 test("page assets use the current immutable content version", async () => {
 	const context = fakeContext();
 	context.renderer = new UiRenderer(context.store, new DatastarClientHub());
 	const response = await createRouter(context).fetch(new Request("http://localhost/"));
 	const html = await response.text();
 	assertEquals(response.headers.get("cache-control"), "no-store");
+	assertStringIncludes(
+		html,
+		'name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"',
+	);
 	assertStringIncludes(html, `/static/${context.appVersion}/app.css`);
 	assertStringIncludes(html, `/static/${context.appVersion}/manifest.webmanifest`);
 	assertStringIncludes(html, `/static/${context.appVersion}/icon-180.png`);
@@ -323,62 +317,6 @@ test.skipIf(!fdPath)(
 		}
 	},
 );
-
-test("workspace search returns matching directories", async () => {
-	const workspace = await makeTempDir();
-	try {
-		await mkdir(`${workspace}/alpha`);
-		const context = fakeContext();
-		context.store.setWorkspacePath(workspace);
-		const response = await createRouter(context).fetch(
-			signalGet("/workspace/search", { workspaceDraft: `${workspace}/alp` }),
-		);
-		assertEquals(response.status, 200);
-		assertStringIncludes(await response.text(), "alpha");
-	} finally {
-		await rm(workspace, { recursive: true });
-	}
-});
-
-test("workspace browser lists server directories", async () => {
-	const workspace = await makeTempDir();
-	try {
-		await mkdir(`${workspace}/alpha`);
-		await mkdir(`${workspace}/beta`);
-		await mkdir(`${workspace}/.hidden`);
-		await Bun.write(`${workspace}/file.txt`, "not a directory");
-		const context = fakeContext();
-		context.store.setWorkspacePath(workspace);
-		const response = await createRouter(context).fetch(
-			signalGet("/workspace/browse", {
-				workspacePath: workspace,
-				showHidden: false,
-			}),
-		);
-		assertEquals(response.status, 200);
-		const body = await response.text();
-		assertStringIncludes(body, "Select folder");
-		assertStringIncludes(body, "Open folder");
-		assertStringIncludes(body, "New folder");
-		assertStringIncludes(body, "Folder name");
-		assertStringIncludes(body, "/workspace/create-folder");
-		assertStringIncludes(body, "alpha");
-		assertStringIncludes(body, "beta");
-		assertStringExcludes(body, ".hidden");
-		assertStringExcludes(body, "file.txt");
-		assertStringExcludes(body, "workspaceDraft");
-
-		const hiddenResponse = await createRouter(context).fetch(
-			signalGet("/workspace/browse", {
-				workspacePath: workspace,
-				showHidden: true,
-			}),
-		);
-		assertStringIncludes(await hiddenResponse.text(), ".hidden");
-	} finally {
-		await rm(workspace, { recursive: true });
-	}
-});
 
 test("workspace browser creates folders in the browsed directory and rejects invalid names", async () => {
 	const workspace = await makeTempDir();

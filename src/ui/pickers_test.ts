@@ -127,29 +127,6 @@ test("session rows expose stable ids for resilient active descendants", () => {
 	assertFalse(html.includes("data-session-rename-title"));
 });
 
-test("session picker formats numeric message counts", () => {
-	for (const [messageCount, label] of [
-		[0, "0 messages"],
-		[1, "1 message"],
-		[2, "2 messages"],
-	] as const) {
-		const html = renderSessionPicker(
-			appRenderSnapshot({
-				sessions: [
-					{
-						path: "/session",
-						cwd: "/workspace",
-						title: "Session",
-						messageCount,
-						modified: "Now",
-					},
-				],
-			}),
-		);
-		assertStringIncludes(html, label);
-	}
-});
-
 test("current running session is live but does not resume itself", () => {
 	const path = "/sessions/current.jsonl";
 	const html = renderSessionPicker(

@@ -1,6 +1,5 @@
 import { test } from "bun:test";
 import { mkdir, rm, utimes } from "node:fs/promises";
-import os from "node:os";
 
 import type { SessionTreeNode } from "@earendil-works/pi-coding-agent";
 
@@ -795,15 +794,6 @@ test("session catalog increments numeric counts and keeps message-count search",
 	);
 });
 
-test("session summaries keep workspace and message metadata separate", () => {
-	const info = sessionInfo("/session", "Home session");
-	info.cwd = `${os.homedir()}/projects/pi-ui`;
-
-	const summary = formatSessionSummary(info);
-	assertEquals(summary.cwd, info.cwd);
-	assertEquals(summary.messageCount, 1);
-});
-
 test("catalog and usage formatting remain stable", () => {
 	const sessions: Parameters<typeof recentSessionWorkspaces>[0] = [
 		{
@@ -821,10 +811,11 @@ test("catalog and usage formatting remain stable", () => {
 	assertEquals(recentSessionWorkspaces(sessions), ["/work/a"]);
 	const summary = formatSessionSummary(sessions[0]);
 	assertEquals(
-		{ title: summary.title, messageCount: summary.messageCount },
+		{ title: summary.title, messageCount: summary.messageCount, cwd: summary.cwd },
 		{
 			title: "Named",
 			messageCount: 1,
+			cwd: "/work/a",
 		},
 	);
 	assertEquals(formatTokens(1_250), "1.3k");
