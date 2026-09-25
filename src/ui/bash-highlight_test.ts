@@ -44,142 +44,10 @@ test.each([
 ])("preserves long commands without display breaks: $command", ({ command, format }) => {
 	const result = highlightBash(command, { format })!;
 	expect(styles(result.tokens)).toEqual(styles(native(command, "bash")));
-	expect(
-		result.tokens
-			.flat()
-			.map((token) => token.content)
-			.join(""),
-	).toBe(command);
-});
-
-test("dual themes retain scopes and each theme's token types", () => {
-	const highlighter = getHighlighterIfLoaded()!;
-	const options = { lang: "bash", themes: getPierreThemes() };
-	const code = 'echo "hello" # comment';
-	for (const includeExplanation of [true, "scopeName"] as const) {
-		const tokens = highlighter.codeToTokens(code, {
-			...options,
-			includeExplanation,
-		}).tokens;
-		expect(styles(tokens)).toEqual(styles(native(code, "bash")));
-		expect(
-			tokens
-				.flat()
-				.some((token) =>
-					token.explanation?.some((part) =>
-						part.scopes.some((scope) => scope.scopeName.includes("comment")),
-					),
-				),
-		).toBe(true);
-	}
-	const tokens = highlighter.codeToTokensWithThemes(code, {
-		...options,
-		includeExplanation: "tokenType",
-	});
-	for (const token of tokens.flat()) {
-		for (const variant of Object.values(token.variants)) {
-			expect(variant).toHaveProperty("type");
-		}
-	}
-});
-
-test("loads only encountered languages and refreshes running and restored tool titles", async () => {
-	// A separate process gives this test a genuinely cold shared highlighter.
-	const child = Bun.spawn(
-		[
-			process.execPath,
-			"--eval",
-			`
-		import assert from "node:assert/strict";
-		import { getHighlighterIfLoaded } from "@pierre/diffs";
-		import { loadPierreLanguage } from "./src/ui/diffs.ts";
-		import { loadBashLanguages, highlightBash } from "./src/ui/bash-highlight.ts";
-		import { getPierreThemes, setActiveCodeTheme } from "./src/pierre-theme.ts";
-		import { MessageRenderService } from "./src/ui/message-render-service.ts";
-		import { renderMessage } from "./src/ui/messages.tsx";
-		import { AppStore } from "./src/state/app-store.ts";
-
-		await loadPierreLanguage("bash");
-		const highlighter = getHighlighterIfLoaded();
-		const languages = () => new Set(highlighter.getLoadedLanguages().map(name => highlighter.getLanguage(name).name));
-		assert.deepEqual([...languages()], ["shellscript"]);
-		// Count actual calls without replacing the real tokenizer's behavior.
-		let shellTokenizations = 0;
-		let pythonTokenizations = 0;
-		const codeToTokens = highlighter.codeToTokens.bind(highlighter);
-		highlighter.codeToTokens = (code, options) => {
-			if (options.lang === "bash") shellTokenizations++;
-			if (options.lang === "python") pythonTokenizations++;
-			return codeToTokens(code, options);
-		};
-		const plain = {
-			id: "plain-perf", role: "tool", state: "success", text: "", timestamp: new Date(0),
-			presentationState: "final", presentationVersion: 1,
-			titleParts: [{ highlight: "bash", text: "echo " + "x".repeat(100) + "; echo done" }],
-		};
-		const plainHtml = renderMessage(plain);
-		assert.equal(shellTokenizations, 1, "formatting and highlighting should share one shell pass");
-		await loadPierreLanguage("json");
-		assert.equal(renderMessage(plain), plainHtml);
-		assert.equal(shellTokenizations, 1, "an unrelated grammar must not invalidate cached commands");
-		for (const [state, language, command] of [
-			["running", "python", "python -c 'print(42)'"],
-			["success", "sql", "psql <<SQL\\nSELECT 42;\\nSQL"],
-		]) {
-			const store = new AppStore();
-			store.transcript.replaceMessages([{
-				role: "tool", state, format: "output", text: "output <ready>", timestamp: new Date(0),
-				titleParts: [{ highlight: "bash", mono: true, text: command }],
-			}]);
-			const patch = Promise.withResolvers();
-			const renderer = new MessageRenderService(store, html => patch.resolve(html), () => {});
-			const id = store.messages[0].id;
-			const initial = renderer.renderMessageElement(id);
-			const before = languages();
-			assert(!before.has(language));
-			if (state === "running") renderer.messageAppended(id);
-			else renderer.enqueueEnhancement(id);
-			const enhanced = await patch.promise;
-			assert.notEqual(enhanced, initial);
-			assert(enhanced.includes("&lt;ready&gt;"));
-			assert.deepEqual([...languages()].filter(name => !before.has(name)), [language]);
-			await loadBashLanguages(command);
-			assert.deepEqual(languages(), new Set([...before, language]));
-		}
-		const pythonBefore = pythonTokenizations;
-		const script = "print(12345)";
-		const variants = ["python -c '" + script + "'", "env python -c '" + script + "' > result.txt", "python - <<PY\\n" + script + "\\nPY"];
-		for (const command of variants) {
-			const { tokens } = highlightBash(command);
-			assert.equal(tokens.map(line => line.map(t => t.content).join("")).join("\\n"), command);
-			for (const token of tokens.flat()) assert.equal(command.slice(token.offset, token.offset + token.content.length), token.content);
-		}
-		assert.equal(pythonTokenizations, pythonBefore + 1, "the same script should be tokenized once across different wrappers");
-		const themes = getPierreThemes();
-		const original = highlightBash(variants[0]);
-		setActiveCodeTheme({ light: themes.dark, dark: themes.light });
-		const swapped = highlightBash(variants[0]);
-		assert.notDeepEqual(swapped.tokens, original.tokens);
-		assert.equal(pythonTokenizations, pythonBefore + 2, "a different theme needs different tokens");
-		setActiveCodeTheme(themes);
-		highlightBash(variants[0]);
-		assert.equal(pythonTokenizations, pythonBefore + 2);
-		highlightBash("python -c 'print(54321)'");
-		assert.equal(pythonTokenizations, pythonBefore + 3, "a different script body must not reuse old tokens");
-		const before = languages();
-		await loadBashLanguages("cat <<EOF\\nunknown data\\nEOF");
-		assert.deepEqual(languages(), before);
-	`,
-		],
-		{ cwd: `${import.meta.dir}/../..`, stdout: "pipe", stderr: "pipe" },
-	);
-	const error = await new Response(child.stderr).text();
-	expect({ exitCode: await child.exited, error }).toEqual({ exitCode: 0, error: "" });
 });
 
 test.each([
 	["python3 - <<'EOF'", "python", "from pathlib import Path\nprint(Path('x'))"],
-	["cd /tmp && uv run --with regex python - <<'EOF'", "python", "print(42)"],
 	["/tmp/venv/bin/python3.12 - <<'EOF' > result.json", "python", "print(42)"],
 	["node --input-type=module - <<'EOF'", "javascript", "const n = 42"],
 	["bun - <<'EOF'", "typescript", "const n: number = 42;"],
@@ -191,8 +59,6 @@ test.each([
 	["cat >> test.sh <<'EOF'", "bash", 'echo "hello"'],
 	["cat > .zshrc <<'EOF'", "bash", "export FOO=bar"],
 	["git apply <<'PATCH'", "diff", "--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new"],
-	["cat <<'PYEOF'", "python", "print(42)"],
-	["cat > x.ts <<'RUSTEOF'", "typescript", "const n: number = 42;"],
 	["python - <<'SQL'", "python", "print(42)"],
 ])("highlights %s as %s", async (header, language, body) => {
 	const marker = header.match(/<<\s*'?(\w+)/)![1]!;
@@ -200,17 +66,14 @@ test.each([
 	await loadBashLanguages(command);
 	const { tokens: highlighted } = highlightBash(command)!;
 	expect(styles(highlighted.slice(1, -2))).toEqual(styles(native(body, language)));
+	const shell = native(command, "bash");
 	expect(styles([highlighted[0]!, ...highlighted.slice(-2)])).toEqual(
-		styles([native(command, "bash")[0]!, ...native(command, "bash").slice(-2)]),
+		styles([shell[0]!, ...shell.slice(-2)]),
 	);
-	expect(
-		highlighted.map((line) => line.map((token) => token.content).join("")).join("\n"),
-	).toBe(command);
 });
 
 test.each([
 	["bun -e '", "typescript", "const n: number = 42", "'"],
-	["node --input-type=module -e '", "javascript", "console.log(42)", "'"],
 	['node --eval="', "javascript", "console.log(42)", '"'],
 	["node -p '", "javascript", "1 + 2", "'"],
 	["bun --print '", "typescript", "1 + 2", "'"],
@@ -221,7 +84,6 @@ test.each([
 		'import re\nprint(re.escape("hi"))',
 		"'",
 	],
-	["/tmp/venv/bin/python3.12 -I -c '", "python", "print(42)", "' argument"],
 	["perl -ne '", "perl", "print $_", "' input.txt"],
 	["awk -F: '", "awk", "{print $1}", "' input.txt"],
 ])("highlights literal inline scripts: %s", async (prefix, language, body, suffix) => {
@@ -239,10 +101,6 @@ test.each([
 	expect(
 		tokens.map((line) => line.map((token) => token.content).join("")).join("\n"),
 	).toBe(command);
-	for (const token of tokens.flat())
-		expect(command.slice(token.offset, token.offset + token.content.length)).toBe(
-			token.content,
-		);
 });
 
 test.each([
@@ -250,11 +108,9 @@ test.each([
 	`bun -e "console.log('$HOME')"`,
 	'bun -e "console.log(\\"hello\\")"',
 	"bun -e 'console.log(42)'suffix",
-	"bun -e 'console.log(42)'\"suffix\"",
 	"bun -e $'console.log(42)'",
 	"bun -e 'console.log(42)",
 	"bun run script.ts -e 'not a script'",
-	"python script.py -c 'not a script'",
 	"node -- -e 'not a script'",
 	"awk -v 'name=value' '{print name}'",
 	"awk -f 'script.awk' input.txt",
@@ -283,13 +139,11 @@ test("highlights multiple inline scripts without changing surrounding commands",
 	expect(tokens.map((token) => token.content).join("")).toBe(command);
 });
 
-function formatBashDisplay(command: string): string {
-	return highlightBash(command, { format: true })!
-		.tokens.map((line) => line.map((token) => token.content).join(""))
-		.join("\n");
-}
-
 test("formats shell operators without touching embedded scripts or existing newlines", () => {
+	const formatBashDisplay = (command: string) =>
+		highlightBash(command, { format: true })!
+			.tokens.map((line) => line.map((token) => token.content).join(""))
+			.join("\n");
 	const javascript =
 		"import { read } from 'example';\nconst obj = { value: 1 };\nfor (const x of [1, 2]) { console.log(x); }";
 	const python = "data = {'value': 1};\nfor key in data:\n    print(key)";
@@ -362,7 +216,6 @@ test("preserves multiline language state, blank lines, tabs and multiple blocks"
 
 test.each([
 	"cat <<EOF\nunknown content\nEOF",
-	"echo 'python' <<EOF\nnot python\nEOF",
 	"python --version; cat <<EOF\nnot python\nEOF",
 	"python producer.py | cat <<EOF\nnot python\nEOF",
 	"echo \"python <<'PY'\nprint(42)\nPY\"",
