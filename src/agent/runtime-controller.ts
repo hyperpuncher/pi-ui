@@ -1245,20 +1245,35 @@ export class RuntimeController {
 			this.prompts.sync(backgroundSession.runtime);
 		}
 		if (event.type === "compaction_end") {
-			void this.prompts.flushCompactionQueue(backgroundSession.runtime);
+			void this.prompts.flushCompactionQueue(backgroundSession.runtime).then(() => {
+				const runtime = backgroundSession.runtime;
+				const path = runtime.session.sessionManager.getSessionFile();
+				if (
+					event.reason !== "manual" ||
+					!path ||
+					this.backgroundSessions.get(path) !== backgroundSession ||
+					runtime.session.isCompacting ||
+					runtime.session.isStreaming ||
+					backgroundSession.observedRunning ||
+					this.prompts.hasPending(runtime)
+				)
+					return;
+				this.completeBackgroundSession(backgroundSession);
+			});
 		}
-		if (outcome.agentCompleted) {
-			this.unsubscribeBackgroundSession(backgroundSession);
-			backgroundSession.status = "completed";
-			this.catalog.mergeCurrentStatuses();
-			this.notifyRuntimeDone(backgroundSession.runtime, true);
-			const path =
-				backgroundSession.runtime.session.sessionManager.getSessionFile();
-			if (path) {
-				this.catalog.agentCompleted(path);
-				void this.catalog.refreshPath(path);
-			}
-			return;
+		if (outcome.agentCompleted) this.completeBackgroundSession(backgroundSession);
+	}
+
+	private completeBackgroundSession(backgroundSession: BackgroundSession): void {
+		if (backgroundSession.status === "completed") return;
+		this.unsubscribeBackgroundSession(backgroundSession);
+		backgroundSession.status = "completed";
+		this.catalog.mergeCurrentStatuses();
+		this.notifyRuntimeDone(backgroundSession.runtime, true);
+		const path = backgroundSession.runtime.session.sessionManager.getSessionFile();
+		if (path) {
+			this.catalog.agentCompleted(path);
+			void this.catalog.refreshPath(path);
 		}
 	}
 

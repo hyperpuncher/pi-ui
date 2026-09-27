@@ -1,4 +1,5 @@
 import { setSystemTime, spyOn, test } from "bun:test";
+import { unlink } from "node:fs/promises";
 
 import type {
 	AgentSessionEvent,
@@ -7,6 +8,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 
 import { assertEquals, assertRejects } from "#testing/assertions";
+import { makeTempFile } from "#testing/temp";
 
 import { AppStore } from "../state/app-store.ts";
 import type { SessionDoneNotification } from "../system-notifications.ts";
@@ -1126,6 +1128,92 @@ test("RuntimeController adopts a prepared workspace despite idle disposal failur
 		errorLog.mockRestore();
 		source.disposeError = undefined;
 		await controller.dispose();
+	}
+});
+
+test("RuntimeController completes a background manual compaction without an agent run", async () => {
+	const state = new AppStore();
+	const path = await makeTempFile({ suffix: ".jsonl" });
+	const source = fakeRuntime(path);
+	const next = fakeRuntime("/sessions/next.jsonl");
+	source.setCompacting(true);
+	const controller = await activate(state, [source, next]);
+	try {
+		assertEquals((await controller.newSession()).status, "success");
+		state.setSessionCatalog([
+			{
+				path,
+				cwd: "/workspace",
+				title: "Compacting",
+				messageCount: 1,
+				modified: "today",
+				backgroundStatus: "running",
+			},
+		]);
+		source.setCompacting(false);
+		source.emit(
+			agentSessionEventStub({
+				type: "compaction_end",
+				reason: "manual",
+				result: {
+					summary: "summary",
+					firstKeptEntryId: "entry",
+					tokensBefore: 100,
+					estimatedTokensAfter: 30,
+				},
+				aborted: false,
+				willRetry: false,
+			}),
+		);
+		await Bun.sleep(0);
+		assertEquals(state.sessions[0]?.backgroundStatus, "completed");
+		assertEquals(state.currentSessionPath, "/sessions/next.jsonl");
+	} finally {
+		await controller.dispose();
+		await unlink(path);
+	}
+});
+
+test("RuntimeController keeps a background compaction running when it has a queued prompt", async () => {
+	const state = new AppStore();
+	const path = await makeTempFile({ suffix: ".jsonl" });
+	const source = fakeRuntime(path);
+	const next = fakeRuntime("/sessions/next.jsonl");
+	const prompt = Promise.withResolvers<void>();
+	source.promptResult = prompt.promise;
+	source.setCompacting(true);
+	const controller = await activate(state, [source, next]);
+	try {
+		assertEquals(await controller.prompt("continue after compaction"), true);
+		assertEquals((await controller.newSession()).status, "success");
+		state.setSessionCatalog([
+			{
+				path,
+				cwd: "/workspace",
+				title: "Compacting",
+				messageCount: 1,
+				modified: "today",
+				backgroundStatus: "running",
+			},
+		]);
+		source.setCompacting(false);
+		source.emit(
+			agentSessionEventStub({
+				type: "compaction_end",
+				reason: "manual",
+				aborted: false,
+				willRetry: false,
+			}),
+		);
+		await Bun.sleep(0);
+		assertEquals(source.promptInputs[0]?.text, "continue after compaction");
+		assertEquals(state.sessions[0]?.backgroundStatus, "running");
+		source.emit(agentSessionEventStub({ type: "agent_settled" }));
+		assertEquals(state.sessions[0]?.backgroundStatus, "completed");
+	} finally {
+		prompt.resolve();
+		await controller.dispose();
+		await unlink(path);
 	}
 });
 
