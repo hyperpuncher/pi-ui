@@ -22,6 +22,7 @@ import { datastarResponse, signalsResponse } from "../datastar.ts";
 import {
 	createGitBranch,
 	createGitWorktree,
+	defaultWorktreeBase,
 	deleteGitBranch,
 	GitWorktreeError,
 	ignoredWorktreePaths,
@@ -374,22 +375,20 @@ async function worktreeDialogResponse(
 	reset = false,
 ): Promise<Response> {
 	const worktrees = await inspectGitWorktrees(context.store.workspacePath);
+	// Recompute the base on every refresh so a deleted branch cannot stay selected.
+	const baseSignals = {
+		_worktreeBase: defaultWorktreeBase(worktrees),
+		_worktreeError: "",
+	};
 	const resetSignals = {
-		_worktreeBase:
-			worktrees?.branches.find(
-				(branch) => branch.ref === `refs/heads/${worktrees.currentBranch}`,
-			)?.ref ?? "HEAD",
 		_worktreeBranch: "",
 		_branchName: "",
 		_worktreeCreating: false,
-		_worktreeError: "",
 		_worktreeTab: "branches",
 	};
+	const signals = reset ? { ...baseSignals, ...resetSignals } : baseSignals;
 	return datastarResponse([
-		{
-			type: "signals",
-			signals: reset ? resetSignals : { _worktreeError: "" },
-		},
+		{ type: "signals", signals },
 		{ type: "elements", elements: renderWorktreeDialogContent(worktrees) },
 	]);
 }

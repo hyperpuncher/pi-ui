@@ -1,12 +1,9 @@
 import { mkdir, realpath, stat } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 
-import { type CommandOutput, outputCommand } from "../utils/command.ts";
 import { isNotFound } from "../utils/fs-errors.ts";
 import { appWorktreeRoot, managedWorktreeDirectoryName } from "../utils/workspace.ts";
-
-/** Bounds a hung git command; a large checkout is the slowest legitimate case. */
-const gitTimeoutMs = 300_000;
+import { type CommandOutput, gitText, runGit } from "./git.ts";
 
 export type GitWorktree = Readonly<{
 	path: string;
@@ -45,7 +42,7 @@ export class GitWorktreeError extends Error {}
 export async function findGitProjectRoot(
 	workspacePath: string,
 ): Promise<string | undefined> {
-	const listed = await git(workspacePath, ["worktree", "list", "--porcelain", "-z"]);
+	const listed = await runGit(workspacePath, ["worktree", "list", "--porcelain", "-z"]);
 	if (!listed.success) return undefined;
 	const [primary] = parseWorktrees(listed.stdout);
 	if (!primary) return undefined;
@@ -56,7 +53,7 @@ export async function inspectGitWorktrees(
 	workspacePath: string,
 ): Promise<GitWorktreeContext | undefined> {
 	// Git lists the main worktree first, which keeps this lookup cheap.
-	const listed = await git(workspacePath, ["worktree", "list", "--porcelain", "-z"]);
+	const listed = await runGit(workspacePath, ["worktree", "list", "--porcelain", "-z"]);
 	if (!listed.success) return undefined;
 	const workspace = await realpath(workspacePath).catch(() => workspacePath);
 	const entries = await Promise.all(
@@ -87,7 +84,7 @@ export async function inspectGitWorktrees(
 			missing: worktree.missing,
 		})),
 	);
-	const branchesResult = await git(current?.path ?? projectRoot, [
+	const branchesResult = await runGit(current?.path ?? projectRoot, [
 		"for-each-ref",
 		"--format=%(refname)%09%(refname:short)%09%(worktreepath)%00",
 		"--exclude=refs/remotes/*/HEAD",
@@ -98,7 +95,7 @@ export async function inspectGitWorktrees(
 	if (!branchesResult.success)
 		throw gitError(branchesResult, "Could not list branches.");
 	const branches: GitBranch[] = [];
-	for (const record of text(branchesResult.stdout).split("\0")) {
+	for (const record of gitText(branchesResult.stdout).split("\0")) {
 		// Git writes a newline after the NUL that terminates each formatted ref.
 		const [ref, label, ...rest] = record.trimStart().split("\t");
 		if (!ref || !label) continue;
@@ -112,6 +109,14 @@ export async function inspectGitWorktrees(
 		branches,
 		worktrees,
 	};
+}
+
+/** Default base ref for a new checkout: the current branch when it is listed. */
+export function defaultWorktreeBase(context: GitWorktreeContext | undefined): string {
+	const ref = context?.currentBranch
+		? `refs/heads/${context.currentBranch}`
+		: undefined;
+	return ref && context?.branches.some((branch) => branch.ref === ref) ? ref : "HEAD";
 }
 
 export async function createGitWorktree(
@@ -138,7 +143,7 @@ export async function createGitWorktree(
 	await mkdir(parent, { recursive: true });
 	const currentHead = context.worktrees.find((worktree) => worktree.current)?.head;
 	const unborn = baseRef === "HEAD" && /^0+$/.test(currentHead ?? "");
-	const created = await git(
+	const created = await runGit(
 		workspacePath,
 		unborn
 			? ["worktree", "add", "--orphan", "-b", branchName, path]
@@ -157,7 +162,7 @@ export async function switchGitBranch(
 	workspacePath: string,
 	branch: string,
 ): Promise<void> {
-	const switched = await git(workspacePath, ["switch", branch]);
+	const switched = await runGit(workspacePath, ["switch", branch]);
 	if (!switched.success) throw gitError(switched, "Could not switch branch.");
 }
 
@@ -168,7 +173,7 @@ export async function createGitBranch(
 ): Promise<void> {
 	const branchName = branch.trim();
 	if (!branchName) throw new GitWorktreeError("Enter a branch name.");
-	const created = await git(workspacePath, ["switch", "-c", branchName]);
+	const created = await runGit(workspacePath, ["switch", "-c", branchName]);
 	if (!created.success) throw gitError(created, "Could not create the branch.");
 }
 
@@ -179,7 +184,7 @@ export async function deleteGitBranch(
 ): Promise<void> {
 	const branchName = branch.trim();
 	if (!branchName) throw new GitWorktreeError("Choose a branch to delete.");
-	const deleted = await git(workspacePath, ["branch", "-D", branchName]);
+	const deleted = await runGit(workspacePath, ["branch", "-D", branchName]);
 	if (!deleted.success) throw gitError(deleted, "Could not delete the branch.");
 }
 
@@ -204,11 +209,11 @@ export async function ignoredWorktreePaths(
 		await stat(worktreePath);
 	} catch (error) {
 		if (!isNotFound(error)) throw error;
-		return { paths: [], revision: ignoredRevision(emptyOutput) };
+		return { paths: [], revision: ignoredRevision(new Uint8Array()) };
 	}
 	// Git removes ignored files even without --force. Show directory entries rather
 	// than walking every dependency file, and require consent to this exact list.
-	const listed = await git(worktreePath, [
+	const listed = await runGit(worktreePath, [
 		"ls-files",
 		"--others",
 		"--ignored",
@@ -218,7 +223,7 @@ export async function ignoredWorktreePaths(
 	]);
 	if (!listed.success) throw gitError(listed, "Could not list ignored files.");
 	return {
-		paths: text(listed.stdout).split("\0").filter(Boolean),
+		paths: gitText(listed.stdout).split("\0").filter(Boolean),
 		revision: ignoredRevision(listed.stdout),
 	};
 }
@@ -233,9 +238,9 @@ export async function removeGitWorktree(
 		throw new GitWorktreeError(
 			"Ignored files changed. Review them before removing this checkout.",
 		);
-	if (paths.length > 0 && acknowledgedRevision !== revision)
+	if (acknowledgedRevision === undefined && paths.length > 0)
 		throw new GitWorktreeError("Review ignored files before removing this checkout.");
-	const removed = await git(projectRoot, ["worktree", "remove", worktreePath]);
+	const removed = await runGit(projectRoot, ["worktree", "remove", worktreePath]);
 	if (!removed.success) throw gitError(removed, "Could not remove the worktree.");
 }
 
@@ -247,7 +252,7 @@ type ParsedWorktree = Readonly<{ path: string; head: string; branch?: string }>;
 
 function parseWorktrees(output: Uint8Array): ParsedWorktree[] {
 	const worktrees: ParsedWorktree[] = [];
-	for (const record of text(output).split("\0\0")) {
+	for (const record of gitText(output).split("\0\0")) {
 		let path = "";
 		let head = "";
 		let branch: string | undefined;
@@ -267,33 +272,10 @@ function parseWorktrees(output: Uint8Array): ParsedWorktree[] {
 	return worktrees;
 }
 
-async function git(cwd: string, args: string[]) {
-	try {
-		return await outputCommand("git", { args, cwd, timeout: gitTimeoutMs });
-	} catch (error) {
-		if (!isNotFound(error)) throw error;
-		return {
-			code: 127,
-			stdout: emptyOutput,
-			stderr: gitNotFound,
-			success: false,
-			timedOut: false,
-		};
-	}
-}
-
 function gitError(result: CommandOutput, fallback: string): GitWorktreeError {
 	if (result.timedOut) return new GitWorktreeError("Git timed out.");
-	const message = text(result.stderr).trim();
+	const message = gitText(result.stderr).trim();
 	return new GitWorktreeError(message || fallback);
-}
-
-const decoder = new TextDecoder();
-const emptyOutput = new Uint8Array();
-const gitNotFound = new TextEncoder().encode("Git executable not found.");
-
-function text(bytes: Uint8Array): string {
-	return decoder.decode(bytes);
 }
 
 function contains(root: string, path: string): boolean {

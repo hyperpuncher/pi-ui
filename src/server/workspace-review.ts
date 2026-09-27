@@ -2,8 +2,6 @@ import { execFile } from "node:child_process";
 
 import { parsePatchFiles } from "@pierre/diffs";
 
-import { outputCommand } from "../utils/command.ts";
-import { isNotFound } from "../utils/fs-errors.ts";
 import { sortWorkspaceReviewEntries } from "../workspace-review-tree.ts";
 import {
 	type WorkspaceCommit,
@@ -14,6 +12,7 @@ import {
 	workspaceReviewHistoryPageSize,
 	type WorkspaceReviewSnapshot,
 } from "../workspace-review-types.ts";
+import { gitText, runGit } from "./git.ts";
 export type {
 	WorkspaceCommit,
 	WorkspaceCommitDetail,
@@ -23,7 +22,6 @@ export type {
 
 type GitResult = Readonly<{ code: number; stderr: string; stdout: string }>;
 const commitLogFormat = "--format=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1e";
-const decoder = new TextDecoder();
 export const maximumWorkspaceDiffBytes = 2 * 1024 * 1024;
 const maximumAllDiffFiles = 100;
 
@@ -34,12 +32,11 @@ export async function areWorkspacePathsIgnored(
 ): Promise<boolean> {
 	if (paths.length === 0) return false;
 	try {
-		const result = await outputCommand("git", {
-			args: ["-C", root, "check-ignore", "--stdin", "-z"],
+		const result = await runGit(root, ["check-ignore", "--stdin", "-z"], {
 			stdin: new TextEncoder().encode(`${paths.join("\0")}\0`),
 		});
 		if (!result.success) return false;
-		const ignored = new Set(decoder.decode(result.stdout).split("\0"));
+		const ignored = new Set(gitText(result.stdout).split("\0"));
 		return paths.every((path) => ignored.has(path));
 	} catch {
 		return false;
@@ -559,18 +556,10 @@ function assertGit(result: GitResult, action: string): void {
 }
 
 async function git(cwd: string, ...args: string[]): Promise<GitResult> {
-	try {
-		const output = await outputCommand("git", {
-			args: ["-C", cwd, "-c", "core.quotePath=false", ...args],
-			env: { GIT_OPTIONAL_LOCKS: "0" },
-		});
-		return {
-			code: output.code,
-			stderr: decoder.decode(output.stderr),
-			stdout: decoder.decode(output.stdout),
-		};
-	} catch (error) {
-		if (!isNotFound(error)) throw error;
-		return { code: 127, stderr: "Git executable not found.", stdout: "" };
-	}
+	const output = await runGit(cwd, args);
+	return {
+		code: output.code,
+		stderr: gitText(output.stderr),
+		stdout: gitText(output.stdout),
+	};
 }

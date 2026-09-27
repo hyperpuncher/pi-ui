@@ -1,4 +1,5 @@
 import type { GitBranch, GitWorktreeContext } from "../server/git-worktrees.ts";
+import { defaultWorktreeBase } from "../server/git-worktrees.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import { Icon } from "./icon.tsx";
 import { ChevronDown, Folder, GitBranch as GitBranchIcon, Trash2 } from "./icons.ts";
@@ -47,14 +48,8 @@ export function renderWorktreeDialogContent(
 	}
 	const otherWorktrees = context.worktrees.filter((worktree) => !worktree.current);
 	const switchableBranches = worktreeSwitchableBranches(context.branches);
-	const currentRef = context.currentBranch
-		? `refs/heads/${context.currentBranch}`
-		: undefined;
+	const base = defaultWorktreeBase(context);
 	const branches = [...context.branches];
-	const base =
-		currentRef && branches.some((branch) => branch.ref === currentRef)
-			? currentRef
-			: "HEAD";
 	if (base === "HEAD") {
 		branches.push({
 			ref: "HEAD",
