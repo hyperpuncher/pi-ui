@@ -105,7 +105,10 @@ export class UsageController {
 			})
 			.catch((error: ErrorOptions["cause"]) => {
 				if (!this.owns(request)) return;
-				if (error instanceof DOMException && error.name === "AbortError")
+				if (
+					error instanceof DOMException &&
+					(error.name === "AbortError" || error.name === "TimeoutError")
+				)
 					console.warn(`${provider} usage request timed out`);
 				else console.warn(`Failed to fetch ${provider} usage`, error);
 				this.setUsageResult({ provider, usage: undefined }, "unavailable");
