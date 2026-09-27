@@ -82,6 +82,30 @@
 		margin-inline-start: auto;
 	}
 
+	.workspace-command-header {
+		position: relative;
+		padding-inline-end: 0.25rem;
+	}
+	.workspace-command-input {
+		padding-inline-end: 2.5rem;
+	}
+	.workspace-browse-button {
+		position: absolute;
+		inset-inline-end: 0.5rem;
+		top: 50%;
+		translate: 0 -50%;
+	}
+
+	.workspace-browser-loading {
+		display: flex;
+		width: min(30rem, calc(100vw - 2rem));
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		color: var(--text-muted);
+		font-size: var(--text-base);
+	}
+
 	.workspace-browser-panel {
 		display: flex;
 		width: min(30rem, calc(100vw - 2rem));

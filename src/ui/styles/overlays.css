@@ -115,6 +115,15 @@
 	.command-dialog {
 		width: min(var(--command-dialog-width, 24rem), calc(100vw - 2rem));
 	}
+	.command-medium {
+		--command-dialog-width: 28rem;
+	}
+	.command-wide {
+		--command-dialog-width: 36rem;
+	}
+	.command-tree {
+		--command-dialog-width: 72rem;
+	}
 
 	.command-dialog > .command {
 		box-shadow: 0 0 0 1px var(--border);

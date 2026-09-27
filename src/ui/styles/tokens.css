@@ -1,5 +1,3 @@
-@layer props, theme, tokens, base, components;
-
 @layer tokens {
 	:root {
 		color-scheme: light;

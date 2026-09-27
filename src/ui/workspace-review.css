@@ -537,13 +537,7 @@
 		border: 0;
 		background: white;
 	}
-	.workspace-file-markdown {
-		box-sizing: border-box;
-		inline-size: 100%;
-		min-block-size: 100%;
-		place-self: start stretch;
-		padding: 0.75rem;
-	}
+	.workspace-file-markdown,
 	.workspace-font-preview {
 		box-sizing: border-box;
 		inline-size: 100%;
