@@ -970,6 +970,7 @@ test("editable previews include source and sandboxed preview URLs", async () => 
 			`${workspace}/README.md`,
 			"# Markdown preview\n\n![Screenshot](docs/screenshot.png)",
 		);
+		await Bun.write(`${workspace}/page.mdx`, "# MDX preview\n\n<Component />");
 		await Bun.write(`${workspace}/docs/screenshot.png`, new Uint8Array([0x89, 0x50]));
 		const svgUrl = `http://localhost${endpoints.workspaceFileContent}?path=vector.svg`;
 		const svg = await (await router.fetch(new Request(svgUrl))).json();
@@ -1005,6 +1006,19 @@ test("editable previews include source and sandboxed preview URLs", async () => 
 		assertEquals(
 			markdown.preview.html,
 			`<h1>Markdown preview</h1>\n<p><img src="${filePreviewUrl(`${workspace}/docs/screenshot.png`)}" alt="Screenshot" /></p>\n`,
+		);
+		const mdx = await (
+			await router.fetch(
+				new Request(
+					`http://localhost${endpoints.workspaceFileContent}?path=page.mdx`,
+				),
+			)
+		).json();
+		assertEquals(mdx.contents, "# MDX preview\n\n<Component />");
+		assertEquals(mdx.preview.kind, "markdown");
+		assertEquals(
+			mdx.preview.html,
+			"<h1>MDX preview</h1>\n<p>&lt;Component /&gt;</p>\n",
 		);
 	} finally {
 		await rm(workspace, { recursive: true });

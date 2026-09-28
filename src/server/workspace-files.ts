@@ -346,7 +346,11 @@ export function workspaceFilePreview(mimeType: string): WorkspaceFilePreview | u
 	if (normalized.startsWith("font/")) return { kind: "font", mimeType: normalized };
 	if (normalized === "application/pdf") return { kind: "pdf", mimeType: normalized };
 	if (normalized === "text/html") return { kind: "html", mimeType: normalized };
-	if (normalized === "text/markdown" || normalized === "text/x-markdown")
+	if (
+		normalized === "text/markdown" ||
+		normalized === "text/x-markdown" ||
+		normalized === "text/mdx"
+	)
 		return { kind: "markdown", mimeType: normalized };
 	return undefined;
 }
