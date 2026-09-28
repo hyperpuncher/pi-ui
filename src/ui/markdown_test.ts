@@ -141,6 +141,33 @@ test("bare URLs are clickable and explicit bold links remain balanced", async ()
 	}
 });
 
+test("streaming links show their label until the destination closes", async () => {
+	const prefix = "Read [the Bun issue]";
+	for (const suffix of [
+		"(",
+		"(https://",
+		"(https://github.com/oven-sh/bun/issues/19013",
+	]) {
+		assertEqual(
+			renderMarkdownStreaming(prefix + suffix),
+			"<p>Read the Bun issue</p>\n",
+		);
+	}
+	const complete = `${prefix}(https://github.com/oven-sh/bun/issues/19013)`;
+	assertIncludes(renderMarkdownStreaming(complete), ">the Bun issue</a>");
+	assertIncludes(
+		renderMarkdownStreaming(`${complete} and [the docs](https://bun.com/docs`),
+		">the Bun issue</a> and the docs</p>",
+	);
+	assertIncludes(
+		await renderMarkdownFinal(
+			`${prefix}(https://github.com/oven-sh/bun/issues/19013`,
+		),
+		"github.com/oven-sh/bun/issues/19013",
+	);
+	assertIncludes(renderMarkdownStreaming("![image](https://example.com/"), "![image]");
+});
+
 test("plain, fenced, and incomplete markdown preserve rendering structure", async () => {
 	const plainStreaming = renderMarkdownStreaming("Hello **world**");
 	const plainFinal = await renderMarkdownFinal("Hello **world**");

@@ -46,6 +46,7 @@ const pierreCodeBlockCache = new BoundedCache<string, string>(
 	stringCacheOptions,
 );
 const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
+const incompleteLinkPattern = /^\[([^[\]\n]+)\]\([^\n)]*$/;
 
 type StreamingCodeBlockState = {
 	language: string;
@@ -130,7 +131,7 @@ function renderMarkdownStreamingMeasured(
 	}
 
 	const parseStartedAt = performance.now();
-	const compiled = compileMarkdown(markdown);
+	const compiled = compileMarkdown(hideIncompleteLinkDestination(markdown));
 	const markdownParseMs = performance.now() - parseStartedAt;
 	const codeStartedAt = performance.now();
 	const html = renderStreamingCodeBlocks(compiled, cacheKey ?? "");
@@ -171,6 +172,16 @@ export async function renderMarkdownFinal(
 	if (localImageBase) html = rewriteRelativeImageSources(html, localImageBase);
 	highlightedCache.set(cacheKey, html);
 	return html;
+}
+
+function hideIncompleteLinkDestination(markdown: string): string {
+	const opening = markdown.lastIndexOf("](");
+	if (opening < 0) return markdown;
+	const labelStart = markdown.lastIndexOf("[", opening);
+	if (labelStart < 0 || markdown[labelStart - 1] === "!") return markdown;
+	const suffix = markdown.slice(labelStart);
+	const match = incompleteLinkPattern.exec(suffix);
+	return match ? markdown.slice(0, labelStart) + match[1] : markdown;
 }
 
 function compileMarkdown(markdown: string): string {
