@@ -375,8 +375,8 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					data-copy-code
 					aria-label="Copy code"
 				>
-					<Icon name="copy" class="code-copy-icon code-copy-icon-idle" />
-					<Icon name="check" class="code-copy-icon code-copy-icon-done" />
+					<Icon name="copy" />
+					<Icon name="check" />
 				</button>
 			</div>
 			<div class="code-block-content">{props.pre}</div>

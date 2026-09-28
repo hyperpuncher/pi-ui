@@ -193,7 +193,7 @@
 		}
 	}
 
-	.update-badge-icon {
+	.update-badge > svg {
 		color: var(--action-primary);
 	}
 

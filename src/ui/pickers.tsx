@@ -345,7 +345,7 @@ function renderWorkspaceBrowserDirectory(path: string, label: string): string {
 			data-attr:disabled="$_workspaceBrowserLoading"
 			data-on:click={browseWorkspaceAction(JSON.stringify(path))}
 		>
-			<Icon name="folder" class="workspace-browser-directory-icon" />
+			<Icon name="folder" />
 			<span class="workspace-browser-directory-name" safe>
 				{label}
 			</span>
@@ -579,7 +579,7 @@ function renderSessionRow(
 						`
 						}
 					>
-						<Icon name="square" class="session-menu-abort-icon" />
+						<Icon name="square" />
 					</button>
 				)}
 			</span>

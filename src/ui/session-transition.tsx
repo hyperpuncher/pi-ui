@@ -70,7 +70,7 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 				</div>
 			) : (
 				<div class="session-transition-loading">
-					<Icon name="loader" class="icon-spin session-transition-spinner" />
+					<Icon name="loader" class="icon-spin" />
 					<span class="sr-only" safe>
 						{targetPath}
 					</span>

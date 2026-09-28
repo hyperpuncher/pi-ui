@@ -111,8 +111,6 @@
 	}
 
 	.icon-spin {
-		width: 0.875rem;
-		height: 0.875rem;
 		animation: spin 1s linear infinite;
 	}
 

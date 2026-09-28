@@ -207,7 +207,7 @@
 		background: var(--surface-muted);
 		outline: 0;
 	}
-	.workspace-browser-directory-icon {
+	.workspace-browser-directory > svg {
 		width: 1rem;
 		height: 1rem;
 		flex-shrink: 0;
@@ -275,12 +275,12 @@
 	.session-menu-abort {
 		flex-shrink: 0;
 	}
-	.session-menu-abort-icon {
+	.session-menu-abort > svg {
 		width: 0.75rem;
 		height: 0.75rem;
 		color: var(--status-danger);
 	}
-	.session-menu-abort-icon rect {
+	.session-menu-abort > svg rect {
 		fill: currentColor;
 	}
 	.session-menu-meta {

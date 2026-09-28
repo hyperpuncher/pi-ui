@@ -65,21 +65,21 @@
 	.code-copy-button {
 		position: relative;
 	}
-	.code-copy-icon {
+	.code-copy-button > svg {
 		transition:
 			opacity 100ms ease-out,
 			scale 100ms ease-out;
 	}
-	.code-copy-icon-done {
+	.code-copy-button > svg:last-child {
 		position: absolute;
 		opacity: 0;
 		scale: 0.95;
 	}
-	.code-copy-button[data-copy-state="copied"] .code-copy-icon-idle {
+	.code-copy-button[data-copy-state="copied"] > svg:first-child {
 		opacity: 0;
 		scale: 0.95;
 	}
-	.code-copy-button[data-copy-state="copied"] .code-copy-icon-done {
+	.code-copy-button[data-copy-state="copied"] > svg:last-child {
 		opacity: 1;
 		scale: 1;
 	}

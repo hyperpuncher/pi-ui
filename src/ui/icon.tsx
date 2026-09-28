@@ -13,7 +13,7 @@ type IconProps = {
 export function Icon(props: IconProps) {
 	return (
 		<svg
-			class={props.class ?? "icon-default"}
+			class={props.class ? `icon ${props.class}` : "icon"}
 			viewBox="0 0 24 24"
 			fill="none"
 			stroke="currentColor"

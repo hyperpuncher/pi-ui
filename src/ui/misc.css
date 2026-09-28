@@ -1,5 +1,5 @@
 @layer components {
-	.icon-default {
+	.icon {
 		width: 0.875rem;
 		height: 0.875rem;
 	}
@@ -40,7 +40,7 @@
 		align-items: center;
 		color: var(--text-muted);
 	}
-	.session-transition-spinner {
+	.session-transition-loading > svg {
 		width: 1.25rem;
 		height: 1.25rem;
 	}

@@ -30,14 +30,8 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 				aria-label="Abort"
 			>
 				<span class="prompt-action-icons">
-					<Icon
-						name="arrow-up"
-						class="prompt-send-icon prompt-action-icon-exit"
-					/>
-					<Icon
-						name="square"
-						class="prompt-abort-icon prompt-action-icon-enter"
-					/>
+					<Icon name="arrow-up" class="prompt-action-icon-exit" />
+					<Icon name="square" class="prompt-action-icon-enter" />
 				</span>
 				<ShortcutTooltip label="Abort" shortcut="Esc" />
 			</button>,
@@ -70,8 +64,8 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			aria-label="Send"
 		>
 			<span class="prompt-action-icons">
-				<Icon name="arrow-up" class="prompt-send-icon prompt-action-icon-enter" />
-				<Icon name="square" class="prompt-abort-icon prompt-action-icon-exit" />
+				<Icon name="arrow-up" class="prompt-action-icon-enter" />
+				<Icon name="square" class="prompt-action-icon-exit" />
 			</span>
 			<ShortcutTooltip label="Send" shortcut="Enter" />
 		</button>,

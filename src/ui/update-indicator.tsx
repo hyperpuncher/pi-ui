@@ -17,7 +17,7 @@ export function renderUpdateBadge(update: AvailableUpdate): string {
 			data-tooltip="Update available"
 			data-tooltip-delay
 		>
-			<Icon name="arrow-up" class="prompt-context-icon update-badge-icon" />
+			<Icon name="arrow-up" />
 			<span class="prompt-context-label">Update</span>
 			<ShortcutTooltip label="Update available" />
 		</button>,
@@ -58,8 +58,8 @@ export function renderUpdatePopover(update: AvailableUpdate): string {
 					data-copy-code
 					aria-label="Copy upgrade command"
 				>
-					<Icon name="copy" class="code-copy-icon code-copy-icon-idle" />
-					<Icon name="check" class="code-copy-icon code-copy-icon-done" />
+					<Icon name="copy" />
+					<Icon name="check" />
 				</button>
 			</div>
 			<a

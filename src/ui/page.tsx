@@ -209,7 +209,7 @@ export function renderPage(
 							class="file-drop-card"
 							data-class:file-drop-card-active="$_isDraggingFile"
 						>
-							<Icon name="file-up" class="file-drop-icon" />
+							<Icon name="file-up" />
 							<span>Drop files to attach</span>
 						</div>
 					</div>

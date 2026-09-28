@@ -32,13 +32,13 @@
 	.worktree-row-main:focus-visible {
 		outline-offset: -2px;
 	}
-	.worktree-row-icon {
+	.worktree-row-main > svg {
 		width: 1rem;
 		height: 1rem;
 		flex-shrink: 0;
 		color: var(--text-muted);
 	}
-	.worktree-row:is(:hover, :focus-within) .worktree-row-icon {
+	.worktree-row:is(:hover, :focus-within) .worktree-row-main > svg {
 		color: var(--text);
 	}
 	.worktree-row-text {
@@ -112,7 +112,7 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.worktree-base-chevron {
+	.worktree-base-trigger > svg {
 		width: 1rem;
 		height: 1rem;
 		flex-shrink: 0;

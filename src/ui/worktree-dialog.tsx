@@ -101,10 +101,7 @@ export function renderWorktreeDialogContent(
 										retry: 'never',
 										});`}
 									>
-										<Icon
-											name="git-branch"
-											class="worktree-row-icon"
-										/>
+										<Icon name="git-branch" />
 										<span class="worktree-row-title" safe>
 											{branch.label}
 										</span>
@@ -193,10 +190,7 @@ export function renderWorktreeDialogContent(
 											payload: { workspacePath: ${JSON.stringify(worktree.sessionPath)} },
 											});`}
 										>
-											<Icon
-												name="folder"
-												class="worktree-row-icon"
-											/>
+											<Icon name="folder" />
 											<span class="worktree-row-text">
 												<span class="worktree-row-title" safe>
 													{label}
@@ -270,7 +264,7 @@ export function renderWorktreeDialogContent(
 								>
 									{branchLabels[base]}
 								</span>
-								<Icon name="chevron-down" class="worktree-base-chevron" />
+								<Icon name="chevron-down" />
 							</button>
 							<div
 								id="worktree-base-popover"

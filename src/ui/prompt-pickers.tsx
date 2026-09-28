@@ -36,7 +36,7 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 			data-tooltip="Workspace"
 			data-tooltip-delay
 		>
-			<Icon name="folder" class="prompt-context-icon" />
+			<Icon name="folder" />
 			<span class="prompt-context-label" safe>
 				{label}
 			</span>
@@ -72,7 +72,7 @@ export function renderWorktreePicker(state: AppStateSnapshot): string {
 			data-tooltip="Branch"
 			data-tooltip-delay
 		>
-			<Icon name="git-branch" class="prompt-context-icon" />
+			<Icon name="git-branch" />
 			<span class="prompt-context-label" safe>
 				{label}
 			</span>
@@ -109,7 +109,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
 				>
-					<Icon name="brain" class="prompt-context-icon" />
+					<Icon name="brain" />
 					<span class="prompt-context-label">{thinkingLabel(current)}</span>
 					<ShortcutTooltip
 						label="Thinking"
@@ -355,12 +355,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 											/>
 											<button
 												type="button"
-												class={[
-													"btn model-scope-button",
-													model.scoped
-														? "model-scope-button-active"
-														: "",
-												]}
+												class="btn model-scope-button"
 												data-variant={
 													model.scoped ? "secondary" : "ghost"
 												}
@@ -373,14 +368,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												payload: { model: ${JSON.stringify(value)} },
 												});`}
 											>
-												<Icon
-													name="star"
-													class={
-														model.scoped
-															? "model-scope-icon-active"
-															: undefined
-													}
-												/>
+												<Icon name="star" />
 											</button>
 										</div>
 									);

@@ -80,7 +80,7 @@ export function renderMessages(
 							name="loader"
 							label="Loading older messages"
 							role="status"
-							class="icon-spin older-messages-spinner"
+							class="icon-spin"
 						/>
 					</div>
 					{renderOlderMessagesTrigger(hasOlderMessages)}
@@ -159,10 +159,7 @@ function renderEmptyMessages(
 									role="status"
 									aria-label="Loading recent sessions"
 								>
-									<Icon
-										name="loader"
-										class="icon-spin recent-sessions-spinner"
-									/>
+									<Icon name="loader" class="icon-spin" />
 								</div>
 							) : (
 								<div class="recent-sessions-list">
@@ -410,7 +407,7 @@ type AttachmentFileKind = keyof typeof attachmentFileIcons;
 function AttachmentFileIcon(props: { kind: AttachmentFileKind }) {
 	const icon = attachmentFileIcons[props.kind];
 	return (
-		<Icon class="message-file-type-icon">
+		<Icon>
 			<>
 				{icon.paths.map((path) => (
 					<path d={path} />
@@ -629,7 +626,7 @@ function renderErrorMessage(message: AppMessage): string {
 						</span>
 					</span>
 					<span class="context-chevron">
-						<Icon name="chevron-right" class="context-chevron-icon" />
+						<Icon name="chevron-right" />
 					</span>
 				</summary>
 				{renderPreOutput(details)}
@@ -671,7 +668,7 @@ function renderContextMessage(message: AppMessage): string {
 						)}
 					</span>
 					<span class="context-chevron">
-						<Icon name="chevron-right" class="context-chevron-icon" />
+						<Icon name="chevron-right" />
 					</span>
 				</summary>
 				<div class="tool-output-surface context-output">

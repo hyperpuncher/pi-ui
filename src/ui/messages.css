@@ -59,7 +59,7 @@
 		color: var(--text-muted);
 		pointer-events: none;
 	}
-	.older-messages-spinner {
+	.older-messages-loading > svg {
 		width: 1rem;
 		height: 1rem;
 	}
@@ -122,7 +122,7 @@
 		place-items: center;
 		color: var(--text-muted);
 	}
-	.recent-sessions-spinner {
+	.recent-sessions-loading > svg {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
@@ -353,7 +353,7 @@
 		display: block;
 		font-size: var(--text-3xs);
 	}
-	.message-file-type-icon {
+	.message-file-icon > svg {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
@@ -479,13 +479,13 @@
 		margin-inline-start: auto;
 		color: var(--text-muted);
 	}
-	.context-chevron-icon {
+	.context-chevron > svg {
 		width: 0.875rem;
 		height: 0.875rem;
 		rotate: 180deg;
 		transition: rotate 150ms var(--ease-out);
 	}
-	.context-details[open] .context-chevron-icon {
+	.context-details[open] .context-chevron > svg {
 		rotate: 90deg;
 	}
 	.context-output {
