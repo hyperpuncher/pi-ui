@@ -28,7 +28,7 @@
 	},
 	"overrides": [
 		{
-			"files": ["**/*_test.ts", "src/testing/**/*.ts"],
+			"files": ["**/*.test.ts", "tests/src/testing/**/*.ts"],
 			"rules": {
 				"anti-slop/no-chained-type-assertions": "off",
 				"anti-slop/no-unknown-parameters": "off",

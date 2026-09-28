@@ -1,0 +1,182 @@
+import { test } from "bun:test";
+
+import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
+import {
+	assertAlmostEquals as assertNear,
+	assertEquals as assertEqual,
+} from "#testing/assertions";
+
+test("streaming scheduler is latest-wins with one queued frame", () => {
+	const clock = new FakeClock();
+	const rendered: string[] = [];
+	const scheduler = new StreamingFrameScheduler<string>(
+		(value) => rendered.push(value),
+		clock,
+	);
+
+	scheduler.schedule("first");
+	scheduler.schedule("second");
+	scheduler.schedule("latest");
+	assertEqual(clock.pending, 1);
+	clock.advance(7);
+	assertEqual(rendered.join(","), "latest");
+	assertEqual(scheduler.stats.coalescedSnapshots, 2);
+});
+
+test("streaming scheduler does not overlap reentrant rendering", () => {
+	const clock = new FakeClock();
+	const rendered: number[] = [];
+	let active = 0;
+	let maximum = 0;
+	let scheduler: StreamingFrameScheduler<number>;
+	scheduler = new StreamingFrameScheduler((value) => {
+		active += 1;
+		maximum = Math.max(maximum, active);
+		rendered.push(value);
+		if (value === 1) scheduler.schedule(2);
+		active -= 1;
+	}, clock);
+
+	scheduler.schedule(1);
+	clock.advance(7);
+	assertEqual(clock.pending, 1);
+	clock.advance(7);
+	assertEqual(rendered.join(","), "1,2");
+	assertEqual(maximum, 1);
+});
+
+test("streaming scheduler immediately flushes completion during a slow render", () => {
+	const clock = new FakeClock();
+	const rendered: string[] = [];
+	let scheduler: StreamingFrameScheduler<string>;
+	scheduler = new StreamingFrameScheduler((value) => {
+		rendered.push(value);
+		if (value === "partial") {
+			clock.advance(20);
+			scheduler.flush("final");
+		}
+	}, clock);
+	scheduler.schedule("partial");
+	clock.advance(7);
+	assertEqual(rendered.join(","), "partial,final");
+	assertEqual(clock.pending, 0);
+});
+
+test("streaming scheduler flushes final content and clears replacement work", () => {
+	const clock = new FakeClock();
+	const rendered: string[] = [];
+	const scheduler = new StreamingFrameScheduler<string>(
+		(value) => rendered.push(value),
+		clock,
+	);
+
+	scheduler.schedule("partial");
+	scheduler.flush("final");
+	assertEqual(rendered.join(","), "final");
+	assertEqual(clock.pending, 0);
+	scheduler.schedule("obsolete");
+	scheduler.clear();
+	clock.advance(100);
+	assertEqual(rendered.join(","), "final");
+});
+
+test("streaming scheduler follows 60 through 240 Hz monotonic cadence", () => {
+	for (const hz of [60, 75, 90, 100, 120, 144, 165, 240]) {
+		const clock = new FakeClock();
+		const times: number[] = [];
+		const scheduler = new StreamingFrameScheduler<number>(
+			() => times.push(clock.now()),
+			clock,
+			0,
+		);
+		scheduler.setDisplayHz(hz);
+		for (let frame = 0; frame < 3; frame += 1) {
+			scheduler.schedule(frame);
+			clock.advance(1000 / hz);
+		}
+		assertEqual(times.length, 3);
+		assertNear(times[2] - times[1], 1000 / hz, 0.001);
+	}
+});
+
+test("streaming scheduler reports skipped and late deadlines", () => {
+	let now = 0;
+	let timer: (() => void) | undefined;
+	const scheduler = new StreamingFrameScheduler<number>(() => {}, {
+		now: () => now,
+		setTimer: (callback) => {
+			timer = callback;
+			return 1;
+		},
+		clearTimer: () => {
+			timer = undefined;
+		},
+	});
+
+	scheduler.setDisplayHz(60);
+	now = 40;
+	scheduler.schedule(1);
+	assertEqual(scheduler.stats.skippedDeadlines, 2);
+	now = 60;
+	timer?.();
+	assertNear(scheduler.stats.maximumTimerLatenessMs, 10, 0.001);
+});
+
+test("streaming scheduler skips idle gaps and exact deadlines without losing cadence", () => {
+	for (const idleMs of [7.5, 8, 8.5, 24 * 60 * 60 * 1000 + 3]) {
+		const clock = new FakeClock();
+		const rendered: string[] = [];
+		const scheduler = new StreamingFrameScheduler<string>(
+			(value) => rendered.push(value),
+			clock,
+			0,
+		);
+		scheduler.setDisplayHz(125);
+		scheduler.schedule("before idle");
+		scheduler.flush();
+		clock.advance(idleMs);
+		scheduler.schedule("after idle");
+
+		assertEqual(scheduler.stats.skippedDeadlines, Math.floor(idleMs / 8));
+		const nextDeadline = (Math.floor(idleMs / 8) + 1) * 8;
+		clock.advance(nextDeadline - idleMs - 0.25);
+		assertEqual(rendered, ["before idle"]);
+		clock.advance(0.25);
+		assertEqual(rendered, ["before idle", "after idle"]);
+		assertEqual(clock.pending, 0);
+	}
+});
+
+class FakeClock {
+	private time = 0;
+	private sequence = 0;
+	private timers = new Map<number, { at: number; callback: () => void }>();
+
+	readonly now = (): number => this.time;
+	readonly setTimer = (callback: () => void, delayMs: number): number => {
+		const id = ++this.sequence;
+		this.timers.set(id, { at: this.time + delayMs, callback });
+		return id;
+	};
+	readonly clearTimer = (id: number): void => {
+		this.timers.delete(id);
+	};
+
+	get pending(): number {
+		return this.timers.size;
+	}
+
+	advance(durationMs: number): void {
+		const target = this.time + durationMs;
+		while (true) {
+			const next = [...this.timers.entries()].toSorted(
+				(left, right) => left[1].at - right[1].at,
+			)[0];
+			if (!next || next[1].at > target) break;
+			this.time = next[1].at;
+			this.timers.delete(next[0]);
+			next[1].callback();
+		}
+		this.time = target;
+	}
+}

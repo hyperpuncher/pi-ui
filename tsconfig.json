@@ -16,6 +16,6 @@
 		"noFallthroughCasesInSwitch": true,
 		"types": ["bun", "./src/app.d.ts"]
 	},
-	"include": ["src", "static/**/*.js", "scripts", "config.schema.json"],
+	"include": ["src", "static/**/*.js", "tests", "scripts", "config.schema.json"],
 	"exclude": ["static/build", "dist"]
 }

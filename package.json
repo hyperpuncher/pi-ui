@@ -18,8 +18,10 @@
 	],
 	"type": "module",
 	"imports": {
-		"#testing/assertions": "./src/testing/assertions.ts",
-		"#testing/temp": "./src/testing/temp.ts"
+		"#src/*": "./src/*",
+		"#static/*": "./static/*",
+		"#testing/assertions": "./tests/src/testing/assertions.ts",
+		"#testing/temp": "./tests/src/testing/temp.ts"
 	},
 	"publishConfig": {
 		"access": "public"

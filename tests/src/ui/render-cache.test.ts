@@ -1,0 +1,61 @@
+import { test } from "bun:test";
+
+import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
+import { assertEquals as assertEqual, assertThrows } from "#testing/assertions";
+
+test("BoundedCache validates its capacity", () => {
+	for (const capacity of [0, -1, 1.5]) {
+		assertThrows(() => new BoundedCache(capacity));
+	}
+});
+
+test("BoundedCache replaces values and refreshes recency", () => {
+	const cache = new BoundedCache<string, number>(2);
+	cache.set("a", 1);
+	cache.set("b", 2);
+	cache.set("a", 3);
+	cache.set("c", 4);
+	assertEqual(cache.size, 2);
+	assertEqual(cache.get("a"), 3);
+	assertEqual(cache.get("b"), undefined);
+	assertEqual(cache.get("c"), 4);
+});
+
+test("BoundedCache evicts entries that exceed its weight budget", () => {
+	const cache = new BoundedCache<string, string>(10, {
+		maxWeight: 5,
+		weight: (_key, value) => value.length,
+	});
+	cache.set("a", "12");
+	cache.set("b", "345");
+	assertEqual(cache.size, 2);
+	cache.set("c", "67");
+	assertEqual(cache.get("a"), undefined);
+	assertEqual(cache.get("b"), "345");
+	assertEqual(cache.get("c"), "67");
+	cache.set("oversized", "123456");
+	assertEqual(cache.size, 0);
+});
+
+test("BoundedCache evicts, deletes, and clears entries", () => {
+	const cache = new BoundedCache<string, number>(2);
+	cache.set("a", 1);
+	cache.set("b", 2);
+	cache.set("c", 3);
+	assertEqual(cache.get("a"), undefined);
+	assertEqual(cache.delete("b"), true);
+	assertEqual(cache.size, 1);
+	cache.clear();
+	assertEqual(cache.size, 0);
+});
+
+test("deleteStringKeysWithPrefix only removes one message's state", () => {
+	const states = new Map([
+		["message-1:0", 1],
+		["message-1:1", 2],
+		["message-10:0", 3],
+		["message-2:0", 4],
+	]);
+	deleteStringKeysWithPrefix(states, "message-1:");
+	assertEqual([...states.keys()].join(","), "message-10:0,message-2:0");
+});

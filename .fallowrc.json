@@ -16,7 +16,7 @@
 		"tools/oxlint/anti-slop/index.ts"
 	],
 	"ignorePatterns": ["static/vendor/**"],
-	"dynamicallyLoaded": ["src/ui/bash-highlight-loading-fixture.ts"],
+	"dynamicallyLoaded": ["tests/src/ui/bash-highlight-loading-fixture.ts"],
 	"ignoreDependencies": [
 		"@earendil-works/pi-ai",
 		"@earendil-works/pi-coding-agent",
