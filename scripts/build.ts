@@ -10,7 +10,6 @@ const result = await Bun.build({
 	external: ["@silvia-odwyer/photon-node"],
 	format: "esm",
 	minify: true,
-	sourcemap: "linked",
 	bytecode: true,
 });
 
