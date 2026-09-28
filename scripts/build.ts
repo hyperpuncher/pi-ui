@@ -7,7 +7,9 @@ const result = await Bun.build({
 		assets: ["./static"],
 		outfile: "./dist/pi-ui",
 	},
-	external: ["@silvia-odwyer/photon-node"],
+	// Pi falls back to eager languages when its terminal-only catalog is absent.
+	// Pierre uses the JS engine, not its optional WASM engine.
+	external: ["@silvia-odwyer/photon-node", "highlight.js/lib/index.js", "shiki/wasm"],
 	format: "esm",
 	minify: true,
 	bytecode: true,
