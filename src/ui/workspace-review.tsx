@@ -15,7 +15,6 @@ import {
 	workspaceChangeStats,
 } from "../workspace-review-types.ts";
 import { Icon } from "./icon.tsx";
-import { SquareSplitHorizontal, SquareSplitVertical, TextWrap, X } from "./icons.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -322,7 +321,7 @@ export function renderWorkspaceReview(
 									aria-pressed="true"
 									aria-label="Wrap long lines"
 								>
-									<Icon icon={TextWrap} />
+									<Icon name="text-wrap" />
 								</button>
 							</div>
 							<button
@@ -354,7 +353,7 @@ export function renderWorkspaceReview(
 								data-on:click="$_workspaceReviewOpen = false"
 								aria-label="Hide workspace"
 							>
-								<Icon icon={X} />
+								<Icon name="x" />
 							</button>
 						</div>
 					</header>
@@ -433,7 +432,7 @@ export function renderWorkspaceReview(
 									aria-pressed="true"
 									aria-label="Split diff layout"
 								>
-									<Icon icon={SquareSplitHorizontal} />
+									<Icon name="square-split-horizontal" />
 								</button>
 								<button
 									id="review-layout-stacked"
@@ -442,7 +441,7 @@ export function renderWorkspaceReview(
 									aria-pressed="false"
 									aria-label="Stacked diff layout"
 								>
-									<Icon icon={SquareSplitVertical} />
+									<Icon name="square-split-vertical" />
 								</button>
 							</div>
 							<div class="segmented-control review-icon-control">
@@ -453,7 +452,7 @@ export function renderWorkspaceReview(
 									aria-pressed="true"
 									aria-label="Wrap long lines"
 								>
-									<Icon icon={TextWrap} />
+									<Icon name="text-wrap" />
 								</button>
 							</div>
 							<span
@@ -479,7 +478,7 @@ export function renderWorkspaceReview(
 								data-on:click="$_workspaceReviewOpen = false"
 								aria-label="Hide workspace"
 							>
-								<Icon icon={X} />
+								<Icon name="x" />
 							</button>
 						</div>
 					</header>

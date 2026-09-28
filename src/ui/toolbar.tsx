@@ -10,15 +10,7 @@ import {
 	type KeybindId,
 } from "../keybinds.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
-import { Icon } from "./icon.tsx";
-import {
-	Command,
-	FileDiff,
-	type IconData,
-	MessageCircleDashed,
-	MessageCirclePlus,
-	RotateCcw,
-} from "./icons.ts";
+import { Icon, type IconName } from "./icon.tsx";
 import { ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -36,7 +28,7 @@ const toolbarDialogTargets: Partial<Record<ToolbarAction, string>> = {
 
 type ToolbarItem = {
 	action: ToolbarAction;
-	icon: IconData;
+	name: IconName;
 	label: string;
 	keybind: KeybindId;
 	tooltipAlign?: "start" | "center" | "end";
@@ -44,7 +36,7 @@ type ToolbarItem = {
 
 const reviewToolbarItem: ToolbarItem = {
 	action: "review",
-	icon: FileDiff,
+	name: "file-diff",
 	label: "Review workspace",
 	keybind: "toggle-review",
 	tooltipAlign: "start",
@@ -53,26 +45,26 @@ const reviewToolbarItem: ToolbarItem = {
 const toolbarItems: readonly ToolbarItem[] = [
 	{
 		action: "commands",
-		icon: Command,
+		name: "command",
 		label: "Commands",
 		keybind: "command-palette",
 		tooltipAlign: "start",
 	},
 	{
 		action: "sessions",
-		icon: RotateCcw,
+		name: "rotate-ccw",
 		label: "Resume session",
 		keybind: "resume-session",
 	},
 	{
 		action: "new-chat",
-		icon: MessageCirclePlus,
+		name: "message-circle-plus",
 		label: "New chat",
 		keybind: "new-chat",
 	},
 	{
 		action: "new-temporary-chat",
-		icon: MessageCircleDashed,
+		name: "message-circle-dashed",
 		label: "New temporary chat",
 		keybind: "new-temporary-chat",
 	},
@@ -113,7 +105,7 @@ function ToolbarItemButton(props: {
 			pressed={temporary && props.state.isTemporarySession}
 			unavailable={props.unavailable}
 		>
-			<Icon icon={props.item.icon} />
+			<Icon name={props.item.name} />
 		</ToolbarButton>
 	);
 }

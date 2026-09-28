@@ -1,5 +1,4 @@
 import { Icon } from "./icon.tsx";
-import { RotateCcw, X } from "./icons.ts";
 
 const paletteGroups = [
 	{
@@ -395,7 +394,7 @@ export function renderThemeLab(): JSX.Element {
 						data-on:click="$themeLabOpen = false"
 						aria-label="Close theme lab"
 					>
-						<Icon icon={X} />
+						<Icon name="x" />
 					</button>
 				</header>
 
@@ -464,7 +463,7 @@ export function renderThemeLab(): JSX.Element {
 						data-on:click={resetExpression()}
 						aria-label="Reset theme"
 					>
-						<Icon icon={RotateCcw} />
+						<Icon name="rotate-ccw" />
 					</button>
 					<div class="theme-lab-actions">
 						<button

@@ -10,7 +10,6 @@ import type { AppThinkingLevel } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
 import { Icon } from "./icon.tsx";
-import { Brain, Folder, GitBranch, Star } from "./icons.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -37,7 +36,7 @@ export function renderWorkspacePicker(state: AppStateSnapshot): string {
 			data-tooltip="Workspace"
 			data-tooltip-delay
 		>
-			<Icon icon={Folder} class="prompt-context-icon" />
+			<Icon name="folder" class="prompt-context-icon" />
 			<span class="prompt-context-label" safe>
 				{label}
 			</span>
@@ -73,7 +72,7 @@ export function renderWorktreePicker(state: AppStateSnapshot): string {
 			data-tooltip="Branch"
 			data-tooltip-delay
 		>
-			<Icon icon={GitBranch} class="prompt-context-icon" />
+			<Icon name="git-branch" class="prompt-context-icon" />
 			<span class="prompt-context-label" safe>
 				{label}
 			</span>
@@ -110,7 +109,7 @@ export function renderThinkingPicker(state: AppStateSnapshot): string {
 					data-tooltip-delay
 					disabled={state.thinkingLevels.length <= 1}
 				>
-					<Icon icon={Brain} class="prompt-context-icon" />
+					<Icon name="brain" class="prompt-context-icon" />
 					<span class="prompt-context-label">{thinkingLabel(current)}</span>
 					<ShortcutTooltip
 						label="Thinking"
@@ -375,7 +374,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												});`}
 											>
 												<Icon
-													icon={Star}
+													name="star"
 													class={
 														model.scoped
 															? "model-scope-icon-active"

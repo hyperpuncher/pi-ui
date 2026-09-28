@@ -15,7 +15,6 @@ import {
 import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
-import { Folder, Square } from "./icons.ts";
 import {
 	PickerEmpty,
 	PickerList,
@@ -346,7 +345,7 @@ function renderWorkspaceBrowserDirectory(path: string, label: string): string {
 			data-attr:disabled="$_workspaceBrowserLoading"
 			data-on:click={browseWorkspaceAction(JSON.stringify(path))}
 		>
-			<Icon icon={Folder} class="workspace-browser-directory-icon" />
+			<Icon name="folder" class="workspace-browser-directory-icon" />
 			<span class="workspace-browser-directory-name" safe>
 				{label}
 			</span>
@@ -580,7 +579,7 @@ function renderSessionRow(
 						`
 						}
 					>
-						<Icon icon={Square} class="session-menu-abort-icon" />
+						<Icon name="square" class="session-menu-abort-icon" />
 					</button>
 				)}
 			</span>

@@ -3,7 +3,6 @@ import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { Icon } from "./icon.tsx";
-import { ArrowDown, Paperclip, X } from "./icons.ts";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
@@ -181,7 +180,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							data-align="center"
 							aria-label="Files"
 						>
-							<Icon icon={Paperclip} />
+							<Icon name="paperclip" />
 							<ShortcutTooltip label="Files" shortcut="@" />
 						</button>
 						{renderPromptAction(state)}
@@ -224,7 +223,7 @@ function renderLatestButton() {
 			inert
 			tabindex="-1"
 		>
-			<Icon icon={ArrowDown} />
+			<Icon name="arrow-down" />
 		</button>
 	);
 }
@@ -290,7 +289,7 @@ function renderQueuedMessages(state: AppStateSnapshot): string {
 						data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
 						aria-label="Remove queued message"
 					>
-						<Icon icon={X} />
+						<Icon name="x" />
 					</button>
 				</div>
 			))}

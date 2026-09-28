@@ -1,7 +1,6 @@
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { Icon } from "./icon.tsx";
-import { ArrowUp, Square } from "./icons.ts";
 import { ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -32,11 +31,11 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			>
 				<span class="prompt-action-icons">
 					<Icon
-						icon={ArrowUp}
+						name="arrow-up"
 						class="prompt-send-icon prompt-action-icon-exit"
 					/>
 					<Icon
-						icon={Square}
+						name="square"
 						class="prompt-abort-icon prompt-action-icon-enter"
 					/>
 				</span>
@@ -71,8 +70,8 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			aria-label="Send"
 		>
 			<span class="prompt-action-icons">
-				<Icon icon={ArrowUp} class="prompt-send-icon prompt-action-icon-enter" />
-				<Icon icon={Square} class="prompt-abort-icon prompt-action-icon-exit" />
+				<Icon name="arrow-up" class="prompt-send-icon prompt-action-icon-enter" />
+				<Icon name="square" class="prompt-abort-icon prompt-action-icon-exit" />
 			</span>
 			<ShortcutTooltip label="Send" shortcut="Enter" />
 		</button>,

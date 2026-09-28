@@ -2,7 +2,6 @@ import type { GitBranch, GitWorktreeContext } from "../server/git-worktrees.ts";
 import { defaultWorktreeBase } from "../server/git-worktrees.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import { Icon } from "./icon.tsx";
-import { ChevronDown, Folder, GitBranch as GitBranchIcon, Trash2 } from "./icons.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function renderWorktreeDialog(): string {
@@ -103,7 +102,7 @@ export function renderWorktreeDialogContent(
 										});`}
 									>
 										<Icon
-											icon={GitBranchIcon}
+											name="git-branch"
 											class="worktree-row-icon"
 										/>
 										<span class="worktree-row-title" safe>
@@ -121,7 +120,7 @@ export function renderWorktreeDialogContent(
 										data-attr:disabled="$_worktreeCreating"
 										data-on:click={`$_branchDeleteName = ${JSON.stringify(branch.label)};`}
 									>
-										<Icon icon={Trash2} />
+										<Icon name="trash" />
 									</button>
 								</div>
 							))}
@@ -195,7 +194,7 @@ export function renderWorktreeDialogContent(
 											});`}
 										>
 											<Icon
-												icon={Folder}
+												name="folder"
 												class="worktree-row-icon"
 											/>
 											<span class="worktree-row-text">
@@ -231,7 +230,7 @@ export function renderWorktreeDialogContent(
 													});
 												`}
 											>
-												<Icon icon={Trash2} />
+												<Icon name="trash" />
 											</button>
 										)}
 									</div>
@@ -271,7 +270,7 @@ export function renderWorktreeDialogContent(
 								>
 									{branchLabels[base]}
 								</span>
-								<Icon icon={ChevronDown} class="worktree-base-chevron" />
+								<Icon name="chevron-down" class="worktree-base-chevron" />
 							</button>
 							<div
 								id="worktree-base-popover"

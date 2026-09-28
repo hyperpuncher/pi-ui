@@ -4,7 +4,6 @@ import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { primaryModifierExpression } from "../utils/keyboard.ts";
 import { Icon } from "./icon.tsx";
-import { Loader } from "./icons.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function resumeSessionAction(
@@ -71,7 +70,7 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 				</div>
 			) : (
 				<div class="session-transition-loading">
-					<Icon icon={Loader} class="icon-spin session-transition-spinner" />
+					<Icon name="loader" class="icon-spin session-transition-spinner" />
 					<span class="sr-only" safe>
 						{targetPath}
 					</span>

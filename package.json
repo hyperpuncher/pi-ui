@@ -28,7 +28,7 @@
 	},
 	"scripts": {
 		"dev": "bun run assets:build && bun src/server-main.ts",
-		"assets:build": "bun scripts/build-assets.ts",
+		"assets:build": "bun scripts/generate-icons.ts && bun scripts/build-assets.ts",
 		"build": "bun run assets:build && bun scripts/build.ts",
 		"npm:build": "bun run assets:build && bun scripts/build-npm.ts",
 		"prepack": "bun run npm:build",

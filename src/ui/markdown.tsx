@@ -16,7 +16,6 @@ import { filePreviewUrl } from "../server/routes/endpoints.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
 import { Icon } from "./icon.tsx";
-import { Check, Copy } from "./icons.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
 import { shikiTokenStyle } from "./shiki-token-style.ts";
 import { syncHtml } from "./sync-html.ts";
@@ -376,8 +375,8 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 					data-copy-code
 					aria-label="Copy code"
 				>
-					<Icon icon={Copy} class="code-copy-icon code-copy-icon-idle" />
-					<Icon icon={Check} class="code-copy-icon code-copy-icon-done" />
+					<Icon name="copy" class="code-copy-icon code-copy-icon-idle" />
+					<Icon name="check" class="code-copy-icon code-copy-icon-done" />
 				</button>
 			</div>
 			<div class="code-block-content">{props.pre}</div>

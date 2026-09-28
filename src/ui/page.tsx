@@ -17,7 +17,6 @@ import { renderDebugOverlay } from "./debug.tsx";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderFontDialog } from "./font-dialog.tsx";
 import { Icon } from "./icon.tsx";
-import { FileUp, FolderOpen, PanelRight, Search } from "./icons.ts";
 import { ShortcutTooltip } from "./keyboard.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
 import { renderMessages } from "./messages.tsx";
@@ -210,7 +209,7 @@ export function renderPage(
 							class="file-drop-card"
 							data-class:file-drop-card-active="$_isDraggingFile"
 						>
-							<Icon icon={FileUp} class="file-drop-icon" />
+							<Icon name="file-up" class="file-drop-icon" />
 							<span>Drop files to attach</span>
 						</div>
 					</div>
@@ -278,7 +277,7 @@ export function renderPage(
 									data-tooltip-delay
 									data-align="end"
 								>
-									<Icon icon={PanelRight} />
+									<Icon name="panel-right" />
 									<ShortcutTooltip
 										label="Toggle sessions"
 										shortcut={activeKeybind("toggle-sessions")}
@@ -361,7 +360,7 @@ export function renderPage(
 									});
 									`}
 								>
-									<Icon icon={FolderOpen} />
+									<Icon name="folder-open" />
 								</button>
 							</header>
 							{renderWorkspaceDialogMenu(state)}
@@ -412,7 +411,7 @@ export function renderPage(
 							data-style:height="$treeSelectedId ? 'auto' : 'calc(100dvh - 2rem)'"
 						>
 							<header data-class:sr-only="$treeSelectedId">
-								<Icon icon={Search} />
+								<Icon name="search" />
 								<input
 									id="tree-input"
 									type="text"

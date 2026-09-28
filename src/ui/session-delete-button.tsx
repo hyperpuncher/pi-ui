@@ -1,6 +1,5 @@
 import type { AppSessionSummary } from "../state/app-store.ts";
 import { Icon } from "./icon.tsx";
-import { Trash2 } from "./icons.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function SessionDeleteButton(props: { session: AppSessionSummary }): string {
@@ -20,7 +19,7 @@ export function SessionDeleteButton(props: { session: AppSessionSummary }): stri
 				$sessionDeleteTitle = ${title};
 			`}
 		>
-			<Icon icon={Trash2} />
+			<Icon name="trash" />
 		</button>,
 	);
 }

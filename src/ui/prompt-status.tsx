@@ -2,7 +2,6 @@ import type { AppUsage, AppUsageLimits } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
 import { formatTokens } from "../utils/format.ts";
 import { Icon } from "./icon.tsx";
-import { Loader } from "./icons.ts";
 import { syncHtml } from "./sync-html.ts";
 
 export function renderPromptStatus(state: AppStateSnapshot): string {
@@ -223,5 +222,5 @@ function clampPercent(value: number): number {
 }
 
 export function loaderIcon() {
-	return <Icon icon={Loader} label="Loading" role="status" class="icon-spin" />;
+	return <Icon name="loader" label="Loading" role="status" class="icon-spin" />;
 }

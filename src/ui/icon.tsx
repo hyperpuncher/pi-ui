@@ -1,7 +1,9 @@
-import type { IconData } from "./icons.ts";
+import icons from "./icons.json";
+
+export type IconName = keyof typeof icons;
 
 type IconProps = {
-	icon?: IconData;
+	name?: IconName;
 	children?: JSX.Element;
 	class?: string;
 	label?: string;
@@ -22,7 +24,7 @@ export function Icon(props: IconProps) {
 			aria-label={props.label}
 			role={props.label ? (props.role ?? "img") : undefined}
 		>
-			{props.icon?.body ?? props.children}
+			{props.name ? icons[props.name] : props.children}
 		</svg>
 	);
 }

@@ -16,7 +16,6 @@ import { escapeHtml } from "../utils/html.ts";
 import { highlightBash } from "./bash-highlight.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
-import { ChevronRight, Loader } from "./icons.ts";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { renderMarkdownStreaming } from "./markdown.tsx";
 import { BoundedCache } from "./render-cache.ts";
@@ -78,7 +77,7 @@ export function renderMessages(
 						style="display: none"
 					>
 						<Icon
-							icon={Loader}
+							name="loader"
 							label="Loading older messages"
 							role="status"
 							class="icon-spin older-messages-spinner"
@@ -161,7 +160,7 @@ function renderEmptyMessages(
 									aria-label="Loading recent sessions"
 								>
 									<Icon
-										icon={Loader}
+										name="loader"
 										class="icon-spin recent-sessions-spinner"
 									/>
 								</div>
@@ -630,7 +629,7 @@ function renderErrorMessage(message: AppMessage): string {
 						</span>
 					</span>
 					<span class="context-chevron">
-						<Icon icon={ChevronRight} class="context-chevron-icon" />
+						<Icon name="chevron-right" class="context-chevron-icon" />
 					</span>
 				</summary>
 				{renderPreOutput(details)}
@@ -672,7 +671,7 @@ function renderContextMessage(message: AppMessage): string {
 						)}
 					</span>
 					<span class="context-chevron">
-						<Icon icon={ChevronRight} class="context-chevron-icon" />
+						<Icon name="chevron-right" class="context-chevron-icon" />
 					</span>
 				</summary>
 				<div class="tool-output-surface context-output">
