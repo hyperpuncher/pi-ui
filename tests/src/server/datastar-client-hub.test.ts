@@ -51,6 +51,20 @@ test("hub broadcasts to multiple clients and disconnects them independently", as
 	assertStringIncludes(await second.text(), "second only");
 });
 
+test("hub delivers a notification to only one connected client", async () => {
+	const hub = new DatastarClientHub();
+	const firstController = new AbortController();
+	const secondController = new AbortController();
+	const initial = () => ({ elements: "", signals: "{}" });
+	const first = hub.createStream(firstController.signal, initial);
+	const second = hub.createStream(secondController.signal, initial);
+	hub.executeOnOneClient("window.piUi.notifications.show({})");
+	firstController.abort();
+	secondController.abort();
+	const bodies = [await first.text(), await second.text()];
+	assertEquals(bodies.filter((body) => body.includes("notifications.show")).length, 1);
+});
+
 test("hub runs disconnect lifecycle once across overlapping close signals", () => {
 	const hub = new DatastarClientHub();
 	const controller = new AbortController();

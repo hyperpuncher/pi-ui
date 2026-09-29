@@ -4,6 +4,13 @@ import type { RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 export const streamRoutes = {
+	[endpoints.notificationsStream]: {
+		GET: (request, context) =>
+			context.notificationClients.createStream(request.signal, () => ({
+				elements: "",
+				signals: "{}",
+			})),
+	},
 	[endpoints.stream]: {
 		GET: (request, context, url) => {
 			const parameters = url.searchParams;

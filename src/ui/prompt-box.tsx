@@ -153,6 +153,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							!window.piUi.pickers.isOpen()
 						) {
 							evt.preventDefault();
+							window.piUi.notifications.requestPermission();
 							window.piUi.messageScroll.scrollBottom();
 							const submittedPrompt = $prompt;
 							$_promptSubmitting = true;

@@ -5,6 +5,10 @@ import { ensureTool } from "../../node_modules/@earendil-works/pi-coding-agent/d
 import { parseAutoTitleConfig, type AutoTitleConfig } from "../agent/auto-title.ts";
 import { RuntimeController } from "../agent/runtime-controller.ts";
 import { SessionTransitionController } from "../agent/session-transition-controller.ts";
+import {
+	notifySessionDone,
+	type SessionDoneNotification,
+} from "../browser-notifications.ts";
 import { defaultCodeThemes, validCodeThemes } from "../code-themes.ts";
 import { defaultFonts, setActiveFonts, validFonts } from "../fonts.ts";
 import { parseKeybindOverrides, setActiveKeybinds } from "../keybinds.ts";
@@ -51,7 +55,11 @@ export async function createApp() {
 	}
 	store.setWorkspaceReviewPreferences(workspaceReviewPreferences);
 	const sessionImages = new SessionImageStore();
-	const renderer = new UiRenderer(store, new DatastarClientHub(), {
+	const clientHub = new DatastarClientHub();
+	const notificationClients = new DatastarClientHub();
+	const onSessionDone = (details: SessionDoneNotification) =>
+		notifySessionDone(notificationClients, details);
+	const renderer = new UiRenderer(store, clientHub, {
 		registerImage: (image) => sessionImages.register(image),
 		clearImages: () => sessionImages.clear(),
 	});
@@ -60,6 +68,7 @@ export async function createApp() {
 	);
 	const host = await RuntimeController.create(store, undefined, {
 		autoTitle,
+		notifySessionDone: onSessionDone,
 		transitionController: transitions,
 	}).catch((error: ErrorOptions["cause"]) => {
 		console.error("Failed to start pi SDK runtime", error);
@@ -76,6 +85,7 @@ export async function createApp() {
 	const context: RouteContext = {
 		store,
 		renderer,
+		notificationClients,
 		resources,
 		transferredFiles,
 		appVersion: staticAssets.version,
@@ -88,7 +98,7 @@ export async function createApp() {
 		themeLab: process.env.PI_UI_THEME_LAB === "1",
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>
-			openWorkspace(path, store, resources, transitions, autoTitle),
+			openWorkspace(path, store, resources, transitions, autoTitle, onSessionDone),
 	};
 	let disposal: Promise<void> | undefined;
 	return {
@@ -112,6 +122,7 @@ async function openWorkspace(
 	resources: RouteResources,
 	transitions: SessionTransitionController,
 	autoTitle: AutoTitleConfig,
+	onSessionDone: (details: SessionDoneNotification) => void,
 ): Promise<boolean> {
 	const requestedPath = workspacePath.trim();
 	const transition = await transitions.run(
@@ -124,6 +135,7 @@ async function openWorkspace(
 			if (!resources.host) {
 				resources.host = await RuntimeController.create(store, realPath, {
 					autoTitle,
+					notifySessionDone: onSessionDone,
 					refreshWorkspaces: false,
 					transitionController: transitions,
 				});

@@ -1,6 +1,7 @@
 import type { RuntimeController } from "../../agent/runtime-controller.ts";
 import type { AppStore } from "../../state/app-store.ts";
 import type { UiRenderer } from "../../ui/ui-renderer.ts";
+import type { DatastarClientHub } from "../datastar-client-hub.ts";
 import { RouteError } from "../route.ts";
 import type { SessionImageStore } from "../session-image-store.ts";
 import type { TransferredFileStore } from "../transferred-files.ts";
@@ -62,6 +63,7 @@ export interface RouteContext {
 	themeLab: boolean;
 	store: AppStore;
 	renderer: UiRenderer;
+	notificationClients: DatastarClientHub;
 	resources: RouteResources;
 	transferredFiles: Pick<TransferredFileStore, "importFiles">;
 	openWorkspace(path: string): Promise<boolean>;

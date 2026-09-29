@@ -14,6 +14,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { resolveModelScopeFromModels } from "../../node_modules/@earendil-works/pi-coding-agent/dist/core/model-resolver.js";
+import type { SessionDoneNotification } from "../browser-notifications.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import {
 	type AppSlashCommand,
@@ -21,14 +22,15 @@ import {
 	type BackgroundSessionStatus,
 } from "../state/app-store.ts";
 import { TranscriptState } from "../state/transcript-state.ts";
-import {
-	notifySessionDone,
-	type SessionDoneNotification,
-} from "../system-notifications.ts";
 import { errorMessage } from "../utils/errors.ts";
 import { configureAgentHttpProxy, withAgentHttpProxy } from "../utils/http-proxy.ts";
 import { moveToTrash } from "../utils/trash.ts";
-import { defaultWorkspacePath, formatHomePath } from "../utils/workspace.ts";
+import {
+	defaultWorkspacePath,
+	formatHomePath,
+	managedWorktreeParts,
+	workspaceDisplayName,
+} from "../utils/workspace.ts";
 import { AuthController } from "./auth-controller.ts";
 import { type AutoTitleConfig, generateAutoTitle } from "./auto-title.ts";
 import {
@@ -146,7 +148,6 @@ export type RuntimeControllerDependencies = Readonly<{
 	moveToTrash: typeof moveToTrash;
 	shareSession: typeof shareSession;
 	getAgentDir: typeof getAgentDir;
-	notifySessionDone: typeof notifySessionDone;
 	watchSessionCatalog?: SessionCatalogWatch;
 }>;
 
@@ -160,7 +161,6 @@ const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	moveToTrash,
 	shareSession,
 	getAgentDir,
-	notifySessionDone,
 	watchSessionCatalog,
 };
 
@@ -168,8 +168,7 @@ export type RuntimeControllerActivationOptions = {
 	refreshWorkspaces?: boolean;
 	transitionController?: SessionTransitionController;
 	dependencies?: RuntimeControllerDependencies;
-	isApplicationFocused?: () => boolean | Promise<boolean>;
-	notifySessionDone?: (details: SessionDoneNotification) => Promise<void>;
+	notifySessionDone?: (details: SessionDoneNotification) => void;
 	autoTitle?: AutoTitleConfig;
 };
 
@@ -1269,7 +1268,7 @@ export class RuntimeController {
 		this.unsubscribeBackgroundSession(backgroundSession);
 		backgroundSession.status = "completed";
 		this.catalog.mergeCurrentStatuses();
-		this.notifyRuntimeDone(backgroundSession.runtime, true);
+		this.notifyRuntimeDone(backgroundSession.runtime);
 		const path = backgroundSession.runtime.session.sessionManager.getSessionFile();
 		if (path) {
 			this.catalog.agentCompleted(path);
@@ -1277,30 +1276,15 @@ export class RuntimeController {
 		}
 	}
 
-	private notifyRuntimeDone(runtime: AgentSessionRuntime, background: boolean): void {
-		void this.notifyRuntimeDoneWhenAppropriate(
-			{
-				workspace: formatHomePath(runtime.session.sessionManager.getCwd()),
-				sessionPath: runtime.session.sessionManager.getSessionFile(),
-			},
-			background,
-		);
-	}
-
-	private async notifyRuntimeDoneWhenAppropriate(
-		details: SessionDoneNotification,
-		background: boolean,
-	): Promise<void> {
-		if (
-			!background &&
-			(await (this.activationOptions.isApplicationFocused?.() ?? true))
-		) {
-			return;
-		}
-		const notify =
-			this.activationOptions.notifySessionDone ??
-			this.dependencies.notifySessionDone;
-		await notify(details);
+	private notifyRuntimeDone(runtime: AgentSessionRuntime): void {
+		const cwd = runtime.session.sessionManager.getCwd();
+		const worktree = managedWorktreeParts(cwd);
+		this.activationOptions.notifySessionDone?.({
+			workspace: worktree
+				? `${worktree.project}/${worktree.branch}`
+				: workspaceDisplayName(cwd),
+			sessionPath: runtime.session.sessionManager.getSessionFile(),
+		});
 	}
 
 	private async activateRuntime(backgroundSession: BackgroundSession): Promise<void> {
@@ -1453,7 +1437,7 @@ export class RuntimeController {
 					if (path) this.catalog.agentCompleted(path);
 					this.usage.sync();
 					this.usage.refresh(true);
-					this.notifyRuntimeDone(this.runtime, false);
+					this.notifyRuntimeDone(this.runtime);
 					if (path) void this.catalog.refreshPath(path);
 				}
 			},

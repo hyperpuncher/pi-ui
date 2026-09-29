@@ -70,6 +70,15 @@ test("sidebar restores responsive preferences before datastar", () => {
 	}
 });
 
+test("only the notification stream stays connected in a hidden tab", () => {
+	assertStringIncludes(html, "@get('/notifications/stream'");
+	assertEquals(html.match(/openWhenHidden: true/g)?.length, 1);
+	assertEquals(
+		html.match(/window\.piUi\.notifications\.requestPermission\(\)/g)?.length,
+		2,
+	);
+});
+
 test("workspace files expose native preview and source controls", () => {
 	assertStringIncludes(html, 'id="workspace-file-mode"');
 	assertStringIncludes(html, 'id="workspace-file-preview-mode"');

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 
+import { notifySessionDone } from "#src/browser-notifications.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { executeRoute } from "#src/server/route.ts";
 import { appRoutes } from "#src/server/routes.ts";
@@ -94,6 +95,21 @@ test("stale main streams reload the page before connecting", async () => {
 	);
 	assertEquals(await current.text(), "stream");
 	assertEquals(connected, true);
+});
+
+test("notification stream stays independent of the main UI stream", async () => {
+	const context = fakeContext();
+	const controller = new AbortController();
+	const response = await createRouter(context).fetch(
+		new Request(`http://localhost${endpoints.notificationsStream}`, {
+			signal: controller.signal,
+		}),
+	);
+	assertEquals(context.notificationClients.clientCount, 1);
+	notifySessionDone(context.notificationClients, { workspace: "project" });
+	controller.abort();
+	assertStringIncludes(await response.text(), "notifications.show");
+	assertEquals(context.notificationClients.clientCount, 0);
 });
 
 test("session favicons use workspace assets and fall back to a folder", async () => {
@@ -1148,6 +1164,7 @@ function fakeContext(
 				patchOlderMessages: () => {},
 				setDisplayRefreshHz: () => true,
 			}),
+		notificationClients: new DatastarClientHub(),
 		resources: {
 			host: overrides.host ?? fakeHost(),
 			sessionImages: new SessionImageStore(),

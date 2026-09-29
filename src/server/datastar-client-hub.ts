@@ -111,6 +111,17 @@ export class DatastarClientHub {
 		}
 	}
 
+	executeOnOneClient(script: string): void {
+		for (const [id, client] of this.clients) {
+			try {
+				client.executeScript(script);
+				return;
+			} catch {
+				this.disconnect(id, client);
+			}
+		}
+	}
+
 	patchSignals(signals: string): void {
 		for (const [id, client] of this.clients) {
 			try {

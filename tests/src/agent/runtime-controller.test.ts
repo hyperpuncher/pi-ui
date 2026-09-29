@@ -1,5 +1,6 @@
 import { setSystemTime, spyOn, test } from "bun:test";
 import { unlink } from "node:fs/promises";
+import { join } from "node:path";
 
 import type {
 	AgentSessionEvent,
@@ -12,8 +13,9 @@ import {
 	type RuntimeControllerDependencies,
 } from "#src/agent/runtime-controller.ts";
 import type { PreparedSessionList } from "#src/agent/session-catalog.ts";
+import type { SessionDoneNotification } from "#src/browser-notifications.ts";
 import { AppStore } from "#src/state/app-store.ts";
-import type { SessionDoneNotification } from "#src/system-notifications.ts";
+import { appWorktreeRoot } from "#src/utils/workspace.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
 import { makeTempFile } from "#testing/temp";
 
@@ -240,7 +242,6 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 				gistUrl: "https://gist.github.com/user/gist-id",
 			}),
 		getAgentDir: () => "/agent",
-		notifySessionDone: () => Promise.resolve(),
 	};
 }
 
@@ -1255,49 +1256,49 @@ test("RuntimeController completes and aborts background runtimes exactly once", 
 	assertEquals(next.disposeCount, 1);
 });
 
-test("RuntimeController notifies for completed foreground work only while unfocused", async () => {
+test("RuntimeController labels foreground completions by workspace or worktree", async () => {
 	const notifications: SessionDoneNotification[] = [];
 	const notifySessionDone = (details: SessionDoneNotification) => {
 		notifications.push(details);
-		return Promise.resolve();
 	};
-	const focused = fakeRuntime("/sessions/focused.jsonl");
-	const focusedController = await RuntimeController.prepare(
+	const workspace = fakeRuntime("/sessions/workspace.jsonl");
+	const workspaceController = await RuntimeController.prepare(
 		new AppStore(),
 		"/workspace",
 		{
-			dependencies: dependencies([focused]),
-			isApplicationFocused: () => true,
+			dependencies: dependencies([workspace]),
 			notifySessionDone,
 		},
 	);
-	focusedController.activate();
-	focused.emit(agentSessionEventStub({ type: "agent_end" }));
-	focused.emit(agentSessionEventStub({ type: "agent_settled" }));
-	assertEquals(notifications, []);
-	await focusedController.dispose();
-
-	const unfocused = fakeRuntime("/sessions/unfocused.jsonl");
-	const unfocusedController = await RuntimeController.prepare(
-		new AppStore(),
-		"/workspace",
-		{
-			dependencies: dependencies([unfocused]),
-			isApplicationFocused: () => false,
-			notifySessionDone,
-		},
-	);
-	unfocusedController.activate();
-	unfocused.emit(agentSessionEventStub({ type: "agent_end" }));
-	unfocused.emit(agentSessionEventStub({ type: "agent_settled" }));
-	await Promise.resolve();
+	workspaceController.activate();
+	workspace.emit(agentSessionEventStub({ type: "agent_end" }));
+	workspace.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(notifications, [
-		{
-			workspace: "/workspace",
-			sessionPath: "/sessions/unfocused.jsonl",
-		},
+		{ workspace: "workspace", sessionPath: "/sessions/workspace.jsonl" },
 	]);
-	await unfocusedController.dispose();
+	await workspaceController.dispose();
+
+	const worktree = fakeRuntime(
+		"/sessions/worktree.jsonl",
+		true,
+		join(appWorktreeRoot(), "pi-ui", "feature~notify-abc12345"),
+	);
+	const worktreeController = await RuntimeController.prepare(
+		new AppStore(),
+		"/workspace",
+		{
+			dependencies: dependencies([worktree]),
+			notifySessionDone,
+		},
+	);
+	worktreeController.activate();
+	worktree.emit(agentSessionEventStub({ type: "agent_end" }));
+	worktree.emit(agentSessionEventStub({ type: "agent_settled" }));
+	assertEquals(notifications, [
+		{ workspace: "workspace", sessionPath: "/sessions/workspace.jsonl" },
+		{ workspace: "pi-ui/feature/notify", sessionPath: "/sessions/worktree.jsonl" },
+	]);
+	await worktreeController.dispose();
 });
 
 test("RuntimeController always notifies for completed background work", async () => {
@@ -1307,10 +1308,8 @@ test("RuntimeController always notifies for completed background work", async ()
 	background.setStreaming(true);
 	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
 		dependencies: dependencies([background, foreground]),
-		isApplicationFocused: () => true,
 		notifySessionDone: (details) => {
 			notifications.push(details);
-			return Promise.resolve();
 		},
 	});
 	controller.activate();
@@ -1319,7 +1318,7 @@ test("RuntimeController always notifies for completed background work", async ()
 	background.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(notifications, [
 		{
-			workspace: "/workspace",
+			workspace: "workspace",
 			sessionPath: "/sessions/background.jsonl",
 		},
 	]);

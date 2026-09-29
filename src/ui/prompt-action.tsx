@@ -52,6 +52,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			"
 			data-attr:aria-label="$_promptSubmitting ? 'Sending' : 'Send'"
 			data-on:click={`
+				window.piUi.notifications.requestPermission();
 				window.piUi.messageScroll.scrollBottom();
 				const submittedPrompt = $prompt;
 				$_promptSubmitting = true;

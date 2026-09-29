@@ -127,6 +127,13 @@ export function renderPage(
 					data-attr:data-code-theme-light="$_codeThemeLight"
 					data-attr:data-code-theme-dark="$_codeThemeDark"
 					data-toolbar-hidden={toolbarHidden}
+					data-init={`@get('${endpoints.notificationsStream}', {
+						payload: {},
+						openWhenHidden: true,
+						retry: 'always',
+						retryMaxCount: Infinity,
+						requestCancellation: 'cleanup',
+					})`}
 					data-signals={initialSignals}
 					data-signals:_minimal-mode__ifmissing={minimalMode ? "true" : "false"}
 					data-signals:_tool-output-hidden__ifmissing={
