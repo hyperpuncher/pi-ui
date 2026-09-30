@@ -414,7 +414,7 @@ export function renderWorktreeRemoveDialog(): string {
 	return syncHtml(
 		<dialog
 			id="worktree-remove-dialog"
-			data-effect="if (!$_worktreeRemovePath && el.open) el.close()"
+			data-effect="if (!$_worktreeRemovePath && el.open) el.close();"
 			class="dialog"
 			aria-labelledby="worktree-remove-title"
 			data-signals__ifmissing="{
@@ -470,10 +470,7 @@ export function renderWorktreeRemoveDialog(): string {
 						class="btn"
 						data-variant="destructive"
 						data-indicator:_worktree-removing
-						data-attr:disabled="
-							!$_worktreeRemoveReady ||
-							$_worktreeRemoving
-						"
+						data-attr:disabled="!$_worktreeRemoveReady || $_worktreeRemoving"
 						data-on:click={`@post('${endpoints.worktreeRemove}', {
 							payload: { path: $_worktreeRemovePath, revision: $_worktreeRemoveRevision },
 							retryMaxCount: 0,

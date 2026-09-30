@@ -293,7 +293,7 @@ function renderMetrics() {
 					<label
 						class="theme-lab-metric"
 						data-class:theme-lab-modified="Number($themeLabRadius) !== window.piUi.themeLab.defaults.radius"
-						data-on:dblclick="if (!evt.target.closest('input')) $themeLabRadius = window.piUi.themeLab.defaults.radius"
+						data-on:dblclick="if (!evt.target.closest('input')) $themeLabRadius = window.piUi.themeLab.defaults.radius;"
 					>
 						<span>radius</span>
 						<input

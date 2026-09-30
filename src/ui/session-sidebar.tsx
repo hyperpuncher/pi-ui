@@ -77,11 +77,17 @@ export function renderSessionSidebar(
 				data-on:command={`
 					if (evt.command === '--toggle' && el.open) el.close();
 					else if (evt.command === '--toggle' || evt.command === '--show') {
-					el.toggleAttribute('data-animate-open', evt.source !== null && !evt.source.matches(':focus-visible'));
-					if (!el.open) el.closedBy === 'any' ? el.showModal() : el.show();
-					el.querySelector('.session-sidebar-scroller').scrollLeft = 0;
-				};
-					if (evt.command === '--toggle' && el.closedBy !== 'any') @post('${endpoints.sessionSidebar}', { payload: { sessionSidebar: { open: el.open } } });
+						el.toggleAttribute(
+							'data-animate-open',
+							evt.source !== null && !evt.source.matches(':focus-visible'),
+						);
+						if (!el.open) el.closedBy === 'any' ? el.showModal() : el.show();
+						el.querySelector('.session-sidebar-scroller').scrollLeft = 0;
+					}
+					if (evt.command === '--toggle' && el.closedBy !== 'any')
+						@post('${endpoints.sessionSidebar}', {
+							payload: { sessionSidebar: { open: el.open } },
+						});
 				`}
 				data-on:resize__window={`if (matchMedia('(width <= 48rem)').matches !== (el.closedBy === 'any')) {
 				${restoreSessionSidebar(desktopOpen)}

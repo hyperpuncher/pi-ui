@@ -287,7 +287,8 @@ export function renderWorkspaceBrowserContent(
 					data-on:click="
 						$_workspaceFolderCreating = !$_workspaceFolderCreating;
 						$_workspaceFolderError = '';
-						if ($_workspaceFolderCreating) requestAnimationFrame(() => document.getElementById('workspace-folder-name').focus());
+						if ($_workspaceFolderCreating)
+							requestAnimationFrame(() => document.getElementById('workspace-folder-name').focus());
 					"
 				>
 					New folder

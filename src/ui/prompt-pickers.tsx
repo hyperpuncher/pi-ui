@@ -268,7 +268,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-align="end"
 					class="model-popover"
 					aria-label="Models"
-					data-on:beforetoggle="if (evt.newState === 'closed') window.piUi.controls.refresh(el)"
+					data-on:beforetoggle="if (evt.newState === 'closed') window.piUi.controls.refresh(el);"
 				>
 					<div class="command">
 						<header>

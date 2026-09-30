@@ -109,8 +109,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 						}}
 						data-on:input="
 							window.piUi.promptHistory.handleInput();
-							$_slashPickerOpen = $prompt.startsWith('/') &&
-						!$prompt.includes(' ');
+							$_slashPickerOpen = $prompt.startsWith('/') && !$prompt.includes(' ');
 						"
 						data-on:pi-ui-picker-close="$_slashPickerOpen = false"
 						data-on:pi-ui-file-close={`
@@ -130,40 +129,40 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 						data-on:keydown={`
 							window.piUi.promptHistory.handleKeydown(evt, $_promptHistory);
 							if (
-							evt.code === 'Escape' &&
-							!evt.ctrlKey &&
-							!evt.metaKey &&
-							!evt.altKey &&
-							!evt.shiftKey &&
-							!window.piUi.pickers.isOpen() &&
-							document.querySelector('[data-send-trigger]')
-						) {
-							evt.preventDefault();
-							el.blur();
-						}
-						if (evt.altKey && evt.code === 'ArrowUp') {
-							evt.preventDefault();
-							@post('${endpoints.promptDequeue}', { payload: {}, retryMaxCount: 0 });
-						}
-						if (
-							evt.key === 'Enter' &&
-							!evt.shiftKey &&
-							!evt.isComposing &&
-							window.piUi.fileTransfer.canSubmit($prompt) &&
-							!window.piUi.pickers.isOpen()
-						) {
-							evt.preventDefault();
-							window.piUi.notifications.requestPermission();
-							window.piUi.messageScroll.scrollBottom();
-							const submittedPrompt = $prompt;
-							$_promptSubmitting = true;
-							window.piUi.prompt.clear();
-							window.piUi.fileTransfer.submit(
-								evt.altKey ? '${endpoints.promptFollowUp}' : '${endpoints.prompt}',
-								submittedPrompt,
-								evt.altKey ? 'followUp' : undefined,
-							);
-						};
+								evt.code === 'Escape' &&
+								!evt.ctrlKey &&
+								!evt.metaKey &&
+								!evt.altKey &&
+								!evt.shiftKey &&
+								!window.piUi.pickers.isOpen() &&
+								document.querySelector('[data-send-trigger]')
+							) {
+								evt.preventDefault();
+								el.blur();
+							}
+							if (evt.altKey && evt.code === 'ArrowUp') {
+								evt.preventDefault();
+								@post('${endpoints.promptDequeue}', { payload: {}, retryMaxCount: 0 });
+							}
+							if (
+								evt.key === 'Enter' &&
+								!evt.shiftKey &&
+								!evt.isComposing &&
+								window.piUi.fileTransfer.canSubmit($prompt) &&
+								!window.piUi.pickers.isOpen()
+							) {
+								evt.preventDefault();
+								window.piUi.notifications.requestPermission();
+								window.piUi.messageScroll.scrollBottom();
+								const submittedPrompt = $prompt;
+								$_promptSubmitting = true;
+								window.piUi.prompt.clear();
+								window.piUi.fileTransfer.submit(
+									evt.altKey ? '${endpoints.promptFollowUp}' : '${endpoints.prompt}',
+									submittedPrompt,
+									evt.altKey ? 'followUp' : undefined,
+								);
+							}
 						`}
 					></textarea>
 					<div class="prompt-editor-actions">

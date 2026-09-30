@@ -139,10 +139,7 @@ export function renderWorkspaceReview(
 							? "display: none"
 							: undefined
 					}
-					data-show="
-						$_workspaceReviewGitAvailable &&
-						$workspaceReviewPreferences.tab !== 'files'
-					"
+					data-show="$_workspaceReviewGitAvailable && $workspaceReviewPreferences.tab !== 'files'"
 				>
 					{renderWorkspaceModeHeader("git", snapshot.isGitRepository)}
 					<section
@@ -628,8 +625,9 @@ function renderWorkspaceModeHeader(
 					class="workspace-mode-button"
 					aria-pressed={active === "files" ? "true" : "false"}
 					data-attr:aria-pressed="
-						$workspaceReviewPreferences.tab === 'files' ||
-						!$_workspaceReviewGitAvailable ? 'true' : 'false'
+						$workspaceReviewPreferences.tab === 'files' || !$_workspaceReviewGitAvailable
+							? 'true'
+							: 'false'
 					"
 					data-workspace-mode="files"
 					aria-keyshortcuts={keybindAria("focus-workspace-files")}
@@ -642,8 +640,9 @@ function renderWorkspaceModeHeader(
 					class="workspace-mode-button"
 					aria-pressed={active === "git" ? "true" : "false"}
 					data-attr:aria-pressed="
-						$workspaceReviewPreferences.tab !== 'files' &&
-						$_workspaceReviewGitAvailable ? 'true' : 'false'
+						$workspaceReviewPreferences.tab !== 'files' && $_workspaceReviewGitAvailable
+							? 'true'
+							: 'false'
 					"
 					data-workspace-mode="git"
 					disabled={!gitAvailable}

@@ -323,9 +323,11 @@ export function renderPage(
 									class="workspace-command-input"
 									type="text"
 									placeholder="Type a path or search workspaces..."
-									data-attr:placeholder="$_workspaceAction === 'fork'
-										? 'Choose a destination workspace...'
-										: 'Type a path or search workspaces...'"
+									data-attr:placeholder="
+										$_workspaceAction === 'fork'
+											? 'Choose a destination workspace...'
+											: 'Type a path or search workspaces...'
+									"
 									autocomplete="off"
 									autocorrect="off"
 									spellcheck="false"
@@ -389,7 +391,7 @@ export function renderPage(
 						id="tree-dialog"
 						class="command-dialog command-tree"
 						aria-label="Session tree"
-						data-on:beforetoggle="if (evt.newState === 'open') $treeSelectedId = ''"
+						data-on:beforetoggle="if (evt.newState === 'open') $treeSelectedId = '';"
 						data-on:toggle={`${resetCommandDialogOnOpen}
 						if (evt.newState === 'open') {
 						const active = el.querySelector('[data-active-tree-row]');

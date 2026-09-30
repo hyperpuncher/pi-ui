@@ -46,10 +46,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 			type="button"
 			disabled={state.promptEditorText.trim() === ""}
 			data-send-trigger
-			data-attr:disabled="
-				$_promptSubmitting ||
-				!window.piUi.fileTransfer.canSubmit($prompt)
-			"
+			data-attr:disabled="$_promptSubmitting || !window.piUi.fileTransfer.canSubmit($prompt)"
 			data-attr:aria-label="$_promptSubmitting ? 'Sending' : 'Send'"
 			data-on:click={`
 				window.piUi.notifications.requestPermission();

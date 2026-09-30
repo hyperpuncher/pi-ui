@@ -49,14 +49,8 @@ export function renderMessages(
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
 			data-show="!$_sessionTransitionVisible"
-			data-class:messages-loading="
-				$_sessionLoading ||
-				$_sessionTransitionStatus === 'loading'
-			"
-			data-attr:aria-busy="
-				$_sessionLoading ||
-				$_sessionTransitionStatus === 'loading' ? 'true' : 'false'
-			"
+			data-class:messages-loading="$_sessionLoading || $_sessionTransitionStatus === 'loading'"
+			data-attr:aria-busy="$_sessionLoading || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
@@ -263,7 +257,10 @@ function renderPlainOutput(message: AppMessage) {
 	return (
 		<div
 			class="tool-output tool-output-surface tool-plain-output"
-			data-init={`el.scrollTop = el.scrollHeight; ${message.presentationVersion}`}
+			data-init={`
+				el.scrollTop = el.scrollHeight;
+				${message.presentationVersion};
+			`}
 		>
 			{renderPendingToolOutput(message.text, "tool-output-padding")}
 		</div>
