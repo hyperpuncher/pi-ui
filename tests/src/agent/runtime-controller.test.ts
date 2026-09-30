@@ -1132,15 +1132,24 @@ test("RuntimeController adopts a prepared workspace despite idle disposal failur
 	}
 });
 
-test("RuntimeController completes a background manual compaction without an agent run", async () => {
+test("manual compaction survives session resume without disturbing foreground messages", async () => {
 	const state = new AppStore();
 	const path = await makeTempFile({ suffix: ".jsonl" });
 	const source = fakeRuntime(path);
 	const next = fakeRuntime("/sessions/next.jsonl");
+	const compaction = Promise.withResolvers<void>();
+	source.setCompact(() => compaction.promise);
 	source.setCompacting(true);
 	const controller = await activate(state, [source, next]);
+	const pending = controller.compact();
 	try {
-		assertEquals((await controller.newSession()).status, "success");
+		assertEquals(
+			(await controller.resumeSession("/sessions/next.jsonl")).status,
+			"success",
+		);
+		assertEquals(source.disposeCount, 0);
+		assertEquals(source.calls.includes("abort"), false);
+		state.appendMessage("user", "foreground content");
 		state.setSessionCatalog([
 			{
 				path,
@@ -1166,10 +1175,15 @@ test("RuntimeController completes a background manual compaction without an agen
 				willRetry: false,
 			}),
 		);
+		compaction.resolve();
+		assertEquals(await pending, true);
 		await Bun.sleep(0);
 		assertEquals(state.sessions[0]?.backgroundStatus, "completed");
 		assertEquals(state.currentSessionPath, "/sessions/next.jsonl");
+		assertEquals(state.messages.at(-1)?.text, "foreground content");
 	} finally {
+		compaction.resolve();
+		await pending;
 		await controller.dispose();
 		await unlink(path);
 	}

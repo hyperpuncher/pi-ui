@@ -10,8 +10,7 @@ import { assertEquals, assertRejects } from "#testing/assertions";
 type Manager = { path: string; cwd: string };
 
 function resumeHarness(
-	state: Omit<SessionResumeRuntimeState, "observedRunning"> &
-		Partial<Pick<SessionResumeRuntimeState, "observedRunning">>,
+	state: SessionResumeRuntimeState,
 	options: {
 		backgroundPath?: string;
 		cancelSwitch?: boolean;
@@ -35,7 +34,7 @@ function resumeHarness(
 			return replacementManager;
 		},
 		operations: {
-			state: () => ({ observedRunning: false, ...state }),
+			state: () => state,
 			findBackground: (target: string) =>
 				background?.path === target ? background : undefined,
 			activateBackground: async () => {
@@ -84,14 +83,14 @@ async function expectResume(
 }
 
 test("idle persisted resume delegates to one SDK logical open", async () => {
-	const fake = resumeHarness({ streaming: false, persisted: true });
+	const fake = resumeHarness({ active: false, persisted: true });
 	await expectResume(fake, { logicalOpenCount: 1, events: ["switch"] });
 });
 
 test("background activation performs no session open", async () => {
 	const target = path.resolve("session.jsonl");
 	const fake = resumeHarness(
-		{ streaming: true, persisted: true },
+		{ active: true, persisted: true },
 		{ backgroundPath: target },
 	);
 	await expectResume(fake, {
@@ -101,20 +100,8 @@ test("background activation performs no session open", async () => {
 	});
 });
 
-test("streaming foreground opens one manager and backgrounds the runtime", async () => {
-	const fake = resumeHarness({ streaming: true, persisted: true });
-	await expectResume(fake, {
-		logicalOpenCount: 1,
-		events: ["open", "background", "create"],
-	});
-});
-
-test("observed lifecycle preserves a persisted runtime when SDK streaming is false", async () => {
-	const fake = resumeHarness({
-		streaming: false,
-		observedRunning: true,
-		persisted: true,
-	});
+test("active foreground opens one manager and backgrounds the runtime", async () => {
+	const fake = resumeHarness({ active: true, persisted: true });
 	await expectResume(fake, {
 		logicalOpenCount: 1,
 		events: ["open", "background", "create"],
@@ -123,7 +110,7 @@ test("observed lifecycle preserves a persisted runtime when SDK streaming is fal
 
 test("temporary foreground opens once and preserves cross-workspace cwd", async () => {
 	const fake = resumeHarness(
-		{ streaming: true, persisted: false },
+		{ active: true, persisted: false },
 		{ managerCwd: "/another-workspace" },
 	);
 	await expectResume(fake, {
@@ -134,7 +121,7 @@ test("temporary foreground opens once and preserves cross-workspace cwd", async 
 });
 
 test("idle temporary foreground opens once and disposes the runtime", async () => {
-	const fake = resumeHarness({ streaming: false, persisted: false });
+	const fake = resumeHarness({ active: false, persisted: false });
 	await expectResume(fake, {
 		logicalOpenCount: 1,
 		events: ["open", "dispose", "create"],
@@ -143,7 +130,7 @@ test("idle temporary foreground opens once and disposes the runtime", async () =
 
 test("malformed replacement target fails before runtime invalidation", async () => {
 	const fake = resumeHarness(
-		{ streaming: true, persisted: true },
+		{ active: true, persisted: true },
 		{ openError: new Error("malformed") },
 	);
 	await assertRejects(() => executeSessionResume("bad.jsonl", fake.operations));
@@ -152,7 +139,7 @@ test("malformed replacement target fails before runtime invalidation", async () 
 
 test("extension cancellation keeps the idle persisted runtime", async () => {
 	const fake = resumeHarness(
-		{ streaming: false, persisted: true },
+		{ active: false, persisted: true },
 		{ cancelSwitch: true },
 	);
 	await expectResume(fake, {

@@ -754,8 +754,7 @@ export class RuntimeController {
 		);
 		const resumed = await executeSessionResume(sessionPath, {
 			state: () => ({
-				streaming: sourceStreaming,
-				observedRunning: this.foregroundObservedRunning,
+				active: this.isCurrentRuntimeActive(),
 				persisted: sourcePersisted,
 			}),
 			findBackground: (path) => {
@@ -908,9 +907,12 @@ export class RuntimeController {
 	}
 
 	async compact(customInstructions?: string): Promise<boolean> {
+		const runtime = this.runtime;
+		const session = runtime.session;
 		try {
-			await this.runtime.session.compact(customInstructions);
-			this.loadCurrentSessionMessages();
+			await session.compact(customInstructions);
+			if (this.runtime === runtime && runtime.session === session)
+				this.loadCurrentSessionMessages();
 			return true;
 		} catch {
 			// AgentSession emits compaction_end with the user-facing error.

@@ -1,8 +1,7 @@
 import { resolvePath } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/paths.js";
 
 export type SessionResumeRuntimeState = {
-	streaming: boolean;
-	observedRunning: boolean;
+	active: boolean;
 	persisted: boolean;
 };
 
@@ -34,15 +33,18 @@ export async function executeSessionResume<TManager, TBackground>(
 	}
 
 	const state = operations.state();
-	const active = state.streaming || state.observedRunning;
-	if (!active && state.persisted) {
+	if (!state.active && state.persisted) {
 		const result = await operations.switchSession(sessionPath);
 		return !result.cancelled;
 	}
 
 	// Open before invalidating the current runtime so malformed paths are harmless.
 	const manager = operations.openSession(sessionPath);
-	const action = active ? (state.persisted ? "background" : "discard") : "dispose";
+	const action = state.active
+		? state.persisted
+			? "background"
+			: "discard"
+		: "dispose";
 	await operations.replaceRuntime(manager, action);
 	return true;
 }
