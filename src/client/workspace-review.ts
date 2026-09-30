@@ -212,7 +212,7 @@ stackedButton.addEventListener("click", () => setLayout("unified"));
 wrapButton.addEventListener("click", () => {
 	wrap = !wrap;
 	wrapButton.setAttribute("aria-pressed", String(wrap));
-	writePreferences();
+	writeWorkspaceReviewPreferences({ wrap });
 	updateViewerOptions();
 });
 let observedDiffLayout = effectiveLayout();
@@ -387,7 +387,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 function setMode(next: ReviewMode): void {
 	mode = next;
 	syncModeButtons();
-	writePreferences();
+	writeWorkspaceReviewPreferences({ mode });
 	if (mode === "selected" && !selection.path) {
 		selection.path = items[0]?.fileDiff.name;
 	}
@@ -399,7 +399,7 @@ function setLayout(next: DiffLayout): void {
 	layout = next;
 	observedDiffLayout = effectiveLayout();
 	syncLayoutButtons(observedDiffLayout);
-	writePreferences();
+	writeWorkspaceReviewPreferences({ layout });
 	updateViewerOptions();
 }
 
@@ -407,7 +407,7 @@ function selectWorking(path?: string, fromTree = false): void {
 	if (fromTree && workingError && mode === "all") {
 		mode = "selected";
 		syncModeButtons();
-		writePreferences();
+		writeWorkspaceReviewPreferences({ mode });
 	}
 	activateWorking(path);
 	renderHistory();
@@ -849,7 +849,7 @@ function setPanelMode(next: "files" | "git"): void {
 	if (next === panelMode || (next === "git" && !snapshot.isGitRepository)) return;
 	panelMode = next;
 	preferredPanelMode = next;
-	writePreferences();
+	writeWorkspaceReviewPreferences({ tab: next });
 	if (!visibility.isOpen()) return;
 	workspaceFiles.setVisible(next === "files");
 	if (next === "git") openGitView();
@@ -1151,15 +1151,6 @@ function emptyMessage(): string {
 function showEmpty(message?: string): void {
 	empty.hidden = !message;
 	if (message) empty.textContent = message;
-}
-
-function writePreferences(): void {
-	writeWorkspaceReviewPreferences({
-		layout,
-		mode,
-		tab: preferredPanelMode,
-		wrap,
-	});
 }
 
 function submitWorkspaceReviewComments(

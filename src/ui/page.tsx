@@ -155,7 +155,7 @@ export function renderPage(
 							...evt.detail,
 						};
 						@post('${endpoints.workspaceReviewPreferences}', {
-							filterSignals: { include: /^workspaceReviewPreferences\\./ },
+							payload: { workspaceReviewPreferences: evt.detail },
 						});
 					`}
 					data-on:pi-ui-workspace-review-submit={`

@@ -22,10 +22,15 @@ export const workspaceReviewRoutes = {
 	[endpoints.workspaceReviewPreferences]: {
 		POST: async (request, context) => {
 			const signals = await readActionSignals(request);
-			const preferences = normalizeWorkspaceReviewPreferences(
+			const patch = normalizeWorkspaceReviewPreferences(
 				signals.workspaceReviewPreferences,
 			);
+			let preferences = context.store.workspaceReviewPreferences;
 			await updateAppConfig((config) => {
+				preferences = {
+					...normalizeWorkspaceReviewPreferences(config.gitView),
+					...patch,
+				};
 				config.gitView = preferences;
 			});
 			context.store.setWorkspaceReviewPreferences(preferences);

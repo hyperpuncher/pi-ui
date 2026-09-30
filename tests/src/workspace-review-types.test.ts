@@ -47,15 +47,14 @@ test("workspace review preferences validate layout values", () => {
 		},
 	);
 	assertEquals(
-		JSON.stringify(
-			normalizeWorkspaceReviewPreferences({
-				changesRatio: Number.NaN,
-				gitPaneRatio: "0.5",
-				reviewSidebarWidth: Number.POSITIVE_INFINITY,
-			}),
-		),
-		"{}",
+		normalizeWorkspaceReviewPreferences({
+			changesRatio: Number.NaN,
+			gitPaneRatio: "0.5",
+			reviewSidebarWidth: Number.POSITIVE_INFINITY,
+		}),
+		{},
 	);
+	assertEquals(normalizeWorkspaceReviewPreferences({ wrap: false }), { wrap: false });
 	assertEquals(
 		JSON.parse(
 			JSON.stringify(

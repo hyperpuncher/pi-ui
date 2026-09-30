@@ -51,7 +51,7 @@ export function normalizeWorkspaceReviewPreferences<Value>(
 	value: Value,
 ): WorkspaceReviewPreferences {
 	if (!isRecord(value)) return {};
-	return {
+	const preferences: WorkspaceReviewPreferences = {
 		changesRatio: normalizedNumber(
 			value.changesRatio,
 			changesRatioMin,
@@ -75,6 +75,9 @@ export function normalizeWorkspaceReviewPreferences<Value>(
 		tab: value.tab === "files" || value.tab === "git" ? value.tab : undefined,
 		wrap: isBoolean(value.wrap) ? value.wrap : undefined,
 	};
+	return Object.fromEntries(
+		Object.entries(preferences).filter(([, value]) => value !== undefined),
+	);
 }
 
 function normalizedNumber(
