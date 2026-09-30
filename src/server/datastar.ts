@@ -23,10 +23,8 @@ export class DatastarStream {
 
 export type ClientEffect =
 	| { type: "focus-prompt" }
-	| { type: "close-workspace-picker" }
+	| { type: "focus-session-picker" }
 	| { type: "close-worktree-picker" }
-	| { type: "close-worktree-remove-dialog" }
-	| { type: "session-deleted" }
 	| { type: "workspace-review-submitted" };
 
 export type DatastarEvent =
@@ -91,14 +89,10 @@ function clientEffectScript(effect: ClientEffect): string {
 	switch (effect.type) {
 		case "focus-prompt":
 			return "document.getElementById('prompt-input')?.focus({ preventScroll: true })";
-		case "close-workspace-picker":
-			return "document.getElementById('workspace-dialog')?.close()";
+		case "focus-session-picker":
+			return "document.getElementById('session-input')?.focus()";
 		case "close-worktree-picker":
 			return "document.getElementById('worktree-dialog')?.close()";
-		case "close-worktree-remove-dialog":
-			return "document.getElementById('worktree-remove-dialog')?.close()";
-		case "session-deleted":
-			return "document.getElementById('session-delete-dialog')?.close(); window.piUi.controls.refresh(document.getElementById('session-dialog')); document.getElementById('session-input')?.focus();";
 		case "workspace-review-submitted":
 			return "window.dispatchEvent(new CustomEvent('pi-ui-workspace-review-submitted'))";
 	}

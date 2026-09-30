@@ -297,7 +297,10 @@ export const workspaceRoutes = {
 						type: "elements",
 						elements: renderWorktreeDialogContent(worktrees),
 					},
-					{ type: "effect", effect: { type: "close-worktree-remove-dialog" } },
+					{
+						type: "signals",
+						signals: { _worktreeRemovePath: "" },
+					},
 				]);
 			}, "_worktreeRemoveError"),
 	},

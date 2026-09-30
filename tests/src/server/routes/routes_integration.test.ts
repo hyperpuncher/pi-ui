@@ -460,7 +460,7 @@ test("removing a worktree previews ignored paths and keeps its branch", async ()
 				revision: nextRevision,
 			}),
 		);
-		assertStringIncludes(await removed.text(), "worktree-remove-dialog");
+		assertStringIncludes(await removed.text(), '"_worktreeRemovePath":""');
 		assertEquals(await Bun.file(`${linked}/new.secret`).exists(), false);
 		await git(repository, "show-ref", "--verify", "refs/heads/feature");
 	} finally {

@@ -412,6 +412,7 @@ export function renderWorktreeRemoveDialog(): string {
 	return syncHtml(
 		<dialog
 			id="worktree-remove-dialog"
+			data-effect="if (!$_worktreeRemovePath && el.open) el.close()"
 			class="dialog"
 			aria-labelledby="worktree-remove-title"
 			data-signals__ifmissing="{

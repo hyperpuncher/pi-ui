@@ -103,7 +103,7 @@ export const sessionRoutes = {
 					type: "signals",
 					signals: { sessionDeletePath: "", sessionDeleteTitle: "" },
 				},
-				{ type: "effect", effect: { type: "session-deleted" } },
+				{ type: "effect", effect: { type: "focus-session-picker" } },
 			]);
 		},
 	},
