@@ -149,7 +149,7 @@ function tokenDescription(name: PaletteName): string | undefined {
 }
 
 function signalName(mode: ThemeMode, name: PaletteName): string {
-	return `themeLab${mode === "light" ? "Light" : "Dark"}${name[0]?.toUpperCase()}${name.slice(1)}`;
+	return `_themeLab${mode === "light" ? "Light" : "Dark"}${name[0]?.toUpperCase()}${name.slice(1)}`;
 }
 
 function signal(mode: ThemeMode, name: PaletteName): string {
@@ -165,7 +165,7 @@ function allPalettesExpression(): string {
 }
 
 function metricSignalName(name: MetricName): string {
-	return `themeLab${name[0]?.toUpperCase()}${name.slice(1)}`;
+	return `_themeLab${name[0]?.toUpperCase()}${name.slice(1)}`;
 }
 
 function metricSignal(name: MetricName): string {
@@ -184,10 +184,10 @@ function restoreExpression(): string {
 	return `const saved = window.piUi.themeLab.restore();
 		${assignments.join("\n")}
 		${metricNames.map((name) => `${metricSignal(name)} = saved.metrics.${name};`).join("\n")}
-		$themeLabPreference = window.piUi.themeLab.currentPreference();
-		$themeLabMode = window.piUi.themeLab.currentMode();
-		$themeLabRadius = saved.radius;
-		$themeLabReady = true;`;
+		$_themeLabPreference = window.piUi.themeLab.currentPreference();
+		$_themeLabMode = window.piUi.themeLab.currentMode();
+		$_themeLabRadius = saved.radius;
+		$_themeLabReady = true;`;
 }
 
 function resetExpression(): string {
@@ -195,7 +195,7 @@ function resetExpression(): string {
 		(name) =>
 			`${signal("light", name)} = reset.light.${name}; ${signal("dark", name)} = reset.dark.${name};`,
 	);
-	return `const reset = window.piUi.themeLab.reset(); ${assignments.join(" ")} ${metricNames.map((name) => `${metricSignal(name)} = reset.metrics.${name};`).join(" ")} $themeLabRadius = reset.radius;`;
+	return `const reset = window.piUi.themeLab.reset(); ${assignments.join(" ")} ${metricNames.map((name) => `${metricSignal(name)} = reset.metrics.${name};`).join(" ")} $_themeLabRadius = reset.radius;`;
 }
 
 function renderToken(mode: ThemeMode, name: PaletteName, label: string) {
@@ -214,7 +214,7 @@ function renderToken(mode: ThemeMode, name: PaletteName, label: string) {
 					type="color"
 					aria-label={`${label} color`}
 					data-effect={`
-						$themeLabMode;
+						$_themeLabMode;
 						el.value = window.piUi.themeLab.toHex(${value}, ${signal(mode, "surfaceBase")});
 					`}
 					data-on:input={`${value} = evt.target.value`}
@@ -236,7 +236,7 @@ function renderToken(mode: ThemeMode, name: PaletteName, label: string) {
 
 function renderPalette(mode: ThemeMode) {
 	return (
-		<div class="theme-lab-palette" data-show={`$themeLabMode === '${mode}'`}>
+		<div class="theme-lab-palette" data-show={`$_themeLabMode === '${mode}'`}>
 			{paletteGroups.map((group) => (
 				<details class="theme-lab-group" open>
 					<summary>{group.label}</summary>
@@ -285,15 +285,15 @@ function renderMetrics() {
 		<div
 			class="theme-lab-metrics"
 			role="tabpanel"
-			data-show="$themeLabSection === 'metrics'"
+			data-show="$_themeLabSection === 'metrics'"
 		>
 			<details class="theme-lab-group" open>
 				<summary>Shape</summary>
 				<div class="theme-lab-metric-list">
 					<label
 						class="theme-lab-metric"
-						data-class:theme-lab-modified="Number($themeLabRadius) !== window.piUi.themeLab.defaults.radius"
-						data-on:dblclick="if (!evt.target.closest('input')) $themeLabRadius = window.piUi.themeLab.defaults.radius;"
+						data-class:theme-lab-modified="Number($_themeLabRadius) !== window.piUi.themeLab.defaults.radius"
+						data-on:dblclick="if (!evt.target.closest('input')) $_themeLabRadius = window.piUi.themeLab.defaults.radius;"
 					>
 						<span>radius</span>
 						<input
@@ -301,9 +301,9 @@ function renderMetrics() {
 							min="0"
 							max="18"
 							step="1"
-							data-bind:theme-lab-radius
+							data-bind:_theme-lab-radius
 						/>
-						<output data-text="$themeLabRadius + 'px'" />
+						<output data-text="$_themeLabRadius + 'px'" />
 					</label>
 				</div>
 			</details>
@@ -342,12 +342,12 @@ function renderMetrics() {
 
 export function renderThemeLab(): JSX.Element {
 	const initialSignals = {
-		themeLabOpen: false,
-		themeLabMode: "light",
-		themeLabPreference: "system",
-		themeLabSection: "colors",
-		themeLabReady: false,
-		themeLabRadius: 10,
+		_themeLabOpen: false,
+		_themeLabMode: "light",
+		_themeLabPreference: "system",
+		_themeLabSection: "colors",
+		_themeLabReady: false,
+		_themeLabRadius: 10,
 		...Object.fromEntries(
 			paletteNames.flatMap((name) => [
 				[signalName("light", name), "transparent"],
@@ -361,7 +361,7 @@ export function renderThemeLab(): JSX.Element {
 			]),
 		),
 	};
-	const activePalette = `$themeLabMode === 'light' ? ${paletteExpression("light")} : ${paletteExpression("dark")}`;
+	const activePalette = `$_themeLabMode === 'light' ? ${paletteExpression("light")} : ${paletteExpression("dark")}`;
 
 	return (
 		<aside
@@ -371,27 +371,27 @@ export function renderThemeLab(): JSX.Element {
 			data-signals={JSON.stringify(initialSignals)}
 			data-init={restoreExpression()}
 			data-on:pi-ui-theme-mode-changed__window="
-				$themeLabPreference = window.piUi.themeLab.currentPreference();
-				$themeLabMode = window.piUi.themeLab.currentMode();
+				$_themeLabPreference = window.piUi.themeLab.currentPreference();
+				$_themeLabMode = window.piUi.themeLab.currentMode();
 			"
-			data-effect={`if ($themeLabReady) window.piUi.themeLab.apply($themeLabMode, ${activePalette}, $themeLabRadius, ${metricsExpression()}, ${allPalettesExpression()})`}
+			data-effect={`if ($_themeLabReady) window.piUi.themeLab.apply($_themeLabMode, ${activePalette}, $_themeLabRadius, ${metricsExpression()}, ${allPalettesExpression()})`}
 		>
 			<button
 				type="button"
 				class="theme-lab-launcher"
-				data-show="!$themeLabOpen"
-				data-on:click="$themeLabOpen = true"
+				data-show="!$_themeLabOpen"
+				data-on:click="$_themeLabOpen = true"
 				aria-label="Open theme lab"
 			>
 				Theme Lab
 			</button>
-			<section class="theme-lab-panel" data-show="$themeLabOpen">
+			<section class="theme-lab-panel" data-show="$_themeLabOpen">
 				<header class="theme-lab-header">
 					<strong>theme lab</strong>
 					<button
 						type="button"
 						class="theme-lab-icon-button"
-						data-on:click="$themeLabOpen = false"
+						data-on:click="$_themeLabOpen = false"
 						aria-label="Close theme lab"
 					>
 						<Icon name="x" />
@@ -407,18 +407,18 @@ export function renderThemeLab(): JSX.Element {
 						<button
 							type="button"
 							role="tab"
-							data-attr:aria-selected="$themeLabSection === 'colors'"
-							data-class:theme-lab-tab-active="$themeLabSection === 'colors'"
-							data-on:click="$themeLabSection = 'colors'"
+							data-attr:aria-selected="$_themeLabSection === 'colors'"
+							data-class:theme-lab-tab-active="$_themeLabSection === 'colors'"
+							data-on:click="$_themeLabSection = 'colors'"
 						>
 							colors
 						</button>
 						<button
 							type="button"
 							role="tab"
-							data-attr:aria-selected="$themeLabSection === 'metrics'"
-							data-class:theme-lab-tab-active="$themeLabSection === 'metrics'"
-							data-on:click="$themeLabSection = 'metrics'"
+							data-attr:aria-selected="$_themeLabSection === 'metrics'"
+							data-class:theme-lab-tab-active="$_themeLabSection === 'metrics'"
+							data-on:click="$_themeLabSection = 'metrics'"
 						>
 							metrics
 						</button>
@@ -434,12 +434,12 @@ export function renderThemeLab(): JSX.Element {
 							<button
 								type="button"
 								role="tab"
-								data-attr:aria-selected={`$themeLabPreference === '${preference}' ? 'true' : 'false'`}
-								data-class:theme-lab-tab-active={`$themeLabPreference === '${preference}'`}
+								data-attr:aria-selected={`$_themeLabPreference === '${preference}' ? 'true' : 'false'`}
+								data-class:theme-lab-tab-active={`$_themeLabPreference === '${preference}'`}
 								data-on:click={`
-									$themeLabPreference = '${preference}';
+									$_themeLabPreference = '${preference}';
 									window.piUi.themeLab.setMode('${preference}');
-									$themeLabMode = window.piUi.themeLab.currentMode();
+									$_themeLabMode = window.piUi.themeLab.currentMode();
 								`}
 							>
 								{label}
@@ -449,7 +449,7 @@ export function renderThemeLab(): JSX.Element {
 				</div>
 
 				<div class="theme-lab-scroll">
-					<div role="tabpanel" data-show="$themeLabSection === 'colors'">
+					<div role="tabpanel" data-show="$_themeLabSection === 'colors'">
 						{renderPalette("light")}
 						{renderPalette("dark")}
 					</div>
@@ -469,14 +469,14 @@ export function renderThemeLab(): JSX.Element {
 						<button
 							type="button"
 							class="theme-lab-secondary-action"
-							data-on:click={`window.piUi.themeLab.copy(${allPalettesExpression()}, $themeLabRadius, ${metricsExpression()}, el)`}
+							data-on:click={`window.piUi.themeLab.copy(${allPalettesExpression()}, $_themeLabRadius, ${metricsExpression()}, el)`}
 						>
 							copy
 						</button>
 						<button
 							type="button"
 							class="theme-lab-primary-action"
-							data-on:click={`window.piUi.themeLab.save(${allPalettesExpression()}, $themeLabRadius, ${metricsExpression()})`}
+							data-on:click={`window.piUi.themeLab.save(${allPalettesExpression()}, $_themeLabRadius, ${metricsExpression()})`}
 						>
 							save
 						</button>

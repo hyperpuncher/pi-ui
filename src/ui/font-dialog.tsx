@@ -22,12 +22,12 @@ export function renderFontDialog(): string {
 			class="dialog font-dialog"
 			aria-labelledby="font-dialog-title"
 			data-signals__ifmissing={JSON.stringify({
-				fontKind: "sans",
-				fontSearch: "",
+				_fontKind: "sans",
+				_fontSearch: "",
 			})}
 			data-on:pi-ui-open-fonts__window={`
-				$fontKind = 'sans';
-				$fontSearch = '';
+				$_fontKind = 'sans';
+				$_fontSearch = '';
 				if (!el.open) el.showModal();
 				window.piUi.codeTheme.loadFontPreviews($_codeThemeLight, $_codeThemeDark);
 			`}
@@ -50,8 +50,8 @@ export function renderFontDialog(): string {
 							{(["sans", "mono"] as const).map((kind) => (
 								<button
 									type="button"
-									data-on:click={`$fontKind = ${JSON.stringify(kind)}`}
-									data-attr:aria-pressed={`$fontKind === ${JSON.stringify(kind)} ? 'true' : 'false'`}
+									data-on:click={`$_fontKind = ${JSON.stringify(kind)}`}
+									data-attr:aria-pressed={`$_fontKind === ${JSON.stringify(kind)} ? 'true' : 'false'`}
 									aria-pressed={kind === "sans" ? "true" : "false"}
 								>
 									{kind === "sans" ? "Interface" : "Code"}
@@ -68,7 +68,7 @@ export function renderFontDialog(): string {
 						autocomplete="off"
 						spellcheck="false"
 						autofocus
-						data-bind:font-search=""
+						data-bind:_font-search=""
 					/>
 				</header>
 				<div class="preference-dialog-body">
@@ -77,7 +77,7 @@ export function renderFontDialog(): string {
 							class="preference-grid"
 							role="radiogroup"
 							aria-label={kind === "sans" ? "Interface font" : "Code font"}
-							data-show={`$fontKind === ${JSON.stringify(kind)}`}
+							data-show={`$_fontKind === ${JSON.stringify(kind)}`}
 						>
 							{FONT_OPTIONS[kind].map((font, index) =>
 								renderFontCard(kind, font, active[kind], index),
@@ -116,9 +116,9 @@ function renderFontCard(
 			class="font-card"
 			style={`font-family: ${fontStack(kind, font)}`}
 			data-show={`
-				!$fontSearch.trim() ||
+				!$_fontSearch.trim() ||
 				${JSON.stringify(label.toLowerCase())}.includes(
-					$fontSearch.trim().toLocaleLowerCase()
+					$_fontSearch.trim().toLocaleLowerCase()
 				)
 			`}
 		>
