@@ -8,6 +8,11 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 	const activityText = state.extensionWorkingMessage ?? state.activityText;
 	return syncHtml(
 		<span id="prompt-status" class="prompt-status">
+			{state.extensionStatuses.map((status) => (
+				<span class="extension-status" data-extension-status={status.key} safe>
+					{status.text}
+				</span>
+			))}
 			<span
 				class="prompt-status-message"
 				data-show="$_promptSubmitting"
@@ -28,11 +33,6 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 					</span>
 				</span>
 			)}
-			{state.extensionStatuses.map((status) => (
-				<span class="extension-status" data-extension-status={status.key} safe>
-					{status.text}
-				</span>
-			))}
 			{renderUsageIndicators(state.usage)}
 		</span>,
 	);
