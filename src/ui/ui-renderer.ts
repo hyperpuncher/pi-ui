@@ -37,19 +37,15 @@ import { renderToolbar } from "./toolbar.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 
-/** Complete-view renderer and logical commit scheduler. */
-type RenderedView = {
-	elements: string;
-	signals: string;
-};
+type ViewRegion = "pickers" | "sessions" | "sessionSidebar" | "workspaceReview";
+const allRegions: ReadonlySet<ViewRegion> = new Set([
+	"pickers",
+	"sessions",
+	"sessionSidebar",
+	"workspaceReview",
+]);
 
-type DirtyRegions = {
-	pickers: boolean;
-	sessions: boolean;
-	sessionSidebar: boolean;
-	workspaceReview: boolean;
-};
-
+/** Renders current state, with a separate lane for transcript streaming. */
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
 	private readonly displayClients = new DisplayRefreshClients();
@@ -58,10 +54,7 @@ export class UiRenderer implements AppStorePresentation {
 	private commitScheduled = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
-	private pickersDirty = false;
-	private sessionsDirty = false;
-	private sessionSidebarDirty = false;
-	private workspaceReviewDirty = false;
+	private dirtyRegions = new Set<ViewRegion>();
 	private replaceTranscriptOnCommit = false;
 
 	constructor(
@@ -104,7 +97,10 @@ export class UiRenderer implements AppStorePresentation {
 						);
 					}
 					const snapshot = this.store.snapshot();
-					const view = this.renderView({}, this.projectState(snapshot));
+					const view = this.renderView(snapshot);
+					view.elements =
+						this.renderTranscript(this.projectState(snapshot)) +
+						view.elements;
 					if (this.hub.clientCount === 1) {
 						// Send the readable initial view before starting final highlighting.
 						queueMicrotask(() => {
@@ -150,73 +146,29 @@ export class UiRenderer implements AppStorePresentation {
 		this.pendingEffects = [];
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
-		const dirtyRegions: DirtyRegions = {
-			pickers: this.pickersDirty,
-			sessions: this.sessionsDirty,
-			sessionSidebar: this.sessionSidebarDirty,
-			workspaceReview: this.workspaceReviewDirty,
-		};
-		this.pickersDirty = false;
-		this.sessionsDirty = false;
-		this.sessionSidebarDirty = false;
-		this.workspaceReviewDirty = false;
+		const dirtyRegions = this.dirtyRegions;
+		this.dirtyRegions = new Set();
 		if (this.hub.clientCount > 0) {
 			const state = this.store.snapshot();
-			if (this.replaceTranscriptOnCommit) {
+			if (
+				this.replaceTranscriptOnCommit ||
+				(dirtyRegions.has("sessions") && state.messages.length === 0)
+			) {
 				this.hub.replaceElement(
 					this.renderTranscript(this.projectState(state)),
 					"#messages",
 				);
 			}
-			this.hub.patchView(
-				this.renderAppElements(state),
-				this.renderSignals(state, this.effectSignalOverrides(effects)),
-				this.mainEffectScripts(effects),
+			const view = this.renderView(
+				state,
+				dirtyRegions,
+				this.effectSignalOverrides(effects),
 			);
-			this.patchDirtyRegions(state, effects, dirtyRegions);
+			this.hub.patchView(view.elements, view.signals, this.effectScripts(effects));
 		}
 		this.replaceTranscriptOnCommit = false;
 		if (this.hub.clientCount > 0)
 			for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
-	}
-	private patchDirtyRegions(
-		snapshot: AppStateSnapshot,
-		effects: readonly UiCommitEffect[],
-		dirty: DirtyRegions,
-	): void {
-		if (dirty.pickers) {
-			this.hub.patchView(
-				this.renderPickerElements(snapshot),
-				"{}",
-				this.pickerEffectScripts(effects),
-			);
-		}
-		if (dirty.sessions) {
-			this.hub.patchView(
-				renderSessionPickerContent(snapshot) +
-					renderSessionSidebarContent(snapshot) +
-					(snapshot.messages.length === 0
-						? this.renderTranscript(this.projectState(snapshot))
-						: ""),
-				"{}",
-				[],
-			);
-		} else if (dirty.sessionSidebar) {
-			this.hub.patchView(renderSessionSidebarContent(snapshot), "{}", []);
-		}
-		if (dirty.workspaceReview) {
-			this.hub.patchView(
-				renderWorkspaceReviewData(
-					snapshot.workspacePath,
-					snapshot.workspaceFilesRevision,
-					snapshot.workspaceTreeRevision,
-					snapshot.workspaceReview,
-					snapshot.workspaceReviewPreferences,
-				),
-				"{}",
-				[],
-			);
-		}
 	}
 	messageAppended(id: string): void {
 		if (this.hub.clientCount === 0) return;
@@ -248,16 +200,16 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.messageUpdated(id);
 	}
 	pickersChanged(): void {
-		this.pickersDirty = true;
+		this.dirtyRegions.add("pickers");
 	}
 	sessionsChanged(): void {
-		this.sessionsDirty = true;
+		this.dirtyRegions.add("sessions");
 	}
 	sessionSidebarChanged(): void {
-		this.sessionSidebarDirty = true;
+		this.dirtyRegions.add("sessionSidebar");
 	}
 	workspaceReviewChanged(): void {
-		this.workspaceReviewDirty = true;
+		this.dirtyRegions.add("workspaceReview");
 	}
 	codeThemeChanged(): void {
 		if (this.hub.clientCount > 0) this.messages.codeThemeChanged();
@@ -278,11 +230,8 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.streamingMessageChanged();
 	}
 	sessionTransitionChanged(scrollToBottom: boolean): void {
-		if (this.hub.clientCount === 0) return;
-		this.hub.patchView(
-			"",
-			this.renderSignals(this.store.snapshot()),
-			scrollToBottom ? ["window.piUi.messageScroll.scrollBottom()"] : [],
+		this.requestCommit(
+			scrollToBottom ? { type: "scroll-transcript-bottom" } : undefined,
 		);
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
@@ -329,9 +278,6 @@ export class UiRenderer implements AppStorePresentation {
 			messages: this.messages.projectMessages(snapshot.messages),
 		};
 	}
-	renderElements(snapshot: AppRenderSnapshot): string {
-		return this.renderTranscript(snapshot) + this.renderAppElements(snapshot);
-	}
 	private renderTranscript(snapshot: AppRenderSnapshot): string {
 		return renderMessages(
 			snapshot.messages,
@@ -356,7 +302,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderDebugOverlay(snapshot)
 		);
 	}
-	renderPickerElements(snapshot: AppStateSnapshot): string {
+	private renderPickerElements(snapshot: AppStateSnapshot): string {
 		return (
 			renderAuthDialog(snapshot.authDialog) +
 			renderExtensionDialog(snapshot.extensionDialog) +
@@ -375,24 +321,24 @@ export class UiRenderer implements AppStorePresentation {
 		});
 	}
 	private renderView(
+		snapshot: AppStateSnapshot,
+		regions: ReadonlySet<ViewRegion> = allRegions,
 		overrides: JsonObject = {},
-		snapshot = this.projectState(this.store.snapshot()),
-	): RenderedView {
-		return {
-			elements:
-				this.renderElements(snapshot) +
-				this.renderPickerElements(snapshot) +
-				renderSessionPickerContent(snapshot) +
-				renderSessionSidebarContent(snapshot) +
-				renderWorkspaceReviewData(
-					snapshot.workspacePath,
-					snapshot.workspaceFilesRevision,
-					snapshot.workspaceTreeRevision,
-					snapshot.workspaceReview,
-					snapshot.workspaceReviewPreferences,
-				),
-			signals: this.renderSignals(snapshot, overrides),
-		};
+	) {
+		let elements = this.renderAppElements(snapshot);
+		if (regions.has("pickers")) elements += this.renderPickerElements(snapshot);
+		if (regions.has("sessions")) elements += renderSessionPickerContent(snapshot);
+		if (regions.has("sessions") || regions.has("sessionSidebar"))
+			elements += renderSessionSidebarContent(snapshot);
+		if (regions.has("workspaceReview"))
+			elements += renderWorkspaceReviewData(
+				snapshot.workspacePath,
+				snapshot.workspaceFilesRevision,
+				snapshot.workspaceTreeRevision,
+				snapshot.workspaceReview,
+				snapshot.workspaceReviewPreferences,
+			);
+		return { elements, signals: this.renderSignals(snapshot, overrides) };
 	}
 	private effectSignalOverrides(effects: readonly UiCommitEffect[]): JsonObject {
 		const overrides: JsonObject = {};
@@ -402,18 +348,11 @@ export class UiRenderer implements AppStorePresentation {
 		}
 		return overrides;
 	}
-	private mainEffectScripts(effects: readonly UiCommitEffect[]): string[] {
-		const scripts: string[] = [];
-		for (const effect of effects) {
-			if (effect.type === "scroll-transcript-bottom") {
-				scripts.push("window.piUi.messageScroll.scrollBottom()");
-			}
-		}
-		return scripts;
-	}
-	private pickerEffectScripts(effects: readonly UiCommitEffect[]): string[] {
+	private effectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts = new Set<string>();
 		for (const effect of effects) {
+			if (effect.type === "scroll-transcript-bottom")
+				scripts.add("window.piUi.messageScroll.scrollBottom()");
 			if (effect.type === "restore-model-picker")
 				scripts.add(
 					"requestAnimationFrame(() => document.getElementById('model-select-input')?.focus())",

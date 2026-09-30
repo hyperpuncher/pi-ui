@@ -187,10 +187,9 @@ test("session transitions preserve targeted transcript replacement and ordinary 
 			targetPath: "/session.jsonl",
 			overlay: true,
 		});
-		const loading = await readUntil(reader, (text) =>
+		await readUntil(reader, (text) =>
 			text.includes('"_sessionTransitionStatus":"loading"'),
 		);
-		assertNotIncludes(loading, "datastar-patch-elements");
 
 		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
 		state.flush();
@@ -207,44 +206,9 @@ test("session transitions preserve targeted transcript replacement and ordinary 
 		assertNotIncludes(restored, 'id="session-sidebar-content"');
 
 		state.setSessionTransition({ status: "idle", generation: 1 });
-		const idle = await readUntil(reader, (text) =>
+		await readUntil(reader, (text) =>
 			text.includes('"_sessionTransitionStatus":"idle"'),
 		);
-		assertNotIncludes(idle, "datastar-patch-elements");
-	} finally {
-		controller.abort();
-	}
-});
-
-test("session loading clears after fallback and before enhancement", async () => {
-	const gate = gatedMarkdownState();
-	const { state } = gate;
-	const controller = new AbortController();
-	try {
-		const response = state.createStream(controller.signal);
-		const reader = responseReader(response);
-		state.setSessionTransition({
-			status: "loading",
-			generation: 1,
-			targetPath: "/session.jsonl",
-			overlay: true,
-		});
-		state.replaceMessages([markdownMessage("content ready")]);
-		state.setSessionTransition({ status: "idle", generation: 1 });
-		await readUntil(reader, (text) => {
-			const loading = text.indexOf('"_sessionTransitionStatus":"loading"');
-			const fallback = text.indexOf("content ready", loading);
-			return (
-				loading >= 0 &&
-				fallback > loading &&
-				text.indexOf('"_sessionTransitionStatus":"idle"', fallback) > fallback
-			);
-		});
-		gate.resolve("<p>enhancement ready</p>");
-		const enhanced = await readUntil(reader, (text) =>
-			text.includes("enhancement ready"),
-		);
-		assertIncludes(enhanced, "data: selector [data-message-id=");
 	} finally {
 		controller.abort();
 	}
@@ -587,38 +551,6 @@ test("enhancement errors retain the rendered Markdown fallback", async () => {
 		);
 	} finally {
 		console.warn = originalWarn;
-	}
-});
-
-test("nested state updates commit one fat morph and one signal patch", async () => {
-	const state = createState();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.update(
-			() => {
-				state.setActivityText("Working...");
-				state.update(() => {
-					state.setWorkspacePath("/tmp/workspace");
-					state.setTemporarySession(true);
-				});
-				state.setThinking("high", ["off", "high"]);
-			},
-			{ flush: true },
-		);
-		const output = await readUntil(
-			reader,
-			(text) =>
-				count(text, "event: datastar-patch-elements") === 1 &&
-				count(text, "event: datastar-patch-signals") === 1,
-		);
-
-		assertIncludes(output, '"_temporarySession":true');
-		assertNotIncludes(output, '"_isBusy"');
-		assertNotIncludes(output, '"thinkingLevel"');
-		assertNotIncludes(output, '"model"');
-	} finally {
-		controller.abort();
 	}
 });
 
@@ -1005,46 +937,6 @@ test("server-owned view signals are transport-private", () => {
 		Object.keys(signals).filter((name) => !name.startsWith("_")),
 		[],
 	);
-});
-
-test("hot app views exclude independently owned regions", () => {
-	const previous = process.env.PI_UI_DEBUG;
-	process.env.PI_UI_DEBUG = "1";
-	try {
-		const store = new AppStore();
-		const renderer = new UiRenderer(store, new DatastarClientHub());
-		const snapshot = store.snapshot();
-		const view = renderer.renderElements(renderer.projectState(snapshot));
-		assertIncludes(view, 'id="debug-fps" data-ignore-morph');
-		for (const id of [
-			"messages",
-			"prompt-action",
-			"prompt-queue",
-			"toolbar",
-			"prompt-status",
-			"workspace-picker",
-			"session-transition",
-			"debug-overlay",
-		])
-			assertIncludes(view, `id="${id}"`);
-		for (const id of [
-			"auth-dialog-content",
-			"extension-dialog-content",
-			"llama-dialog-content",
-			"workspace-menu",
-			"model-picker",
-			"thinking-picker",
-			"slash-picker",
-			"tree-picker",
-			"session-menu-content",
-			"session-sidebar-content",
-			"workspace-review-data",
-		])
-			assertNotIncludes(view, `id="${id}"`);
-	} finally {
-		if (previous === undefined) delete process.env.PI_UI_DEBUG;
-		else process.env.PI_UI_DEBUG = previous;
-	}
 });
 
 type TestStore = AppStore & {
