@@ -314,45 +314,57 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 										: " • no auth";
 									return (
 										<div
-											id={`model-option-${encodeURIComponent(value)}`}
-											role="menuitem"
+											id={`model-row-${encodeURIComponent(value)}`}
 											class="model-option"
-											data-preserve-attr="class hidden"
-											aria-current={
-												value === state.currentModel
-													? "true"
-													: "false"
-											}
-											data-model-id={model.id}
-											data-model-provider={model.provider}
-											data-model-name={model.name}
-											data-model-search-order={index}
-											data-on:click={`
-												$_modelQuery = '';
-												document.getElementById('model-select-trigger')?.click();
-												@post('${endpoints.model}', {
+											data-command-row
+										>
+											<button
+												type="button"
+												id={`model-option-${encodeURIComponent(value)}`}
+												role="menuitem"
+												tabindex="-1"
+												class="model-choice"
+												commandfor="model-select-popover"
+												command="hide-popover"
+												data-preserve-attr="class hidden"
+												aria-current={
+													value === state.currentModel
+														? "true"
+														: "false"
+												}
+												data-model-id={model.id}
+												data-model-provider={model.provider}
+												data-model-name={model.name}
+												data-model-search-order={index}
+												data-on:click={`
+													$_modelQuery = '';
+													@post('${endpoints.model}', {
 												payload: { model: ${JSON.stringify(value)} },
 											});
-												requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
-											`}
-										>
-											<span class="picker-option-text">
-												<span class="picker-option-title" safe>
-													{model.id}
+													requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
+												`}
+											>
+												<span class="picker-option-text">
+													<span
+														class="picker-option-title"
+														safe
+													>
+														{model.id}
+													</span>
+													<span
+														class="picker-option-description"
+														safe
+													>
+														{model.provider}
+														{configured}
+													</span>
 												</span>
 												<span
-													class="picker-option-description"
-													safe
-												>
-													{model.provider}
-													{configured}
-												</span>
-											</span>
-											<span
-												class="selection-dot model-current-indicator"
-												hidden={value !== state.currentModel}
-												aria-hidden="true"
-											/>
+													class="selection-dot model-current-indicator"
+													hidden={value !== state.currentModel}
+													aria-hidden="true"
+												/>
+											</button>
 											<button
 												type="button"
 												class="btn model-scope-button"
@@ -363,8 +375,8 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												aria-pressed={
 													model.scoped ? "true" : "false"
 												}
-												aria-label="Toggle scoped model"
-												data-on:click__stop={`@post('${endpoints.modelsScopeToggle}', {
+												aria-label={`Toggle scoped model ${value}`}
+												data-on:click={`@post('${endpoints.modelsScopeToggle}', {
 												payload: { model: ${JSON.stringify(value)} },
 												});`}
 											>

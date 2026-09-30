@@ -148,7 +148,9 @@ function handlePointerMove(event) {
 	) {
 		activateListboxOption(option);
 	}
-	const commandItem = event.target.closest('[role="menuitem"]');
+	const commandItem =
+		event.target.closest('[role="menuitem"]') ??
+		event.target.closest("[data-command-row]")?.querySelector('[role="menuitem"]');
 	const command = commandItem?.closest(commandSelector);
 	if (
 		command instanceof HTMLElement &&
@@ -178,6 +180,7 @@ function handleClick(event) {
 	const commandItem = event.target.closest('.command [role="menuitem"]');
 	if (
 		commandItem instanceof HTMLElement &&
+		!commandItem.hasAttribute("commandfor") &&
 		!commandItem.hasAttribute("data-keep-command-open")
 	) {
 		commandItem.closest("dialog")?.close();

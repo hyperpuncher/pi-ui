@@ -29,7 +29,8 @@ export function filterModelSearch(input, query) {
 
 	for (const item of orderedItems) {
 		item.hidden = !visible.has(item);
-		item.parentElement?.append(item);
+		const row = item.parentElement;
+		row?.parentElement?.append(row);
 	}
 	refreshControls(command);
 }

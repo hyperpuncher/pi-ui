@@ -16,7 +16,9 @@ export function bindTooltips() {
 		if (!trigger) return;
 		// Keyboard focus shows every tooltip; usage indicators also reveal on tap.
 		if (!trigger.matches(":focus-visible") && !isUsageTrigger(trigger)) return;
-		showTooltip(trigger);
+		queueMicrotask(() => {
+			if (trigger.matches(":focus-within")) showTooltip(trigger);
+		});
 	});
 	document.addEventListener("focusout", (event) => {
 		hideTooltip(event.target, event.relatedTarget);

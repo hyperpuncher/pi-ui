@@ -112,8 +112,24 @@
 		margin-block-start: 0.25rem;
 	}
 	.model-option {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		border-radius: var(--radius-sm);
+		padding-inline-end: 0.5rem;
 		content-visibility: auto;
 		contain-intrinsic-block-size: auto 3rem;
+	}
+	.model-option:has(> .model-choice[hidden]) {
+		display: none;
+	}
+	.model-option:has(> .active) {
+		background: var(--surface-control);
+		color: var(--text);
+	}
+	.model-choice {
+		min-width: 0;
+		flex: 1;
 	}
 
 	.model-current-indicator {
@@ -128,7 +144,7 @@
 			width 130ms ease,
 			opacity 130ms ease;
 	}
-	.model-option:is(.active, :focus-within) .model-scope-button,
+	.model-option:is(:has(> .active), :focus-within) .model-scope-button,
 	.model-scope-button:focus-visible,
 	.model-scope-button[aria-pressed="true"] {
 		width: 1.75rem;
