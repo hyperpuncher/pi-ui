@@ -652,6 +652,14 @@ export class RuntimeController {
 			await replacement.session.bindExtensions({
 				mode: "rpc",
 				uiContext: this.extensionUi.context(() => replacement === this.runtime),
+				onError: (error) => {
+					if (replacement === this.runtime) {
+						this.state.appendMessage(
+							"notice",
+							`Extension ${error.extensionPath}: ${error.error}`,
+						);
+					}
+				},
 			});
 		} catch (error) {
 			await replacement.dispose();
@@ -930,9 +938,8 @@ export class RuntimeController {
 
 		this.state.setActivityText("Reloading...");
 		try {
-			await session.reload();
+			await session.reload({ beforeSessionStart: () => this.unbindSession() });
 			if (runtime !== this.runtime) return false;
-			this.unbindSession();
 			this.bindSessionState();
 			this.loadCurrentSessionMessages();
 			this.state.appendMessage(
@@ -1294,6 +1301,7 @@ export class RuntimeController {
 		restoreSessionEventToolState(this.tools, backgroundSession.tools);
 		this.bindSessionState({ resetToolState: false, syncSessions: false });
 		this.state.restoreChat(backgroundSession.state.snapshot());
+		await this.bindSessionExtensions();
 		this.catalog.mergeCurrentStatuses();
 	}
 
@@ -1351,16 +1359,21 @@ export class RuntimeController {
 
 	private async bindSessionExtensions(): Promise<void> {
 		const runtime = this.runtime;
-		const generation = this.foregroundGeneration;
 		const session = runtime.session;
+		// UI bindings belong to a session, not a foreground activation generation.
+		const isActive = () => runtime === this.runtime && session === runtime.session;
 		await sessionPerformance.measure("extensionBind", () =>
 			session.bindExtensions({
 				mode: "rpc",
-				uiContext: this.extensionUi.context(
-					() =>
-						runtime === this.runtime &&
-						generation === this.foregroundGeneration,
-				),
+				uiContext: this.extensionUi.context(isActive),
+				onError: (error) => {
+					if (isActive()) {
+						this.state.appendMessage(
+							"notice",
+							`Extension ${error.extensionPath}: ${error.error}`,
+						);
+					}
+				},
 				commandContextActions: {
 					waitForIdle: () => session.waitForIdle(),
 					newSession: (options) => runtime.newSession(options),

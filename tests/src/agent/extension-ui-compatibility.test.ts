@@ -18,6 +18,20 @@ import { makeTempDir } from "#testing/temp";
 
 const fixtureSource = `
 export default function (pi) {
+  pi.on("session_start", (_event, ctx) => {
+    const entry = ctx.sessionManager.getBranch().findLast(e => e.type === "custom" && e.customType === "fixture-status");
+    ctx.ui.setStatus("fixture", entry?.data === true ? "running" : undefined);
+  });
+  pi.registerCommand("ui-status", {
+    handler: async (_args, ctx) => {
+      pi.appendEntry("fixture-status", true);
+      ctx.ui.setStatus("fixture", "running");
+      ctx.ui.notify("status on", "info");
+    },
+  });
+  pi.registerCommand("ui-error", {
+    handler: async () => { throw new Error("fixture failed"); },
+  });
   pi.registerCommand("ui-fixture", {
     description: "Exercise pi-ui extension UI compatibility",
     handler: async (_args, ctx) => {
@@ -97,6 +111,17 @@ test("a discovered pi extension uses the web UI bridge end to end", async () => 
 		assertEquals(
 			store.messages.at(-1)?.text,
 			"two|true|typed|edited|browser draft + extension",
+		);
+
+		await controller.prompt("/ui-status");
+		assertEquals(await controller.reload(), true);
+		assertEquals(store.extensionStatuses, [{ key: "fixture", text: "running" }]);
+		await controller.prompt("/ui-status");
+		assertEquals(store.messages.at(-1)?.text, "status on");
+		await controller.prompt("/ui-error");
+		assertEquals(
+			store.messages.at(-1)?.text,
+			"Extension command:ui-error: fixture failed",
 		);
 	} finally {
 		await controller?.dispose();
