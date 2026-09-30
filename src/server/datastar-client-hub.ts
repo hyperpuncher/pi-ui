@@ -5,18 +5,22 @@ export type DatastarClient = Pick<
 	DatastarStream,
 	"patchElements" | "patchSignals" | "executeScript" | "close"
 >;
-export type DatastarStreamFactory = typeof datastarStream;
 export type DatastarClientStreamOptions = {
 	onDisconnect?: () => void;
 };
 
-/** Owns long-lived Datastar clients and accepts only rendered presentation data. */
+/** Owns the persistent read connections, not application or rendering state. */
 export class DatastarClientHub {
-	private readonly clients = new Map<string, DatastarClient>();
-	private readonly disconnectCallbacks = new Map<string, () => void>();
+	private readonly clients = new Map<
+		string,
+		{
+			stream: DatastarClient;
+			disconnect: () => void;
+		}
+	>();
 
 	constructor(
-		private readonly streamFactory: DatastarStreamFactory = datastarStream,
+		private readonly streamFactory = datastarStream,
 		private readonly recordPerformance = true,
 	) {}
 
@@ -36,9 +40,17 @@ export class DatastarClientHub {
 		const id = crypto.randomUUID();
 		return this.streamFactory(
 			(stream) => {
-				this.clients.set(id, stream);
-				if (options.onDisconnect) {
-					this.disconnectCallbacks.set(id, options.onDisconnect);
+				const disconnect = () => {
+					if (!this.clients.delete(id)) return;
+					signal.removeEventListener("abort", disconnect);
+					stream.close();
+					options.onDisconnect?.();
+				};
+				this.clients.set(id, { stream, disconnect });
+				signal.addEventListener("abort", disconnect, { once: true });
+				if (signal.aborted) {
+					disconnect();
+					return;
 				}
 				try {
 					const view = initial();
@@ -49,28 +61,18 @@ export class DatastarClientHub {
 						view.scripts ?? [],
 					);
 				} catch {
-					this.disconnect(id, stream);
-					return;
+					disconnect();
 				}
-				signal.addEventListener("abort", () => this.disconnect(id, stream), {
-					once: true,
-				});
 			},
 			{
 				keepalive: true,
-				onAbort: () => this.disconnectById(id),
+				onAbort: () => this.clients.get(id)?.disconnect(),
 			},
 		);
 	}
 
 	patchView(elements: string, signals: string, scripts: readonly string[]): void {
-		for (const [id, client] of this.clients) {
-			try {
-				this.patchClient(client, elements, signals, scripts);
-			} catch {
-				this.disconnect(id, client);
-			}
-		}
+		this.broadcast((client) => this.patchClient(client, elements, signals, scripts));
 	}
 
 	patchElement(
@@ -81,53 +83,45 @@ export class DatastarClientHub {
 			scripts?: readonly string[];
 		} = {},
 	): void {
-		for (const [id, client] of this.clients) {
-			try {
-				client.patchElements(elements, {
-					selector,
-					mode: options.mode ?? "outer",
-				});
-				for (const script of options.scripts ?? []) client.executeScript(script);
-				if (this.recordPerformance) {
-					sessionPerformance.recordTargetedMessagePatch(elements);
-				}
-			} catch {
-				this.disconnect(id, client);
-			}
-		}
+		this.broadcast((client) => {
+			client.patchElements(elements, { selector, mode: options.mode ?? "outer" });
+			for (const script of options.scripts ?? []) client.executeScript(script);
+			if (this.recordPerformance)
+				sessionPerformance.recordTargetedMessagePatch(elements);
+		});
 	}
 
 	replaceElement(elements: string, selector: string): void {
-		for (const [id, client] of this.clients) {
-			try {
-				client.patchElements(elements, { selector, mode: "replace" });
-				if (this.recordPerformance) {
-					sessionPerformance.recordFatMorph(elements);
-					sessionPerformance.markFirstTranscriptPatch();
-				}
-			} catch {
-				this.disconnect(id, client);
+		this.broadcast((client) => {
+			client.patchElements(elements, { selector, mode: "replace" });
+			if (this.recordPerformance) {
+				sessionPerformance.recordFatMorph(elements);
+				sessionPerformance.markFirstTranscriptPatch();
 			}
-		}
+		});
 	}
 
 	executeOnOneClient(script: string): void {
-		for (const [id, client] of this.clients) {
+		for (const { stream, disconnect } of this.clients.values()) {
 			try {
-				client.executeScript(script);
+				stream.executeScript(script);
 				return;
 			} catch {
-				this.disconnect(id, client);
+				disconnect();
 			}
 		}
 	}
 
 	patchSignals(signals: string): void {
-		for (const [id, client] of this.clients) {
+		this.broadcast((client) => client.patchSignals(signals));
+	}
+
+	private broadcast(send: (client: DatastarClient) => void): void {
+		for (const { stream, disconnect } of this.clients.values()) {
 			try {
-				client.patchSignals(signals);
+				send(stream);
 			} catch {
-				this.disconnect(id, client);
+				disconnect();
 			}
 		}
 	}
@@ -142,29 +136,11 @@ export class DatastarClientHub {
 			client.patchElements(elements);
 			if (this.recordPerformance) {
 				sessionPerformance.recordFatMorph(elements);
-				if (elements.includes('id="messages"')) {
+				if (elements.includes('id="messages"'))
 					sessionPerformance.markFirstTranscriptPatch();
-				}
 			}
 		}
-		client.patchSignals(signals);
+		if (signals && signals !== "{}") client.patchSignals(signals);
 		if (scripts.length > 0) client.executeScript(scripts.join(";"));
-	}
-
-	private disconnectById(id: string): void {
-		const client = this.clients.get(id);
-		if (client) this.disconnect(id, client);
-	}
-
-	private disconnect(id: string, client: DatastarClient): void {
-		if (!this.clients.delete(id)) return;
-		const onDisconnect = this.disconnectCallbacks.get(id);
-		this.disconnectCallbacks.delete(id);
-		onDisconnect?.();
-		try {
-			client.close();
-		} catch {
-			/* Already closed. */
-		}
 	}
 }
