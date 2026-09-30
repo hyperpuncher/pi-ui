@@ -49,8 +49,8 @@ export function renderMessages(
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
 			data-show="!$_sessionTransitionVisible"
-			data-class:messages-loading="$_sessionLoading || $_sessionTransitionStatus === 'loading'"
-			data-attr:aria-busy="$_sessionLoading || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
+			data-class:messages-loading="$_sessionTransitionStatus === 'loading'"
+			data-attr:aria-busy="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
