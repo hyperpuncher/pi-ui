@@ -16,8 +16,19 @@
 		color: var(--text-muted);
 		font-size: var(--text-xs);
 		line-height: 1.125rem;
+		opacity: 1;
 		text-overflow: ellipsis;
+		transition:
+			opacity 60ms var(--ease-out),
+			display 60ms allow-discrete;
 		white-space: nowrap;
+
+		@starting-style {
+			opacity: 0;
+		}
+	}
+	.prompt-status-message[style*="display: none"] {
+		opacity: 0;
 	}
 	.prompt-status-message > span {
 		min-width: 0;

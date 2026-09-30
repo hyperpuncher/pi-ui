@@ -6,6 +6,9 @@ import { syncHtml } from "./sync-html.ts";
 
 export function renderPromptStatus(state: AppStateSnapshot): string {
 	const activityText = state.extensionWorkingMessage ?? state.activityText;
+	const workingText =
+		state.extensionWorkingVisible && activityText ? activityText : undefined;
+	const statusIndicator = workingText ? state.extensionWorkingIndicator : undefined;
 	return syncHtml(
 		<span id="prompt-status" class="prompt-status">
 			{state.extensionStatuses.map((status) => (
@@ -15,22 +18,14 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 			))}
 			<span
 				class="prompt-status-message"
-				data-show="$_promptSubmitting"
-				style="display: none"
+				data-show={workingText ? undefined : "$_promptSubmitting"}
+				style={workingText ? undefined : "display: none"}
 			>
-				{loaderIcon()}
-				<span>Sending...</span>
+				{statusIndicator === undefined
+					? loaderIcon()
+					: statusIndicator && <span safe>{statusIndicator}</span>}
+				<span safe>{workingText ?? "Sending..."}</span>
 			</span>
-			{state.extensionWorkingVisible && activityText && (
-				<span class="prompt-status-message">
-					{state.extensionWorkingIndicator === undefined
-						? loaderIcon()
-						: state.extensionWorkingIndicator && (
-								<span safe>{state.extensionWorkingIndicator}</span>
-							)}
-					<span safe>{activityText}</span>
-				</span>
-			)}
 			{renderUsageIndicators(state.usage)}
 		</span>,
 	);
