@@ -150,10 +150,7 @@ export type UiCommitEffect =
 	| { type: "signal-overrides"; values: JsonObject };
 
 export interface AppStorePresentation {
-	beginUpdate(): void;
-	endUpdate(commit: boolean, flush: boolean): void;
 	requestCommit(effect?: UiCommitEffect): void;
-	flush(): void;
 	messageAppended(id: string): void;
 	messagesRemoved(count: number): void;
 	messageUpdated(id: string): void;
@@ -213,7 +210,7 @@ export type AppStateSnapshot = Readonly<{
 	emptyChatHint: Readonly<AppKeybindHint>;
 }>;
 
-type AppStoreUpdateOptions = { flush?: boolean; commit?: boolean };
+type AppStoreUpdateOptions = { commit?: boolean };
 
 const sessionSidebarPageSize = 30;
 
@@ -402,18 +399,11 @@ export class AppStore {
 	}
 
 	update<T>(mutator: () => T, options: AppStoreUpdateOptions = {}): T {
-		this.presentation?.beginUpdate();
 		try {
 			return mutator();
 		} finally {
-			this.presentation?.endUpdate(
-				options.commit !== false,
-				options.flush === true,
-			);
+			if (options.commit !== false) this.commit();
 		}
-	}
-	flush(): void {
-		this.presentation?.flush();
 	}
 	private commit(effect?: UiCommitEffect): void {
 		this.presentation?.requestCommit(effect);
@@ -712,7 +702,6 @@ export class AppStore {
 	setSessionTransition(value: SessionTransitionState): void {
 		const loaded =
 			this.sessionTransition.status === "loading" && value.status === "idle";
-		this.flush();
 		this.sessionTransition = value;
 		this.presentation?.sessionTransitionChanged(loaded);
 	}

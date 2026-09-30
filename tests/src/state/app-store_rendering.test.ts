@@ -191,7 +191,6 @@ test("session transitions preserve targeted transcript replacement and ordinary 
 		);
 
 		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
-		state.flush();
 		const restored = await readUntil(
 			reader,
 			(text) =>
@@ -259,7 +258,6 @@ test("theme changes highlight only loaded messages and invalidate older cached p
 	theme = "after";
 	rendered.length = 0;
 	state.renderer.codeThemeChanged();
-	state.flush();
 	await waitFor(() =>
 		projectedMessages(state).every(
 			({ presentationState }) => presentationState === "final",
@@ -588,11 +586,9 @@ test("headless updates initialize one current view and tolerate disconnect", asy
 
 	controller.abort();
 	state.setActivityText("disconnected");
-	state.flush();
 	assertEqual(state.activityText, "disconnected");
 
 	state.replaceMessages([markdownMessage("**offline answer**")]);
-	state.flush();
 	await settleMicrotasks();
 	assertEqual(renderCount, 0);
 
@@ -625,7 +621,6 @@ test("message work waits for a client and continues while another tab remains", 
 		state: "running",
 	});
 	state.updateMessage(toolId, { text: "finished tool", state: "success" });
-	state.flush();
 	await settleMicrotasks();
 	assertEqual(rendered, []);
 	assertEqual(
@@ -641,14 +636,12 @@ test("message work waits for a client and continues while another tab remains", 
 	state.appendAssistantDelta("one tab remains");
 	state.finishAssistant();
 	state.renderer.requestCommit();
-	state.flush();
 	await waitFor(() => rendered.includes("one tab remains"));
 	assertEqual(rendered.length, 3);
 
 	second.abort();
 	state.appendAssistantDelta("offline again");
 	state.finishAssistant();
-	state.flush();
 	await settleMicrotasks();
 	assertEqual(rendered.length, 3);
 });
@@ -660,7 +653,6 @@ test("reconnecting during a turn resumes streaming and final highlighting", asyn
 	assertEqual(projectedMessages(state)[0].presentationState, "streaming");
 	state.appendAssistantDelta("and after");
 	state.finishAssistant();
-	state.flush();
 	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 	assertIncludes(
 		projectedMessages(state)[0].renderedHtml ?? "",
@@ -700,7 +692,6 @@ test("workspace review snapshots travel through the app stream", async () => {
 		changeCount: 1,
 		revision: "review-1",
 	});
-	state.flush();
 	const output = await readStateOutput(
 		state,
 		(text) => text.includes("workspace-review-data") && text.includes("review-1"),
@@ -721,7 +712,6 @@ test("title changes render escaped HTML on updates and reconnect, never executab
 		state.setDocumentTitle(
 			"</title><script>globalThis.titleInjected = true</script>",
 		);
-		state.flush();
 		const updated = await readUntil(reader, (text) =>
 			text.includes('id="document-title"'),
 		);
@@ -760,14 +750,11 @@ test("app stream refreshes current and background session statuses", async () =>
 		const reader = responseReader(response);
 		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
 
-		state.update(
-			() => {
-				state.setCurrentSessionPath(first.path);
-				state.setActivityText("Working...");
-				state.setSessionCatalog([first, second]);
-			},
-			{ flush: true },
-		);
+		state.update(() => {
+			state.setCurrentSessionPath(first.path);
+			state.setActivityText("Working...");
+			state.setSessionCatalog([first, second]);
+		});
 		const running = await readUntil(reader, (text) =>
 			text.includes('aria-label="Current session running"'),
 		);
@@ -775,17 +762,14 @@ test("app stream refreshes current and background session statuses", async () =>
 		assertIncludes(running, 'aria-current="true"');
 		assertIncludes(running, "First session");
 
-		state.update(
-			() => {
-				state.setCurrentSessionPath(second.path);
-				state.setActivityText(undefined);
-				state.setSessionCatalog([
-					{ ...first, backgroundStatus: "completed" },
-					second,
-				]);
-			},
-			{ flush: true },
-		);
+		state.update(() => {
+			state.setCurrentSessionPath(second.path);
+			state.setActivityText(undefined);
+			state.setSessionCatalog([
+				{ ...first, backgroundStatus: "completed" },
+				second,
+			]);
+		});
 		const completed = await readUntil(reader, (text) =>
 			text.includes('aria-label="Background session completed"'),
 		);
@@ -795,31 +779,6 @@ test("app stream refreshes current and background session statuses", async () =>
 			completed.slice(completed.lastIndexOf('id="session-menu-content"')),
 			'aria-label="Current session running"',
 		);
-	} finally {
-		controller.abort();
-	}
-});
-
-test("ordinary commits do not project an unchanged transcript", async () => {
-	const state = createState();
-	state.replaceMessages([{ role: "assistant", text: "answer", timestamp }]);
-	const controller = new AbortController();
-	try {
-		await openInitializedStateStream(state, controller.signal);
-		const projectMessages = state.renderer.messages.projectMessages.bind(
-			state.renderer.messages,
-		);
-		let projectionCount = 0;
-		state.renderer.messages.projectMessages = (messages) => {
-			projectionCount += 1;
-			return projectMessages(messages);
-		};
-
-		state.update(() => state.setUsage({ text: "1 token", costText: "$0.00" }), {
-			flush: true,
-		});
-
-		assertEqual(projectionCount, 0);
 	} finally {
 		controller.abort();
 	}

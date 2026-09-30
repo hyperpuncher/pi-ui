@@ -49,8 +49,6 @@ export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
 	private readonly displayClients = new DisplayRefreshClients();
 	private readonly clientViews = new Map<string, ClientView>();
-	private updateDepth = 0;
-	private commitPending = false;
 	private commitScheduled = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
@@ -152,29 +150,14 @@ export class UiRenderer implements AppStorePresentation {
 		this.requestCommit();
 	}
 
-	beginUpdate(): void {
-		this.updateDepth += 1;
-	}
-	endUpdate(commit: boolean, flush: boolean): void {
-		this.updateDepth -= 1;
-		if (commit) this.requestCommit();
-		if (this.updateDepth === 0 && this.commitPending) this.requestCommit();
-		if (flush) this.flush();
-	}
 	requestCommit(effect?: UiCommitEffect): void {
-		this.commitPending = true;
 		if (effect) this.pendingEffects.push(effect);
-		if (this.updateDepth > 0 || this.commitScheduled) return;
+		if (this.commitScheduled) return;
 		this.commitScheduled = true;
-		queueMicrotask(() => {
-			if (!this.commitScheduled) return;
-			this.commitScheduled = false;
-			this.flush();
-		});
+		queueMicrotask(() => this.flush());
 	}
-	flush(): void {
-		if (this.updateDepth > 0 || !this.commitPending) return;
-		this.commitPending = false;
+	private flush(): void {
+		if (!this.commitScheduled) return;
 		this.commitScheduled = false;
 		const effects = this.pendingEffects;
 		this.pendingEffects = [];
