@@ -303,6 +303,15 @@ test("older messages insert after the trigger before rearming it", async () => {
 		assertNotIncludes(output, "message 69");
 		assertNotIncludes(output, 'id="messages"');
 		assertIncludes(output, "window.piUi.messageScroll.restoreAnchor()");
+
+		while (state.hasOlderMessages) state.loadOlderMessages();
+		state.renderer.patchOlderMessages([]);
+		const emptyOutput = await readUntil(reader, (text) =>
+			text.includes("window.piUi.messageScroll.restoreAnchor()"),
+		);
+		assertIncludes(emptyOutput, 'id="older-messages-trigger"');
+		assertNotIncludes(emptyOutput, "data: mode after");
+		assertNotIncludes(emptyOutput, "older-messages-sensor");
 	} finally {
 		controller.abort();
 	}

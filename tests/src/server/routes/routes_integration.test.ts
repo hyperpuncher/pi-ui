@@ -217,6 +217,14 @@ test("older messages use a targeted persistent-stream patch", async () => {
 	assertEquals(response.status, 204);
 	assertEquals(await response.text(), "");
 	assertEquals(revealedCount, 30);
+
+	while (context.store.hasOlderMessages) context.store.loadOlderMessages();
+	revealedCount = -1;
+	const emptyResponse = await createRouter(context).fetch(
+		new Request("http://localhost/messages/older", { method: "POST" }),
+	);
+	assertEquals(emptyResponse.status, 204);
+	assertEquals(revealedCount, 0);
 });
 
 test("old messages trim only after an explicit viewport-safe request", async () => {

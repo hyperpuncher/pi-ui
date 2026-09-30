@@ -55,6 +55,13 @@ export function renderMessages(
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
 			data-init="window.piUi.messageScroll.bindResize()"
+			data-on:datastar-fetch="
+				if (
+					(evt.detail.type === 'error' || evt.detail.type === 'retries-failed') &&
+					evt.detail.el?.matches('.older-messages-sensor')
+				)
+					window.piUi.messageScroll.restoreAnchor()
+			"
 			data-on:keydown__window={keybindActions(
 				[
 					"toggle-thinking",

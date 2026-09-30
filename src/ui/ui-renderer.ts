@@ -251,17 +251,17 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
 		if (this.hub.clientCount === 0) return;
-		this.hub.patchElement(
-			this.messages.renderOlderMessagesPatch(messages),
-			"#older-messages-trigger",
-			{
-				mode: "after",
-				scripts: ["window.piUi.messageScroll.restoreAnchor()"],
-			},
-		);
+		if (messages.length > 0) {
+			this.hub.patchElement(
+				this.messages.renderOlderMessagesPatch(messages),
+				"#older-messages-trigger",
+				{ mode: "after" },
+			);
+		}
 		this.hub.patchElement(
 			this.messages.renderOlderMessagesTrigger(),
 			"#older-messages-trigger",
+			{ scripts: ["window.piUi.messageScroll.restoreAnchor()"] },
 		);
 		for (const message of messages.toReversed()) {
 			this.messages.enqueueEnhancement(message.id);

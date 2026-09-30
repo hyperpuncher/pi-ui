@@ -80,7 +80,7 @@ export const promptRoutes = {
 	[endpoints.messagesOlder]: {
 		POST: (_request, context) => {
 			const messages = context.store.loadOlderMessages();
-			if (messages.length > 0) context.renderer.patchOlderMessages(messages);
+			context.renderer.patchOlderMessages(messages);
 			return datastarResponse();
 		},
 	},
