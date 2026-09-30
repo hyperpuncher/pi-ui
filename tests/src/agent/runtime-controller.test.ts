@@ -163,7 +163,7 @@ function fakeRuntime(
 		prompt: async (
 			text: string,
 			options?: {
-				preflightResult?: (accepted: boolean) => void;
+				preflightResult?: (disposition: "started" | "queued" | "handled") => void;
 				streamingBehavior?: "steer" | "followUp";
 			},
 		) => {
@@ -172,7 +172,7 @@ function fakeRuntime(
 				text,
 				streamingBehavior: options?.streamingBehavior,
 			});
-			options?.preflightResult?.(true);
+			options?.preflightResult?.("started");
 			await fake.promptResult;
 		},
 		clearQueue: () => {

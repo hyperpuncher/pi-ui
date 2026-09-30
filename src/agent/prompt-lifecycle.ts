@@ -49,7 +49,7 @@ export class PromptLifecycle {
 				streamingBehavior: runtime.session.isStreaming
 					? (options.streamingBehavior ?? "steer")
 					: undefined,
-				preflightResult: resolveAccepted,
+				preflightResult: () => resolveAccepted(true),
 			})
 			.catch((error: ErrorOptions["cause"]) => {
 				resolveAccepted(false);

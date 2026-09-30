@@ -2,7 +2,7 @@ import { test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 
 import { createBunReadToolDefinition } from "#src/agent/read-tool.ts";
 import { assertEquals, assertStringIncludes } from "#testing/assertions";
@@ -10,7 +10,7 @@ import { makeTempDir } from "#testing/temp";
 
 const iconPath = join(import.meta.dir, "../../../static/icon-192.png");
 // SAFETY: the read definition only inspects the optional current model.
-const context = {} as ExtensionContext;
+const context = {} as ExtensionToolContext;
 
 function readPath(cwd: string, path: string) {
 	return createBunReadToolDefinition(cwd).execute(
