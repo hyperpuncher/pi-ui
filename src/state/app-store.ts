@@ -150,6 +150,7 @@ export type UiCommitEffect =
 
 export interface AppStorePresentation {
 	requestCommit(effect?: UiCommitEffect): void;
+	viewChanged(): void;
 	messageAppended(id: string): void;
 	messagesRemoved(count: number): void;
 	messageUpdated(id: string): void;
@@ -419,6 +420,9 @@ export class AppStore {
 	private commit(effect?: UiCommitEffect): void {
 		this.presentation?.requestCommit(effect);
 	}
+	private commitView(): void {
+		this.presentation?.viewChanged();
+	}
 
 	appendMessage(
 		role: TranscriptMessage["role"],
@@ -507,12 +511,12 @@ export class AppStore {
 	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;
 		this.currentModel = currentModel;
-		this.commit();
+		this.commitView();
 	}
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
 		this.thinkingLevels = levels.length > 0 ? levels : ["off"];
-		this.commit();
+		this.commitView();
 	}
 	setThinkingHidden(hidden: boolean): void {
 		if (this.thinkingHidden === hidden) return;
@@ -522,18 +526,18 @@ export class AppStore {
 	setSessionCatalogLoading(loading: boolean): void {
 		if (this.sessionCatalogLoading === loading) return;
 		this.sessionCatalogLoading = loading;
-		this.commit();
+		this.commitView();
 	}
 	setSessionCatalog(sessions: AppSessionSummary[]): void {
 		this.sessionCatalog = sessions;
-		this.commit();
+		this.commitView();
 	}
 	loadMoreSessions(): void {
 		this.sessionLimit = Math.min(
 			this.sessionLimit + sessionSidebarPageSize,
 			this.getSessionCatalog().length,
 		);
-		this.commit();
+		this.commitView();
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
 		return this.sessionCatalog;
@@ -543,11 +547,11 @@ export class AppStore {
 		const index = catalog.findIndex((candidate) => candidate.path === path);
 		if (index < 0) return false;
 		if (index === 0) {
-			if (options.regroup) this.commit();
+			if (options.regroup) this.commitView();
 			return false;
 		}
 		this.sessionCatalog = [catalog[index], ...catalog.toSpliced(index, 1)];
-		this.commit();
+		this.commitView();
 		return true;
 	}
 	updateSessionSummary(
@@ -558,7 +562,7 @@ export class AppStore {
 		const index = catalog.findIndex((candidate) => candidate.path === path);
 		if (index < 0) return false;
 		this.sessionCatalog = catalog.with(index, update(catalog[index]));
-		this.commit();
+		this.commitView();
 		return true;
 	}
 	searchSessions(query: string): AppSessionSummary[] {
@@ -585,19 +589,19 @@ export class AppStore {
 			...values.filter((path) => !managedWorktreeParts(path)),
 			...this.recentWorkspaces,
 		]);
-		this.commit();
+		this.commitView();
 	}
 	setSlashCommands(commands: AppSlashCommand[]): void {
 		this.slashCommands = commands;
-		this.commit();
+		this.commitView();
 	}
 	setAuthDialog(dialog: AppAuthDialog | undefined): void {
 		this.authDialog = dialog;
-		this.commit();
+		this.commitView();
 	}
 	setExtensionDialog(dialog: AppExtensionDialog | undefined): void {
 		this.extensionDialog = dialog;
-		this.commit();
+		this.commitView();
 	}
 	setExtensionStatuses(statuses: AppExtensionStatus[]): void {
 		this.extensionStatuses = statuses.map((status) => ({ ...status }));
@@ -635,13 +639,14 @@ export class AppStore {
 	}
 	setLlamaDialog(dialog: AppLlamaDialog | undefined): void {
 		this.llamaDialog = dialog;
-		this.commit();
+		this.commitView();
 	}
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
-		this.commit();
+		this.commitView();
 	}
 	openTreeDialog(): void {
+		this.commitView();
 		this.commit({ type: "open-tree-dialog" });
 	}
 	setUsage(value: AppUsage): void {
@@ -663,7 +668,7 @@ export class AppStore {
 			this.previousSessionPath = this.currentSessionPath;
 		}
 		this.currentSessionPath = value;
-		this.commit();
+		this.commitView();
 	}
 	setPreviousSessionPath(value: string | undefined): void {
 		if (this.previousSessionPath === value) return;
@@ -684,27 +689,27 @@ export class AppStore {
 		this.workspaceFilesRevision = 0;
 		this.workspaceTreeRevision = 0;
 		this.workspaceReview = unloadedWorkspaceReviewSnapshot;
-		this.commit();
+		this.commitView();
 		this.workspacePathListener?.(value);
 	}
 	setProjectRoot(value: string): void {
 		if (this.projectRoot === value) return;
 		this.projectRoot = value;
-		this.commit();
+		this.commitView();
 	}
 	workspaceFilesChanged(treeChanged = true): void {
 		this.workspaceFilesRevision += 1;
 		if (treeChanged) this.workspaceTreeRevision += 1;
-		this.commit();
+		this.commitView();
 	}
 	setWorkspaceReview(value: WorkspaceReviewSnapshot): void {
 		if (this.workspaceReview.revision === value.revision) return;
 		this.workspaceReview = value;
-		this.commit();
+		this.commitView();
 	}
 	setWorkspaceReviewPreferences(value: WorkspaceReviewPreferences): void {
 		this.workspaceReviewPreferences = value;
-		this.commit();
+		this.commitView();
 	}
 	setSessionTransition(value: SessionTransitionState): void {
 		const loaded =

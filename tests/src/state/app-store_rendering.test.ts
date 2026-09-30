@@ -86,6 +86,43 @@ test("ordinary commits exclude finalized assistant messages", async () => {
 	}
 });
 
+test("ordinary commits skip stable views until their state changes", async () => {
+	const state = createState();
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+		state.setActivityText("Working...");
+		const ordinary = await readUntil(reader, (text) => text.includes("Working..."));
+		assertIncludes(ordinary, 'class="prompt-status-message"');
+		assertNotIncludes(ordinary, 'id="model-picker"');
+		assertNotIncludes(ordinary, 'id="session-sidebar-content"');
+		assertNotIncludes(ordinary, 'id="workspace-review-data"');
+
+		state.setModels(
+			[
+				{
+					id: "fixture-model",
+					provider: "fixture",
+					name: "Fixture model",
+					configured: true,
+					scoped: true,
+				},
+			],
+			"fixture/fixture-model",
+		);
+		const full = await readUntil(
+			reader,
+			(text) =>
+				text.includes("fixture-model") && text.includes("workspace-review-data"),
+		);
+		assertIncludes(full, 'id="model-picker"');
+		assertIncludes(full, 'id="session-sidebar-content"');
+		assertIncludes(full, 'id="workspace-review-data"');
+	} finally {
+		controller.abort();
+	}
+});
+
 test("ordinary commits exclude finalized tool messages", async () => {
 	const state = createState({
 		renderDiff: () =>

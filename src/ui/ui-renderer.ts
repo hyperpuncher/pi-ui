@@ -50,6 +50,7 @@ export class UiRenderer implements AppStorePresentation {
 	private readonly displayClients = new DisplayRefreshClients();
 	private readonly clientViews = new Map<string, ClientView>();
 	private commitScheduled = false;
+	private fullViewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
 	private replaceTranscriptOnCommit = false;
@@ -135,7 +136,7 @@ export class UiRenderer implements AppStorePresentation {
 		const view = this.clientViews.get(clientId);
 		if (!view || view.sessionQuery === query) return;
 		view.sessionQuery = query;
-		this.requestCommit();
+		this.viewChanged();
 	}
 
 	async setWorkspaceSearch(clientId: string, query: string): Promise<void> {
@@ -147,9 +148,13 @@ export class UiRenderer implements AppStorePresentation {
 		if (this.clientViews.get(clientId) !== view || view.workspaceSearch !== search)
 			return;
 		search.results = results;
-		this.requestCommit();
+		this.viewChanged();
 	}
 
+	viewChanged(): void {
+		this.fullViewPending = true;
+		this.requestCommit();
+	}
 	requestCommit(effect?: UiCommitEffect): void {
 		if (effect) this.pendingEffects.push(effect);
 		if (this.commitScheduled) return;
@@ -161,6 +166,8 @@ export class UiRenderer implements AppStorePresentation {
 		this.commitScheduled = false;
 		const effects = this.pendingEffects;
 		this.pendingEffects = [];
+		const fullView = this.fullViewPending;
+		this.fullViewPending = false;
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
 		if (this.hub.clientCount > 0) {
@@ -173,10 +180,9 @@ export class UiRenderer implements AppStorePresentation {
 			}
 			this.hub.patchView(
 				(clientId) =>
-					this.renderView(state, this.clientViews.get(clientId)) +
-					(!this.replaceTranscriptOnCommit && state.messages.length === 0
-						? this.renderTranscript(this.projectState(state))
-						: ""),
+					fullView
+						? this.renderView(state, this.clientViews.get(clientId))
+						: this.renderAppElements(state),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.effectScripts(effects),
 			);
