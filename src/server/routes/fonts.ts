@@ -19,7 +19,7 @@ export const fontRoutes = {
 				config.fonts = fonts;
 			});
 			setActiveFonts(fonts);
-			context.renderer.fontsChanged();
+			context.renderer.requestCommit();
 			return datastarResponse();
 		},
 	},

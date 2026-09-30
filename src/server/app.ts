@@ -48,6 +48,10 @@ export async function createApp() {
 	setActiveFonts(fonts);
 	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
 	const store = new AppStore();
+	store.keybindHints = appConfig.keybindHints !== false;
+	store.minimalMode = appConfig.minimalMode === true;
+	store.toolOutputHidden = appConfig.toolOutputHidden === true;
+	store.toolbarHidden = appConfig.toolbarHidden === true;
 	if (appConfig.updateCheck !== false && process.env.PI_UI_NO_UPDATE_CHECK !== "1") {
 		void checkForUpdate().then((update) => {
 			if (update) store.setUpdateAvailable(update);
@@ -89,12 +93,8 @@ export async function createApp() {
 		resources,
 		transferredFiles,
 		appVersion: staticAssets.version,
-		keybindHints: appConfig.keybindHints !== false,
-		minimalMode: appConfig.minimalMode === true,
 		sessionSidebarOpen: sessionSidebar.open !== false,
 		sessionSidebarWidth: sessionSidebar.width ?? sessionSidebarWidthDefault,
-		toolOutputHidden: appConfig.toolOutputHidden === true,
-		toolbarHidden: appConfig.toolbarHidden === true,
 		themeLab: process.env.PI_UI_THEME_LAB === "1",
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>

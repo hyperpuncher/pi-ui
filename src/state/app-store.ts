@@ -187,6 +187,10 @@ export type AppStateSnapshot = Readonly<{
 	thinkingLevel: AppThinkingLevel;
 	thinkingLevels: readonly AppThinkingLevel[];
 	thinkingHidden: boolean;
+	keybindHints: boolean;
+	minimalMode: boolean;
+	toolOutputHidden: boolean;
+	toolbarHidden: boolean;
 	usage: Readonly<AppUsage>;
 	activityText: string | undefined;
 	queuedSteeringMessages: readonly string[];
@@ -273,6 +277,10 @@ export class AppStore {
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	thinkingHidden = false;
+	keybindHints = true;
+	minimalMode = false;
+	toolOutputHidden = false;
+	toolbarHidden = false;
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
 	projectRoot = this.workspacePath;
@@ -374,6 +382,10 @@ export class AppStore {
 			thinkingLevel: this.thinkingLevel,
 			thinkingLevels: [...this.thinkingLevels],
 			thinkingHidden: this.thinkingHidden,
+			keybindHints: this.keybindHints,
+			minimalMode: this.minimalMode,
+			toolOutputHidden: this.toolOutputHidden,
+			toolbarHidden: this.toolbarHidden,
 			usage: { ...this.usage },
 			activityText: this.activityText,
 			queuedSteeringMessages: this.queuedSteeringMessages,

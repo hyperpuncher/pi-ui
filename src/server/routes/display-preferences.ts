@@ -21,7 +21,9 @@ export const displayPreferenceRoutes = Object.fromEntries(
 				await updateAppConfig((config) => {
 					config[signal] = value;
 				});
-				context[signal] = value;
+				context.store.update(() => {
+					context.store[signal] = value;
+				});
 				return datastarResponse();
 			},
 		},

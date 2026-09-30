@@ -9,12 +9,8 @@ export const assetRoutes = {
 			new Response(
 				renderPage(context.renderer.projectState(context.store.snapshot()), {
 					appVersion: context.appVersion,
-					keybindHints: context.keybindHints,
-					minimalMode: context.minimalMode,
 					sessionSidebarOpen: context.sessionSidebarOpen,
 					sessionSidebarWidth: context.sessionSidebarWidth,
-					toolOutputHidden: context.toolOutputHidden,
-					toolbarHidden: context.toolbarHidden,
 					themeLab: context.themeLab,
 				}),
 				{

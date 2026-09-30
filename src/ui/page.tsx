@@ -38,12 +38,8 @@ import {
 
 export type PageRenderOptions = {
 	appVersion?: string;
-	keybindHints?: boolean;
-	minimalMode?: boolean;
 	sessionSidebarOpen?: boolean;
 	sessionSidebarWidth?: number;
-	toolOutputHidden?: boolean;
-	toolbarHidden?: boolean;
 	themeLab?: boolean;
 };
 
@@ -51,12 +47,8 @@ export function renderPage(
 	state: AppRenderSnapshot,
 	{
 		appVersion = "development",
-		keybindHints = true,
-		minimalMode = false,
 		sessionSidebarOpen = true,
 		sessionSidebarWidth = sessionSidebarWidthDefault,
-		toolOutputHidden = false,
-		toolbarHidden = false,
 		themeLab = false,
 	}: PageRenderOptions = {},
 ): string {
@@ -118,8 +110,8 @@ export function renderPage(
 				</head>
 				<body
 					spellcheck="false"
-					data-keybind-hints={keybindHints}
-					data-minimal-mode={minimalMode}
+					data-keybind-hints={state.keybindHints}
+					data-minimal-mode={state.minimalMode}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-workspace-files-endpoint={workspaceFilesBase}
@@ -128,7 +120,7 @@ export function renderPage(
 					data-code-theme-dark={codeThemes.dark}
 					data-attr:data-code-theme-light="$_codeThemeLight"
 					data-attr:data-code-theme-dark="$_codeThemeDark"
-					data-toolbar-hidden={toolbarHidden}
+					data-toolbar-hidden={state.toolbarHidden}
 					data-init={`@get('${endpoints.notificationsStream}', {
 						payload: {},
 						openWhenHidden: true,
@@ -137,11 +129,9 @@ export function renderPage(
 						requestCancellation: 'cleanup',
 					})`}
 					data-signals={initialSignals}
-					data-signals:_minimal-mode__ifmissing={minimalMode ? "true" : "false"}
-					data-signals:_tool-output-hidden__ifmissing={
-						toolOutputHidden ? "true" : "false"
-					}
+					data-attr:data-keybind-hints="$_keybindHints"
 					data-attr:data-minimal-mode="$_minimalMode"
+					data-attr:data-toolbar-hidden="$_toolbarHidden"
 					data-effect={`
 						window.piUi.fonts.apply($_fontMono, $_fontSans);
 						window.dispatchEvent(

@@ -49,19 +49,19 @@ export function toggleWorkspaceReviewAction(): string {
 }
 
 function toggleKeybindHintsAction(): string {
-	return `document.body.toggleAttribute('data-keybind-hints'); @post('${endpoints.keybindHints}', { payload: { keybindHints: document.body.hasAttribute('data-keybind-hints') } })`;
+	return `@post('${endpoints.keybindHints}', { payload: { keybindHints: !$_keybindHints } })`;
 }
 
 export function toggleMinimalModeAction(): string {
-	return `$_minimalMode = !$_minimalMode; @post('${endpoints.minimalMode}', { payload: { minimalMode: $_minimalMode } })`;
+	return `@post('${endpoints.minimalMode}', { payload: { minimalMode: !$_minimalMode } })`;
 }
 
 export function toggleToolOutputAction(): string {
-	return `$_toolOutputHidden = !$_toolOutputHidden; @post('${endpoints.toolOutput}', { payload: { toolOutputHidden: $_toolOutputHidden } })`;
+	return `@post('${endpoints.toolOutput}', { payload: { toolOutputHidden: !$_toolOutputHidden } })`;
 }
 
 function toggleToolbarAction(): string {
-	return `document.body.setAttribute('data-toolbar-animated', ''); document.body.toggleAttribute('data-toolbar-hidden'); @post('${endpoints.toolbar}', { payload: { toolbarHidden: document.body.hasAttribute('data-toolbar-hidden') } })`;
+	return `document.body.setAttribute('data-toolbar-animated', ''); @post('${endpoints.toolbar}', { payload: { toolbarHidden: !$_toolbarHidden } })`;
 }
 
 export const commandActions = {

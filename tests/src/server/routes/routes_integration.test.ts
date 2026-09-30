@@ -56,10 +56,10 @@ test("page assets use the current immutable content version", async () => {
 	assertStringIncludes(themeLabHtml, "/theme-lab.css");
 	assertStringIncludes(themeLabHtml, "/build/theme-lab.js");
 
-	context.keybindHints = false;
-	context.minimalMode = true;
-	context.toolOutputHidden = true;
-	context.toolbarHidden = true;
+	context.store.keybindHints = false;
+	context.store.minimalMode = true;
+	context.store.toolOutputHidden = true;
+	context.store.toolbarHidden = true;
 	const hiddenHintsPage = await createRouter(context).fetch(
 		new Request("http://localhost/"),
 	);
@@ -1138,10 +1138,6 @@ function fakeContext(
 	overrides: {
 		host?: RuntimeResource;
 		renderer?: UiRenderer;
-		keybindHints?: boolean;
-		minimalMode?: boolean;
-		toolOutputHidden?: boolean;
-		toolbarHidden?: boolean;
 		themeLab?: boolean;
 		transferredFiles?: RouteContext["transferredFiles"];
 	} = {},
@@ -1149,12 +1145,8 @@ function fakeContext(
 	const store = new AppStore();
 	return {
 		appVersion: "test-version",
-		keybindHints: overrides.keybindHints ?? true,
-		minimalMode: overrides.minimalMode ?? false,
 		sessionSidebarOpen: true,
 		sessionSidebarWidth: sessionSidebarWidthDefault,
-		toolOutputHidden: overrides.toolOutputHidden ?? false,
-		toolbarHidden: overrides.toolbarHidden ?? false,
 		themeLab: overrides.themeLab ?? false,
 		store,
 		renderer:

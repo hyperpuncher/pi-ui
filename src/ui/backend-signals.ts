@@ -11,6 +11,10 @@ export type BackendSignals = {
 	_fontSans: string;
 	_promptHistory: readonly string[];
 	_thinkingHidden: boolean;
+	_keybindHints: boolean;
+	_minimalMode: boolean;
+	_toolOutputHidden: boolean;
+	_toolbarHidden: boolean;
 	_temporarySession: boolean;
 	_sessionTransitionGeneration: number;
 	_sessionTransitionStatus: AppStateSnapshot["sessionTransition"]["status"];
@@ -34,6 +38,10 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 		_fontSans: fonts.sans,
 		_promptHistory: state.promptHistory,
 		_thinkingHidden: state.thinkingHidden,
+		_keybindHints: state.keybindHints,
+		_minimalMode: state.minimalMode,
+		_toolOutputHidden: state.toolOutputHidden,
+		_toolbarHidden: state.toolbarHidden,
 		_temporarySession: state.isTemporarySession,
 		_sessionTransitionGeneration: state.sessionTransition.generation,
 		_sessionTransitionStatus: state.sessionTransition.status,
