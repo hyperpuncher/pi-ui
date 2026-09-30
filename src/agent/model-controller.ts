@@ -67,11 +67,11 @@ export class ModelController {
 		runtime.services.settingsManager.setEnabledModels(enabled);
 		await runtime.services.settingsManager.flush();
 		session.setScopedModels(enabled === undefined ? [] : scoped);
-		this.sync({ restorePicker: true });
+		this.sync();
 		return true;
 	}
 
-	sync(options: { restorePicker?: boolean } = {}): void {
+	sync(): void {
 		const runtime = this.getRuntime();
 		const session = runtime.session;
 		const modelRuntime = runtime.services.modelRuntime;
@@ -95,7 +95,7 @@ export class ModelController {
 					model.configured || `${model.provider}/${model.id}` === current,
 			)
 			.sort((a, b) => compareModelPickerOrder(a, b, current));
-		this.state.setModels(models, current, options);
+		this.state.setModels(models, current);
 	}
 
 	async refresh(options: ModelsRefreshOptions = {}): Promise<void> {

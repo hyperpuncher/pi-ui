@@ -365,10 +365,6 @@ export class UiRenderer implements AppStorePresentation {
 		for (const effect of effects) {
 			if (effect.type === "scroll-transcript-bottom")
 				scripts.add("window.piUi.messageScroll.scrollBottom()");
-			if (effect.type === "restore-model-picker")
-				scripts.add(
-					"requestAnimationFrame(() => document.getElementById('model-select-input')?.focus())",
-				);
 			if (effect.type === "open-tree-dialog") {
 				scripts.add(
 					"{ const dialog = document.getElementById('tree-dialog'); if (dialog && !dialog.open) dialog.showModal(); }",

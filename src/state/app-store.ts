@@ -144,7 +144,6 @@ export type AppUsage = {
 export type AppKeybindHint = { keys: string; description: string };
 
 export type UiCommitEffect =
-	| { type: "restore-model-picker" }
 	| { type: "open-tree-dialog" }
 	| { type: "scroll-transcript-bottom" }
 	| { type: "signal-overrides"; values: JsonObject };
@@ -493,14 +492,10 @@ export class AppStore {
 	trimOldMessages(): readonly string[] {
 		return this.transcript.trimOldMessages();
 	}
-	setModels(
-		models: AppModel[],
-		currentModel: string | undefined,
-		options: { restorePicker?: boolean } = {},
-	): void {
+	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;
 		this.currentModel = currentModel;
-		this.commit(options.restorePicker ? { type: "restore-model-picker" } : undefined);
+		this.commit();
 	}
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {
 		this.thinkingLevel = level;
