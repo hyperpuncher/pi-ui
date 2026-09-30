@@ -21,22 +21,29 @@ export function renderCodeThemeDialog(): string {
 			class="dialog code-theme-dialog"
 			aria-labelledby="code-theme-title"
 			data-signals__ifmissing={JSON.stringify({
-				codeThemeAppearance: "light",
-				codeThemeSearch: "",
+				_codeThemeAppearance: "light",
+				_codeThemeSearch: "",
+				_codeThemeStatus: "",
 			})}
 			data-on:pi-ui-open-code-theme__window={`
-				$codeThemeAppearance = document.documentElement.classList.contains('dark')
+				$_codeThemeAppearance = document.documentElement.classList.contains('dark')
 					? 'dark'
 					: 'light';
-				$codeThemeSearch = '';
+				$_codeThemeSearch = '';
+				$_codeThemeStatus = '';
 				if (!el.open) el.showModal();
 				window.piUi.codeTheme.loadPreviews();
 			`}
-			data-on:pi-ui-code-theme-changed__window={`document.getElementById('code-theme-status').textContent =
-				'Applied ' + ($codeThemeAppearance === 'dark' ? $_codeThemeDark : $_codeThemeLight)`}
-			data-on:datastar-fetch={`if (evt.detail.type === 'error') {
-				document.getElementById('code-theme-status').textContent =
-					'Could not apply theme. Try again.';
+			data-on:pi-ui-code-theme-changed__window={`if ($_codeThemeStatus.startsWith('Applying ')) {
+				$_codeThemeStatus =
+					'Applied ' +
+					($_codeThemeAppearance === 'dark' ? $_codeThemeDark : $_codeThemeLight);
+			}`}
+			data-on:datastar-fetch={`if (
+				(evt.detail.type === 'error' || evt.detail.type === 'retries-failed') &&
+				evt.detail.el?.matches('.code-theme-card')
+			) {
+				$_codeThemeStatus = 'Could not apply theme. Try again.';
 			}`}
 			closedby="any"
 		>
@@ -59,8 +66,8 @@ export function renderCodeThemeDialog(): string {
 									type="button"
 
 									data-code-theme-mode={appearance}
-									data-on:click={`$codeThemeAppearance = ${JSON.stringify(appearance)}`}
-									data-attr:aria-pressed={`$codeThemeAppearance === ${JSON.stringify(appearance)} ? 'true' : 'false'`}
+									data-on:click={`$_codeThemeStatus = ''; $_codeThemeAppearance = ${JSON.stringify(appearance)}`}
+									data-attr:aria-pressed={`$_codeThemeAppearance === ${JSON.stringify(appearance)} ? 'true' : 'false'`}
 									aria-pressed={
 										appearance === "light" ? "true" : "false"
 									}
@@ -78,7 +85,8 @@ export function renderCodeThemeDialog(): string {
 						autocomplete="off"
 						spellcheck="false"
 						autofocus
-						data-bind:code-theme-search=""
+						data-bind:_code-theme-search=""
+						data-on:input="$_codeThemeStatus = ''"
 					/>
 				</header>
 				<div
@@ -95,10 +103,10 @@ export function renderCodeThemeDialog(): string {
 					<span
 						id="code-theme-status"
 						role="status"
-						data-text={`$codeThemeSearch
-						? ${JSON.stringify(themeLabels)}[$codeThemeAppearance]
-						.filter((label) => label.includes($codeThemeSearch.trim().toLocaleLowerCase())).length + ' matching themes'
-						: ${JSON.stringify(themeLabels)}[$codeThemeAppearance].length + ' ' + $codeThemeAppearance + ' themes'`}
+						data-text={`$_codeThemeStatus || ($_codeThemeSearch
+						? ${JSON.stringify(themeLabels)}[$_codeThemeAppearance]
+						.filter((label) => label.includes($_codeThemeSearch.trim().toLocaleLowerCase())).length + ' matching themes'
+						: ${JSON.stringify(themeLabels)}[$_codeThemeAppearance].length + ' ' + $_codeThemeAppearance + ' themes')`}
 					>
 						Choose a light theme
 					</span>
@@ -126,18 +134,18 @@ function renderThemeCard(theme: CodeThemeOption, active: string): string {
 			data-theme-label={theme.label.toLowerCase()}
 			data-theme-appearance={theme.appearance}
 			data-show={`
-				$codeThemeAppearance === ${JSON.stringify(theme.appearance)} &&
+				$_codeThemeAppearance === ${JSON.stringify(theme.appearance)} &&
 				(
-					!$codeThemeSearch.trim() ||
+					!$_codeThemeSearch.trim() ||
 					${JSON.stringify(theme.label.toLowerCase())}.includes(
-						$codeThemeSearch.trim().toLocaleLowerCase()
+						$_codeThemeSearch.trim().toLocaleLowerCase()
 					)
 				)
 			`}
 			data-indicator:_code-theme-saving
 			data-attr:disabled="$_codeThemeSaving"
 			data-on:click={`
-				document.getElementById('code-theme-status').textContent = ${JSON.stringify(`Applying ${theme.label}…`)};
+				$_codeThemeStatus = ${JSON.stringify(`Applying ${theme.label}…`)};
 				@post('${endpoints.codeTheme}', { payload: { codeThemeAppearance: ${JSON.stringify(theme.appearance)}, codeThemeName: ${JSON.stringify(theme.name)} } });
 			`}
 			data-attr:aria-pressed={`${theme.appearance === "light" ? "$_codeThemeLight" : "$_codeThemeDark"} === ${JSON.stringify(theme.name)}
