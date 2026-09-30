@@ -73,7 +73,7 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 	const clickAction = runsImmediately
 		? `window.piUi.messageScroll.scrollBottom();
 			$prompt = '';
-			@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} } });`
+			@post('${endpoints.prompt}', { payload: { prompt: ${JSON.stringify(label)} }, retryMaxCount: 0 });`
 		: `window.piUi.pickers.complete(${JSON.stringify(item.name)});`;
 	return syncHtml(
 		<li
@@ -172,7 +172,7 @@ export function renderWorkspaceBrowserContent(
 	const createFolderAction = `if (!$_workspaceFolderSaving && document.getElementById('workspace-folder-name').reportValidity()) {
 		@post('${endpoints.workspaceCreateFolder}', {
 			payload: { workspacePath: ${JSON.stringify(listing.path)}, folderName: $_workspaceFolderName, showHidden: $_workspaceBrowserShowHidden },
-			retry: 'never',
+			retryMaxCount: 0,
 		});
 	}`;
 	return syncHtml(
@@ -439,10 +439,12 @@ function openWorkspaceAction(valueExpression: string): string {
 		if ($_workspaceAction === 'fork') {
 			@post('${endpoints.sessionsForkToWorkspace}', {
 				payload: { workspacePath: ${valueExpression} },
+				retryMaxCount: 0,
 			});
 		} else {
 			@post('${endpoints.workspaceOpen}', {
 				payload: { workspacePath: ${valueExpression} },
+				retryMaxCount: 0,
 			});
 		}
 	}`;
@@ -467,10 +469,12 @@ function openWorkspaceFromBrowserAction(valueExpression: string): string {
 		if ($_workspaceAction === 'fork') {
 			@post('${endpoints.sessionsForkToWorkspace}', {
 				payload: { workspacePath: ${valueExpression} },
+				retryMaxCount: 0,
 			});
 		} else {
 			@post('${endpoints.workspaceOpen}', {
 				payload: { workspacePath: ${valueExpression} },
+				retryMaxCount: 0,
 			});
 		}
 	}`;
@@ -596,10 +600,11 @@ function renderSessionRow(
 						aria-label={`Abort ${current ? "current" : "background"} session ${session.title}`}
 						data-on:click__stop={
 							current
-								? `@post('${endpoints.abort}', { payload: {} })`
+								? `@post('${endpoints.abort}', { payload: {}, retryMaxCount: 0 })`
 								: `
 						$backgroundSessionPath = ${JSON.stringify(session.path)};
 						@post('${endpoints.sessionsBackgroundAbort}', {
+						retryMaxCount: 0,
 						payload: { backgroundSessionPath: $backgroundSessionPath },
 						});
 						`

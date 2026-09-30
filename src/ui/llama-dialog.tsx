@@ -139,6 +139,7 @@ function renderModel(model: AppLlamaModel, dialog: AppLlamaDialog): string {
 			data-show={`${JSON.stringify(model.id.toLowerCase())}.includes($_llamaSearch.trim().toLowerCase())`}
 			data-on:click={`@post('${endpoints.llamaToggle}', {
 			payload: { llamaModel: ${JSON.stringify(model.id)} },
+			retryMaxCount: 0,
 			})`}
 		>
 			<span class="dialog-model-name" safe>

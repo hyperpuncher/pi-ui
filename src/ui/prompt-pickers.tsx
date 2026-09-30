@@ -377,6 +377,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												}
 												aria-label={`Toggle scoped model ${value}`}
 												data-on:click={`@post('${endpoints.modelsScopeToggle}', {
+												retryMaxCount: 0,
 												payload: { model: ${JSON.stringify(value)} },
 												});`}
 											>

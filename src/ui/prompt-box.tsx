@@ -143,7 +143,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 						}
 						if (evt.altKey && evt.code === 'ArrowUp') {
 							evt.preventDefault();
-							@post('${endpoints.promptDequeue}', { payload: {} });
+							@post('${endpoints.promptDequeue}', { payload: {}, retryMaxCount: 0 });
 						}
 						if (
 							evt.key === 'Enter' &&
@@ -275,7 +275,7 @@ function renderQueuedMessages(state: AppStateSnapshot): string {
 						<button
 							type="button"
 							class="prompt-queue-restore"
-							data-on:click={`@post('${endpoints.promptDequeue}', { payload: {} })`}
+							data-on:click={`@post('${endpoints.promptDequeue}', { payload: {}, retryMaxCount: 0 })`}
 							aria-label="Restore all queued messages to the prompt"
 						>
 							<span>Restore all</span>
@@ -287,7 +287,7 @@ function renderQueuedMessages(state: AppStateSnapshot): string {
 					<button
 						type="button"
 						class="prompt-queue-remove"
-						data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} } })`}
+						data-on:click={`@post('${endpoints.promptQueueRemove}', { payload: { queueBehavior: '${behavior}', queueIndex: ${index} }, retryMaxCount: 0 })`}
 						aria-label="Remove queued message"
 					>
 						<Icon name="x" />

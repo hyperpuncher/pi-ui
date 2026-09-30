@@ -133,6 +133,7 @@ function renderProviderButton(
 			data-show={`${JSON.stringify(providerSearchHaystack(provider))}.includes($_authSearch.trim().toLowerCase())`}
 			data-on:click={`@post('${action}', {
 			payload: { authProvider: ${JSON.stringify(provider.id)}, authType: ${JSON.stringify(provider.authType)} },
+			retryMaxCount: 0,
 			});`}
 		>
 			<span class="dialog-option-text">
@@ -219,7 +220,10 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					<button
 						type="button"
 						class="btn"
-						data-on:click={`@post('${endpoints.authInput}', { payload: { authInput: $_authInput } })`}
+						data-on:click={`@post('${endpoints.authInput}', {
+							payload: { authInput: $_authInput },
+							retryMaxCount: 0,
+						})`}
 					>
 						Continue
 					</button>
@@ -242,7 +246,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 						type="button"
 						class="btn dialog-option"
 						data-variant="outline"
-						data-on:click={`@post('${endpoints.authInput}', { payload: { authInput: ${JSON.stringify(option.id)} } });`}
+						data-on:click={`@post('${endpoints.authInput}', { payload: { authInput: ${JSON.stringify(option.id)} }, retryMaxCount: 0 });`}
 						safe
 					>
 						{option.label}
@@ -275,6 +279,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 					evt.preventDefault();
 					@post('${endpoints.authInput}', {
 						payload: { authInput: $_authInput },
+						retryMaxCount: 0,
 					});
 				}`}
 			/>

@@ -64,7 +64,7 @@ export function renderMessages(
 			data-on:keydown__window={keybindActions(
 				[
 					"toggle-thinking",
-					`@post('${endpoints.thinkingVisibilityToggle}', { payload: {} });`,
+					`@post('${endpoints.thinkingVisibilityToggle}', { payload: {}, retryMaxCount: 0 });`,
 				],
 				["focus-conversation", "el.focus({ preventScroll: true });"],
 			)}

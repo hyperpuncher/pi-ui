@@ -191,5 +191,5 @@ function postResponse(id: string, value: string, cancelled: boolean): string {
 		extensionRequestId: ${id},
 		extensionResponse: ${value},
 		extensionCancelled: ${cancelled},
-	} })`;
+	}, retryMaxCount: 0 })`;
 }

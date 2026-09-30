@@ -4,7 +4,7 @@ import type { AppCommandId } from "./catalog.ts";
 
 export function newSessionAction(temporary = false): string {
 	const endpoint = temporary ? endpoints.sessionsNewTemporary : endpoints.sessionsNew;
-	return `if (!$_newSessionPending && $_sessionTransitionStatus !== 'loading') { @post('${endpoint}', { payload: {} }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }`;
+	return `if (!$_newSessionPending && $_sessionTransitionStatus !== 'loading') { @post('${endpoint}', { payload: {}, retryMaxCount: 0 }); requestAnimationFrame(() => document.getElementById('prompt-input')?.focus()); }`;
 }
 
 export function toggleDialogAction(): string {
@@ -20,11 +20,11 @@ function cycleDirectionExpression(direction: CycleDirection): string {
 }
 
 export function cycleModelAction(direction: CycleDirection): string {
-	return `@post('${endpoints.modelCycle}', { payload: { modelCycleDirection: ${cycleDirectionExpression(direction)} } })`;
+	return `@post('${endpoints.modelCycle}', { payload: { modelCycleDirection: ${cycleDirectionExpression(direction)} }, retryMaxCount: 0 })`;
 }
 
 export function cycleThinkingAction(direction: CycleDirection): string {
-	return `@post('${endpoints.thinkingCycle}', { payload: { thinkingCycleDirection: ${cycleDirectionExpression(direction)} } })`;
+	return `@post('${endpoints.thinkingCycle}', { payload: { thinkingCycleDirection: ${cycleDirectionExpression(direction)} }, retryMaxCount: 0 })`;
 }
 
 export function authDialogAction(mode: "login" | "logout"): string {
@@ -84,7 +84,7 @@ export const commandActions = {
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),
-	"toggle-thinking": `document.getElementById('command-dialog')?.close(); @post('${endpoints.thinkingVisibilityToggle}', { payload: {} })`,
+	"toggle-thinking": `document.getElementById('command-dialog')?.close(); @post('${endpoints.thinkingVisibilityToggle}', { payload: {}, retryMaxCount: 0 })`,
 	"change-workspace": openWorkspaceDialogAction(true),
 	"fork-session-to-workspace": openWorkspaceDialogAction(true, "fork"),
 	"toggle-review": toggleWorkspaceReviewAction(),

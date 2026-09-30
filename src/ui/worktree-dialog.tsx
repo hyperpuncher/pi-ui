@@ -98,7 +98,7 @@ export function renderWorktreeDialogContent(
 										data-attr:disabled="$_worktreeCreating"
 										data-on:click={`@post('${endpoints.branchSwitch}', {
 										payload: { branch: ${JSON.stringify(branch.label)} },
-										retry: 'never',
+										retryMaxCount: 0,
 										});`}
 									>
 										<Icon name="git-branch" />
@@ -132,7 +132,7 @@ export function renderWorktreeDialogContent(
 						$_worktreeError = '';
 						@post('${endpoints.branchCreate}', {
 							payload: { branch: $_branchName },
-							retry: 'never',
+							retryMaxCount: 0,
 						});
 					}`}
 				>
@@ -188,6 +188,7 @@ export function renderWorktreeDialogContent(
 											}
 											data-on:click={`@post('${endpoints.workspaceOpen}', {
 											payload: { workspacePath: ${JSON.stringify(worktree.sessionPath)} },
+											retryMaxCount: 0,
 											});`}
 										>
 											<Icon name="folder" />
@@ -220,7 +221,7 @@ export function renderWorktreeDialogContent(
 													$_worktreeRemoveError = '';
 													@get('${endpoints.worktreeRemove}', {
 														payload: { path: $_worktreeRemovePath },
-														retry: 'never',
+														retryMaxCount: 0,
 													});
 												`}
 											>
@@ -241,7 +242,7 @@ export function renderWorktreeDialogContent(
 						$_worktreeError = '';
 						@post('${endpoints.worktreeCreate}', {
 							payload: { branch: $_worktreeBranch, base: $_worktreeBase },
-							retry: 'never',
+							retryMaxCount: 0,
 						});
 					}`}
 				>
@@ -377,6 +378,7 @@ export function renderBranchDeleteDialog(): string {
 						data-attr:disabled="$_branchDeleteName === ''"
 						data-on:click={`@post('${endpoints.branchDelete}', {
 							payload: { branch: $_branchDeleteName },
+							retryMaxCount: 0,
 						})`}
 					>
 						Delete branch
@@ -474,7 +476,7 @@ export function renderWorktreeRemoveDialog(): string {
 						"
 						data-on:click={`@post('${endpoints.worktreeRemove}', {
 							payload: { path: $_worktreeRemovePath, revision: $_worktreeRemoveRevision },
-							retry: 'never',
+							retryMaxCount: 0,
 						})`}
 						data-text="$_worktreeRemoveCount > 0 ? 'Remove checkout and ignored files' : 'Remove checkout'"
 					>
