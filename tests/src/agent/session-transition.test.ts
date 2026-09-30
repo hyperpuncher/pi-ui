@@ -73,7 +73,8 @@ test("transcript loading starts with the request and ends with the backend trans
 	assertStringExcludes(transition, "$_sessionLoading || $_sessionTransitionVisible");
 	assertStringExcludes(messages, "$_sessionLoading || $_sessionTransitionVisible");
 	assertStringIncludes(messages, "data-class:messages-loading");
-	assertStringIncludes(messages, "$_sessionLoading");
+	assertStringIncludes(messages, "evt.detail.type === 'started'");
+	assertStringExcludes(messages, "if ($_sessionLoading)");
 	assertStringIncludes(messages, "$_sessionTransitionPending");
 	assertStringIncludes(messages, "$_sessionTransitionStatus === 'loading'");
 });

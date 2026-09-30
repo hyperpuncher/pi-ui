@@ -113,9 +113,10 @@ export const sessionRoutes = {
 				await readActionSignals(request),
 				"sessionPath",
 			).trim();
-			return sessionTransitionResponse(
-				await requireHost(context).resumeSession(path),
-			);
+			const host = requireHost(context);
+			if (path === context.store.currentSessionPath)
+				return signalsResponse({ _sessionTransitionPending: false });
+			return sessionTransitionResponse(await host.resumeSession(path));
 		},
 	},
 	[endpoints.sessionsPrevious]: {

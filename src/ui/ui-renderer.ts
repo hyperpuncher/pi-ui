@@ -230,9 +230,11 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.streamingMessageChanged();
 	}
 	sessionTransitionChanged(scrollToBottom: boolean): void {
-		this.requestCommit(
-			scrollToBottom ? { type: "scroll-transcript-bottom" } : undefined,
-		);
+		this.requestCommit({
+			type: "signal-overrides",
+			values: { _sessionTransitionPending: false },
+		});
+		if (scrollToBottom) this.requestCommit({ type: "scroll-transcript-bottom" });
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
 		if (this.hub.clientCount === 0) return;

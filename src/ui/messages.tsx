@@ -51,15 +51,16 @@ export function renderMessages(
 			data-show="!$_sessionTransitionVisible"
 			data-class:messages-loading="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading'"
 			data-attr:aria-busy="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
-			data-effect="
-				if ($_sessionLoading) $_sessionTransitionPending = true;
-				if ($_sessionTransitionStatus !== 'idle') $_sessionTransitionPending = false;
-			"
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
 			data-init="window.piUi.messageScroll.bindResize()"
 			data-on:datastar-fetch="
+				if (
+					evt.detail.type === 'started' &&
+					evt.detail.el?.hasAttribute('data-indicator:_session-loading')
+				)
+					$_sessionTransitionPending = true;
 				if (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') {
 					if (evt.detail.el?.matches('.older-messages-sensor'))
 						window.piUi.messageScroll.restoreAnchor();
