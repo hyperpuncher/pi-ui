@@ -9,12 +9,16 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 			class="dialog"
 			aria-labelledby="auth-dialog-title"
 			closedby="any"
-			data-on:close={`@post('${endpoints.authClose}', { payload: {} })`}
+			data-preserve-attr="open"
+			data-effect={
+				dialog ? "if (!el.open) el.showModal()" : "if (el.open) el.close()"
+			}
+			data-on:close={
+				dialog && `if (!el.open) @post('${endpoints.authClose}', { payload: {} })`
+			}
 			data-signals__ifmissing={JSON.stringify({
 				_authSearch: "",
-				authProvider: "",
-				authType: "",
-				authInput: "",
+				_authInput: "",
 			})}
 		>
 			{renderAuthDialogContent(dialog)}
@@ -22,9 +26,13 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 	);
 }
 
-export function renderAuthDialogContent(dialog: AppAuthDialog | undefined): string {
+function renderAuthDialogContent(dialog: AppAuthDialog | undefined): string {
 	return syncHtml(
-		<div id="auth-dialog-content" class="dialog-wide">
+		<div
+			id="auth-dialog-content"
+			class="dialog-wide"
+			data-effect={!dialog?.prompt && "$_authInput = ''"}
+		>
 			{dialog ? renderDialogContent(dialog) : <div />}
 		</div>,
 	);
@@ -123,13 +131,9 @@ function renderProviderButton(
 			class="btn dialog-option dialog-option-between"
 			data-variant="ghost"
 			data-show={`${JSON.stringify(providerSearchHaystack(provider))}.includes($_authSearch.trim().toLowerCase())`}
-			data-on:click={`
-				$authProvider = ${JSON.stringify(provider.id)};
-				$authType = ${JSON.stringify(provider.authType)};
-				@post('${action}', {
-					payload: { authProvider: $authProvider, authType: $authType },
-				});
-			`}
+			data-on:click={`@post('${action}', {
+			payload: { authProvider: ${JSON.stringify(provider.id)}, authType: ${JSON.stringify(provider.authType)} },
+			});`}
 		>
 			<span class="dialog-option-text">
 				<span class="dialog-option-title" safe>
@@ -215,7 +219,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					<button
 						type="button"
 						class="btn"
-						data-on:click={`@post('${endpoints.authInput}', { payload: { authInput: $authInput } })`}
+						data-on:click={`@post('${endpoints.authInput}', { payload: { authInput: $_authInput } })`}
 					>
 						Continue
 					</button>
@@ -238,10 +242,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 						type="button"
 						class="btn dialog-option"
 						data-variant="outline"
-						data-on:click={`
-							$authInput = ${JSON.stringify(option.id)};
-							@post('${endpoints.authInput}', { payload: { authInput: $authInput } });
-						`}
+						data-on:click={`@post('${endpoints.authInput}', { payload: { authInput: ${JSON.stringify(option.id)} } });`}
 						safe
 					>
 						{option.label}
@@ -251,7 +252,13 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 		);
 	}
 	return syncHtml(
-		<div role="group" class="field" data-invalid={dialog.error ? "true" : undefined}>
+		<div
+			id={`auth-prompt-${prompt.id}`}
+			role="group"
+			class="field"
+			data-init="$_authInput = ''"
+			data-invalid={dialog.error ? "true" : undefined}
+		>
 			<label for="auth-input" safe>
 				{prompt.message}
 			</label>
@@ -262,12 +269,12 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 				spellcheck="false"
 				placeholder={prompt.placeholder}
 				aria-invalid={dialog.error ? "true" : undefined}
-				data-bind:auth-input
+				data-bind:_auth-input
 				autofocus
-				data-on:keydown={`if (evt.code === 'Enter') {
+				data-on:keydown={`if (evt.code === 'Enter' && !evt.isComposing) {
 					evt.preventDefault();
 					@post('${endpoints.authInput}', {
-						payload: { authInput: $authInput },
+						payload: { authInput: $_authInput },
 					});
 				}`}
 			/>

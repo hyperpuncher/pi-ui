@@ -44,6 +44,7 @@ export type AppSlashCommand = {
 };
 export type AppAuthProvider = { id: string; name: string; authType: "oauth" | "api_key" };
 export type AppAuthPrompt = {
+	id: string;
 	message: string;
 	placeholder?: string;
 	secret?: boolean;
@@ -144,12 +145,7 @@ export type AppKeybindHint = { keys: string; description: string };
 
 export type UiCommitEffect =
 	| { type: "restore-model-picker" }
-	| {
-			type: "dialog";
-			id: "auth-dialog" | "extension-dialog" | "llama-dialog" | "tree-dialog";
-			open: boolean;
-	  }
-	| { type: "document-title"; title: string }
+	| { type: "open-tree-dialog" }
 	| { type: "scroll-transcript-bottom" }
 	| { type: "signal-overrides"; values: JsonObject };
 
@@ -616,43 +612,15 @@ export class AppStore {
 		this.presentation?.pickersChanged();
 		this.commit();
 	}
-	setAuthDialog(
-		dialog: AppAuthDialog | undefined,
-		options: { resetInput?: boolean } = {},
-	): void {
+	setAuthDialog(dialog: AppAuthDialog | undefined): void {
 		this.authDialog = dialog;
 		this.presentation?.pickersChanged();
-		this.presentation?.requestCommit({
-			type: "dialog",
-			id: "auth-dialog",
-			open: Boolean(dialog),
-		});
-		if (options.resetInput)
-			this.presentation?.requestCommit({
-				type: "signal-overrides",
-				values: { authInput: "" },
-			});
+		this.commit();
 	}
 	setExtensionDialog(dialog: AppExtensionDialog | undefined): void {
 		this.extensionDialog = dialog;
 		this.presentation?.pickersChanged();
-		this.presentation?.requestCommit({
-			type: "dialog",
-			id: "extension-dialog",
-			open: Boolean(dialog),
-		});
-		if (dialog) {
-			this.presentation?.requestCommit({
-				type: "signal-overrides",
-				values: {
-					extensionRequestId: dialog.id,
-					extensionResponse:
-						dialog.kind === "input" || dialog.kind === "editor"
-							? (dialog.prefill ?? "")
-							: "",
-				},
-			});
-		}
+		this.commit();
 	}
 	setExtensionStatuses(statuses: AppExtensionStatus[]): void {
 		this.extensionStatuses = statuses.map((status) => ({ ...status }));
@@ -677,7 +645,7 @@ export class AppStore {
 	}
 	setDocumentTitle(title: string): void {
 		this.documentTitle = title;
-		this.presentation?.requestCommit({ type: "document-title", title });
+		this.commit();
 	}
 	setPromptEditorText(text: string, options: { broadcast?: boolean } = {}): void {
 		this.promptEditorText = text;
@@ -691,11 +659,7 @@ export class AppStore {
 	setLlamaDialog(dialog: AppLlamaDialog | undefined): void {
 		this.llamaDialog = dialog;
 		this.presentation?.pickersChanged();
-		this.presentation?.requestCommit({
-			type: "dialog",
-			id: "llama-dialog",
-			open: Boolean(dialog),
-		});
+		this.commit();
 	}
 	setTreeEntries(entries: AppTreeEntry[]): void {
 		this.treeEntries = entries;
@@ -704,7 +668,7 @@ export class AppStore {
 	}
 	openTreeDialog(): void {
 		this.presentation?.pickersChanged();
-		this.commit({ type: "dialog", id: "tree-dialog", open: true });
+		this.commit({ type: "open-tree-dialog" });
 	}
 	setUsage(value: AppUsage): void {
 		this.usage = value;

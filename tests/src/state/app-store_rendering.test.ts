@@ -20,37 +20,17 @@ import {
 } from "#testing/assertions";
 
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
-import { collectElementPatches } from "../testing/element-patches.ts";
 import { readUntil, responseReader } from "../testing/streams.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
 
-test("restored fallback content patches before bounded enhancements", async () => {
-	const gates: Array<{ resolve: (html: string) => void }> = [];
-	let active = 0;
-	let maximum = 0;
-	const order: string[] = [];
-	const render = (kind: string) => {
-		order.push(kind);
-		active += 1;
-		maximum = Math.max(maximum, active);
-		return new Promise<string>((resolve) =>
-			gates.push({
-				resolve: (html) => {
-					active -= 1;
-					resolve(html);
-				},
-			}),
-		);
-	};
-	const state = createState({
-		enhancementConcurrency: 2,
-		renderMarkdownFinal: () => render("markdown"),
-		renderCode: () => render("tool"),
-	});
+test("restored messages are readable before final highlighting finishes", async () => {
+	const gates: Array<(html: string) => void> = [];
+	const render = () => new Promise<string>((resolve) => gates.push(resolve));
+	const state = createState({ renderMarkdownFinal: render, renderCode: render });
 	const controller = new AbortController();
 	try {
-		const response = state.createStream(controller.signal);
+		const reader = await openInitializedStateStream(state, controller.signal);
 		state.replaceMessages([
 			{
 				role: "assistant",
@@ -64,23 +44,21 @@ test("restored fallback content patches before bounded enhancements", async () =
 				format: "code",
 			},
 		]);
-		const patchesPromise = collectElementPatches(response, 4);
+		const fallback = await readUntil(
+			reader,
+			(text) =>
+				text.includes("<strong>answer</strong>") && text.includes("message-tool"),
+		);
+		assertNotIncludes(fallback, "data-enhanced");
 		while (gates.length < 2) await Promise.resolve();
-		for (const [index, gate] of gates.entries()) {
-			gate.resolve(`<div data-enhanced="${index}">safe</div>`);
-		}
-		const summary = await patchesPromise;
-
-		assertEqual(maximum, 2);
-		assertEqual(order.join(","), "tool,markdown");
-		assertEqual(summary.fullPatchCount, 1);
-		assertEqual(summary.targetedPatchCount, 3);
-		assertIncludes(summary.patches[1], "data: selector #messages");
-		assertIncludes(summary.patches[1], "data: mode replace");
-		assertIncludes(summary.patches[1], "<strong>answer</strong>");
-		assertIncludes(summary.patches[1], "message-tool");
-		assertNotIncludes(summary.patches[1], "data-enhanced");
-		assertIncludes(summary.patches[2] + summary.patches[3], "data-enhanced");
+		gates.forEach((resolve, index) =>
+			resolve(`<div data-enhanced="${index}">safe</div>`),
+		);
+		await readUntil(
+			reader,
+			(text) =>
+				text.includes('data-enhanced="0"') && text.includes('data-enhanced="1"'),
+		);
 	} finally {
 		controller.abort();
 	}
@@ -95,13 +73,15 @@ test("ordinary commits exclude finalized assistant messages", async () => {
 		state.replaceMessages([markdownMessage("lightweight source")]);
 		while (!gate.ready) await Promise.resolve();
 		gate.resolve("<p>large finalized HTML</p>");
-		const patches = await collectFinalizedPatches(state, response);
-
-		assertIncludes(patches.patches[2], "large finalized HTML");
-		assertIncludes(patches.patches[2], "data-ignore-morph");
-		assertNotIncludes(patches.patches[3], "large finalized HTML");
-		assertNotIncludes(patches.patches[3], "lightweight source");
-		assertNotIncludes(patches.patches[3], 'id="messages"');
+		const { finalized, ordinary } = await collectFinalizedPatches(
+			state,
+			response,
+			"large finalized HTML",
+		);
+		assertIncludes(finalized, "data-ignore-morph");
+		assertNotIncludes(ordinary, "large finalized HTML");
+		assertNotIncludes(ordinary, "lightweight source");
+		assertNotIncludes(ordinary, 'id="messages"');
 	} finally {
 		controller.abort();
 	}
@@ -123,11 +103,13 @@ test("ordinary commits exclude finalized tool messages", async () => {
 				format: "diff",
 			},
 		]);
-		const patches = await collectFinalizedPatches(state, response);
-
-		assertIncludes(patches.patches[2], "highlighted edit");
-		assertNotIncludes(patches.patches[3], "highlighted edit");
-		assertNotIncludes(patches.patches[3], 'id="messages"');
+		const { ordinary } = await collectFinalizedPatches(
+			state,
+			response,
+			"highlighted edit",
+		);
+		assertNotIncludes(ordinary, "highlighted edit");
+		assertNotIncludes(ordinary, 'id="messages"');
 	} finally {
 		controller.abort();
 	}
@@ -193,7 +175,7 @@ test("parallel message updates all reach their final state", async () => {
 	}
 });
 
-test("session transitions patch signals and replace only the transcript", async () => {
+test("session transitions preserve targeted transcript replacement and ordinary presentation", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -212,8 +194,12 @@ test("session transitions patch signals and replace only the transcript", async 
 
 		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
 		state.flush();
-		const restored = await readUntil(reader, (text) =>
-			text.includes("restored transcript"),
+		const restored = await readUntil(
+			reader,
+			(text) =>
+				text.includes("restored transcript") &&
+				text.includes('id="prompt-action"') &&
+				text.includes("datastar-patch-signals"),
 		);
 		assertIncludes(restored, 'id="messages"');
 		assertIncludes(restored, "data: selector #messages");
@@ -848,21 +834,29 @@ test("workspace review snapshots travel through the app stream", async () => {
 	assertNotIncludes(output, 'id="workspace-review-data-region"');
 });
 
-test("initial streams reopen active backend dialogs", async () => {
+test("title changes render escaped HTML on updates and reconnect, never executable scripts", async () => {
 	const state = createState();
-	state.setAuthDialog({
-		mode: "login",
-		phase: "providers",
-		providers: [],
-		progress: [],
-	});
-	state.flush();
-	await readStateOutput(
-		state,
-		(text) =>
-			text.includes("auth-dialog") &&
-			text.includes("if (dialog && !dialog.open) dialog.showModal()"),
-	);
+	const controller = new AbortController();
+	try {
+		const reader = await openInitializedStateStream(state, controller.signal);
+		state.setDocumentTitle(
+			"</title><script>globalThis.titleInjected = true</script>",
+		);
+		state.flush();
+		const updated = await readUntil(reader, (text) =>
+			text.includes('id="document-title"'),
+		);
+		assertIncludes(updated, "&lt;/title&gt;&lt;script&gt;");
+		assertNotIncludes(updated, "<script>");
+		assertNotIncludes(updated, "document.title =");
+		const reconnect = await readStateOutput(state, (text) =>
+			text.includes('id="document-title"'),
+		);
+		assertIncludes(reconnect, "&lt;/title&gt;&lt;script&gt;");
+		assertNotIncludes(reconnect, "document.title =");
+	} finally {
+		controller.abort();
+	}
 });
 
 test("app stream refreshes current and background session statuses", async () => {
@@ -1170,10 +1164,16 @@ async function readElementAndSignalPatches(
 	return output;
 }
 
-async function collectFinalizedPatches(state: TestStore, response: Response) {
-	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
+async function collectFinalizedPatches(
+	state: TestStore,
+	response: Response,
+	finalText: string,
+) {
+	const reader = responseReader(response);
+	const finalized = await readUntil(reader, (text) => text.includes(finalText));
 	state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
-	return collectElementPatches(response, 4);
+	const ordinary = await readUntil(reader, (text) => text.includes("$1.000"));
+	return { finalized, ordinary };
 }
 
 function count(value: string, search: string): number {

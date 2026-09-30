@@ -6,14 +6,15 @@ import type {
 	UiCommitEffect,
 } from "../state/app-store.ts";
 import type { TranscriptMessage } from "../state/transcript-state.ts";
+import { escapeHtml } from "../utils/html.ts";
 import type { JsonObject } from "../utils/json-types.ts";
-import { renderAuthDialogContent } from "./auth-dialog.tsx";
+import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderDebugOverlay } from "./debug.tsx";
 import { DisplayRefreshClients } from "./display-refresh-clients.ts";
-import { renderExtensionDialogContent } from "./extension-dialog.tsx";
+import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderExtensionWidgets } from "./extension-widgets.tsx";
-import { renderLlamaDialogContent } from "./llama-dialog.tsx";
+import { renderLlamaDialog } from "./llama-dialog.tsx";
 import {
 	MessageRenderService,
 	type MessageRenderServiceOptions,
@@ -40,7 +41,6 @@ import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 type RenderedView = {
 	elements: string;
 	signals: string;
-	scripts: readonly string[];
 };
 
 type DirtyRegions = {
@@ -169,7 +169,7 @@ export class UiRenderer implements AppStorePresentation {
 				);
 			}
 			this.hub.patchView(
-				this.replaceTranscriptOnCommit ? "" : this.renderAppElements(state),
+				this.renderAppElements(state),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.mainEffectScripts(effects),
 			);
@@ -344,6 +344,7 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	private renderAppElements(snapshot: AppStateSnapshot): string {
 		return (
+			`<title id="document-title">${escapeHtml(snapshot.documentTitle)}</title>` +
 			renderPromptAction(snapshot) +
 			renderPromptQueue(snapshot) +
 			renderToolbar(snapshot) +
@@ -357,9 +358,9 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	renderPickerElements(snapshot: AppStateSnapshot): string {
 		return (
-			renderAuthDialogContent(snapshot.authDialog) +
-			renderExtensionDialogContent(snapshot.extensionDialog) +
-			renderLlamaDialogContent(snapshot.llamaDialog) +
+			renderAuthDialog(snapshot.authDialog) +
+			renderExtensionDialog(snapshot.extensionDialog) +
+			renderLlamaDialog(snapshot.llamaDialog) +
 			renderWorkspaceDialogMenu(snapshot) +
 			renderModelPicker(snapshot) +
 			renderThinkingPicker(snapshot) +
@@ -391,7 +392,6 @@ export class UiRenderer implements AppStorePresentation {
 					snapshot.workspaceReviewPreferences,
 				),
 			signals: this.renderSignals(snapshot, overrides),
-			scripts: this.initialDialogScripts(snapshot),
 		};
 	}
 	private effectSignalOverrides(effects: readonly UiCommitEffect[]): JsonObject {
@@ -405,9 +405,6 @@ export class UiRenderer implements AppStorePresentation {
 	private mainEffectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts: string[] = [];
 		for (const effect of effects) {
-			if (effect.type === "document-title") {
-				scripts.push(`document.title = ${JSON.stringify(effect.title)}`);
-			}
 			if (effect.type === "scroll-transcript-bottom") {
 				scripts.push("window.piUi.messageScroll.scrollBottom()");
 			}
@@ -421,28 +418,12 @@ export class UiRenderer implements AppStorePresentation {
 				scripts.add(
 					"requestAnimationFrame(() => document.getElementById('model-select-input')?.focus())",
 				);
-			if (effect.type === "dialog") {
+			if (effect.type === "open-tree-dialog") {
 				scripts.add(
-					effect.open
-						? `{ const dialog = document.getElementById('${effect.id}'); if (dialog && !dialog.open) dialog.showModal(); }`
-						: `{ const dialog = document.getElementById('${effect.id}'); if (dialog?.open) dialog.close(); }`,
+					"{ const dialog = document.getElementById('tree-dialog'); if (dialog && !dialog.open) dialog.showModal(); }",
 				);
 			}
 		}
 		return [...scripts];
-	}
-	private initialDialogScripts(snapshot: AppStateSnapshot): string[] {
-		return [
-			["auth-dialog", snapshot.authDialog],
-			["extension-dialog", snapshot.extensionDialog],
-			["llama-dialog", snapshot.llamaDialog],
-		]
-			.values()
-			.filter((entry) => Boolean(entry[1]))
-			.map(
-				([id]) =>
-					`{ const dialog = document.getElementById('${id}'); if (dialog && !dialog.open) dialog.showModal(); }`,
-			)
-			.toArray();
 	}
 }

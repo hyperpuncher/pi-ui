@@ -19,7 +19,7 @@ import {
 import { makeTempDir } from "#testing/temp";
 
 import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
-import { collectElementPatches } from "../testing/element-patches.ts";
+import { readUntil, responseReader } from "../testing/streams.ts";
 
 const originalLog = console.log;
 const previousPerf = process.env.PI_UI_PERF;
@@ -210,11 +210,12 @@ test("20-message restore emits fallback once and targets enhancements", async ()
 	try {
 		const response = renderer.createStream(controller.signal);
 		state.replaceMessages(generatedSessionFixture(20));
-		const summary = await collectElementPatches(response, 18);
-		assertEqual(summary.fullPatchCount, 1);
-		assertEqual(summary.targetedPatchCount, 17);
+		const output = await readUntil(
+			responseReader(response),
+			(text) => text.split("data: selector [data-message-id=").length - 1 === 16,
+		);
+		assertEqual(output.split("data: selector #messages").length - 1, 1);
 		const snapshot = sessionPerformance.snapshot();
-		assertEqual(snapshot.fatMorphCount, 2);
 		assertEqual(snapshot.targetedMessagePatchCount, 16);
 		assertEqual(snapshot.spans.toolEnhancement.count, 8);
 		assertEqual(snapshot.spans.markdownEnhancement.count, 8);

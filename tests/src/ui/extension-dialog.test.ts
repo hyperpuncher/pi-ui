@@ -1,12 +1,12 @@
 import { test } from "bun:test";
 
-import { renderExtensionDialogContent } from "#src/ui/extension-dialog.tsx";
+import { renderExtensionDialog } from "#src/ui/extension-dialog.tsx";
 import { assertStringIncludes } from "#testing/assertions";
 
 import { assertStringExcludes } from "../testing/assertions.ts";
 
 test("extension dialog escapes labels and posts attributed selections", () => {
-	const html = renderExtensionDialogContent({
+	const html = renderExtensionDialog({
 		id: "request-1",
 		kind: "select",
 		title: "<script>title</script>",

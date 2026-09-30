@@ -4,7 +4,7 @@ import {
 	readActionSignals,
 	requiredString,
 } from "../action-input.ts";
-import { datastarResponse, signalsResponse } from "../datastar.ts";
+import { datastarResponse } from "../datastar.ts";
 import { RouteError, type RouteMap } from "../route.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
@@ -30,7 +30,7 @@ export const authRoutes = {
 			if (!requireHost(context).startLogin(provider, type)) {
 				throw new RouteError(409, "Login could not be started.");
 			}
-			return signalsResponse({ authInput: "" });
+			return datastarResponse();
 		},
 	},
 	[endpoints.authInput]: {

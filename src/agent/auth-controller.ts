@@ -44,22 +44,19 @@ export class AuthController {
 		if (providerRef && providers.length === 0) {
 			dialog.error = `Provider not found: ${providerRef}`;
 		}
-		this.state.setAuthDialog(dialog, { resetInput: true });
+		this.state.setAuthDialog(dialog);
 	}
 
 	openLogout(): void {
 		this.cancelLogin();
 		const runtime = this.getRuntime();
-		this.state.setAuthDialog(
-			{
-				mode: "logout",
-				phase: "providers",
-				providers: [],
-				status: "Loading stored credentials…",
-				progress: [],
-			},
-			{ resetInput: true },
-		);
+		this.state.setAuthDialog({
+			mode: "logout",
+			phase: "providers",
+			providers: [],
+			status: "Loading stored credentials…",
+			progress: [],
+		});
 		void runtime.services.modelRuntime
 			.listCredentials()
 			.then((credentials) => {
@@ -109,18 +106,15 @@ export class AuthController {
 
 		this.cancelLogin();
 		if (provider.authType === "api_key" && !method.login) {
-			this.state.setAuthDialog(
-				{
-					mode: "login",
-					phase: "result",
-					providers: [],
-					providerId: provider.id,
-					providerName: provider.name,
-					status: `${method.name} is configured outside pi-ui.`,
-					progress: [],
-				},
-				{ resetInput: true },
-			);
+			this.state.setAuthDialog({
+				mode: "login",
+				phase: "result",
+				providers: [],
+				providerId: provider.id,
+				providerName: provider.name,
+				status: `${method.name} is configured outside pi-ui.`,
+				progress: [],
+			});
 			return true;
 		}
 
@@ -140,15 +134,12 @@ export class AuthController {
 		}
 		const resolve = run.inputResolver;
 		resolve(value);
-		this.state.setAuthDialog(
-			{
-				...dialog,
-				prompt: undefined,
-				error: undefined,
-				status: "Waiting for authentication…",
-			},
-			{ resetInput: true },
-		);
+		this.state.setAuthDialog({
+			...dialog,
+			prompt: undefined,
+			error: undefined,
+			status: "Waiting for authentication…",
+		});
 		return true;
 	}
 
@@ -185,7 +176,7 @@ export class AuthController {
 
 	close(): void {
 		this.cancelLogin();
-		this.state.setAuthDialog(undefined, { resetInput: true });
+		this.state.setAuthDialog(undefined);
 	}
 
 	dispose(): void {
@@ -219,18 +210,15 @@ export class AuthController {
 			abortController: new AbortController(),
 		};
 		this.loginRun = run;
-		this.state.setAuthDialog(
-			{
-				mode: "login",
-				phase: provider.authType === "api_key" ? "api-key" : "oauth",
-				providers: [],
-				providerId: provider.id,
-				providerName: provider.name,
-				status: "Starting authentication…",
-				progress: [],
-			},
-			{ resetInput: true },
-		);
+		this.state.setAuthDialog({
+			mode: "login",
+			phase: provider.authType === "api_key" ? "api-key" : "oauth",
+			providers: [],
+			providerId: provider.id,
+			providerName: provider.name,
+			status: "Starting authentication…",
+			progress: [],
+		});
 
 		const modelRuntime = this.getRuntime().services.modelRuntime;
 		void withAgentHttpProxy(modelRuntime, () =>
@@ -266,6 +254,7 @@ export class AuthController {
 
 		this.patchAuthenticationDialog({
 			prompt: {
+				id: crypto.randomUUID(),
 				message: prompt.message,
 				placeholder: "placeholder" in prompt ? prompt.placeholder : undefined,
 				secret: prompt.type === "secret",
@@ -328,21 +317,16 @@ export class AuthController {
 	private completeAuthentication(status: string): void {
 		this.onAuthChanged();
 		const dialog = this.state.authDialog;
-		this.state.setAuthDialog(
-			{
-				mode: dialog?.mode ?? "login",
-				phase: "result",
-				providers: [],
-				providerId: dialog?.providerId,
-				providerName: dialog?.providerName,
-				status:
-					dialog?.mode === "logout"
-						? status
-						: `${status} Select a model to begin.`,
-				progress: [],
-			},
-			{ resetInput: true },
-		);
+		this.state.setAuthDialog({
+			mode: dialog?.mode ?? "login",
+			phase: "result",
+			providers: [],
+			providerId: dialog?.providerId,
+			providerName: dialog?.providerName,
+			status:
+				dialog?.mode === "logout" ? status : `${status} Select a model to begin.`,
+			progress: [],
+		});
 	}
 
 	private patchAuthenticationDialog(patch: Partial<AppAuthDialog>): void {

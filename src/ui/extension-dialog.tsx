@@ -9,22 +9,28 @@ export function renderExtensionDialog(dialog: AppExtensionDialog | undefined): s
 			class="dialog"
 			aria-labelledby="extension-dialog-title"
 			closedby="any"
-			data-on:close={cancelCurrentAction()}
-			data-signals__ifmissing={JSON.stringify({
-				extensionRequestId: "",
-				extensionResponse: "",
-			})}
+			data-preserve-attr="open"
+			data-effect={
+				dialog ? "if (!el.open) el.showModal()" : "if (el.open) el.close()"
+			}
+			data-on:close={
+				dialog &&
+				`if (!el.open) { ${postResponse(JSON.stringify(dialog.id), "''", true)} }`
+			}
+			data-signals:_extension-response__ifmissing="''"
 		>
 			{renderExtensionDialogContent(dialog)}
 		</dialog>,
 	);
 }
 
-export function renderExtensionDialogContent(
-	dialog: AppExtensionDialog | undefined,
-): string {
+function renderExtensionDialogContent(dialog: AppExtensionDialog | undefined): string {
 	return syncHtml(
-		<div id="extension-dialog-content" class="dialog-wide">
+		<div
+			id="extension-dialog-content"
+			class="dialog-wide"
+			data-effect={!dialog && "$_extensionResponse = ''"}
+		>
 			{dialog ? renderContent(dialog) : <div />}
 		</div>,
 	);
@@ -101,7 +107,7 @@ function renderConfirm(dialog: Extract<AppExtensionDialog, { kind: "confirm" }>)
 function renderText(
 	dialog: Extract<AppExtensionDialog, { kind: "input" | "editor" }>,
 ): string {
-	const submit = responseAction(dialog.id, "$extensionResponse", true);
+	const submit = responseAction(dialog.id, "$_extensionResponse", true);
 	return syncHtml(
 		<>
 			<header>
@@ -109,7 +115,12 @@ function renderText(
 					{dialog.title}
 				</h2>
 			</header>
-			<div class="field">
+			<div
+				id={`extension-input-${dialog.id}`}
+				class="field"
+				data-prefill={dialog.prefill ?? ""}
+				data-init="$_extensionResponse = el.dataset.prefill"
+			>
 				<label class="sr-only" for="extension-dialog-input" safe>
 					{dialog.title}
 				</label>
@@ -118,7 +129,7 @@ function renderText(
 						id="extension-dialog-input"
 						class="dialog-editor"
 						placeholder={dialog.placeholder}
-						data-bind:extension-response
+						data-bind:_extension-response
 						autofocus
 					/>
 				) : (
@@ -126,9 +137,9 @@ function renderText(
 						id="extension-dialog-input"
 						type="text"
 						placeholder={dialog.placeholder}
-						data-bind:extension-response
+						data-bind:_extension-response
 						autocomplete="off"
-						data-on:keydown={`if (evt.code === 'Enter') { evt.preventDefault(); ${submit} }`}
+						data-on:keydown={`if (evt.code === 'Enter' && !evt.isComposing) { evt.preventDefault(); ${submit} }`}
 						autofocus
 					/>
 				)}
@@ -165,10 +176,6 @@ function cancelFooter(): string {
 			</button>
 		</footer>,
 	);
-}
-
-function cancelCurrentAction(): string {
-	return postResponse("$extensionRequestId", "''", true);
 }
 
 function responseAction(id: string, value: string, expression = false): string {

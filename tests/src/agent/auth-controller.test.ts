@@ -70,7 +70,9 @@ test("provider-owned API key login can request multiple fields and accept empty 
 		},
 	]);
 	assertEquals(controller.startLogin("custom-cloud", "api_key"), true);
+	const firstPromptId = state.authDialog!.prompt!.id;
 	assertEquals(state.authDialog?.prompt, {
+		id: firstPromptId,
 		message: "Enter API key",
 		placeholder: undefined,
 		secret: true,
@@ -81,6 +83,7 @@ test("provider-owned API key login can request multiple fields and accept empty 
 	await nextTurn();
 	assertEquals(state.authDialog?.prompt?.message, "Enter account ID");
 	assertEquals(state.authDialog?.prompt?.secret, false);
+	assertEquals(state.authDialog?.prompt?.id !== firstPromptId, true);
 
 	assertEquals(controller.submitInput(""), true);
 	await nextTurn();

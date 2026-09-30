@@ -83,7 +83,9 @@ export function renderPage(
 					<meta name="color-scheme" content="light dark" />
 					<meta name="theme-color" content="" />
 					<meta name="apple-mobile-web-app-title" content="pi-ui" />
-					<title safe>{state.documentTitle}</title>
+					<title id="document-title" safe>
+						{state.documentTitle}
+					</title>
 					<link rel="manifest" href={`${staticBase}/manifest.webmanifest`} />
 					<link
 						rel="icon"

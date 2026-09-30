@@ -9,14 +9,21 @@ export function renderLlamaDialog(dialog: AppLlamaDialog | undefined): string {
 			class="dialog"
 			aria-labelledby="llama-dialog-title"
 			closedby="any"
-			data-on:close={`@post('${endpoints.llamaClose}', { payload: {} })`}
+			data-preserve-attr="open"
+			data-effect={
+				dialog ? "if (!el.open) el.showModal()" : "if (el.open) el.close()"
+			}
+			data-on:close={
+				dialog &&
+				`if (!el.open) @post('${endpoints.llamaClose}', { payload: {} })`
+			}
 		>
 			{renderLlamaDialogContent(dialog)}
 		</dialog>,
 	);
 }
 
-export function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): string {
+function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): string {
 	const haystacks = dialog?.models.map((model) => model.id.toLowerCase()) ?? [];
 	return syncHtml(
 		<div id="llama-dialog-content" class="dialog-extra-wide">
