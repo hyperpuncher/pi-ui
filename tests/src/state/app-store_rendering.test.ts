@@ -2,7 +2,6 @@ import { afterEach, test } from "bun:test";
 
 import { attributesToString } from "@kitajs/html";
 
-import { SessionCatalog } from "#src/agent/session-catalog.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import {
@@ -203,7 +202,6 @@ test("session transitions preserve targeted transcript replacement and ordinary 
 		assertIncludes(restored, 'id="messages"');
 		assertIncludes(restored, "data: selector #messages");
 		assertIncludes(restored, "data: mode replace");
-		assertNotIncludes(restored, 'id="session-sidebar-content"');
 
 		state.setSessionTransition({ status: "idle", generation: 1 });
 		await readUntil(reader, (text) =>
@@ -685,57 +683,6 @@ test("last-client disconnect discards in-flight rendering before reconnect", asy
 	gates[1].resolve("<p>current rendering</p>");
 	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>current rendering</p>");
-});
-
-test("session pagination patches only session-owned regions", async () => {
-	const state = createState();
-	const sessions = Array.from({ length: 70 }, (_, index) => ({
-		path: `/sessions/${index}.jsonl`,
-		cwd: "/workspace",
-		title: `Session ${index}`,
-		messageCount: index,
-		modified: "now",
-	}));
-	state.setSessionCatalog(sessions);
-	state.setSessionCatalogLoading(false);
-	state.loadMoreSessions();
-	state.flush();
-	assertEqual(state.snapshot().sessions.length, 60);
-	assertEqual(state.snapshot().sessionsHasMore, true);
-
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.setUsage({ text: "$2.000 • 2 tokens", costText: "$2.000" });
-		state.flush();
-		const unrelated = await readUntil(reader, (text) => text.includes("$2.000"));
-		assertNotIncludes(unrelated, 'id="session-sidebar-content"');
-
-		state.updateSessionSummary(sessions[0].path, (session) => ({
-			...session,
-			title: "Updated active session",
-		}));
-		state.flush();
-		const updated = await readUntil(reader, (text) =>
-			text.includes("Updated active session"),
-		);
-		assertIncludes(updated, 'id="session-sidebar-content"');
-
-		new SessionCatalog(state).touch(sessions[0].path);
-		state.flush();
-		const touched = await readUntil(reader, (text) =>
-			text.includes('id="session-sidebar-content"'),
-		);
-		assertNotIncludes(touched, 'id="session-menu-content"');
-
-		state.loadMoreSessions();
-		state.flush();
-		const complete = await readUntil(reader, (text) => text.includes("Session 69"));
-		assertNotIncludes(complete, "@post('/sessions/more'");
-		assertEqual(state.snapshot().sessionsHasMore, false);
-	} finally {
-		controller.abort();
-	}
 });
 
 test("workspace review snapshots travel through the app stream", async () => {

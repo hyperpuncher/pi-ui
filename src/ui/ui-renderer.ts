@@ -44,20 +44,6 @@ import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestion[] };
 type ClientView = { sessionQuery: string; workspaceSearch: WorkspaceSearchView };
 
-type ViewRegion =
-	| "pickers"
-	| "sessions"
-	| "sessionPicker"
-	| "workspacePicker"
-	| "sessionSidebar"
-	| "workspaceReview";
-const allRegions: ReadonlySet<ViewRegion> = new Set([
-	"pickers",
-	"sessions",
-	"sessionSidebar",
-	"workspaceReview",
-]);
-
 /** Renders current state, with a separate lane for transcript streaming. */
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
@@ -68,7 +54,6 @@ export class UiRenderer implements AppStorePresentation {
 	private commitScheduled = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
-	private dirtyRegions = new Set<ViewRegion>();
 	private replaceTranscriptOnCommit = false;
 
 	constructor(
@@ -125,7 +110,7 @@ export class UiRenderer implements AppStorePresentation {
 					const snapshot = this.store.snapshot();
 					const elements =
 						this.renderTranscript(this.projectState(snapshot)) +
-						this.renderView(snapshot, allRegions, view);
+						this.renderView(snapshot, view);
 					if (workspaceQuery.trim())
 						queueMicrotask(() => {
 							if (this.clientViews.get(clientId) === view)
@@ -152,7 +137,6 @@ export class UiRenderer implements AppStorePresentation {
 		const view = this.clientViews.get(clientId);
 		if (!view || view.sessionQuery === query) return;
 		view.sessionQuery = query;
-		this.dirtyRegions.add("sessionPicker");
 		this.requestCommit();
 	}
 
@@ -165,7 +149,6 @@ export class UiRenderer implements AppStorePresentation {
 		if (this.clientViews.get(clientId) !== view || view.workspaceSearch !== search)
 			return;
 		search.results = results;
-		this.dirtyRegions.add("workspacePicker");
 		this.requestCommit();
 	}
 
@@ -197,14 +180,9 @@ export class UiRenderer implements AppStorePresentation {
 		this.pendingEffects = [];
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
-		const dirtyRegions = this.dirtyRegions;
-		this.dirtyRegions = new Set();
 		if (this.hub.clientCount > 0) {
 			const state = this.store.snapshot();
-			if (
-				this.replaceTranscriptOnCommit ||
-				(dirtyRegions.has("sessions") && state.messages.length === 0)
-			) {
+			if (this.replaceTranscriptOnCommit) {
 				this.hub.replaceElement(
 					this.renderTranscript(this.projectState(state)),
 					"#messages",
@@ -212,7 +190,10 @@ export class UiRenderer implements AppStorePresentation {
 			}
 			this.hub.patchView(
 				(clientId) =>
-					this.renderView(state, dirtyRegions, this.clientViews.get(clientId)),
+					this.renderView(state, this.clientViews.get(clientId)) +
+					(!this.replaceTranscriptOnCommit && state.messages.length === 0
+						? this.renderTranscript(this.projectState(state))
+						: ""),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.effectScripts(effects),
 			);
@@ -249,18 +230,6 @@ export class UiRenderer implements AppStorePresentation {
 	messageUpdated(id: string): void {
 		if (this.hub.clientCount === 0) return;
 		this.messages.messageUpdated(id);
-	}
-	pickersChanged(): void {
-		this.dirtyRegions.add("pickers");
-	}
-	sessionsChanged(): void {
-		this.dirtyRegions.add("sessions");
-	}
-	sessionSidebarChanged(): void {
-		this.dirtyRegions.add("sessionSidebar");
-	}
-	workspaceReviewChanged(): void {
-		this.dirtyRegions.add("workspaceReview");
 	}
 	codeThemeChanged(): void {
 		if (this.hub.clientCount > 0) this.messages.codeThemeChanged();
@@ -370,26 +339,17 @@ export class UiRenderer implements AppStorePresentation {
 			...overrides,
 		});
 	}
-	private renderView(
-		snapshot: AppStateSnapshot,
-		regions: ReadonlySet<ViewRegion> = allRegions,
-		view?: ClientView,
-	): string {
+	private renderView(snapshot: AppStateSnapshot, view?: ClientView): string {
 		const query = view?.sessionQuery ?? "";
-		let elements = this.renderAppElements(snapshot);
-		if (regions.has("pickers")) elements += this.renderPickerElements(snapshot);
-		if (regions.has("pickers") || regions.has("workspacePicker"))
-			elements += renderWorkspaceDialogMenu(
+		return (
+			this.renderAppElements(snapshot) +
+			this.renderPickerElements(snapshot) +
+			renderWorkspaceDialogMenu(
 				snapshot,
 				view?.workspaceSearch.query,
 				view?.workspaceSearch.results,
-			);
-		if (
-			regions.has("sessions") ||
-			regions.has("sessionPicker") ||
-			(query.trim() && regions.has("sessionSidebar"))
-		)
-			elements += renderSessionPickerContent(
+			) +
+			renderSessionPickerContent(
 				query.trim()
 					? {
 							...snapshot,
@@ -398,18 +358,16 @@ export class UiRenderer implements AppStorePresentation {
 						}
 					: snapshot,
 				query,
-			);
-		if (regions.has("sessions") || regions.has("sessionSidebar"))
-			elements += renderSessionSidebarContent(snapshot);
-		if (regions.has("workspaceReview"))
-			elements += renderWorkspaceReviewData(
+			) +
+			renderSessionSidebarContent(snapshot) +
+			renderWorkspaceReviewData(
 				snapshot.workspacePath,
 				snapshot.workspaceFilesRevision,
 				snapshot.workspaceTreeRevision,
 				snapshot.workspaceReview,
 				snapshot.workspaceReviewPreferences,
-			);
-		return elements;
+			)
+		);
 	}
 	private effectSignalOverrides(effects: readonly UiCommitEffect[]): JsonObject {
 		const overrides: JsonObject = {};
