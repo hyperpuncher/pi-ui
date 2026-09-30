@@ -212,7 +212,8 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 			{state.sessionCatalogLoading && (
 				<div class="session-sidebar-loading">{loaderIcon()}</div>
 			)}
-			{state.sessionsHasMore && renderSessionPageTrigger()}
+			{state.sessionsHasMore &&
+				renderSessionPageTrigger(`session-sidebar-page-${state.sessions.length}`)}
 		</div>,
 	);
 }
@@ -221,9 +222,10 @@ function sessionSidebarRowId(path: string): string {
 	return `session-sidebar-row-${encodeURIComponent(path)}`;
 }
 
-export function renderSessionPageTrigger() {
+export function renderSessionPageTrigger(id: string) {
 	return (
 		<div
+			id={id}
 			class="session-page-trigger"
 			data-indicator:_session-page-loading
 			data-on-intersect__once={`@post('${endpoints.sessionsMore}', { payload: {} })`}

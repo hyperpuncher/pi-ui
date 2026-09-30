@@ -524,7 +524,8 @@ export function renderSessionPickerContent(
 					sessionStatus(session, state),
 				);
 			})}
-			{state.sessionsHasMore && renderSessionPageTrigger()}
+			{state.sessionsHasMore &&
+				renderSessionPageTrigger(`session-menu-page-${state.sessions.length}`)}
 		</div>,
 	);
 }
