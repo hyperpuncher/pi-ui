@@ -1,4 +1,4 @@
-import { readActionSignals, stringField } from "../action-input.ts";
+import { optionalString, readActionSignals } from "../action-input.ts";
 import { isDisplayClientId } from "../display-refresh.ts";
 import { RouteError, type RouteMap } from "../route.ts";
 import type { RouteContext } from "./context.ts";
@@ -27,10 +27,17 @@ export const streamRoutes = {
 					},
 				});
 			}
-			const query = parameters.has("datastar")
-				? stringField(await readActionSignals(request), "sessionSearch")
-				: "";
-			return context.renderer.createStream(request.signal, clientId, query);
+			const signals = parameters.has("datastar")
+				? await readActionSignals(request)
+				: {};
+			const query = optionalString(signals, "sessionSearch") ?? "";
+			const workspaceQuery = optionalString(signals, "workspaceDraft") ?? "";
+			return context.renderer.createStream(
+				request.signal,
+				clientId,
+				query,
+				workspaceQuery,
+			);
 		},
 	},
 } satisfies RouteMap<RouteContext>;

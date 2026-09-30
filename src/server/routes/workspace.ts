@@ -4,14 +4,12 @@ import { renderMarkdownFinal } from "../../ui/markdown.tsx";
 import {
 	renderWorkspaceBrowserContent,
 	renderWorkspaceBrowserError,
-	renderWorkspaceSearchResults,
 } from "../../ui/pickers.tsx";
 import {
 	renderWorktreeDialogContent,
 	renderWorktreeIgnoredPaths,
 } from "../../ui/worktree-dialog.tsx";
 import { isRecord, isString } from "../../utils/type-guards.ts";
-import { formatHomePath } from "../../utils/workspace.ts";
 import {
 	booleanField,
 	readActionSignals,
@@ -43,32 +41,19 @@ import {
 	WorkspaceFileError,
 } from "../workspace-files.ts";
 import { findGitRoot } from "../workspace-review.ts";
-import { browseWorkspaceDirectories, searchWorkspaces } from "../workspace-search.ts";
+import { browseWorkspaceDirectories } from "../workspace-search.ts";
 import type { RouteContext } from "./context.ts";
 import { endpoints, filePreviewUrl } from "./endpoints.ts";
 
 export const workspaceRoutes = {
 	[endpoints.workspaceSearch]: {
-		GET: async (request, context) => {
-			const query = stringField(await readActionSignals(request), "workspaceDraft");
-			const recent = filterWorkspaces(
-				[context.store.projectRoot, ...context.store.recentWorkspaces],
-				query,
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			await context.renderer.setWorkspaceSearch(
+				requiredString(signals, "clientId"),
+				stringField(signals, "workspaceDraft"),
 			);
-			const search = query.trim()
-				? await searchWorkspaces(context.store.workspacePath, query)
-				: [];
-			return datastarResponse([
-				{
-					type: "elements",
-					elements: renderWorkspaceSearchResults(
-						recent,
-						search,
-						context.store.projectRoot,
-					),
-				},
-				{ type: "effect", effect: { type: "refresh-workspace-picker" } },
-			]);
+			return datastarResponse();
 		},
 	},
 	[endpoints.workspaceBrowse]: {
@@ -503,14 +488,4 @@ function parseByteRange(value: string, size: number): [number, number] | undefin
 	if (first >= size) return undefined;
 	const end = last === undefined ? size - 1 : Math.min(last, size - 1);
 	return end < first ? undefined : [first, end];
-}
-
-function filterWorkspaces(workspaces: readonly string[], query: string): string[] {
-	const normalizedQuery = query.toLowerCase();
-	if (!normalizedQuery) return [...workspaces];
-	return workspaces.filter((workspacePath) =>
-		`${formatHomePath(workspacePath)} ${workspacePath}`
-			.toLowerCase()
-			.includes(normalizedQuery),
-	);
 }

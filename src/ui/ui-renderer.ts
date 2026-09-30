@@ -1,4 +1,8 @@
 import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import {
+	searchWorkspaces,
+	type WorkspaceSuggestion,
+} from "../server/workspace-search.ts";
 import type {
 	AppStateSnapshot,
 	AppStore,
@@ -37,10 +41,14 @@ import { renderToolbar } from "./toolbar.tsx";
 import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 
+type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestion[] };
+type ClientView = { sessionQuery: string; workspaceSearch: WorkspaceSearchView };
+
 type ViewRegion =
 	| "pickers"
 	| "sessions"
 	| "sessionPicker"
+	| "workspacePicker"
 	| "sessionSidebar"
 	| "workspaceReview";
 const allRegions: ReadonlySet<ViewRegion> = new Set([
@@ -54,7 +62,7 @@ const allRegions: ReadonlySet<ViewRegion> = new Set([
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
 	private readonly displayClients = new DisplayRefreshClients();
-	private readonly sessionViews = new Map<string, { query: string }>();
+	private readonly clientViews = new Map<string, ClientView>();
 	private updateDepth = 0;
 	private commitPending = false;
 	private commitScheduled = false;
@@ -81,15 +89,19 @@ export class UiRenderer implements AppStorePresentation {
 		signal: AbortSignal,
 		clientId: string = crypto.randomUUID(),
 		query = "",
+		workspaceQuery = "",
 	): Response {
 		this.flush();
-		const sessionView = { query };
-		this.sessionViews.set(clientId, sessionView);
+		const view: ClientView = {
+			sessionQuery: query,
+			workspaceSearch: { query: workspaceQuery, results: [] },
+		};
+		this.clientViews.set(clientId, view);
 		this.displayClients.connect(clientId);
 		this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
 		const disconnect = () => {
-			if (this.sessionViews.get(clientId) === sessionView)
-				this.sessionViews.delete(clientId);
+			if (this.clientViews.get(clientId) === view)
+				this.clientViews.delete(clientId);
 			this.displayClients.disconnect(clientId);
 			this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
 			if (this.hub.clientCount === 0) {
@@ -113,7 +125,12 @@ export class UiRenderer implements AppStorePresentation {
 					const snapshot = this.store.snapshot();
 					const elements =
 						this.renderTranscript(this.projectState(snapshot)) +
-						this.renderView(snapshot, allRegions, sessionView.query);
+						this.renderView(snapshot, allRegions, view);
+					if (workspaceQuery.trim())
+						queueMicrotask(() => {
+							if (this.clientViews.get(clientId) === view)
+								void this.setWorkspaceSearch(clientId, workspaceQuery);
+						});
 					if (this.hub.clientCount === 1) {
 						// Send the readable initial view before starting final highlighting.
 						queueMicrotask(() => {
@@ -132,10 +149,23 @@ export class UiRenderer implements AppStorePresentation {
 		}
 	}
 	setSessionSearch(clientId: string, query: string): void {
-		const view = this.sessionViews.get(clientId);
-		if (!view || view.query === query) return;
-		view.query = query;
+		const view = this.clientViews.get(clientId);
+		if (!view || view.sessionQuery === query) return;
+		view.sessionQuery = query;
 		this.dirtyRegions.add("sessionPicker");
+		this.requestCommit();
+	}
+
+	async setWorkspaceSearch(clientId: string, query: string): Promise<void> {
+		const view = this.clientViews.get(clientId);
+		if (!view) return;
+		const search: WorkspaceSearchView = { query, results: [] };
+		view.workspaceSearch = search;
+		const results = await searchWorkspaces(this.store.workspacePath, query);
+		if (this.clientViews.get(clientId) !== view || view.workspaceSearch !== search)
+			return;
+		search.results = results;
+		this.dirtyRegions.add("workspacePicker");
 		this.requestCommit();
 	}
 
@@ -182,11 +212,7 @@ export class UiRenderer implements AppStorePresentation {
 			}
 			this.hub.patchView(
 				(clientId) =>
-					this.renderView(
-						state,
-						dirtyRegions,
-						this.sessionViews.get(clientId)?.query ?? "",
-					),
+					this.renderView(state, dirtyRegions, this.clientViews.get(clientId)),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.effectScripts(effects),
 			);
@@ -332,7 +358,6 @@ export class UiRenderer implements AppStorePresentation {
 			renderAuthDialog(snapshot.authDialog) +
 			renderExtensionDialog(snapshot.extensionDialog) +
 			renderLlamaDialog(snapshot.llamaDialog) +
-			renderWorkspaceDialogMenu(snapshot) +
 			renderModelPicker(snapshot) +
 			renderThinkingPicker(snapshot) +
 			renderSlashPicker(snapshot) +
@@ -348,10 +373,17 @@ export class UiRenderer implements AppStorePresentation {
 	private renderView(
 		snapshot: AppStateSnapshot,
 		regions: ReadonlySet<ViewRegion> = allRegions,
-		query = "",
+		view?: ClientView,
 	): string {
+		const query = view?.sessionQuery ?? "";
 		let elements = this.renderAppElements(snapshot);
 		if (regions.has("pickers")) elements += this.renderPickerElements(snapshot);
+		if (regions.has("pickers") || regions.has("workspacePicker"))
+			elements += renderWorkspaceDialogMenu(
+				snapshot,
+				view?.workspaceSearch.query,
+				view?.workspaceSearch.results,
+			);
 		if (
 			regions.has("sessions") ||
 			regions.has("sessionPicker") ||

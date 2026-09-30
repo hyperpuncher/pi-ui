@@ -179,6 +179,7 @@ export function renderPage(
 						_sessionLoading: false,
 						_newSessionPending: false,
 						sessionSearch: "",
+						workspaceDraft: "",
 						workspaceReviewComments: { comments: [] },
 						workspaceReviewPreferences: state.workspaceReviewPreferences,
 						sessionDeletePath: "",
@@ -235,7 +236,7 @@ export function renderPage(
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
 						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
-						filterSignals: { include: /^sessionSearch$/ },
+						filterSignals: { include: /^(sessionSearch|workspaceDraft)$/ },
 						retry: 'always',
 						retryMaxCount: Infinity,
 						requestCancellation: 'cleanup',
@@ -344,8 +345,8 @@ export function renderPage(
 									autofocus
 									data-bind:workspace-draft
 									attrs={{
-										"data-on:input__debounce.50ms": `@get('${endpoints.workspaceSearch}', {
-										payload: { workspaceDraft: $workspaceDraft },
+										"data-on:input__debounce.50ms": `@post('${endpoints.workspaceSearch}', {
+										payload: { clientId: '${displayClientId}', workspaceDraft: $workspaceDraft },
 										requestCancellation: 'cleanup',
 									})`,
 									}}

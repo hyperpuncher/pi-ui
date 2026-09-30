@@ -114,8 +114,19 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 	);
 }
 
-export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
-	const workspaces = uniqueWorkspaces([state.projectRoot, ...state.recentWorkspaces]);
+export function renderWorkspaceDialogMenu(
+	state: AppStateSnapshot,
+	query = "",
+	results: readonly WorkspaceSuggestion[] = [],
+): string {
+	const workspaces = uniqueWorkspaces([
+		state.projectRoot,
+		...state.recentWorkspaces,
+	]).filter((workspacePath) =>
+		`${formatHomePath(workspacePath)} ${workspacePath}`
+			.toLowerCase()
+			.includes(query.toLowerCase()),
+	);
 	return syncHtml(
 		<div
 			role="menu"
@@ -123,7 +134,7 @@ export function renderWorkspaceDialogMenu(state: AppStateSnapshot): string {
 			class="command-menu"
 			aria-orientation="vertical"
 		>
-			{renderWorkspaceSearchResults(workspaces, [], state.projectRoot)}
+			{renderWorkspaceSearchResults(workspaces, results, state.projectRoot)}
 		</div>,
 	);
 }
@@ -363,7 +374,13 @@ export function renderWorkspaceSearchResults(
 		searchWorkspaces.map((workspace) => workspace.path),
 	).filter((workspacePath) => !recent.includes(workspacePath));
 	return syncHtml(
-		<div id="workspace-search-results">
+		<div
+			id="workspace-search-results"
+			data-effect={`
+				${Bun.hash(JSON.stringify([recent, search]))}n;
+				queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
+			`}
+		>
 			{recent.length > 0 &&
 				renderWorkspaceGroup("Recent workspaces", recent, currentWorkspacePath)}
 			{search.length > 0 &&
