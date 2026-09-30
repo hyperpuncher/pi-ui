@@ -26,7 +26,7 @@
 			left top,
 			right top;
 		mask-repeat: no-repeat;
-		transition: opacity 120ms var(--ease-out) 80ms;
+		transition: opacity 60ms var(--ease-out);
 	}
 	#messages.messages-empty {
 		padding-block: 2rem 8rem;

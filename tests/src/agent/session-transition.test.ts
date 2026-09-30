@@ -66,14 +66,15 @@ test("new session actions lock without driving the transition overlay", () => {
 	assertStringExcludes(toolbar, "data-indicator:_session-loading");
 });
 
-test("transcript loading appearance follows the backend session transition", () => {
+test("transcript loading starts with the request and ends with the backend transition", () => {
 	const state = new AppStore();
 	const transition = renderSessionTransition(state.snapshot());
 	const messages = renderMessages([], { keys: "/", description: "Commands" });
 	assertStringExcludes(transition, "$_sessionLoading || $_sessionTransitionVisible");
 	assertStringExcludes(messages, "$_sessionLoading || $_sessionTransitionVisible");
 	assertStringIncludes(messages, "data-class:messages-loading");
-	assertStringExcludes(messages, "$_sessionLoading");
+	assertStringIncludes(messages, "$_sessionLoading");
+	assertStringIncludes(messages, "$_sessionTransitionPending");
 	assertStringIncludes(messages, "$_sessionTransitionStatus === 'loading'");
 });
 
