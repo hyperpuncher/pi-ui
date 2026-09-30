@@ -17,7 +17,7 @@ test("hub connects, sends an initial view, broadcasts fat and targeted patches, 
 		signals: '{"ready":true}',
 	}));
 	assertEquals(hub.clientCount, 1);
-	hub.patchView('<main id="app">updated</main>', '{"ready":false}', []);
+	hub.patchView(() => '<main id="app">updated</main>', '{"ready":false}', []);
 	hub.patchElement('<article id="message">target</article>', "#message");
 	hub.replaceElement('<main id="messages">replaced</main>', "#messages");
 	hub.patchSignals('{"extra":true}');
@@ -44,7 +44,7 @@ test("hub broadcasts to multiple clients and disconnects them independently", as
 
 	firstController.abort();
 	assertEquals(hub.clientCount, 1);
-	hub.patchView('<main id="app">second only</main>', "{}", []);
+	hub.patchView(() => '<main id="app">second only</main>', "{}", []);
 	secondController.abort();
 
 	assertStringExcludes(await first.text(), "second only");

@@ -485,9 +485,19 @@ type SessionPickerState = Pick<
 	"activityText" | "currentSessionPath" | "sessions" | "sessionsHasMore"
 >;
 
-export function renderSessionPickerContent(state: SessionPickerState): string {
+export function renderSessionPickerContent(
+	state: SessionPickerState,
+	query = "",
+): string {
 	return syncHtml(
-		<div id="session-menu-content" class="session-menu-content">
+		<div
+			id="session-menu-content"
+			class="session-menu-content"
+			data-effect={`
+				${Bun.hash(JSON.stringify([query, ...state.sessions.map((session) => session.path)]))}n;
+				queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
+			`}
+		>
 			{state.sessions.map((session, index) => {
 				const current = session.path === state.currentSessionPath;
 				return renderSessionRow(
@@ -497,9 +507,7 @@ export function renderSessionPickerContent(state: SessionPickerState): string {
 					sessionStatus(session, state),
 				);
 			})}
-			{state.sessionsHasMore && (
-				<div data-show="$sessionSearch === ''">{renderSessionPageTrigger()}</div>
-			)}
+			{state.sessionsHasMore && renderSessionPageTrigger()}
 		</div>,
 	);
 }

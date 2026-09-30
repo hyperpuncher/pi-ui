@@ -123,7 +123,6 @@ test("session rows expose stable ids for resilient active descendants", () => {
 	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
 	assertStringIncludes(html, "No matching sessions.");
 	assertStringIncludes(html, "@post('/sessions/more'");
-	assertStringIncludes(html, `data-show="$sessionSearch === ''"`);
 	assertFalse(html.includes("data-session-rename-title"));
 });
 

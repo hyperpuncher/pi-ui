@@ -2,7 +2,6 @@ import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
-import { renderSessionPickerContent } from "../../ui/pickers.tsx";
 import { expandHomePath } from "../../utils/workspace.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
@@ -21,20 +20,13 @@ export const sessionRoutes = {
 			sessionTransitionResponse(await requireHost(context).newTemporarySession()),
 	},
 	[endpoints.sessionsSearch]: {
-		GET: async (request, context) => {
-			const query = stringField(await readActionSignals(request), "sessionSearch");
-			return datastarResponse([
-				{
-					type: "elements",
-					elements: renderSessionPickerContent({
-						activityText: context.store.activityText,
-						currentSessionPath: context.store.currentSessionPath,
-						sessions: context.store.searchSessions(query),
-						sessionsHasMore: context.store.sessionsHasMore,
-					}),
-				},
-				{ type: "effect", effect: { type: "refresh-session-picker" } },
-			]);
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			context.renderer.setSessionSearch(
+				requiredString(signals, "clientId"),
+				stringField(signals, "sessionSearch"),
+			);
+			return datastarResponse();
 		},
 	},
 	[endpoints.sessionsMore]: {

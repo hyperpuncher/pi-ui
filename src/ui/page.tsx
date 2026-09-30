@@ -178,6 +178,7 @@ export function renderPage(
 						_isDraggingFile: false,
 						_sessionLoading: false,
 						_newSessionPending: false,
+						sessionSearch: "",
 						workspaceReviewComments: { comments: [] },
 						workspaceReviewPreferences: state.workspaceReviewPreferences,
 						sessionDeletePath: "",
@@ -234,7 +235,7 @@ export function renderPage(
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
 						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
-						payload: {},
+						filterSignals: { include: /^sessionSearch$/ },
 						retry: 'always',
 						retryMaxCount: Infinity,
 						requestCancellation: 'cleanup',
@@ -468,8 +469,8 @@ export function renderPage(
 									data-preserve-attr="aria-activedescendant"
 									data-bind:session-search=""
 									attrs={{
-										"data-on:input__debounce.100ms": `@get('${endpoints.sessionsSearch}', {
-										payload: { sessionSearch: $sessionSearch },
+										"data-on:input__debounce.100ms": `@post('${endpoints.sessionsSearch}', {
+										payload: { clientId: '${displayClientId}', sessionSearch: $sessionSearch },
 										requestCancellation: 'cleanup',
 									})`,
 									}}

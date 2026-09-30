@@ -1,3 +1,4 @@
+import { readActionSignals, stringField } from "../action-input.ts";
 import { isDisplayClientId } from "../display-refresh.ts";
 import { RouteError, type RouteMap } from "../route.ts";
 import type { RouteContext } from "./context.ts";
@@ -12,7 +13,7 @@ export const streamRoutes = {
 			})),
 	},
 	[endpoints.stream]: {
-		GET: (request, context, url) => {
+		GET: async (request, context, url) => {
 			const parameters = url.searchParams;
 			const clientId = parameters.get("clientId");
 			if (!clientId || !isDisplayClientId(clientId)) {
@@ -26,7 +27,10 @@ export const streamRoutes = {
 					},
 				});
 			}
-			return context.renderer.createStream(request.signal, clientId);
+			const query = parameters.has("datastar")
+				? stringField(await readActionSignals(request), "sessionSearch")
+				: "";
+			return context.renderer.createStream(request.signal, clientId, query);
 		},
 	},
 } satisfies RouteMap<RouteContext>;

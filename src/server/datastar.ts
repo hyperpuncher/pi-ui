@@ -23,7 +23,6 @@ export class DatastarStream {
 
 export type ClientEffect =
 	| { type: "focus-prompt" }
-	| { type: "refresh-session-picker" }
 	| { type: "refresh-workspace-picker" }
 	| { type: "close-workspace-picker" }
 	| { type: "close-worktree-picker" }
@@ -93,8 +92,6 @@ function clientEffectScript(effect: ClientEffect): string {
 	switch (effect.type) {
 		case "focus-prompt":
 			return "document.getElementById('prompt-input')?.focus({ preventScroll: true })";
-		case "refresh-session-picker":
-			return "window.piUi.controls.refresh(document.getElementById('session-dialog'))";
 		case "refresh-workspace-picker":
 			return "window.piUi.controls.refresh(document.getElementById('workspace-dialog'))";
 		case "close-workspace-picker":
