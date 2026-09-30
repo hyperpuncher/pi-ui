@@ -171,6 +171,7 @@ export function renderPage(
 						_sessionTransitionPending: false,
 						_newSessionPending: false,
 						sessionSearch: "",
+						modelSearch: "",
 						workspaceDraft: "",
 						workspaceReviewComments: { comments: [] },
 						workspaceReviewPreferences: state.workspaceReviewPreferences,
@@ -179,6 +180,12 @@ export function renderPage(
 						sessionRenamePath: "",
 						sessionRenameTitle: "",
 					})}
+					data-on-signal-patch-filter="{ include: /^modelSearch$/ }"
+					attrs={{
+						"data-on-signal-patch__debounce.50ms": `@post('${endpoints.modelsSearch}', {
+							payload: { clientId: '${displayClientId}', modelSearch: $modelSearch },
+						})`,
+					}}
 					data-on:dragenter__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 						evt.preventDefault();
 						$_isDraggingFile = window.piUi.fileTransfer.enterDrag();
@@ -228,7 +235,7 @@ export function renderPage(
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
 						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
-						filterSignals: { include: /^(sessionSearch|workspaceDraft)$/ },
+						filterSignals: { include: /^(sessionSearch|workspaceDraft|modelSearch)$/ },
 						retry: 'always',
 						retryMaxCount: Infinity,
 						requestCancellation: 'cleanup',

@@ -120,9 +120,6 @@
 		content-visibility: auto;
 		contain-intrinsic-block-size: auto 3rem;
 	}
-	.model-option:has(> .model-choice[hidden]) {
-		display: none;
-	}
 	.model-option:has(> .active) {
 		background: var(--surface-control);
 		color: var(--text);

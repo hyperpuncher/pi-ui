@@ -2,7 +2,9 @@ import { test } from "bun:test";
 
 import { fuzzyFilter } from "@earendil-works/pi-tui/dist/fuzzy.js";
 
-import { modelSearchText } from "#static/app/model-search.js";
+import { AppStore } from "#src/state/app-store.ts";
+import { renderModelPicker } from "#src/ui/prompt-pickers.tsx";
+import { modelSearchText } from "#src/utils/model-search.ts";
 import { assertEquals } from "#testing/assertions";
 
 test("model search ranks DeepSeek above Claude Sonnet for ds4", () => {
@@ -23,6 +25,17 @@ test("model search ranks DeepSeek above Claude Sonnet for ds4", () => {
 			modelSearchText(model.id, model.provider, model.name),
 		),
 		[models[1], models[0]],
+	);
+	const store = new AppStore();
+	store.setModels(
+		models.map((model) => ({ ...model, configured: true, scoped: false })),
+		undefined,
+	);
+	const html = renderModelPicker(store.snapshot(), "ds4");
+	assertEquals(
+		html.indexOf('id="model-option-opencode%2Fdeepseek-v4-flash"') <
+			html.indexOf('id="model-option-opencode%2Fclaude-sonnet-4"'),
+		true,
 	);
 });
 

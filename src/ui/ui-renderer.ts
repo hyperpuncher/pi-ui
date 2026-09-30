@@ -42,7 +42,11 @@ import { renderTreePicker } from "./tree-picker.tsx";
 import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 
 type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestion[] };
-type ClientView = { sessionQuery: string; workspaceSearch: WorkspaceSearchView };
+type ClientView = {
+	sessionQuery: string;
+	modelQuery: string;
+	workspaceSearch: WorkspaceSearchView;
+};
 
 /** Renders current state, with a separate lane for transcript streaming. */
 export class UiRenderer implements AppStorePresentation {
@@ -74,10 +78,12 @@ export class UiRenderer implements AppStorePresentation {
 		clientId: string = crypto.randomUUID(),
 		query = "",
 		workspaceQuery = "",
+		modelQuery = "",
 	): Response {
 		this.flush();
 		const view: ClientView = {
 			sessionQuery: query,
+			modelQuery,
 			workspaceSearch: { query: workspaceQuery, results: [] },
 		};
 		this.clientViews.set(clientId, view);
@@ -136,6 +142,13 @@ export class UiRenderer implements AppStorePresentation {
 		const view = this.clientViews.get(clientId);
 		if (!view || view.sessionQuery === query) return;
 		view.sessionQuery = query;
+		this.viewChanged();
+	}
+
+	setModelSearch(clientId: string, query: string): void {
+		const view = this.clientViews.get(clientId);
+		if (!view || view.modelQuery === query) return;
+		view.modelQuery = query;
 		this.viewChanged();
 	}
 
@@ -310,12 +323,12 @@ export class UiRenderer implements AppStorePresentation {
 			renderDebugOverlay(snapshot)
 		);
 	}
-	private renderPickerElements(snapshot: AppStateSnapshot): string {
+	private renderPickerElements(snapshot: AppStateSnapshot, modelQuery = ""): string {
 		return (
 			renderAuthDialog(snapshot.authDialog) +
 			renderExtensionDialog(snapshot.extensionDialog) +
 			renderLlamaDialog(snapshot.llamaDialog) +
-			renderModelPicker(snapshot) +
+			renderModelPicker(snapshot, modelQuery) +
 			renderThinkingPicker(snapshot) +
 			renderSlashPicker(snapshot) +
 			renderTreePicker(snapshot)
@@ -331,7 +344,7 @@ export class UiRenderer implements AppStorePresentation {
 		const query = view?.sessionQuery ?? "";
 		return (
 			this.renderAppElements(snapshot) +
-			this.renderPickerElements(snapshot) +
+			this.renderPickerElements(snapshot, view?.modelQuery) +
 			renderWorkspaceDialogMenu(
 				snapshot,
 				view?.workspaceSearch.query,

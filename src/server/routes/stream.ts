@@ -32,11 +32,13 @@ export const streamRoutes = {
 				: {};
 			const query = optionalString(signals, "sessionSearch") ?? "";
 			const workspaceQuery = optionalString(signals, "workspaceDraft") ?? "";
+			const modelQuery = optionalString(signals, "modelSearch") ?? "";
 			return context.renderer.createStream(
 				request.signal,
 				clientId,
 				query,
 				workspaceQuery,
+				modelQuery,
 			);
 		},
 	},

@@ -45,9 +45,6 @@ interface PiUiNamespace {
 		scrollBottom(behavior?: "auto" | "smooth"): void;
 		trimOldMessages(): void;
 	};
-	modelSearch: {
-		filter(input: HTMLInputElement, query: string): void;
-	};
 	pickers: {
 		close(): void;
 		complete(name: string): void;

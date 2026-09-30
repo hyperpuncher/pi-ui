@@ -1,4 +1,9 @@
-import { enumField, readActionSignals, requiredString } from "../action-input.ts";
+import {
+	enumField,
+	readActionSignals,
+	requiredString,
+	stringField,
+} from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { RouteError, type RouteMap } from "../route.ts";
 import { requireHost, type RouteContext } from "./context.ts";
@@ -7,6 +12,16 @@ import { endpoints } from "./endpoints.ts";
 const directions = ["forward", "backward"] as const;
 
 export const modelRoutes = {
+	[endpoints.modelsSearch]: {
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			context.renderer.setModelSearch(
+				requiredString(signals, "clientId"),
+				stringField(signals, "modelSearch"),
+			);
+			return datastarResponse();
+		},
+	},
 	[endpoints.modelsRefresh]: {
 		POST: async (request, context) => {
 			await requireHost(context).refreshModels(

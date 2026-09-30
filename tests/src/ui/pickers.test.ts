@@ -327,7 +327,26 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
 	assertStringIncludes(withoutSelection, "@post('/models/refresh', { payload: {} })");
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
-	assertStringIncludes(withoutSelection, "Claude Sonnet");
+	assertStringIncludes(withoutSelection, ">claude-sonnet</span>");
+	assertFalse(withoutSelection.includes("data-model-search-order"));
+	assertFalse(withoutSelection.includes("window.piUi.modelSearch"));
+	assertStringIncludes(
+		renderModelPicker(
+			appRenderSnapshot({
+				models: [
+					{
+						id: "claude-sonnet",
+						provider: "anthropic",
+						name: "Claude Sonnet",
+						configured: true,
+						scoped: false,
+					},
+				],
+			}),
+			"no matching model",
+		),
+		'data-empty="No models found."',
+	);
 });
 
 test("model picker shows only the final model name in its trigger", () => {

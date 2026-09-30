@@ -1,3 +1,5 @@
+import { fuzzyFilter } from "@earendil-works/pi-tui";
+
 import {
 	authDialogAction,
 	cycleModelAction,
@@ -8,6 +10,7 @@ import { activeKeybind, keybindAction, keybindActions } from "../keybinds.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppThinkingLevel } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
+import { modelSearchText } from "../utils/model-search.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
 import { Icon } from "./icon.tsx";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
@@ -194,7 +197,10 @@ function thinkingDescription(level: AppThinkingLevel): string {
 	}
 }
 
-export function renderModelPicker(state: AppStateSnapshot): string {
+export function renderModelPicker(state: AppStateSnapshot, query = ""): string {
+	const models = fuzzyFilter([...state.models], query, (model) =>
+		modelSearchText(model.id, model.provider, model.name),
+	);
 	const current = state.models.find(
 		(model) => `${model.provider}/${model.id}` === state.currentModel,
 	);
@@ -248,7 +254,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 					data-tooltip="Model"
 					data-tooltip-delay
 					data-on:click__capture={`if (!document.getElementById('model-select-popover')?.matches(':popover-open')) {
-						$_modelQuery = '';
+						$modelSearch = '';
 						@post('${endpoints.modelsRefresh}', { payload: {} });
 					}`}
 				>
@@ -285,8 +291,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 								aria-expanded="true"
 								aria-controls="model-select-menu"
 								autofocus
-								data-bind:_model-query
-								data-effect="window.piUi.modelSearch.filter(el, $_modelQuery)"
+								data-bind:model-search
 							/>
 						</header>
 						<div
@@ -295,6 +300,10 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 							class="model-menu"
 							aria-labelledby="model-select-trigger"
 							data-empty="No models found."
+							data-effect={`
+								${Bun.hash(JSON.stringify(models.map((model) => `${model.provider}/${model.id}`)))}n;
+								queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
+							`}
 						>
 							<div role="group" aria-labelledby="model-select-heading">
 								<div
@@ -307,7 +316,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 										shortcut={activeKeybind("switch-model")}
 									/>
 								</div>
-								{state.models.map((model, index) => {
+								{models.map((model) => {
 									const value = `${model.provider}/${model.id}`;
 									const configured = model.configured
 										? ""
@@ -326,18 +335,14 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 												class="model-choice"
 												commandfor="model-select-popover"
 												command="hide-popover"
-												data-preserve-attr="class hidden"
+												data-preserve-attr="class"
 												aria-current={
 													value === state.currentModel
 														? "true"
 														: "false"
 												}
-												data-model-id={model.id}
-												data-model-provider={model.provider}
-												data-model-name={model.name}
-												data-model-search-order={index}
 												data-on:click={`
-													$_modelQuery = '';
+													$modelSearch = '';
 													@post('${endpoints.model}', {
 												payload: { model: ${JSON.stringify(value)} },
 											});

@@ -830,6 +830,72 @@ test("app stream refreshes current and background session statuses", async () =>
 	}
 });
 
+test("model searches stay browser-scoped across view updates and reconnects", async () => {
+	const state = createState();
+	state.setModels(
+		["deepseek-v4", "claude-sonnet"].map((id) => ({
+			id,
+			provider: "fixture",
+			name: id,
+			configured: true,
+			scoped: false,
+		})),
+		"fixture/deepseek-v4",
+	);
+	const first = new AbortController();
+	const second = new AbortController();
+	const reconnect = new AbortController();
+	try {
+		const firstReader = responseReader(
+			state.renderer.createStream(first.signal, "first"),
+		);
+		const secondReader = responseReader(
+			state.renderer.createStream(second.signal, "second"),
+		);
+		await readUntil(firstReader, (text) =>
+			text.includes("event: datastar-patch-signals"),
+		);
+		await readUntil(secondReader, (text) =>
+			text.includes("event: datastar-patch-signals"),
+		);
+		state.renderer.setModelSearch("first", "deepseek");
+		const filtered = await readUntil(firstReader, (text) =>
+			text.includes("workspace-review-data"),
+		);
+		const unfiltered = await readUntil(secondReader, (text) =>
+			text.includes("workspace-review-data"),
+		);
+		assertIncludes(filtered, 'id="model-option-fixture%2Fdeepseek-v4"');
+		assertNotIncludes(filtered, 'id="model-option-fixture%2Fclaude-sonnet"');
+		assertIncludes(unfiltered, 'id="model-option-fixture%2Fclaude-sonnet"');
+
+		state.setThinking("high", ["off", "high"]);
+		const update = await readUntil(firstReader, (text) =>
+			text.includes("workspace-review-data"),
+		);
+		assertNotIncludes(update, 'id="model-option-fixture%2Fclaude-sonnet"');
+		first.abort();
+		const restored = await readUntil(
+			responseReader(
+				state.renderer.createStream(
+					reconnect.signal,
+					"first",
+					"",
+					"",
+					"deepseek",
+				),
+			),
+			(text) => text.includes("event: datastar-patch-signals"),
+		);
+		assertIncludes(restored, 'id="model-option-fixture%2Fdeepseek-v4"');
+		assertNotIncludes(restored, 'id="model-option-fixture%2Fclaude-sonnet"');
+	} finally {
+		first.abort();
+		second.abort();
+		reconnect.abort();
+	}
+});
+
 test("state snapshots contain domain messages only", () => {
 	const state = createState();
 	state.appendMessage("assistant", "**answer**");
