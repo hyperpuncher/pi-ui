@@ -2,7 +2,8 @@ import { mkdir } from "node:fs/promises";
 
 await mkdir("dist", { recursive: true });
 const result = await Bun.build({
-	entrypoints: ["src/server-main.ts"],
+	entrypoints: ["src/server-main.ts", "src/extensions/codemode/worker.ts"],
+	root: ".",
 	compile: {
 		assets: ["./static"],
 		outfile: "./dist/pi-ui",

@@ -7,6 +7,7 @@ import {
 
 export const llamaProviderExtension: InlineExtension = {
 	name: LLAMA_PROVIDER_ID,
+	builtin: true,
 	factory: (api: ExtensionAPI) => {
 		api.registerProvider(createLlamaProvider().provider);
 	},

@@ -21,4 +21,13 @@ const result = await Bun.build({
 	banner: "#!/usr/bin/env bun",
 });
 for (const log of result.logs) console.warn(log);
+const worker = await Bun.build({
+	entrypoints: ["src/extensions/codemode/worker.ts"],
+	outdir: outputRoot,
+	naming: "codemode-worker.js",
+	target: "bun",
+	format: "esm",
+	minify: true,
+});
+for (const log of worker.logs) console.warn(log);
 await chmod(executable, 0o755);

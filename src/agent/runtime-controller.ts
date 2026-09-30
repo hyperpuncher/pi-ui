@@ -8,6 +8,9 @@ import {
 	createAgentSessionRuntime,
 	type CreateAgentSessionRuntimeFactory,
 	createAgentSessionServices,
+	createCodemodeExtension,
+	createMcpExtension,
+	createToolSearchExtension,
 	getAgentDir,
 	SessionManager,
 	type SessionStartEvent,
@@ -31,6 +34,7 @@ import {
 	managedWorktreeParts,
 	workspaceDisplayName,
 } from "../utils/workspace.ts";
+import "./codemode-assets.ts";
 import { AuthController } from "./auth-controller.ts";
 import { type AutoTitleConfig, generateAutoTitle } from "./auto-title.ts";
 import {
@@ -83,7 +87,22 @@ import { TranscriptProjector } from "./transcript-projector.ts";
 import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
 import { UsageController } from "./usage-controller.ts";
 
-const extensionFactories = [llamaProviderExtension];
+const extensionFactories = [
+	llamaProviderExtension,
+	{
+		name: "codemode",
+		factory: createCodemodeExtension(),
+		builtin: true,
+		replaceable: true,
+	},
+	{
+		name: "tool-search",
+		factory: createToolSearchExtension(),
+		builtin: true,
+		replaceable: true,
+	},
+	{ name: "mcp", factory: createMcpExtension(), builtin: true, replaceable: true },
+];
 const modelCatalogForceIntervalMs = 30 * 60 * 1000;
 const systemSlashCommands = [
 	{
