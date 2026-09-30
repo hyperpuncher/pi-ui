@@ -14,34 +14,17 @@
 		gap: 0.375rem;
 		overflow: hidden;
 		color: var(--text-muted);
-		font-size: var(--text-sm);
-		line-height: 1.125rem;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.prompt-working-status {
-		display: inline-flex;
-		min-width: 0;
-		height: 1.5rem;
-		align-items: center;
-		overflow: hidden;
-		color: var(--text-muted);
 		font-size: var(--text-xs);
 		line-height: 1.125rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.prompt-working-content {
-		display: inline-flex;
+	.prompt-status-message > span {
 		min-width: 0;
-		align-items: center;
-		gap: 0.375rem;
-	}
-	.prompt-working-content > span {
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	.prompt-working-content > svg {
+	.prompt-status-message > svg {
 		flex-shrink: 0;
 	}
 	.extension-status {

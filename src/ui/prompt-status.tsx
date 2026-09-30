@@ -22,15 +22,13 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 				<span>Sending...</span>
 			</span>
 			{state.extensionWorkingVisible && activityText && (
-				<span class="prompt-working-status">
-					<span class="prompt-working-content">
-						{state.extensionWorkingIndicator === undefined
-							? loaderIcon()
-							: state.extensionWorkingIndicator && (
-									<span safe>{state.extensionWorkingIndicator}</span>
-								)}
-						<span safe>{activityText}</span>
-					</span>
+				<span class="prompt-status-message">
+					{state.extensionWorkingIndicator === undefined
+						? loaderIcon()
+						: state.extensionWorkingIndicator && (
+								<span safe>{state.extensionWorkingIndicator}</span>
+							)}
+					<span safe>{activityText}</span>
 				</span>
 			)}
 			{renderUsageIndicators(state.usage)}
