@@ -830,7 +830,7 @@ test("app stream refreshes current and background session statuses", async () =>
 	}
 });
 
-test("model searches stay browser-scoped across view updates and reconnects", async () => {
+test("picker searches stay browser-scoped across view updates and reconnects", async () => {
 	const state = createState();
 	state.setModels(
 		["deepseek-v4", "claude-sonnet"].map((id) => ({
@@ -842,6 +842,10 @@ test("model searches stay browser-scoped across view updates and reconnects", as
 		})),
 		"fixture/deepseek-v4",
 	);
+	state.setSlashCommands([
+		{ name: "login", description: "Log in", source: "system" },
+		{ name: "skill:review", description: "Review code", source: "skill" },
+	]);
 	const first = new AbortController();
 	const second = new AbortController();
 	const reconnect = new AbortController();
@@ -859,6 +863,7 @@ test("model searches stay browser-scoped across view updates and reconnects", as
 			text.includes("event: datastar-patch-signals"),
 		);
 		state.renderer.setModelSearch("first", "deepseek");
+		state.renderer.setSlashSearch("first", "review");
 		const filtered = await readUntil(firstReader, (text) =>
 			text.includes("workspace-review-data"),
 		);
@@ -868,12 +873,16 @@ test("model searches stay browser-scoped across view updates and reconnects", as
 		assertIncludes(filtered, 'id="model-option-fixture%2Fdeepseek-v4"');
 		assertNotIncludes(filtered, 'id="model-option-fixture%2Fclaude-sonnet"');
 		assertIncludes(unfiltered, 'id="model-option-fixture%2Fclaude-sonnet"');
+		assertIncludes(filtered, 'id="slash-option-skill%3Areview"');
+		assertNotIncludes(filtered, 'id="slash-option-login"');
+		assertIncludes(unfiltered, 'id="slash-option-login"');
 
 		state.setThinking("high", ["off", "high"]);
 		const update = await readUntil(firstReader, (text) =>
 			text.includes("workspace-review-data"),
 		);
 		assertNotIncludes(update, 'id="model-option-fixture%2Fclaude-sonnet"');
+		assertNotIncludes(update, 'id="slash-option-login"');
 		first.abort();
 		const restored = await readUntil(
 			responseReader(
@@ -883,12 +892,15 @@ test("model searches stay browser-scoped across view updates and reconnects", as
 					"",
 					"",
 					"deepseek",
+					"review",
 				),
 			),
 			(text) => text.includes("event: datastar-patch-signals"),
 		);
 		assertIncludes(restored, 'id="model-option-fixture%2Fdeepseek-v4"');
 		assertNotIncludes(restored, 'id="model-option-fixture%2Fclaude-sonnet"');
+		assertIncludes(restored, 'id="slash-option-skill%3Areview"');
+		assertNotIncludes(restored, 'id="slash-option-login"');
 	} finally {
 		first.abort();
 		second.abort();

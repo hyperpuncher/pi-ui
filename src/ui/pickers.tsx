@@ -1,4 +1,4 @@
-import type { AutocompleteItem } from "@earendil-works/pi-tui";
+import { fuzzyFilter, type AutocompleteItem } from "@earendil-works/pi-tui";
 
 import { endpoints } from "../server/routes/endpoints.ts";
 import type {
@@ -15,12 +15,7 @@ import {
 import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
-import {
-	PickerEmpty,
-	PickerList,
-	PickerMetadata,
-	PickerRow,
-} from "./picker-components.tsx";
+import { PickerList, PickerMetadata, PickerRow } from "./picker-components.tsx";
 import { SessionRenameTitle } from "./session-rename.tsx";
 import { SessionRowAction } from "./session-row-action.tsx";
 import { renderSessionPageTrigger } from "./session-sidebar.tsx";
@@ -35,29 +30,30 @@ import { syncHtml } from "./sync-html.ts";
 
 const bottomAnchoredPickerClass = "picker-list picker-list-bottom";
 
-export function slashPickerOpenExpression(state: AppStateSnapshot): string {
-	const names = state.slashCommands.map(slashCommandName);
-	return `$prompt.startsWith('/') &&
-		!$prompt.includes(' ') &&
-		${JSON.stringify(names)}.some((name) =>
-			window.piUi.pickers.fuzzyMatch($prompt.slice(1), name).matches
-		)`;
-}
-
-export function renderSlashPicker(state: AppStateSnapshot): string {
+export function renderSlashPicker(state: AppStateSnapshot, query = ""): string {
+	const commands = fuzzyFilter([...state.slashCommands], query, slashCommandName);
 	return syncHtml(
-		<div id="slash-picker" data-init="window.piUi.pickers.sync(true)">
-			<PickerList
-				id="slash-picker-list"
-				label="Commands"
-				class={bottomAnchoredPickerClass}
+		<div
+			id="prompt-slash-popover"
+			class="prompt-picker-popover"
+			style="display: none;"
+			data-show={`$_slashPickerOpen && ${commands.length > 0}`}
+		>
+			<div
+				id="slash-picker"
+				data-effect={`
+					${Bun.hash(JSON.stringify(commands.map(slashCommandName)))}n;
+					window.piUi.pickers.sync(true);
+				`}
 			>
-				{state.slashCommands.length === 0 ? (
-					<PickerEmpty>No prompts or skills found.</PickerEmpty>
-				) : (
-					state.slashCommands.map((item, index) => renderSlashRow(item, index))
-				)}
-			</PickerList>
+				<PickerList
+					id="slash-picker-list"
+					label="Commands"
+					class={bottomAnchoredPickerClass}
+				>
+					{commands.map((item, index) => renderSlashRow(item, index))}
+				</PickerList>
+			</div>
 		</div>,
 	);
 }
@@ -83,14 +79,8 @@ function renderSlashRow(item: AppSlashCommand, index: number): string {
 			aria-selected={index === 0 ? "true" : "false"}
 			data-preserve-attr="aria-selected"
 			data-slash-row
-			data-slash-name={name}
-			data-slash-order={index}
 			data-picker-kind="slash"
 			data-on:click={clickAction}
-			data-show={`
-				$_slashPickerOpen &&
-				window.piUi.pickers.fuzzyMatch($prompt.slice(1), ${JSON.stringify(name)}).matches
-			`}
 		>
 			<div class="picker-row-button">
 				<span class="picker-row-content">

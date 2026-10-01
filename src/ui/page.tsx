@@ -231,11 +231,15 @@ export function renderPage(
 						]}
 						data-class:review-open="$_workspaceReviewOpen"
 						data-class:temporary-chat="$_temporarySession"
+						data-on-signal-patch-filter="{ include: /^slashSearch$/ }"
+						data-on-signal-patch={`@post('${endpoints.slashSearch}', {
+							payload: { clientId: '${displayClientId}', slashSearch: $slashSearch },
+						})`}
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
 						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
-						filterSignals: { include: /^(sessionSearch|workspaceDraft|modelSearch)$/ },
+						filterSignals: { include: /^(sessionSearch|workspaceDraft|modelSearch|slashSearch)$/ },
 						retry: 'always',
 						retryMaxCount: Infinity,
 						requestCancellation: 'cleanup',

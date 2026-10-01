@@ -1,4 +1,3 @@
-import { fuzzyFilter, fuzzyMatch } from "../../src/client/pi-fuzzy.ts";
 import { bindCodeCopy } from "./code-copy.js";
 import { activateCommandItem, bindControls, refreshControls } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
@@ -53,7 +52,6 @@ window.piUi = {
 	pickers: {
 		close: closePickers,
 		complete: completeSlashCommand,
-		fuzzyMatch,
 		isFileOpen,
 		isOpen: isPickerOpen,
 		sync: syncPickerSelection,
@@ -90,7 +88,7 @@ bindFileLinks();
 window.addEventListener("DOMContentLoaded", async () => {
 	bindControls();
 	focusPromptEnd();
-	bindPickers({ fuzzyFilter });
+	bindPickers();
 	bindMessageScroll();
 	bindCodeCopy();
 	bindTooltips();

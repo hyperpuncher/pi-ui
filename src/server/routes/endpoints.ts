@@ -24,6 +24,7 @@ export const endpoints = {
 	sessionPerformanceClient: "/session-performance/client",
 	sessionSidebar: "/session-sidebar",
 	prompt: "/prompt",
+	slashSearch: "/prompt/slash/search",
 	promptFollowUp: "/prompt/follow-up",
 	promptDequeue: "/prompt/dequeue",
 	promptQueueRemove: "/prompt/queue/remove",

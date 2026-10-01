@@ -7,7 +7,6 @@ import {
 	renderSlashPicker,
 	renderWorkspaceBrowserContent,
 	renderWorkspaceDialogMenu,
-	slashPickerOpenExpression,
 } from "#src/ui/pickers.tsx";
 import {
 	renderModelPicker,
@@ -74,32 +73,28 @@ test("file suggestions have stable option ids without nested focus targets", () 
 	assertFalse(html.includes("tabindex="));
 });
 
-test("slash picker uses pi fuzzy matching on command names", () => {
-	const expression = slashPickerOpenExpression(
-		appRenderSnapshot({
-			slashCommands: [
-				{ name: "login", description: "Log in", source: "system" },
-				{ name: "skill:review", description: "Review code", source: "skill" },
-			],
-		}),
+test("slash picker filters and ranks pi fuzzy matches on command names", () => {
+	const state = appRenderSnapshot({
+		slashCommands: [
+			{ name: "login", description: "Review code", source: "system" },
+			{ name: "skill:review", description: "Review code", source: "skill" },
+			{ name: "review", description: "Review", source: "prompt" },
+		],
+	});
+	const html = renderSlashPicker(state, "rv");
+	assertStringIncludes(html, 'id="slash-option-review"');
+	assertStringIncludes(html, 'id="slash-option-skill%3Areview"');
+	assertFalse(html.includes('id="slash-option-login"'));
+	assertFalse(
+		html.indexOf('id="slash-option-review"') >
+			html.indexOf('id="slash-option-skill%3Areview"'),
 	);
-
-	assertStringIncludes(expression, "$prompt.startsWith('/')");
-	assertStringIncludes(expression, "!$prompt.includes(' ')");
-	assertStringIncludes(expression, '["login","skill:review"].some');
-	assertStringIncludes(
-		expression,
-		"window.piUi.pickers.fuzzyMatch($prompt.slice(1), name).matches",
+	assertFalse(renderSlashPicker(state, "nonexistent").includes('role="option"'));
+	assertFalse(
+		renderSlashPicker(appRenderSnapshot({ slashCommands: [] })).includes(
+			'role="option"',
+		),
 	);
-	assertFalse(expression.includes("log in system"));
-	assertFalse(expression.includes("review code skill"));
-
-	const emptyExpression = slashPickerOpenExpression(
-		appRenderSnapshot({
-			slashCommands: [],
-		}),
-	);
-	assertStringIncludes(emptyExpression, "[].some");
 });
 
 test("session rows expose stable ids for resilient active descendants", () => {

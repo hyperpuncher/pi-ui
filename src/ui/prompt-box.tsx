@@ -4,7 +4,7 @@ import type { AppStateSnapshot } from "../state/app-store.ts";
 import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { Icon } from "./icon.tsx";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
-import { renderSlashPicker, slashPickerOpenExpression } from "./pickers.tsx";
+import { renderSlashPicker } from "./pickers.tsx";
 import { renderPromptAction } from "./prompt-action.tsx";
 import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
 import { renderPromptStart } from "./prompt-start.tsx";
@@ -23,26 +23,20 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 				_slashPickerOpen: false,
 				_promptSubmitting: false,
 				fileQuery: "",
+				slashSearch: "",
 			})}
 			data-on:pointerdown__outside="window.piUi.pickers.close()"
 			data-effect="
 				$_filePickerOpen;
 				$_slashPickerOpen;
-				$prompt;
+				$slashSearch = $prompt.startsWith('/') && !$prompt.includes(' ') ? $prompt.slice(1) : '';
 				window.piUi.pickers.sync(true);
 			"
 			data-on:pi-ui-prompt-submit-finished="$_promptSubmitting = false"
 		>
 			<div class="prompt-popovers">
 				{renderLatestButton()}
-				<div
-					id="prompt-slash-popover"
-					class="prompt-picker-popover"
-					style="display: none;"
-					data-show={`$_slashPickerOpen && (${slashPickerOpenExpression(state)})`}
-				>
-					{renderSlashPicker(state)}
-				</div>
+				{renderSlashPicker(state)}
 				<div
 					id="prompt-file-popover"
 					class="prompt-picker-popover"

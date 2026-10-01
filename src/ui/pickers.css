@@ -18,12 +18,6 @@
 		display: flex;
 		flex-direction: column-reverse;
 	}
-	.picker-empty {
-		padding: 1rem 0.75rem;
-		color: var(--text-muted);
-		font-size: var(--text-base);
-		text-align: center;
-	}
 	.picker-row {
 		border-radius: var(--radius-md);
 	}

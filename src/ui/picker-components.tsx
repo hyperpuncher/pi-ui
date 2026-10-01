@@ -19,14 +19,6 @@ export function PickerList(props: {
 	);
 }
 
-export function PickerEmpty(props: { children: JSX.Element }): string {
-	return syncHtml(
-		<li role="status" class="picker-empty">
-			{props.children}
-		</li>,
-	);
-}
-
 export function PickerRow(props: {
 	kind: "file" | "slash";
 	value: string;

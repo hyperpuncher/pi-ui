@@ -7,6 +7,7 @@ import {
 	nonnegativeIntegerField,
 	readActionSignals,
 	requiredString,
+	stringField,
 } from "../action-input.ts";
 import { datastarResponse, signalsResponse } from "../datastar.ts";
 import { RouteError, type RouteMap } from "../route.ts";
@@ -19,6 +20,16 @@ import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
 export const promptRoutes = {
+	[endpoints.slashSearch]: {
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			context.renderer.setSlashSearch(
+				requiredString(signals, "clientId"),
+				stringField(signals, "slashSearch"),
+			);
+			return datastarResponse();
+		},
+	},
 	[endpoints.prompt]: {
 		POST: async (request, context) => {
 			const { prompt, images } = await readPrompt(request);

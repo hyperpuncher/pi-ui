@@ -45,6 +45,7 @@ type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestio
 type ClientView = {
 	sessionQuery: string;
 	modelQuery: string;
+	slashQuery: string;
 	workspaceSearch: WorkspaceSearchView;
 };
 
@@ -79,11 +80,13 @@ export class UiRenderer implements AppStorePresentation {
 		query = "",
 		workspaceQuery = "",
 		modelQuery = "",
+		slashQuery = "",
 	): Response {
 		this.flush();
 		const view: ClientView = {
 			sessionQuery: query,
 			modelQuery,
+			slashQuery,
 			workspaceSearch: { query: workspaceQuery, results: [] },
 		};
 		this.clientViews.set(clientId, view);
@@ -149,6 +152,13 @@ export class UiRenderer implements AppStorePresentation {
 		const view = this.clientViews.get(clientId);
 		if (!view || view.modelQuery === query) return;
 		view.modelQuery = query;
+		this.viewChanged();
+	}
+
+	setSlashSearch(clientId: string, query: string): void {
+		const view = this.clientViews.get(clientId);
+		if (!view || view.slashQuery === query) return;
+		view.slashQuery = query;
 		this.viewChanged();
 	}
 
@@ -323,14 +333,14 @@ export class UiRenderer implements AppStorePresentation {
 			renderDebugOverlay(snapshot)
 		);
 	}
-	private renderPickerElements(snapshot: AppStateSnapshot, modelQuery = ""): string {
+	private renderPickerElements(snapshot: AppStateSnapshot, view?: ClientView): string {
 		return (
 			renderAuthDialog(snapshot.authDialog) +
 			renderExtensionDialog(snapshot.extensionDialog) +
 			renderLlamaDialog(snapshot.llamaDialog) +
-			renderModelPicker(snapshot, modelQuery) +
+			renderModelPicker(snapshot, view?.modelQuery) +
 			renderThinkingPicker(snapshot) +
-			renderSlashPicker(snapshot) +
+			renderSlashPicker(snapshot, view?.slashQuery) +
 			renderTreePicker(snapshot)
 		);
 	}
@@ -344,7 +354,7 @@ export class UiRenderer implements AppStorePresentation {
 		const query = view?.sessionQuery ?? "";
 		return (
 			this.renderAppElements(snapshot) +
-			this.renderPickerElements(snapshot, view?.modelQuery) +
+			this.renderPickerElements(snapshot, view) +
 			renderWorkspaceDialogMenu(
 				snapshot,
 				view?.workspaceSearch.query,

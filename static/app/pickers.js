@@ -2,7 +2,6 @@ import { focusPromptEnd, promptInput, setPromptValue } from "./prompt.js";
 
 let activeFilePrefix;
 let filePickerSuppressUntilInput = false;
-let slashCommandFilter;
 
 export function extractFilePrefix(value, cursor) {
 	const before = value.slice(0, cursor);
@@ -32,8 +31,7 @@ export function isOpen() {
 	return isFileOpen() || isSlashOpen();
 }
 
-export function bindPickers(options) {
-	slashCommandFilter = options.fuzzyFilter;
+export function bindPickers() {
 	document.addEventListener("input", syncFromPrompt);
 	document.addEventListener("click", handleClick);
 	document.addEventListener("keydown", handleKeydown);
@@ -191,23 +189,6 @@ function selectedPickerRow(selector) {
 	return rows.find((row) => row.getAttribute("aria-selected") === "true") ?? rows[0];
 }
 
-function rankSlashCommands(prompt) {
-	if (!prompt.startsWith("/") || prompt.includes(" ")) return;
-	const list = document.getElementById("slash-picker-list");
-	if (!(list instanceof HTMLElement)) return;
-	const rows = [...list.querySelectorAll("[data-slash-row]")].sort(
-		(left, right) =>
-			Number(left.dataset.slashOrder) - Number(right.dataset.slashOrder),
-	);
-	const ranked = slashCommandFilter(
-		rows,
-		prompt.slice(1),
-		(row) => row.dataset.slashName ?? "",
-	);
-	const matches = new Set(ranked);
-	list.append(...ranked, ...rows.filter((row) => !matches.has(row)));
-}
-
 export function nextPickerIndex(length, activeIndex, direction) {
 	if (length <= 0) return -1;
 	if (activeIndex === -1) return 0;
@@ -238,7 +219,6 @@ export function syncPickerSelection(reset = false) {
 				? "slash-picker-list"
 				: undefined;
 		if (reset && listId) {
-			if (listId === "slash-picker-list") rankSlashCommands(input.value);
 			document.getElementById(listId).scrollTop = 0;
 			for (const [index, option] of visibleRows(
 				`#${listId} [role="option"]`,
