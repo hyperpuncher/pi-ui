@@ -254,7 +254,7 @@
 	}
 	.tool-plain-output {
 		max-height: calc(5lh + 1px);
-		overflow: hidden;
+		overflow: auto;
 		line-height: 1.375rem;
 	}
 
@@ -279,7 +279,8 @@
 	.tool-title-mono {
 		font-family: var(--font-mono);
 	}
-	.tool-title-bash {
+	.tool-title-bash,
+	.tool-title-javascript {
 		overflow-wrap: anywhere;
 		tab-size: 4;
 		white-space: pre-wrap;
@@ -501,6 +502,18 @@
 		gap: 0.5rem;
 		font: var(--text-base)/1.125rem var(--font-mono);
 	}
+	.tool-title-javascript {
+		display: block;
+		margin-block: 0.5rem 0;
+	}
+	.nested-tool-calls {
+		--message-tool-gap: 0.5rem;
+
+		margin-block: 0.5rem;
+	}
+	.nested-tool-calls > .message-tool + .message-tool {
+		margin-block-start: var(--message-tool-gap);
+	}
 	.tool-title {
 		min-width: 0;
 		flex: 1;
@@ -523,6 +536,7 @@
 		display: flex;
 		min-width: 0;
 		overflow: hidden;
+		gap: 0.5rem;
 		color: var(--text-muted);
 		font: 500 var(--text-base)/1.125rem var(--font-mono);
 	}
@@ -609,8 +623,8 @@
 		color: var(--status-error);
 	}
 
-	#message-list > .message-tool:has(+ .message-tool)::after,
-	#message-list > .message-tool + .message-tool::before {
+	:is(#message-list, .nested-tool-calls) > .message-tool:has(+ .message-tool)::after,
+	:is(#message-list, .nested-tool-calls) > .message-tool + .message-tool::before {
 		position: absolute;
 		left: var(--timeline-rail-x);
 		width: 3px;
@@ -619,12 +633,12 @@
 		translate: -50% 0;
 	}
 
-	#message-list > .message-tool:has(+ .message-tool)::after {
+	:is(#message-list, .nested-tool-calls) > .message-tool:has(+ .message-tool)::after {
 		top: 0.5625rem;
 		bottom: 0;
 	}
 
-	#message-list > .message-tool + .message-tool::before {
+	:is(#message-list, .nested-tool-calls) > .message-tool + .message-tool::before {
 		top: calc(-1 * var(--message-tool-gap));
 		height: calc(var(--message-tool-gap) + 0.5625rem);
 	}

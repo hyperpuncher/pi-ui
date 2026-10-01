@@ -31,6 +31,15 @@ export function toolTitleParts(
 		];
 	}
 
+	if (
+		(toolName === "codemode" || toolName.endsWith("browser_run_code")) &&
+		isString(record?.code)
+	) {
+		return [
+			{ text: toolName },
+			{ text: record.code, mono: true, highlight: "javascript" },
+		];
+	}
 	const target = toolTarget(toolName, args);
 	const range = toolRange(args);
 	return [
@@ -64,11 +73,12 @@ export function toolMeta(toolName: string, args: JsonValue): string | undefined 
 
 export function toolEndMeta(startedAt: number | undefined): string | undefined {
 	if (startedAt === undefined) return undefined;
-	const duration = formatDuration(Date.now() - startedAt);
-	return duration === "0.0s" ? undefined : duration;
+	return formatDuration(performance.now() - startedAt);
 }
 
-function formatDuration(ms: number): string {
+export function formatDuration(ms: number): string {
+	if (ms < 1) return "0ms";
+	if (ms < 1000) return `${Math.round(ms)}ms`;
 	if (ms <= 60_000) return `${(ms / 1000).toFixed(1)}s`;
 
 	const totalSeconds = Math.round(ms / 1000);

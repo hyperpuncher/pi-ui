@@ -13,8 +13,7 @@ const result = await Bun.build({
 	packages: "bundle",
 	// pi-ui replaces pi's Photon image processing with Bun.Image.
 	// Pi falls back to eager languages when its terminal-only catalog is absent.
-	// Pierre uses the JS engine, not its optional WASM engine.
-	external: ["@silvia-odwyer/photon-node", "highlight.js/lib/index.js", "shiki/wasm"],
+	external: ["@silvia-odwyer/photon-node", "highlight.js/lib/index.js"],
 	minify: true,
 	// Let runtime-loaded pi extensions import the core modules embedded above.
 	define: { PI_BUNDLED_NODE: "true" },

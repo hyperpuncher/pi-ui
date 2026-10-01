@@ -1,6 +1,8 @@
 import { test } from "bun:test";
 
+import { toolTitleParts } from "#src/agent/tool-presentation.ts";
 import { AppStore } from "#src/state/app-store.ts";
+import { preloadPierreHighlighter } from "#src/ui/diffs.ts";
 import { MessageRenderService } from "#src/ui/message-render-service.ts";
 import { renderMessage, renderMessages } from "#src/ui/messages.tsx";
 import type { AppMessage } from "#src/ui/render-state.ts";
@@ -158,6 +160,74 @@ test("shell tools preserve wrapped title, metadata, and escaped output", () => {
 	assertStringIncludes(html, "&lt;script&gt;");
 	assertStringExcludes(html, "<script>");
 });
+
+test("codemode reuses highlighted tool titles and nests ordinary tool rows", async () => {
+	await preloadPierreHighlighter();
+	const code = '// preserve comments\ntext("<script>");';
+	const message = tool({
+		titleParts: toolTitleParts("codemode", { code }),
+		text: "parent output",
+		format: "output",
+		nestedCalls: {
+			calls: [
+				{
+					id: "code/1",
+					name: "read",
+					arguments: { path: "notes.txt" },
+					status: "ok",
+					durationMs: 0,
+				},
+				{
+					id: "code/2",
+					name: "read",
+					status: "unfinished",
+					argumentsBytes: 100_000,
+				},
+			],
+			complete: false,
+		},
+	});
+	const html = renderMessage(message);
+	assertEquals(html.match(/data-message-id="tool-1"/g)?.length, 1);
+	for (const text of [
+		"Nested tool calls",
+		"notes.txt",
+		"0ms",
+		"unfinished",
+		"arguments omitted: 100000 bytes",
+		"Nested call record is incomplete.",
+		"parent output",
+		"--shiki-light:",
+		"// preserve comments",
+		"&lt;script&gt;",
+	])
+		assertStringIncludes(html, text);
+	assertStringIncludes(html, 'data-message-id="code/1"');
+	assertStringExcludes(html, "<script>");
+	assertStringExcludes(html, "tool-pre-output");
+	const running = renderMessage({ ...message, state: "running" });
+	assertStringIncludes(running, 'aria-label="Running"');
+	assertStringExcludes(running, "unfinished");
+});
+
+test.each(["read", "bash", "codemode"])(
+	"compact %s rows keep duration after the title",
+	(name) => {
+		const html = renderMessage(
+			tool({
+				titleParts: toolTitleParts(name, {
+					path: "file.ts",
+					command: "echo hello",
+					code: "text(42);",
+				}),
+				meta: "4.1s",
+			}),
+		);
+		const compact =
+			html.match(/<p class="tool-title-compact"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
+		assertStringIncludes(compact, '<span class="tool-meta">4.1s</span></p>');
+	},
+);
 
 test("plain tool titles remain escaped", () => {
 	const html = renderMessage(tool({ title: '<img src=x onerror="bad">' }));

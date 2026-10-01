@@ -21,7 +21,11 @@ export const codeThemeRoutes = {
 			const theme = findCodeTheme(appearance, name);
 			if (!theme) throw new RouteError(400, "Unknown code theme.");
 
-			await preloadHighlighter({ langs: [], themes: [theme.name] });
+			await preloadHighlighter({
+				langs: [],
+				themes: [theme.name],
+				preferredHighlighter: "shiki-wasm",
+			});
 			const themes = { ...getPierreThemes(), [appearance]: theme.name };
 			await updateAppConfig((config) => {
 				config.codeTheme = themes;

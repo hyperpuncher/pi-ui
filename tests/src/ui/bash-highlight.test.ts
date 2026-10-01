@@ -3,13 +3,19 @@ import { afterAll, beforeAll, expect, spyOn, test } from "bun:test";
 import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
 import { getPierreThemes } from "#src/pierre-theme.ts";
-import { highlightBash, loadBashLanguages } from "#src/ui/bash-highlight.ts";
+import {
+	codeSnippets,
+	highlightBash,
+	highlightCodemode,
+	loadBashLanguages,
+} from "#src/ui/bash-highlight.ts";
 import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import { renderMessage } from "#src/ui/messages.tsx";
 
 let tokenization: ReturnType<typeof spyOn>;
 beforeAll(async () => {
 	expect(await loadPierreLanguage("bash")).toBe(true);
+	expect(await loadPierreLanguage("javascript")).toBe(true);
 	const highlighter = getHighlighterIfLoaded()!;
 	const tokenize = highlighter.codeToTokens.bind(highlighter);
 	// Exact-color tests must not depend on Shiki's wall-clock budget.
@@ -76,6 +82,18 @@ test.each([
 	["bun -e '", "typescript", "const n: number = 42", "'"],
 	['node --eval="', "javascript", "console.log(42)", '"'],
 	["node -p '", "javascript", "1 + 2", "'"],
+	[
+		"playwright-cli run-code '",
+		"javascript",
+		"async page => { return page.title(); }",
+		"'",
+	],
+	[
+		"playwright-cli -s=browser run-code '",
+		"javascript",
+		"async page => { return 42; }",
+		"'",
+	],
 	["bun --print '", "typescript", "1 + 2", "'"],
 	["deno eval --ext=ts '", "typescript", "const n: number = 42", "'"],
 	[
@@ -137,6 +155,188 @@ test("highlights multiple inline scripts without changing surrounding commands",
 		expect(styles([embedded])).toEqual(styles([native(body, language).flat()]));
 	}
 	expect(tokens.map((token) => token.content).join("")).toBe(command);
+});
+
+test.each([
+	["bash", "command", '"', "echo hello; pwd", "bash"],
+	[
+		"mcp__playwright__browser_run_code",
+		"code",
+		"'",
+		"const n = 42; text(n);",
+		"javascript",
+	],
+	["bash", "command", "`", "echo hello\npwd", "bash"],
+])(
+	"highlights literal codemode tools.%s %s strings",
+	(tool, field, quote, body, language) => {
+		const prefix = "text(await tools." + tool + "({" + field + ":" + quote;
+		const code = prefix + body + quote + "}));";
+		const result = highlightCodemode(code)!;
+		expect(
+			result.tokens
+				.map((line) => line.map((token) => token.content).join(""))
+				.join("\n"),
+		).toBe(code);
+		const embedded = result.tokens
+			.flat()
+			.filter(
+				(token) =>
+					token.offset >= prefix.length &&
+					token.offset < prefix.length + body.length,
+			);
+		expect(styles([embedded])).toEqual(styles([native(body, language).flat()]));
+	},
+);
+
+test.each([
+	[
+		"file_patch",
+		{
+			path: "sample.ts",
+			edits: [{ newText: 'const n = 42;\nconst s = "<script>☃😀";' }],
+		},
+		'"',
+		"typescript",
+	],
+	[
+		"file_replace",
+		{ path: "sample.ts", edits: [{ oldText: 'const s = "a";\n' }] },
+		"'",
+		"typescript",
+	],
+	[
+		"file_create",
+		{ path: "sample.py", content: "def answer():\n    return 42\n" },
+		'"',
+		"python",
+	],
+	["query_runner", { language: "sql", code: "SELECT 42;" }, '"', "sql"],
+	[
+		"file_create",
+		{ path: "sample.py", content: 'def label(value):\n    return f"${value}"\n' },
+		"template",
+		"python",
+	],
+	[
+		"file_create",
+		{
+			path: "sample.ts",
+			content: 'const text = "line\\n"; const label = `n:${42}`;',
+		},
+		"template",
+		"typescript",
+	],
+	[
+		"file_patch",
+		{ path: "sample.ts", edits: [{ newText: String.raw`const pattern = /\w+/;` }] },
+		"raw",
+		"typescript",
+	],
+])(
+	"uses parsed %s arguments to highlight code without changing source",
+	async (name, args, quote, language) => {
+		await loadPierreLanguage(language);
+		const snippets = codeSnippets({
+			calls: [{ id: "child", name, arguments: args, status: "ok" }],
+			complete: true,
+		});
+		expect(snippets.length).toBe(1);
+		const snippet = snippets[0]!;
+		const encoded = JSON.stringify(snippet.value).slice(1, -1);
+		const literal =
+			quote === '"'
+				? '"' + encoded + '"'
+				: quote === "'"
+					? "'" + encoded.replaceAll('\\"', '"').replaceAll("'", "\\'") + "'"
+					: quote === "template"
+						? "`" +
+							snippet.value
+								.replaceAll("\\", "\\\\")
+								.replaceAll("`", "\\`")
+								.replaceAll("${", "\\${") +
+							"`"
+						: "String.raw" + "`" + snippet.value + "`";
+		const code = "tools." + name + "({" + snippet.field + ":" + literal + "})";
+		const result = highlightCodemode(code, snippets)!;
+		expect(
+			result.tokens
+				.map((line) => line.map((token) => token.content).join(""))
+				.join("\n"),
+		).toBe(code);
+		const keyword = native(snippet.value, language)
+			.flat()
+			.find((token) => /^(const|def|SELECT)$/.test(token.content))!;
+		const embedded = result.tokens
+			.flat()
+			.find((token) => token.content === keyword.content)!;
+		expect(embedded.htmlStyle).toEqual(keyword.htmlStyle);
+		expect(result.missingLanguages).toEqual([]);
+	},
+);
+
+test("highlights large saved file payloads without losing escapes or blank lines", async () => {
+	await loadPierreLanguage("typescript");
+	const value = "const n = 42;\n\n".repeat(700);
+	const nested = {
+		calls: [
+			{
+				id: "large",
+				name: "write",
+				arguments: { path: "large.ts", content: value },
+				status: "ok" as const,
+			},
+		],
+		complete: true,
+	};
+	const code = "tools.write(" + JSON.stringify(nested.calls[0]!.arguments) + ")";
+	const result = highlightCodemode(code, codeSnippets(nested))!;
+	expect(
+		result.tokens
+			.map((line) => line.map((token) => token.content).join(""))
+			.join("\n"),
+	).toBe(code);
+	expect(result.tokens.flat().some((token) => token.content === "const")).toBe(true);
+});
+
+test.each([
+	'// newText:"const n = 42;"',
+	"text('newText:\"const n = 42;\"')",
+	'const documentation = `newText:"const n = 42;"`;',
+	"tools.edit({newText:`${value}`})",
+])(
+	"does not treat comments, documentation, or interpolation as a payload: %s",
+	(code) => {
+		expect(
+			styles(
+				highlightCodemode(code, [
+					{ field: "newText", value: "const n = 42;", language: "typescript" },
+				])!.tokens,
+			),
+		).toEqual(styles(native(code, "javascript")));
+	},
+);
+
+test("codemode highlights javascript inside a literal bash playwright call", () => {
+	const body = "async page => { const n = 42; return n; }";
+	const code =
+		'tools.bash({command:"playwright-cli run-code ' + "'" + body + "'" + '"})';
+	const start = code.indexOf(body);
+	const tokens = highlightCodemode(code)!
+		.tokens.flat()
+		.filter((token) => token.offset >= start && token.offset < start + body.length);
+	expect(styles([tokens])).toEqual(styles([native(body, "javascript").flat()]));
+});
+
+test.each([
+	'// tools.bash({command:"echo hi"})',
+	'text("tools.bash({command:hello})")',
+	String.raw`tools.bash({command:"echo \"hi\""})`,
+	"tools.bash({command:`echo ${value}`})",
+])("keeps escaped, dynamic, and non-call source intact: %s", (code) => {
+	expect(styles(highlightCodemode(code)!.tokens)).toEqual(
+		styles(native(code, "javascript")),
+	);
 });
 
 test("formats shell operators without touching embedded scripts or existing newlines", () => {

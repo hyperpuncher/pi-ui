@@ -278,6 +278,47 @@ async function expectSourceRestored(
 	assertEquals(source.disposeCount, 1);
 }
 
+test("RuntimeController uses the same duration format for every tool", async () => {
+	const state = new AppStore();
+	const fake = fakeRuntime();
+	const controller = await activate(state, [fake]);
+	const clock = spyOn(performance, "now");
+	try {
+		for (const name of [
+			"read",
+			"write",
+			"edit",
+			"bash",
+			"codemode",
+			"mcp__browser_run_code",
+		]) {
+			clock.mockReturnValue(0);
+			fake.emit(
+				agentSessionEventStub({
+					type: "tool_execution_start",
+					toolCallId: name,
+					toolName: name,
+					args: { path: "file.ts", command: "echo hello", code: "text(42);" },
+				}),
+			);
+			clock.mockReturnValue(4148);
+			fake.emit(
+				agentSessionEventStub({
+					type: "tool_execution_end",
+					toolCallId: name,
+					toolName: name,
+					result: { content: [] },
+					isError: false,
+				}),
+			);
+			assertEquals(state.messages.at(-1)?.meta, "4.1s");
+		}
+	} finally {
+		clock.mockRestore();
+		await controller.dispose();
+	}
+});
+
 test("RuntimeController abort preserves the live transcript and interrupted reply", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();

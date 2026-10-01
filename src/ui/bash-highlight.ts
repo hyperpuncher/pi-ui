@@ -1,10 +1,14 @@
+import type { NestedToolCalls } from "@earendil-works/pi-ai";
 import {
 	getFiletypeFromFileName,
 	getHighlighterIfLoaded,
 	type ThemedToken,
 } from "@pierre/diffs";
+import { flatTokenVariants } from "shiki/core";
 
 import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
+import type { JsonObject, JsonValue } from "../utils/json-types.ts";
+import { isRecord, isString } from "../utils/type-guards.ts";
 import { loadPierreLanguage } from "./diffs.ts";
 import { BoundedCache } from "./render-cache.ts";
 
@@ -74,10 +78,81 @@ const heredocOperator = "keyword.operator.heredoc.shell";
 const heredocDelimiter = "punctuation.definition.string.heredoc.delimiter.shell";
 type Explanation = NonNullable<ThemedToken["explanation"]>[number];
 type ShellPart = Explanation & { offset: number };
-type Script = { start: number; end: number; language: string };
+type Script = {
+	start: number;
+	end: number;
+	language: string;
+	value?: string;
+	quote?: string;
+};
+export type CodeSnippet = { field: string; value: string; language: string };
+
+export function codeSnippets(
+	nested: NestedToolCalls | undefined,
+	maxLength = Infinity,
+): CodeSnippet[] {
+	const snippets: CodeSnippet[] = [];
+	function visit(value: JsonValue | undefined, inherited?: string) {
+		if (Array.isArray(value)) {
+			for (const item of value) visit(item, inherited);
+			return;
+		}
+		if (!isRecord(value)) return;
+		// SAFETY: pi provides JSON values; the record guard excludes primitives and arrays.
+		const args = value as JsonObject;
+		const explicit = isString(args.language)
+			? args.language
+			: isString(args.lang)
+				? args.lang
+				: "";
+		const path = isString(args.path)
+			? args.path
+			: isString(args.file_path)
+				? args.file_path
+				: "";
+		const detected = explicit
+			? embeddedLanguages.has(explicit)
+				? explicit
+				: getFiletypeFromFileName(`snippet.${explicit}`)
+			: path
+				? getFiletypeFromFileName(path)
+				: undefined;
+		const language = detected && detected !== "text" ? detected : inherited;
+		for (const [field, body] of Object.entries(args)) {
+			if (
+				isString(body) &&
+				/^(content|oldText|newText|code|script|function|command)$/.test(field)
+			) {
+				const lang = language ?? (field === "command" ? "bash" : undefined);
+				if (lang && body.length <= maxLength)
+					snippets.push({ field, value: body, language: lang });
+			} else visit(body, language);
+		}
+	}
+	for (const call of nested?.calls ?? []) visit(call.arguments);
+	return snippets;
+}
+
+function encodeLiteral(value: string, quote: string, next = ""): string {
+	if (quote === "`") return value;
+	if (quote === "template") {
+		const encoded = value
+			.replaceAll("\\", "\\\\")
+			.replaceAll("`", "\\`")
+			.replaceAll("${", "\\${");
+		// An embedded lexer can split $ and { into separate tokens.
+		return value.endsWith("$") && next === "{"
+			? encoded.slice(0, -1) + "\\$"
+			: encoded;
+	}
+	const encoded = JSON.stringify(value).slice(1, -1);
+	return quote === "'"
+		? encoded.replaceAll('\\\"', '"').replaceAll("'", "\\'")
+		: encoded;
+}
 
 export function hasEmbeddedBash(command: string): boolean {
-	return /<<|(?:^|\s)(?:-[np]*[epc]\b|--(?:eval|print)\b|eval\b)|\b(?:awk|gawk|mawk)\b/.test(
+	return /<<|(?:^|\s)(?:-[np]*[epc]\b|--(?:eval|print)\b|eval\b)|\b(?:awk|gawk|mawk)\b|\bplaywright-cli\s+(?:-s=\S+\s+)?run-code\b/.test(
 		command,
 	);
 }
@@ -114,29 +189,146 @@ export function highlightBash(
 	const tokens = bashTokens(command, options.format);
 	if (!highlighter || !tokens) return undefined;
 	const breaks = options.format ? displayBreaks(command, tokens) : [];
+	return highlightScripts(
+		command,
+		tokens,
+		[...heredocs(command, tokens), ...inlineScripts(command, tokens)],
+		breaks,
+	);
+}
+
+export function highlightCodemode(code: string, snippets: CodeSnippet[] = []) {
+	const highlighter = getHighlighterIfLoaded();
+	if (!highlighter) return undefined;
+	const key = `${getActiveCodeThemeId()}\0codemode\0${code}`;
+	let base = scriptTokens.get(key);
+	if (!base) {
+		base = highlighter
+			.codeToTokensWithThemes(code, {
+				lang: "javascript",
+				themes: getPierreThemes(),
+				includeExplanation: "tokenType",
+				tokenizeTimeLimit: 0,
+			})
+			.flat()
+			.map((token) => {
+				// SAFETY: tokenType metadata is retained in variants by Shiki, though TokenStyles omits it.
+				const typed = token.variants.light as Pick<ThemedToken, "type">;
+				return {
+					...flatTokenVariants(token, ["light", "dark"], "--shiki-", "light"),
+					type: typed.type,
+				};
+			});
+		scriptTokens.set(key, base);
+	}
+
+	const hints = new Map<string, CodeSnippet | null>();
+	for (const snippet of snippets)
+		for (const quote of ['"', "'", "`", "template"]) {
+			const key = `${snippet.field}\0${quote}\0${encodeLiteral(snippet.value, quote)}`;
+			const previous = hints.get(key);
+			hints.set(
+				key,
+				previous === null || (previous && previous.language !== snippet.language)
+					? null
+					: snippet,
+			);
+		}
+	const scripts: Script[] = [];
+	for (let index = 0; index < base.length; index++) {
+		const token = base[index]!;
+		const quote = code[token.offset];
+		// TextMate's string token type excludes comments and regular expressions.
+		if (token.type !== 2 || !quote || !['"', "'", "`"].includes(quote)) continue;
+		const end = stringEnd(code, token.offset + 1, quote);
+		if (end < 0) continue;
+		const prefix = code.slice(Math.max(0, token.offset - 80), token.offset);
+		const body = code.slice(token.offset + 1, end);
+		const field = prefix.match(
+			/["']?\b(content|oldText|newText|code|script|function|command)["']?\s*:\s*(String\.raw\s*)?$/,
+		);
+		const encoding = quote === "`" && !field?.[2] ? "template" : quote;
+		const snippet = field
+			? hints.get(`${field[1]}\0${encoding}\0${body}`)
+			: undefined;
+		const call = prefix.match(
+			/\btools\.(bash|\w*browser_run_code)\s*\(\s*\{[^{}]*\b(command|code)\s*:\s*$/,
+		);
+		const interpolated =
+			quote === "`" &&
+			[...body.matchAll(/\$\{/g)].some((match) => !isEscaped(body, match.index));
+		const language =
+			snippet?.language ??
+			(call &&
+			(call[1] === "bash" ? call[2] === "command" : call[2] === "code") &&
+			!body.includes("\\")
+				? call[1] === "bash"
+					? "bash"
+					: "javascript"
+				: undefined);
+		if (language && !interpolated)
+			scripts.push({
+				start: token.offset + 1,
+				end,
+				language,
+				value: snippet?.value,
+				quote: snippet ? encoding : undefined,
+			});
+		while (index + 1 < base.length && base[index + 1]!.offset <= end) index++;
+	}
+	return highlightScripts(code, tokenLines(code, base, []), scripts);
+}
+
+function stringEnd(code: string, start: number, quote: string): number {
+	let end = code.indexOf(quote, start);
+	while (end >= 0) {
+		if (!isEscaped(code, end)) return end;
+		end = code.indexOf(quote, end + 1);
+	}
+	return -1;
+}
+
+function isEscaped(code: string, offset: number): boolean {
+	let slashes = 0;
+	for (let index = offset - 1; code[index] === "\\"; index--) slashes++;
+	return slashes % 2 !== 0;
+}
+
+function highlightScripts(
+	command: string,
+	tokens: ThemedToken[][],
+	scripts: Script[],
+	breaks: number[] = [],
+) {
+	const highlighter = getHighlighterIfLoaded()!;
 	const loadedLanguages = new Set(highlighter.getLoadedLanguages());
 	const missingLanguages = new Set<string>();
-	const scripts = [
-		...heredocs(command, tokens),
-		...inlineScripts(command, tokens),
-	].sort((a, b) => a.start - b.start);
+	scripts.sort((a, b) => a.start - b.start);
 	const source = tokens.flat();
 	const highlighted: ThemedToken[] = [];
 	let index = 0;
-	for (const { start, end, language } of scripts) {
+	for (const { start, end, language, value, quote } of scripts) {
 		if (!loadedLanguages.has(language)) {
 			missingLanguages.add(language);
 			continue;
 		}
-		const code = command.slice(start, end);
+		const code = value ?? command.slice(start, end);
 		const key = `${getActiveCodeThemeId()}\0${language}\0${code}`;
 		let body = scriptTokens.get(key);
 		if (!body) {
 			try {
-				body = highlighter
-					.codeToTokens(code, { lang: language, themes: getPierreThemes() })
-					.tokens.flat();
-				scriptTokens.set(key, body);
+				if (language === "bash") {
+					const result = highlightBash(code)!;
+					body = result.tokens.flat();
+					for (const missing of result.missingLanguages)
+						missingLanguages.add(missing);
+					if (!result.missingLanguages.length) scriptTokens.set(key, body);
+				} else {
+					body = highlighter
+						.codeToTokens(code, { lang: language, themes: getPierreThemes() })
+						.tokens.flat();
+					scriptTokens.set(key, body);
+				}
 			} catch {
 				continue;
 			}
@@ -152,8 +344,34 @@ export function highlightBash(
 				...head,
 				content: head.content.slice(0, start - head.offset),
 			});
-		for (const token of body)
-			highlighted.push({ ...token, offset: token.offset + start });
+		let decodedOffset = 0;
+		let encodedOffset = start;
+		for (const token of body) {
+			if (value !== undefined && quote) {
+				const gap = encodeLiteral(
+					code.slice(decodedOffset, token.offset),
+					quote,
+					code[token.offset],
+				);
+				if (gap)
+					highlighted.push({ ...head!, offset: encodedOffset, content: gap });
+				encodedOffset += gap.length;
+				const content = encodeLiteral(
+					token.content,
+					quote,
+					code[token.offset + token.content.length],
+				);
+				highlighted.push({ ...token, offset: encodedOffset, content });
+				encodedOffset += content.length;
+				decodedOffset = token.offset + token.content.length;
+			} else highlighted.push({ ...token, offset: token.offset + start });
+		}
+		if (value !== undefined && quote && encodedOffset < end)
+			highlighted.push({
+				...head!,
+				offset: encodedOffset,
+				content: command.slice(encodedOffset, end),
+			});
 		while (
 			index < source.length &&
 			source[index]!.offset + source[index]!.content.length <= end
@@ -374,6 +592,8 @@ function inlineScripts(command: string, tokens: ThemedToken[][]): Script[] {
 		if (/\n|(?:^|\s)--(?:\s|$)/.test(prefix)) continue;
 		let isScript = false;
 		if (language === "python") isScript = /^\s+(?:-[A-Za-z]+\s+)*-c\s*$/.test(prefix);
+		else if (name === "playwright-cli")
+			isScript = /^\s+(?:-s=\S+\s+)?run-code\s+$/.test(prefix);
 		else if (name === "deno") isScript = /^\s+eval(?:\s+--[\w=-]+)*\s+$/.test(prefix);
 		else if (["node", "bun"].includes(name))
 			isScript =
@@ -396,7 +616,7 @@ function inlineScripts(command: string, tokens: ThemedToken[][]): Script[] {
 function inlineLanguage(name: string): string | undefined {
 	if (/^python(?:\d+(?:\.\d+)*)?$/.test(name)) return "python";
 	if (name === "bun" || name === "deno") return "typescript";
-	if (name === "node") return "javascript";
+	if (name === "node" || name === "playwright-cli") return "javascript";
 	if (name === "gawk" || name === "mawk") return "awk";
 	if (["ruby", "perl", "lua", "awk"].includes(name)) return name;
 	return undefined;

@@ -46,7 +46,9 @@ export async function createApp() {
 	const sessionSidebar = normalizeSessionSidebarPreferences(appConfig.sessionSidebar);
 	setActiveCodeTheme(codeTheme);
 	setActiveFonts(fonts);
-	const preloadShellHighlighterPromise = loadPierreLanguage("bash");
+	const preloadToolHighlighterPromise = Promise.all(
+		["bash", "javascript"].map(loadPierreLanguage),
+	);
 	const store = new AppStore();
 	store.keybindHints = appConfig.keybindHints !== false;
 	store.minimalMode = appConfig.minimalMode === true;
@@ -78,8 +80,8 @@ export async function createApp() {
 		console.error("Failed to start pi SDK runtime", error);
 		return undefined;
 	});
-	if (!(await preloadShellHighlighterPromise)) {
-		console.error("Failed to preload shell highlighter");
+	if (!(await preloadToolHighlighterPromise).every(Boolean)) {
+		console.error("Failed to preload tool highlighter");
 	}
 	const workspaceReview = new WorkspaceReviewController(store);
 	workspaceReview.open(store.workspacePath);

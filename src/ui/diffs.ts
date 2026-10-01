@@ -72,6 +72,7 @@ export async function preloadPierreHighlighter(): Promise<void> {
 	await preloadHighlighter({
 		themes: [themes.dark, themes.light],
 		langs: [...pierreLanguages],
+		preferredHighlighter: "shiki-wasm",
 	});
 }
 
@@ -85,6 +86,7 @@ export function loadPierreLanguage(language: string): Promise<boolean> {
 	const loading = preloadHighlighter({
 		themes: [themes.dark, themes.light],
 		langs: [language],
+		preferredHighlighter: "shiki-wasm",
 	})
 		.then(() => isPierreLanguageLoaded(language))
 		.catch(() => false);

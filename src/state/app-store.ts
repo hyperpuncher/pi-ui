@@ -433,6 +433,10 @@ export class AppStore {
 		this.presentation?.messageAppended(id);
 		return id;
 	}
+	getMessage(id: string): TranscriptMessage | undefined {
+		return this.transcript.getMessage(id);
+	}
+
 	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void {
 		if (!this.transcript.updateMessage(id, patch)) return;
 		this.presentation?.messageUpdated(id);

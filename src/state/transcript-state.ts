@@ -1,3 +1,5 @@
+import type { NestedToolCalls } from "@earendil-works/pi-ai";
+
 export type TranscriptMessageRole =
 	| "user"
 	| "assistant"
@@ -13,7 +15,7 @@ export type TranscriptMessageTitlePart = {
 	text: string;
 	tone?: "default" | "accent" | "warning" | "muted";
 	mono?: boolean;
-	highlight?: "bash";
+	highlight?: "bash" | "javascript";
 };
 
 export type TranscriptMessageAttachment = {
@@ -27,6 +29,7 @@ export type TranscriptMessage = {
 	id: string;
 	role: TranscriptMessageRole;
 	text: string;
+	nestedCalls?: NestedToolCalls;
 	attachments?: TranscriptMessageAttachment[];
 	timestamp: Date;
 	title?: string;
@@ -38,7 +41,7 @@ export type TranscriptMessage = {
 
 export type TranscriptMessageOptions = Pick<
 	TranscriptMessage,
-	"title" | "titleParts" | "meta" | "state" | "format" | "attachments"
+	"title" | "titleParts" | "meta" | "state" | "format" | "attachments" | "nestedCalls"
 >;
 
 export type TranscriptMessageInput = Omit<TranscriptMessage, "id">;
@@ -277,6 +280,9 @@ function cloneMessage(message: TranscriptMessage): TranscriptMessage {
 			...attachment,
 			image: attachment.image ? { ...attachment.image } : undefined,
 		})),
+		nestedCalls: message.nestedCalls
+			? structuredClone(message.nestedCalls)
+			: undefined,
 		timestamp: new Date(message.timestamp),
 		titleParts: message.titleParts?.map((part) => ({ ...part })),
 	};

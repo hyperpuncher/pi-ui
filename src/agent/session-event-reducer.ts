@@ -12,6 +12,7 @@ import {
 	formatProviderErrorMessage,
 	isAbortErrorMessage,
 } from "./provider-error-message.ts";
+import { contentToText } from "./tool-presentation.ts";
 
 type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 	AgentSessionEvent,
@@ -24,6 +25,7 @@ type AssistantEventMessage = Extract<
 export type ToolArguments = JsonValue;
 
 export type SessionEventStateSink = {
+	getMessage(id: string): Pick<TranscriptMessage, "nestedCalls" | "state"> | undefined;
 	appendMessage(
 		role: TranscriptMessage["role"],
 		text: string,
@@ -152,12 +154,53 @@ export function reduceSessionEvent(
 	context: SessionEventReducerContext,
 ): SessionEventReducerOutcome {
 	const { state, tools } = context;
+	if ("parentToolCallId" in event && event.parentToolCallId) {
+		if (event.type === "tool_execution_update") return noOutcome;
+		const id = tools.messageIds.get(event.parentToolCallId);
+		const startedAt = tools.startedAt.get(event.toolCallId);
+		if (event.type === "tool_execution_end") {
+			tools.messageIds.delete(event.toolCallId);
+			tools.startedAt.delete(event.toolCallId);
+		}
+		const parent = id ? state.getMessage(id) : undefined;
+		if (!id || parent?.state !== "running") return noOutcome;
+		const nestedCalls = parent.nestedCalls ?? { calls: [], complete: true };
+		if (event.type === "tool_execution_start") {
+			tools.messageIds.set(event.toolCallId, id);
+			tools.startedAt.set(event.toolCallId, context.nowMs?.() ?? performance.now());
+			nestedCalls.calls.push({
+				id: event.toolCallId,
+				name: event.toolName,
+				arguments: event.args,
+				status: "unfinished",
+			});
+		} else if (event.type === "tool_execution_end") {
+			const call = nestedCalls.calls.find((call) => call.id === event.toolCallId);
+			if (call) {
+				call.status = event.isError ? "error" : "ok";
+				if (startedAt !== undefined)
+					call.durationMs =
+						(context.nowMs?.() ?? performance.now()) - startedAt;
+				if (event.isError)
+					call.error = contentToText(event.result.content).slice(0, 500);
+			}
+		}
+		state.updateMessage(id, { nestedCalls });
+		return noOutcome;
+	}
 	switch (event.type) {
 		case "agent_start":
 			state.setActivityText("Working...");
 			break;
 		case "message_start":
-			if (event.message.role === "toolResult") break;
+			if (event.message.role === "toolResult") {
+				const id = tools.messageIds.get(event.message.toolCallId);
+				if (id && event.message.nestedCalls) {
+					state.updateMessage(id, { nestedCalls: event.message.nestedCalls });
+					tools.messageIds.delete(event.message.toolCallId);
+				}
+				break;
+			}
 			for (const message of context.convertMessage(
 				event.message,
 				context.now?.() ?? new Date(),
@@ -273,7 +316,7 @@ export function reduceSessionEvent(
 		case "tool_execution_start": {
 			state.finishAssistant();
 			tools.callArgs.set(event.toolCallId, event.args);
-			tools.startedAt.set(event.toolCallId, context.nowMs?.() ?? Date.now());
+			tools.startedAt.set(event.toolCallId, context.nowMs?.() ?? performance.now());
 			const view = context.formatToolStart(event);
 			const existingId = tools.messageIds.get(event.toolCallId);
 			const id = existingId ?? state.appendMessage("tool", view.text, view.options);
@@ -296,7 +339,9 @@ export function reduceSessionEvent(
 			);
 			if (id) state.updateMessage(id, { text: view.text, ...view.options });
 			else state.appendMessage("tool", view.text, view.options);
-			tools.messageIds.delete(event.toolCallId);
+			// Keep the parent association until its persisted result supplies the bounded record.
+			if (!id || !state.getMessage(id)?.nestedCalls)
+				tools.messageIds.delete(event.toolCallId);
 			tools.callArgs.delete(event.toolCallId);
 			tools.startedAt.delete(event.toolCallId);
 			break;

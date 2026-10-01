@@ -45,6 +45,15 @@ class FakeState implements SessionEventStateSink {
 		return id;
 	}
 
+	getMessage(id: string): TranscriptMessageOptions | undefined {
+		const message = this.appended.find((message) => message.id === id);
+		if (!message) return undefined;
+		const value = { ...message.options };
+		for (const update of this.updates)
+			if (update.id === id) Object.assign(value, update.patch);
+		return value;
+	}
+
 	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void {
 		this.updates.push({ id, patch });
 	}
@@ -445,6 +454,79 @@ test("reduces one complete tool lifecycle and clears all tool maps", () => {
 	assertEquals(tools.messageIds.size, 0);
 	assertEquals(tools.callArgs.size, 0);
 	assertEquals(tools.startedAt.size, 0);
+});
+
+test("nested calls stay under their parent until the persisted summary arrives", () => {
+	const { state, tools, context } = fixture();
+	const emit = (
+		type: "tool_execution_start" | "tool_execution_update" | "tool_execution_end",
+		toolCallId: string,
+		parentToolCallId?: string,
+		isError = false,
+	) =>
+		reduceSessionEvent(
+			event({
+				type,
+				toolCallId,
+				parentToolCallId,
+				toolName: "read",
+				args: {},
+				result: { content: [] },
+				partialResult: { content: [] },
+				isError,
+			}),
+			context,
+		);
+	emit("tool_execution_start", "parent");
+	emit("tool_execution_start", "other");
+	emit("tool_execution_start", "child", "parent");
+	emit("tool_execution_start", "grandchild", "child");
+	emit("tool_execution_start", "other-child", "other");
+	assertEquals(state.appended.length, 2);
+	const before = state.updates.length;
+	emit("tool_execution_update", "child", "parent");
+	assertEquals(state.updates.length, before);
+	context.nowMs = () => 458;
+	emit("tool_execution_end", "grandchild", "child", true);
+	context.nowMs = () => 460;
+	emit("tool_execution_end", "child", "parent");
+	assertEquals(
+		state.getMessage("message-1")?.nestedCalls?.calls.map((call) => call.durationMs),
+		[4, 2],
+	);
+	assertEquals(
+		state.getMessage("message-1")?.nestedCalls?.calls.map((call) => call.status),
+		["ok", "error"],
+	);
+	assertEquals(
+		state.getMessage("message-2")?.nestedCalls?.calls[0]?.status,
+		"unfinished",
+	);
+	emit("tool_execution_end", "parent");
+	const nestedCalls = {
+		calls: [{ id: "child", name: "read", status: "ok" as const }],
+		complete: false,
+	};
+	reduceSessionEvent(
+		event({
+			type: "message_start",
+			message: {
+				role: "toolResult",
+				toolCallId: "parent",
+				toolName: "read",
+				content: [],
+				isError: false,
+				timestamp: 0,
+				nestedCalls,
+			},
+		}),
+		context,
+	);
+	assertEquals(state.updates.at(-1), { id: "message-1", patch: { nestedCalls } });
+	assertEquals(tools.messageIds.has("parent"), false);
+	emit("tool_execution_start", "late-child", "parent");
+	emit("tool_execution_end", "orphan", "missing");
+	assertEquals(state.appended.length, 2);
 });
 
 test("appends an orphan tool end and removes stale map entries", () => {

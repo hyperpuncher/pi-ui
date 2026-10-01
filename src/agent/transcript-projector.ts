@@ -300,6 +300,7 @@ function toolResultToAppMessage(
 		titleParts: toolCall ? toolTitleParts(toolCall.name, toolCall.args) : undefined,
 		state: message.isError ? "error" : "success",
 		format: view.format,
+		nestedCalls: message.nestedCalls,
 	};
 }
 

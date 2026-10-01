@@ -14,6 +14,7 @@ import {
 import {
 	contentToText,
 	formatToolResult,
+	formatDuration,
 	formatToolStart,
 	summarizeValue,
 	toolEndMeta,
@@ -40,7 +41,18 @@ import {
 } from "./test-fixtures.ts";
 
 test("tool presentation preserves representative and malformed values", () => {
-	assertEquals(toolEndMeta(Date.now() - 90_000), "1m 30s");
+	assertEquals(toolEndMeta(performance.now() - 90_000), "1m 30s");
+	for (const [ms, expected] of [
+		[0, "0ms"],
+		[0.42, "0ms"],
+		[0.99, "0ms"],
+		[1, "1ms"],
+		[999, "999ms"],
+		[1000, "1.0s"],
+		[4148, "4.1s"],
+		[90_000, "1m 30s"],
+	] as const)
+		assertEquals(formatDuration(ms), expected);
 	assertEquals(formatToolStart("edit", { edits: [{}, {}] }), {
 		text: "2 replacements",
 		format: "output",
@@ -122,6 +134,36 @@ test("transcript projection renders branch summaries as compact summaries", () =
 			timestamp,
 		},
 	]);
+});
+
+test("transcript projection restores codemode source and nested calls as one message", () => {
+	const code = 'text(await tools.read({ path: "notes.txt" }));';
+	const nestedCalls = {
+		calls: [{ id: "code/1", name: "read", status: "unfinished" as const }],
+		complete: false,
+	};
+	const [message] = new TranscriptProjector().entry(
+		sessionEntryStub({
+			type: "message",
+			message: {
+				role: "toolResult",
+				toolCallId: "code",
+				toolName: "codemode",
+				content: [{ type: "text", text: "output" }],
+				nestedCalls,
+				isError: false,
+				timestamp: 0,
+			},
+		}),
+		new Map([["code", { name: "codemode", args: { code } }]]),
+	);
+	assertEquals(message?.titleParts?.[1], {
+		text: code,
+		mono: true,
+		highlight: "javascript",
+	});
+	assertEquals(message?.nestedCalls, nestedCalls);
+	assertEquals(message?.text, "output");
 });
 
 test("transcript projection restores persisted provider errors", () => {

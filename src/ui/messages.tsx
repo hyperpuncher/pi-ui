@@ -6,6 +6,7 @@ import {
 	attachmentFileKind,
 } from "../../static/app/attachment-file.js";
 import { providerErrorPresentation } from "../agent/provider-error-message.ts";
+import { formatDuration, toolTitleParts } from "../agent/tool-presentation.ts";
 import { authDialogAction } from "../commands/actions.ts";
 import { keybindActions, keybindAria } from "../keybinds.ts";
 import { getActiveCodeThemeId } from "../pierre-theme.ts";
@@ -13,7 +14,12 @@ import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppKeybindHint, AppSessionSummary } from "../state/app-store.ts";
 import type { TranscriptMessageTitlePart } from "../state/transcript-state.ts";
 import { escapeHtml } from "../utils/html.ts";
-import { highlightBash } from "./bash-highlight.ts";
+import {
+	codeSnippets,
+	type CodeSnippet,
+	highlightBash,
+	highlightCodemode,
+} from "./bash-highlight.ts";
 import { DateTime } from "./date-time.tsx";
 import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
@@ -26,8 +32,8 @@ import { shikiTokenStyle } from "./shiki-token-style.ts";
 import { StatusDot } from "./status-dot.tsx";
 import { syncHtml } from "./sync-html.ts";
 
-type InlineBashCacheEntry = { html: string; missingLanguages: string[] };
-const inlineBashCache = new BoundedCache<string, InlineBashCacheEntry>(500);
+type InlineCodeCacheEntry = { html: string; missingLanguages: string[] };
+const inlineCodeCache = new BoundedCache<string, InlineCodeCacheEntry>(500);
 
 function preservesFinalizedMessageDom(message: AppMessage): boolean {
 	return (
@@ -283,7 +289,7 @@ function renderPlainOutput(message: AppMessage) {
 function renderPendingCodeOutput(text: string) {
 	return (
 		<pre class="tool-pending-output tool-pending-code">
-			<code>{renderInlineBash(text)}</code>
+			<code>{renderInlineCode(text)}</code>
 		</pre>
 	);
 }
@@ -308,7 +314,11 @@ function stripDiffMetadata(text: string): string {
 		.join("\n");
 }
 
-function renderToolTitle(title: string, parts: TranscriptMessageTitlePart[] | undefined) {
+function renderToolTitle(
+	title: string,
+	parts: TranscriptMessageTitlePart[] | undefined,
+	snippets: CodeSnippet[] = [],
+) {
 	if (!parts?.length) return <span safe>{title}</span>;
 	if (parts[0]?.text === "$ " && parts[1]?.highlight === "bash") {
 		return (
@@ -329,17 +339,25 @@ function renderToolTitle(title: string, parts: TranscriptMessageTitlePart[] | un
 			</span>
 		);
 	}
-	return <>{parts.map((part, index) => renderToolTitlePart(part, index))}</>;
+	return (
+		<>{parts.map((part, index) => renderToolTitlePart(part, index, "", snippets))}</>
+	);
 }
 
 function renderToolTitlePart(
 	part: TranscriptMessageTitlePart,
 	index: number,
 	suffix = "",
+	snippets: CodeSnippet[] = [],
 ) {
-	return part.highlight === "bash" ? (
+	return part.highlight ? (
 		<span class={toolTitlePartClass(part, index)}>
-			{renderInlineBash(part.text, suffix)}
+			{renderInlineCode(
+				part.highlight === "javascript" ? part.text.trimEnd() : part.text,
+				suffix,
+				part.highlight,
+				snippets,
+			)}
 		</span>
 	) : (
 		<span class={toolTitlePartClass(part, index)} safe>
@@ -348,9 +366,17 @@ function renderToolTitlePart(
 	);
 }
 
-function renderInlineBash(command: string, suffix = ""): string {
-	const cacheKey = `${getActiveCodeThemeId()}\0${command}\0${suffix}`;
-	const cached = inlineBashCache.get(cacheKey);
+function renderInlineCode(
+	command: string,
+	suffix = "",
+	language = "bash",
+	snippets: CodeSnippet[] = [],
+): string {
+	const hintsKey = snippets
+		.map(({ field, language, value }) => `${field}:${language}:${Bun.hash(value)}`)
+		.join("\0");
+	const cacheKey = `${getActiveCodeThemeId()}\0${language}\0${command}\0${suffix}\0${hintsKey}`;
+	const cached = inlineCodeCache.get(cacheKey);
 	// Only retry when one of this command's missing grammars becomes available.
 	if (
 		cached &&
@@ -361,7 +387,10 @@ function renderInlineBash(command: string, suffix = ""): string {
 		return cached.html;
 
 	try {
-		const result = highlightBash(command, { format: true });
+		const result =
+			language === "bash"
+				? highlightBash(command, { format: true })
+				: highlightCodemode(command, snippets);
 		if (!result) return escapeHtml(command) + suffix;
 		const { tokens, missingLanguages } = result;
 		const highlighted = tokens
@@ -374,7 +403,7 @@ function renderInlineBash(command: string, suffix = ""): string {
 				return `<span class="shell-line" style="--shell-indent:${indent + 2}ch">${line.map(renderInlineToken).join("")}${index === tokens.length - 1 ? suffix : ""}</span>`;
 			})
 			.join("\n");
-		inlineBashCache.set(cacheKey, { html: highlighted, missingLanguages });
+		inlineCodeCache.set(cacheKey, { html: highlighted, missingLanguages });
 		return highlighted;
 	} catch {
 		return escapeHtml(command) + suffix;
@@ -432,7 +461,7 @@ function toolTitlePartClass(part: TranscriptMessageTitlePart, index: number): st
 	const classes = [];
 	if (index === 0 && !part.mono) classes.push("tool-title-gap");
 	if (part.mono) classes.push("tool-title-mono");
-	if (part.highlight === "bash") classes.push("tool-title-bash");
+	if (part.highlight) classes.push(`tool-title-${part.highlight}`);
 	if (part.tone === "accent") classes.push("tool-title-accent");
 	if (part.tone === "warning") classes.push("warning-foreground");
 	if (part.tone === "muted") classes.push("tool-title-muted");
@@ -713,8 +742,57 @@ function toolMessageStatus(message: AppMessage): ToolMessageStatus {
 	return { state: "success", label: "Completed" };
 }
 
+function renderNestedToolCalls(message: AppMessage) {
+	const nested = message.nestedCalls;
+	if (!nested?.calls.length) return "";
+	return (
+		<div class="nested-tool-calls" aria-label="Nested tool calls">
+			{nested.calls.map((call) =>
+				renderToolMessage({
+					id: call.id,
+					role: "tool",
+					timestamp: message.timestamp,
+					presentationState: "plain",
+					presentationVersion: 0,
+					title: call.name,
+					titleParts: toolTitleParts(call.name, call.arguments ?? {}),
+					state:
+						call.status === "ok"
+							? "success"
+							: call.status === "unfinished" && message.state === "running"
+								? "running"
+								: "error",
+					text:
+						call.error ??
+						(call.argumentsBytes !== undefined
+							? `arguments omitted: ${call.argumentsBytes} bytes`
+							: ""),
+					format: "output",
+					meta:
+						call.status === "unfinished" && message.state !== "running"
+							? "unfinished"
+							: call.durationMs !== undefined
+								? formatDuration(call.durationMs)
+								: undefined,
+				}),
+			)}
+			{!nested.complete && (
+				<p class="fine-print">Nested call record is incomplete.</p>
+			)}
+		</div>
+	);
+}
+
 function renderToolMessage(message: AppMessage): string {
 	const status = toolMessageStatus(message);
+	const code = message.titleParts?.find((part) => part.highlight === "javascript");
+	const snippets = code ? codeSnippets(message.nestedCalls, code.text.length) : [];
+	const title = renderToolTitle(message.title ?? "Tool", message.titleParts, snippets);
+	const meta = (
+		<span class="tool-meta" aria-hidden={message.meta ? undefined : "true"} safe>
+			{message.meta ?? ""}
+		</span>
+	);
 	return syncHtml(
 		<article
 			class="message message-tool tool-timeline-item"
@@ -722,23 +800,15 @@ function renderToolMessage(message: AppMessage): string {
 		>
 			<StatusDot class="tool-state-dot" state={status.state} label={status.label} />
 			<header class="tool-header" data-show="!$_minimalMode && !$_toolOutputHidden">
-				<span class="tool-title">
-					{renderToolTitle(message.title ?? "Tool", message.titleParts)}
-				</span>
-				<span
-					class="tool-meta"
-					aria-hidden={message.meta ? undefined : "true"}
-					safe
-				>
-					{message.meta ?? ""}
-				</span>
+				<span class="tool-title">{title}</span>
+				{meta}
 			</header>
 			<p class="tool-title-compact" data-show="$_minimalMode || $_toolOutputHidden">
-				<span class="tool-title-compact-content">
-					{renderToolTitle(message.title ?? "Tool", message.titleParts)}
-				</span>
+				<span class="tool-title-compact-content">{title}</span>
+				{meta}
 			</p>
 			<div data-show="!$_minimalMode && !$_toolOutputHidden">
+				{renderNestedToolCalls(message)}
 				{renderToolOutput(message)}
 			</div>
 		</article>,
