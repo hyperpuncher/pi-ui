@@ -37,7 +37,7 @@
 		"release": "bun scripts/release.ts",
 		"schema:build": "bun scripts/generate-config-schema.ts",
 		"schema:check": "bun scripts/generate-config-schema.ts --check",
-		"fmt": "bun run schema:build && ~/projects/dsfmt/target/release/dsfmt --write . && bunx oxfmt",
+		"fmt": "bun run schema:build && dsfmt --write . && bunx oxfmt",
 		"lint": "bunx oxlint && bun run lint:css",
 		"lint:css": "bunx stylelint \"src/**/*.css\"",
 		"lint:fix": "bunx oxlint --fix && bun run lint:css --fix",
