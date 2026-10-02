@@ -130,7 +130,8 @@ all options with their defaults:
 	"autoTitle": {
 		"enabled": true,
 		"models": [
-			"openai-codex/gpt-5.6-luna:minimal",
+			"openai/gpt-6-luna:low",
+			"openai-codex/gpt-6-luna:low",
 			"opencode-go/deepseek-v4.1-flash:off"
 		],
 		"prompt": "use lowercase"
