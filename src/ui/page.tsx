@@ -63,7 +63,7 @@ export function renderPage(
 		(
 			<html
 				lang="en"
-				style={`--session-sidebar-preferred-width: ${sessionSidebarWidth}px; --font-sans: ${fonts.sans}; --font-mono: ${fonts.mono};`}
+				style={`--font-sans: ${fonts.sans}; --font-mono: ${fonts.mono};`}
 				data-theme-lab={themeLab || undefined}
 			>
 				<head>
@@ -249,7 +249,9 @@ export function renderPage(
 						<div
 							id="workspace-shell"
 							class="workspace-shell"
+							style={`--session-sidebar-preferred-width: ${sessionSidebarWidth}px;`}
 							data-style={`{
+								'--session-sidebar-preferred-width': $_sessionSidebarWidth + 'px',
 								'--review-pane-ratio': $workspaceReviewPreferences.gitPaneRatio || ${gitPaneRatioDefault},
 							}`}
 						>

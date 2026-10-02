@@ -1,8 +1,23 @@
+@property --session-sidebar-preferred-width {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 288px;
+}
+
+@property --session-sidebar-width {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 288px;
+}
+
 @layer theme {
 	:root {
 		--session-sidebar-min-width: 14rem;
 		--session-sidebar-max-width: 24rem;
-		--session-sidebar-preferred-width: 288px;
+	}
+
+	.session-sidebar,
+	.workspace-shell {
 		--session-sidebar-width: clamp(
 			var(--session-sidebar-min-width),
 			var(--session-sidebar-preferred-width),
@@ -161,11 +176,9 @@
 		height: 100%;
 	}
 	.session-sidebar-resize {
-		position: fixed;
-		inset-block: var(--workspace-inset);
-		inset-inline-end: calc(
-			var(--session-sidebar-width) + var(--workspace-inset) - var(--workspace-gap)
-		);
+		position: absolute;
+		inset-block: 0;
+		inset-inline-end: 100%;
 		width: var(--workspace-gap);
 		height: auto;
 	}

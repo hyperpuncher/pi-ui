@@ -87,16 +87,19 @@ test("workspace files expose native preview and source controls", () => {
 	assertStringIncludes(html, 'aria-label="File preview"');
 });
 
-test("configured sidebar width is applied before styles", () => {
-	assertStringIncludes(html, "--session-sidebar-preferred-width: 288px");
+test("configured sidebar width belongs to the layout containers, not the document", () => {
+	assertEquals(
+		html.match(/style="--session-sidebar-preferred-width: 288px;"/g)?.length,
+		2,
+	);
 	const custom = renderPage(
 		{ ...appRenderSnapshot({}), messages: [] },
 		{ sessionSidebarWidth: 354 },
 	);
-	assertStringIncludes(custom, "--session-sidebar-preferred-width: 354px");
 	assertEquals(
-		custom.indexOf("--session-sidebar-preferred-width: 354px") <
-			custom.indexOf('rel="stylesheet"'),
-		true,
+		custom.match(/style="--session-sidebar-preferred-width: 354px;"/g)?.length,
+		2,
 	);
+	assertFalse(custom.match(/<html[^>]*>/)?.[0]?.includes("session-sidebar") ?? true);
+	assertFalse(custom.includes("document.documentElement.style.setProperty"));
 });

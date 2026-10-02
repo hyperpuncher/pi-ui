@@ -69,6 +69,7 @@ export function renderSessionSidebar(
 			<dialog
 				id="session-sidebar"
 				class="session-sidebar"
+				style={`--session-sidebar-preferred-width: ${width}px;`}
 				aria-label="Sessions"
 				closedby="any"
 				aria-keyshortcuts={keybindAria("toggle-sessions")}
@@ -99,10 +100,7 @@ export function renderSessionSidebar(
 					if (!('closedBy' in HTMLDialogElement.prototype) && evt.target === el) el.close();
 				`}
 				data-signals:_session-sidebar-width__ifmissing={String(width)}
-				data-effect={`document.documentElement.style.setProperty(
-					'--session-sidebar-preferred-width',
-					$_sessionSidebarWidth + 'px',
-				)`}
+				data-style={`{ '--session-sidebar-preferred-width': $_sessionSidebarWidth + 'px' }`}
 				data-signals:_session-sidebar-pointer-x__ifmissing="0"
 				data-on:keydown__window={keybindActions(
 					[
