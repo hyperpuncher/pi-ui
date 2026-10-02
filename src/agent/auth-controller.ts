@@ -63,13 +63,19 @@ export class AuthController {
 				const dialog = this.state.authDialog;
 				if (!dialog || dialog.mode !== "logout") return;
 				const providers = credentials
-					.map(({ providerId, type }): AppAuthProvider => ({
-						id: providerId,
-						name:
-							runtime.services.modelRuntime.getProvider(providerId)?.name ??
-							providerId,
-						authType: type,
-					}))
+					.map(({ providerId, type }): AppAuthProvider => {
+						const provider =
+							runtime.services.modelRuntime.getProvider(providerId);
+						return {
+							id: providerId,
+							name: provider?.name ?? providerId,
+							authType: type,
+							subscription:
+								type === "oauth"
+									? provider?.auth.oauth?.isSubscription === true
+									: undefined,
+						};
+					})
 					.sort(compareAuthProviders);
 				this.state.setAuthDialog({
 					...dialog,
@@ -191,6 +197,7 @@ export class AuthController {
 					id: provider.id,
 					name: provider.name,
 					authType: "oauth",
+					subscription: provider.auth.oauth.isSubscription === true,
 				});
 			}
 			if (provider.auth.apiKey) {
@@ -220,13 +227,18 @@ export class AuthController {
 			progress: [],
 		});
 
-		const modelRuntime = this.getRuntime().services.modelRuntime;
+		const { modelRuntime, settingsManager } = this.getRuntime().services;
 		void withAgentHttpProxy(modelRuntime, () =>
-			modelRuntime.login(provider.id, provider.authType, {
-				signal: run.abortController.signal,
-				prompt: (prompt) => this.promptForInput(run, prompt),
-				notify: (event) => this.notifyAuthentication(run, event),
-			}),
+			modelRuntime.login(
+				provider.id,
+				provider.authType,
+				{
+					signal: run.abortController.signal,
+					prompt: (prompt) => this.promptForInput(run, prompt),
+					notify: (event) => this.notifyAuthentication(run, event),
+				},
+				{ getDeviceId: () => settingsManager.getOrCreateDeviceId() },
+			),
 		)
 			.then(() => {
 				if (!this.isCurrentRun(run)) return;

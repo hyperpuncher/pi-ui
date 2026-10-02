@@ -145,14 +145,19 @@ function renderProviderButton(
 				</span>
 			</span>
 			<span class="badge" data-variant="secondary">
-				{provider.authType === "oauth" ? "Subscription" : "API key"}
+				{authTypeLabel(provider)}
 			</span>
 		</button>,
 	);
 }
 
+function authTypeLabel(provider: AppAuthProvider): string {
+	if (provider.authType === "api_key") return "API key";
+	return provider.subscription ? "Subscription" : "Account";
+}
+
 function providerSearchHaystack(provider: AppAuthProvider): string {
-	return `${provider.name} ${provider.id} ${provider.authType === "oauth" ? "subscription oauth" : "api key"}`.toLowerCase();
+	return `${provider.name} ${provider.id} ${authTypeLabel(provider)} ${provider.authType}`.toLowerCase();
 }
 
 function renderAuthenticationFlow(dialog: AppAuthDialog): string {

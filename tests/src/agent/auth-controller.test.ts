@@ -10,6 +10,63 @@ function nextTurn(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+test("OAuth login preserves account metadata and supplies a stable device ID", async () => {
+	let loginDeviceId: string | undefined;
+	const providers = [
+		{
+			id: "openai",
+			name: "OpenAI",
+			auth: { oauth: { name: "Sign in with ChatGPT", isSubscription: true } },
+		},
+		{
+			id: "radius",
+			name: "Radius",
+			auth: { oauth: { name: "Radius", isSubscription: false } },
+		},
+	];
+	const modelRuntime = {
+		getProviders: () => providers,
+		getProvider: (id: string) => providers.find((provider) => provider.id === id),
+		login: async (
+			_providerId: string,
+			_type: string,
+			_interaction: unknown,
+			options: { getDeviceId?: () => string },
+		) => {
+			loginDeviceId = options.getDeviceId?.();
+		},
+	};
+	const runtime = agentSessionRuntimeStub({
+		services: {
+			modelRuntime,
+			settingsManager: {
+				getOrCreateDeviceId: () => "0199a00a-1234-7000-8000-123456789abc",
+			},
+		},
+	});
+	const state = new AppStore();
+	const controller = new AuthController(
+		() => runtime,
+		state,
+		() => {},
+	);
+
+	controller.openLogin();
+	assertEquals(
+		state.authDialog?.providers.map(({ id, subscription }) => ({
+			id,
+			subscription,
+		})),
+		[
+			{ id: "openai", subscription: true },
+			{ id: "radius", subscription: false },
+		],
+	);
+	assertEquals(controller.startLogin("openai", "oauth"), true);
+	await nextTurn();
+	assertEquals(loginDeviceId, "0199a00a-1234-7000-8000-123456789abc");
+});
+
 test("provider-owned API key login can request multiple fields and accept empty values", async () => {
 	const submitted: string[] = [];
 	const provider = {

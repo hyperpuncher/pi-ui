@@ -42,7 +42,12 @@ export type AppSlashCommand = {
 	source: "prompt" | "skill" | "extension" | "system";
 	argumentHint?: string;
 };
-export type AppAuthProvider = { id: string; name: string; authType: "oauth" | "api_key" };
+export type AppAuthProvider = {
+	id: string;
+	name: string;
+	authType: "oauth" | "api_key";
+	subscription?: boolean;
+};
 export type AppAuthPrompt = {
 	id: string;
 	message: string;
