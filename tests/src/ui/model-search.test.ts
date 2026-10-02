@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 
-import { fuzzyFilter } from "@earendil-works/pi-tui/dist/fuzzy.js";
+import { fuzzyFilter } from "@earendil-works/pi-tui";
 
 import { AppStore } from "#src/state/app-store.ts";
 import { renderModelPicker } from "#src/ui/prompt-pickers.tsx";

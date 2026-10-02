@@ -12,11 +12,11 @@ import {
 	createMcpExtension,
 	createToolSearchExtension,
 	getAgentDir,
+	resolveModelScopeWithDiagnostics,
 	SessionManager,
 	type SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
 
-import { resolveModelScopeFromModels } from "../../node_modules/@earendil-works/pi-coding-agent/dist/core/model-resolver.js";
 import type { SessionDoneNotification } from "../browser-notifications.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
 import {
@@ -317,16 +317,15 @@ export class RuntimeController {
 				services.modelRuntime,
 				services.settingsManager.getGlobalSettings().httpProxy,
 			);
-			const availableModels = await withAgentHttpProxy(services.modelRuntime, () =>
-				services.modelRuntime.getAvailable(),
-			);
-			const scopedModels = sessionPerformance.measureSync(
+			const { scopedModels } = await sessionPerformance.measure(
 				"scopedModelResolution",
 				() =>
-					resolveModelScopeFromModels(
-						services.settingsManager.getEnabledModels() ?? [],
-						availableModels,
-					).scopedModels,
+					withAgentHttpProxy(services.modelRuntime, () =>
+						resolveModelScopeWithDiagnostics(
+							services.settingsManager.getEnabledModels() ?? [],
+							services.modelRuntime,
+						),
+					),
 			);
 			const readIsOverridden = services.resourceLoader
 				.getExtensions()
