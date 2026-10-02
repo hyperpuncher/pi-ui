@@ -205,6 +205,7 @@ test("codemode reuses highlighted tool titles and nests ordinary tool rows", asy
 	assertStringIncludes(html, 'data-message-id="code/1"');
 	assertStringExcludes(html, "<script>");
 	assertStringExcludes(html, "tool-pre-output");
+	assertStringExcludes(html, "tool-title-compact");
 	const running = renderMessage({ ...message, state: "running" });
 	assertStringIncludes(running, 'aria-label="Running"');
 	assertStringExcludes(running, "unfinished");
@@ -222,12 +223,68 @@ test.each(["read", "bash", "codemode"])(
 				}),
 				meta: "4.1s",
 			}),
+			true,
 		);
 		const compact =
 			html.match(/<p class="tool-title-compact"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
 		assertStringIncludes(compact, '<span class="tool-meta">4.1s</span></p>');
 	},
 );
+
+test.each(["bash", "codemode"])(
+	"compact %s previews omit long source, later lines, outputs, and nested rows",
+	async (name) => {
+		await preloadPierreHighlighter();
+		const source = `text("${"😀".repeat(300)}hidden_tail");\ntext("hidden_line");`;
+		const message = tool({
+			titleParts: toolTitleParts(name, { command: source, code: source }),
+			text: "hidden_output",
+			format: "output",
+			nestedCalls: {
+				complete: true,
+				calls: [
+					{
+						id: "nested_hidden",
+						name: "read",
+						arguments: { path: "hidden_path" },
+						status: "ok",
+					},
+				],
+			},
+		});
+		const compact = renderMessage(message, true);
+		for (const hidden of [
+			"hidden_tail",
+			"hidden_line",
+			"hidden_output",
+			"hidden_path",
+			"nested_hidden",
+			"tool-header",
+			"�",
+		])
+			assertStringExcludes(compact, hidden);
+		for (const visible of ["😀", "…", "--shiki-light:", "tool-title-compact"])
+			assertStringIncludes(compact, visible);
+		const expanded = renderMessage(message);
+		for (const full of ["hidden_tail", "hidden_line", "hidden_output", "hidden_path"])
+			assertStringIncludes(expanded, full);
+		assertStringExcludes(expanded, "tool-title-compact");
+	},
+);
+
+test("compact plain input and fallback titles stay bounded and escaped", () => {
+	const source = `<script>${"a".repeat(300)}hidden_tail`;
+	for (const message of [
+		tool({ title: source }),
+		tool({ titleParts: [{ text: source, mono: true }] }),
+	]) {
+		const compact = renderMessage(message, true);
+		assertStringIncludes(compact, "&lt;script&gt;");
+		assertStringIncludes(compact, "…");
+		assertStringExcludes(compact, "hidden_tail");
+		assertStringIncludes(renderMessage(message), "hidden_tail");
+	}
+});
 
 test("plain tool titles remain escaped", () => {
 	const html = renderMessage(tool({ title: '<img src=x onerror="bad">' }));

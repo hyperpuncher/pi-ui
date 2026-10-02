@@ -49,6 +49,7 @@ export function renderMessages(
 	sessions: readonly AppSessionSummary[] = [],
 	authenticated = true,
 	sessionCatalogLoading = false,
+	compactTools = false,
 ): string {
 	return syncHtml(
 		<main
@@ -104,7 +105,7 @@ export function renderMessages(
 								authenticated,
 								sessionCatalogLoading,
 							)
-						: messages.map(renderMessage)}
+						: messages.map((message) => renderMessage(message, compactTools))}
 				</div>
 				<button
 					id="messages-trim"
@@ -128,8 +129,11 @@ export function renderMessages(
 	);
 }
 
-export function renderOlderMessagesPatch(messages: readonly AppMessage[]): string {
-	return messages.map(renderMessage).join("");
+export function renderOlderMessagesPatch(
+	messages: readonly AppMessage[],
+	compactTools = false,
+): string {
+	return messages.map((message) => renderMessage(message, compactTools)).join("");
 }
 
 export function renderOlderMessagesTriggerPatch(active: boolean): string {
@@ -491,7 +495,7 @@ function renderPlainTextLinks(text: string): string {
 	);
 }
 
-export function renderMessage(message: AppMessage): string {
+export function renderMessage(message: AppMessage, compactTools = false): string {
 	if (message.role === "user") return renderUserMessage(message);
 	if (message.role === "assistant" || message.role === "thought") {
 		return renderNarrativeMessage(message);
@@ -506,7 +510,7 @@ export function renderMessage(message: AppMessage): string {
 	) {
 		return renderContextMessage(message);
 	}
-	return renderToolMessage(message);
+	return renderToolMessage(message, compactTools);
 }
 
 function renderUserMessage(message: AppMessage): string {
@@ -783,11 +787,31 @@ function renderNestedToolCalls(message: AppMessage) {
 	);
 }
 
-function renderToolMessage(message: AppMessage): string {
+// Compact rows show one line, not a clipped copy of the full syntax tree.
+function compactToolTitlePart(
+	part: TranscriptMessageTitlePart,
+): TranscriptMessageTitlePart {
+	const source = part.highlight ? part.text.trim() : part.text;
+	const firstLine = source.split(/[\r\n\u2028\u2029]/, 1)[0] ?? "";
+	const preview = firstLine.match(/^[\s\S]{0,256}/u)?.[0] ?? "";
+	return { ...part, text: preview + (preview === source ? "" : "…") };
+}
+
+function renderToolMessage(message: AppMessage, compactTools = false): string {
 	const status = toolMessageStatus(message);
-	const code = message.titleParts?.find((part) => part.highlight === "javascript");
+	const parts = compactTools
+		? message.titleParts?.map(compactToolTitlePart)
+		: message.titleParts;
+	const code = compactTools
+		? undefined
+		: parts?.find((part) => part.highlight === "javascript");
 	const snippets = code ? codeSnippets(message.nestedCalls, code.text.length) : [];
-	const title = renderToolTitle(message.title ?? "Tool", message.titleParts, snippets);
+	const fallbackTitle = message.title ?? "Tool";
+	const title = renderToolTitle(
+		compactTools ? compactToolTitlePart({ text: fallbackTitle }).text : fallbackTitle,
+		parts,
+		snippets,
+	);
 	const meta = (
 		<span class="tool-meta" aria-hidden={message.meta ? undefined : "true"} safe>
 			{message.meta ?? ""}
@@ -799,18 +823,23 @@ function renderToolMessage(message: AppMessage): string {
 			data-message-id={message.id}
 		>
 			<StatusDot class="tool-state-dot" state={status.state} label={status.label} />
-			<header class="tool-header" data-show="!$_minimalMode && !$_toolOutputHidden">
-				<span class="tool-title">{title}</span>
-				{meta}
-			</header>
-			<p class="tool-title-compact" data-show="$_minimalMode || $_toolOutputHidden">
-				<span class="tool-title-compact-content">{title}</span>
-				{meta}
-			</p>
-			<div data-show="!$_minimalMode && !$_toolOutputHidden">
-				{renderNestedToolCalls(message)}
-				{renderToolOutput(message)}
-			</div>
+			{compactTools ? (
+				<p class="tool-title-compact">
+					<span class="tool-title-compact-content">{title}</span>
+					{meta}
+				</p>
+			) : (
+				<>
+					<header class="tool-header">
+						<span class="tool-title">{title}</span>
+						{meta}
+					</header>
+					<div>
+						{renderNestedToolCalls(message)}
+						{renderToolOutput(message)}
+					</div>
+				</>
+			)}
 		</article>,
 	);
 }

@@ -2,6 +2,7 @@ import { afterEach, test } from "bun:test";
 
 import { attributesToString } from "@kitajs/html";
 
+import { toolTitleParts } from "#src/agent/tool-presentation.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import {
@@ -170,6 +171,101 @@ test("new messages append to the stable message list", async () => {
 		assertIncludes(tools, "data: mode append");
 		assertIncludes(tools, "window.piUi.messageScroll.trimOldMessages()");
 		assertNotIncludes(tools, '<main id="messages"');
+	} finally {
+		controller.abort();
+	}
+});
+
+test("tool display changes rerender only the active presentation", async () => {
+	const state = createState();
+	state.replaceMessages([
+		{
+			role: "tool",
+			title: "codemode",
+			timestamp,
+			titleParts: toolTitleParts("codemode", {
+				code: 'text("preview");\ntext("later_line");',
+			}),
+			text: "full_output",
+			format: "output",
+			state: "success",
+		},
+	]);
+	const controller = new AbortController();
+	try {
+		const reader = responseReader(state.createStream(controller.signal));
+		const expanded = await readUntil(reader, (text) =>
+			text.includes("event: datastar-patch-signals"),
+		);
+		assertIncludes(expanded, "tool-header");
+		assertNotIncludes(expanded, "tool-title-compact");
+
+		state.update(() => {
+			state.toolOutputHidden = true;
+		});
+		const compactOutput = await readUntil(
+			reader,
+			(text) =>
+				text.includes("data: selector #messages") &&
+				text.includes("tool-title-compact"),
+		);
+		const compact = compactOutput.slice(
+			compactOutput.indexOf("data: selector #messages"),
+		);
+		assertIncludes(compact, "data: selector #messages");
+		assertNotIncludes(compact, "full_output");
+		assertNotIncludes(compact, "later_line");
+		assertNotIncludes(compact, "tool-header");
+
+		const id = state.messages[0]!.id;
+		state.updateMessage(id, { text: "updated_output", meta: "9ms" });
+		const update = await readUntil(reader, (text) => text.includes("9ms"));
+		assertIncludes(update, "tool-title-compact");
+		assertNotIncludes(update, "updated_output");
+		assertNotIncludes(update, "tool-header");
+
+		state.appendMessage("tool", "appended_output", {
+			title: "append_preview",
+			format: "output",
+		});
+		const appended = await readUntil(reader, (text) =>
+			text.includes("append_preview"),
+		);
+		assertIncludes(appended, "tool-title-compact");
+		assertNotIncludes(appended, "appended_output");
+		assertNotIncludes(appended, "tool-header");
+
+		const older = state.renderer.messages.renderOlderMessagesPatch(state.messages);
+		assertIncludes(older, "tool-title-compact");
+		assertNotIncludes(older, "updated_output");
+		assertNotIncludes(older, "tool-header");
+
+		const reconnected = await readStateOutput(state, (text) =>
+			text.includes("event: datastar-patch-signals"),
+		);
+		assertIncludes(reconnected, "tool-title-compact");
+		assertNotIncludes(reconnected, "updated_output");
+		assertNotIncludes(reconnected, "tool-header");
+
+		state.update(() => {
+			state.minimalMode = true;
+			state.toolOutputHidden = false;
+		});
+		await readUntil(reader, (text) => text.includes('"_minimalMode":true'));
+		assertIncludes(
+			state.renderer.messages.renderMessageElement(id)!,
+			"tool-title-compact",
+		);
+
+		state.update(() => {
+			state.minimalMode = false;
+		});
+		const restored = await readUntil(reader, (text) =>
+			text.includes("updated_output"),
+		);
+		assertIncludes(restored, "tool-header");
+		assertIncludes(restored, "later_line");
+		assertNotIncludes(restored, "tool-title-compact");
 	} finally {
 		controller.abort();
 	}

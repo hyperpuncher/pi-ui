@@ -119,6 +119,9 @@ export class MessageRenderService {
 	projectMessages(messages: readonly TranscriptMessage[]): AppMessage[] {
 		return messages.map((message) => this.project(message));
 	}
+	get compactTools(): boolean {
+		return this.store.minimalMode || this.store.toolOutputHidden;
+	}
 	renderMessagesElement(): string {
 		return renderMessages(
 			this.projectMessages(this.store.messages),
@@ -127,15 +130,19 @@ export class MessageRenderService {
 			this.store.sessions,
 			this.store.models.some((model) => model.configured),
 			this.store.sessionCatalogLoading,
+			this.compactTools,
 		);
 	}
 	renderMessageElement(id: string): string | undefined {
 		const message = this.store.transcript.getMessage(id);
 		if (!message) return undefined;
-		return renderMessage(this.project(message));
+		return renderMessage(this.project(message), this.compactTools);
 	}
 	renderOlderMessagesPatch(messages: readonly TranscriptMessage[]): string {
-		return renderOlderMessagesPatch(this.projectMessages(messages));
+		return renderOlderMessagesPatch(
+			this.projectMessages(messages),
+			this.compactTools,
+		);
 	}
 	renderOlderMessagesTrigger(): string {
 		return renderOlderMessagesTriggerPatch(this.store.hasOlderMessages);
@@ -395,7 +402,7 @@ export class MessageRenderService {
 	}
 	private broadcast(message: TranscriptMessage): void {
 		this.patchMessage(
-			renderMessage(this.project(message)),
+			renderMessage(this.project(message), this.compactTools),
 			`[data-message-id="${message.id}"]`,
 		);
 	}

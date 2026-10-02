@@ -265,6 +265,7 @@ export function renderPage(
 									state.sessions,
 									state.models.some((model) => model.configured),
 									state.sessionCatalogLoading,
+									state.minimalMode || state.toolOutputHidden,
 								)}
 								{renderSessionTransition(state)}
 								{renderPromptBox(state)}

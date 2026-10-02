@@ -59,6 +59,7 @@ export class UiRenderer implements AppStorePresentation {
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
 	private replaceTranscriptOnCommit = false;
+	private compactTools: boolean;
 
 	constructor(
 		private readonly store: AppStore,
@@ -71,6 +72,7 @@ export class UiRenderer implements AppStorePresentation {
 			(id) => this.pendingEnhancements.add(id),
 			options,
 		);
+		this.compactTools = this.messages.compactTools;
 		store.attachPresentation(this);
 	}
 
@@ -193,10 +195,17 @@ export class UiRenderer implements AppStorePresentation {
 		this.fullViewPending = false;
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
+		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
+		this.compactTools = this.messages.compactTools;
 		if (this.hub.clientCount > 0) {
 			const state = this.store.snapshot();
 			if (this.replaceTranscriptOnCommit) {
 				this.hub.replaceElement(
+					this.renderTranscript(this.projectState(state)),
+					"#messages",
+				);
+			} else if (toolPresentationChanged) {
+				this.hub.patchElement(
 					this.renderTranscript(this.projectState(state)),
 					"#messages",
 				);
@@ -317,6 +326,7 @@ export class UiRenderer implements AppStorePresentation {
 			snapshot.sessions,
 			snapshot.models.some((model) => model.configured),
 			snapshot.sessionCatalogLoading,
+			snapshot.minimalMode || snapshot.toolOutputHidden,
 		);
 	}
 	private renderAppElements(snapshot: AppStateSnapshot): string {
