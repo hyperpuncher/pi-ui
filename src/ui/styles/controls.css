@@ -184,7 +184,8 @@
 
 	:where(.input, .field > input, .field > textarea, .field > select):focus-visible,
 	.input-group:focus-within {
-		outline: none;
+		outline: 2px solid transparent;
+		outline-offset: 1px;
 		border-color: var(--focus-ring);
 		box-shadow: 0 0 0 3px var(--focus-ring);
 	}
@@ -308,6 +309,13 @@
 			background: var(--surface-base);
 			color: var(--text);
 			box-shadow: var(--shadow-sm);
+		}
+	}
+
+	@media (forced-colors: active) {
+		.segmented-control > button[aria-pressed="true"]:not(:focus-visible) {
+			outline: 1px solid Highlight;
+			outline-offset: -1px;
 		}
 	}
 

@@ -215,10 +215,7 @@ export function renderPage(
 						data-style:display="$_isDraggingFile ? 'flex' : 'none'"
 						aria-hidden="true"
 					>
-						<div
-							class="file-drop-card"
-							data-class:file-drop-card-active="$_isDraggingFile"
-						>
+						<div class="file-drop-card">
 							<Icon name="file-up" />
 							<span>Drop files to attach</span>
 						</div>

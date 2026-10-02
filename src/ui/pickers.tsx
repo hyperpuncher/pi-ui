@@ -168,7 +168,7 @@ export function renderWorkspaceBrowserContent(
 	return syncHtml(
 		<div
 			id="workspace-browser-content"
-			class="workspace-browser-panel"
+			class="dialog-panel workspace-browser-panel"
 			data-signals__ifmissing="{
 				_workspaceFolderCreating: false,
 				_workspaceFolderName: '',
@@ -176,7 +176,7 @@ export function renderWorkspaceBrowserContent(
 				_workspaceFolderSaving: false,
 			}"
 		>
-			<header class="workspace-browser-header">
+			<header>
 				<div class="workspace-browser-heading">
 					<h2 id="workspace-browser-title">
 						<span data-show="$_workspaceAction !== 'fork'">
@@ -213,7 +213,7 @@ export function renderWorkspaceBrowserContent(
 					{formatHomePath(listing.path)}
 				</p>
 			</header>
-			<div class="workspace-browser-list">
+			<div class="dialog-body workspace-browser-list">
 				{listing.parent && renderWorkspaceBrowserDirectory(listing.parent, "..")}
 				{listing.directories.map((directory) =>
 					renderWorkspaceBrowserDirectory(
@@ -266,7 +266,7 @@ export function renderWorkspaceBrowserContent(
 					data-text="$_workspaceFolderError"
 				/>
 			</div>
-			<footer class="workspace-browser-footer">
+			<footer>
 				<button
 					type="button"
 					class="btn workspace-new-folder"
@@ -312,19 +312,19 @@ export function renderWorkspaceBrowserError(path: string): string {
 	return syncHtml(
 		<div
 			id="workspace-browser-content"
-			class="workspace-browser-panel workspace-browser-error"
+			class="dialog-panel workspace-browser-panel workspace-browser-error"
 		>
-			<header class="workspace-browser-header">
+			<header>
 				<h2 id="workspace-browser-title">Select folder</h2>
 			</header>
-			<p class="workspace-browser-error-message">
+			<p class="dialog-body workspace-browser-error-message">
 				Could not read{" "}
 				<span class="workspace-browser-error-path" safe>
 					{formatHomePath(path)}
 				</span>
 				.
 			</p>
-			<footer class="workspace-browser-footer">
+			<footer>
 				<button
 					type="button"
 					class="btn"

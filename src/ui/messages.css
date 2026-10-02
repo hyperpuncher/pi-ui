@@ -11,10 +11,12 @@
 
 @layer components {
 	#messages {
+		--messages-inline-padding: 1.5rem;
+
 		min-height: 0;
 		overflow-y: auto;
 		overflow-anchor: none;
-		padding: 6rem 1rem 0;
+		padding: 6rem var(--messages-inline-padding) 0;
 		outline: 0;
 		mask:
 			linear-gradient(to bottom, oklch(0% 0 none) 92%, transparent),
@@ -145,7 +147,7 @@
 	}
 	.recent-session:is(:hover, :focus-visible) {
 		background: var(--surface-control);
-		outline: 0;
+		outline-offset: -2px;
 	}
 	.recent-session-main {
 		min-width: 0;
@@ -295,8 +297,11 @@
 	.tool-title-accent {
 		color: var(--action-primary);
 	}
-	.tool-title-muted {
+	.tool-title-muted,
+	.tool-meta {
 		color: color-mix(in oklch, var(--text-muted) 80%, var(--surface-base));
+	}
+	.tool-title-muted {
 		font-weight: 400;
 	}
 	.message-link {
@@ -528,7 +533,6 @@
 		align-items: center;
 		justify-content: flex-end;
 		margin-inline-start: auto;
-		color: var(--text-muted);
 		font-size: var(--text-xs);
 		font-variant-numeric: tabular-nums;
 	}
@@ -556,11 +560,11 @@
 		text-indent: 0;
 	}
 
-	@media (width < 40rem) {
+	@container chat (width < 40rem) {
 		#messages {
+			--messages-inline-padding: 0.75rem;
 			--text-base: var(--text-sm);
 
-			padding-inline: 0.75rem;
 			font-size: var(--text-lg);
 		}
 		.message-tool {
@@ -578,14 +582,9 @@
 		}
 	}
 
-	@media (width >= 40rem) {
+	@container chat (width >= 80rem) {
 		#messages {
-			padding-inline: 1.5rem;
-		}
-	}
-	@media (width >= 80rem) {
-		#messages {
-			padding-inline: 2rem;
+			--messages-inline-padding: 2rem;
 		}
 	}
 

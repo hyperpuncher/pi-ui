@@ -266,7 +266,6 @@
 	#workspace-review .workspace-mode-control {
 		width: 100%;
 		border-radius: var(--radius-sm);
-		interpolate-size: allow-keywords;
 	}
 	#workspace-review .workspace-mode-control > .workspace-mode-button {
 		display: flex;
@@ -281,11 +280,6 @@
 		inline-size: max-content;
 		margin-inline-start: 0.5rem;
 		overflow: clip;
-		transition:
-			inline-size 100ms var(--ease-out),
-			margin-inline-start 100ms var(--ease-out),
-			opacity 80ms var(--ease-out),
-			visibility 100ms;
 	}
 	#workspace-files-sidebar:has(.review-sidebar-panel:focus-within)
 		.workspace-mode-button[data-workspace-mode="files"]
@@ -494,13 +488,13 @@
 		border-radius: var(--radius-sm);
 		padding: 0.375rem 0.5rem;
 		font-size: var(--text-xs);
-		text-align: left;
+		text-align: start;
 	}
 
 	.workspace-tree-context-menu-item:is(:hover, :focus-visible) {
 		background: light-dark(var(--surface-control), var(--surface-muted));
 		color: var(--text);
-		outline: none;
+		outline-offset: -2px;
 	}
 
 	.workspace-tree-context-menu-item-destructive {

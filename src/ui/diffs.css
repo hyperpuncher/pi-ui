@@ -22,7 +22,7 @@
 		--diffs-editor-selection-bg: var(--selection);
 	}
 
-	@media (width < 40rem) {
+	@container chat (width < 40rem) {
 		#messages :where(.pierre-diff, .pierre-code) {
 			--diffs-font-size: var(--text-xs);
 			--diffs-line-height: 18px;

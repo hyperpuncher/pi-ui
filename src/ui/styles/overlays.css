@@ -152,6 +152,12 @@
 		padding-inline: 0.5rem;
 	}
 
+	.command > header:focus-within {
+		border-color: var(--focus-ring);
+		outline: 2px solid transparent;
+		outline-offset: 1px;
+	}
+
 	.command > header input {
 		min-width: 0;
 		flex: 1;
@@ -159,6 +165,13 @@
 		background: transparent;
 		padding-inline-start: 0.375rem;
 		font-size: var(--text-base);
+	}
+
+	.command :where([role="menu"], [role="group"]),
+	.dropdown-menu :where([role="group"]) {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
 	}
 
 	.command :where([role="menu"]) {
@@ -191,6 +204,7 @@
 		font-size: var(--text-base);
 		text-align: start;
 		cursor: default;
+		outline-offset: -2px;
 	}
 
 	:where(.command-dialog) .command :where([role="menuitem"]) {
@@ -201,7 +215,12 @@
 	.dropdown-menu :where([role^="menuitem"]):is(:hover, :focus-visible) {
 		background: var(--surface-control);
 		color: var(--text);
-		outline: 0;
+	}
+
+	@media (forced-colors: active) {
+		.command :where([role="menuitem"]).active {
+			outline: 1px solid Highlight;
+		}
 	}
 
 	.command :where([data-indicator]) {
@@ -280,7 +299,7 @@
 	}
 
 	.dropdown-menu > [data-popover] {
-		gap: 0;
+		gap: 1px;
 		max-height: min(24rem, calc(100dvh - 2rem));
 		overflow: auto;
 		padding: 0.25rem;
@@ -399,23 +418,5 @@
 			inset-inline-start: auto;
 			inset-inline-end: anchor(end);
 		}
-	}
-
-	:where([role="menu"], [role="listbox"], [role="group"], #session-sidebar ul)
-		> :where(
-			[role="menuitem"],
-			[role="menuitemradio"],
-			[role="menuitemcheckbox"],
-			[role="option"],
-			li
-		)
-		+ :where(
-			[role="menuitem"],
-			[role="menuitemradio"],
-			[role="menuitemcheckbox"],
-			[role="option"],
-			li
-		) {
-		margin-block-start: 1px;
 	}
 }

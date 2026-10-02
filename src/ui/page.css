@@ -41,7 +41,7 @@
 		transition: scale 100ms ease-out;
 	}
 
-	.file-drop-card.file-drop-card-active {
+	.file-drop-active .file-drop-card {
 		scale: 1;
 	}
 	.file-drop-card > svg {
@@ -100,7 +100,7 @@
 		grid-row: 2;
 		grid-column: 1 / -1;
 		margin: var(--workspace-inset) var(--workspace-inset) var(--workspace-inset);
-		container-type: inline-size;
+		container: chat / inline-size;
 	}
 
 	.toolbar {
@@ -111,7 +111,6 @@
 		grid-column: 1 / -1;
 		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 		align-items: center;
-		interpolate-size: allow-keywords;
 		margin-inline: var(--workspace-inset);
 		margin-block-start: var(--workspace-inset);
 		padding-inline: var(--workspace-inset);
@@ -122,16 +121,12 @@
 	body[data-toolbar-animated] .toolbar {
 		transition:
 			display 150ms,
-			block-size 150ms var(--ease-out),
-			margin-block-start 150ms var(--ease-out),
 			opacity 150ms var(--ease-out),
 			translate 150ms var(--ease-out);
 		transition-behavior: allow-discrete;
 	}
 	@starting-style {
 		body[data-toolbar-animated] .toolbar {
-			block-size: 0;
-			margin-block-start: 0;
 			opacity: 0;
 			translate: 0 -1.75rem;
 		}
@@ -151,8 +146,6 @@
 	@media (hover: hover) and (pointer: fine) {
 		body[data-toolbar-hidden] .toolbar {
 			display: none;
-			block-size: 0;
-			margin-block-start: 0;
 			opacity: 0;
 			translate: 0 -1.75rem;
 			pointer-events: none;

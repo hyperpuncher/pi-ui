@@ -202,6 +202,13 @@
 		padding-block-start: 0.5rem;
 	}
 
+	#session-sidebar-content,
+	#session-sidebar-content ul {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+	}
+
 	.session-group-heading {
 		display: flex;
 		align-items: center;
@@ -242,12 +249,12 @@
 		width: 100%;
 		height: 100%;
 		border-radius: var(--radius-md);
+		outline-offset: -2px;
 	}
 	.session-sidebar-row-button:is(:hover, :focus-visible),
 	.session-sidebar-row-button:is([data-active="true"], [aria-current="true"]) {
 		background: var(--surface-control);
 		color: var(--text);
-		outline: 0;
 	}
 	.session-sidebar-row-content {
 		position: relative;

@@ -1,4 +1,31 @@
 @layer components {
+	.dialog-panel {
+		max-width: none;
+		gap: 0;
+		overflow: hidden;
+		padding: 0;
+	}
+	.dialog-panel > :where(header) {
+		flex-shrink: 0;
+		border-block-end: 1px solid var(--border);
+		padding: 1.25rem 1.25rem 1rem;
+	}
+	.dialog-panel > :where(header) h2 {
+		font-size: var(--text-xl);
+		font-weight: 600;
+	}
+	.dialog-body {
+		min-height: 0;
+		flex: 1;
+		overflow-y: auto;
+		padding: 1.25rem;
+	}
+	.dialog-panel > :where(footer) {
+		margin: 0;
+		border-radius: 0;
+		padding: 0.75rem 1.25rem;
+	}
+
 	.dialog-medium {
 		width: min(28rem, calc(100vw - 2rem));
 	}

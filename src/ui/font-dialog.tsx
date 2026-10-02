@@ -33,8 +33,8 @@ export function renderFontDialog(): string {
 			`}
 			closedby="any"
 		>
-			<div class="font-dialog-panel">
-				<header class="preference-dialog-header">
+			<div class="dialog-panel font-dialog-panel">
+				<header>
 					<div class="preference-dialog-heading">
 						<div>
 							<h2 id="font-dialog-title">Fonts</h2>
@@ -71,7 +71,7 @@ export function renderFontDialog(): string {
 						data-bind:_font-search=""
 					/>
 				</header>
-				<div class="preference-dialog-body">
+				<div class="dialog-body">
 					{(["sans", "mono"] as const).map((kind) => (
 						<div
 							class="preference-grid"

@@ -96,11 +96,11 @@
 	}
 
 	.markdown-content > :first-child {
-		margin-top: 0;
+		margin-block-start: 0;
 	}
 
 	.markdown-content > :last-child {
-		margin-bottom: 0;
+		margin-block-end: 0;
 	}
 
 	.markdown-content :where(h1, h2, h3, h4, h5, h6) {
@@ -150,7 +150,7 @@
 		left: 50%;
 		width: fit-content;
 		min-width: 100%;
-		max-width: calc(100cqw - 2rem);
+		max-width: calc(100cqw - 2 * var(--messages-inline-padding, 1rem));
 		overflow-x: auto;
 		border: 1px solid var(--markdown-table-border);
 		border-radius: var(--radius-md);
@@ -162,18 +162,6 @@
 		min-width: 100%;
 		border-collapse: separate;
 		border-spacing: 0;
-	}
-
-	@media (width >= 40rem) {
-		.markdown-content .table-container {
-			max-width: calc(100cqw - 3rem);
-		}
-	}
-
-	@media (width >= 80rem) {
-		.markdown-content .table-container {
-			max-width: calc(100cqw - 4rem);
-		}
 	}
 
 	.markdown-content .table-container :where(th, td) {
@@ -204,7 +192,7 @@
 	}
 
 	.markdown-content :where(ul, ol) {
-		padding-left: 1.5rem;
+		padding-inline-start: 1.5rem;
 	}
 
 	.markdown-content ul {
@@ -238,8 +226,8 @@
 	}
 
 	.markdown-content blockquote {
-		border-left: 2px solid var(--border);
-		padding-left: 1rem;
+		border-inline-start: 2px solid var(--border);
+		padding-inline-start: 1rem;
 		color: var(--text-muted);
 	}
 

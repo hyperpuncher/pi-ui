@@ -47,8 +47,8 @@ export function renderCodeThemeDialog(): string {
 			}`}
 			closedby="any"
 		>
-			<div class="code-theme-dialog-panel">
-				<header class="preference-dialog-header">
+			<div class="dialog-panel code-theme-dialog-panel">
+				<header>
 					<div class="preference-dialog-heading">
 						<div>
 							<h2 id="code-theme-title">Code themes</h2>
@@ -89,10 +89,7 @@ export function renderCodeThemeDialog(): string {
 						data-on:input="$_codeThemeStatus = ''"
 					/>
 				</header>
-				<div
-					id="code-theme-gallery"
-					class="preference-dialog-body preference-grid"
-				>
+				<div id="code-theme-gallery" class="dialog-body preference-grid">
 					{(["light", "dark"] as const).flatMap((appearance) =>
 						codeThemesFor(appearance).map((theme) =>
 							renderThemeCard(theme, active[appearance]),
