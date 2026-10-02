@@ -75,6 +75,12 @@ test("tool presentation preserves representative and malformed values", () => {
 		),
 		{ text: "2 results", format: "output" },
 	);
+	assertEquals(
+		formatToolResult("codemode", {
+			content: [{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" }],
+		}),
+		{ text: "", format: "output" },
+	);
 	assertEquals(toolTitleParts("read", { path: "/tmp/file", offset: 3, limit: 2 }), [
 		{ text: "read" },
 		{ text: "/tmp/file", tone: "accent", mono: true },
@@ -149,7 +155,10 @@ test("transcript projection restores codemode source and nested calls as one mes
 				role: "toolResult",
 				toolCallId: "code",
 				toolName: "codemode",
-				content: [{ type: "text", text: "output" }],
+				content: [
+					{ type: "text", text: "output" },
+					{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" },
+				],
 				nestedCalls,
 				isError: false,
 				timestamp: 0,
@@ -164,6 +173,13 @@ test("transcript projection restores codemode source and nested calls as one mes
 	});
 	assertEquals(message?.nestedCalls, nestedCalls);
 	assertEquals(message?.text, "output");
+	assertEquals(message?.attachments, [
+		{
+			name: "Tool image 1",
+			mimeType: "image/png",
+			image: { data: "aW1hZ2U=", mimeType: "image/png" },
+		},
+	]);
 });
 
 test("transcript projection restores persisted provider errors", () => {

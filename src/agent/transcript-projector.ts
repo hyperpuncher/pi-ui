@@ -25,6 +25,7 @@ import {
 	contentToText,
 	formatToolResult,
 	stripAnsi,
+	toolResultImageAttachments,
 	toolTitle,
 	toolTitleParts,
 } from "./tool-presentation.ts";
@@ -286,6 +287,7 @@ function toolResultToAppMessage(
 		args: toolCall?.args,
 		isError: message.isError,
 	});
+	const attachments = toolResultImageAttachments(message);
 	return {
 		role: "tool",
 		text: view.text,
@@ -300,6 +302,7 @@ function toolResultToAppMessage(
 		titleParts: toolCall ? toolTitleParts(toolCall.name, toolCall.args) : undefined,
 		state: message.isError ? "error" : "success",
 		format: view.format,
+		attachments: attachments.length ? attachments : undefined,
 		nestedCalls: message.nestedCalls,
 	};
 }

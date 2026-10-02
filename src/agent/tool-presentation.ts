@@ -1,5 +1,8 @@
 import { stripAnsi } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/ansi.js";
-import type { TranscriptMessageTitlePart } from "../state/transcript-state.ts";
+import type {
+	TranscriptMessageAttachment,
+	TranscriptMessageTitlePart,
+} from "../state/transcript-state.ts";
 import type { JsonValue } from "../utils/json-types.ts";
 import { asRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
 import { formatHomePath } from "../utils/workspace.ts";
@@ -190,9 +193,8 @@ export function compactToolOutput(text: string): string {
 function extractToolText<Result>(result: Result): string {
 	const record = asRecord(result);
 	if (record?.content !== undefined) {
-		const text = contentToText(record.content);
-		if (text.trim()) return text;
-		if (Array.isArray(record.content) && record.content.length === 0) return "";
+		const text = contentToText(record.content, false);
+		if (text.trim() || Array.isArray(record.content)) return text;
 	}
 	if (record?.text !== undefined) {
 		return stripAnsi(String(record.text));
@@ -210,7 +212,37 @@ function stringValue<Value>(value: Value): string {
 	return isString(value) ? value : "";
 }
 
-export function contentToText<Content>(content: Content): string {
+export function toolResultImageAttachments<Result>(
+	result: Result,
+): TranscriptMessageAttachment[] {
+	const content = asRecord(result)?.content;
+	if (!Array.isArray(content)) return [];
+	let index = 0;
+	return content.flatMap((part) => {
+		if (
+			!isRecord(part) ||
+			part.type !== "image" ||
+			!isString(part.data) ||
+			!isString(part.mimeType) ||
+			!/^image\/[a-z0-9.+-]+$/i.test(part.mimeType)
+		) {
+			return [];
+		}
+		index += 1;
+		return [
+			{
+				name: `Tool image ${index}`,
+				mimeType: part.mimeType,
+				image: { data: part.data, mimeType: part.mimeType },
+			},
+		];
+	});
+}
+
+export function contentToText<Content>(
+	content: Content,
+	includeImagePlaceholders = true,
+): string {
 	if (isString(content)) {
 		return stripAnsi(content);
 	}
@@ -223,7 +255,9 @@ export function contentToText<Content>(content: Content): string {
 				return stripAnsi(part.text);
 			}
 			if (isRecord(part) && part.type === "image") {
-				return `[image: ${String(part.mimeType ?? "unknown")}]`;
+				return includeImagePlaceholders
+					? `[image: ${String(part.mimeType ?? "unknown")}]`
+					: "";
 			}
 			if (isRecord(part) && part.type === "thinking") {
 				return "";

@@ -65,6 +65,22 @@ test("user messages render attached images without placeholder text", () => {
 	assertStringExcludes(html, "[image:");
 });
 
+test("tool messages render generated images only in expanded mode", () => {
+	const message = tool({
+		text: "created",
+		attachments: [
+			{
+				name: "Tool image 1",
+				image: { data: "aW1hZ2U=", mimeType: "image/png" },
+			},
+		],
+	});
+	const expanded = renderMessage(message);
+	assertStringIncludes(expanded, 'src="data:image/png;base64,aW1hZ2U="');
+	assertStringIncludes(expanded, 'alt="Tool image 1"');
+	assertStringExcludes(renderMessage(message, true), "aW1hZ2U=");
+});
+
 test("message projection replaces inline image data with stable URLs", () => {
 	const store = new AppStore();
 	let registrations = 0;

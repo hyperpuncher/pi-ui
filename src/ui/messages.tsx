@@ -513,32 +513,36 @@ export function renderMessage(message: AppMessage, compactTools = false): string
 	return renderToolMessage(message, compactTools);
 }
 
+function renderImageAttachments(
+	attachments: AppMessage["attachments"],
+	className?: string,
+) {
+	const images = attachments?.filter((attachment) => attachment.image) ?? [];
+	if (!images.length) return "";
+	return (
+		<div class={["message-attachments", className]}>
+			{images.map((attachment, index) => (
+				<div class="message-image-frame">
+					<img
+						class="message-image"
+						src={
+							attachment.image!.url ??
+							`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`
+						}
+						alt={attachment.name || `Attached image ${index + 1}`}
+					/>
+				</div>
+			))}
+		</div>
+	);
+}
+
 function renderUserMessage(message: AppMessage): string {
-	const imageAttachments =
-		message.attachments?.filter((attachment) => attachment.image) ?? [];
 	const fileAttachments =
 		message.attachments?.filter((attachment) => !attachment.image) ?? [];
 	return syncHtml(
 		<article class="message message-user" data-message-id={message.id}>
-			{imageAttachments.length ? (
-				<div class="message-attachments">
-					{imageAttachments.map((attachment, index) => (
-						<div class="message-image-frame">
-							<img
-								class="message-image"
-								src={
-									attachment.image!.url ??
-									`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`
-								}
-								alt={attachment.name || `Attached image ${index + 1}`}
-								style="overflow-clip-margin: unset;"
-							/>
-						</div>
-					))}
-				</div>
-			) : (
-				""
-			)}
+			{renderImageAttachments(message.attachments)}
 			{fileAttachments.length ? (
 				<div class="message-attachments">
 					{fileAttachments.map(renderUserFileAttachment)}
@@ -836,6 +840,10 @@ function renderToolMessage(message: AppMessage, compactTools = false): string {
 					</header>
 					<div>
 						{renderNestedToolCalls(message)}
+						{renderImageAttachments(
+							message.attachments,
+							"tool-image-attachments",
+						)}
 						{renderToolOutput(message)}
 					</div>
 				</>

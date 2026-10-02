@@ -80,6 +80,7 @@ import {
 	formatToolStart,
 	toolEndMeta,
 	toolMeta,
+	toolResultImageAttachments,
 	toolTitle,
 	toolTitleParts,
 } from "./tool-presentation.ts";
@@ -1553,6 +1554,7 @@ export class RuntimeController {
 					args,
 					isError: toolEvent.isError,
 				});
+				const attachments = toolResultImageAttachments(toolEvent.result);
 				return {
 					text: view.text,
 					options: {
@@ -1565,6 +1567,7 @@ export class RuntimeController {
 						state: toolEvent.isError ? "error" : "success",
 						titleParts: toolTitleParts(toolEvent.toolName, args),
 						format: view.format,
+						attachments: attachments.length ? attachments : undefined,
 					},
 				};
 			},
