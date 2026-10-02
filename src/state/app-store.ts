@@ -438,6 +438,8 @@ export class AppStore {
 		this.presentation?.messageAppended(id);
 		return id;
 	}
+	// Called through the session reducer's structural state-sink interface.
+	// fallow-ignore-next-line unused-class-member
 	getMessage(id: string): TranscriptMessage | undefined {
 		return this.transcript.getMessage(id);
 	}

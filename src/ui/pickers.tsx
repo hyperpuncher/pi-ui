@@ -355,7 +355,7 @@ function renderWorkspaceBrowserDirectory(path: string, label: string): string {
 	);
 }
 
-export function renderWorkspaceSearchResults(
+function renderWorkspaceSearchResults(
 	recentWorkspaces: readonly string[],
 	searchWorkspaces: readonly WorkspaceSuggestion[],
 	currentWorkspacePath: string,

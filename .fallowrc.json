@@ -3,6 +3,7 @@
 	"entry": [
 		"src/server-main.ts",
 		"src/server/app.ts",
+		"src/extensions/codemode/worker.ts",
 		"scripts/*.ts",
 		"src/client/code-theme.ts",
 		"src/client/pi-fuzzy.ts",
@@ -27,6 +28,8 @@
 		"@pierre/trees",
 		"@starfederation/datastar-sdk",
 		"open-props",
+		"quickjs-wasi",
+		"shiki",
 		"typebox"
 	],
 	"ignoreUnresolvedImports": ["../pierre-worker.js"],
