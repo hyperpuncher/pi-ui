@@ -1,9 +1,105 @@
-import { test } from "bun:test";
+import { afterEach, test } from "bun:test";
 
 import { FileTree } from "@pierre/trees";
 
-import { syncWorkspaceTreePaths } from "#src/client/workspace-tree.ts";
+import {
+	createWorkspaceTreeExpansion,
+	syncWorkspaceTreePaths,
+} from "#src/client/workspace-tree.ts";
 import { assertEquals } from "#testing/assertions";
+
+function memoryStorage() {
+	const values = new Map<string, string>();
+	return {
+		getItem: (key: string) => values.get(key) ?? null,
+		setItem: (key: string, value: string) => {
+			values.set(key, value);
+		},
+	};
+}
+
+const persistentTrees: FileTree[] = [];
+afterEach(() => {
+	for (const tree of persistentTrees) tree.cleanUp();
+	persistentTrees.length = 0;
+});
+
+function persistentTree(
+	storage: Pick<Storage, "getItem" | "setItem">,
+	panel: "files" | "git" = "files",
+	workspace = () => "/project",
+) {
+	const tree = new FileTree({ paths: [], fileTreeSearchMode: "hide-non-matches" });
+	persistentTrees.push(tree);
+	const state = createWorkspaceTreeExpansion(tree, panel, workspace, storage);
+	return { tree, ...state };
+}
+
+test("expansion survives session changes, including hidden descendants", () => {
+	const storage = memoryStorage();
+	const paths = ["src/nested/a.ts", "src/b.ts", "docs/a.md"];
+	const first = persistentTree(storage);
+	first.sync(undefined, paths);
+	directory(first.tree, "src/nested/").expand();
+	directory(first.tree, "src/").collapse();
+	directory(first.tree, "docs/").expand();
+	first.save();
+
+	const next = persistentTree(storage);
+	next.sync(undefined, [...paths, "new/a.ts"]);
+	assertEquals(directory(next.tree, "src/").isExpanded(), false);
+	assertEquals(directory(next.tree, "src/nested/").isExpanded(), true);
+	assertEquals(directory(next.tree, "docs/").isExpanded(), true);
+	assertEquals(directory(next.tree, "new/").isExpanded(), false);
+});
+
+test("expansion is isolated by workspace and panel and restored when returning", () => {
+	const storage = memoryStorage();
+	const paths = ["src/a.ts"];
+	let workspace = "/one";
+	const files = persistentTree(storage, "files", () => workspace);
+	files.sync(undefined, paths);
+	directory(files.tree, "src/").expand();
+	files.save();
+	workspace = "/two";
+	files.sync(undefined, paths);
+	assertEquals(directory(files.tree, "src/").isExpanded(), false);
+	workspace = "/one";
+	files.sync(undefined, paths);
+	assertEquals(directory(files.tree, "src/").isExpanded(), true);
+	const git = persistentTree(storage, "git", () => workspace);
+	git.sync(undefined, paths);
+	assertEquals(directory(git.tree, "src/").isExpanded(), false);
+});
+
+test("search expansion is not remembered across sessions", () => {
+	const storage = memoryStorage();
+	const paths = ["src/nested/match.ts", "src/other.ts", "docs/a.md"];
+	const first = persistentTree(storage);
+	first.sync(undefined, paths);
+	directory(first.tree, "docs/").expand();
+	first.tree.setSearch("match");
+	first.save();
+	const next = persistentTree(storage);
+	next.sync(undefined, paths);
+	assertEquals(directory(next.tree, "src/").isExpanded(), false);
+	assertEquals(directory(next.tree, "docs/").isExpanded(), true);
+});
+
+test("invalid or unavailable storage does not break tree loading", () => {
+	const blocked = () => {
+		throw new Error("blocked");
+	};
+	for (const storage of [
+		{ getItem: () => "invalid json", setItem: () => {} },
+		{ getItem: blocked, setItem: blocked },
+	]) {
+		const state = persistentTree(storage);
+		state.sync(undefined, ["src/a.ts"]);
+		assertEquals(directory(state.tree, "src/").isExpanded(), false);
+		state.save();
+	}
+});
 
 function directory(tree: FileTree, path: string) {
 	const item = tree.getItem(path);

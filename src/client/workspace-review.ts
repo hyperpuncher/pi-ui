@@ -49,7 +49,7 @@ import {
 	workspaceReviewLoading,
 	workspaceReviewStateChanged,
 } from "./workspace-review-state.ts";
-import { syncWorkspaceTreePaths } from "./workspace-tree.ts";
+import { createWorkspaceTreeExpansion } from "./workspace-tree.ts";
 
 type ReviewMode = NonNullable<WorkspaceReviewPreferences["mode"]>;
 type ReviewItem = CodeViewItem<ReviewCommentMetadata> & { type: "diff" };
@@ -194,6 +194,7 @@ const tree = new FileTree({
 		if (path && !tree.getItem(path)?.isDirectory()) selectWorking(path, true);
 	},
 });
+const treeExpansion = createWorkspaceTreeExpansion(tree, "git", () => workspacePath);
 tree.render({ containerWrapper: treeHost });
 bindWorkspaceKeyboardNavigation();
 window.piUi.workspaceReview = {
@@ -288,6 +289,7 @@ window.addEventListener(
 		reviewData.disconnect();
 		resize.disconnect();
 		theme.disconnect();
+		treeExpansion.save();
 		tree.cleanUp();
 		workspaceFiles.cleanUp();
 		viewer?.cleanUp();
@@ -311,6 +313,7 @@ function applyWorkspaceReview(
 	}
 	const workspaceChanged = nextWorkspacePath !== workspacePath;
 	if (workspaceChanged) {
+		treeExpansion.save();
 		workspacePath = nextWorkspacePath;
 		workspaceFiles.setWorkspace(workspacePath);
 		workspaceVersion++;
@@ -352,8 +355,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	else if (!gitWasAvailable && preferredPanelMode !== "files") panelMode = "git";
 	workspaceFiles.setVisible(visibility.isOpen() && panelMode === "files");
 	invalidateWorkingDiff();
-	syncWorkspaceTreePaths(
-		tree,
+	treeExpansion.sync(
 		previousPaths,
 		snapshot.changes.map(({ path }) => path),
 	);

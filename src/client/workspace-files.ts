@@ -22,7 +22,7 @@ import {
 	type WorkspaceFileData,
 	type WorkspaceFilePreviewData,
 } from "./workspace-files-api.ts";
-import { syncWorkspaceTreePaths } from "./workspace-tree.ts";
+import { createWorkspaceTreeExpansion } from "./workspace-tree.ts";
 
 type WorkspaceFilesOptions = {
 	endpoint: string;
@@ -116,6 +116,11 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			void selectFile(next);
 		},
 	});
+	const treeExpansion = createWorkspaceTreeExpansion(
+		tree,
+		"files",
+		() => workspacePath,
+	);
 	tree.render({ containerWrapper: treeHost });
 
 	downloadButton.addEventListener("click", () => {
@@ -428,6 +433,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 
 	function setWorkspace(next: string): void {
 		if (workspacePath === next) return;
+		treeExpansion.save();
 		workspacePath = next;
 		loadedPaths = [];
 		loadedWorkspacePath = undefined;
@@ -446,8 +452,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			const data = await api.list();
 			if (generation !== loadGeneration || data.workspacePath !== workspacePath)
 				return;
-			syncWorkspaceTreePaths(
-				tree,
+			treeExpansion.sync(
 				loadedWorkspacePath === workspacePath ? loadedPaths : undefined,
 				data.paths,
 			);
@@ -856,6 +861,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	}
 
 	function cleanUp(): void {
+		treeExpansion.save();
 		stopEditing();
 		clearFontPreview();
 		previewHost.replaceChildren();
