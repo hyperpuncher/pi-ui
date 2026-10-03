@@ -107,6 +107,7 @@ test("commit metadata and name-status parsing preserve Git data", () => {
 				pushed: false,
 				shortHash: "0123456",
 				subject: "feat: ship",
+				tags: [],
 			},
 		],
 	);
@@ -124,6 +125,8 @@ test("workspace review combines repository files with tracked and untracked chan
 		await Bun.write(`${repository}/README.md`, "before\n");
 		await git(repository, "add", ".");
 		await git(repository, "commit", "--quiet", "-m", "initial");
+		await git(repository, "tag", "v1.0.0");
+		await git(repository, "tag", "-a", "release,candidate", "-m", "release");
 
 		await git(repository, "mv", "src/old.ts", "src/new.ts");
 		await Bun.write(`${repository}/README.md`, "after\n");
@@ -138,10 +141,17 @@ test("workspace review combines repository files with tracked and untracked chan
 		assertEquals(snapshot.commits.length, 1);
 		assertEquals(Boolean(snapshot.branch), true);
 		assertEquals(snapshot.commits[0].subject, "initial");
+		assertEquals(snapshot.commits[0].tags.toSorted(), [
+			"release,candidate",
+			"v1.0.0",
+		]);
 		assertEquals(snapshot.commits[0].pushed, null);
-		assertEquals((await readWorkspaceHistory(repository, 0)).length, 1);
+		const history = await readWorkspaceHistory(repository, 0);
+		assertEquals(history.length, 1);
+		assertEquals(history[0].tags, snapshot.commits[0].tags);
 		const commit = await readWorkspaceCommit(repository, snapshot.commits[0].hash);
 		assertEquals(commit?.commit.subject, "initial");
+		assertEquals(commit?.commit.tags, snapshot.commits[0].tags);
 		assertEquals(
 			commit?.changes.map(({ path }) => path),
 			["README.md", "src/old.ts"],
@@ -189,6 +199,10 @@ test("workspace review combines repository files with tracked and untracked chan
 			await readWorkspaceDiff(repository, "notes.txt"),
 			"+changed again",
 		);
+		await git(repository, "tag", "v1.0.1");
+		const tagged = await readWorkspaceReview(nestedWorkspace);
+		assertEquals(tagged.revision === snapshot.revision, false);
+		assertEquals(tagged.commits[0].tags.includes("v1.0.1"), true);
 	} finally {
 		await rm(repository, { recursive: true });
 	}

@@ -23,6 +23,7 @@ function commit(hash: string): WorkspaceCommit {
 		pushed: false,
 		shortHash: hash,
 		subject: hash,
+		tags: [],
 	};
 }
 

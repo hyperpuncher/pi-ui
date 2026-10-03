@@ -731,7 +731,9 @@ async function loadOlderHistory(): Promise<void> {
 }
 
 function renderDetailHeader(detail: CommitView["detail"]): void {
-	showWorkspaceReviewDetailHeader(detailHeader, detail);
+	const commit =
+		historyCommits.find(({ hash }) => hash === detail.commit.hash) ?? detail.commit;
+	showWorkspaceReviewDetailHeader(detailHeader, { ...detail, commit });
 }
 
 function hideDetailHeader(): void {

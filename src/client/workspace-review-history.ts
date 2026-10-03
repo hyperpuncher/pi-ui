@@ -73,7 +73,11 @@ export function renderWorkspaceReviewHistory({
 		date.title = formatCommitDetailDate(commit.authoredAt);
 		date.textContent = formatCommitDate(commit.authoredAt);
 		metadata.append(shortHash, author, date);
-		button.append(subject, metadata);
+		const heading = document.createElement("span");
+		heading.className = "review-commit-heading";
+		heading.append(subject);
+		if (commit.tags.length) heading.append(renderCommitTags(commit.tags));
+		button.append(heading, metadata);
 		row.append(button);
 
 		if (selected) {
@@ -121,7 +125,9 @@ export function showWorkspaceReviewDetailHeader(
 	deletions.className = "review-deletions";
 	deletions.textContent = `-${stats.deletions}`;
 	totals.append(additions, deletions);
-	heading.append(subject, totals);
+	heading.append(subject);
+	if (detail.commit.tags.length) heading.append(renderCommitTags(detail.commit.tags));
+	heading.append(totals);
 	const metadata = document.createElement("div");
 	metadata.className = "fine-print review-detail-meta";
 	const hash = document.createElement("span");
@@ -142,6 +148,14 @@ export function showWorkspaceReviewDetailHeader(
 export function hideWorkspaceReviewDetailHeader(detailHeader: HTMLElement): void {
 	detailHeader.hidden = true;
 	detailHeader.replaceChildren();
+}
+
+function renderCommitTags(tags: readonly string[]): HTMLElement {
+	const label = document.createElement("span");
+	label.className = "review-commit-tags";
+	label.textContent = tags.join(", ");
+	label.title = `Tags: ${label.textContent}`;
+	return label;
 }
 
 function renderPushGroup(pushed: boolean | null): HTMLElement {

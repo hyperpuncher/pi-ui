@@ -21,7 +21,11 @@ export type {
 } from "../workspace-review-types.ts";
 
 type GitResult = Readonly<{ code: number; stderr: string; stdout: string }>;
-const commitLogFormat = "--format=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1e";
+const commitLogArgs = [
+	"--decorate=short",
+	"--decorate-refs=refs/tags/*",
+	"--format=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1f%D%x1e",
+];
 export const maximumWorkspaceDiffBytes = 2 * 1024 * 1024;
 const maximumAllDiffFiles = 100;
 
@@ -79,7 +83,7 @@ export type WorkspaceReviewMetadataCache = {
 async function readWorkspaceMetadata(root: string) {
 	const [headResult, logResult, branchResult] = await Promise.all([
 		git(root, "rev-parse", "--verify", "HEAD"),
-		git(root, "log", "-n", String(workspaceReviewHistoryPageSize), commitLogFormat),
+		git(root, "log", "-n", String(workspaceReviewHistoryPageSize), ...commitLogArgs),
 		git(root, "symbolic-ref", "--quiet", "--short", "HEAD"),
 	]);
 	return { root, headResult, logResult, branchResult };
@@ -137,6 +141,7 @@ export async function readWorkspaceReview(
 			: [];
 	const metadataRevisionInputs = [
 		headResult.stdout,
+		logResult.stdout,
 		upstreamResult.code,
 		upstreamResult.stdout,
 		branchResult.stdout,
@@ -339,7 +344,7 @@ export async function readWorkspaceCommit(
 	if (!root) return undefined;
 	const [metadataResult, statusResult, patchResult, upstreamResult] = await Promise.all(
 		[
-			git(root, "show", "-s", commitLogFormat, hash),
+			git(root, "show", "-s", ...commitLogArgs, hash),
 			git(
 				root,
 				"diff-tree",
@@ -396,7 +401,7 @@ export async function readWorkspaceHistory(
 			"-n",
 			String(workspaceReviewHistoryPageSize),
 			`--skip=${offset}`,
-			commitLogFormat,
+			...commitLogArgs,
 		),
 		git(
 			root,
@@ -419,7 +424,8 @@ export function parseCommitLog(
 	for (const rawRecord of output.split("\x1e")) {
 		const record = rawRecord.replace(/^\n+|\n+$/g, "");
 		if (!record) continue;
-		const [hash, shortHash, author, authoredAt, subject] = record.split("\x1f");
+		const [hash, shortHash, author, authoredAt, subject, tags = ""] =
+			record.split("\x1f");
 		if (!hash || !shortHash || !authoredAt) continue;
 		commits.push({
 			author,
@@ -428,6 +434,7 @@ export function parseCommitLog(
 			pushed: unpushed ? !unpushed.has(hash) : null,
 			shortHash,
 			subject,
+			tags: tags ? tags.replace(/^tag: /, "").split(", tag: ") : [],
 		});
 	}
 	return commits;

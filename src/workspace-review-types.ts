@@ -129,6 +129,7 @@ const workspaceCommitSchema = Type.ReadonlyObject(
 		pushed: Type.Union([Type.Boolean(), Type.Null()]),
 		shortHash: Type.String(),
 		subject: Type.String(),
+		tags: Type.Readonly(Type.Array(Type.String())),
 	}),
 );
 

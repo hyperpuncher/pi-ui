@@ -322,6 +322,7 @@
 	}
 	.review-commit-subject,
 	.review-commit-author,
+	.review-commit-tags,
 	.review-detail-subject,
 	.review-detail-author,
 	.review-commit-file-path {
@@ -329,9 +330,22 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.review-commit-subject {
+	.review-commit-heading {
+		display: flex;
 		width: 100%;
+		min-width: 0;
+		align-items: center;
+		gap: 0.375rem;
+	}
+	.review-commit-subject {
+		flex: 1;
+		min-width: 0;
 		font-size: var(--text-xs);
+	}
+	.review-commit-tags {
+		max-width: 50%;
+		flex-shrink: 0;
+		font-size: var(--text-2xs);
 	}
 	.review-commit-meta {
 		display: flex;
