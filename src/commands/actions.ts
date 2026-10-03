@@ -64,6 +64,10 @@ function toggleToolbarAction(): string {
 	return `document.body.setAttribute('data-toolbar-animated', ''); @post('${endpoints.toolbar}', { payload: { toolbarHidden: !$_toolbarHidden } })`;
 }
 
+function toggleArchiveAction(): string {
+	return `@post('${endpoints.sessionSidebarArchive}', { payload: {}, retryMaxCount: 0 })`;
+}
+
 export const commandActions = {
 	"new-chat": newSessionAction(),
 	"new-temporary-chat": newSessionAction(true),
@@ -79,6 +83,7 @@ export const commandActions = {
 	"toggle-minimal-mode": `document.getElementById('command-dialog')?.close(); ${toggleMinimalModeAction()}`,
 	"toggle-tool-output": `document.getElementById('command-dialog')?.close(); ${toggleToolOutputAction()}`,
 	"toggle-toolbar": `document.getElementById('command-dialog')?.close(); ${toggleToolbarAction()}`,
+	"toggle-archive": `document.getElementById('command-dialog')?.close(); ${toggleArchiveAction()}`,
 	"switch-model":
 		"document.getElementById('command-dialog')?.close(); setTimeout(() => document.getElementById('model-select-trigger')?.click(), 0)",
 	"cycle-model": cycleModelAction("forward"),

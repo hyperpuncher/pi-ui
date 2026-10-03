@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 
 import { renderSessionSidebar } from "#src/ui/session-sidebar.tsx";
-import { assertFalse, assertStringIncludes } from "#testing/assertions";
+import { assertEquals, assertFalse, assertStringIncludes } from "#testing/assertions";
 
 import { appRenderSnapshot } from "./test-fixtures.ts";
 
@@ -27,7 +27,7 @@ test("session sidebar keeps loading visible beneath partial results", () => {
 	assertStringIncludes(html, 'aria-label="Loading"');
 });
 
-test("session sidebar groups sessions while preserving times and shortcuts", () => {
+test("session sidebar puts all older dates in one disclosure while preserving times and shortcuts", () => {
 	const now = new Date();
 	const today = new Date(now);
 	today.setHours(12, 0, 0, 0);
@@ -78,7 +78,37 @@ test("session sidebar groups sessions while preserving times and shortcuts", () 
 	assertFalse(html.includes(">yesterday</time>"));
 	assertFalse(html.includes(">Aug 1</time>"));
 	assertStringIncludes(html, "Earlier session");
+	assertEquals(html.match(/<details\b/g)?.length, 1);
+	const archive = html.match(/<details[^>]*>(.*?)<\/details>/s)?.[1] ?? "";
+	assertStringIncludes(archive, ">Archive</span>");
+	assertStringIncludes(archive, "Earlier session");
+	assertFalse(archive.includes("Today session"));
+	assertFalse(archive.includes("Yesterday session"));
+	assertFalse(/<details[^>]*\bopen(?:\s|=|>)/.test(html));
 	assertStringIncludes(html, "evt.code === 'Digit3'");
+});
+
+test("session sidebar archive respects disabled and day threshold settings", () => {
+	const session = {
+		path: "/sessions/old.jsonl",
+		cwd: "/workspace",
+		title: "Old session",
+		messageCount: 1,
+		modified: "Aug 1",
+		modifiedAt: new Date(Date.now() - 8 * 86_400_000).toISOString(),
+	};
+
+	const disabled = renderSessionSidebar(
+		appRenderSnapshot({ sessions: [session], sessionSidebarArchive: false }),
+	);
+	assertFalse(disabled.includes("<details"));
+	assertStringIncludes(disabled, "Old session");
+
+	const wide = renderSessionSidebar(
+		appRenderSnapshot({ sessions: [session], sessionSidebarArchiveAfterDays: 9 }),
+	);
+	assertFalse(wide.includes("<details"));
+	assertStringIncludes(wide, "Old session");
 });
 
 test("session sidebar initially renders 30 sessions and an infinite-scroll trigger", () => {

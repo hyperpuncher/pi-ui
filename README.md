@@ -180,6 +180,8 @@ all options with their defaults:
 	},
 	"minimalMode": false,
 	"sessionSidebar": {
+		"archive": true,
+		"archiveAfterDays": 2,
 		"open": true,
 		"width": 288
 	},

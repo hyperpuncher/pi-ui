@@ -13,6 +13,7 @@ import {
 import { calendarDayDifference, formatCalendarDay } from "../utils/date-time-format.ts";
 import { systemTimeLocale } from "../utils/locale.ts";
 import { DateTime } from "./date-time.tsx";
+import { Icon } from "./icon.tsx";
 import { ShortcutKbd } from "./keyboard.tsx";
 import { loaderIcon } from "./prompt-status.tsx";
 import { SessionRenameTitle } from "./session-rename.tsx";
@@ -47,6 +48,8 @@ const focusSessionSidebarShortcut = `el.dispatchEvent(new CommandEvent('command'
 	const target = el.querySelector(
 		'li > button[aria-current="true"], li > button[data-active="true"], li > button',
 	) ?? el.querySelector('nav');
+	const group = target?.closest('details');
+	if (group) group.open = true;
 	target?.focus({ preventScroll: true });`;
 
 type SessionSidebarState = Pick<
@@ -54,6 +57,8 @@ type SessionSidebarState = Pick<
 	| "activityText"
 	| "currentSessionPath"
 	| "sessionCatalogLoading"
+	| "sessionSidebarArchive"
+	| "sessionSidebarArchiveAfterDays"
 	| "sessions"
 	| "sessionsHasMore"
 >;
@@ -152,7 +157,9 @@ export function renderSessionSidebar(
 							!evt.shiftKey &&
 							['ArrowDown', 'ArrowUp', 'KeyJ', 'KeyK'].includes(evt.code)
 						) {
-							const rows = [...el.querySelectorAll('li > button:not(:disabled)')];
+							const rows = [...el.querySelectorAll('li > button:not(:disabled)')].filter((row) =>
+								row.checkVisibility(),
+							);
 							const current = rows.indexOf(document.activeElement);
 							if (current >= 0) {
 								evt.preventDefault();
@@ -188,37 +195,54 @@ export function renderSessionSidebar(
 
 export function renderSessionSidebarContent(state: SessionSidebarState): string {
 	const groups = groupSessionsByDate(state);
+	const archiveGroups = state.sessionSidebarArchive
+		? groups.filter((group) => group.archived)
+		: [];
+	const inlineGroups =
+		archiveGroups.length > 0 ? groups.filter((group) => !group.archived) : groups;
+	const pageTrigger = state.sessionsHasMore
+		? renderSessionPageTrigger(`session-sidebar-page-${state.sessions.length}`)
+		: undefined;
+	const showArchive =
+		state.sessionSidebarArchive &&
+		(archiveGroups.length > 0 || state.sessionsHasMore);
 	return syncHtml(
 		<div id="session-sidebar-content">
-			{groups.map((group) => (
-				<div>
-					{group.label && (
-						<h3
-							id={`session-sidebar-${group.key}`}
-							class="session-group-heading"
-						>
-							<span>{group.label}</span>
-							<span class="session-group-rule" aria-hidden="true" />
-						</h3>
-					)}
-					<ul>
-						{group.sessions.map(({ session, index }) =>
-							renderSessionSidebarRow(
-								session,
-								index,
-								state,
-								group.showRowDate,
-							),
-						)}
-					</ul>
-				</div>
-			))}
+			{inlineGroups.map((group) => renderSessionDateGroup(group, state))}
+			{showArchive && (
+				<details id="session-sidebar-archive" data-preserve-attr="open">
+					<summary class="session-group-heading">
+						<span>Archive</span>
+						<span class="session-group-rule" aria-hidden="true" />
+						<Icon name="chevron-left" />
+					</summary>
+					{archiveGroups.map((group) => renderSessionDateGroup(group, state))}
+					{pageTrigger}
+				</details>
+			)}
+			{!showArchive && pageTrigger}
 			{state.sessionCatalogLoading && (
 				<div class="session-sidebar-loading">{loaderIcon()}</div>
 			)}
-			{state.sessionsHasMore &&
-				renderSessionPageTrigger(`session-sidebar-page-${state.sessions.length}`)}
 		</div>,
+	);
+}
+
+function renderSessionDateGroup(group: SessionDateGroup, state: SessionSidebarState) {
+	return (
+		<div id={`session-sidebar-group-${group.key}`}>
+			{group.label && (
+				<h3 id={`session-sidebar-${group.key}`} class="session-group-heading">
+					<span>{group.label}</span>
+					<span class="session-group-rule" aria-hidden="true" />
+				</h3>
+			)}
+			<ul>
+				{group.sessions.map(({ session, index }) =>
+					renderSessionSidebarRow(session, index, state, group.showRowDate),
+				)}
+			</ul>
+		</div>
 	);
 }
 
@@ -249,6 +273,7 @@ type SessionDateGroup = {
 	key: string;
 	label: string | undefined;
 	showRowDate: boolean;
+	archived: boolean;
 	sessions: Array<{ session: AppSessionSummary; index: number }>;
 };
 
@@ -256,6 +281,7 @@ function groupSessionsByDate(
 	state: SessionSidebarState,
 	now = new Date(),
 ): SessionDateGroup[] {
+	const archiveAfterDays = state.sessionSidebarArchiveAfterDays;
 	const groups = new Map<string, SessionDateGroup>();
 	for (const [index, session] of state.sessions.entries()) {
 		const status = sessionStatus(session, state);
@@ -271,12 +297,16 @@ function groupSessionsByDate(
 					: date && difference !== undefined
 						? sessionGroupLabel(date, difference, now)
 						: "Unknown date",
+				archived:
+					!status &&
+					(difference === undefined || difference >= archiveAfterDays),
 				showRowDate:
 					Boolean(status) || difference === 0 || difference === undefined,
 				sessions: [],
 			};
 			groups.set(key, group);
 		}
+		if (session.path === state.currentSessionPath) group.archived = false;
 		group.sessions.push({ session, index });
 	}
 	return groups.values().toArray();

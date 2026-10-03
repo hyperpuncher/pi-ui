@@ -23,6 +23,7 @@ export const endpoints = {
 	toolbar: "/toolbar",
 	sessionPerformanceClient: "/session-performance/client",
 	sessionSidebar: "/session-sidebar",
+	sessionSidebarArchive: "/session-sidebar/archive",
 	prompt: "/prompt",
 	slashSearch: "/prompt/slash/search",
 	promptFollowUp: "/prompt/follow-up",

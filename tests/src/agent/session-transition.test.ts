@@ -129,6 +129,8 @@ test("resume renderers share loading behavior and disable controls", () => {
 		currentSessionPath: undefined,
 		activityText: undefined,
 		sessionCatalogLoading: false,
+		sessionSidebarArchive: true,
+		sessionSidebarArchiveAfterDays: 2,
 	});
 	assertStringIncludes(shortcuts, "evt.ctrlKey");
 });

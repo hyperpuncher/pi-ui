@@ -9,8 +9,8 @@ export const assetRoutes = {
 			new Response(
 				renderPage(context.renderer.projectState(context.store.snapshot()), {
 					appVersion: context.appVersion,
-					sessionSidebarOpen: context.sessionSidebarOpen,
-					sessionSidebarWidth: context.sessionSidebarWidth,
+					sessionSidebarOpen: context.store.sessionSidebarOpen,
+					sessionSidebarWidth: context.store.sessionSidebarWidth,
 					themeLab: context.themeLab,
 				}),
 				{

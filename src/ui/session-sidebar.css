@@ -233,6 +233,27 @@
 		letter-spacing: 0.025em;
 		text-transform: lowercase;
 	}
+	.session-group-heading > span:first-child {
+		line-height: 1;
+		text-box: trim-both cap alphabetic;
+	}
+	summary.session-group-heading {
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		list-style: none;
+	}
+	summary.session-group-heading > .icon {
+		width: 0.75rem;
+		height: 0.75rem;
+		flex-shrink: 0;
+	}
+	details[open] > summary.session-group-heading > .icon {
+		rotate: -90deg;
+	}
+	summary.session-group-heading:is(:hover, :focus-visible) {
+		background: var(--surface-control);
+		color: var(--text);
+	}
 	.session-group-rule {
 		flex: 1;
 		border-top: 1px solid var(--border);

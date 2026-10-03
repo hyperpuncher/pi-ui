@@ -6,6 +6,7 @@ const names = [
 	"brain",
 	"check",
 	"chevron-down",
+	"chevron-left",
 	"chevron-right",
 	"command",
 	"copy",

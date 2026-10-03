@@ -2,6 +2,10 @@ import type { SessionTransitionState } from "../agent/session-transition-control
 import { appCommandCatalog } from "../commands/catalog.ts";
 import { activeKeybind } from "../keybinds.ts";
 import { sessionPerformance } from "../perf/session-performance.ts";
+import {
+	sessionSidebarArchiveAfterDaysDefault,
+	sessionSidebarWidthDefault,
+} from "../session-sidebar-types.ts";
 import type { AvailableUpdate } from "../update-check.ts";
 import { formatMessageCount } from "../utils/format.ts";
 import type { JsonObject } from "../utils/json-types.ts";
@@ -197,6 +201,8 @@ export type AppStateSnapshot = Readonly<{
 	minimalMode: boolean;
 	toolOutputHidden: boolean;
 	toolbarHidden: boolean;
+	sessionSidebarArchive: boolean;
+	sessionSidebarArchiveAfterDays: number;
 	usage: Readonly<AppUsage>;
 	activityText: string | undefined;
 	queuedSteeringMessages: readonly string[];
@@ -287,6 +293,10 @@ export class AppStore {
 	minimalMode = false;
 	toolOutputHidden = false;
 	toolbarHidden = false;
+	sessionSidebarOpen = true;
+	sessionSidebarWidth = sessionSidebarWidthDefault;
+	sessionSidebarArchive = true;
+	sessionSidebarArchiveAfterDays = sessionSidebarArchiveAfterDaysDefault;
 	usage: AppUsage = { text: "$0.000 • 0 tokens", costText: "$0.000" };
 	workspacePath = defaultWorkspacePath();
 	projectRoot = this.workspacePath;
@@ -392,6 +402,8 @@ export class AppStore {
 			minimalMode: this.minimalMode,
 			toolOutputHidden: this.toolOutputHidden,
 			toolbarHidden: this.toolbarHidden,
+			sessionSidebarArchive: this.sessionSidebarArchive,
+			sessionSidebarArchiveAfterDays: this.sessionSidebarArchiveAfterDays,
 			usage: { ...this.usage },
 			activityText: this.activityText,
 			queuedSteeringMessages: this.queuedSteeringMessages,

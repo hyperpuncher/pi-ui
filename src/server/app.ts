@@ -15,6 +15,7 @@ import { parseKeybindOverrides, setActiveKeybinds } from "../keybinds.ts";
 import { setActiveCodeTheme } from "../pierre-theme.ts";
 import {
 	normalizeSessionSidebarPreferences,
+	sessionSidebarArchiveAfterDaysDefault,
 	sessionSidebarWidthDefault,
 } from "../session-sidebar-types.ts";
 import { AppStore } from "../state/app-store.ts";
@@ -54,6 +55,11 @@ export async function createApp() {
 	store.minimalMode = appConfig.minimalMode === true;
 	store.toolOutputHidden = appConfig.toolOutputHidden === true;
 	store.toolbarHidden = appConfig.toolbarHidden === true;
+	store.sessionSidebarOpen = sessionSidebar.open !== false;
+	store.sessionSidebarWidth = sessionSidebar.width ?? sessionSidebarWidthDefault;
+	store.sessionSidebarArchive = sessionSidebar.archive !== false;
+	store.sessionSidebarArchiveAfterDays =
+		sessionSidebar.archiveAfterDays ?? sessionSidebarArchiveAfterDaysDefault;
 	if (appConfig.updateCheck !== false && process.env.PI_UI_NO_UPDATE_CHECK !== "1") {
 		void checkForUpdate().then((update) => {
 			if (update) store.setUpdateAvailable(update);
@@ -95,8 +101,6 @@ export async function createApp() {
 		resources,
 		transferredFiles,
 		appVersion: staticAssets.version,
-		sessionSidebarOpen: sessionSidebar.open !== false,
-		sessionSidebarWidth: sessionSidebar.width ?? sessionSidebarWidthDefault,
 		themeLab: process.env.PI_UI_THEME_LAB === "1",
 		serveStatic: (request) => staticAssets.serve(request),
 		openWorkspace: (path) =>

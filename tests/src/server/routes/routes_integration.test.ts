@@ -17,7 +17,6 @@ import {
 } from "#src/server/routes/endpoints.ts";
 import { fileRoutes } from "#src/server/routes/files.ts";
 import { SessionImageStore } from "#src/server/session-image-store.ts";
-import { sessionSidebarWidthDefault } from "#src/session-sidebar-types.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import { outputCommand } from "#src/utils/command.ts";
@@ -1171,8 +1170,6 @@ function fakeContext(
 	const store = new AppStore();
 	return {
 		appVersion: "test-version",
-		sessionSidebarOpen: true,
-		sessionSidebarWidth: sessionSidebarWidthDefault,
 		themeLab: overrides.themeLab ?? false,
 		store,
 		renderer:

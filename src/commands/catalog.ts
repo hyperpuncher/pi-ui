@@ -11,6 +11,7 @@ export type AppCommandId =
 	| "toggle-minimal-mode"
 	| "toggle-tool-output"
 	| "toggle-toolbar"
+	| "toggle-archive"
 	| "switch-model"
 	| "cycle-model"
 	| "cycle-thinking"
@@ -96,6 +97,11 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		id: "toggle-toolbar",
 		title: "Toggle toolbar",
 		description: "Hide the toolbar.",
+	},
+	{
+		id: "toggle-archive",
+		title: "Toggle session archive",
+		description: "Group or reveal older sessions in the sidebar.",
 	},
 	{
 		id: "switch-model",

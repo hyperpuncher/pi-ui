@@ -6,6 +6,9 @@ import { appConfigSchemaUrl } from "../src/config-schema.ts";
 import { defaultFonts, FONT_OPTIONS } from "../src/fonts.ts";
 import { keybindIds } from "../src/keybinds.ts";
 import {
+	sessionSidebarArchiveAfterDaysDefault,
+	sessionSidebarArchiveAfterDaysMax,
+	sessionSidebarArchiveAfterDaysMin,
 	sessionSidebarWidthDefault,
 	sessionSidebarWidthMax,
 	sessionSidebarWidthMin,
@@ -188,6 +191,22 @@ const schema = Type.Object(
 							maximum: sessionSidebarWidthMax,
 							default: sessionSidebarWidthDefault,
 							description: "Session sidebar width in pixels on desktop.",
+						}),
+					),
+					archive: Type.Optional(
+						Type.Boolean({
+							default: true,
+							description:
+								"Group sessions older than the archive threshold into a collapsed Archive section.",
+						}),
+					),
+					archiveAfterDays: Type.Optional(
+						Type.Number({
+							minimum: sessionSidebarArchiveAfterDaysMin,
+							maximum: sessionSidebarArchiveAfterDaysMax,
+							default: sessionSidebarArchiveAfterDaysDefault,
+							description:
+								"Number of days of sessions to keep visible before archiving them.",
 						}),
 					),
 				},

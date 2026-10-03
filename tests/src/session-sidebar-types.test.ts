@@ -2,6 +2,7 @@ import { test } from "bun:test";
 
 import {
 	normalizeSessionSidebarPreferences,
+	sessionSidebarArchiveAfterDaysMax,
 	sessionSidebarWidthMax,
 	sessionSidebarWidthMin,
 } from "#src/session-sidebar-types.ts";
@@ -11,6 +12,22 @@ test("session sidebar preferences keep only valid values", () => {
 	assertEquals(normalizeSessionSidebarPreferences(undefined).open, undefined);
 	assertEquals(normalizeSessionSidebarPreferences({ open: true }).open, true);
 	assertEquals(normalizeSessionSidebarPreferences({ open: "yes" }).open, undefined);
+});
+
+test("session sidebar archive preferences normalize", () => {
+	assertEquals(normalizeSessionSidebarPreferences({ archive: false }).archive, false);
+	assertEquals(
+		normalizeSessionSidebarPreferences({ archive: "no" }).archive,
+		undefined,
+	);
+	assertEquals(
+		normalizeSessionSidebarPreferences({ archiveAfterDays: 500 }).archiveAfterDays,
+		sessionSidebarArchiveAfterDaysMax,
+	);
+	assertEquals(
+		normalizeSessionSidebarPreferences({ archiveAfterDays: 5.6 }).archiveAfterDays,
+		6,
+	);
 });
 
 test("session sidebar width clamps to the supported range", () => {

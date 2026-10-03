@@ -366,6 +366,18 @@
 					"maximum": 384,
 					"default": 288,
 					"description": "Session sidebar width in pixels on desktop."
+				},
+				"archive": {
+					"type": "boolean",
+					"default": true,
+					"description": "Group sessions older than the archive threshold into a collapsed Archive section."
+				},
+				"archiveAfterDays": {
+					"type": "number",
+					"minimum": 1,
+					"maximum": 365,
+					"default": 2,
+					"description": "Number of days of sessions to keep visible before archiving them."
 				}
 			},
 			"description": "Session sidebar preferences.",
