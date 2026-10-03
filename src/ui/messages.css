@@ -73,6 +73,7 @@
 
 	.messages-empty-state {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		flex: 1;
 		place-items: center;
 		color: var(--text-muted);
