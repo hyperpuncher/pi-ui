@@ -17,6 +17,7 @@ import {
 	stringField,
 } from "../action-input.ts";
 import { datastarResponse, signalsResponse } from "../datastar.ts";
+import { canRevealFiles, revealFile } from "../file-manager.ts";
 import {
 	createGitBranch,
 	createGitWorktree,
@@ -36,6 +37,7 @@ import {
 	readWorkspaceFile,
 	removeWorkspaceEntry,
 	resolveFile,
+	resolvePath,
 	workspaceFilePreview,
 	writeWorkspaceFile,
 	WorkspaceFileError,
@@ -136,6 +138,39 @@ export const workspaceRoutes = {
 				},
 				{ headers: { "cache-control": "no-store" } },
 			);
+		},
+	},
+	[endpoints.workspaceFileReveal]: {
+		GET: (request, context) =>
+			Response.json(
+				{ available: canRevealFiles(request, context.clientAddress) },
+				{ headers: { "cache-control": "no-store" } },
+			),
+		POST: async (request, context) => {
+			if (
+				!canRevealFiles(request, context.clientAddress) ||
+				request.headers.get("origin") !== new URL(request.url).origin
+			) {
+				throw new RouteError(
+					403,
+					"The file manager is only available for local connections.",
+				);
+			}
+			const value: unknown = await request.json();
+			if (!isRecord(value) || !isString(value.path))
+				throw new RouteError(400, "Invalid file path.");
+			const { path, info } = await resolvePath(
+				context.store.workspacePath,
+				value.path,
+			);
+			if (!info.isFile() && !info.isDirectory())
+				throw new RouteError(400, "Not a file or folder.");
+			try {
+				await revealFile(path, info.isDirectory());
+			} catch {
+				throw new RouteError(503, "Could not open the file manager.");
+			}
+			return Response.json({ path: value.path });
 		},
 	},
 	[endpoints.workspaceFileEntry]: {

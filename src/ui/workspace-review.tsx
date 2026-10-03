@@ -323,12 +323,13 @@ export function renderWorkspaceReview(
 							</div>
 							<button
 								id="workspace-file-download"
+								data-workspace-file-action
 								type="button"
 								class="btn"
 								data-variant="outline"
 								data-size="xs"
 								title="Download the saved file"
-								disabled
+								hidden
 							>
 								Download
 							</button>
@@ -452,6 +453,18 @@ export function renderWorkspaceReview(
 									<Icon name="text-wrap" />
 								</button>
 							</div>
+							<button
+								id="review-file-action"
+								data-workspace-file-action
+								type="button"
+								class="btn"
+								data-variant="outline"
+								data-size="xs"
+								title="Download the saved file"
+								hidden
+							>
+								Download
+							</button>
 							<span
 								id="review-comment-status"
 								class="error-foreground review-comment-status"

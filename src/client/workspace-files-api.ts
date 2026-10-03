@@ -48,6 +48,7 @@ const workspaceFilesSchema = Type.Object({
 	workspacePath: Type.String(),
 });
 const workspaceEntrySchema = Type.Object({ path: Type.String() });
+const fileRevealSchema = Type.Object({ available: Type.Boolean() });
 
 export type WorkspaceFileData = Static<typeof workspaceFileSchema>;
 export type WorkspaceFilePreviewData = Static<typeof workspaceFilePreviewSchema>;
@@ -57,6 +58,16 @@ export function createWorkspaceFilesApi(endpoint: string) {
 	const contentEndpoint = `${endpoint}/content`;
 	const entryEndpoint = `${endpoint}/entry`;
 	return {
+		async canReveal(): Promise<boolean> {
+			return (await requestJson(`${endpoint}/reveal`, fileRevealSchema)).available;
+		},
+		async reveal(path: string): Promise<void> {
+			await requestJson(`${endpoint}/reveal`, workspaceEntrySchema, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ path }),
+			});
+		},
 		async create(path: string, kind: "file" | "folder"): Promise<string> {
 			return (
 				await requestJson(entryEndpoint, workspaceEntrySchema, {

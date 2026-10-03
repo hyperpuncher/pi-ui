@@ -22,6 +22,7 @@ import {
 	type WorkspaceFileData,
 	type WorkspaceFilePreviewData,
 } from "./workspace-files-api.ts";
+import { workspaceMenuButton } from "./workspace-tree-menu.ts";
 import { createWorkspaceTreeExpansion } from "./workspace-tree.ts";
 
 type WorkspaceFilesOptions = {
@@ -66,6 +67,24 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	const confirmCancel = requiredButton("workspace-confirm-cancel");
 	const confirmAction = requiredButton("workspace-confirm-action");
 	treeHost.style.cssText = workspaceTreeStyle;
+
+	let canReveal = false;
+	void api
+		.canReveal()
+		.then((available) => {
+			canReveal = available;
+			for (const button of document.querySelectorAll<HTMLButtonElement>(
+				"[data-workspace-file-action]",
+			)) {
+				button.textContent = available ? "Show in folder" : "Download";
+				button.title = available
+					? "Show the saved file in your file manager"
+					: "Download the saved file";
+			}
+		})
+		.catch(() => {
+			/* Keep download available if detection fails. */
+		});
 
 	let workspacePath = options.initialWorkspacePath;
 	let loadedPaths: string[] = [];
@@ -124,12 +143,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	tree.render({ containerWrapper: treeHost });
 
 	downloadButton.addEventListener("click", () => {
-		const path = selectedFilePath;
-		if (!path) return;
-		const link = document.createElement("a");
-		link.href = `${options.endpoint}/content?path=${encodeURIComponent(path)}&download=1`;
-		link.download = path.split("/").at(-1) ?? "download";
-		link.click();
+		if (selectedFilePath) void performFileAction(selectedFilePath);
 	});
 	previewModeButton.addEventListener("click", () => {
 		if (!dirty) void setFileMode("preview");
@@ -164,45 +178,46 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		const menu = document.createElement("div");
 		menu.className = "workspace-tree-context-menu";
 		menu.setAttribute("role", "menu");
+		const fileAction = fileActionButton(item, context);
+		if (fileAction) menu.append(fileAction);
 		menu.append(
-			contextMenuButton("New file", () => {
-				context.close({ restoreFocus: false });
-				void createEntry(item, "file");
-			}),
-			contextMenuButton("New folder", () => {
-				context.close({ restoreFocus: false });
-				void createEntry(item, "folder");
-			}),
-			contextMenuButton("Rename", () => {
-				context.close({ restoreFocus: false });
-				void renameEntry(item);
-			}),
-			contextMenuButton(
-				"Delete",
-				() => {
-					context.close({ restoreFocus: false });
-					void deleteEntry(item);
-				},
-				true,
-			),
+			workspaceMenuButton(context, "New file", () => createEntry(item, "file")),
+			workspaceMenuButton(context, "New folder", () => createEntry(item, "folder")),
+			workspaceMenuButton(context, "Rename", () => renameEntry(item)),
+			workspaceMenuButton(context, "Delete", () => deleteEntry(item), true),
 		);
 		return menu;
 	}
 
-	function contextMenuButton(
-		label: string,
-		onClick: () => void,
-		destructive = false,
-	): HTMLButtonElement {
-		const button = document.createElement("button");
-		button.type = "button";
-		button.className = `workspace-tree-context-menu-item${
-			destructive ? " workspace-tree-context-menu-item-destructive" : ""
-		}`;
-		button.setAttribute("role", "menuitem");
-		button.textContent = label;
-		button.addEventListener("click", onClick);
-		return button;
+	function fileActionButton(
+		item: ContextMenuItem,
+		context: ContextMenuOpenContext,
+	): HTMLButtonElement | undefined {
+		if (!canReveal && item.kind === "directory") return;
+		const label = canReveal
+			? item.kind === "directory"
+				? "Open folder"
+				: "Show in folder"
+			: "Download";
+		return workspaceMenuButton(context, label, () => performFileAction(item.path));
+	}
+
+	async function performFileAction(path: string): Promise<void> {
+		if (canReveal) {
+			try {
+				await api.reveal(path);
+			} catch (error) {
+				await requestNotice(
+					"Could not open the file manager",
+					errorMessage(error),
+				);
+			}
+			return;
+		}
+		const link = document.createElement("a");
+		link.href = `${options.endpoint}/content?path=${encodeURIComponent(path)}&download=1`;
+		link.download = path.split("/").at(-1) ?? "download";
+		link.click();
 	}
 
 	async function createEntry(
@@ -736,7 +751,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 
 	function setSelectedFilePath(path?: string): void {
 		selectedFilePath = path;
-		downloadButton.disabled = !path;
+		downloadButton.hidden = !path;
 	}
 
 	function syncSaveButton(): void {
@@ -875,6 +890,8 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		cleanUp,
 		focusEditor,
 		focusTree,
+		fileActionButton,
+		performFileAction,
 		openFile,
 		refresh,
 		refreshAfterDiscard,

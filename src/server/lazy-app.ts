@@ -32,11 +32,18 @@ export async function disposeApp(): Promise<void> {
 }
 
 function bindRoute(handler: RouteHandler<RouteContext>) {
-	return async (request: Request): Promise<Response> => {
+	return async (request: Request, server: Bun.Server<unknown>): Promise<Response> => {
 		const loaded = await getApp();
 		return loaded.compressResponse(
 			request,
-			await executeRoute(request, loaded.app.context, handler),
+			await executeRoute(
+				request,
+				{
+					...loaded.app.context,
+					clientAddress: server.requestIP(request)?.address,
+				},
+				handler,
+			),
 		);
 	};
 }

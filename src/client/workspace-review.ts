@@ -49,6 +49,7 @@ import {
 	workspaceReviewLoading,
 	workspaceReviewStateChanged,
 } from "./workspace-review-state.ts";
+import { workspaceMenuButton } from "./workspace-tree-menu.ts";
 import { createWorkspaceTreeExpansion } from "./workspace-tree.ts";
 
 type ReviewMode = NonNullable<WorkspaceReviewPreferences["mode"]>;
@@ -94,6 +95,7 @@ const selectedButton = requiredButton("review-mode-selected");
 const splitButton = requiredButton("review-layout-split");
 const stackedButton = requiredButton("review-layout-stacked");
 const wrapButton = requiredButton("review-wrap");
+const fileActionButton = requiredButton("review-file-action");
 const workspaceReviewRoot = requiredElement("workspace-review");
 const workspaceShell = requiredElement("workspace-shell");
 const submitCommentsButton = requiredButton("review-submit-comments");
@@ -206,6 +208,10 @@ window.piUi.workspaceReview = {
 
 history.addEventListener("scroll", maybeLoadOlderHistory, { passive: true });
 history.addEventListener("keydown", handleHistoryKeydown);
+fileActionButton.addEventListener("click", () => {
+	const path = selectedWorkingFilePath();
+	if (path) void workspaceFiles.performFileAction(path);
+});
 allButton.addEventListener("click", () => setMode("all"));
 selectedButton.addEventListener("click", () => setMode("selected"));
 splitButton.addEventListener("click", () => setLayout("split"));
@@ -365,6 +371,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		renderHistory();
 		viewer?.setItems([]);
 		displayedWorkingKey = undefined;
+		fileActionButton.hidden = true;
 		showEmpty("Loading Git data…");
 		return;
 	}
@@ -569,7 +576,15 @@ async function loadWorkingDiff(key: string): Promise<void> {
 	}
 }
 
+function selectedWorkingFilePath(): string | undefined {
+	if (selection.kind !== "working" || workspaceReviewLoading(snapshot.revision)) return;
+	const change = snapshot.changes.find(({ path }) => path === selection.path);
+	if (change && change.status !== "deleted" && !change.path.endsWith("/"))
+		return change.path;
+}
+
 function publish(): void {
+	fileActionButton.hidden = !selectedWorkingFilePath();
 	if (!visibility.isOpen() || panelMode !== "git") return;
 	if (
 		selection.kind === "working" &&
@@ -1015,31 +1030,25 @@ function renderReviewContextMenu(
 	item: ContextMenuItem,
 	context: ContextMenuOpenContext,
 ): HTMLElement | null {
-	if (item.kind !== "file") return null;
+	const fileAction = workspaceFiles.fileActionButton(item, context);
+	if (item.kind !== "file" && !fileAction) return null;
 	const menu = document.createElement("div");
 	menu.className = "workspace-tree-context-menu";
 	menu.setAttribute("role", "menu");
-	const open = document.createElement("button");
-	open.type = "button";
-	open.className = "workspace-tree-context-menu-item";
-	open.setAttribute("role", "menuitem");
-	open.textContent = "Open in editor";
-	open.addEventListener("click", () => {
-		context.close({ restoreFocus: false });
-		setPanelMode("files");
-		void workspaceFiles.openFile(item.path);
-	});
-	const discard = document.createElement("button");
-	discard.type = "button";
-	discard.className =
-		"workspace-tree-context-menu-item workspace-tree-context-menu-item-destructive";
-	discard.setAttribute("role", "menuitem");
-	discard.textContent = "Discard changes";
-	discard.addEventListener("click", () => {
-		context.close({ restoreFocus: false });
-		void discardReviewChange(item.path);
-	});
-	menu.append(open, discard);
+	if (fileAction) menu.append(fileAction);
+	if (item.kind !== "file") return menu;
+	menu.append(
+		workspaceMenuButton(context, "Open in editor", () => {
+			setPanelMode("files");
+			return workspaceFiles.openFile(item.path);
+		}),
+		workspaceMenuButton(
+			context,
+			"Discard changes",
+			() => discardReviewChange(item.path),
+			true,
+		),
+	);
 	return menu;
 }
 

@@ -56,6 +56,7 @@ export const endpoints = {
 	workspaceFiles: workspaceFilesBase,
 	workspaceFileContent: `${workspaceFilesBase}/content`,
 	workspaceFileEntry: `${workspaceFilesBase}/entry`,
+	workspaceFileReveal: `${workspaceFilesBase}/reveal`,
 	workspaceReviewDiff: "/workspace/review/diff",
 	workspaceReviewCommit: "/workspace/review/commit",
 	workspaceReviewDiscard: "/workspace/review/discard",

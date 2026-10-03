@@ -27,6 +27,24 @@ import { makeTempDir, makeTempFile } from "#testing/temp";
 import { getToolPath } from "../../../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
 import { assertStringExcludes } from "../../testing/assertions.ts";
 
+test("remote clients get download rather than access to the server's file manager", async () => {
+	const context = fakeContext();
+	context.clientAddress = "192.168.1.2";
+	const router = createRouter(context);
+	const available = await router.fetch(
+		new Request(`http://localhost${endpoints.workspaceFileReveal}`),
+	);
+	assertEquals(await available.json(), { available: false });
+	const reveal = await router.fetch(
+		new Request(`http://localhost${endpoints.workspaceFileReveal}`, {
+			method: "POST",
+			headers: { origin: "http://localhost", "content-type": "application/json" },
+			body: JSON.stringify({ path: "README.md" }),
+		}),
+	);
+	assertEquals(reveal.status, 403);
+});
+
 test("page assets use the current immutable content version", async () => {
 	const context = fakeContext();
 	context.renderer = new UiRenderer(context.store, new DatastarClientHub());

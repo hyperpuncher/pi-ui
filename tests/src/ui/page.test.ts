@@ -79,6 +79,11 @@ test("only the notification stream stays connected in a hidden tab", () => {
 	);
 });
 
+test("files and git toolbars expose the shared file action", () => {
+	assertStringIncludes(html, 'id="workspace-file-download"');
+	assertStringIncludes(html, 'id="review-file-action"');
+});
+
 test("workspace files expose native preview and source controls", () => {
 	assertStringIncludes(html, 'id="workspace-file-mode"');
 	assertStringIncludes(html, 'id="workspace-file-preview-mode"');

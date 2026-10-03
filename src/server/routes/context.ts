@@ -53,6 +53,7 @@ export interface RouteResources {
 }
 
 export interface RouteContext {
+	clientAddress?: string;
 	appVersion: string;
 	sessionSidebarOpen: boolean;
 	sessionSidebarWidth: number;
