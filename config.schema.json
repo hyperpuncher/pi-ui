@@ -22,9 +22,9 @@
 						"description": "Model in provider/model:thinking-level format."
 					},
 					"default": [
-						"openai/gpt-6-luna:low",
-						"openai-codex/gpt-6-luna:low",
-						"opencode-go/deepseek-v4.1-flash:off"
+						"opencode-go/deepseek-v4.1-flash:low",
+						"openai/gpt-5.6-luna:low",
+						"openai-codex/gpt-5.6-luna:low"
 					],
 					"description": "Models to try in order."
 				},
