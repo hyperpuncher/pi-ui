@@ -46,10 +46,10 @@
 		"audit": "bunx fallow audit"
 	},
 	"devDependencies": {
-		"@earendil-works/pi-ai": "^1.0.0",
-		"@earendil-works/pi-coding-agent": "^1.0.0",
-		"@earendil-works/pi-tui": "^1.0.0",
-		"@iconify-json/lucide": "^1.2.138",
+		"@earendil-works/pi-ai": "^1.0.2",
+		"@earendil-works/pi-coding-agent": "^1.0.2",
+		"@earendil-works/pi-tui": "^1.0.2",
+		"@iconify-json/lucide": "^1.2.139",
 		"@kitajs/html": "5.0.0-next.1",
 		"@oxlint/plugins": "1.86.0",
 		"@pierre/diffs": "^1.5.1",
