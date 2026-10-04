@@ -1,6 +1,7 @@
+import { clamp } from "../utils/clamp.ts";
+
 export function remainingPercent(usedPercent: number): number {
-	const clamped = Math.min(100, Math.max(0, usedPercent));
-	return Math.round(100 - clamped);
+	return Math.round(100 - clamp(usedPercent, 0, 100));
 }
 
 export function formatRemainingTime(resetsAtMs: number | undefined): string {

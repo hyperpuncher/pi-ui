@@ -1,3 +1,5 @@
+import { clamp } from "../utils/clamp.ts";
+
 export const fallbackDisplayHz = 144;
 export const minimumDisplayHz = 30;
 export const maximumDisplayHz = 240;
@@ -52,8 +54,7 @@ export class StreamingFrameScheduler<T> {
 
 	setDisplayHz(hz: number): boolean {
 		if (!Number.isFinite(hz)) return false;
-		const clamped = Math.min(maximumDisplayHz, Math.max(minimumDisplayHz, hz));
-		const intervalMs = 1000 / clamped;
+		const intervalMs = 1000 / clamp(hz, minimumDisplayHz, maximumDisplayHz);
 		if (Math.abs(intervalMs - this.intervalMs) < 0.01) return false;
 		this.intervalMs = intervalMs;
 		this.nextDeadline = this.clock.now() + intervalMs;

@@ -1,5 +1,6 @@
 import type { AppUsage, AppUsageLimits } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
+import { clamp } from "../utils/clamp.ts";
 import { formatTokens } from "../utils/format.ts";
 import { Icon } from "./icon.tsx";
 import { syncHtml } from "./sync-html.ts";
@@ -97,7 +98,7 @@ function renderContextTooltip(usage: AppUsage): string {
 					<span class="usage-meter">
 						<span
 							class="usage-meter-value"
-							style={`width: ${clampPercent(contextPercent)}%`}
+							style={`width: ${clamp(contextPercent, 0, 100)}%`}
 						/>
 					</span>
 					<span class="inverse-fine-print usage-tooltip-footer">
@@ -151,7 +152,7 @@ function renderLimitsTooltip(limits: AppUsageLimits): string {
 					<span class="usage-meter">
 						<span
 							class="usage-meter-value"
-							style={`width: ${clampPercent(window.remainingPercent)}%`}
+							style={`width: ${clamp(window.remainingPercent, 0, 100)}%`}
 						/>
 					</span>
 					<span class="inverse-fine-print usage-window-reset">
@@ -199,7 +200,7 @@ function usageRing(percent: number, className: string): string {
 				class={`${className} usage-ring-value`}
 				stroke-dasharray={circumference}
 				stroke-dashoffset={
-					circumference - (clampPercent(percent) / 100) * circumference
+					circumference - (clamp(percent, 0, 100) / 100) * circumference
 				}
 			/>
 		</svg>,
@@ -208,10 +209,6 @@ function usageRing(percent: number, className: string): string {
 
 function usageColor(percent: number): string {
 	return percent > 90 ? "usage-ring-danger" : "usage-ring-normal";
-}
-
-function clampPercent(value: number): number {
-	return Math.min(100, Math.max(0, value));
 }
 
 export function loaderIcon() {

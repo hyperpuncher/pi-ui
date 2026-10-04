@@ -1,3 +1,4 @@
+import { clamp } from "./utils/clamp.ts";
 import { isBoolean, isNumber, isRecord, type JsonRecord } from "./utils/type-guards.ts";
 
 export const sessionSidebarWidthMin = 224;
@@ -36,5 +37,5 @@ function clampedNumber(
 	min: number,
 	max: number,
 ): number | undefined {
-	return isNumber(value) ? Math.min(Math.max(Math.round(value), min), max) : undefined;
+	return isNumber(value) ? clamp(Math.round(value), min, max) : undefined;
 }
