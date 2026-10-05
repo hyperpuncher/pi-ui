@@ -77,6 +77,8 @@ function formatActivityDuration(milliseconds: number): string {
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
+export type MessagePresentationStats = { entries: number };
+
 /** Owns message presentation caches, frame scheduling, and bounded enhancement work. */
 export class MessageRenderService {
 	private readonly presentation = new Map<string, MessagePresentation>();
@@ -222,6 +224,14 @@ export class MessageRenderService {
 		for (const id of activeIds) if (id) this.initializeStreaming(id);
 		for (const id of enhancementIds.toReversed()) this.deferEnhancement(id);
 	}
+	/** Drops presentation retained for messages that left the visible window. */
+	dropMessages(ids: readonly string[]): void {
+		for (const id of ids) this.presentation.delete(id);
+	}
+	/** Test hook: number of retained message presentation entries. */
+	presentationStatsForTest(): MessagePresentationStats {
+		return { entries: this.presentation.size };
+	}
 	setDisplayRefreshHz(hz: number): boolean {
 		return this.streaming.setDisplayHz(hz);
 	}
@@ -261,18 +271,22 @@ export class MessageRenderService {
 					),
 				);
 				if (signal.aborted) return;
+				// The message may have scrolled out of the visible window while
+				// queued. Rendering it anyway would repopulate the evicted cache.
+				if (!this.store.transcript.isMessageVisible(id)) return;
 				const html = await this.renderEnhancement(kind, text);
 				if (signal.aborted) return;
 				const current = this.store.transcript.getMessage(id);
-				const currentValue = this.ensure(id);
 				if (
 					generation !== this.generation ||
 					!current ||
 					current.text !== text ||
 					current.format !== format ||
-					currentValue.presentationVersion !== version
+					!this.store.transcript.isMessageVisible(id)
 				)
 					return;
+				const currentValue = this.ensure(id);
+				if (currentValue.presentationVersion !== version) return;
 				currentValue.renderedHtml = html;
 				currentValue.presentationState = "final";
 				releaseMarkdownStreamingState(id);

@@ -148,6 +148,17 @@ const systemSlashCommandNames = new Set(
 	systemSlashCommands.map((command) => command.name),
 );
 
+/**
+ * Disposed sessions can hold hundreds of MiB (inline image data in session
+ * entries). Collect them synchronously once a transition settles, instead of
+ * waiting for allocation-driven GC. A full collection costs single-digit
+ * milliseconds on a hundreds-of-MiB heap, negligible after a transition.
+ * Async requests were measured to be unreliable at returning pages here.
+ */
+function reclaimSessionMemory(): void {
+	Bun.gc(true);
+}
+
 type BackgroundSession = {
 	runtime: AgentSessionRuntime;
 	state: TranscriptState;
@@ -511,6 +522,7 @@ export class RuntimeController {
 			this.adoptRuntime(this.runtime);
 		}
 		await this.bindSession({ refreshSessions: true });
+		reclaimSessionMemory();
 		return true;
 	}
 
@@ -535,6 +547,7 @@ export class RuntimeController {
 			},
 		);
 		await this.bindSession();
+		reclaimSessionMemory();
 		return true;
 	}
 
@@ -628,6 +641,7 @@ export class RuntimeController {
 				this.unsubscribeBackgroundSession(backgroundSession);
 				await backgroundSession.runtime.dispose();
 				this.backgroundSessions.delete(targetSessionFile);
+				reclaimSessionMemory();
 			}
 			this.state.removeSession(targetSessionFile);
 			await this.refreshSessions();
@@ -696,6 +710,7 @@ export class RuntimeController {
 		this.adoptRuntime(replacement);
 		this.state.resetChat({ preserveEmptyHint: true });
 		this.bindSessionState();
+		reclaimSessionMemory();
 		return true;
 	}
 
@@ -892,6 +907,7 @@ export class RuntimeController {
 			},
 			transitionId,
 		);
+		if (resumed) reclaimSessionMemory();
 		return resumed;
 	}
 

@@ -161,7 +161,7 @@ export interface AppStorePresentation {
 	requestCommit(effect?: UiCommitEffect): void;
 	viewChanged(): void;
 	messageAppended(id: string): void;
-	messagesRemoved(count: number): void;
+	messagesRemoved(ids: readonly string[]): void;
 	messageUpdated(id: string): void;
 	streamingMessageStarted(id: string): void;
 	streamingMessageChanged(): void;

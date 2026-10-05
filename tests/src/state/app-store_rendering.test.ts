@@ -463,11 +463,16 @@ test("trimming removes old DOM messages with one structural selector", async () 
 			);
 		}
 		const ids = state.trimOldMessages();
-		state.renderer.messagesRemoved(ids.length);
+		const cachedBefore = state.renderer.messages.presentationStatsForTest().entries;
+		state.renderer.messagesRemoved(ids);
 		const output = await readUntil(reader, (text) => text.includes("mode remove"));
 
 		assertEqual(ids.length, 20);
 		assertEqual(state.messages.length, 100);
+		assertEqual(
+			state.renderer.messages.presentationStatsForTest().entries,
+			cachedBefore - ids.length,
+		);
 		assertIncludes(
 			output,
 			"data: selector #message-list > [data-message-id]:nth-last-child(n + 101)",
@@ -476,6 +481,34 @@ test("trimming removes old DOM messages with one structural selector", async () 
 	} finally {
 		controller.abort();
 	}
+});
+
+test("trimmed messages skip deferred enhancement work", async () => {
+	const state = createState({
+		renderMarkdownFinal: (text) => Promise.resolve(`<p>${text}</p>`),
+	});
+	connect(state);
+	state.replaceMessages(
+		Array.from({ length: 130 }, (_, index) =>
+			markdownMessage(`**message ${index}**`),
+		),
+	);
+	for (let page = 0; page < 3; page += 1) {
+		state.renderer.patchOlderMessages(state.loadOlderMessages());
+	}
+	const ids = state.trimOldMessages();
+	assertEqual(ids.length, 20);
+	state.renderer.messagesRemoved(ids);
+	await waitFor(() =>
+		projectedMessages(state).every(
+			({ presentationState }) => presentationState === "final",
+		),
+	);
+	assertEqual(state.messages.length, 100);
+	assertEqual(
+		state.renderer.messages.presentationStatsForTest().entries,
+		state.messages.length,
+	);
 });
 
 test("repaging replaces the transcript and moves to the recent page", async () => {

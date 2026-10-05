@@ -228,8 +228,9 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.messageAppended(id);
 		this.appendMessage(id);
 	}
-	messagesRemoved(count: number): void {
-		if (count <= 0) return;
+	messagesRemoved(ids: readonly string[]): void {
+		if (ids.length === 0) return;
+		this.messages.dropMessages(ids);
 		this.hub.patchElement(
 			"",
 			`#message-list > [data-message-id]:nth-last-child(n + ${this.store.messages.length + 1})`,

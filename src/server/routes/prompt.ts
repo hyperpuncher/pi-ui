@@ -98,7 +98,7 @@ export const promptRoutes = {
 	[endpoints.messagesTrim]: {
 		POST: (_request, context) => {
 			const ids = context.store.trimOldMessages();
-			if (ids.length > 0) context.renderer.messagesRemoved(ids.length);
+			if (ids.length > 0) context.renderer.messagesRemoved(ids);
 			return datastarResponse();
 		},
 	},

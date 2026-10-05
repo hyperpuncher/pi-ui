@@ -118,6 +118,12 @@ export class TranscriptState {
 		return this.messageIndexById.get(id);
 	}
 
+	/** Whether the message is inside the currently visible window. */
+	isMessageVisible(id: string): boolean {
+		const index = this.messageIndexById.get(id);
+		return index !== undefined && index >= this.visibleMessageStart;
+	}
+
 	appendMessage(
 		role: TranscriptMessageRole,
 		text: string,

@@ -66,6 +66,26 @@ test("live transcripts trim only when requested", () => {
 	assertEquals(state.trimOldMessages(), []);
 });
 
+test("transcript visibility tracks the window", () => {
+	const state = new TranscriptState(hint);
+	state.replaceMessages(
+		Array.from({ length: 130 }, (_, index) => ({
+			role: "assistant" as const,
+			text: `message ${index}`,
+			timestamp,
+		})),
+	);
+	const [first, last] = [state.allMessages.at(0)!, state.allMessages.at(-1)!];
+	assertEquals(state.isMessageVisible(first.id), false);
+	assertEquals(state.isMessageVisible(last.id), true);
+	assertEquals(state.isMessageVisible("missing"), false);
+	for (let page = 0; page < 3; page += 1) state.loadOlderMessages();
+	const trimmed = state.trimOldMessages();
+	assertEquals(trimmed.length, 20);
+	assertEquals(state.isMessageVisible(last.id), true);
+	for (const id of trimmed) assertEquals(state.isMessageVisible(id), false);
+});
+
 test("transcript paging and reset have no presentation state", () => {
 	const state = new TranscriptState(hint);
 	state.replaceMessages(
