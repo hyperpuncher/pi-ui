@@ -1,6 +1,8 @@
 @layer tokens {
 	:root {
 		color-scheme: light;
+		accent-color: var(--action-primary);
+		scrollbar-color: var(--text-muted) transparent;
 
 		/* Open Props neutral palette */
 		--gray-chroma: 0;
