@@ -241,11 +241,7 @@ const resize = new ResizeObserver(() => {
 resize.observe(diffRoot);
 resize.observe(workspaceShell);
 
-const theme = new MutationObserver(updateViewerOptions);
-theme.observe(document.documentElement, {
-	attributeFilter: ["class"],
-	attributes: true,
-});
+window.addEventListener("pi-ui-theme-mode-changed", updateViewerOptions);
 
 function applyWorkspaceReviewData(): void {
 	try {
@@ -294,7 +290,7 @@ window.addEventListener(
 	() => {
 		reviewData.disconnect();
 		resize.disconnect();
-		theme.disconnect();
+		window.removeEventListener("pi-ui-theme-mode-changed", updateViewerOptions);
 		treeExpansion.save();
 		tree.cleanUp();
 		workspaceFiles.cleanUp();
@@ -774,7 +770,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata, undefined> {
 		overflow: wrap ? "wrap" : "scroll",
 		stickyHeaders: true,
 		theme: getPierreThemes(),
-		themeType: document.documentElement.classList.contains("dark") ? "dark" : "light",
+		themeType: window.piUiTheme.currentMode(),
 		unsafeCSS: `
 			:host {
 				--diffs-bg: var(--surface-code);

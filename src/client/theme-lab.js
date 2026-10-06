@@ -5,30 +5,15 @@ canvas.height = 1;
 const context = canvas.getContext("2d", { willReadFrequently: true });
 
 function currentMode() {
-	return document.documentElement.classList.contains("dark") ? "dark" : "light";
+	return window.piUiTheme.currentMode();
 }
 
 function currentPreference() {
-	try {
-		const stored = localStorage.getItem("themeMode");
-		return stored === "light" || stored === "dark" ? stored : "system";
-	} catch {
-		return "system";
-	}
+	return window.piUiTheme.currentPreference();
 }
 
 function setMode(preference) {
-	try {
-		if (preference === "system") localStorage.removeItem("themeMode");
-		else localStorage.setItem("themeMode", preference);
-	} catch {
-		// Theme editing still works when storage is unavailable.
-	}
-	const dark =
-		preference === "dark" ||
-		(preference === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-	document.documentElement.classList.toggle("dark", dark);
-	window.dispatchEvent(new Event("pi-ui-theme-mode-changed"));
+	window.piUiTheme.setMode(preference);
 }
 
 function resolveColor(color) {
@@ -172,15 +157,14 @@ function apply(mode, palette, radius, metrics, palettes) {
 }
 
 function readAuthoredValues() {
-	const light = {};
-	const darkOverrides = {};
-	const collect = (style, target) => {
+	const values = {};
+	const collect = (style) => {
 		for (const property of [
 			...Object.values(sourceProperties),
 			...Object.values(metricProperties),
 		]) {
 			const value = style.getPropertyValue(`--${property}`).trim();
-			if (value) target[property] = value;
+			if (value) values[property] = value;
 		}
 	};
 	const visit = (rules) => {
@@ -189,8 +173,7 @@ function readAuthoredValues() {
 				const selectors = rule.selectorText
 					.split(",")
 					.map((value) => value.trim());
-				if (selectors.includes(":root")) collect(rule.style, light);
-				if (selectors.includes("html.dark")) collect(rule.style, darkOverrides);
+				if (selectors.includes(":root")) collect(rule.style);
 			}
 			if (rule.cssRules) visit(rule.cssRules);
 		}
@@ -202,17 +185,7 @@ function readAuthoredValues() {
 			// Cross-origin stylesheets cannot expose their authored declarations.
 		}
 	}
-	return { light, dark: { ...light, ...darkOverrides } };
-}
-
-function readPalette(authored) {
-	const styles = getComputedStyle(document.documentElement);
-	return Object.fromEntries(
-		Object.entries(sourceProperties).map(([name, property]) => [
-			name,
-			authored[property] ?? styles.getPropertyValue(`--${property}`).trim(),
-		]),
-	);
+	return values;
 }
 
 function readMetrics(authored) {
@@ -236,22 +209,33 @@ function readMetrics(authored) {
 
 function readDefaults() {
 	const root = document.documentElement;
-	const authored = readAuthoredValues();
-	const wasDark = root.classList.contains("dark");
-	root.classList.remove("dark");
-	const light = readPalette(authored.light);
-	root.classList.add("dark");
-	const dark = readPalette(authored.dark);
-	root.classList.toggle("dark", wasDark);
-
+	const meta = document.querySelector('meta[name="color-scheme"]');
+	const prev = meta?.content;
 	const probe = document.createElement("span");
 	probe.style.position = "fixed";
-	probe.style.width = "var(--radius)";
 	probe.style.visibility = "hidden";
 	root.append(probe);
+	// Custom properties keep light-dark() unevaluated, so resolve each token
+	// through a real property under a forced scheme instead of parsing CSS.
+	const readScheme = (scheme) => {
+		if (meta) meta.content = scheme;
+		return Object.fromEntries(
+			Object.entries(sourceProperties).map(([name, property]) => {
+				probe.style.color = `var(--${property})`;
+				return [name, getComputedStyle(probe).color];
+			}),
+		);
+	};
+	const light = readScheme("light");
+	const dark = readScheme("dark");
+	if (meta && prev !== undefined) meta.content = prev;
+
+	const authored = readAuthoredValues();
+	probe.style.width = "var(--radius)";
 	const radius = Number.parseFloat(getComputedStyle(probe).width) || 10;
+	const metrics = readMetrics(authored);
 	probe.remove();
-	return { light, dark, radius, metrics: readMetrics(authored.light) };
+	return { light, dark, radius, metrics };
 }
 
 const defaults = readDefaults();
@@ -304,12 +288,15 @@ function themeCss(palettes, radius, metrics) {
 		const property = metricProperties[name];
 		return `\t--${property}: ${name.startsWith("shadow") ? value : `${value}px`};`;
 	});
-	const block = (palette, foundations = []) =>
-		Object.entries(palette)
-			.map(([name, value]) => `\t--${cssName(name)}: ${value};`)
-			.concat(foundations)
-			.join("\n");
-	return `:root {\n${block(palettes.light, [`\t--radius: ${radius}px;`, ...metricLines])}\n}\n\nhtml.dark {\n${block(palettes.dark)}\n\tcolor-scheme: dark;\n}`;
+	const tokenLines = Object.entries(palettes.light).map(([name, lightValue]) => {
+		const darkValue = palettes.dark[name];
+		const value =
+			darkValue && darkValue !== lightValue
+				? `light-dark(${lightValue}, ${darkValue})`
+				: lightValue;
+		return `\t--${cssName(name)}: ${value};`;
+	});
+	return `:root {\n${[...tokenLines, `\t--radius: ${radius}px;`, ...metricLines].join("\n")}\n\tcolor-scheme: light dark;\n}`;
 }
 
 async function copy(palettes, radius, metrics, button) {

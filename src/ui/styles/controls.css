@@ -190,15 +190,14 @@
 		box-shadow: 0 0 0 3px var(--focus-ring);
 	}
 
-	html.dark
-		:where(
-			.input,
-			.field > input,
-			.field > textarea,
-			.field > select,
-			.input-group:not(.raised-surface)
-		) {
-		background: var(--surface-code);
+	:where(
+		.input,
+		.field > input,
+		.field > textarea,
+		.field > select,
+		.input-group:not(.raised-surface)
+	) {
+		background: light-dark(transparent, var(--surface-code));
 	}
 
 	.field {

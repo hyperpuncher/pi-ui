@@ -74,6 +74,7 @@ export function renderPage(
 					/>
 					<meta name="text-scale" content="scale" />
 					<meta name="color-scheme" content="light dark" />
+					<script>{`try{var m=document.querySelector('meta[name="color-scheme"]');var s=null;try{s=localStorage.getItem("color-scheme")}catch(e){}m.content=s==="light"||s==="dark"?s:"light dark"}catch(e){}`}</script>
 					<meta name="theme-color" content="" />
 					<meta name="apple-mobile-web-app-title" content="pi-ui" />
 					<title id="document-title" safe>

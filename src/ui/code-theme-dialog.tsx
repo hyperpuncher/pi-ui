@@ -26,9 +26,7 @@ export function renderCodeThemeDialog(): string {
 				_codeThemeStatus: "",
 			})}
 			data-on:pi-ui-open-code-theme__window={`
-				$_codeThemeAppearance = document.documentElement.classList.contains('dark')
-					? 'dark'
-					: 'light';
+				$_codeThemeAppearance = window.piUiTheme.currentMode();
 				$_codeThemeSearch = '';
 				$_codeThemeStatus = '';
 				if (!el.open) el.showModal();

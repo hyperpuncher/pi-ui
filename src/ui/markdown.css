@@ -1,7 +1,7 @@
 @layer base {
-	html.dark .shiki span {
+	.shiki span:where([style*="--shiki-dark"]) {
 		/* stylelint-disable-next-line declaration-no-important -- generated Shiki token boundary */
-		color: var(--shiki-dark) !important;
+		color: light-dark(var(--shiki-light), var(--shiki-dark)) !important;
 	}
 
 	.streaming-token {

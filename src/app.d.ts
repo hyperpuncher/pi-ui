@@ -78,6 +78,12 @@ interface PiUiNamespace {
 
 interface Window {
 	piUi: PiUiNamespace;
+	piUiTheme: {
+		apply(): void;
+		currentMode(): "light" | "dark";
+		currentPreference(): "light" | "dark" | "system";
+		setMode(preference: "light" | "dark" | "system"): void;
+	};
 }
 
 declare namespace JSX {

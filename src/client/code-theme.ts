@@ -17,9 +17,7 @@ let previewsPromise: Promise<void> | undefined;
 
 window.piUi.codeTheme = {
 	loadFontPreviews(light, dark) {
-		void loadFontPreviews(
-			document.documentElement.classList.contains("dark") ? dark : light,
-		);
+		void loadFontPreviews(window.piUiTheme.currentMode() === "dark" ? dark : light);
 	},
 	loadPreviews() {
 		previewsPromise ??= loadPreviews();
@@ -96,7 +94,7 @@ function loadStatusColors(themeName: string): Promise<StatusColors> {
 
 function applyStatusColors(): void {
 	if (!statusColors) return;
-	const mode = document.documentElement.classList.contains("dark") ? "dark" : "light";
+	const mode = window.piUiTheme.currentMode();
 	for (const [name, value] of Object.entries(statusColors[mode])) {
 		const property = `--status-${name}`;
 		if (value) document.documentElement.style.setProperty(property, value);
