@@ -274,7 +274,7 @@
 	.theme-lab-token.theme-lab-modified .theme-lab-token-label::after,
 	.theme-lab-metric.theme-lab-modified > span::after,
 	.theme-lab-shadow.theme-lab-modified > span::after {
-		content: " *";
+		content: " *" / "";
 		color: var(--action-primary);
 	}
 

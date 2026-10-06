@@ -633,7 +633,7 @@
 		left: var(--timeline-rail-x);
 		width: 3px;
 		background: var(--surface-muted);
-		content: "";
+		content: "" / "";
 		translate: -50% 0;
 	}
 

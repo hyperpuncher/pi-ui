@@ -362,7 +362,7 @@
 		}
 		.session-sidebar-scroller::after {
 			scroll-snap-align: end;
-			content: "";
+			content: "" / "";
 		}
 		#session-sidebar nav {
 			padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);

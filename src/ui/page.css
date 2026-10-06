@@ -189,7 +189,7 @@
 	.resize-handle::before {
 		position: absolute;
 		inset: 0 -0.25rem;
-		content: "";
+		content: "" / "";
 	}
 
 	.resize-handle[data-orientation="horizontal"]::before {

@@ -377,7 +377,7 @@
 		.prompt-attachment-remove::after {
 			position: absolute;
 			inset: -0.75rem;
-			content: "";
+			content: "" / "";
 		}
 	}
 
@@ -417,7 +417,7 @@
 			.btn:is(.prompt-context-button, .prompt-file-button, .prompt-action)::after {
 			position: absolute;
 			inset: -0.375rem -0.125rem;
-			content: "";
+			content: "" / "";
 		}
 		.prompt-footer .btn.model-picker-button {
 			width: 100%;

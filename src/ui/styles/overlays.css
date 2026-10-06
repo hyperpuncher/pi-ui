@@ -246,7 +246,7 @@
 		color: var(--text-muted);
 		font-size: var(--text-base);
 		text-align: center;
-		content: attr(data-empty);
+		content: attr(data-empty) / attr(data-empty);
 	}
 
 	[data-popover] {
