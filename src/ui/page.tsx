@@ -72,6 +72,7 @@ export function renderPage(
 						name="viewport"
 						content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
 					/>
+					<meta name="text-scale" content="scale" />
 					<meta name="color-scheme" content="light dark" />
 					<meta name="theme-color" content="" />
 					<meta name="apple-mobile-web-app-title" content="pi-ui" />
