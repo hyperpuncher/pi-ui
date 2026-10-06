@@ -1,3 +1,9 @@
+@property --animation-reduced {
+	syntax: "*";
+	inherits: false;
+	initial-value: none;
+}
+
 @layer base {
 	::selection {
 		background: var(--selection);
@@ -112,6 +118,7 @@
 
 	.icon-spin {
 		animation: spin 1s linear infinite;
+		--animation-reduced: spin 20s linear infinite;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -120,9 +127,8 @@
 		*::after {
 			/* stylelint-disable declaration-no-important -- reduced-motion safety boundary */
 			scroll-behavior: auto !important;
-			animation-duration: 0.01ms !important;
-			animation-iteration-count: 1 !important;
-			transition-duration: 0.01ms !important;
+			animation: var(--animation-reduced) !important;
+			transition-duration: 0.1s !important;
 			/* stylelint-enable declaration-no-important */
 		}
 	}
