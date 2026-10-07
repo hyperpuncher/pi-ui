@@ -22,7 +22,13 @@ export type TranscriptMessageAttachment = {
 	name: string;
 	path?: string;
 	mimeType?: string;
-	image?: { data?: string; url?: string; mimeType: string };
+	image?: {
+		data?: string;
+		url?: string;
+		mimeType: string;
+		width?: number;
+		height?: number;
+	};
 };
 
 export type TranscriptMessage = {

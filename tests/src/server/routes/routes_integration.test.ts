@@ -293,18 +293,32 @@ test("older sessions expand backend-owned sidebar state", async () => {
 	assertEquals(context.store.snapshot().sessionsHasMore, false);
 });
 
-test("session images are served separately from transcript HTML", async () => {
+test("session images serve full bytes and display-sized thumbnails", async () => {
 	const context = fakeContext();
+	const full = await new Bun.Image(
+		Buffer.from(
+			"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+			"base64",
+		),
+	)
+		.resize(1600, 1200)
+		.png()
+		.bytes();
 	const url = context.resources.sessionImages.register({
-		data: "aW1hZ2U=",
+		data: Buffer.from(full).toString("base64"),
 		mimeType: "image/png",
 	});
-	const response = await createRouter(context).fetch(
-		new Request(`http://localhost${url}`),
-	);
+	const router = createRouter(context);
+	const response = await router.fetch(new Request(`http://localhost${url}`));
 	assertEquals(response.status, 200);
 	assertEquals(response.headers.get("content-type"), "image/png");
-	assertEquals(new TextDecoder().decode(await response.arrayBuffer()), "image");
+	assertEquals((await response.bytes()).length, full.length);
+	const thumbnail = await router.fetch(new Request(`http://localhost${url}&thumb=1`));
+	assertEquals(thumbnail.status, 200);
+	assertEquals(thumbnail.headers.get("content-type"), "image/webp");
+	const metadata = await new Bun.Image(await thumbnail.bytes()).metadata();
+	assertEquals(metadata.width, 768);
+	assertEquals(metadata.height, 576);
 });
 
 const fdPath = getToolPath("fd") ?? undefined;
@@ -1050,7 +1064,7 @@ test("editable previews include source and sandboxed preview URLs", async () => 
 		assertEquals(markdown.preview.kind, "markdown");
 		assertEquals(
 			markdown.preview.html,
-			`<h1>Markdown preview</h1>\n<p><img src="${filePreviewUrl(`${workspace}/docs/screenshot.png`)}" alt="Screenshot" /></p>\n`,
+			`<h1>Markdown preview</h1>\n<p><img src="${filePreviewUrl(`${workspace}/docs/screenshot.png`)}" alt="Screenshot" loading="lazy" decoding="async" /></p>\n`,
 		);
 		const mdx = await (
 			await router.fetch(

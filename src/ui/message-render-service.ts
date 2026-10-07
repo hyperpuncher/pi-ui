@@ -2,7 +2,11 @@ import { sessionPerformance } from "../perf/session-performance.ts";
 import type { AppStore } from "../state/app-store.ts";
 import { EnhancementQueue } from "../state/enhancement-queue.ts";
 import { StreamingFrameScheduler } from "../state/streaming-frame-scheduler.ts";
-import type { TranscriptMessage } from "../state/transcript-state.ts";
+import type {
+	TranscriptMessage,
+	TranscriptMessageAttachment,
+} from "../state/transcript-state.ts";
+import { probeImageDimensions } from "../utils/image-dimensions.ts";
 import { codeSnippets, hasEmbeddedBash, loadBashLanguages } from "./bash-highlight.ts";
 import { loadPierreLanguage, renderPierreCode, renderPierreDiff } from "./diffs.ts";
 import {
@@ -82,7 +86,10 @@ export type MessagePresentationStats = { entries: number };
 /** Owns message presentation caches, frame scheduling, and bounded enhancement work. */
 export class MessageRenderService {
 	private readonly presentation = new Map<string, MessagePresentation>();
-	private readonly imageUrls = new Map<string, { data: string; url: string }>();
+	private readonly imageUrls = new Map<
+		string,
+		{ data: string; url: string; width?: number; height?: number }
+	>();
 	private readonly queue: EnhancementQueue;
 	private readonly streaming: StreamingFrameScheduler<readonly string[]>;
 	private readonly pendingStreamingIds = new Set<string>();
@@ -375,19 +382,28 @@ export class MessageRenderService {
 				const key = `${message.id}:${index}`;
 				let registered = this.imageUrls.get(key);
 				if (!registered || registered.data !== image.data) {
+					// Probe the header sync: Bun.Image.metadata is async and this
+					// runs inside a sync projection.
 					registered = {
 						data: image.data,
 						url: this.registerImage({
 							data: image.data,
 							mimeType: image.mimeType,
 						}),
+						...probeImageDimensions(image.data),
 					};
 					this.imageUrls.set(key, registered);
 				}
-				return {
-					...attachment,
-					image: { mimeType: image.mimeType, url: registered.url },
+				const renderedImage: NonNullable<TranscriptMessageAttachment["image"]> = {
+					mimeType: image.mimeType,
+					url: registered.url,
 				};
+				// A box needs both sides; a lone side reserves nothing.
+				if (registered.width !== undefined && registered.height !== undefined) {
+					renderedImage.width = registered.width;
+					renderedImage.height = registered.height;
+				}
+				return { ...attachment, image: renderedImage };
 			}),
 			...presentation,
 		};

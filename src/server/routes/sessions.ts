@@ -2,11 +2,13 @@ import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
+import { thumbnailImage, type ThumbnailImage } from "../../image-resize.ts";
 import { expandHomePath } from "../../utils/workspace.ts";
 import { readActionSignals, requiredString, stringField } from "../action-input.ts";
 import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
 import { RouteError, type RouteMap } from "../route.ts";
 import { decodeBase64Image } from "../session-image-store.ts";
+import type { StoredSessionImage } from "../session-image-store.ts";
 import { requireHost, type RouteContext } from "./context.ts";
 import { endpoints } from "./endpoints.ts";
 
@@ -36,15 +38,34 @@ export const sessionRoutes = {
 		},
 	},
 	[endpoints.sessionsImage]: {
-		GET: (_request, context, url) => {
+		GET: async (_request, context, url) => {
 			const image = context.resources.sessionImages.get(
 				url.searchParams.get("id") ?? "",
 			);
 			if (!image) throw new RouteError(404, "Session image not found.");
-			return new Response(decodeBase64Image(image.data), {
+			if (!url.searchParams.has("thumb")) {
+				return new Response(decodeBase64Image(image.data), {
+					headers: {
+						"cache-control": "private, max-age=3600",
+						"content-type": image.mimeType,
+						"x-content-type-options": "nosniff",
+					},
+				});
+			}
+			const thumbnail = await sessionThumbnail(
+				url.searchParams.get("id") ?? "",
+				image,
+			);
+			// Unresizable sources (tiny, animated, exotic) fall back to full.
+			const body: { data: Uint8Array<ArrayBuffer>; mimeType: string } =
+				thumbnail ?? {
+					data: decodeBase64Image(image.data),
+					mimeType: image.mimeType,
+				};
+			return new Response(body.data, {
 				headers: {
 					"cache-control": "private, max-age=3600",
-					"content-type": image.mimeType,
+					"content-type": body.mimeType,
 					"x-content-type-options": "nosniff",
 				},
 			});
@@ -145,6 +166,25 @@ export const sessionRoutes = {
 		},
 	},
 } satisfies RouteMap<RouteContext>;
+
+const maxThumbnailCacheEntries = 200;
+const sessionThumbnails = new Map<string, ThumbnailImage>();
+
+async function sessionThumbnail(
+	id: string,
+	image: StoredSessionImage,
+): Promise<ThumbnailImage | undefined> {
+	const cached = sessionThumbnails.get(id);
+	if (cached) return cached;
+	const thumbnail = await thumbnailImage(decodeBase64Image(image.data), image.mimeType);
+	if (!thumbnail) return undefined;
+	if (sessionThumbnails.size >= maxThumbnailCacheEntries) {
+		const oldest = sessionThumbnails.keys().next();
+		if (!oldest.done) sessionThumbnails.delete(oldest.value);
+	}
+	sessionThumbnails.set(id, thumbnail);
+	return thumbnail;
+}
 
 const FAVICON_DIRECTORIES = [
 	"",

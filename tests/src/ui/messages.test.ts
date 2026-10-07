@@ -56,12 +56,35 @@ test("user messages render attached images without placeholder text", () => {
 			],
 			timestamp: new Date(0),
 		}),
-		'src="/sessions/image?id=one"',
+		'src="/sessions/image?id=one&thumb=1"',
 	);
+	const sized = renderMessage({
+		id: "user-image-sized",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "user",
+		text: "",
+		attachments: [
+			{
+				name: "image.png",
+				image: {
+					url: "/sessions/image?id=two",
+					mimeType: "image/png",
+					width: 1600,
+					height: 1200,
+				},
+			},
+		],
+		timestamp: new Date(0),
+	});
+	// Thumbnail box is reserved from dimensions: no layout shift on load.
+	assertStringIncludes(sized, 'width="384"');
+	assertStringIncludes(sized, 'height="288"');
+	assertStringIncludes(sized, 'href="/sessions/image?id=two"');
 	assertStringIncludes(html, "notes.txt");
 	assertStringIncludes(html, "check this");
-	assertStringExcludes(html, 'loading="lazy"');
-	assertStringExcludes(html, 'decoding="async"');
+	assertStringIncludes(html, 'loading="lazy"');
+	assertStringIncludes(html, 'decoding="async"');
 	assertStringExcludes(html, "[image:");
 });
 
@@ -95,16 +118,14 @@ test("message projection replaces inline image data with stable URLs", () => {
 			},
 		},
 	);
+	// 1x1 png; projection probes the header to reserve the box.
+	const data =
+		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 	store.transcript.replaceMessages([
 		{
 			role: "user",
 			text: "",
-			attachments: [
-				{
-					name: "image.png",
-					image: { data: "aW1hZ2U=", mimeType: "image/png" },
-				},
-			],
+			attachments: [{ name: "image.png", image: { data, mimeType: "image/png" } }],
 			timestamp: new Date(0),
 		},
 	]);
@@ -112,6 +133,8 @@ test("message projection replaces inline image data with stable URLs", () => {
 	assertEquals(message.attachments?.[0].image, {
 		url: "/sessions/image?id=one",
 		mimeType: "image/png",
+		width: 1,
+		height: 1,
 	});
 	renderer.projectMessages(store.transcript.messages);
 	assertEquals(registrations, 1);

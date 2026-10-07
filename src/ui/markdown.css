@@ -95,6 +95,11 @@
 		overflow-wrap: anywhere;
 	}
 
+	.markdown-content img {
+		max-width: 100%;
+		height: auto;
+	}
+
 	.markdown-content > :first-child {
 		margin-block-start: 0;
 	}

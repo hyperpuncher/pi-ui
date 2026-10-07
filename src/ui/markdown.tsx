@@ -84,6 +84,11 @@ const markdownHtmlRewriter = new HTMLRewriter()
 			}
 			const local = localImageUrl(src);
 			if (local) element.setAttribute("src", local);
+			// Markdown images are rare next to attachments; lazy keeps them
+			// from being fetched or decoded offscreen. No reserved box here:
+			// dimensions are only known for attachment images.
+			element.setAttribute("loading", "lazy");
+			element.setAttribute("decoding", "async");
 		},
 	})
 	.on("table", {
@@ -441,6 +446,8 @@ function rewriteRelativeImageSources(html: string, basePath: string): string {
 					);
 					const local = localImageUrl(resolve(basePath, relativePath));
 					if (local) element.setAttribute("src", local);
+					element.setAttribute("loading", "lazy");
+					element.setAttribute("decoding", "async");
 				} catch {
 					// Leave malformed and missing sources untouched so alt text remains visible.
 				}

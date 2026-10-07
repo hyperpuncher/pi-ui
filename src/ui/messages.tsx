@@ -35,6 +35,17 @@ import { syncHtml } from "./sync-html.ts";
 type InlineCodeCacheEntry = { html: string; missingLanguages: string[] };
 const inlineCodeCache = new BoundedCache<string, InlineCodeCacheEntry>(500);
 
+// Matches the 18rem cap on .message-image. Both sides must agree or the
+// reserved box and the rendered box differ and the image shifts on load.
+const imageDisplayMaxHeight = 288;
+
+/** Display box for a chat image: cap height, let max-width handle width. */
+function displayImageSize(width?: number, height?: number) {
+	if (width === undefined || height === undefined) return undefined;
+	const scale = height > imageDisplayMaxHeight ? imageDisplayMaxHeight / height : 1;
+	return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
 function preservesFinalizedMessageDom(message: AppMessage): boolean {
 	return (
 		message.presentationState === "final" &&
@@ -521,20 +532,40 @@ function renderImageAttachments(
 	if (!images.length) return "";
 	return (
 		<div class={["message-attachments", className]}>
-			{images.map((attachment, index) => (
-				<div class="message-image-frame">
-					<img
-						class="message-image"
-						src={
-							attachment.image!.url ??
-							`data:${attachment.image!.mimeType};base64,${attachment.image!.data}`
-						}
-						alt={attachment.name || `Attached image ${index + 1}`}
-					/>
-				</div>
-			))}
+			{images.map((attachment, index) => renderImageAttachment(attachment, index))}
 		</div>
 	);
+}
+
+function renderImageAttachment(
+	attachment: NonNullable<AppMessage["attachments"]>[number],
+	index: number,
+) {
+	const image = attachment.image!;
+	const full = image.url ?? `data:${image.mimeType};base64,${image.data}`;
+	// Thumbnails only exist for store URLs; data URLs and animated GIFs load
+	// as-is (still lazy). Width/height reserve the box before bytes arrive.
+	const thumb =
+		image.url && image.mimeType !== "image/gif" ? `${image.url}&thumb=1` : undefined;
+	const src = thumb ?? full;
+	// Reserve the exact displayed box so decode cannot shift layout. The
+	// browser honors max-width before load, so a narrow container shrinks the
+	// reserved box the same way it shrinks the image.
+	const size = displayImageSize(image.width, image.height);
+	// The frame look lives on the image itself, so there is no wrapper div:
+	// one node unlinked, two linked (a bare link around it).
+	const framed = (
+		<img
+			class="message-image message-image-frame"
+			src={src}
+			alt={attachment.name || `Attached image ${index + 1}`}
+			loading="lazy"
+			decoding="async"
+			width={size?.width}
+			height={size?.height}
+		/>
+	);
+	return thumb ? <a href={full}>{framed}</a> : framed;
 }
 
 function renderUserMessage(message: AppMessage): string {
