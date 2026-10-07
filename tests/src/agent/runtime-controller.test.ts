@@ -1311,6 +1311,43 @@ test("RuntimeController completes and aborts background runtimes exactly once", 
 	assertEquals(next.disposeCount, 1);
 });
 
+test("RuntimeController frees a completed background runtime but keeps its badge", async () => {
+	const state = new AppStore();
+	const path = await makeTempFile({ suffix: ".jsonl" });
+	const completed = fakeRuntime(path);
+	const foreground = fakeRuntime("/sessions/foreground.jsonl");
+	const replacement = fakeRuntime(path);
+	completed.setStreaming(true);
+	const controller = await activate(state, [completed, foreground, replacement]);
+	try {
+		assertEquals((await controller.newSession()).status, "success");
+		state.setSessionCatalog([
+			{
+				path,
+				cwd: "/workspace",
+				title: "Completed",
+				messageCount: 1,
+				modified: "today",
+				backgroundStatus: "running",
+			},
+		]);
+		completed.emit(agentSessionEventStub({ type: "agent_end" }));
+		completed.emit(agentSessionEventStub({ type: "agent_settled" }));
+		await Bun.sleep(0);
+		assertEquals(completed.disposeCount, 1);
+		assertEquals(state.sessions[0]?.backgroundStatus, "completed");
+
+		foreground.setStreaming(true);
+		assertEquals(await controller.resumeSession(path), { status: "success" });
+		assertEquals(replacement.calls.filter((call) => call === "create").length, 1);
+		assertEquals(completed.calls.filter((call) => call === "create").length, 1);
+		assertEquals(state.currentSessionPath, path);
+	} finally {
+		await controller.dispose();
+		await unlink(path);
+	}
+});
+
 test("RuntimeController labels foreground completions by workspace or worktree", async () => {
 	const notifications: SessionDoneNotification[] = [];
 	const notifySessionDone = (details: SessionDoneNotification) => {

@@ -167,6 +167,7 @@ type BackgroundSession = {
 	observedRunning: boolean;
 	tools: SessionEventToolState;
 	unsubscribe: () => void;
+	activating: boolean;
 };
 
 export type RuntimeControllerDependencies = Readonly<{
@@ -211,6 +212,7 @@ export class RuntimeController {
 	private readonly transitionController: SessionTransitionController;
 	private readonly backgroundSessions =
 		new BackgroundRuntimeOwnership<BackgroundSession>();
+	private readonly completedBackgroundPaths = new Set<string>();
 	private readonly catalog: SessionCatalog;
 	private readonly llama: LlamaController;
 	private readonly models: ModelController;
@@ -262,13 +264,7 @@ export class RuntimeController {
 		);
 		this.catalog = new SessionCatalog(state, {
 			sessionDir: resolveSessionDir(this.dependencies.getAgentDir()),
-			backgroundStatuses: () =>
-				new Map(
-					[...this.backgroundSessions.entries()].map(([path, session]) => [
-						path,
-						session.status,
-					]),
-				),
+			backgroundStatuses: () => this.backgroundStatuses(),
 			watch: this.dependencies.watchSessionCatalog,
 		});
 		this.prompts = new PromptLifecycle((runtime) => {
@@ -474,6 +470,7 @@ export class RuntimeController {
 		session.observedRunning = false;
 		this.catalog.mergeCurrentStatuses();
 		await this.catalog.refreshPath(sessionPath);
+		this.releaseBackgroundSession(session);
 		return true;
 	}
 
@@ -641,6 +638,7 @@ export class RuntimeController {
 				this.unsubscribeBackgroundSession(backgroundSession);
 				await backgroundSession.runtime.dispose();
 				this.backgroundSessions.delete(targetSessionFile);
+				this.completedBackgroundPaths.delete(targetSessionFile);
 				reclaimSessionMemory();
 			}
 			this.state.removeSession(targetSessionFile);
@@ -811,6 +809,7 @@ export class RuntimeController {
 				if (!activation || activation.runtime !== session) {
 					throw new RuntimeOwnershipInvariantError();
 				}
+				session.activating = true;
 				const action = this.currentRuntimeLeaveAction();
 				sessionPerformance.recordOwnershipDiagnostics(
 					{ leaveAction: action },
@@ -832,7 +831,12 @@ export class RuntimeController {
 					);
 				} catch (error) {
 					activation.rollback();
+					if (session.status === "completed") {
+						this.releaseBackgroundSession(session);
+					}
 					throw error;
+				} finally {
+					session.activating = false;
 				}
 			},
 			openSession: (path) => {
@@ -1113,6 +1117,7 @@ export class RuntimeController {
 			runtimes.push(session.runtime);
 		}
 		this.backgroundSessions.clear();
+		this.completedBackgroundPaths.clear();
 		this.prompts.dispose();
 
 		const results = await Promise.allSettled(
@@ -1261,6 +1266,7 @@ export class RuntimeController {
 			observedRunning: backgroundObservedRunning,
 			tools: cloneSessionEventToolState(this.tools),
 			unsubscribe: () => {},
+			activating: false,
 		};
 		backgroundSession.unsubscribe = this.runtime.session.subscribe((event) =>
 			this.handleBackgroundEvent(backgroundSession, event),
@@ -1318,6 +1324,43 @@ export class RuntimeController {
 			this.catalog.agentCompleted(path);
 			void this.catalog.refreshPath(path);
 		}
+		this.releaseBackgroundSession(backgroundSession);
+	}
+
+	/**
+	 * A finished background runtime is idle until the user returns to it, but it
+	 * still holds its session branch in memory. Drop the runtime and transcript
+	 * after the current event settles, keeping only the completed badge; a later
+	 * resume rebuilds it from disk. Disposal waits for an in-flight activation.
+	 */
+	private releaseBackgroundSession(session: BackgroundSession): void {
+		const path = session.runtime.session.sessionManager.getSessionFile();
+		if (!path) return;
+		queueMicrotask(() => {
+			if (session.activating) return;
+			if (this.backgroundSessions.get(path) !== session) return;
+			this.backgroundSessions.delete(path);
+			this.completedBackgroundPaths.add(path);
+			this.catalog.mergeCurrentStatuses();
+			void Promise.try(() => session.runtime.dispose()).then(
+				() => reclaimSessionMemory(),
+				(error: ErrorOptions["cause"]) =>
+					console.error("Failed to dispose background runtime", error),
+			);
+		});
+	}
+
+	private backgroundStatuses(): Map<string, BackgroundSessionStatus> {
+		const statuses = new Map<string, BackgroundSessionStatus>(
+			[...this.backgroundSessions.entries()].map(([path, session]) => [
+				path,
+				session.status,
+			]),
+		);
+		for (const path of this.completedBackgroundPaths) {
+			if (!statuses.has(path)) statuses.set(path, "completed");
+		}
+		return statuses;
 	}
 
 	private notifyRuntimeDone(runtime: AgentSessionRuntime): void {
@@ -1368,7 +1411,9 @@ export class RuntimeController {
 			const session = this.runtime.session;
 			const resetToolState = options.resetToolState ?? true;
 			this.state.setWorkspacePath(session.sessionManager.getCwd());
-			this.state.setCurrentSessionPath(session.sessionManager.getSessionFile());
+			const sessionFile = session.sessionManager.getSessionFile();
+			this.state.setCurrentSessionPath(sessionFile);
+			if (sessionFile) this.completedBackgroundPaths.delete(sessionFile);
 			this.state.setTemporarySession(!session.sessionManager.isPersisted());
 			if (resetToolState) clearSessionEventToolState(this.tools);
 			this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
