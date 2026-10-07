@@ -666,12 +666,15 @@ test("multipart prompts resize valid image attachments before passing them to pi
 		new Request("http://localhost/prompt", { method: "POST", body: formData }),
 	);
 	assertEquals(response.status, 204);
-	assertEquals(submitted, {
-		text: "@/tmp/screenshot.png\ninspect this",
-		options: {
-			images: [{ type: "image", data: imageData, mimeType: "image/png" }],
-		},
-	});
+	assertEquals(submitted?.text, "@/tmp/screenshot.png\ninspect this");
+	const image = submitted?.options.images?.[0];
+	assertEquals(image?.type, "image");
+	assertEquals(image?.mimeType, "image/webp");
+	const metadata = await new Bun.Image(
+		Buffer.from(image?.data ?? "", "base64"),
+	).metadata();
+	assertEquals(metadata.width, 1);
+	assertEquals(metadata.height, 1);
 });
 
 test("multipart prompts reject HEIC images before provider submission", async () => {

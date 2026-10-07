@@ -34,7 +34,7 @@ test("Bun read tool preserves text reads", async () => {
 	}
 });
 
-test("Bun read tool preserves images within the provider limits", async () => {
+test("Bun read tool encodes images to webp", async () => {
 	const root = await makeTempDir();
 	try {
 		const source = await Bun.file(iconPath).bytes();
@@ -42,10 +42,17 @@ test("Bun read tool preserves images within the provider limits", async () => {
 		await Bun.write(path, source);
 
 		const result = await readPath(root, path);
-		assertEquals(result.content, [
-			{ type: "text", text: "Read image file [image/png]" },
-			{ type: "image", data: source.toBase64(), mimeType: "image/png" },
-		]);
+		const text = result.content.find((item) => item.type === "text");
+		const image = result.content.find((item) => item.type === "image");
+		if (text?.type !== "text" || image?.type !== "image") {
+			throw new Error("Expected image read content.");
+		}
+		assertEquals(text.text, "Read image file [image/webp]");
+		assertEquals(image.mimeType, "image/webp");
+		assertEquals(
+			(await new Bun.Image(Uint8Array.fromBase64(image.data)).metadata()).format,
+			"webp",
+		);
 	} finally {
 		await rm(root, { recursive: true });
 	}
@@ -72,7 +79,7 @@ test("Bun read tool resizes images and reports coordinate scaling", async () => 
 		assertEquals(await new Bun.Image(Uint8Array.fromBase64(image.data)).metadata(), {
 			width: 2_000,
 			height: 1_000,
-			format: "png",
+			format: "webp",
 		});
 	} finally {
 		await rm(root, { recursive: true });

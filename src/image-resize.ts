@@ -1,7 +1,7 @@
 const maxWidth = 2_000;
 const maxHeight = 2_000;
 const maxBase64Bytes = 4.5 * 1_024 * 1_024;
-const jpegQualities = [85, 70, 55, 40] as const;
+const webpQuality = 80;
 
 export type ResizedImage = Readonly<{
 	data: string;
@@ -38,7 +38,7 @@ export async function thumbnailImage(
 			thumbnailDisplayWidth,
 			{ fit: "inside", withoutEnlargement: true },
 		);
-		const data = Buffer.from(await image.webp({ quality: 80 }).bytes());
+		const data = Buffer.from(await image.webp({ quality: webpQuality }).bytes());
 		return { data, mimeType: "image/webp", width: image.width, height: image.height };
 	} catch {
 		return undefined;
@@ -57,17 +57,15 @@ export async function resizeImage(
 	}
 
 	const normalizedMimeType = mimeType.toLowerCase().split(";", 1)[0];
-	if (
-		["image/gif", "image/jpeg", "image/png", "image/webp"].includes(
-			normalizedMimeType,
-		) &&
+	const withinLimits =
 		metadata.width <= maxWidth &&
 		metadata.height <= maxHeight &&
-		base64Size(input.byteLength) < maxBase64Bytes
-	) {
+		base64Size(input.byteLength) < maxBase64Bytes;
+	// GIF is kept as-is so animation survives.
+	if (normalizedMimeType === "image/gif" && withinLimits) {
 		return {
 			data: input.toBase64(),
-			mimeType: normalizedMimeType,
+			mimeType: "image/gif",
 			originalWidth: metadata.width,
 			originalHeight: metadata.height,
 			width: metadata.width,
@@ -88,33 +86,17 @@ export async function resizeImage(
 	}
 
 	while (true) {
-		if (normalizedMimeType !== "image/jpeg") {
-			const png = await encode(input, width, height, "png");
-			if (png && png.length < maxBase64Bytes) {
-				return {
-					data: png,
-					mimeType: "image/png",
-					originalWidth: metadata.width,
-					originalHeight: metadata.height,
-					width,
-					height,
-					wasResized: width !== metadata.width || height !== metadata.height,
-				};
-			}
-		}
-		for (const quality of jpegQualities) {
-			const jpeg = await encode(input, width, height, "jpeg", quality);
-			if (jpeg && jpeg.length < maxBase64Bytes) {
-				return {
-					data: jpeg,
-					mimeType: "image/jpeg",
-					originalWidth: metadata.width,
-					originalHeight: metadata.height,
-					width,
-					height,
-					wasResized: width !== metadata.width || height !== metadata.height,
-				};
-			}
+		const webp = await encodeWebp(input, width, height);
+		if (webp && webp.length < maxBase64Bytes) {
+			return {
+				data: webp,
+				mimeType: "image/webp",
+				originalWidth: metadata.width,
+				originalHeight: metadata.height,
+				width,
+				height,
+				wasResized: width !== metadata.width || height !== metadata.height,
+			};
 		}
 
 		if (width === 1 && height === 1) return undefined;
@@ -123,21 +105,17 @@ export async function resizeImage(
 	}
 }
 
-async function encode(
+async function encodeWebp(
 	input: Uint8Array,
 	width: number,
 	height: number,
-	format: "jpeg" | "png",
-	quality: number = jpegQualities[0],
 ): Promise<string | undefined> {
 	try {
 		const image = new Bun.Image(input).resize(width, height, {
 			fit: "inside",
 			withoutEnlargement: true,
 		});
-		return format === "png"
-			? await image.png().toBase64()
-			: await image.jpeg({ quality }).toBase64();
+		return await image.webp({ quality: webpQuality }).toBase64();
 	} catch {
 		return undefined;
 	}
