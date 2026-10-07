@@ -81,6 +81,12 @@ test("tool presentation preserves representative and malformed values", () => {
 		}),
 		{ text: "", format: "output" },
 	);
+	assertEquals(
+		formatToolResult("codemode", {
+			content: [{ type: "text", text: "1\n2\n3\n4\n5\n6\n7\n8" }],
+		}),
+		{ text: "... (4 earlier lines)\n5\n6\n7\n8", format: "output" },
+	);
 	assertEquals(toolTitleParts("read", { path: "/tmp/file", offset: 3, limit: 2 }), [
 		{ text: "read" },
 		{ text: "/tmp/file", tone: "accent", mono: true },

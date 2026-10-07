@@ -34,10 +34,7 @@ export function toolTitleParts(
 		];
 	}
 
-	if (
-		(toolName === "codemode" || toolName.endsWith("browser_run_code")) &&
-		isString(record?.code)
-	) {
+	if (isCodeTool(toolName) && isString(record?.code)) {
 		return [
 			{ text: toolName },
 			{ text: record.code, mono: true, highlight: "javascript" },
@@ -161,7 +158,14 @@ export function formatToolResult<Result>(
 		}
 		return { text: compactToolOutput(text), format: "output" };
 	}
+	if (isCodeTool(toolName)) {
+		return { text: compactToolOutput(text), format: "output" };
+	}
 	return { text, format: "output" };
+}
+
+function isCodeTool(toolName: string): boolean {
+	return toolName === "codemode" || toolName.endsWith("browser_run_code");
 }
 
 function shouldHideBashOutput(args: JsonValue | undefined): boolean {
