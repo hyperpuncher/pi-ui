@@ -10,6 +10,7 @@ const state = {
 const bottomScrollTimers = new Set();
 let anchor;
 let historyLoading = false;
+let lastHistoryRestoreAt = 0;
 let observedMessageStack;
 let observedPrompt;
 let messageResizeObserver;
@@ -41,6 +42,7 @@ export function bindMessageScroll() {
 			) {
 				state.pinnedToBottom = true;
 				messages.scrollTop = messages.scrollHeight;
+				trimOldMessages();
 			}
 			if (historyLoading && anchor) {
 				anchor.userScrollDelta += messages.scrollTop - anchor.lastScrollTop;
@@ -162,6 +164,7 @@ export function restoreAnchor() {
 	const saved = anchor;
 	anchor = undefined;
 	historyLoading = false;
+	lastHistoryRestoreAt = performance.now();
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
 	if (!saved) {
@@ -211,7 +214,12 @@ export function restoreAnchor() {
 }
 
 export function trimOldMessages() {
-	if (!state.pinnedToBottom) return;
+	// Never trim while an older page is loading: the prepended messages are
+	// above the viewport by construction, so trimming would eat them back.
+	if (!state.pinnedToBottom || historyLoading) return;
+	// A resize observer can fire after the restore script runs. Give the
+	// just-loaded page a grace period so trim cannot eat it back.
+	if (performance.now() - lastHistoryRestoreAt < 1500) return;
 	const messages = document.getElementById("messages");
 	const trigger = document.getElementById("messages-trim");
 	if (!(messages instanceof HTMLElement) || !(trigger instanceof HTMLButtonElement))
@@ -283,6 +291,7 @@ export function scrollBottom(behavior = "auto") {
 		updateScrollControl();
 	};
 	scroll();
+	trimOldMessages();
 	if (behavior === "auto") {
 		for (const delay of [16, 80, 180]) {
 			const timer = setTimeout(() => {
@@ -336,6 +345,7 @@ export function bindMessageResize() {
 		if (messages instanceof HTMLElement && state.pinnedToBottom)
 			messages.scrollTop = messages.scrollHeight;
 		updateScrollControl();
+		trimOldMessages();
 	});
 	if (observedMessageStack) messageResizeObserver.unobserve(observedMessageStack);
 	if (observedPrompt) messageResizeObserver.unobserve(observedPrompt);
