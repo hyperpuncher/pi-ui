@@ -140,7 +140,7 @@ test("current running session is live but does not resume itself", () => {
 		}),
 	);
 
-	assertStringIncludes(html, 'aria-current="true"');
+	assertStringIncludes(html, 'aria-selected="true"');
 	assertStringIncludes(html, 'aria-label="Current session running"');
 	assertStringIncludes(html, "@post('/sessions/rename'");
 	assertStringIncludes(html, "@post('/abort'");
@@ -255,7 +255,7 @@ test("workspace rows show each collapsed path once", () => {
 		html,
 		`src="/sessions/favicon?cwd=${encodeURIComponent(`${home}/projects/pi-ui`)}"`,
 	);
-	assertStringIncludes(html, 'aria-current="true"');
+	assertStringIncludes(html, 'aria-selected="true"');
 	assertFalse(
 		new RegExp(`>\\s*${escapeRegExp(home)}(?:/projects/pi-ui)?\\s*<`).test(html),
 	);

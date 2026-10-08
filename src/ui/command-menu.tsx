@@ -5,7 +5,7 @@ import { ShortcutKbd } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
 export const resetCommandDialogOnOpen = `if (evt.newState === 'open') {
-	const input = el.querySelector('header input');
+	const input = el.querySelector('search input');
 	input.value = '';
 	input.dispatchEvent(new Event('input', { bubbles: true }));
 	window.piUi.controls.refresh(el);
@@ -21,7 +21,7 @@ export function renderCommandMenu(): string {
 			closedby="any"
 		>
 			<div class="command">
-				<header>
+				<search aria-label="Search commands">
 					<input
 						id="command-input"
 						type="text"
@@ -40,15 +40,15 @@ export function renderCommandMenu(): string {
 							queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
 						"
 					/>
-				</header>
+				</search>
 				<div
-					role="menu"
+					role="listbox"
 					id="command-menu"
 					aria-orientation="vertical"
 					data-empty="No commands found."
 				>
 					<div role="group" aria-labelledby="command-menu-heading">
-						<span role="heading" id="command-menu-heading">
+						<span id="command-menu-heading" class="command-group-label">
 							Commands
 						</span>
 						{appCommandCatalog
@@ -61,12 +61,18 @@ export function renderCommandMenu(): string {
 	);
 }
 
+function commandRowId(id: string): string {
+	return `command-option-${encodeURIComponent(id)}`;
+}
+
 function renderCommandRow(item: AppCommandMetadata): string {
 	const searchText = `${item.title} ${item.description} ${item.id}`.toLowerCase();
 	const shortcut = activeKeybind(item.id);
 	return syncHtml(
 		<div
-			role="menuitem"
+			id={commandRowId(item.id)}
+			role="option"
+			aria-selected="false"
 			tabindex="-1"
 			data-attr:hidden={`!${JSON.stringify(searchText)}.includes($_commandQuery.trim().toLowerCase())`}
 			data-on:click={commandActions[item.id]}

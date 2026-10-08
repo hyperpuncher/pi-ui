@@ -119,7 +119,7 @@ export function renderWorkspaceDialogMenu(
 	);
 	return syncHtml(
 		<div
-			role="menu"
+			role="listbox"
 			id="workspace-menu"
 			class="command-menu"
 			aria-orientation="vertical"
@@ -391,7 +391,7 @@ function renderWorkspaceGroup(
 			: "workspace-search-heading";
 	return syncHtml(
 		<div role="group" aria-labelledby={id}>
-			<span role="heading" id={id} class="workspace-group-heading">
+			<span id={id} class="workspace-group-heading command-group-label">
 				{heading}
 			</span>
 			{workspaces.map((workspacePath) =>
@@ -407,11 +407,11 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	return syncHtml(
 		<div
 			id={`workspace-option-${encodeURIComponent(workspacePath)}`}
-			role="menuitem"
+			role="option"
 			class="workspace-row"
 			data-preserve-attr="class"
 			tabindex="-1"
-			aria-current={current ? "true" : undefined}
+			aria-selected={current ? "true" : "false"}
 			data-indicator:_session-loading
 			data-attr:aria-disabled="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
@@ -480,7 +480,7 @@ function uniqueWorkspaces(workspaces: readonly string[]): string[] {
 export function renderSessionPicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div
-			role="menu"
+			role="listbox"
 			id="session-menu"
 			class="session-menu"
 			aria-orientation="vertical"
@@ -540,9 +540,9 @@ function renderSessionRow(
 	return syncHtml(
 		<div
 			id={sessionRowId(session.path)}
-			role="menuitem"
+			role="option"
 			tabindex="-1"
-			aria-current={current ? "true" : undefined}
+			aria-selected={current ? "true" : "false"}
 			data-preserve-attr="class"
 			data-keep-command-open
 			data-indicator:_session-loading

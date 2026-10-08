@@ -24,13 +24,13 @@ function controlsIn(root, selector) {
 
 function commandParts(command) {
 	return {
-		input: command.querySelector("header input"),
-		menu: command.querySelector('[role="menu"]'),
+		input: command.querySelector("search input"),
+		menu: command.querySelector('[role="listbox"], [role="menu"]'),
 	};
 }
 
 function commandItems(menu) {
-	return [...menu.querySelectorAll('[role="menuitem"]')].filter(
+	return [...menu.querySelectorAll('[role="option"], [role="menuitem"]')].filter(
 		(item) => item instanceof HTMLElement && !isDisabled(item),
 	);
 }
@@ -51,7 +51,9 @@ function refreshCommand(command) {
 export function activateCommandItem(command, active) {
 	const { input, menu } = commandParts(command);
 	if (!(input instanceof HTMLInputElement) || !(menu instanceof HTMLElement)) return;
-	for (const item of menu.querySelectorAll('[role="menuitem"].active')) {
+	for (const item of menu.querySelectorAll(
+		'[role="option"].active, [role="menuitem"].active',
+	)) {
 		item.classList.remove("active");
 	}
 	if (active instanceof HTMLElement) {
@@ -99,7 +101,7 @@ function moveInMenuPopover(popover, key) {
 function handleKeydown(event) {
 	if (!(event.target instanceof Element)) return;
 	const command = event.target.closest(commandSelector);
-	if (command instanceof HTMLElement && event.target.matches("header input")) {
+	if (command instanceof HTMLElement && event.target.matches("search input")) {
 		if (event.isComposing) return;
 		if (event.key === "Enter") {
 			const active = visibleCommandItems(command).find((item) =>
@@ -141,24 +143,24 @@ function handleKeydown(event) {
 
 function handlePointerMove(event) {
 	if (!(event.target instanceof Element)) return;
+	const commandItem =
+		event.target.closest('[role="option"], [role="menuitem"]') ??
+		event.target
+			.closest("[data-command-row]")
+			?.querySelector('[role="option"], [role="menuitem"]');
+	const command = commandItem?.closest(commandSelector);
+	if (command instanceof HTMLElement && commandItem instanceof HTMLElement) {
+		if (!commandItem.hidden && !commandItem.classList.contains("active")) {
+			activateCommandItem(command, commandItem);
+		}
+		return;
+	}
 	const option = event.target.closest('[role="option"]');
 	if (
 		option instanceof HTMLElement &&
 		option.getAttribute("aria-selected") !== "true"
 	) {
 		activateListboxOption(option);
-	}
-	const commandItem =
-		event.target.closest('[role="menuitem"]') ??
-		event.target.closest("[data-command-row]")?.querySelector('[role="menuitem"]');
-	const command = commandItem?.closest(commandSelector);
-	if (
-		command instanceof HTMLElement &&
-		commandItem instanceof HTMLElement &&
-		!commandItem.hidden &&
-		!commandItem.classList.contains("active")
-	) {
-		activateCommandItem(command, commandItem);
 	}
 }
 
@@ -177,7 +179,9 @@ function activateListboxOption(active) {
 
 function handleClick(event) {
 	if (!(event.target instanceof Element)) return;
-	const commandItem = event.target.closest('.command [role="menuitem"]');
+	const commandItem = event.target.closest(
+		'.command [role="option"], .command [role="menuitem"]',
+	);
 	if (
 		commandItem instanceof HTMLElement &&
 		!commandItem.hasAttribute("commandfor") &&

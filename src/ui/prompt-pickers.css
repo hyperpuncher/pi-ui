@@ -81,7 +81,7 @@
 	.thinking-popover {
 		width: 12rem;
 	}
-	:is(.command, .dropdown-menu) [role="heading"].picker-heading {
+	:is(.command, .dropdown-menu) .picker-heading {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;

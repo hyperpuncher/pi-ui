@@ -321,7 +321,10 @@ export function renderPage(
 						closedby="any"
 					>
 						<div class="command">
-							<header class="workspace-command-header">
+							<search
+								class="workspace-command-header"
+								aria-label="Search workspaces"
+							>
 								<input
 									id="workspace-input"
 									class="workspace-command-input"
@@ -370,7 +373,7 @@ export function renderPage(
 								>
 									<Icon name="folder-open" />
 								</button>
-							</header>
+							</search>
 							{renderWorkspaceDialogMenu(state)}
 						</div>
 					</dialog>
@@ -418,7 +421,10 @@ export function renderPage(
 							style="height: calc(100dvh - 2rem)"
 							data-style:height="$treeSelectedId ? 'auto' : 'calc(100dvh - 2rem)'"
 						>
-							<header data-class:sr-only="$treeSelectedId">
+							<search
+								aria-label="Search tree"
+								data-class:sr-only="$treeSelectedId"
+							>
 								<Icon name="search" />
 								<input
 									id="tree-input"
@@ -438,7 +444,7 @@ export function renderPage(
 										queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
 									"
 								/>
-							</header>
+							</search>
 							{renderTreePicker(state)}
 						</div>
 					</dialog>
@@ -452,7 +458,7 @@ export function renderPage(
 						closedby="any"
 					>
 						<div class="command">
-							<header>
+							<search aria-label="Search sessions">
 								<input
 									id="session-input"
 									type="text"
@@ -474,7 +480,7 @@ export function renderPage(
 									}}
 									autofocus
 								/>
-							</header>
+							</search>
 							{renderSessionPicker(state)}
 						</div>
 					</dialog>

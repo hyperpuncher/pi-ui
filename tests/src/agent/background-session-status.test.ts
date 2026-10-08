@@ -96,11 +96,12 @@ test("opening a completed session clears its completion indicator in both sessio
 		currentSessionPath: completed.path,
 		activityText: undefined,
 	});
-	for (const render of [renderSessionPicker, renderSessionSidebar]) {
-		const html = render(state);
-		assertIncludes(html, 'aria-current="true"');
-		assertNotIncludes(html, 'aria-label="Background session completed"');
-	}
+	const picker = renderSessionPicker(state);
+	assertIncludes(picker, 'aria-selected="true"');
+	assertNotIncludes(picker, 'aria-label="Background session completed"');
+	const sidebar = renderSessionSidebar(state);
+	assertIncludes(sidebar, 'aria-current="true"');
+	assertNotIncludes(sidebar, 'aria-label="Background session completed"');
 });
 
 test("session picker escapes titles and renders background controls", () => {

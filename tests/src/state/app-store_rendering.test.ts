@@ -934,7 +934,7 @@ test("app stream refreshes current and background session statuses", async () =>
 			text.includes('aria-label="Current session running"'),
 		);
 		assertIncludes(running, 'id="session-menu-content"');
-		assertIncludes(running, 'aria-current="true"');
+		assertIncludes(running, 'aria-selected="true"');
 		assertIncludes(running, "First session");
 
 		state.update(() => {
@@ -949,7 +949,7 @@ test("app stream refreshes current and background session statuses", async () =>
 			text.includes('aria-label="Background session completed"'),
 		);
 		assertIncludes(completed, 'id="session-menu-content"');
-		assertIncludes(completed, 'aria-current="true"');
+		assertIncludes(completed, 'aria-selected="true"');
 		assertNotIncludes(
 			completed.slice(completed.lastIndexOf('id="session-menu-content"')),
 			'aria-label="Current session running"',

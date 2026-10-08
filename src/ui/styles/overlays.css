@@ -140,7 +140,7 @@
 		padding: 0.25rem;
 	}
 
-	.command > header {
+	.command > search {
 		display: flex;
 		align-items: center;
 		height: 2rem;
@@ -152,13 +152,13 @@
 		padding-inline: 0.5rem;
 	}
 
-	.command > header:focus-within {
+	.command > search:focus-within {
 		border-color: var(--focus-ring);
 		outline: 2px solid transparent;
 		outline-offset: 1px;
 	}
 
-	.command > header input {
+	.command > search input {
 		min-width: 0;
 		flex: 1;
 		outline: 0;
@@ -167,14 +167,14 @@
 		font-size: var(--text-base);
 	}
 
-	.command :where([role="menu"], [role="group"]),
+	.command :where([role="listbox"], [role="menu"], [role="group"]),
 	.dropdown-menu :where([role="group"]) {
 		display: flex;
 		flex-direction: column;
 		gap: 1px;
 	}
 
-	.command :where([role="menu"]) {
+	.command :where([role="listbox"], [role="menu"]) {
 		max-height: 18rem;
 		overflow-y: auto;
 		scroll-padding-block: 0.25rem;
@@ -184,7 +184,7 @@
 		padding: 0.25rem;
 	}
 
-	.command :where([role="heading"]),
+	.command :where([role="heading"], .command-group-label, .picker-heading),
 	.dropdown-menu :where([role="heading"]) {
 		display: block;
 		padding: 0.375rem 0.5rem;
@@ -193,7 +193,7 @@
 		font-weight: 500;
 	}
 
-	.command :where([role="menuitem"]),
+	.command :where([role="option"], [role="menuitem"]),
 	.dropdown-menu :where([role^="menuitem"]) {
 		display: flex;
 		width: 100%;
@@ -207,18 +207,18 @@
 		outline-offset: -2px;
 	}
 
-	:where(.command-dialog) .command :where([role="menuitem"]) {
+	:where(.command-dialog) .command :where([role="option"], [role="menuitem"]) {
 		border-radius: var(--radius-lg);
 	}
 
-	.command :where([role="menuitem"]).active,
+	.command :where([role="option"], [role="menuitem"]).active,
 	.dropdown-menu :where([role^="menuitem"]):is(:hover, :focus-visible) {
 		background: var(--surface-control);
 		color: var(--text);
 	}
 
 	@media (forced-colors: active) {
-		.command :where([role="menuitem"]).active {
+		.command :where([role="option"], [role="menuitem"]).active {
 			outline: 1px solid Highlight;
 		}
 	}
@@ -228,7 +228,7 @@
 		opacity: 0;
 	}
 	.command
-		:where([role="menuitem"]):is(
+		:where([role="option"], [role="menuitem"]):is(
 			[data-checked="true"],
 			[aria-selected="true"],
 			[data-selected="true"]
@@ -236,11 +236,16 @@
 		[data-indicator] {
 		opacity: 1;
 	}
-	.command :where([role="menuitem"]):has([data-shortcut]) [data-indicator] {
+	.command
+		:where([role="option"], [role="menuitem"]):has([data-shortcut])
+		[data-indicator] {
 		display: none;
 	}
 
-	.command :where([role="menu"]):not(:has([role="menuitem"]:not([hidden])))::before {
+	.command
+		:where([role="listbox"], [role="menu"]):not(
+			:has(:is([role="option"], [role="menuitem"]):not([hidden]))
+		)::before {
 		display: block;
 		padding: 1.5rem;
 		color: var(--text-muted);
