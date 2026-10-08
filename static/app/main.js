@@ -1,7 +1,6 @@
 import { bindCodeCopy } from "./code-copy.js";
 import { activateCommandItem, bindControls, refreshControls } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
-import { bindDisplayRefreshMeasurement } from "./display-refresh.js";
 import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
 import {
@@ -93,7 +92,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 	bindCodeCopy();
 	bindTooltips();
 	bindVimScroll();
-	bindDisplayRefreshMeasurement();
 	bindDebugFps();
 
 	await Promise.all([

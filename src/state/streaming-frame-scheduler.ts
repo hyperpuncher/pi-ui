@@ -1,9 +1,3 @@
-import { clamp } from "../utils/clamp.ts";
-
-export const fallbackDisplayHz = 144;
-export const minimumDisplayHz = 30;
-export const maximumDisplayHz = 240;
-
 export type StreamingFrameSchedulerClock = {
 	now: () => number;
 	setTimer: (callback: () => void, delayMs: number) => number;
@@ -23,6 +17,9 @@ const defaultClock: StreamingFrameSchedulerClock = {
 	clearTimer: (id) => clearTimeout(id),
 };
 
+/** 30 Hz. */
+export const streamingIntervalMs = 1000 / 30;
+
 /** Keeps only the newest authoritative snapshot and commits at monotonic deadlines. */
 export class StreamingFrameScheduler<T> {
 	private latest: T | undefined;
@@ -31,7 +28,7 @@ export class StreamingFrameScheduler<T> {
 	private flushAfterRender = false;
 	private timer: number | undefined;
 	private nextDeadline: number | undefined;
-	private intervalMs = 1000 / fallbackDisplayHz;
+	private readonly intervalMs = streamingIntervalMs;
 	private committedFrames = 0;
 	private coalescedSnapshots = 0;
 	private skippedDeadlines = 0;
@@ -50,17 +47,6 @@ export class StreamingFrameScheduler<T> {
 			skippedDeadlines: this.skippedDeadlines,
 			maximumTimerLatenessMs: this.maximumTimerLatenessMs,
 		};
-	}
-
-	setDisplayHz(hz: number): boolean {
-		if (!Number.isFinite(hz)) return false;
-		const intervalMs = 1000 / clamp(hz, minimumDisplayHz, maximumDisplayHz);
-		if (Math.abs(intervalMs - this.intervalMs) < 0.01) return false;
-		this.intervalMs = intervalMs;
-		this.nextDeadline = this.clock.now() + intervalMs;
-		this.cancelTimer();
-		if (this.dirty && !this.rendering) this.scheduleTimer();
-		return true;
 	}
 
 	schedule(snapshot: T): void {

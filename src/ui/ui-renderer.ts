@@ -15,7 +15,6 @@ import type { JsonObject } from "../utils/json-types.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
 import { projectBackendSignals } from "./backend-signals.ts";
 import { renderDebugOverlay } from "./debug.tsx";
-import { DisplayRefreshClients } from "./display-refresh-clients.ts";
 import { renderExtensionDialog } from "./extension-dialog.tsx";
 import { renderExtensionWidgets } from "./extension-widgets.tsx";
 import { renderLlamaDialog } from "./llama-dialog.tsx";
@@ -52,7 +51,6 @@ type ClientView = {
 /** Renders current state, with a separate lane for transcript streaming. */
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
-	private readonly displayClients = new DisplayRefreshClients();
 	private readonly clientViews = new Map<string, ClientView>();
 	private commitScheduled = false;
 	private fullViewPending = false;
@@ -92,13 +90,9 @@ export class UiRenderer implements AppStorePresentation {
 			workspaceSearch: { query: workspaceQuery, results: [] },
 		};
 		this.clientViews.set(clientId, view);
-		this.displayClients.connect(clientId);
-		this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
 		const disconnect = () => {
 			if (this.clientViews.get(clientId) === view)
 				this.clientViews.delete(clientId);
-			this.displayClients.disconnect(clientId);
-			this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
 			if (this.hub.clientCount === 0) {
 				this.pendingEnhancements.clear();
 				this.messages.transcriptReplacing();
@@ -307,11 +301,6 @@ export class UiRenderer implements AppStorePresentation {
 		for (const message of messages.toReversed()) {
 			this.messages.enqueueEnhancement(message.id);
 		}
-	}
-	setDisplayRefreshHz(clientId: string, hz: number): boolean {
-		if (!this.displayClients.setHz(clientId, hz)) return false;
-		this.messages.setDisplayRefreshHz(this.displayClients.targetHz);
-		return true;
 	}
 	projectState(snapshot: AppStateSnapshot): AppRenderSnapshot {
 		return {

@@ -1,6 +1,9 @@
 import { test } from "bun:test";
 
-import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
+import {
+	StreamingFrameScheduler,
+	streamingIntervalMs,
+} from "#src/state/streaming-frame-scheduler.ts";
 import {
 	assertAlmostEquals as assertNear,
 	assertEquals as assertEqual,
@@ -18,7 +21,7 @@ test("streaming scheduler is latest-wins with one queued frame", () => {
 	scheduler.schedule("second");
 	scheduler.schedule("latest");
 	assertEqual(clock.pending, 1);
-	clock.advance(7);
+	clock.advance(streamingIntervalMs);
 	assertEqual(rendered.join(","), "latest");
 	assertEqual(scheduler.stats.coalescedSnapshots, 2);
 });
@@ -38,9 +41,9 @@ test("streaming scheduler does not overlap reentrant rendering", () => {
 	}, clock);
 
 	scheduler.schedule(1);
-	clock.advance(7);
+	clock.advance(streamingIntervalMs);
 	assertEqual(clock.pending, 1);
-	clock.advance(7);
+	clock.advance(streamingIntervalMs);
 	assertEqual(rendered.join(","), "1,2");
 	assertEqual(maximum, 1);
 });
@@ -57,7 +60,7 @@ test("streaming scheduler immediately flushes completion during a slow render", 
 		}
 	}, clock);
 	scheduler.schedule("partial");
-	clock.advance(7);
+	clock.advance(streamingIntervalMs);
 	assertEqual(rendered.join(","), "partial,final");
 	assertEqual(clock.pending, 0);
 });
@@ -80,23 +83,20 @@ test("streaming scheduler flushes final content and clears replacement work", ()
 	assertEqual(rendered.join(","), "final");
 });
 
-test("streaming scheduler follows 60 through 240 Hz monotonic cadence", () => {
-	for (const hz of [60, 75, 90, 100, 120, 144, 165, 240]) {
-		const clock = new FakeClock();
-		const times: number[] = [];
-		const scheduler = new StreamingFrameScheduler<number>(
-			() => times.push(clock.now()),
-			clock,
-			0,
-		);
-		scheduler.setDisplayHz(hz);
-		for (let frame = 0; frame < 3; frame += 1) {
-			scheduler.schedule(frame);
-			clock.advance(1000 / hz);
-		}
-		assertEqual(times.length, 3);
-		assertNear(times[2] - times[1], 1000 / hz, 0.001);
+test("streaming scheduler commits on the fixed streaming cadence", () => {
+	const clock = new FakeClock();
+	const times: number[] = [];
+	const scheduler = new StreamingFrameScheduler<number>(
+		() => times.push(clock.now()),
+		clock,
+		0,
+	);
+	for (let frame = 0; frame < 3; frame += 1) {
+		scheduler.schedule(frame);
+		clock.advance(streamingIntervalMs);
 	}
+	assertEqual(times.length, 3);
+	assertNear(times[2] - times[1], streamingIntervalMs, 0.001);
 });
 
 test("streaming scheduler reports skipped and late deadlines", () => {
@@ -113,17 +113,25 @@ test("streaming scheduler reports skipped and late deadlines", () => {
 		},
 	});
 
-	scheduler.setDisplayHz(60);
-	now = 40;
+	scheduler.schedule(0);
+	scheduler.flush();
+	now = streamingIntervalMs * 2 + 5;
 	scheduler.schedule(1);
 	assertEqual(scheduler.stats.skippedDeadlines, 2);
-	now = 60;
+
+	now = streamingIntervalMs * 3 + 7;
 	timer?.();
-	assertNear(scheduler.stats.maximumTimerLatenessMs, 10, 0.001);
+	assertNear(scheduler.stats.maximumTimerLatenessMs, 7, 0.001);
 });
 
 test("streaming scheduler skips idle gaps and exact deadlines without losing cadence", () => {
-	for (const idleMs of [7.5, 8, 8.5, 24 * 60 * 60 * 1000 + 3]) {
+	const interval = streamingIntervalMs;
+	for (const idleMs of [
+		interval - 0.5,
+		interval,
+		interval + 0.5,
+		24 * 60 * 60 * 1000 + 3,
+	]) {
 		const clock = new FakeClock();
 		const rendered: string[] = [];
 		const scheduler = new StreamingFrameScheduler<string>(
@@ -131,14 +139,13 @@ test("streaming scheduler skips idle gaps and exact deadlines without losing cad
 			clock,
 			0,
 		);
-		scheduler.setDisplayHz(125);
 		scheduler.schedule("before idle");
 		scheduler.flush();
 		clock.advance(idleMs);
 		scheduler.schedule("after idle");
 
-		assertEqual(scheduler.stats.skippedDeadlines, Math.floor(idleMs / 8));
-		const nextDeadline = (Math.floor(idleMs / 8) + 1) * 8;
+		assertEqual(scheduler.stats.skippedDeadlines, Math.floor(idleMs / interval));
+		const nextDeadline = (Math.floor(idleMs / interval) + 1) * interval;
 		clock.advance(nextDeadline - idleMs - 0.25);
 		assertEqual(rendered, ["before idle"]);
 		clock.advance(0.25);

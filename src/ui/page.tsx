@@ -147,9 +147,6 @@ export function renderPage(
 						["toggle-tool-output", toggleToolOutputAction()],
 						["previous-session", previousSessionAction()],
 					)}
-					data-on:pi-ui-display-refresh={`@post('${endpoints.displayRefresh}', {
-						payload: { clientId: '${displayClientId}', hz: evt.detail.hz },
-					})`}
 					data-on:pi-ui-session-performance={`@post('${endpoints.sessionPerformanceClient}', { payload: evt.detail })`}
 					data-on:pi-ui-workspace-review-preferences={`
 						$workspaceReviewPreferences = {

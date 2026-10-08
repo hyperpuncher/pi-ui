@@ -736,7 +736,7 @@ test("extension UI responses return to the active agent backend", async () => {
 	});
 });
 
-test("main stream binds a validated display client identity", async () => {
+test("main stream binds the client identity", async () => {
 	const clientId = "123e4567-e89b-42d3-a456-426614174000";
 	let connectedClientId: string | undefined;
 	const context = fakeContext({
@@ -760,43 +760,7 @@ test("main stream binds a validated display client identity", async () => {
 	);
 	assertEquals(connectedClientId, clientId);
 	assertEquals(
-		(await router.fetch(new Request("http://localhost/stream?clientId=invalid")))
-			.status,
-		400,
-	);
-});
-
-test("display refresh updates its connected presentation owner", async () => {
-	const clientId = "123e4567-e89b-42d3-a456-426614174000";
-	let measured: { clientId: string; hz: number } | undefined;
-	const context = fakeContext({
-		renderer: uiRendererStub({
-			setDisplayRefreshHz: (receivedClientId: string, hz: number) => {
-				measured = { clientId: receivedClientId, hz };
-				return true;
-			},
-		}),
-	});
-	const router = createRouter(context);
-	const response = await router.fetch(
-		new Request("http://localhost/display-refresh", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ clientId, hz: 120 }),
-		}),
-	);
-	assertEquals(response.status, 204);
-	assertEquals(measured, { clientId, hz: 120 });
-	assertEquals(
-		(
-			await router.fetch(
-				new Request("http://localhost/display-refresh", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ clientId, hz: 1 }),
-				}),
-			)
-		).status,
+		(await router.fetch(new Request("http://localhost/stream"))).status,
 		400,
 	);
 });
@@ -1202,7 +1166,6 @@ function fakeContext(
 			uiRendererStub({
 				createStream: () => new Response(),
 				patchOlderMessages: () => {},
-				setDisplayRefreshHz: () => true,
 			}),
 		notificationClients: new DatastarClientHub(),
 		resources: {

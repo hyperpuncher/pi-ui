@@ -239,9 +239,6 @@ export class MessageRenderService {
 	presentationStatsForTest(): MessagePresentationStats {
 		return { entries: this.presentation.size };
 	}
-	setDisplayRefreshHz(hz: number): boolean {
-		return this.streaming.setDisplayHz(hz);
-	}
 	enqueueEnhancement(id: string): void {
 		const message = this.store.transcript.getMessage(id);
 		const projected = message ? this.project(message) : undefined;
