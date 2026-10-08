@@ -25,6 +25,7 @@ import {
 	contentToText,
 	formatToolResult,
 	stripAnsi,
+	toolEndMeta,
 	toolResultImageAttachments,
 	toolTitle,
 	toolTitleParts,
@@ -304,6 +305,7 @@ function toolResultToAppMessage(
 		format: view.format,
 		attachments: attachments.length ? attachments : undefined,
 		nestedCalls: message.nestedCalls,
+		meta: toolEndMeta(message.durationMs),
 	};
 }
 

@@ -108,18 +108,17 @@ function fixture(options: { syncUsage?: () => void } = {}) {
 			text: `update:${String(event.partialResult)}`,
 			meta: "partial",
 		}),
-		formatToolEnd: (event, args, startedAt) => ({
+		formatToolEnd: (event, args) => ({
 			text: `end:${String(event.result)}`,
 			options: {
 				title: JSON.stringify(args),
-				meta: String(startedAt),
+				meta: String(event.durationMs),
 				state: event.isError ? "error" : "success",
 				format: "code",
 			},
 		}),
 		syncUsage: options.syncUsage,
 		now: () => new Date(123),
-		nowMs: () => 456,
 	};
 	return { state, tools, context };
 }
@@ -406,7 +405,6 @@ test("reduces one complete tool lifecycle and clears all tool maps", () => {
 	);
 	assertEquals([...tools.messageIds], [["call", "message-1"]]);
 	assertEquals([...tools.callArgs], [["call", { command: "pwd" }]]);
-	assertEquals([...tools.startedAt], [["call", 456]]);
 
 	reduceSessionEvent(
 		event({
@@ -425,6 +423,7 @@ test("reduces one complete tool lifecycle and clears all tool maps", () => {
 			toolName: "bash",
 			result: "done",
 			isError: false,
+			durationMs: 456,
 		}),
 		context,
 	);
@@ -453,7 +452,6 @@ test("reduces one complete tool lifecycle and clears all tool maps", () => {
 	]);
 	assertEquals(tools.messageIds.size, 0);
 	assertEquals(tools.callArgs.size, 0);
-	assertEquals(tools.startedAt.size, 0);
 });
 
 test("nested calls stay under their parent until the persisted summary arrives", () => {
@@ -463,6 +461,7 @@ test("nested calls stay under their parent until the persisted summary arrives",
 		toolCallId: string,
 		parentToolCallId?: string,
 		isError = false,
+		durationMs?: number,
 	) =>
 		reduceSessionEvent(
 			event({
@@ -474,6 +473,7 @@ test("nested calls stay under their parent until the persisted summary arrives",
 				result: { content: [] },
 				partialResult: { content: [] },
 				isError,
+				durationMs,
 			}),
 			context,
 		);
@@ -486,10 +486,8 @@ test("nested calls stay under their parent until the persisted summary arrives",
 	const before = state.updates.length;
 	emit("tool_execution_update", "child", "parent");
 	assertEquals(state.updates.length, before);
-	context.nowMs = () => 458;
-	emit("tool_execution_end", "grandchild", "child", true);
-	context.nowMs = () => 460;
-	emit("tool_execution_end", "child", "parent");
+	emit("tool_execution_end", "grandchild", "child", true, 2);
+	emit("tool_execution_end", "child", "parent", false, 4);
 	assertEquals(
 		state.getMessage("message-1")?.nestedCalls?.calls.map((call) => call.durationMs),
 		[4, 2],
@@ -532,7 +530,6 @@ test("nested calls stay under their parent until the persisted summary arrives",
 test("appends an orphan tool end and removes stale map entries", () => {
 	const { state, tools, context } = fixture();
 	tools.callArgs.set("call", { path: "file" });
-	tools.startedAt.set("call", 12);
 	reduceSessionEvent(
 		event({
 			type: "tool_execution_end",
@@ -540,6 +537,7 @@ test("appends an orphan tool end and removes stale map entries", () => {
 			toolName: "read",
 			result: "contents",
 			isError: true,
+			durationMs: 12,
 		}),
 		context,
 	);
@@ -555,10 +553,7 @@ test("appends an orphan tool end and removes stale map entries", () => {
 		},
 	});
 	assertEquals(
-		tools.messageIds.size +
-			tools.previewMessages.size +
-			tools.callArgs.size +
-			tools.startedAt.size,
+		tools.messageIds.size + tools.previewMessages.size + tools.callArgs.size,
 		0,
 	);
 });

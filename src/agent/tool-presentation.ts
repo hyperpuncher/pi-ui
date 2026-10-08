@@ -71,9 +71,9 @@ export function toolMeta(toolName: string, args: JsonValue): string | undefined 
 	return `${edits.length} edit${edits.length === 1 ? "" : "s"}`;
 }
 
-export function toolEndMeta(startedAt: number | undefined): string | undefined {
-	if (startedAt === undefined) return undefined;
-	return formatDuration(performance.now() - startedAt);
+export function toolEndMeta(durationMs: number | undefined): string | undefined {
+	if (durationMs === undefined) return undefined;
+	return formatDuration(durationMs);
 }
 
 export function formatDuration(ms: number): string {

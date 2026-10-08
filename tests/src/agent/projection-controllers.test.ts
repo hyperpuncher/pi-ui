@@ -17,7 +17,6 @@ import {
 	formatDuration,
 	formatToolStart,
 	summarizeValue,
-	toolEndMeta,
 	toolTitleParts,
 } from "#src/agent/tool-presentation.ts";
 import {
@@ -41,7 +40,6 @@ import {
 } from "./test-fixtures.ts";
 
 test("tool presentation preserves representative and malformed values", () => {
-	assertEquals(toolEndMeta(performance.now() - 90_000), "1m 30s");
 	for (const [ms, expected] of [
 		[0, "0ms"],
 		[0.42, "0ms"],
@@ -168,6 +166,7 @@ test("transcript projection restores codemode source and nested calls as one mes
 				nestedCalls,
 				isError: false,
 				timestamp: 0,
+				durationMs: 1500,
 			},
 		}),
 		new Map([["code", { name: "codemode", args: { code } }]]),
@@ -179,6 +178,7 @@ test("transcript projection restores codemode source and nested calls as one mes
 	});
 	assertEquals(message?.nestedCalls, nestedCalls);
 	assertEquals(message?.text, "output");
+	assertEquals(message?.meta, "1.5s");
 	assertEquals(message?.attachments, [
 		{
 			name: "Tool image 1",

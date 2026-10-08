@@ -1609,7 +1609,7 @@ export class RuntimeController {
 					format: view.format,
 				};
 			},
-			formatToolEnd: (toolEvent, args, startedAt) => {
+			formatToolEnd: (toolEvent, args) => {
 				const view = formatToolResult(toolEvent.toolName, toolEvent.result, {
 					args,
 					isError: toolEvent.isError,
@@ -1623,7 +1623,7 @@ export class RuntimeController {
 							toolEvent.toolName,
 							args,
 						),
-						meta: toolEndMeta(startedAt),
+						meta: toolEndMeta(toolEvent.durationMs),
 						state: toolEvent.isError ? "error" : "success",
 						titleParts: toolTitleParts(toolEvent.toolName, args),
 						format: view.format,

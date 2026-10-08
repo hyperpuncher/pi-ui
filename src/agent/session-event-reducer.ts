@@ -44,7 +44,6 @@ export type SessionEventToolState = {
 	messageIds: Map<string, string>;
 	previewMessages: Map<number, { id: string; argumentPrefix: string | undefined }>;
 	callArgs: Map<string, ToolArguments>;
-	startedAt: Map<string, number>;
 };
 
 export function createSessionEventToolState(): SessionEventToolState {
@@ -52,7 +51,6 @@ export function createSessionEventToolState(): SessionEventToolState {
 		messageIds: new Map(),
 		previewMessages: new Map(),
 		callArgs: new Map(),
-		startedAt: new Map(),
 	};
 }
 
@@ -60,7 +58,6 @@ export function clearSessionEventToolState(tools: SessionEventToolState): void {
 	tools.messageIds.clear();
 	tools.previewMessages.clear();
 	tools.callArgs.clear();
-	tools.startedAt.clear();
 }
 
 export function cloneSessionEventToolState(
@@ -70,7 +67,6 @@ export function cloneSessionEventToolState(
 		messageIds: new Map(tools.messageIds),
 		previewMessages: new Map(tools.previewMessages),
 		callArgs: new Map(tools.callArgs),
-		startedAt: new Map(tools.startedAt),
 	};
 }
 
@@ -89,7 +85,6 @@ export function restoreSessionEventToolState(
 	restoreMap(target.messageIds, source.messageIds);
 	restoreMap(target.previewMessages, source.previewMessages);
 	restoreMap(target.callArgs, source.callArgs);
-	restoreMap(target.startedAt, source.startedAt);
 }
 
 type ToolMessageView = {
@@ -112,14 +107,12 @@ export type SessionEventReducerContext = {
 	formatToolEnd: (
 		event: EventOf<"tool_execution_end">,
 		args: ToolArguments,
-		startedAt: number | undefined,
 	) => ToolMessageView;
 	syncUsage?: () => void;
 	cacheMissNotice?: (
 		message: AssistantEventMessage,
 	) => ReturnType<typeof formatCacheMissNotice>;
 	now?: () => Date;
-	nowMs?: () => number;
 };
 
 export type SessionEventReducerOutcome = {
@@ -157,17 +150,14 @@ export function reduceSessionEvent(
 	if ("parentToolCallId" in event && event.parentToolCallId) {
 		if (event.type === "tool_execution_update") return noOutcome;
 		const id = tools.messageIds.get(event.parentToolCallId);
-		const startedAt = tools.startedAt.get(event.toolCallId);
 		if (event.type === "tool_execution_end") {
 			tools.messageIds.delete(event.toolCallId);
-			tools.startedAt.delete(event.toolCallId);
 		}
 		const parent = id ? state.getMessage(id) : undefined;
 		if (!id || parent?.state !== "running") return noOutcome;
 		const nestedCalls = parent.nestedCalls ?? { calls: [], complete: true };
 		if (event.type === "tool_execution_start") {
 			tools.messageIds.set(event.toolCallId, id);
-			tools.startedAt.set(event.toolCallId, context.nowMs?.() ?? performance.now());
 			nestedCalls.calls.push({
 				id: event.toolCallId,
 				name: event.toolName,
@@ -178,9 +168,7 @@ export function reduceSessionEvent(
 			const call = nestedCalls.calls.find((call) => call.id === event.toolCallId);
 			if (call) {
 				call.status = event.isError ? "error" : "ok";
-				if (startedAt !== undefined)
-					call.durationMs =
-						(context.nowMs?.() ?? performance.now()) - startedAt;
+				if (event.durationMs !== undefined) call.durationMs = event.durationMs;
 				if (event.isError)
 					call.error = contentToText(event.result.content).slice(0, 500);
 			}
@@ -316,7 +304,6 @@ export function reduceSessionEvent(
 		case "tool_execution_start": {
 			state.finishAssistant();
 			tools.callArgs.set(event.toolCallId, event.args);
-			tools.startedAt.set(event.toolCallId, context.nowMs?.() ?? performance.now());
 			const view = context.formatToolStart(event);
 			const existingId = tools.messageIds.get(event.toolCallId);
 			const id = existingId ?? state.appendMessage("tool", view.text, view.options);
@@ -332,18 +319,13 @@ export function reduceSessionEvent(
 		case "tool_execution_end": {
 			const id = tools.messageIds.get(event.toolCallId);
 			const args = tools.callArgs.get(event.toolCallId) ?? {};
-			const view = context.formatToolEnd(
-				event,
-				args,
-				tools.startedAt.get(event.toolCallId),
-			);
+			const view = context.formatToolEnd(event, args);
 			if (id) state.updateMessage(id, { text: view.text, ...view.options });
 			else state.appendMessage("tool", view.text, view.options);
 			// Keep the parent association until its persisted result supplies the bounded record.
 			if (!id || !state.getMessage(id)?.nestedCalls)
 				tools.messageIds.delete(event.toolCallId);
 			tools.callArgs.delete(event.toolCallId);
-			tools.startedAt.delete(event.toolCallId);
 			break;
 		}
 		case "queue_update":

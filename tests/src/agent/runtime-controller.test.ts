@@ -282,7 +282,6 @@ test("RuntimeController uses the same duration format for every tool", async () 
 	const state = new AppStore();
 	const fake = fakeRuntime();
 	const controller = await activate(state, [fake]);
-	const clock = spyOn(performance, "now");
 	try {
 		for (const name of [
 			"read",
@@ -292,7 +291,6 @@ test("RuntimeController uses the same duration format for every tool", async () 
 			"codemode",
 			"mcp__browser_run_code",
 		]) {
-			clock.mockReturnValue(0);
 			fake.emit(
 				agentSessionEventStub({
 					type: "tool_execution_start",
@@ -301,7 +299,6 @@ test("RuntimeController uses the same duration format for every tool", async () 
 					args: { path: "file.ts", command: "echo hello", code: "text(42);" },
 				}),
 			);
-			clock.mockReturnValue(4148);
 			fake.emit(
 				agentSessionEventStub({
 					type: "tool_execution_end",
@@ -309,12 +306,12 @@ test("RuntimeController uses the same duration format for every tool", async () 
 					toolName: name,
 					result: { content: [] },
 					isError: false,
+					durationMs: 4148,
 				}),
 			);
 			assertEquals(state.messages.at(-1)?.meta, "4.1s");
 		}
 	} finally {
-		clock.mockRestore();
 		await controller.dispose();
 	}
 });
