@@ -656,9 +656,15 @@ test("multipart prompts resize valid image attachments before passing them to pi
 	formData.set("prompt", "@/tmp/screenshot.png\ninspect this");
 	const imageData =
 		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-	formData.set(
+	formData.append(
 		"image",
 		new File([Uint8Array.fromBase64(imageData)], "screenshot.png", {
+			type: "image/png",
+		}),
+	);
+	formData.append(
+		"image",
+		new File([Uint8Array.fromBase64(imageData)], "second.png", {
 			type: "image/png",
 		}),
 	);
@@ -667,14 +673,16 @@ test("multipart prompts resize valid image attachments before passing them to pi
 	);
 	assertEquals(response.status, 204);
 	assertEquals(submitted?.text, "@/tmp/screenshot.png\ninspect this");
-	const image = submitted?.options.images?.[0];
-	assertEquals(image?.type, "image");
-	assertEquals(image?.mimeType, "image/webp");
-	const metadata = await new Bun.Image(
-		Buffer.from(image?.data ?? "", "base64"),
-	).metadata();
-	assertEquals(metadata.width, 1);
-	assertEquals(metadata.height, 1);
+	assertEquals(submitted?.options.images?.length, 2);
+	for (const image of submitted?.options.images ?? []) {
+		assertEquals(image.type, "image");
+		assertEquals(image.mimeType, "image/webp");
+		const metadata = await new Bun.Image(
+			Buffer.from(image.data, "base64"),
+		).metadata();
+		assertEquals(metadata.width, 1);
+		assertEquals(metadata.height, 1);
+	}
 });
 
 test("multipart prompts reject HEIC images before provider submission", async () => {
