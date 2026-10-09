@@ -30,6 +30,18 @@ export function configureAgentHttpProxy(
 				},
 			}),
 		);
+	const classify = modelRuntime.classify.bind(modelRuntime);
+	modelRuntime.classify = (model, context, options) =>
+		agentProxy.run(proxy, () =>
+			classify(model, context, {
+				...options,
+				env: {
+					HTTP_PROXY: proxy,
+					HTTPS_PROXY: proxy,
+					...options?.env,
+				},
+			}),
+		);
 }
 
 export function withAgentHttpProxy<Result>(
