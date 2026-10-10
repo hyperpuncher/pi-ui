@@ -41,6 +41,8 @@ export function bindMessageScroll() {
 				)
 			) {
 				state.pinnedToBottom = true;
+				// Follow mode drives scrollTop itself; native anchoring would fight it.
+				messages.style.overflowAnchor = "none";
 				messages.scrollTop = messages.scrollHeight;
 				trimOldMessages();
 			}
@@ -286,7 +288,8 @@ export function scrollBottom(behavior = "auto") {
 	const scroll = () => {
 		const messages = document.getElementById("messages");
 		if (!(messages instanceof HTMLElement) || !state.pinnedToBottom) return;
-		messages.style.removeProperty("overflow-anchor");
+		// Follow mode drives scrollTop itself; native anchoring would fight it.
+		messages.style.overflowAnchor = "none";
 		messages.scrollTo({ top: messages.scrollHeight, behavior });
 		updateScrollControl();
 	};
@@ -307,7 +310,12 @@ export function markUnpinned() {
 	clearBottomScrollTimers();
 	state.pinnedToBottom = false;
 	const messages = document.getElementById("messages");
-	if (messages instanceof HTMLElement) state.scrollTop = messages.scrollTop;
+	if (messages instanceof HTMLElement) {
+		// Reading mode lets native anchoring hold the viewport across content
+		// shifts above it. History restores manage their own window.
+		messages.style.removeProperty("overflow-anchor");
+		state.scrollTop = messages.scrollTop;
+	}
 	updateScrollControl();
 }
 
@@ -342,8 +350,10 @@ export function bindMessageResize() {
 	messageResizeObserver ??= new ResizeObserver(() => {
 		updatePromptSpacer();
 		const messages = document.getElementById("messages");
-		if (messages instanceof HTMLElement && state.pinnedToBottom)
+		if (messages instanceof HTMLElement && state.pinnedToBottom) {
+			messages.style.overflowAnchor = "none";
 			messages.scrollTop = messages.scrollHeight;
+		}
 		updateScrollControl();
 		trimOldMessages();
 	});

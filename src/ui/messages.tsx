@@ -66,7 +66,6 @@ export function renderMessages(
 		<main
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
-			data-show="!$_sessionTransitionVisible"
 			data-class:messages-loading="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading'"
 			data-attr:aria-busy="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
