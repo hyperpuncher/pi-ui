@@ -380,7 +380,9 @@ export function hydratePierreDiff(host) {
 	const template = host.querySelector('template[shadowrootmode="open"]');
 	if (!(template instanceof HTMLTemplateElement)) return;
 	// Pierre may create the shadow root before Datastar inserts its template.
+	// Replace so a repeated hydrate (double insert, declarative shadow race)
+	// never duplicates the diff content.
 	const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
-	shadow.append(template.content.cloneNode(true));
+	shadow.replaceChildren(template.content.cloneNode(true));
 	template.remove();
 }

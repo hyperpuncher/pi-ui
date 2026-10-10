@@ -233,7 +233,16 @@ export class MessageRenderService {
 	}
 	/** Drops presentation retained for messages that left the visible window. */
 	dropMessages(ids: readonly string[]): void {
-		for (const id of ids) this.presentation.delete(id);
+		for (const id of ids) {
+			this.presentation.delete(id);
+			// Streaming tokenizers, markdown caches, and image urls are keyed
+			// by message id. Without this each trim leaks one batch of
+			// entries for messages that left the visible window.
+			releaseMarkdownStreamingState(id);
+			for (const key of this.imageUrls.keys()) {
+				if (key === id || key.startsWith(`${id}:`)) this.imageUrls.delete(key);
+			}
+		}
 	}
 	/** Test hook: number of retained message presentation entries. */
 	presentationStatsForTest(): MessagePresentationStats {

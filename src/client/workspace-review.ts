@@ -464,6 +464,8 @@ function applyCommitView(view: CommitView, path?: string): void {
 	publish();
 }
 
+const maxCommitCacheEntries = 20;
+
 function loadCommit(hash: string): Promise<CommitView | undefined> {
 	const existing = commitRequests.get(hash);
 	if (existing) return existing;
@@ -477,7 +479,17 @@ function loadCommit(hash: string): Promise<CommitView | undefined> {
 				items: createItems(detail.changes, detail.patch, detail.commit.hash),
 			};
 			if (requestedWorkspaceVersion !== workspaceVersion) return undefined;
+			// Commit diffs hold parsed Pierre items; browsing history for an
+			// hour without a bound keeps every diff alive in the tab heap.
+			commitCache.delete(hash);
 			commitCache.set(hash, view);
+			while (commitCache.size > maxCommitCacheEntries) {
+				const oldest = commitCache.keys().next().value!;
+				commitCache.delete(oldest);
+				for (const key of itemRevisions.keys()) {
+					if (key.startsWith(`${oldest}:`)) itemRevisions.delete(key);
+				}
+			}
 			return view;
 		})
 		.finally(() => commitRequests.delete(hash));
