@@ -8,9 +8,11 @@ const state = {
 	scrollTop: 0,
 };
 const bottomScrollTimers = new Set();
-let anchor;
-let historyLoading = false;
-let lastHistoryRestoreAt = 0;
+// Timestamp of the last older-history request. Trim gives a freshly prepended
+// page a grace period so jumping straight to the live edge cannot eat it back.
+// A timestamp cannot stick like a flag: the worst case is one skipped trim.
+const trimLoadGraceMs = 1500;
+let lastOlderLoadAt = 0;
 let observedMessageStack;
 let observedPrompt;
 let messageResizeObserver;
@@ -45,10 +47,6 @@ export function bindMessageScroll() {
 				messages.style.overflowAnchor = "none";
 				messages.scrollTop = messages.scrollHeight;
 				trimOldMessages();
-			}
-			if (historyLoading && anchor) {
-				anchor.userScrollDelta += messages.scrollTop - anchor.lastScrollTop;
-				anchor.lastScrollTop = messages.scrollTop;
 			}
 			state.scrollTop = messages.scrollTop;
 			updateScrollControl();
@@ -139,89 +137,18 @@ export function bindMessageScroll() {
 	scrollBottom();
 }
 
-export function captureAnchor() {
-	if (historyLoading) return false;
-	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement)) return false;
-	const viewport = messages.getBoundingClientRect();
-	const visibleMessage = messageAtViewportTop(messages, viewport);
-	anchor = {
-		lastScrollTop: messages.scrollTop,
-		message: visibleMessage,
-		offset: visibleMessage
-			? visibleMessage.getBoundingClientRect().top - viewport.top
-			: undefined,
-		pinnedToBottom: state.pinnedToBottom,
-		scrollHeight: messages.scrollHeight,
-		scrollTop: messages.scrollTop,
-		userScrollDelta: 0,
-	};
-	historyLoading = true;
-	messages.style.overflowAnchor = "none";
-	updateScrollControl();
-	return true;
-}
-
-export function restoreAnchor() {
-	const saved = anchor;
-	anchor = undefined;
-	historyLoading = false;
-	lastHistoryRestoreAt = performance.now();
-	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement)) return;
-	if (!saved) {
-		messages.style.removeProperty("overflow-anchor");
-		return;
-	}
-	if (saved.pinnedToBottom && state.pinnedToBottom) {
-		messages.style.removeProperty("overflow-anchor");
-		scrollBottom();
-		return;
-	}
-	const retainedMessage = saved.message;
-	if (
-		retainedMessage instanceof HTMLElement &&
-		messages.contains(retainedMessage) &&
-		saved.offset !== undefined
-	) {
-		const targetOffset = saved.offset - saved.userScrollDelta;
-		const applyAnchor = () => {
-			if (!messages.contains(retainedMessage)) return;
-			const currentOffset =
-				retainedMessage.getBoundingClientRect().top -
-				messages.getBoundingClientRect().top;
-			messages.scrollTop = retainedAnchorScrollTop(
-				messages.scrollTop,
-				currentOffset,
-				targetOffset,
-			);
-			messages.style.removeProperty("overflow-anchor");
-			state.scrollTop = messages.scrollTop;
-			updateScrollControl();
-		};
-		applyAnchor();
-		// Datastar applies `data-show` after inserting the batch, which shrinks the
-		// rows above the anchor. Re-measure once the DOM has settled.
-		requestAnimationFrame(applyAnchor);
-		return;
-	}
-	messages.scrollTop =
-		saved.scrollTop +
-		saved.userScrollDelta +
-		messages.scrollHeight -
-		saved.scrollHeight;
-	messages.style.removeProperty("overflow-anchor");
-	state.scrollTop = messages.scrollTop;
-	updateScrollControl();
+// Prepended history is above the viewport by construction, so native scroll
+// anchoring holds the reader's position with no manual math. Trim only needs
+// a grace period after a load starts so jumping straight to the live edge
+// cannot eat the incoming page back.
+export function noteOlderLoad() {
+	lastOlderLoadAt = performance.now();
+	return lastOlderLoadAt;
 }
 
 export function trimOldMessages() {
-	// Never trim while an older page is loading: the prepended messages are
-	// above the viewport by construction, so trimming would eat them back.
-	if (!state.pinnedToBottom || historyLoading) return;
-	// A resize observer can fire after the restore script runs. Give the
-	// just-loaded page a grace period so trim cannot eat it back.
-	if (performance.now() - lastHistoryRestoreAt < 1500) return;
+	if (!state.pinnedToBottom) return;
+	if (performance.now() - lastOlderLoadAt < trimLoadGraceMs) return;
 	const messages = document.getElementById("messages");
 	const trigger = document.getElementById("messages-trim");
 	if (!(messages instanceof HTMLElement) || !(trigger instanceof HTMLButtonElement))
@@ -243,31 +170,8 @@ export function trimOldMessages() {
 	trigger.click();
 }
 
-export function retainedAnchorScrollTop(scrollTop, currentOffset, targetOffset) {
-	return scrollTop + currentOffset - targetOffset;
-}
-
 export function shouldTrimOldMessages(excess, candidateBottom, viewportTop) {
 	return excess > 0 && candidateBottom <= viewportTop;
-}
-
-function messageAtViewportTop(messages, viewport) {
-	for (const yOffset of [8, 32, 64, 128]) {
-		for (const xRatio of [0.25, 0.5, 0.75]) {
-			const message = document
-				.elementFromPoint(
-					viewport.left + viewport.width * xRatio,
-					viewport.top + yOffset,
-				)
-				?.closest("[data-message-id]");
-			if (message instanceof HTMLElement && messages.contains(message))
-				return message;
-		}
-	}
-	return messages
-		.querySelectorAll("[data-message-id]")
-		.values()
-		.find((message) => message.getBoundingClientRect().bottom > viewport.top);
 }
 
 export function hasPointerDragIntent(startX, startY, currentX, currentY) {
@@ -280,8 +184,6 @@ export function shouldRearmAfterScroll(wasPinned, previousTop, scrollTop, distan
 
 export function scrollBottom(behavior = "auto") {
 	clearBottomScrollTimers();
-	anchor = undefined;
-	historyLoading = false;
 	state.middleScrolling = false;
 	state.pinnedToBottom = true;
 	state.pointerScrolling = false;

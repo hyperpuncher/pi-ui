@@ -2,15 +2,17 @@ import { test } from "bun:test";
 
 import {
 	hasPointerDragIntent,
-	retainedAnchorScrollTop,
+	noteOlderLoad,
 	shouldRearmAfterScroll,
 	shouldTrimOldMessages,
 } from "#static/app/message-scroll.js";
 import { assertEquals } from "#testing/assertions";
 
-test("retained message anchor preserves its viewport offset", () => {
-	assertEquals(retainedAnchorScrollTop(240, 760, 40), 960);
-	assertEquals(retainedAnchorScrollTop(960, 40, 40), 960);
+test("older load notes a timestamp for the trim grace period", () => {
+	const before = performance.now();
+	const noted = noteOlderLoad();
+	assertEquals(noted >= before, true);
+	assertEquals(noted <= performance.now(), true);
 });
 
 test("pointer presses require drag intent before releasing follow mode", () => {

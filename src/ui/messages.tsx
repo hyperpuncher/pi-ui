@@ -73,14 +73,13 @@ export function renderMessages(
 			tabindex="-1"
 			data-init="window.piUi.messageScroll.bindResize()"
 			data-on:datastar-fetch="
-				if (
-					evt.detail.type === 'started' &&
-					evt.detail.el?.hasAttribute('data-indicator:_session-loading')
-				)
-					$_sessionTransitionPending = true;
-				if (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') {
+				if (evt.detail.type === 'started') {
 					if (evt.detail.el?.matches('.older-messages-sensor'))
-						window.piUi.messageScroll.restoreAnchor();
+						window.piUi.messageScroll.noteOlderLoad();
+					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
+						$_sessionTransitionPending = true;
+				}
+				if (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') {
 					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
 						$_sessionTransitionPending = false;
 				}
@@ -229,7 +228,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 
 function renderOlderMessagesTrigger(active: boolean) {
 	const action = active
-		? `window.piUi.messageScroll.captureAnchor() && @post('${endpoints.messagesOlder}', { payload: {} })`
+		? `@post('${endpoints.messagesOlder}', { payload: {} })`
 		: undefined;
 	return (
 		<div

@@ -279,7 +279,6 @@ export class UiRenderer implements AppStorePresentation {
 		this.hub.patchElement(
 			this.messages.renderOlderMessagesTrigger(),
 			"#older-messages-trigger",
-			{ scripts: ["window.piUi.messageScroll.restoreAnchor()"] },
 		);
 		for (const message of messages.toReversed()) {
 			this.messages.enqueueEnhancement(message.id);

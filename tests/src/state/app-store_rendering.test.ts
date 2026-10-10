@@ -425,8 +425,8 @@ test("older messages insert after the trigger before rearming it", async () => {
 		const output = await readUntil(
 			reader,
 			(text) =>
-				text.includes("window.piUi.messageScroll.restoreAnchor()") &&
-				text.includes('id="older-messages-trigger"'),
+				text.includes('id="older-messages-trigger"') &&
+				text.includes("data: mode after"),
 		);
 
 		assertIncludes(output, "data: selector #older-messages-trigger");
@@ -435,16 +435,17 @@ test("older messages insert after the trigger before rearming it", async () => {
 		assertIncludes(output, "message 70");
 		assertNotIncludes(output, "message 69");
 		assertNotIncludes(output, 'id="messages"');
-		assertIncludes(output, "window.piUi.messageScroll.restoreAnchor()");
+		assertNotIncludes(output, "restoreAnchor");
 
 		while (state.hasOlderMessages) state.loadOlderMessages();
 		state.renderer.patchOlderMessages([]);
 		const emptyOutput = await readUntil(reader, (text) =>
-			text.includes("window.piUi.messageScroll.restoreAnchor()"),
+			text.includes('id="older-messages-trigger"'),
 		);
 		assertIncludes(emptyOutput, 'id="older-messages-trigger"');
 		assertNotIncludes(emptyOutput, "data: mode after");
 		assertNotIncludes(emptyOutput, "older-messages-sensor");
+		assertNotIncludes(emptyOutput, "restoreAnchor");
 	} finally {
 		controller.abort();
 	}
@@ -459,7 +460,7 @@ test("trimming removes old DOM messages with one structural selector", async () 
 			const messages = state.loadOlderMessages();
 			state.renderer.patchOlderMessages(messages);
 			await readUntil(reader, (text) =>
-				text.includes("window.piUi.messageScroll.restoreAnchor()"),
+				text.includes('id="older-messages-trigger"'),
 			);
 		}
 		const ids = state.trimOldMessages();

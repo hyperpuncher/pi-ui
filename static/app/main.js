@@ -6,9 +6,8 @@ import * as fileTransfer from "./file-transfer.js";
 import {
 	bindMessageResize,
 	bindMessageScroll,
-	captureAnchor,
 	hydratePierreDiff,
-	restoreAnchor,
+	noteOlderLoad,
 	scrollBottom,
 	trimOldMessages,
 } from "./message-scroll.js";
@@ -41,9 +40,8 @@ window.piUi = {
 	fileTransfer,
 	messageScroll: {
 		bindResize: bindMessageResize,
-		captureAnchor,
 		hydratePierreDiff,
-		restoreAnchor,
+		noteOlderLoad,
 		scrollBottom,
 		trimOldMessages,
 	},
