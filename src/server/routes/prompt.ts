@@ -23,10 +23,7 @@ export const promptRoutes = {
 	[endpoints.slashSearch]: {
 		POST: async (request, context) => {
 			const signals = await readActionSignals(request);
-			context.renderer.setSlashSearch(
-				requiredString(signals, "clientId"),
-				stringField(signals, "slashSearch"),
-			);
+			context.renderer.setSlashSearch(stringField(signals, "slashSearch"));
 			return datastarResponse();
 		},
 	},

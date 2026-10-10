@@ -43,7 +43,6 @@ import { renderWorkspaceReviewData } from "./workspace-review.tsx";
 type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestion[] };
 type ClientView = {
 	sessionQuery: string;
-	modelQuery: string;
 	slashQuery: string;
 	workspaceSearch: WorkspaceSearchView;
 };
@@ -51,7 +50,11 @@ type ClientView = {
 /** Renders current state, with a separate lane for transcript streaming. */
 export class UiRenderer implements AppStorePresentation {
 	readonly messages: MessageRenderService;
-	private readonly clientViews = new Map<string, ClientView>();
+	private readonly view: ClientView = {
+		sessionQuery: "",
+		slashQuery: "",
+		workspaceSearch: { query: "", results: [] },
+	};
 	private commitScheduled = false;
 	private fullViewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
@@ -76,23 +79,16 @@ export class UiRenderer implements AppStorePresentation {
 
 	createStream(
 		signal: AbortSignal,
-		clientId: string = crypto.randomUUID(),
 		query = "",
 		workspaceQuery = "",
-		modelQuery = "",
 		slashQuery = "",
 	): Response {
 		this.flush();
-		const view: ClientView = {
-			sessionQuery: query,
-			modelQuery,
-			slashQuery,
-			workspaceSearch: { query: workspaceQuery, results: [] },
-		};
-		this.clientViews.set(clientId, view);
+		const view = this.view;
+		view.sessionQuery = query;
+		view.slashQuery = slashQuery;
+		view.workspaceSearch = { query: workspaceQuery, results: [] };
 		const disconnect = () => {
-			if (this.clientViews.get(clientId) === view)
-				this.clientViews.delete(clientId);
 			if (this.hub.clientCount === 0) {
 				this.pendingEnhancements.clear();
 				this.messages.transcriptReplacing();
@@ -117,8 +113,7 @@ export class UiRenderer implements AppStorePresentation {
 						this.renderView(snapshot, view);
 					if (workspaceQuery.trim())
 						queueMicrotask(() => {
-							if (this.clientViews.get(clientId) === view)
-								void this.setWorkspaceSearch(clientId, workspaceQuery);
+							void this.setWorkspaceSearch(workspaceQuery);
 						});
 					if (this.hub.clientCount === 1) {
 						// Send the readable initial view before starting final highlighting.
@@ -130,42 +125,30 @@ export class UiRenderer implements AppStorePresentation {
 					}
 					return { elements, signals: this.renderSignals(snapshot) };
 				},
-				{ clientId, onDisconnect: disconnect },
+				{ onDisconnect: disconnect },
 			);
 		} catch (error) {
 			disconnect();
 			throw error;
 		}
 	}
-	setSessionSearch(clientId: string, query: string): void {
-		const view = this.clientViews.get(clientId);
-		if (!view || view.sessionQuery === query) return;
-		view.sessionQuery = query;
+	setSessionSearch(query: string): void {
+		if (this.view.sessionQuery === query) return;
+		this.view.sessionQuery = query;
 		this.viewChanged();
 	}
 
-	setModelSearch(clientId: string, query: string): void {
-		const view = this.clientViews.get(clientId);
-		if (!view || view.modelQuery === query) return;
-		view.modelQuery = query;
+	setSlashSearch(query: string): void {
+		if (this.view.slashQuery === query) return;
+		this.view.slashQuery = query;
 		this.viewChanged();
 	}
 
-	setSlashSearch(clientId: string, query: string): void {
-		const view = this.clientViews.get(clientId);
-		if (!view || view.slashQuery === query) return;
-		view.slashQuery = query;
-		this.viewChanged();
-	}
-
-	async setWorkspaceSearch(clientId: string, query: string): Promise<void> {
-		const view = this.clientViews.get(clientId);
-		if (!view) return;
+	async setWorkspaceSearch(query: string): Promise<void> {
 		const search: WorkspaceSearchView = { query, results: [] };
-		view.workspaceSearch = search;
+		this.view.workspaceSearch = search;
 		const results = await searchWorkspaces(this.store.workspacePath, query);
-		if (this.clientViews.get(clientId) !== view || view.workspaceSearch !== search)
-			return;
+		if (this.view.workspaceSearch !== search) return;
 		search.results = results;
 		this.viewChanged();
 	}
@@ -205,9 +188,9 @@ export class UiRenderer implements AppStorePresentation {
 				);
 			}
 			this.hub.patchView(
-				(clientId) =>
+				() =>
 					fullView
-						? this.renderView(state, this.clientViews.get(clientId))
+						? this.renderView(state, this.view)
 						: this.renderAppElements(state),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.effectScripts(effects),
@@ -338,7 +321,7 @@ export class UiRenderer implements AppStorePresentation {
 			renderAuthDialog(snapshot.authDialog) +
 			renderExtensionDialog(snapshot.extensionDialog) +
 			renderLlamaDialog(snapshot.llamaDialog) +
-			renderModelPicker(snapshot, view?.modelQuery) +
+			renderModelPicker(snapshot) +
 			renderThinkingPicker(snapshot) +
 			renderSlashPicker(snapshot, view?.slashQuery) +
 			renderTreePicker(snapshot)

@@ -1,5 +1,3 @@
-import { fuzzyFilter } from "@earendil-works/pi-tui";
-
 import {
 	authDialogAction,
 	cycleModelAction,
@@ -10,9 +8,9 @@ import { activeKeybind, keybindAction, keybindActions } from "../keybinds.ts";
 import { endpoints } from "../server/routes/endpoints.ts";
 import type { AppThinkingLevel } from "../state/app-store.ts";
 import type { AppStateSnapshot } from "../state/app-store.ts";
-import { modelSearchText } from "../utils/model-search.ts";
 import { workspaceDisplayName } from "../utils/workspace.ts";
 import { Icon } from "./icon.tsx";
+import icons from "./icons.json";
 import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
 import { syncHtml } from "./sync-html.ts";
 
@@ -197,10 +195,7 @@ function thinkingDescription(level: AppThinkingLevel): string {
 	}
 }
 
-export function renderModelPicker(state: AppStateSnapshot, query = ""): string {
-	const models = fuzzyFilter([...state.models], query, (model) =>
-		modelSearchText(model.id, model.provider, model.name),
-	);
+export function renderModelPicker(state: AppStateSnapshot): string {
 	const current = state.models.find(
 		(model) => `${model.provider}/${model.id}` === state.currentModel,
 	);
@@ -253,10 +248,6 @@ export function renderModelPicker(state: AppStateSnapshot, query = ""): string {
 					popovertarget="model-select-popover"
 					data-tooltip="Model"
 					data-tooltip-delay
-					data-on:click__capture={`if (!document.getElementById('model-select-popover')?.matches(':popover-open')) {
-						$modelSearch = '';
-						@post('${endpoints.modelsRefresh}', { payload: {} });
-					}`}
 				>
 					<span class="prompt-context-label" safe>
 						{currentLabel}
@@ -274,10 +265,24 @@ export function renderModelPicker(state: AppStateSnapshot, query = ""): string {
 					data-align="end"
 					class="model-popover"
 					aria-label="Models"
-					data-on:beforetoggle="if (evt.newState === 'closed') window.piUi.controls.refresh(el);"
+					data-on:beforetoggle={`if (evt.newState === 'open') {
+						@post('${endpoints.modelsRefresh}', { payload: {} });
+						@get('${endpoints.modelsList}', {
+							payload: { modelSearch: '' },
+							requestCancellation: 'cleanup',
+						});
+					} else {
+						$modelSearch = '';
+						el.querySelector('#model-select-options').replaceChildren();
+						window.piUi.controls.refresh(el);
+						@get('${endpoints.modelsList}', {
+							payload: { modelSearch: '' },
+							requestCancellation: 'cleanup',
+						});
+					}`}
 				>
 					<div class="command">
-						<header>
+						<search aria-label="Search models">
 							<input
 								id="model-select-input"
 								type="text"
@@ -292,111 +297,138 @@ export function renderModelPicker(state: AppStateSnapshot, query = ""): string {
 								aria-controls="model-select-menu"
 								autofocus
 								data-bind:model-search
+								attrs={{
+									"data-on:input__debounce.50ms": `@get('${endpoints.modelsList}', {
+									payload: { modelSearch: $modelSearch },
+									requestCancellation: 'cleanup',
+								})`,
+								}}
 							/>
-						</header>
+						</search>
 						<div
-							role="menu"
+							role="listbox"
 							id="model-select-menu"
 							class="model-menu"
 							aria-labelledby="model-select-trigger"
 							data-empty="No models found."
-							data-effect={`
-								${Bun.hash(JSON.stringify(models.map((model) => `${model.provider}/${model.id}`)))}n;
-								queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
+							data-indicator:_model-select-loading
+							data-on-signal-patch-filter="{ include: /^_modelsRevision$/ }"
+							data-on-signal-patch={`document.getElementById('model-select-popover')?.matches(':popover-open') &&
+								@get('${endpoints.modelsList}', {
+									payload: { modelSearch: $modelSearch },
+									requestCancellation: 'cleanup',
+								});`}
+							data-on:click={`
+								if (!(evt.target instanceof Element)) return;
+								const scope = evt.target.closest('.model-scope-button');
+								if (scope) {
+									const row = scope.closest('[data-model-value]');
+									if (row)
+										@post('${endpoints.modelsScopeToggle}', {
+											retryMaxCount: 0,
+											payload: { model: row.dataset.modelValue },
+										});
+									return;
+								}
+								const row = evt.target.closest('[data-model-value]');
+								if (!row) return;
+								$modelSearch = '';
+								@post('${endpoints.model}', {
+									payload: { model: row.dataset.modelValue },
+								});
+								requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
 							`}
 						>
 							<div role="group" aria-labelledby="model-select-heading">
-								<div
-									role="heading"
-									id="model-select-heading"
-									class="picker-heading"
-								>
+								<div id="model-select-heading" class="picker-heading">
 									<span>Models</span>
 									<ShortcutKbd
 										shortcut={activeKeybind("switch-model")}
 									/>
 								</div>
-								{models.map((model) => {
-									const value = `${model.provider}/${model.id}`;
-									const configured = model.configured
-										? ""
-										: " • no auth";
-									return (
-										<div
-											id={`model-row-${encodeURIComponent(value)}`}
-											class="model-option"
-											data-command-row
-										>
-											<button
-												type="button"
-												id={`model-option-${encodeURIComponent(value)}`}
-												role="menuitem"
-												tabindex="-1"
-												class="model-choice"
-												commandfor="model-select-popover"
-												command="hide-popover"
-												data-preserve-attr="class"
-												aria-current={
-													value === state.currentModel
-														? "true"
-														: "false"
-												}
-												data-on:click={`
-													$modelSearch = '';
-													@post('${endpoints.model}', {
-												payload: { model: ${JSON.stringify(value)} },
-											});
-													requestAnimationFrame(() => document.getElementById('prompt-input')?.focus());
-												`}
-											>
-												<span class="picker-option-text">
-													<span
-														class="picker-option-title"
-														safe
-													>
-														{model.id}
-													</span>
-													<span
-														class="picker-option-description"
-														safe
-													>
-														{model.provider}
-														{configured}
-													</span>
-												</span>
-												<span
-													class="selection-dot model-current-indicator"
-													hidden={value !== state.currentModel}
-													aria-hidden="true"
-												/>
-											</button>
-											<button
-												type="button"
-												class="btn model-scope-button"
-												data-variant={
-													model.scoped ? "secondary" : "ghost"
-												}
-												data-size="icon-sm"
-												aria-pressed={
-													model.scoped ? "true" : "false"
-												}
-												aria-label={`Toggle scoped model ${value}`}
-												data-on:click={`@post('${endpoints.modelsScopeToggle}', {
-												retryMaxCount: 0,
-												payload: { model: ${JSON.stringify(value)} },
-												});`}
-											>
-												<Icon name="star" />
-											</button>
-										</div>
-									);
-								})}
+								<svg
+									width="0"
+									height="0"
+									style="position:absolute"
+									aria-hidden="true"
+								>
+									<defs>
+										<symbol id="model-scope-star" viewBox="0 0 24 24">
+											{icons.star.replace(
+												'fill="none"',
+												'fill="inherit"',
+											)}
+										</symbol>
+									</defs>
+								</svg>
+								<div id="model-select-options" data-ignore-morph></div>
 							</div>
 						</div>
 					</div>
 				</dialog>
 			</div>
 		</div>,
+	);
+}
+
+export function renderModelOptions(
+	models: AppStateSnapshot["models"],
+	currentModel: AppStateSnapshot["currentModel"],
+): string {
+	return syncHtml(
+		<>
+			{models.map((model, index) => {
+				const value = `${model.provider}/${model.id}`;
+				const configured = model.configured ? "" : " • no auth";
+				return (
+					<div
+						id={`model-row-${encodeURIComponent(value)}`}
+						class="model-option"
+						data-model-value={value}
+						data-command-row
+					>
+						<button
+							type="button"
+							id={`model-option-${encodeURIComponent(value)}`}
+							role="option"
+							tabindex="-1"
+							class={["model-choice", index === 0 && "active"]}
+							commandfor="model-select-popover"
+							command="hide-popover"
+							data-preserve-attr="class"
+							aria-selected={value === currentModel ? "true" : "false"}
+						>
+							<span class="picker-option-text">
+								<span class="picker-option-title" safe>
+									{model.id}
+								</span>
+								<span class="picker-option-description" safe>
+									{model.provider}
+									{configured}
+								</span>
+							</span>
+							<span
+								class="selection-dot model-current-indicator"
+								hidden={value !== currentModel}
+								aria-hidden="true"
+							/>
+						</button>
+						<button
+							type="button"
+							class="btn model-scope-button"
+							data-variant={model.scoped ? "secondary" : "ghost"}
+							data-size="icon-sm"
+							aria-pressed={model.scoped ? "true" : "false"}
+							aria-label={`Toggle scoped model ${value}`}
+						>
+							<svg class="icon" fill="none" aria-hidden="true">
+								<use href="#model-scope-star" />
+							</svg>
+						</button>
+					</div>
+				);
+			})}
+		</>,
 	);
 }
 

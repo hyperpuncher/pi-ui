@@ -96,19 +96,16 @@ test("stale main streams reload the page before connecting", async () => {
 			},
 		}),
 	});
-	const clientId = crypto.randomUUID();
 	const router = createRouter(context);
 	const stale = await router.fetch(
-		new Request(`http://localhost/stream?clientId=${clientId}&appVersion=old`),
+		new Request("http://localhost/stream?appVersion=old"),
 	);
 	assertEquals(stale.headers.get("content-type"), "text/javascript; charset=utf-8");
 	assertEquals(await stale.text(), "location.reload();");
 	assertEquals(connected, false);
 
 	const current = await router.fetch(
-		new Request(
-			`http://localhost/stream?clientId=${clientId}&appVersion=${context.appVersion}`,
-		),
+		new Request(`http://localhost/stream?appVersion=${context.appVersion}`),
 	);
 	assertEquals(await current.text(), "stream");
 	assertEquals(connected, true);
@@ -736,13 +733,12 @@ test("extension UI responses return to the active agent backend", async () => {
 	});
 });
 
-test("main stream binds the client identity", async () => {
-	const clientId = "123e4567-e89b-42d3-a456-426614174000";
-	let connectedClientId: string | undefined;
+test("main stream requires a matching app version", async () => {
+	let streamCreated = false;
 	const context = fakeContext({
 		renderer: uiRendererStub({
-			createStream: (_signal: AbortSignal, receivedClientId: string) => {
-				connectedClientId = receivedClientId;
+			createStream: () => {
+				streamCreated = true;
 				return new Response();
 			},
 		}),
@@ -751,18 +747,15 @@ test("main stream binds the client identity", async () => {
 	assertEquals(
 		(
 			await router.fetch(
-				new Request(
-					`http://localhost/stream?clientId=${clientId}&appVersion=${context.appVersion}`,
-				),
+				new Request(`http://localhost/stream?appVersion=${context.appVersion}`),
 			)
 		).status,
 		200,
 	);
-	assertEquals(connectedClientId, clientId);
-	assertEquals(
-		(await router.fetch(new Request("http://localhost/stream"))).status,
-		400,
-	);
+	assertEquals(streamCreated, true);
+	const stale = await router.fetch(new Request("http://localhost/stream"));
+	assertEquals(stale.status, 200);
+	assertEquals(await stale.text(), "location.reload();");
 });
 
 test("tree navigation state follows mutable host ownership", async () => {
@@ -803,6 +796,35 @@ test("tree navigation state follows mutable host ownership", async () => {
 	assertEquals(cancelled.status, 204);
 	const cancelledBody = await cancelled.text();
 	assertStringExcludes(cancelledBody, '"prompt"');
+});
+
+test("model rows load on demand through the list endpoint", async () => {
+	const context = fakeContext();
+	context.store.setModels(
+		[
+			{
+				id: "deepseek-v4",
+				provider: "fixture",
+				name: "DeepSeek V4",
+				configured: true,
+				scoped: false,
+			},
+		],
+		"fixture/deepseek-v4",
+	);
+	const response = await createRouter(context).fetch(
+		signalGet("/models/list", { modelSearch: "" }),
+	);
+	const body = await response.text();
+	assertStringIncludes(body, 'id="model-select-options"');
+	assertStringIncludes(body, 'id="model-option-fixture%2Fdeepseek-v4"');
+	assertStringIncludes(body, "data: selector #model-select-options");
+	assertStringIncludes(body, "data: mode replace");
+	const filtered = await createRouter(context).fetch(
+		signalGet("/models/list", { modelSearch: "nomatch-xyz" }),
+	);
+	const filteredBody = await filtered.text();
+	assertStringExcludes(filteredBody, 'id="model-option-');
 });
 
 test("model catalog refresh delegates to the active host", async () => {

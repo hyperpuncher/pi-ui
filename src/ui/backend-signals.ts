@@ -5,6 +5,7 @@ import type { AppStateSnapshot } from "../state/app-store.ts";
 import { workspaceChangeStats } from "../workspace-review-types.ts";
 
 export type BackendSignals = {
+	_modelsRevision: number;
 	_codeThemeDark: string;
 	_codeThemeLight: string;
 	_fontMono: string;
@@ -32,6 +33,7 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 	const fonts = getActiveFonts();
 	const stats = workspaceChangeStats(state.workspaceReview.changes);
 	return {
+		_modelsRevision: state.modelsRevision,
 		_codeThemeDark: codeThemes.dark,
 		_codeThemeLight: codeThemes.light,
 		_fontMono: fonts.mono,

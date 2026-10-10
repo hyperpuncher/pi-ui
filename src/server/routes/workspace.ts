@@ -52,7 +52,6 @@ export const workspaceRoutes = {
 		POST: async (request, context) => {
 			const signals = await readActionSignals(request);
 			await context.renderer.setWorkspaceSearch(
-				requiredString(signals, "clientId"),
 				stringField(signals, "workspaceDraft"),
 			);
 			return datastarResponse();

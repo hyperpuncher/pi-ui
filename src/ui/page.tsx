@@ -55,7 +55,6 @@ export function renderPage(
 	const staticBase = `/static/${appVersion}`;
 	const codeThemes = getPierreThemes();
 	const fonts = activeFontStacks();
-	const displayClientId = crypto.randomUUID();
 	const initialSignals = JSON.stringify(projectBackendSignals(state));
 
 	return syncHtml(
@@ -179,12 +178,6 @@ export function renderPage(
 						sessionRenamePath: "",
 						sessionRenameTitle: "",
 					})}
-					data-on-signal-patch-filter="{ include: /^modelSearch$/ }"
-					attrs={{
-						"data-on-signal-patch__debounce.50ms": `@post('${endpoints.modelsSearch}', {
-							payload: { clientId: '${displayClientId}', modelSearch: $modelSearch },
-						})`,
-					}}
 					data-on:dragenter__window={`if (window.piUi.fileTransfer.hasFiles(evt.dataTransfer)) {
 						evt.preventDefault();
 						$_isDraggingFile = window.piUi.fileTransfer.enterDrag();
@@ -229,17 +222,17 @@ export function renderPage(
 						data-class:temporary-chat="$_temporarySession"
 						data-on-signal-patch-filter="{ include: /^slashSearch$/ }"
 						data-on-signal-patch={`@post('${endpoints.slashSearch}', {
-							payload: { clientId: '${displayClientId}', slashSearch: $slashSearch },
+							payload: { slashSearch: $slashSearch },
 						})`}
 						data-on:pi-ui-workspace-review-open={`$_workspaceReviewOpen = evt.detail.open`}
 						data-effect="window.piUi.workspaceReview.applyOpen($_workspaceReviewOpen)"
 						data-signals:_workspace-review-open__ifmissing="false"
-						data-init={`@get('${endpoints.stream}?clientId=${displayClientId}&appVersion=${appVersion}', {
-						filterSignals: { include: /^(sessionSearch|workspaceDraft|modelSearch|slashSearch)$/ },
-						retry: 'always',
-						retryMaxCount: Infinity,
-						requestCancellation: 'cleanup',
-					})`}
+						data-init={`@get('${endpoints.stream}?appVersion=${appVersion}', {
+							filterSignals: { include: /^(sessionSearch|workspaceDraft|slashSearch)$/ },
+							retry: 'always',
+							retryMaxCount: Infinity,
+							requestCancellation: 'cleanup',
+						})`}
 					>
 						{renderSessionSidebar(state, {
 							open: sessionSidebarOpen,
@@ -350,7 +343,7 @@ export function renderPage(
 									data-bind:workspace-draft
 									attrs={{
 										"data-on:input__debounce.50ms": `@post('${endpoints.workspaceSearch}', {
-										payload: { clientId: '${displayClientId}', workspaceDraft: $workspaceDraft },
+										payload: { workspaceDraft: $workspaceDraft },
 										requestCancellation: 'cleanup',
 									})`,
 									}}
@@ -475,7 +468,7 @@ export function renderPage(
 									data-bind:session-search=""
 									attrs={{
 										"data-on:input__debounce.100ms": `@post('${endpoints.sessionsSearch}', {
-										payload: { clientId: '${displayClientId}', sessionSearch: $sessionSearch },
+										payload: { sessionSearch: $sessionSearch },
 										requestCancellation: 'cleanup',
 									})`,
 									}}

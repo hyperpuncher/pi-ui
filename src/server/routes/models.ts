@@ -1,8 +1,12 @@
+import { fuzzyFilter } from "@earendil-works/pi-tui";
+
+import { renderModelOptions } from "../../ui/prompt-pickers.tsx";
+import { modelSearchText } from "../../utils/model-search.ts";
 import {
 	enumField,
+	optionalString,
 	readActionSignals,
 	requiredString,
-	stringField,
 } from "../action-input.ts";
 import { datastarResponse } from "../datastar.ts";
 import { RouteError, type RouteMap } from "../route.ts";
@@ -11,23 +15,37 @@ import { endpoints } from "./endpoints.ts";
 
 const directions = ["forward", "backward"] as const;
 
+/** Caps one picker payload so hundreds of models stay out of every patch. */
+export const maxModelOptions = 60;
+
 export const modelRoutes = {
-	[endpoints.modelsSearch]: {
-		POST: async (request, context) => {
-			const signals = await readActionSignals(request);
-			context.renderer.setModelSearch(
-				requiredString(signals, "clientId"),
-				stringField(signals, "modelSearch"),
-			);
-			return datastarResponse();
-		},
-	},
 	[endpoints.modelsRefresh]: {
 		POST: async (request, context) => {
 			await requireHost(context).refreshModels(
 				AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]),
 			);
 			return datastarResponse();
+		},
+	},
+	[endpoints.modelsList]: {
+		GET: async (request, context) => {
+			const signals = await readActionSignals(request);
+			const query = optionalString(signals, "modelSearch") ?? "";
+			const { models, currentModel } = context.store;
+			const filtered = query.trim()
+				? fuzzyFilter([...models], query, (model) =>
+						modelSearchText(model.id, model.provider, model.name),
+					)
+				: [...models];
+			const shown = filtered.slice(0, maxModelOptions);
+			const hidden = filtered.length - shown.length;
+			return datastarResponse([
+				{
+					type: "elements",
+					elements: `<div id="model-select-options" data-ignore-morph data-init="window.piUi.controls.refresh(el.closest('.command'))">${renderModelOptions(shown, currentModel)}${hidden > 0 ? `<div class="fine-print model-options-more" role="status">${hidden} more — keep typing to narrow</div>` : ""}</div>`,
+					options: { selector: "#model-select-options", mode: "replace" },
+				},
+			]);
 		},
 	},
 	[endpoints.model]: {

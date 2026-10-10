@@ -24,10 +24,7 @@ export const sessionRoutes = {
 	[endpoints.sessionsSearch]: {
 		POST: async (request, context) => {
 			const signals = await readActionSignals(request);
-			context.renderer.setSessionSearch(
-				requiredString(signals, "clientId"),
-				stringField(signals, "sessionSearch"),
-			);
+			context.renderer.setSessionSearch(stringField(signals, "sessionSearch"));
 			return datastarResponse();
 		},
 	},

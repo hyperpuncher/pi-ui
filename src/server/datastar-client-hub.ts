@@ -6,7 +6,6 @@ export type DatastarClient = Pick<
 	"patchElements" | "patchSignals" | "executeScript" | "close"
 >;
 export type DatastarClientStreamOptions = {
-	clientId?: string;
 	onDisconnect?: () => void;
 };
 
@@ -16,7 +15,6 @@ export class DatastarClientHub {
 		string,
 		{
 			stream: DatastarClient;
-			clientId: string;
 			disconnect: () => void;
 		}
 	>();
@@ -50,7 +48,6 @@ export class DatastarClientHub {
 				};
 				this.clients.set(id, {
 					stream,
-					clientId: options.clientId ?? id,
 					disconnect,
 				});
 				signal.addEventListener("abort", disconnect, { once: true });
@@ -77,14 +74,8 @@ export class DatastarClientHub {
 		);
 	}
 
-	patchView(
-		render: (clientId: string) => string,
-		signals: string,
-		scripts: readonly string[],
-	): void {
-		this.broadcast((client, clientId) =>
-			this.patchClient(client, render(clientId), signals, scripts),
-		);
+	patchView(render: () => string, signals: string, scripts: readonly string[]): void {
+		this.broadcast((client) => this.patchClient(client, render(), signals, scripts));
 	}
 
 	patchElement(
@@ -128,10 +119,10 @@ export class DatastarClientHub {
 		this.broadcast((client) => client.patchSignals(signals));
 	}
 
-	private broadcast(send: (client: DatastarClient, clientId: string) => void): void {
-		for (const { stream, clientId, disconnect } of this.clients.values()) {
+	private broadcast(send: (client: DatastarClient) => void): void {
+		for (const { stream, disconnect } of this.clients.values()) {
 			try {
-				send(stream, clientId);
+				send(stream);
 			} catch {
 				disconnect();
 			}

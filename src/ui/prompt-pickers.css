@@ -147,7 +147,7 @@
 		width: 1.75rem;
 		opacity: 1;
 	}
-	.model-scope-button[aria-pressed="true"] > svg path {
+	.model-scope-button[aria-pressed="true"] > svg {
 		fill: currentColor;
 	}
 

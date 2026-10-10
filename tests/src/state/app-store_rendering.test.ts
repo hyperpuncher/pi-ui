@@ -959,7 +959,7 @@ test("app stream refreshes current and background session statuses", async () =>
 	}
 });
 
-test("picker searches stay browser-scoped across view updates and reconnects", async () => {
+test("slash search is shared across connections and survives reconnect", async () => {
 	const state = createState();
 	state.setModels(
 		["deepseek-v4", "claude-sonnet"].map((id) => ({
@@ -979,55 +979,42 @@ test("picker searches stay browser-scoped across view updates and reconnects", a
 	const second = new AbortController();
 	const reconnect = new AbortController();
 	try {
-		const firstReader = responseReader(
-			state.renderer.createStream(first.signal, "first"),
-		);
-		const secondReader = responseReader(
-			state.renderer.createStream(second.signal, "second"),
-		);
+		const firstReader = responseReader(state.renderer.createStream(first.signal));
+		const secondReader = responseReader(state.renderer.createStream(second.signal));
 		await readUntil(firstReader, (text) =>
 			text.includes("event: datastar-patch-signals"),
 		);
 		await readUntil(secondReader, (text) =>
 			text.includes("event: datastar-patch-signals"),
 		);
-		state.renderer.setModelSearch("first", "deepseek");
-		state.renderer.setSlashSearch("first", "review");
-		const filtered = await readUntil(firstReader, (text) =>
+		state.renderer.setSlashSearch("review");
+		const firstFiltered = await readUntil(firstReader, (text) =>
 			text.includes("workspace-review-data"),
 		);
-		const unfiltered = await readUntil(secondReader, (text) =>
+		const secondFiltered = await readUntil(secondReader, (text) =>
 			text.includes("workspace-review-data"),
 		);
-		assertIncludes(filtered, 'id="model-option-fixture%2Fdeepseek-v4"');
-		assertNotIncludes(filtered, 'id="model-option-fixture%2Fclaude-sonnet"');
-		assertIncludes(unfiltered, 'id="model-option-fixture%2Fclaude-sonnet"');
-		assertIncludes(filtered, 'id="slash-option-skill%3Areview"');
-		assertNotIncludes(filtered, 'id="slash-option-login"');
-		assertIncludes(unfiltered, 'id="slash-option-login"');
+		for (const filtered of [firstFiltered, secondFiltered]) {
+			assertIncludes(filtered, 'id="model-select-options"');
+			assertNotIncludes(filtered, 'id="model-option-fixture%2Fdeepseek-v4"');
+			assertIncludes(filtered, 'id="slash-option-skill%3Areview"');
+			assertNotIncludes(filtered, 'id="slash-option-login"');
+		}
 
 		state.setThinking("high", ["off", "high"]);
 		const update = await readUntil(firstReader, (text) =>
 			text.includes("workspace-review-data"),
 		);
-		assertNotIncludes(update, 'id="model-option-fixture%2Fclaude-sonnet"');
 		assertNotIncludes(update, 'id="slash-option-login"');
 		first.abort();
 		const restored = await readUntil(
 			responseReader(
-				state.renderer.createStream(
-					reconnect.signal,
-					"first",
-					"",
-					"",
-					"deepseek",
-					"review",
-				),
+				state.renderer.createStream(reconnect.signal, "", "", "review"),
 			),
 			(text) => text.includes("event: datastar-patch-signals"),
 		);
-		assertIncludes(restored, 'id="model-option-fixture%2Fdeepseek-v4"');
-		assertNotIncludes(restored, 'id="model-option-fixture%2Fclaude-sonnet"');
+		assertIncludes(restored, 'id="model-select-options"');
+		assertNotIncludes(restored, 'id="model-option-fixture%2Fdeepseek-v4"');
 		assertIncludes(restored, 'id="slash-option-skill%3Areview"');
 		assertNotIncludes(restored, 'id="slash-option-login"');
 	} finally {

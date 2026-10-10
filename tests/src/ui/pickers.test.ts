@@ -9,6 +9,7 @@ import {
 	renderWorkspaceDialogMenu,
 } from "#src/ui/pickers.tsx";
 import {
+	renderModelOptions,
 	renderModelPicker,
 	renderThinkingPicker,
 	renderWorkspacePicker,
@@ -322,7 +323,19 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
 	assertStringIncludes(withoutSelection, "@post('/models/refresh', { payload: {} })");
 	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
-	assertStringIncludes(withoutSelection, ">claude-sonnet</span>");
+	const rows = renderModelOptions(
+		[
+			{
+				id: "claude-sonnet",
+				provider: "anthropic",
+				name: "Claude Sonnet",
+				configured: true,
+				scoped: false,
+			},
+		],
+		undefined,
+	);
+	assertStringIncludes(rows, ">claude-sonnet</span>");
 	assertFalse(withoutSelection.includes("data-model-search-order"));
 	assertFalse(withoutSelection.includes("window.piUi.modelSearch"));
 	assertStringIncludes(
@@ -338,7 +351,6 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 					},
 				],
 			}),
-			"no matching model",
 		),
 		'data-empty="No models found."',
 	);
@@ -361,7 +373,19 @@ test("model picker shows only the final model name in its trigger", () => {
 	);
 
 	assertStringIncludes(html, ">DeepSeek-R1</span>");
-	assertStringIncludes(html, ">deepseek-ai/DeepSeek-R1</span>");
+	const rows = renderModelOptions(
+		[
+			{
+				id: "deepseek-ai/DeepSeek-R1",
+				provider: "huggingface",
+				name: "DeepSeek R1",
+				configured: true,
+				scoped: false,
+			},
+		],
+		"huggingface/deepseek-ai/DeepSeek-R1",
+	);
+	assertStringIncludes(rows, ">deepseek-ai/DeepSeek-R1</span>");
 });
 
 test("thinking picker describes every supported maximum level", () => {

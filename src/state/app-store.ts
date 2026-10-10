@@ -177,6 +177,7 @@ export interface AppStorePresentation {
 export type AppStateSnapshot = Readonly<{
 	messages: readonly TranscriptMessage[];
 	models: readonly AppModel[];
+	modelsRevision: number;
 	sessions: readonly AppSessionSummary[];
 	sessionsHasMore: boolean;
 	sessionCatalogLoading: boolean;
@@ -269,6 +270,7 @@ export class AppStore {
 	updateAvailable: AvailableUpdate | undefined;
 	promptEditorText = "";
 	models: AppModel[] = [];
+	modelsRevision = 0;
 	sessionCatalogLoading = true;
 	private sessionCatalog: AppSessionSummary[] = [];
 	private sessionLimit = sessionSidebarPageSize;
@@ -373,6 +375,7 @@ export class AppStore {
 		return Object.freeze({
 			messages: this.messages.map((message) => ({ ...message })),
 			models: this.models.map((model) => ({ ...model })),
+			modelsRevision: this.modelsRevision,
 			sessions: this.sessions.map((session) => ({ ...session })),
 			sessionsHasMore: this.sessionsHasMore,
 			sessionCatalogLoading: this.sessionCatalogLoading,
@@ -534,6 +537,7 @@ export class AppStore {
 	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;
 		this.currentModel = currentModel;
+		this.modelsRevision += 1;
 		this.commitView();
 	}
 	setThinking(level: AppThinkingLevel, levels: AppThinkingLevel[]): void {

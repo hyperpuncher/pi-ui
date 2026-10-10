@@ -66,7 +66,7 @@ export const endpoints = {
 	model: "/model",
 	modelCycle: "/model/cycle",
 	modelsRefresh: "/models/refresh",
-	modelsSearch: "/models/search",
+	modelsList: "/models/list",
 	modelsScopeToggle: "/models/scope/toggle",
 	thinking: "/thinking",
 	thinkingCycle: "/thinking/cycle",
