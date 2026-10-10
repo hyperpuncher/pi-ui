@@ -614,14 +614,14 @@ test("immediate session refresh cancels a queued file refresh for a provisional 
 	try {
 		changed(path);
 		await catalog.refreshPath(path, { preserveMissing: true });
-		await Bun.sleep(300);
+		await Bun.sleep(450);
 		assertEquals(
 			state.sessions.map((session) => session.path),
 			[path],
 		);
 		// A later file notification must still be able to remove the missing row.
 		changed(path);
-		await Bun.sleep(300);
+		await Bun.sleep(450);
 		assertEquals(state.sessions, []);
 	} finally {
 		catalog.dispose();

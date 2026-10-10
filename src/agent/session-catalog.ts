@@ -44,6 +44,9 @@ type SessionCandidate = {
 const SESSION_INDEX_CONCURRENCY = 4;
 const noBackgroundStatuses = new Map<string, BackgroundSessionStatus>();
 
+/** Coalesces fs write bursts per session file without slowing direct updates. */
+const fileRefreshDebounceMs = 350;
+
 export type SessionCatalogLifecycle = {
 	sessionDir: string;
 	backgroundStatuses?: () => ReadonlyMap<string, BackgroundSessionStatus>;
@@ -290,9 +293,15 @@ export class SessionCatalog {
 		clearTimeout(this.sessionFileRefreshTimers.get(path));
 		this.sessionFileRefreshTimers.set(
 			path,
-			setTimeout(() => {
-				void this.refreshPath(path);
-			}, 200),
+			setTimeout(
+				() => {
+					void this.refreshPath(path);
+				},
+				// Trailing edge only: fs write bursts settle in milliseconds, and
+				// direct event paths (message counts, touches, statuses) stay
+				// instant, so sidebar freshness never waits on this timer.
+				fileRefreshDebounceMs,
+			),
 		);
 	}
 
