@@ -212,7 +212,7 @@ test("20-message restore emits fallback once and targets enhancements", async ()
 		state.replaceMessages(generatedSessionFixture(20));
 		const output = await readUntil(
 			responseReader(response),
-			(text) => text.split("data: selector [data-message-id=").length - 1 === 16,
+			(text) => text.split("data: selector #message-").length - 1 === 16,
 		);
 		assertEqual(output.split("data: selector #messages").length - 1, 1);
 		const snapshot = sessionPerformance.snapshot();

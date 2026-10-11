@@ -157,5 +157,5 @@ export async function renderPierreCode(
 }
 
 function pierreHost(className: string, prerenderedHTML: string): string {
-	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-init="window.piUi.messageScroll.hydratePierreDiff(el)"><template shadowrootmode="open">${prerenderedHTML}</template></${DIFFS_TAG_NAME}>`;
+	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-ignore-morph data-init="window.piUi.messageScroll.hydratePierreDiff(el)"><template shadowrootmode="open">${prerenderedHTML}</template></${DIFFS_TAG_NAME}>`;
 }

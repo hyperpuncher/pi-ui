@@ -5,7 +5,6 @@ const stepDurationMs = 120;
 const firstFrameMs = 17;
 const maxFrameElapsedMs = 1000 / 30;
 let animation;
-let target;
 let lastFrame = 0;
 let direction = 0;
 let keyHeld = false;
@@ -64,11 +63,6 @@ function isTextInput(target) {
 }
 
 function scrollBy(amount) {
-	if (animation && target !== undefined) {
-		cancelAnimationFrame(animation);
-		animation = undefined;
-		target = undefined;
-	}
 	const nextDirection = Math.sign(amount);
 	if (!animation || direction !== nextDirection) {
 		direction = nextDirection;
@@ -82,13 +76,18 @@ function scrollBy(amount) {
 }
 
 function scrollTo(position) {
-	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement)) return;
+	if (animation) cancelAnimationFrame(animation);
+	animation = undefined;
 	direction = 0;
 	keyHeld = false;
-	target = position === "top" ? 0 : messages.scrollHeight - messages.clientHeight;
-	startTargetScroll(position);
-	if (position === "top") markUnpinned();
+	if (position === "bottom") {
+		scrollBottom();
+		return;
+	}
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	markUnpinned();
+	messages.scrollTop = 0;
 }
 
 function startLineScroll() {
@@ -116,43 +115,6 @@ function startLineScroll() {
 			delta = 0;
 			remainder = 0;
 			animation = undefined;
-			return;
-		}
-		animation = requestAnimationFrame(tick);
-	};
-	animation = requestAnimationFrame(tick);
-}
-
-function startTargetScroll(position) {
-	if (animation) cancelAnimationFrame(animation);
-	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement) || target === undefined) return;
-	const start = messages.scrollTop;
-	const fixedTarget = Math.max(
-		0,
-		Math.min(target, messages.scrollHeight - messages.clientHeight),
-	);
-	const duration = Math.max(
-		stepDurationMs,
-		20 * Math.log(Math.max(Math.abs(fixedTarget - start), 1)),
-	);
-	let elapsedTotal = 0;
-	let lastFrame = 0;
-	const tick = (now) => {
-		const current = document.getElementById("messages");
-		if (!(current instanceof HTMLElement) || target === undefined) {
-			animation = undefined;
-			return;
-		}
-		const elapsed = lastFrame ? now - lastFrame : 16.7;
-		lastFrame = now;
-		elapsedTotal += elapsed;
-		const progress = Math.min(1, elapsedTotal / duration);
-		current.scrollTop = start + (fixedTarget - start) * progress;
-		if (progress >= 1) {
-			target = undefined;
-			animation = undefined;
-			if (position === "bottom") scrollBottom();
 			return;
 		}
 		animation = requestAnimationFrame(tick);

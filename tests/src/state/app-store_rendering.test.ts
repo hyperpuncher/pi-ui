@@ -78,7 +78,7 @@ test("ordinary commits exclude finalized assistant messages", async () => {
 			response,
 			"large finalized HTML",
 		);
-		assertIncludes(finalized, "data-ignore-morph");
+		assertIncludes(finalized, "large finalized HTML");
 		assertNotIncludes(ordinary, "large finalized HTML");
 		assertNotIncludes(ordinary, "lightweight source");
 		assertNotIncludes(ordinary, 'id="messages"');
@@ -152,7 +152,7 @@ test("ordinary commits exclude finalized tool messages", async () => {
 	}
 });
 
-test("new messages append to the stable message list", async () => {
+test("new messages morph the complete transcript", async () => {
 	const state = createState();
 	const controller = new AbortController();
 	try {
@@ -167,10 +167,10 @@ test("new messages append to the stable message list", async () => {
 			reader,
 			(text) => text.includes("one") && text.includes("two"),
 		);
-		assertIncludes(tools, "data: selector #message-list");
-		assertIncludes(tools, "data: mode append");
-		assertIncludes(tools, "window.piUi.messageScroll.trimOldMessages()");
-		assertNotIncludes(tools, '<main id="messages"');
+		assertIncludes(tools, "data: selector #messages");
+		assertNotIncludes(tools, "data: mode replace");
+		assertNotIncludes(tools, "window.piUi.messageScroll.trimOldMessages()");
+		assertIncludes(tools, '<main id="messages"');
 	} finally {
 		controller.abort();
 	}
@@ -235,7 +235,7 @@ test("tool display changes rerender only the active presentation", async () => {
 		assertNotIncludes(appended, "appended_output");
 		assertNotIncludes(appended, "tool-header");
 
-		const older = state.renderer.messages.renderOlderMessagesPatch(state.messages);
+		const older = state.renderer.messages.renderMessagesElement();
 		assertIncludes(older, "tool-title-compact");
 		assertNotIncludes(older, "updated_output");
 		assertNotIncludes(older, "tool-header");
@@ -300,7 +300,7 @@ test("parallel message updates all reach their final state", async () => {
 			(text) => text.includes("read first.ts") && text.includes("read second.ts"),
 		);
 
-		assertEqual(count(updates, "data: selector [data-message-id="), 2);
+		assertEqual(count(updates, "data: selector #message-"), 2);
 		assertEqual(count(updates, "tool-status-success"), 2);
 	} finally {
 		controller.abort();
@@ -333,7 +333,7 @@ test("session transitions preserve targeted transcript replacement and ordinary 
 		);
 		assertIncludes(restored, 'id="messages"');
 		assertIncludes(restored, "data: selector #messages");
-		assertIncludes(restored, "data: mode replace");
+		assertNotIncludes(restored, "data: mode replace");
 
 		state.setSessionTransition({ status: "idle", generation: 1 });
 		await readUntil(reader, (text) =>
@@ -359,7 +359,7 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 	await waitFor(() => renderCount === 30);
 	const ids = state.loadOlderMessages();
 	assertEqual(ids.length, 30);
-	state.renderer.patchOlderMessages(ids);
+
 	await waitFor(() => renderCount === 60);
 	assertEqual(state.loadOlderMessages(), []);
 	const immediatePage = state.renderer.messages.renderMessagesElement();
@@ -382,7 +382,7 @@ test("theme changes highlight only loaded messages and invalidate older cached p
 		Array.from({ length: 100 }, (_, index) => markdownMessage(`message ${index}`)),
 	);
 	await waitFor(() => rendered.length === 30);
-	state.renderer.patchOlderMessages(state.loadOlderMessages());
+	state.loadOlderMessages();
 	await waitFor(() => rendered.length === 60);
 	await settleMicrotasks();
 	state.showRecentMessages();
@@ -398,7 +398,7 @@ test("theme changes highlight only loaded messages and invalidate older cached p
 	);
 	assertEqual(rendered.toSorted(), state.messages.map(({ text }) => text).toSorted());
 
-	state.renderer.patchOlderMessages(state.loadOlderMessages());
+	state.loadOlderMessages();
 	await waitFor(() =>
 		projectedMessages(state).every(
 			({ presentationState }) => presentationState === "final",
@@ -413,72 +413,64 @@ test("theme changes highlight only loaded messages and invalidate older cached p
 	);
 });
 
-test("older messages insert after the trigger before rearming it", async () => {
+test("history commands morph the complete loaded transcript", async () => {
 	const state = stateWithMessages(130);
 	const controller = new AbortController();
 	try {
 		const reader = await openInitializedStateStream(state, controller.signal);
-
-		const ids = state.loadOlderMessages();
-		assertEqual(ids.length, 30);
-		state.renderer.patchOlderMessages(ids);
-		const output = await readUntil(
-			reader,
-			(text) =>
-				text.includes('id="older-messages-trigger"') &&
-				text.includes("data: mode after"),
+		assertEqual(state.loadOlderMessages().length, 30);
+		const output = await readUntil(reader, (text) =>
+			text.includes('id="prompt-action"'),
 		);
-
-		assertIncludes(output, "data: selector #older-messages-trigger");
-		assertIncludes(output, "data: mode after");
-		assertIncludes(output, 'id="older-messages-trigger"');
+		assertIncludes(output, "data: selector #messages");
+		assertNotIncludes(output, "data: mode replace");
 		assertIncludes(output, "message 70");
+		assertIncludes(output, "message 129");
 		assertNotIncludes(output, "message 69");
-		assertNotIncludes(output, 'id="messages"');
-		assertNotIncludes(output, "restoreAnchor");
-
-		while (state.hasOlderMessages) state.loadOlderMessages();
-		state.renderer.patchOlderMessages([]);
-		const emptyOutput = await readUntil(reader, (text) =>
-			text.includes('id="older-messages-trigger"'),
+		assertNotIncludes(output, "data: mode after");
+		assertEqual(
+			output.indexOf("beforeUpdate()") < output.indexOf('id="messages"'),
+			true,
 		);
-		assertIncludes(emptyOutput, 'id="older-messages-trigger"');
-		assertNotIncludes(emptyOutput, "data: mode after");
-		assertNotIncludes(emptyOutput, "older-messages-sensor");
-		assertNotIncludes(emptyOutput, "restoreAnchor");
+		assertEqual(
+			output.indexOf('id="messages"') < output.indexOf("afterUpdate()"),
+			true,
+		);
+		while (state.hasOlderMessages) state.loadOlderMessages();
+		const complete = await readUntil(reader, (text) =>
+			text.includes('id="prompt-action"'),
+		);
+		assertIncludes(complete, "message 0");
+		assertNotIncludes(complete, 'data-has-older="1"');
 	} finally {
 		controller.abort();
 	}
 });
 
-test("trimming removes old DOM messages with one structural selector", async () => {
+test("trimming morphs current state and releases evicted presentation", async () => {
 	const state = stateWithMessages(130);
 	const controller = new AbortController();
 	try {
 		const reader = await openInitializedStateStream(state, controller.signal);
-		for (let page = 0; page < 3; page += 1) {
-			const messages = state.loadOlderMessages();
-			state.renderer.patchOlderMessages(messages);
-			await readUntil(reader, (text) =>
-				text.includes('id="older-messages-trigger"'),
-			);
+		for (let page = 0; page < 3; page++) {
+			state.loadOlderMessages();
+			await readUntil(reader, (text) => text.includes('id="prompt-action"'));
 		}
-		const ids = state.trimOldMessages();
 		const cachedBefore = state.renderer.messages.presentationStatsForTest().entries;
-		state.renderer.messagesRemoved(ids);
-		const output = await readUntil(reader, (text) => text.includes("mode remove"));
-
-		assertEqual(ids.length, 20);
+		assertEqual(state.trimOldMessages().length, 20);
+		const output = await readUntil(reader, (text) =>
+			text.includes('id="prompt-action"'),
+		);
 		assertEqual(state.messages.length, 100);
 		assertEqual(
 			state.renderer.messages.presentationStatsForTest().entries,
-			cachedBefore - ids.length,
+			cachedBefore - 20,
 		);
-		assertIncludes(
-			output,
-			"data: selector #message-list > [data-message-id]:nth-last-child(n + 101)",
-		);
-		assertNotIncludes(output, '[data-message-id="m-');
+		assertIncludes(output, "data: selector #messages");
+		assertIncludes(output, "message 30");
+		assertNotIncludes(output, "message 29</");
+		assertNotIncludes(output, "data: mode remove");
+		assertIncludes(output, 'data-has-older="1"');
 	} finally {
 		controller.abort();
 	}
@@ -495,11 +487,11 @@ test("trimmed messages skip deferred enhancement work", async () => {
 		),
 	);
 	for (let page = 0; page < 3; page += 1) {
-		state.renderer.patchOlderMessages(state.loadOlderMessages());
+		state.loadOlderMessages();
 	}
 	const ids = state.trimOldMessages();
 	assertEqual(ids.length, 20);
-	state.renderer.messagesRemoved(ids);
+
 	await waitFor(() =>
 		projectedMessages(state).every(
 			({ presentationState }) => presentationState === "final",
@@ -512,7 +504,7 @@ test("trimmed messages skip deferred enhancement work", async () => {
 	);
 });
 
-test("repaging replaces the transcript and moves to the recent page", async () => {
+test("repaging morphs the transcript and moves to the recent page", async () => {
 	const state = createState();
 	state.replaceMessages(
 		Array.from({ length: 80 }, (_, index) => ({
@@ -532,7 +524,7 @@ test("repaging replaces the transcript and moves to the recent page", async () =
 		);
 
 		assertIncludes(output, 'id="messages"');
-		assertIncludes(output, 'id="older-messages-trigger"');
+		assertIncludes(output, 'data-has-older="1"');
 		assertIncludes(output, "message 50");
 	} finally {
 		controller.abort();

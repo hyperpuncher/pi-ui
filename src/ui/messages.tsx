@@ -46,13 +46,6 @@ function displayImageSize(width?: number, height?: number) {
 	return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
-function preservesFinalizedMessageDom(message: AppMessage): boolean {
-	return (
-		message.presentationState === "final" &&
-		(message.role === "assistant" || message.role === "thought")
-	);
-}
-
 export function renderMessages(
 	messages: readonly AppMessage[],
 	emptyHint: AppKeybindHint,
@@ -62,24 +55,37 @@ export function renderMessages(
 	sessionCatalogLoading = false,
 	compactTools = false,
 ): string {
+	const loadOlder = `if (window.piUi.messageScroll.isReading() && el.hasAttribute('data-has-older') && !el.matches('.loading, .trimming')) {
+		el.classList.add('loading');
+		@post('${endpoints.messagesOlder}', { payload: {}, retry: 'never' });
+	}`;
 	return syncHtml(
 		<main
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
+			data-has-older={hasOlderMessages ? "1" : undefined}
 			data-class:messages-loading="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading'"
 			data-attr:aria-busy="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
 			data-init="window.piUi.messageScroll.bindResize()"
+			data-preserve-attr="style"
+			data-on:scroll={`if (evt.target === el && el.scrollTop > 0 && el.scrollTop <= 2 * el.clientHeight) { ${loadOlder} }`}
+			data-on:scrollend={`if (evt.target === el && el.scrollTop <= 2 * el.clientHeight) { ${loadOlder} }`}
+			data-on:wheel={`if (evt.deltaY < 0 && el.scrollHeight <= el.clientHeight) { ${loadOlder} }`}
+			data-on:touchend={`if (el.scrollHeight <= el.clientHeight) { ${loadOlder} }`}
+			data-on:pi-ui-trim={`if (!el.matches('.loading, .trimming')) {
+				el.classList.add('trimming');
+				@post('${endpoints.messagesTrim}', { payload: {}, retry: 'never' });
+			}`}
 			data-on:datastar-fetch="
 				if (evt.detail.type === 'started') {
-					if (evt.detail.el?.matches('.older-messages-sensor'))
-						window.piUi.messageScroll.noteOlderLoad();
 					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
 						$_sessionTransitionPending = true;
 				}
 				if (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') {
+					if (evt.detail.el === el) el.classList.remove('loading', 'trimming');
 					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
 						$_sessionTransitionPending = false;
 				}
@@ -94,19 +100,16 @@ export function renderMessages(
 		>
 			<div class="messages-stack">
 				<div id="message-list">
-					<div
-						class="older-messages-loading"
-						data-show="$_olderMessagesLoading"
-						style="display: none"
-					>
-						<Icon
-							name="loader"
-							label="Loading older messages"
-							role="status"
-							class="icon-spin"
-						/>
-					</div>
-					{renderOlderMessagesTrigger(hasOlderMessages)}
+					{hasOlderMessages && (
+						<div class="older-messages-loading">
+							<Icon
+								name="loader"
+								label="Loading older messages"
+								role="status"
+								class="icon-spin"
+							/>
+						</div>
+					)}
 					{messages.length === 0
 						? renderEmptyMessages(
 								emptyHint,
@@ -116,14 +119,7 @@ export function renderMessages(
 							)
 						: messages.map((message) => renderMessage(message, compactTools))}
 				</div>
-				<button
-					id="messages-trim"
-					type="button"
-					hidden
-					data-on:click={`@post('${endpoints.messagesTrim}', { payload: {} })`}
-					tabindex="-1"
-					aria-hidden="true"
-				/>
+
 				{messages.length > 0 && (
 					<div
 						id="messages-prompt-spacer"
@@ -136,17 +132,6 @@ export function renderMessages(
 			</div>
 		</main>,
 	);
-}
-
-export function renderOlderMessagesPatch(
-	messages: readonly AppMessage[],
-	compactTools = false,
-): string {
-	return messages.map((message) => renderMessage(message, compactTools)).join("");
-}
-
-export function renderOlderMessagesTriggerPatch(active: boolean): string {
-	return syncHtml(renderOlderMessagesTrigger(active));
 }
 
 function renderEmptyMessages(
@@ -223,35 +208,6 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 				<ShortcutKbd shortcut={shortcut} />
 			</span>
 		</button>
-	);
-}
-
-function renderOlderMessagesTrigger(active: boolean) {
-	const action = active
-		? `@post('${endpoints.messagesOlder}', { payload: {} })`
-		: undefined;
-	return (
-		<div
-			id="older-messages-trigger"
-			class="older-messages-trigger"
-			aria-hidden="true"
-		>
-			{action && (
-				<>
-					<div
-						class="older-messages-sensor older-messages-sensor-top"
-						data-indicator:_older-messages-loading
-						data-on-intersect={action}
-					/>
-					<div
-						class="older-messages-sensor older-messages-sensor-bottom"
-						style="top: min(250vh, calc(100% - 1px))"
-						data-indicator:_older-messages-loading
-						data-on-intersect={action}
-					/>
-				</>
-			)}
-		</div>
 	);
 }
 
@@ -570,7 +526,7 @@ function renderUserMessage(message: AppMessage): string {
 	const fileAttachments =
 		message.attachments?.filter((attachment) => !attachment.image) ?? [];
 	return syncHtml(
-		<article class="message message-user" data-message-id={message.id}>
+		<article class="message message-user" id={`message-${message.id}`}>
 			{renderImageAttachments(message.attachments)}
 			{fileAttachments.length ? (
 				<div class="message-attachments">
@@ -594,24 +550,14 @@ function renderNarrativeMessage(message: AppMessage): string {
 		return syncHtml(
 			<article
 				class="message message-narrative message-thought thought-foreground"
-				data-message-id={message.id}
-				data-ignore-morph={preservesFinalizedMessageDom(message)}
+				id={`message-${message.id}`}
 			>
-				<p
-					class="thinking-placeholder"
-					data-show="$_thinkingHidden && !$_minimalMode"
-				>
-					Thinking...
-				</p>
-				<div
-					class="tool-timeline-item minimal-activity"
-					style="display: none"
-					data-show="$_minimalMode"
-				>
+				<p class="thinking-placeholder">Thinking...</p>
+				<div class="tool-timeline-item minimal-activity">
 					<StatusDot class="tool-state-dot" state="running" label="Thinking" />
 					<p class="minimal-activity-label">thinking...</p>
 				</div>
-				<div data-show="!$_thinkingHidden && !$_minimalMode">
+				<div class="thought-content">
 					<div class="markdown-content">{content}</div>
 				</div>
 			</article>,
@@ -623,15 +569,10 @@ function renderNarrativeMessage(message: AppMessage): string {
 				"message message-narrative message-assistant",
 				message.activitySummary && "message-activity-result",
 			]}
-			data-message-id={message.id}
-			data-ignore-morph={preservesFinalizedMessageDom(message)}
+			id={`message-${message.id}`}
 		>
 			{message.activitySummary && (
-				<div
-					class="activity-summary tool-timeline-item minimal-activity"
-					style="display: none"
-					data-show="$_minimalMode"
-				>
+				<div class="activity-summary tool-timeline-item minimal-activity">
 					<StatusDot class="tool-state-dot" state="success" label="Completed" />
 					<p class="minimal-activity-label">
 						completed {message.activitySummary.stepCount}{" "}
@@ -655,7 +596,7 @@ function renderSystemMessage(message: AppMessage): string {
 				hasStatus && "message-status-row tool-timeline-item",
 				hasStatus ? "message-notice" : "message-system message-muted",
 			]}
-			data-message-id={message.id}
+			id={`message-${message.id}`}
 			role={hasStatus ? "status" : undefined}
 		>
 			{hasStatus && (
@@ -687,7 +628,7 @@ function renderErrorMessage(message: AppMessage): string {
 	return syncHtml(
 		<article
 			class="message message-narrative message-system message-system-row message-status-row tool-timeline-item"
-			data-message-id={message.id}
+			id={`message-${message.id}`}
 			role="alert"
 		>
 			<details class="context-details" data-preserve-attr="open">
@@ -728,7 +669,7 @@ function renderContextMessage(message: AppMessage): string {
 						? "message-skill"
 						: undefined,
 			]}
-			data-message-id={message.id}
+			id={`message-${message.id}`}
 		>
 			<details class="context-details" data-preserve-attr="open">
 				<summary class="context-summary">
@@ -786,7 +727,7 @@ function renderNestedToolCalls(message: AppMessage) {
 		<div class="nested-tool-calls" aria-label="Nested tool calls">
 			{nested.calls.map((call) =>
 				renderToolMessage({
-					id: call.id,
+					id: `${message.id}-${call.id}`,
 					role: "tool",
 					timestamp: message.timestamp,
 					presentationState: "plain",
@@ -853,7 +794,7 @@ function renderToolMessage(message: AppMessage, compactTools = false): string {
 	return syncHtml(
 		<article
 			class="message message-tool tool-timeline-item"
-			data-message-id={message.id}
+			id={`message-${message.id}`}
 		>
 			<StatusDot class="tool-state-dot" state={status.state} label={status.label} />
 			{compactTools ? (

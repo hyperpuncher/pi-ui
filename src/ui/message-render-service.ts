@@ -15,12 +15,7 @@ import {
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
 } from "./markdown.tsx";
-import {
-	renderMessage,
-	renderMessages,
-	renderOlderMessagesPatch,
-	renderOlderMessagesTriggerPatch,
-} from "./messages.tsx";
+import { renderMessage, renderMessages } from "./messages.tsx";
 import type { AppMessage } from "./render-state.ts";
 
 type MessagePresentation = Pick<
@@ -147,15 +142,6 @@ export class MessageRenderService {
 		if (!message) return undefined;
 		return renderMessage(this.project(message), this.compactTools);
 	}
-	renderOlderMessagesPatch(messages: readonly TranscriptMessage[]): string {
-		return renderOlderMessagesPatch(
-			this.projectMessages(messages),
-			this.compactTools,
-		);
-	}
-	renderOlderMessagesTrigger(): string {
-		return renderOlderMessagesTriggerPatch(this.store.hasOlderMessages);
-	}
 	messageAppended(id: string): void {
 		const message = this.store.transcript.getMessage(id);
 		if (!message) return;
@@ -249,6 +235,7 @@ export class MessageRenderService {
 		return { entries: this.presentation.size };
 	}
 	enqueueEnhancement(id: string): void {
+		if (!this.store.transcript.isMessageVisible(id)) return;
 		const message = this.store.transcript.getMessage(id);
 		const projected = message ? this.project(message) : undefined;
 		const kind = projected ? enhancementKind(projected) : undefined;
@@ -307,6 +294,11 @@ export class MessageRenderService {
 			},
 			onCancel: () => releaseMarkdownStreamingState(id),
 			onError: (error) => {
+				if (
+					generation !== this.generation ||
+					!this.store.transcript.isMessageVisible(id)
+				)
+					return;
 				const current = this.store.transcript.getMessage(id);
 				const currentValue = this.ensure(id);
 				if (
@@ -439,7 +431,7 @@ export class MessageRenderService {
 	private broadcast(message: TranscriptMessage): void {
 		this.patchMessage(
 			renderMessage(this.project(message), this.compactTools),
-			`[data-message-id="${message.id}"]`,
+			`#message-${message.id}`,
 		);
 	}
 	private ensure(id: string): MessagePresentation {

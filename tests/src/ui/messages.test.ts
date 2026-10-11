@@ -227,7 +227,7 @@ test("codemode reuses highlighted tool titles and nests ordinary tool rows", asy
 		},
 	});
 	const html = renderMessage(message);
-	assertEquals(html.match(/data-message-id="tool-1"/g)?.length, 1);
+	assertEquals(html.match(/id="message-tool-1"/g)?.length, 1);
 	for (const text of [
 		"Nested tool calls",
 		"notes.txt",
@@ -241,7 +241,7 @@ test("codemode reuses highlighted tool titles and nests ordinary tool rows", asy
 		"&lt;script&gt;",
 	])
 		assertStringIncludes(html, text);
-	assertStringIncludes(html, 'data-message-id="code/1"');
+	assertStringIncludes(html, 'id="message-tool-1-code/1"');
 	assertStringExcludes(html, "<script>");
 	assertStringExcludes(html, "tool-pre-output");
 	assertStringExcludes(html, "tool-title-compact");
@@ -331,28 +331,55 @@ test("plain tool titles remain escaped", () => {
 	assertStringIncludes(html, "&lt;img");
 });
 
-test("older messages use one wrapper with prefetch and top triggers", () => {
-	const html = renderMessages(
-		[
-			{
-				id: "user-1",
-				presentationState: "plain",
-				presentationVersion: 1,
-				role: "user",
-				text: "hello",
-				timestamp: new Date(0),
-			},
-		],
-		{ description: "Send", keys: "enter" },
-		true,
-	);
+test("older messages use one wrapper with a load spinner", () => {
+	const message: AppMessage = {
+		id: "user-1",
+		presentationState: "plain",
+		presentationVersion: 1,
+		role: "user",
+		text: "hello",
+		timestamp: new Date(0),
+	};
+	const html = renderMessages([message], { description: "Send", keys: "enter" }, true);
 	const listIndex = html.indexOf('id="message-list"');
-	const triggerIndex = html.indexOf('id="older-messages-trigger"');
-	const messageIndex = html.indexOf('data-message-id="user-1"');
-	assert(listIndex >= 0 && listIndex < triggerIndex && triggerIndex < messageIndex);
-	assertEquals(html.match(/data-on-intersect/g)?.length, 2);
-	assertEquals(html.match(/data-indicator:_older-messages-loading/g)?.length, 2);
+	const spinnerIndex = html.indexOf('class="older-messages-loading"');
+	const messageIndex = html.indexOf('id="message-user-1"');
+	assert(listIndex >= 0 && listIndex < spinnerIndex && spinnerIndex < messageIndex);
+	assertEquals(html.match(/data-on-intersect/g)?.length ?? 0, 0);
+	assertEquals(html.match(/older-messages-sensor/g)?.length ?? 0, 0);
+	assertStringExcludes(html, "_olderMessagesLoading");
+	assertStringIncludes(html, "classList.add('loading')");
+	assertStringIncludes(html, "@post('/messages/older'");
+	assertStringExcludes(html, "@get('/messages/older'");
+	assertStringIncludes(html, "data-on:scroll=");
+	assertStringIncludes(html, "el.scrollTop <= 2 * el.clientHeight");
+	assertStringIncludes(html, "data-on:scrollend");
+	assertStringExcludes(html, "data-on:pi-ui-older");
+	assertStringIncludes(html, "data-on:pi-ui-trim");
+	assertStringExcludes(html, 'id="messages-trim"');
+	assertStringIncludes(html, 'data-has-older="1"');
+	assertStringIncludes(html, "/messages/older");
 	assertStringIncludes(html, "Loading older messages");
+	const idle = renderMessages([message], { description: "Send", keys: "enter" }, false);
+	assertStringExcludes(idle, 'id="older-messages-trigger"');
+	assertStringExcludes(idle, 'class="older-messages-loading"');
+	assertStringExcludes(idle, 'data-has-older="1"');
+});
+
+test("thought visibility does not wait for per-row signal effects", () => {
+	const html = renderMessage({
+		id: "thought-1",
+		role: "thought",
+		text: "**reasoning**",
+		timestamp: new Date(0),
+		presentationState: "final",
+		presentationVersion: 1,
+	});
+	assertStringIncludes(html, 'id="message-thought-1"');
+	assertStringIncludes(html, 'class="thought-content"');
+	assertStringIncludes(html, "<strong>reasoning</strong>");
+	assertStringExcludes(html, "data-show");
+	assertStringExcludes(html, "data-ignore-morph");
 });
 
 test("partial recent sessions stay visible during full catalog loading", () => {

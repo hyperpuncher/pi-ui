@@ -113,6 +113,7 @@ export function renderPage(
 					spellcheck="false"
 					data-keybind-hints={state.keybindHints}
 					data-minimal-mode={state.minimalMode}
+					data-thinking-hidden={state.thinkingHidden}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-workspace-files-endpoint={workspaceFilesBase}
@@ -132,6 +133,7 @@ export function renderPage(
 					data-signals={initialSignals}
 					data-attr:data-keybind-hints="$_keybindHints"
 					data-attr:data-minimal-mode="$_minimalMode"
+					data-attr:data-thinking-hidden="$_thinkingHidden"
 					data-attr:data-toolbar-hidden="$_toolbarHidden"
 					data-effect={`
 						window.piUi.fonts.apply($_fontMono, $_fontSans);

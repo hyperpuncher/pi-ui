@@ -39,8 +39,10 @@ interface PiUiNamespace {
 	};
 	messageScroll: {
 		bindResize(): void;
+		beforeUpdate(): void;
+		afterUpdate(): void;
 		hydratePierreDiff(element: HTMLElement): void;
-		noteOlderLoad(): number;
+		isReading(): boolean;
 		scrollBottom(behavior?: "auto" | "smooth"): void;
 		trimOldMessages(): void;
 	};

@@ -2,18 +2,10 @@ import { test } from "bun:test";
 
 import {
 	hasPointerDragIntent,
-	noteOlderLoad,
 	shouldRearmAfterScroll,
 	shouldTrimOldMessages,
 } from "#static/app/message-scroll.js";
 import { assertEquals } from "#testing/assertions";
-
-test("older load notes a timestamp for the trim grace period", () => {
-	const before = performance.now();
-	const noted = noteOlderLoad();
-	assertEquals(noted >= before, true);
-	assertEquals(noted <= performance.now(), true);
-});
 
 test("pointer presses require drag intent before releasing follow mode", () => {
 	assertEquals(hasPointerDragIntent(100, 100, 100, 100), false);

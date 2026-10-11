@@ -4,10 +4,12 @@ import { hydrateDateTime } from "./date-time.js";
 import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
 import {
+	afterUpdate,
+	beforeUpdate,
 	bindMessageResize,
 	bindMessageScroll,
 	hydratePierreDiff,
-	noteOlderLoad,
+	isReading,
 	scrollBottom,
 	trimOldMessages,
 } from "./message-scroll.js";
@@ -39,9 +41,11 @@ window.piUi = {
 	fonts: { apply() {} },
 	fileTransfer,
 	messageScroll: {
+		afterUpdate,
+		beforeUpdate,
 		bindResize: bindMessageResize,
 		hydratePierreDiff,
-		noteOlderLoad,
+		isReading,
 		scrollBottom,
 		trimOldMessages,
 	},

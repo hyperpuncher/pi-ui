@@ -75,31 +75,28 @@ export class DatastarClientHub {
 	}
 
 	patchView(render: () => string, signals: string, scripts: readonly string[]): void {
-		this.broadcast((client) => this.patchClient(client, render(), signals, scripts));
+		if (this.clientCount === 0) return;
+		const elements = render();
+		this.broadcast((client) => this.patchClient(client, elements, signals, scripts));
+	}
+
+	executeScript(script: string): void {
+		this.broadcast((client) => client.executeScript(script));
 	}
 
 	patchElement(
 		elements: string,
 		selector: string,
-		options: {
-			mode?: "outer" | "replace" | "append" | "after" | "remove";
-			scripts?: readonly string[];
-		} = {},
+		options: { scripts?: readonly string[] } = {},
 	): void {
 		this.broadcast((client) => {
-			client.patchElements(elements, { selector, mode: options.mode ?? "outer" });
+			client.patchElements(elements, { selector });
 			for (const script of options.scripts ?? []) client.executeScript(script);
-			if (this.recordPerformance)
-				sessionPerformance.recordTargetedMessagePatch(elements);
-		});
-	}
-
-	replaceElement(elements: string, selector: string): void {
-		this.broadcast((client) => {
-			client.patchElements(elements, { selector, mode: "replace" });
 			if (this.recordPerformance) {
-				sessionPerformance.recordFatMorph(elements);
-				sessionPerformance.markFirstTranscriptPatch();
+				if (selector === "#messages") {
+					sessionPerformance.recordFatMorph(elements);
+					sessionPerformance.markFirstTranscriptPatch();
+				} else sessionPerformance.recordTargetedMessagePatch(elements);
 			}
 		});
 	}

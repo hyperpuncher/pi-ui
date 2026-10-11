@@ -155,6 +155,7 @@ export type AppKeybindHint = { keys: string; description: string };
 export type UiCommitEffect =
 	| { type: "open-tree-dialog" }
 	| { type: "scroll-transcript-bottom" }
+	| { type: "render-transcript" }
 	| { type: "signal-overrides"; values: JsonObject };
 
 export interface AppStorePresentation {
@@ -529,10 +530,19 @@ export class AppStore {
 		this.commit({ type: "scroll-transcript-bottom" });
 	}
 	loadOlderMessages(): readonly TranscriptMessage[] {
-		return this.transcript.loadOlderMessages();
+		const messages = this.transcript.loadOlderMessages();
+		this.presentation?.transcriptReplaced(
+			[],
+			messages.map((message) => message.id),
+		);
+		this.commit({ type: "render-transcript" });
+		return messages;
 	}
 	trimOldMessages(): readonly string[] {
-		return this.transcript.trimOldMessages();
+		const ids = this.transcript.trimOldMessages();
+		this.presentation?.messagesRemoved(ids);
+		this.commit({ type: "render-transcript" });
+		return ids;
 	}
 	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;

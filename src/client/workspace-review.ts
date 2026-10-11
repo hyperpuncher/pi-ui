@@ -166,7 +166,7 @@ const workspaceFiles = createWorkspaceFiles({
 let preferredPanelMode: "files" | "git" | undefined = preferences.tab;
 let panelMode = initialPanelMode(preferredPanelMode, snapshot.isGitRepository);
 
-const visibility = createVisibility(app, true, (open) => {
+const visibility = createVisibility(app, (open) => {
 	workspaceFiles.setVisible(open && panelMode === "files");
 	if (open && panelMode === "git") openGitView();
 	else cancelWorkingDiff();
@@ -1099,49 +1099,24 @@ function openGitView(): void {
 	}
 }
 
-function createVisibility(
-	app: HTMLElement,
-	initiallyAvailable: boolean,
-	onChange: (open: boolean) => void,
-) {
-	let available = initiallyAvailable;
+function createVisibility(app: HTMLElement, onChange: (open: boolean) => void) {
 	let open = false;
-	const syncAvailability = () => {
-		const button = document.querySelector<HTMLElement>(
-			'[data-pi-ui-action="review"]',
-		);
-		if (!button) return;
-		button.inert = !available;
-	};
-	const requestOpen = (next: boolean) => {
+	const requestOpen = (open: boolean) => {
 		app.dispatchEvent(
-			new CustomEvent("pi-ui-workspace-review-open", {
-				detail: { open: available && next },
-			}),
+			new CustomEvent("pi-ui-workspace-review-open", { detail: { open } }),
 		);
 	};
 	const applyOpen = (next: boolean) => {
-		if (next && !available) {
-			requestOpen(false);
-			return;
-		}
-		const wasOpen = open;
+		if (open === next) return;
 		open = next;
-		if (open !== wasOpen) onChange(open);
+		onChange(open);
 	};
-	syncAvailability();
 	applyOpen(app.classList.contains("review-open"));
 	return {
 		applyOpen,
 		close: () => requestOpen(false),
-		isAvailable: () => available,
 		isOpen: () => open,
 		open: () => requestOpen(true),
-		setAvailable(next: boolean) {
-			available = next;
-			syncAvailability();
-			if (!available) requestOpen(false);
-		},
 	};
 }
 

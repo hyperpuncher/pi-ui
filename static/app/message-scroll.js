@@ -7,16 +7,61 @@ const state = {
 	pointerScrolling: false,
 	scrollTop: 0,
 };
-const bottomScrollTimers = new Set();
-// Timestamp of the last older-history request. Trim gives a freshly prepended
-// page a grace period so jumping straight to the live edge cannot eat it back.
-// A timestamp cannot stick like a flag: the worst case is one skipped trim.
-const trimLoadGraceMs = 1500;
-let lastOlderLoadAt = 0;
 let observedMessageStack;
 let observedPrompt;
 let messageResizeObserver;
 let pointerStart;
+
+// Follow mode drives scrollTop itself; native anchoring would fight it, so
+// the platform hold is off while pinned and back on while reading.
+function setFollowMode(messages, enabled) {
+	if (enabled) messages.style.overflowAnchor = "none";
+	else messages.style.removeProperty("overflow-anchor");
+}
+
+// Native anchoring holds early history loads, including active gestures.
+// Only the zero-offset case needs a measured hold.
+let viewportAnchor;
+
+export function beforeUpdate() {
+	const messages = document.getElementById("messages");
+	if (
+		!(messages instanceof HTMLElement) ||
+		state.pinnedToBottom ||
+		messages.scrollTop > 0
+	)
+		return;
+	const top = messages.getBoundingClientRect().top;
+	const row = [...messages.querySelectorAll(".message[id]")].find(
+		(element) => element.getBoundingClientRect().bottom > top,
+	);
+	if (!row) return;
+	viewportAnchor = {
+		row,
+		top: row.getBoundingClientRect().top,
+		scrollTop: messages.scrollTop,
+	};
+	messages.style.overflowAnchor = "none";
+}
+
+export function afterUpdate() {
+	const saved = viewportAnchor;
+	viewportAnchor = undefined;
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement) || !saved) return;
+	if (!state.pinnedToBottom && messages.contains(saved.row)) {
+		const movement = messages.scrollTop - saved.scrollTop;
+		messages.scrollTop +=
+			saved.row.getBoundingClientRect().top - saved.top + movement;
+		state.scrollTop = messages.scrollTop;
+	}
+	setFollowMode(messages, state.pinnedToBottom);
+	updateScrollControl();
+}
+
+export function isReading() {
+	return !state.pinnedToBottom;
+}
 
 export function bindMessageScroll() {
 	document.addEventListener(
@@ -43,8 +88,7 @@ export function bindMessageScroll() {
 				)
 			) {
 				state.pinnedToBottom = true;
-				// Follow mode drives scrollTop itself; native anchoring would fight it.
-				messages.style.overflowAnchor = "none";
+				setFollowMode(messages, true);
 				messages.scrollTop = messages.scrollHeight;
 				trimOldMessages();
 			}
@@ -137,25 +181,11 @@ export function bindMessageScroll() {
 	scrollBottom();
 }
 
-// Prepended history is above the viewport by construction, so native scroll
-// anchoring holds the reader's position with no manual math. Trim only needs
-// a grace period after a load starts so jumping straight to the live edge
-// cannot eat the incoming page back.
-export function noteOlderLoad() {
-	lastOlderLoadAt = performance.now();
-	return lastOlderLoadAt;
-}
-
 export function trimOldMessages() {
 	if (!state.pinnedToBottom) return;
-	if (performance.now() - lastOlderLoadAt < trimLoadGraceMs) return;
 	const messages = document.getElementById("messages");
-	const trigger = document.getElementById("messages-trim");
-	if (!(messages instanceof HTMLElement) || !(trigger instanceof HTMLButtonElement))
-		return;
-	const messageElements = document.querySelectorAll(
-		"#message-list > [data-message-id]",
-	);
+	if (!(messages instanceof HTMLElement)) return;
+	const messageElements = document.querySelectorAll("#message-list > .message[id]");
 	const excess = messageElements.length - 100;
 	const lastCandidate = messageElements[excess - 1];
 	if (
@@ -167,7 +197,7 @@ export function trimOldMessages() {
 		)
 	)
 		return;
-	trigger.click();
+	messages.dispatchEvent(new CustomEvent("pi-ui-trim"));
 }
 
 export function shouldTrimOldMessages(excess, candidateBottom, viewportTop) {
@@ -183,47 +213,24 @@ export function shouldRearmAfterScroll(wasPinned, previousTop, scrollTop, distan
 }
 
 export function scrollBottom(behavior = "auto") {
-	clearBottomScrollTimers();
 	state.middleScrolling = false;
 	state.pinnedToBottom = true;
 	state.pointerScrolling = false;
-	const scroll = () => {
-		const messages = document.getElementById("messages");
-		if (!(messages instanceof HTMLElement) || !state.pinnedToBottom) return;
-		// Follow mode drives scrollTop itself; native anchoring would fight it.
-		messages.style.overflowAnchor = "none";
-		messages.scrollTo({ top: messages.scrollHeight, behavior });
-		updateScrollControl();
-	};
-	scroll();
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	setFollowMode(messages, true);
+	messages.scrollTo({ top: messages.scrollHeight, behavior });
+	updateScrollControl();
 	trimOldMessages();
-	if (behavior === "auto") {
-		for (const delay of [16, 80, 180]) {
-			const timer = setTimeout(() => {
-				bottomScrollTimers.delete(timer);
-				scroll();
-			}, delay);
-			bottomScrollTimers.add(timer);
-		}
-	}
 }
 
 export function markUnpinned() {
-	clearBottomScrollTimers();
 	state.pinnedToBottom = false;
 	const messages = document.getElementById("messages");
 	if (messages instanceof HTMLElement) {
-		// Reading mode lets native anchoring hold the viewport across content
-		// shifts above it. History restores manage their own window.
-		messages.style.removeProperty("overflow-anchor");
-		state.scrollTop = messages.scrollTop;
+		setFollowMode(messages, false);
 	}
 	updateScrollControl();
-}
-
-function clearBottomScrollTimers() {
-	for (const timer of bottomScrollTimers) clearTimeout(timer);
-	bottomScrollTimers.clear();
 }
 
 function isMessageInteraction(target) {
@@ -253,7 +260,7 @@ export function bindMessageResize() {
 		updatePromptSpacer();
 		const messages = document.getElementById("messages");
 		if (messages instanceof HTMLElement && state.pinnedToBottom) {
-			messages.style.overflowAnchor = "none";
+			setFollowMode(messages, true);
 			messages.scrollTop = messages.scrollHeight;
 		}
 		updateScrollControl();

@@ -9,7 +9,6 @@ import type {
 	AppStorePresentation,
 	UiCommitEffect,
 } from "../state/app-store.ts";
-import type { TranscriptMessage } from "../state/transcript-state.ts";
 import { escapeHtml } from "../utils/html.ts";
 import type { JsonObject } from "../utils/json-types.ts";
 import { renderAuthDialog } from "./auth-dialog.tsx";
@@ -59,7 +58,7 @@ export class UiRenderer implements AppStorePresentation {
 	private fullViewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
-	private replaceTranscriptOnCommit = false;
+	private transcriptPending = false;
 	private compactTools: boolean;
 
 	constructor(
@@ -158,7 +157,8 @@ export class UiRenderer implements AppStorePresentation {
 		this.requestCommit();
 	}
 	requestCommit(effect?: UiCommitEffect): void {
-		if (effect) this.pendingEffects.push(effect);
+		if (effect?.type === "render-transcript") this.transcriptPending = true;
+		else if (effect) this.pendingEffects.push(effect);
 		if (this.commitScheduled) return;
 		this.commitScheduled = true;
 		queueMicrotask(() => this.flush());
@@ -176,15 +176,14 @@ export class UiRenderer implements AppStorePresentation {
 		this.compactTools = this.messages.compactTools;
 		if (this.hub.clientCount > 0) {
 			const state = this.store.snapshot();
-			if (this.replaceTranscriptOnCommit) {
-				this.hub.replaceElement(
-					this.renderTranscript(this.projectState(state)),
-					"#messages",
-				);
-			} else if (toolPresentationChanged) {
+			if (this.transcriptPending || toolPresentationChanged) {
+				this.hub.executeScript("window.piUi.messageScroll.beforeUpdate()");
 				this.hub.patchElement(
 					this.renderTranscript(this.projectState(state)),
 					"#messages",
+					{
+						scripts: ["window.piUi.messageScroll.afterUpdate()"],
+					},
 				);
 			}
 			this.hub.patchView(
@@ -196,35 +195,17 @@ export class UiRenderer implements AppStorePresentation {
 				this.effectScripts(effects),
 			);
 		}
-		this.replaceTranscriptOnCommit = false;
+		this.transcriptPending = false;
 		if (this.hub.clientCount > 0)
 			for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
 	messageAppended(id: string): void {
 		if (this.hub.clientCount === 0) return;
 		this.messages.messageAppended(id);
-		this.appendMessage(id);
+		this.requestCommit({ type: "render-transcript" });
 	}
 	messagesRemoved(ids: readonly string[]): void {
-		if (ids.length === 0) return;
 		this.messages.dropMessages(ids);
-		this.hub.patchElement(
-			"",
-			`#message-list > [data-message-id]:nth-last-child(n + ${this.store.messages.length + 1})`,
-			{ mode: "remove" },
-		);
-	}
-	private appendMessage(id: string): void {
-		if (this.store.messages.length === 1) {
-			this.hub.patchElement(this.messages.renderMessagesElement(), "#messages");
-			return;
-		}
-		const html = this.messages.renderMessageElement(id);
-		if (html)
-			this.hub.patchElement(html, "#message-list", {
-				mode: "append",
-				scripts: ["window.piUi.messageScroll.trimOldMessages()"],
-			});
 	}
 	messageUpdated(id: string): void {
 		if (this.hub.clientCount === 0) return;
@@ -233,13 +214,13 @@ export class UiRenderer implements AppStorePresentation {
 	codeThemeChanged(): void {
 		if (this.hub.clientCount > 0) this.messages.codeThemeChanged();
 		else this.messages.transcriptReplacing();
-		this.replaceTranscriptOnCommit = true;
+		this.transcriptPending = true;
 		this.requestCommit();
 	}
 	streamingMessageStarted(id: string): void {
 		if (this.hub.clientCount === 0) return;
 		this.messages.streamingMessageStarted(id);
-		this.appendMessage(id);
+		this.requestCommit({ type: "render-transcript" });
 	}
 	streamingMessageChanged(): void {
 		if (this.hub.clientCount === 0) return;
@@ -257,7 +238,7 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.assistantFinished(ids);
 	}
 	transcriptReplacing(): void {
-		this.replaceTranscriptOnCommit = true;
+		this.transcriptPending = true;
 		this.messages.transcriptReplacing();
 	}
 	transcriptReplaced(
@@ -266,23 +247,6 @@ export class UiRenderer implements AppStorePresentation {
 	): void {
 		if (this.hub.clientCount > 0)
 			this.messages.transcriptReplaced(activeIds, enhancementIds);
-	}
-	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
-		if (this.hub.clientCount === 0) return;
-		if (messages.length > 0) {
-			this.hub.patchElement(
-				this.messages.renderOlderMessagesPatch(messages),
-				"#older-messages-trigger",
-				{ mode: "after" },
-			);
-		}
-		this.hub.patchElement(
-			this.messages.renderOlderMessagesTrigger(),
-			"#older-messages-trigger",
-		);
-		for (const message of messages.toReversed()) {
-			this.messages.enqueueEnhancement(message.id);
-		}
 	}
 	projectState(snapshot: AppStateSnapshot): AppRenderSnapshot {
 		return {

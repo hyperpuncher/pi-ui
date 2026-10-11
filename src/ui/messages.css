@@ -52,6 +52,7 @@
 		display: contents;
 	}
 	.older-messages-loading {
+		display: none;
 		position: absolute;
 		top: -4rem;
 		left: 50%;
@@ -59,6 +60,9 @@
 		translate: -50% 0;
 		color: var(--text-muted);
 		pointer-events: none;
+	}
+	#messages.loading .older-messages-loading {
+		display: block;
 	}
 	.older-messages-loading > svg {
 		width: 1rem;
@@ -175,24 +179,6 @@
 		align-items: center;
 		gap: 0.5rem;
 		white-space: nowrap;
-	}
-
-	.older-messages-trigger {
-		position: absolute;
-		inset: 0;
-		pointer-events: none;
-	}
-	.older-messages-sensor {
-		position: absolute;
-		width: 100%;
-		opacity: 0;
-	}
-	.older-messages-sensor-top {
-		top: 0;
-		height: min(50vh, 100%);
-	}
-	.older-messages-sensor-bottom {
-		height: 1px;
 	}
 
 	.tool-pre-output {
@@ -435,10 +421,12 @@
 		font-style: italic;
 	}
 	.thinking-placeholder {
+		display: none;
 		font-weight: 600;
 		line-height: 1.7;
 	}
 	.minimal-activity {
+		display: none;
 		position: relative;
 		width: 100%;
 		font-style: normal;
@@ -662,31 +650,42 @@
 		contain: style;
 	}
 
-	#message-list > .message + .message {
-		margin-top: var(--message-gap);
+	/* Prepending must not change an existing row's margins: that suppresses
+	   native scroll anchoring. Put each gap on the preceding row. */
+	#message-list > .message:has(+ .message) {
+		margin-bottom: var(--message-gap);
 	}
 
-	#message-list > .message-user + .message-user {
-		margin-top: var(--message-user-gap);
+	#message-list > .message-user:has(+ .message-user) {
+		margin-bottom: var(--message-user-gap);
 	}
 
-	#message-list > .message-tool + .message-tool {
-		margin-top: var(--message-tool-gap);
+	#message-list > .message-tool:has(+ .message-tool) {
+		margin-bottom: var(--message-tool-gap);
 	}
 
-	#message-list > .message-tool + .message-narrative,
-	#message-list > .message-narrative + .message-tool,
-	#message-list > .message-thought + .message-assistant {
-		margin-top: var(--message-tool-narrative-gap);
+	#message-list > .message-tool:has(+ .message-narrative),
+	#message-list > .message-narrative:has(+ .message-tool),
+	#message-list > .message-thought:has(+ .message-assistant) {
+		margin-bottom: var(--message-tool-narrative-gap);
 	}
 
-	#message-list > .message + .message-status-row,
-	#message-list > .message-status-row + .message {
-		margin-top: var(--message-tool-narrative-gap);
+	#message-list > .message:has(+ .message-status-row),
+	#message-list > .message-status-row:has(+ .message) {
+		margin-bottom: var(--message-tool-narrative-gap);
 	}
 }
 
 @layer utilities {
+	[data-thinking-hidden]:not([data-minimal-mode]) .thinking-placeholder {
+		display: block;
+	}
+	:is([data-thinking-hidden], [data-minimal-mode]) .thought-content {
+		display: none;
+	}
+	[data-minimal-mode] .minimal-activity {
+		display: flex;
+	}
 	[data-minimal-mode] {
 		--message-gap: var(--message-tool-gap);
 	}
@@ -696,9 +695,9 @@
 		display: none;
 	}
 
-	/* Keep the live activity row in the same position as hidden rows change. */
-	[data-minimal-mode] #message-list > :is(.message-thought, .message-tool) {
-		margin-top: var(--message-gap);
+	/* Keep gaps stable even when intervening activity rows are hidden. */
+	[data-minimal-mode] #message-list > .message {
+		margin-bottom: var(--message-gap);
 	}
 
 	/* Keep completed activity aligned with other minimal-mode messages. */

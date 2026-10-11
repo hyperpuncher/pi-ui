@@ -208,48 +208,8 @@ test("previous session shortcut resumes the backend-tracked session", async () =
 	assertEquals(resumed, ["/sessions/previous.jsonl"]);
 });
 
-test("older messages use a targeted persistent-stream patch", async () => {
-	let revealedCount = 0;
-	const context = fakeContext({
-		renderer: uiRendererStub({
-			patchOlderMessages: (ids) => {
-				revealedCount = ids.length;
-			},
-		}),
-	});
-	context.store.replaceMessages(
-		Array.from({ length: 100 }, (_, index) => ({
-			role: "user" as const,
-			text: `message ${index}`,
-			timestamp: new Date(0),
-		})),
-	);
-	const response = await createRouter(context).fetch(
-		new Request("http://localhost/messages/older", { method: "POST" }),
-	);
-
-	assertEquals(response.status, 204);
-	assertEquals(await response.text(), "");
-	assertEquals(revealedCount, 30);
-
-	while (context.store.hasOlderMessages) context.store.loadOlderMessages();
-	revealedCount = -1;
-	const emptyResponse = await createRouter(context).fetch(
-		new Request("http://localhost/messages/older", { method: "POST" }),
-	);
-	assertEquals(emptyResponse.status, 204);
-	assertEquals(revealedCount, 0);
-});
-
-test("old messages trim only after an explicit viewport-safe request", async () => {
-	let removedCount = 0;
-	const context = fakeContext({
-		renderer: uiRendererStub({
-			messagesRemoved: (ids) => {
-				removedCount = ids.length;
-			},
-		}),
-	});
+test("history commands update backend state and return no HTML", async () => {
+	const context = fakeContext();
 	context.store.replaceMessages(
 		Array.from({ length: 180 }, (_, index) => ({
 			role: "user" as const,
@@ -257,15 +217,27 @@ test("old messages trim only after an explicit viewport-safe request", async () 
 			timestamp: new Date(0),
 		})),
 	);
-	for (let page = 0; page < 3; page += 1) context.store.loadOlderMessages();
-
-	const response = await createRouter(context).fetch(
+	const router = createRouter(context);
+	for (let page = 0; page < 3; page++) {
+		const response = await router.fetch(
+			new Request("http://localhost/messages/older", { method: "POST" }),
+		);
+		assertEquals(response.status, 204);
+		assertEquals(await response.text(), "");
+	}
+	assertEquals(context.store.messages.length, 120);
+	const trimmed = await router.fetch(
 		new Request("http://localhost/messages/trim", { method: "POST" }),
 	);
-
-	assertEquals(response.status, 204);
-	assertEquals(removedCount, 20);
+	assertEquals(trimmed.status, 204);
+	assertEquals(await trimmed.text(), "");
 	assertEquals(context.store.messages.length, 100);
+	while (context.store.hasOlderMessages) context.store.loadOlderMessages();
+	const empty = await router.fetch(
+		new Request("http://localhost/messages/older", { method: "POST" }),
+	);
+	assertEquals(empty.status, 204);
+	assertEquals(context.store.messages.length, 180);
 });
 
 test("older sessions expand backend-owned sidebar state", async () => {
@@ -1187,7 +1159,6 @@ function fakeContext(
 			overrides.renderer ??
 			uiRendererStub({
 				createStream: () => new Response(),
-				patchOlderMessages: () => {},
 			}),
 		notificationClients: new DatastarClientHub(),
 		resources: {

@@ -19,7 +19,7 @@ test("hub connects, sends an initial view, broadcasts fat and targeted patches, 
 	assertEquals(hub.clientCount, 1);
 	hub.patchView(() => '<main id="app">updated</main>', '{"ready":false}', []);
 	hub.patchElement('<article id="message">target</article>', "#message");
-	hub.replaceElement('<main id="messages">replaced</main>', "#messages");
+	hub.patchElement('<main id="messages">morphed</main>', "#messages");
 	hub.patchSignals('{"extra":true}');
 	controller.abort();
 	assertEquals(hub.clientCount, 0);
@@ -29,7 +29,7 @@ test("hub connects, sends an initial view, broadcasts fat and targeted patches, 
 	assertStringIncludes(body, "updated");
 	assertStringIncludes(body, "selector #message");
 	assertStringIncludes(body, "selector #messages");
-	assertStringIncludes(body, "mode replace");
+	assertStringIncludes(body, "morphed");
 	assertStringIncludes(body, 'signals {"extra":true}');
 });
 
@@ -41,6 +41,16 @@ test("hub broadcasts to multiple clients and disconnects them independently", as
 	const first = hub.createStream(firstController.signal, initial);
 	const second = hub.createStream(secondController.signal, initial);
 	assertEquals(hub.clientCount, 2);
+	let renders = 0;
+	hub.patchView(
+		() => {
+			renders++;
+			return '<main id="app">shared render</main>';
+		},
+		"{}",
+		[],
+	);
+	assertEquals(renders, 1);
 
 	firstController.abort();
 	assertEquals(hub.clientCount, 1);
