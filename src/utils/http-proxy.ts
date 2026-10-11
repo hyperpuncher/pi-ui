@@ -2,8 +2,6 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { Models } from "@earendil-works/pi-ai";
 
-import { isString } from "./type-guards.ts";
-
 const platformFetch = globalThis.fetch;
 const agentProxy = new AsyncLocalStorage<string>();
 const proxyByRuntime = new WeakMap<Models, string>();
@@ -65,46 +63,7 @@ function scopedProxyFetch(
 ): Promise<Response> {
 	const proxy = agentProxy.getStore();
 	if (!proxy || (init && "proxy" in init)) return platformFetch(input, init);
-
-	const targetUrl = fetchTargetUrl(input);
-	if (!targetUrl || !shouldProxy(targetUrl)) return platformFetch(input, init);
-
+	// Bun applies NO_PROXY (wildcards, CIDR blocks, bare IPv6, host:port)
+	// to an explicit proxy natively, so no manual matching here.
 	return platformFetch(input, { ...init, proxy });
-}
-
-function fetchTargetUrl(input: RequestInfo | URL): URL | undefined {
-	if (isString(input)) return URL.parse(input) ?? undefined;
-	if (input instanceof URL) return input;
-	if (input instanceof Request) return URL.parse(input.url) ?? undefined;
-	return undefined;
-}
-
-function shouldProxy(url: URL): boolean {
-	const noProxy = (process.env.no_proxy || process.env.NO_PROXY || "").toLowerCase();
-	if (!noProxy) return true;
-	if (noProxy === "*") return false;
-
-	const hostname = url.hostname;
-	const port = Number.parseInt(url.port, 10) || defaultPort(url.protocol);
-	const entries = noProxy.split(/[,\s]/).filter(Boolean);
-	return entries.every((entry) => proxyEntryDoesNotMatch(entry, hostname, port));
-}
-
-function proxyEntryDoesNotMatch(entry: string, hostname: string, port: number): boolean {
-	const parsed = entry.match(/^(.+):(\d+)$/);
-	let entryHost = parsed ? parsed[1]! : entry;
-	const entryPort = parsed ? Number.parseInt(parsed[2]!, 10) : 0;
-
-	if (entryPort && entryPort !== port) return true;
-	if (!/^[.*]/.test(entryHost)) return hostname !== entryHost;
-	if (entryHost.startsWith("*")) entryHost = entryHost.slice(1);
-	return !hostname.endsWith(entryHost);
-}
-
-function defaultPort(protocol: string): number {
-	if (protocol === "http:" || protocol === "ws:") return 80;
-	if (protocol === "https:" || protocol === "wss:") return 443;
-	if (protocol === "ftp:") return 21;
-	if (protocol === "gopher:") return 70;
-	return 0;
 }
