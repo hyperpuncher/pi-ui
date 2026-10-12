@@ -8,8 +8,24 @@ export function renderDebugOverlay(state: AppStateSnapshot): string {
 		<aside id="debug-overlay" class="debug-panel" aria-label="Debug information">
 			<div class="debug-title">debug</div>
 			<dl class="debug-values">
-				<dt>fps</dt>
-				<dd id="debug-fps" data-ignore-morph>
+				<dt title="Animation callbacks per second, not displayed frames. Sampled over one second.">
+					frame rate
+				</dt>
+				<dd id="debug-frame-rate" data-ignore-morph>
+					—
+				</dd>
+				<dt title="Median interval between animation callbacks.">frame median</dt>
+				<dd id="debug-frame-median" data-ignore-morph>
+					—
+				</dd>
+				<dt title="95% of callback intervals are at or below this value.">
+					frame p95
+				</dt>
+				<dd id="debug-frame-p95" data-ignore-morph>
+					—
+				</dd>
+				<dt title="Longest callback interval in the sample.">frame max</dt>
+				<dd id="debug-frame-max" data-ignore-morph>
 					—
 				</dd>
 				<dt>messages</dt>

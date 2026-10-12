@@ -1,6 +1,7 @@
 import { bindCodeCopy } from "./code-copy.js";
 import { activateCommandItem, bindControls, refreshControls } from "./controls.js";
 import { hydrateDateTime } from "./date-time.js";
+import { bindDebugFrames } from "./debug-frames.js";
 import { bindFileLinks } from "./file-links.js";
 import * as fileTransfer from "./file-transfer.js";
 import {
@@ -94,7 +95,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	bindCodeCopy();
 	bindTooltips();
 	bindVimScroll();
-	bindDebugFps();
+	bindDebugFrames();
 
 	await Promise.all([
 		import("../../src/client/fonts.ts"),
@@ -102,21 +103,3 @@ window.addEventListener("DOMContentLoaded", async () => {
 		import("../../src/client/workspace-review.ts"),
 	]);
 });
-
-function bindDebugFps() {
-	const fps = document.getElementById("debug-fps");
-	if (!(fps instanceof HTMLElement)) return;
-	let frames = 0;
-	let startedAt = performance.now();
-	const tick = (now) => {
-		frames += 1;
-		const elapsed = now - startedAt;
-		if (elapsed >= 500) {
-			fps.textContent = String(Math.round((frames * 1000) / elapsed));
-			frames = 0;
-			startedAt = now;
-		}
-		requestAnimationFrame(tick);
-	};
-	requestAnimationFrame(tick);
-}
