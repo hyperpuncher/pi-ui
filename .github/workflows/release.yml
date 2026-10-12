@@ -1,8 +1,5 @@
 name: Release
 
-env:
-    BUN_VERSION: 1.4.2
-
 on:
     workflow_dispatch:
     push:
@@ -31,8 +28,6 @@ jobs:
         steps:
             - uses: actions/checkout@v7
             - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: ${{ env.BUN_VERSION }}
             - name: Install dependencies
               run: bun ci
             - name: Build executable
@@ -86,8 +81,6 @@ jobs:
                   files: dist/*
                   body_path: /tmp/release-notes.md
             - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: ${{ env.BUN_VERSION }}
             - name: Install npm package dependencies
               run: bun ci
             - uses: actions/setup-node@v7
