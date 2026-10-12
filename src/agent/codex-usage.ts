@@ -30,14 +30,18 @@ export type CodexUsageWindowDescription = {
 	resetText: string;
 };
 
-export function isOpenAICodex(model: { provider?: string } | undefined): boolean {
-	return model?.provider === codexProviderId;
+export function showsCodexUsage(model: { provider?: string } | undefined): boolean {
+	return model?.provider === codexProviderId || model?.provider === "openai";
 }
 
 export async function fetchCodexUsage(
 	session: AgentSession,
 ): Promise<CodexUsage | undefined> {
-	const payload = await fetchProviderUsagePayload(session, codexUsageUrl);
+	const payload = await fetchProviderUsagePayload(
+		session,
+		codexUsageUrl,
+		codexProviderId,
+	);
 	return payload === undefined ? undefined : parseCodexUsage(payload);
 }
 

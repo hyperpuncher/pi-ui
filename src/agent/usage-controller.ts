@@ -10,7 +10,7 @@ import { formatTokens } from "../utils/format.ts";
 import {
 	describeCodexUsage,
 	fetchCodexUsage,
-	isOpenAICodex,
+	showsCodexUsage,
 	type CodexUsage,
 } from "./codex-usage.ts";
 import {
@@ -47,7 +47,7 @@ export class UsageController {
 
 	sync(): void {
 		const session = this.getRuntime().session;
-		const showCodexUsage = isOpenAICodex(session.model);
+		const showCodexUsage = showsCodexUsage(session.model);
 		const showOpenCodeGoUsage = isOpenCodeGo(session.model);
 		const stats = session.getSessionStats();
 		this.state.setUsage(
@@ -235,7 +235,10 @@ function usageLimits(
 	if (!status && !windows?.length) return undefined;
 	return {
 		label,
-		status: windows?.length ? undefined : status,
+		status:
+			status && windows?.length
+				? "stale (refresh unavailable)"
+				: status || undefined,
 		windows: windows ?? [],
 	};
 }
@@ -243,7 +246,7 @@ function usageLimits(
 function limitProvider(
 	model: { provider?: string } | undefined,
 ): LimitProvider | undefined {
-	if (isOpenAICodex(model)) return "codex";
+	if (showsCodexUsage(model)) return "codex";
 	if (isOpenCodeGo(model)) return "opencode-go";
 	return undefined;
 }

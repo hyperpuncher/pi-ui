@@ -103,6 +103,7 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 		controller.refresh(true);
 		await flush();
 		assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 78);
+		assertEquals(rendered()?.limits?.status, "stale (refresh unavailable)");
 	}
 	assertEquals(
 		warning.mock.calls.map(([message]) => message),
@@ -113,6 +114,17 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 	controller.refresh(true);
 	await flush();
 	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 77);
+	assertEquals(rendered()?.limits?.status, undefined);
+
+	model = { provider: "openai", id: "gpt-5" };
+	controller.suspend();
+	controller.sync();
+	assertEquals(rendered()?.limits?.label, "Codex limits");
+	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 77);
+	usedPercent = 24;
+	controller.refresh(true);
+	await flush();
+	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 76);
 
 	model = { provider: "anthropic", id: "claude" };
 	controller.suspend();
@@ -122,7 +134,7 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 	model = codexModel;
 	controller.suspend();
 	controller.sync();
-	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 77);
+	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 76);
 });
 
 test("shows OpenCode Go usage and retains it after an unavailable refresh", async () => {
@@ -176,6 +188,7 @@ test("shows OpenCode Go usage and retains it after an unavailable refresh", asyn
 	controller.refresh(true);
 	await flush();
 	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 88);
+	assertEquals(rendered()?.limits?.status, "stale (refresh unavailable)");
 	controller.dispose();
 });
 

@@ -10,20 +10,24 @@ export const providerUsageTtlMs = 60 * 1000;
 export function fetchProviderUsagePayload(
 	session: AgentSession,
 	url: string,
+	providerId?: string,
 ): Promise<JsonValue | undefined> {
 	return withAgentHttpProxy(session.modelRuntime, () =>
-		fetchProviderUsagePayloadScoped(session, url),
+		fetchProviderUsagePayloadScoped(session, url, providerId),
 	);
 }
 
 async function fetchProviderUsagePayloadScoped(
 	session: AgentSession,
 	url: string,
+	providerId?: string,
 ): Promise<JsonValue | undefined> {
 	const model = session.model;
 	if (!model) return undefined;
 
-	const resolution = await session.modelRuntime.getAuth(model);
+	const resolution = providerId
+		? await session.modelRuntime.getAuth(providerId)
+		: await session.modelRuntime.getAuth(model);
 	if (!resolution) return undefined;
 
 	const headers = new Headers();
@@ -40,5 +44,10 @@ async function fetchProviderUsagePayloadScoped(
 		headers,
 		signal: AbortSignal.timeout(usageTimeoutMs),
 	});
-	return response.ok ? await response.json() : undefined;
+	if (!response.ok) {
+		throw new Error(
+			`Usage request failed (HTTP ${response.status})${response.status === 401 ? `; sign in to ${providerId ?? model.provider} again` : ""}`,
+		);
+	}
+	return await response.json();
 }

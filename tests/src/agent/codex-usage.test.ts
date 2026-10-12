@@ -1,7 +1,61 @@
-import { test } from "bun:test";
+import { onTestFinished, spyOn, test } from "bun:test";
 
-import { formatCodexUsage, parseCodexUsage } from "#src/agent/codex-usage.ts";
-import { assertEquals } from "#testing/assertions";
+import { InMemoryCredentialStore } from "@earendil-works/pi-ai";
+import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+
+import {
+	fetchCodexUsage,
+	formatCodexUsage,
+	parseCodexUsage,
+} from "#src/agent/codex-usage.ts";
+import { assertEquals, assertRejects } from "#testing/assertions";
+
+import { agentSessionRuntimeStub } from "./test-fixtures.ts";
+
+test("uses legacy auth for Codex limits with an OpenAI model", async () => {
+	const credentials = new InMemoryCredentialStore();
+	for (const provider of ["openai", "openai-codex"]) {
+		await credentials.modify(provider, async () => ({
+			type: "oauth",
+			access: provider,
+			refresh: "unused",
+			expires: Date.now() + 3_600_000,
+		}));
+	}
+	const modelRuntime = await ModelRuntime.create({
+		credentials,
+		modelsPath: null,
+		refreshOnCreate: false,
+	});
+	const session = agentSessionRuntimeStub({
+		session: { model: modelRuntime.getModels("openai")[0], modelRuntime },
+	}).session;
+	let status = 200;
+	const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
+		Object.assign(
+			async (url: RequestInfo | URL, init?: RequestInit) => {
+				assertEquals(String(url), "https://chatgpt.com/backend-api/wham/usage");
+				assertEquals(
+					new Headers(init?.headers).get("authorization"),
+					"Bearer openai-codex",
+				);
+				return Response.json(
+					{
+						rate_limit: { primary_window: { used_percent: 22 } },
+					},
+					{ status },
+				);
+			},
+			{ preconnect: () => {} },
+		),
+	);
+	onTestFinished(() => fetchSpy.mockRestore());
+
+	assertEquals((await fetchCodexUsage(session))?.primary?.usedPercent, 22);
+	assertEquals(fetchSpy.mock.calls.length, 1);
+	status = 401;
+	await assertRejects(() => fetchCodexUsage(session), Error, "HTTP 401");
+});
 
 test("parses available Codex windows independently", () => {
 	assertEquals(
