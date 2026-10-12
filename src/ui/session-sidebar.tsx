@@ -208,7 +208,9 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 		(archiveGroups.length > 0 || state.sessionsHasMore);
 	return syncHtml(
 		<div id="session-sidebar-content">
-			{inlineGroups.map((group) => renderSessionDateGroup(group, state))}
+			<ul id="session-sidebar-recent-list">
+				{inlineGroups.map((group) => renderSessionDateGroup(group, state))}
+			</ul>
 			{showArchive && (
 				<details id="session-sidebar-archive" data-preserve-attr="open">
 					<summary class="session-group-heading">
@@ -216,7 +218,11 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 						<span class="session-group-rule" aria-hidden="true" />
 						<Icon name="chevron-left" />
 					</summary>
-					{archiveGroups.map((group) => renderSessionDateGroup(group, state))}
+					<ul id="session-sidebar-archive-list">
+						{archiveGroups.map((group) =>
+							renderSessionDateGroup(group, state),
+						)}
+					</ul>
 					{pageTrigger}
 				</details>
 			)}
@@ -230,19 +236,19 @@ export function renderSessionSidebarContent(state: SessionSidebarState): string 
 
 function renderSessionDateGroup(group: SessionDateGroup, state: SessionSidebarState) {
 	return (
-		<div id={`session-sidebar-group-${group.key}`}>
+		<>
 			{group.label && (
-				<h3 id={`session-sidebar-${group.key}`} class="session-group-heading">
-					<span>{group.label}</span>
-					<span class="session-group-rule" aria-hidden="true" />
-				</h3>
+				<li class="session-date-heading">
+					<h3 id={`session-sidebar-${group.key}`} class="session-group-heading">
+						<span>{group.label}</span>
+						<span class="session-group-rule" aria-hidden="true" />
+					</h3>
+				</li>
 			)}
-			<ul>
-				{group.sessions.map(({ session, index }) =>
-					renderSessionSidebarRow(session, index, state, group.showRowDate),
-				)}
-			</ul>
-		</div>
+			{group.sessions.map(({ session, index }) =>
+				renderSessionSidebarRow(session, index, state, group.showRowDate),
+			)}
+		</>
 	);
 }
 
@@ -367,14 +373,12 @@ function renderSessionSidebarRow(
 							"session-status-transition",
 							!status && "session-status-empty",
 						]}
+						aria-hidden={status ? undefined : "true"}
 					>
-						{status && (
-							<StatusDot
-								class="session-sidebar-status"
-								state={status === "running" ? "running" : "success"}
-								label={sessionStatusLabel(status, current)}
-							/>
-						)}
+						<StatusDot
+							state={status === "running" ? "running" : "success"}
+							label={status ? sessionStatusLabel(status, current) : ""}
+						/>
 					</span>
 					{current ? (
 						<SessionRenameTitle session={session} />

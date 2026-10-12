@@ -46,17 +46,33 @@
 		width: 0.6875rem;
 		flex-shrink: 0;
 		place-items: center end;
+		transform-origin: calc(100% - 0.25rem) center;
+		scale: 1;
 		transition:
-			width 120ms ease-out,
-			margin-inline-end 120ms ease-out,
 			opacity 120ms ease-out,
 			scale 120ms ease-out;
 	}
 	.session-status-empty {
-		width: 0;
-		margin-inline-end: -0.5rem;
 		opacity: 0;
 		scale: 0.75;
+	}
+
+	/* Keep layout fixed. Only the title moves into the unused status slot. */
+	.session-status-transition
+		+ :is(.session-sidebar-title, .session-menu-title, .session-rename) {
+		translate: 0;
+		transition: translate 120ms ease-out;
+	}
+	.session-status-empty
+		+ :is(.session-sidebar-title, .session-menu-title, .session-rename) {
+		translate: calc(-0.6875rem - 0.5rem) 0;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.session-status-transition,
+		.session-status-transition
+			+ :is(.session-sidebar-title, .session-menu-title, .session-rename) {
+			transition: none;
+		}
 	}
 	.status-dot > * {
 		grid-area: 1 / 1;
@@ -222,6 +238,9 @@
 		gap: 1px;
 	}
 
+	.session-date-heading {
+		list-style: none;
+	}
 	.session-group-heading {
 		display: flex;
 		align-items: center;

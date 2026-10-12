@@ -134,9 +134,11 @@
 		background: var(--surface-muted);
 	}
 	.dialog-progress-value {
+		width: 100%;
 		height: 100%;
 		background: var(--action-primary);
-		transition: width 150ms ease;
+		transform-origin: left center;
+		transition: transform 150ms ease;
 	}
 	.dialog-model-name {
 		min-width: 0;

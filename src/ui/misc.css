@@ -49,7 +49,7 @@
 		position: fixed;
 		z-index: 50;
 		inset-block-end: 0.75rem;
-		inset-inline-start: 0.75rem;
+		inset-inline-end: 0.75rem;
 		display: none;
 		min-width: 26ch;
 		border: 1px solid var(--border);

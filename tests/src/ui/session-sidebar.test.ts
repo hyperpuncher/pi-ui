@@ -73,6 +73,9 @@ test("session sidebar puts all older dates in one disclosure while preserving ti
 
 	assertFalse(html.includes(">Today</span>"));
 	assertStringIncludes(html, ">Yesterday</span>");
+	assertStringIncludes(html, '<ul id="session-sidebar-recent-list">');
+	assertStringIncludes(html, '<ul id="session-sidebar-archive-list">');
+	assertFalse(html.includes("session-sidebar-group-"));
 	assertFalse(html.includes(">Earlier</span>"));
 	assertStringIncludes(html, ">12:00</time>");
 	assertFalse(html.includes(">yesterday</time>"));

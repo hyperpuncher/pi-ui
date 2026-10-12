@@ -42,7 +42,7 @@ test("foreground session takes precedence over background status", () => {
 	assertEquals(merged, [running]);
 });
 
-test("sessions prioritize running work, then unopened completions", () => {
+test("sessions prioritize unopened completions, then running work", () => {
 	const state = new AppStore();
 	const current = summary("/current", "Current");
 	const done = { ...completed, backgroundStatus: "completed" as const };
@@ -50,7 +50,7 @@ test("sessions prioritize running work, then unopened completions", () => {
 	state.setSessionCatalog([ordinary, done, current, active]);
 	state.setCurrentSessionPath(current.path);
 	state.setActivityText("Working");
-	assertEquals(state.sessions, [current, active, done, ordinary]);
+	assertEquals(state.sessions, [done, current, active, ordinary]);
 
 	state.setActivityText(undefined);
 	state.setCurrentSessionPath(done.path);
@@ -65,7 +65,7 @@ test("session priority applies before pagination and search limits", () => {
 	const done = { ...completed, backgroundStatus: "completed" as const };
 	const active = { ...running, backgroundStatus: "running" as const };
 	state.setSessionCatalog([...recent, done, active]);
-	const expected = [active, done, ...recent.slice(0, 28)];
+	const expected = [done, active, ...recent.slice(0, 28)];
 	assertEquals(state.sessions, expected);
 	assertEquals(state.snapshot().sessions, expected);
 	assertEquals(state.searchSessions("workspace"), expected);
@@ -87,7 +87,7 @@ test("date grouping cannot move ordinary sessions ahead of priority sessions", (
 	const titles = [
 		...html.matchAll(/aria-label="(Ordinary|Running|Completed|Old)"/g),
 	].map((match) => match[1]);
-	assertEquals(titles, ["Running", "Completed", "Ordinary", "Old"]);
+	assertEquals(titles, ["Completed", "Running", "Ordinary", "Old"]);
 });
 
 test("opening a completed session clears its completion indicator in both session lists", () => {

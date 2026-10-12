@@ -336,7 +336,7 @@ export class AppStore {
 			else if (status === "completed") completed.push(session);
 			else idle.push(session);
 		}
-		return running.concat(completed, idle);
+		return completed.concat(running, idle);
 	}
 	get sessionsHasMore(): boolean {
 		return (

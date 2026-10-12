@@ -133,18 +133,12 @@
 		flex-shrink: 0;
 	}
 	.model-scope-button {
-		width: 0;
-		height: 1.75rem;
-		overflow: hidden;
 		opacity: 0;
-		transition:
-			width 130ms ease,
-			opacity 130ms ease;
+		transition: opacity 130ms ease;
 	}
 	.model-option:is(:has(> .active), :focus-within) .model-scope-button,
 	.model-scope-button:focus-visible,
 	.model-scope-button[aria-pressed="true"] {
-		width: 1.75rem;
 		opacity: 1;
 	}
 	.model-scope-button[aria-pressed="true"] > svg {

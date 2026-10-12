@@ -564,14 +564,16 @@ function renderSessionRow(
 						"session-status-transition",
 						!displayStatus && "session-status-empty",
 					]}
+					aria-hidden={displayStatus ? undefined : "true"}
 				>
-					{displayStatus && (
-						<StatusDot
-							class="session-menu-status"
-							state={displayStatus === "running" ? "running" : "success"}
-							label={sessionStatusLabel(displayStatus, current)}
-						/>
-					)}
+					<StatusDot
+						state={displayStatus === "running" ? "running" : "success"}
+						label={
+							displayStatus
+								? sessionStatusLabel(displayStatus, current)
+								: ""
+						}
+					/>
 				</span>
 				{current ? (
 					<SessionRenameTitle session={session} />
