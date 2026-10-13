@@ -1,4 +1,4 @@
-import { focusPromptEnd, promptInput, setPromptValue } from "./prompt.js";
+import { focusPromptEnd, promptInput, setPromptValue } from "#static/app/prompt.js";
 
 let activeFilePrefix;
 let filePickerSuppressUntilInput = false;

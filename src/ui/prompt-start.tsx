@@ -1,7 +1,7 @@
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { renderWorkspacePicker, renderWorktreePicker } from "./prompt-pickers.tsx";
-import { syncHtml } from "./sync-html.ts";
-import { renderUpdateBadge, renderUpdatePopover } from "./update-indicator.tsx";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { renderWorkspacePicker, renderWorktreePicker } from "#src/ui/prompt-pickers.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { renderUpdateBadge, renderUpdatePopover } from "#src/ui/update-indicator.tsx";
 
 /** Left context cluster: workspace, branch, and update controls. */
 export function renderPromptStart(state: AppStateSnapshot): string {

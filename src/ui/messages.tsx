@@ -1,36 +1,36 @@
 import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
-import {
-	attachmentFileExtension,
-	attachmentFileIcons,
-	attachmentFileKind,
-} from "../../static/app/attachment-file.js";
-import { providerErrorPresentation } from "../agent/provider-error-message.ts";
-import { formatDuration, toolTitleParts } from "../agent/tool-presentation.ts";
-import { authDialogAction } from "../commands/actions.ts";
-import { keybindActions, keybindAria } from "../keybinds.ts";
-import { getActiveCodeThemeId } from "../pierre-theme.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppKeybindHint, AppSessionSummary } from "../state/app-store.ts";
-import type { TranscriptMessageTitlePart } from "../state/transcript-state.ts";
-import { escapeHtml } from "../utils/html.ts";
+import { providerErrorPresentation } from "#src/agent/provider-error-message.ts";
+import { formatDuration, toolTitleParts } from "#src/agent/tool-presentation.ts";
+import { authDialogAction } from "#src/commands/actions.ts";
+import { keybindActions, keybindAria } from "#src/keybinds.ts";
+import { getActiveCodeThemeId } from "#src/pierre-theme.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppKeybindHint, AppSessionSummary } from "#src/state/app-store.ts";
+import type { TranscriptMessageTitlePart } from "#src/state/transcript-state.ts";
 import {
 	codeSnippets,
 	type CodeSnippet,
 	highlightBash,
 	highlightCodemode,
-} from "./bash-highlight.ts";
-import { DateTime } from "./date-time.tsx";
-import { Icon } from "./icon.tsx";
-import { ShortcutKbd } from "./keyboard.tsx";
-import { renderMarkdownStreaming } from "./markdown.tsx";
-import { BoundedCache } from "./render-cache.ts";
-import type { AppMessage } from "./render-state.ts";
-import { SessionSubtitle } from "./session-summary.tsx";
-import { resumeSessionAction } from "./session-transition.tsx";
-import { shikiTokenStyle } from "./shiki-token-style.ts";
-import { StatusDot } from "./status-dot.tsx";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/ui/bash-highlight.ts";
+import { DateTime } from "#src/ui/date-time.tsx";
+import { Icon } from "#src/ui/icon.tsx";
+import { ShortcutKbd } from "#src/ui/keyboard.tsx";
+import { renderMarkdownStreaming } from "#src/ui/markdown.tsx";
+import { BoundedCache } from "#src/ui/render-cache.ts";
+import type { AppMessage } from "#src/ui/render-state.ts";
+import { SessionSubtitle } from "#src/ui/session-summary.tsx";
+import { resumeSessionAction } from "#src/ui/session-transition.tsx";
+import { shikiTokenStyle } from "#src/ui/shiki-token-style.ts";
+import { StatusDot } from "#src/ui/status-dot.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { escapeHtml } from "#src/utils/html.ts";
+import {
+	attachmentFileExtension,
+	attachmentFileIcons,
+	attachmentFileKind,
+} from "#static/app/attachment-file.js";
 
 type InlineCodeCacheEntry = { html: string; missingLanguages: string[] };
 const inlineCodeCache = new BoundedCache<string, InlineCodeCacheEntry>(500);

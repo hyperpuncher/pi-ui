@@ -1,28 +1,28 @@
-import type { SessionTransitionState } from "../agent/session-transition-controller.ts";
-import { appCommandCatalog } from "../commands/catalog.ts";
-import { activeKeybind } from "../keybinds.ts";
-import { sessionPerformance } from "../perf/session-performance.ts";
+import type { SessionTransitionState } from "#src/agent/session-transition-controller.ts";
+import { appCommandCatalog } from "#src/commands/catalog.ts";
+import { activeKeybind } from "#src/keybinds.ts";
+import { sessionPerformance } from "#src/perf/session-performance.ts";
 import {
 	sessionSidebarArchiveAfterDaysDefault,
 	sessionSidebarWidthDefault,
-} from "../session-sidebar-types.ts";
-import type { AvailableUpdate } from "../update-check.ts";
-import { formatMessageCount } from "../utils/format.ts";
-import type { JsonObject } from "../utils/json-types.ts";
-import { formatShortcut } from "../utils/keyboard.ts";
-import { defaultWorkspacePath, managedWorktreeParts } from "../utils/workspace.ts";
-import {
-	type WorkspaceReviewPreferences,
-	type WorkspaceReviewSnapshot,
-	unloadedWorkspaceReviewSnapshot,
-} from "../workspace-review-types.ts";
+} from "#src/session-sidebar-types.ts";
 import {
 	TranscriptState,
 	type TranscriptMessage,
 	type TranscriptMessageInput,
 	type TranscriptMessageOptions,
 	type TranscriptSnapshot,
-} from "./transcript-state.ts";
+} from "#src/state/transcript-state.ts";
+import type { AvailableUpdate } from "#src/update-check.ts";
+import { formatMessageCount } from "#src/utils/format.ts";
+import type { JsonObject } from "#src/utils/json-types.ts";
+import { formatShortcut } from "#src/utils/keyboard.ts";
+import { defaultWorkspacePath, managedWorktreeParts } from "#src/utils/workspace.ts";
+import {
+	type WorkspaceReviewPreferences,
+	type WorkspaceReviewSnapshot,
+	unloadedWorkspaceReviewSnapshot,
+} from "#src/workspace-review-types.ts";
 
 export type AppChatSnapshot = TranscriptSnapshot;
 export type AppModel = {

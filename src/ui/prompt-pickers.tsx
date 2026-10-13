@@ -3,16 +3,16 @@ import {
 	cycleModelAction,
 	cycleThinkingAction,
 	toggleDialogAction,
-} from "../commands/actions.ts";
-import { activeKeybind, keybindAction, keybindActions } from "../keybinds.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppThinkingLevel } from "../state/app-store.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { workspaceDisplayName } from "../utils/workspace.ts";
-import { Icon } from "./icon.tsx";
-import icons from "./icons.json";
-import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/commands/actions.ts";
+import { activeKeybind, keybindAction, keybindActions } from "#src/keybinds.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppThinkingLevel } from "#src/state/app-store.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import icons from "#src/ui/icons.json";
+import { ShortcutKbd, ShortcutTooltip } from "#src/ui/keyboard.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { workspaceDisplayName } from "#src/utils/workspace.ts";
 
 export function renderWorkspacePicker(state: AppStateSnapshot): string {
 	const label = workspaceDisplayName(state.projectRoot);

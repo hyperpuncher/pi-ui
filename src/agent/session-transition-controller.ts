@@ -1,4 +1,4 @@
-import { errorMessage } from "../utils/errors.ts";
+import { errorMessage } from "#src/utils/errors.ts";
 
 export type SessionTransitionState =
 	| { status: "idle"; generation: number }

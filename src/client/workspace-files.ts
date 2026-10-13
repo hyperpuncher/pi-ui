@@ -13,17 +13,25 @@ import {
 	type GitStatusEntry,
 } from "@pierre/trees";
 
-import { getPierreThemes } from "../pierre-theme.ts";
-import { errorMessage } from "../utils/errors.ts";
-import { workspaceTreeStyle, workspaceTreeUnsafeCss } from "../workspace-review-tree.ts";
-import { requiredButton, requiredDialog, requiredElement, requiredInput } from "./dom.ts";
+import {
+	requiredButton,
+	requiredDialog,
+	requiredElement,
+	requiredInput,
+} from "#src/client/dom.ts";
 import {
 	createWorkspaceFilesApi,
 	type WorkspaceFileData,
 	type WorkspaceFilePreviewData,
-} from "./workspace-files-api.ts";
-import { workspaceMenuButton } from "./workspace-tree-menu.ts";
-import { createWorkspaceTreeExpansion } from "./workspace-tree.ts";
+} from "#src/client/workspace-files-api.ts";
+import { workspaceMenuButton } from "#src/client/workspace-tree-menu.ts";
+import { createWorkspaceTreeExpansion } from "#src/client/workspace-tree.ts";
+import { getPierreThemes } from "#src/pierre-theme.ts";
+import { errorMessage } from "#src/utils/errors.ts";
+import {
+	workspaceTreeStyle,
+	workspaceTreeUnsafeCss,
+} from "#src/workspace-review-tree.ts";
 
 type WorkspaceFilesOptions = {
 	endpoint: string;

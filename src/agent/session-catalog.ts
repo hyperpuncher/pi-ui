@@ -6,25 +6,25 @@ import {
 	type SessionInfo,
 } from "@earendil-works/pi-coding-agent";
 
-import type {
-	AppSessionSummary,
-	AppStore,
-	BackgroundSessionStatus,
-} from "../state/app-store.ts";
-import { errorMessage } from "../utils/errors.ts";
-import { isNotFound } from "../utils/fs-errors.ts";
-import { formatDateTime } from "../utils/locale.ts";
-import { isRecord, isString } from "../utils/type-guards.ts";
-import { mergeBackgroundSessionStatuses } from "./background-session-status.ts";
-import type { SessionCatalogWatch } from "./session-catalog-watcher.ts";
-import { resolveSessionDir } from "./session-dir.ts";
+import { mergeBackgroundSessionStatuses } from "#src/agent/background-session-status.ts";
+import type { SessionCatalogWatch } from "#src/agent/session-catalog-watcher.ts";
+import { resolveSessionDir } from "#src/agent/session-dir.ts";
 import {
 	loadSessionSummary,
 	readSessionSummaryCache,
 	sessionInfoFromSummary,
 	sessionSummaryCachePath,
 	updateSessionSummaryCache,
-} from "./session-summary-cache.ts";
+} from "#src/agent/session-summary-cache.ts";
+import type {
+	AppSessionSummary,
+	AppStore,
+	BackgroundSessionStatus,
+} from "#src/state/app-store.ts";
+import { errorMessage } from "#src/utils/errors.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
+import { formatDateTime } from "#src/utils/locale.ts";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export type PreparedSessionList =
 	| { ok: true; sessions: SessionInfo[] }

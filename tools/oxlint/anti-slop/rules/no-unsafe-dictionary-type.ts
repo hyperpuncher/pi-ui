@@ -6,8 +6,8 @@ import {
 	classifyUnsafeDictionaryValue,
 	createTypeEnvironment,
 	type TypeEnvironment,
-} from "../shared/dictionary-types.ts";
-import { visibleTypeAlias } from "../shared/type-alias-resolution.ts";
+} from "#tools/oxlint/anti-slop/shared/dictionary-types.ts";
+import { visibleTypeAlias } from "#tools/oxlint/anti-slop/shared/type-alias-resolution.ts";
 
 const typeNodeKinds: ReadonlySet<string> = new Set([
 	"JSDocNonNullableType",

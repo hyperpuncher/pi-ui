@@ -1,7 +1,7 @@
-import { renderPage } from "../../ui/page.tsx";
-import { RouteError, type RouteMap } from "../route.ts";
-import type { RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import { renderPage } from "#src/ui/page.tsx";
 
 export const assetRoutes = {
 	[endpoints.root]: {

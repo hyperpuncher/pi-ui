@@ -1,5 +1,5 @@
-import type { AppExtensionWidget, AppStateSnapshot } from "../state/app-store.ts";
-import { syncHtml } from "./sync-html.ts";
+import type { AppExtensionWidget, AppStateSnapshot } from "#src/state/app-store.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderExtensionWidgets(
 	state: Pick<AppStateSnapshot, "extensionWidgets">,

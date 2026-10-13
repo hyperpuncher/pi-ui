@@ -5,7 +5,7 @@ import {
 	containsUnknownType,
 	functionParameterBindingName,
 	functionParameterTypeAnnotation,
-} from "../shared/function-parameters.ts";
+} from "#tools/oxlint/anti-slop/shared/function-parameters.ts";
 type ParameterOwner =
 	| ESTree.ArrowFunctionExpression
 	| ESTree.Function

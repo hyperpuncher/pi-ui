@@ -2,9 +2,9 @@ import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname } from "node:path";
 
-import { outputCommand } from "./utils/command.ts";
-import { isNotFound } from "./utils/fs-errors.ts";
-import { operatingSystem } from "./utils/platform.ts";
+import { outputCommand } from "#src/utils/command.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
+import { operatingSystem } from "#src/utils/platform.ts";
 
 const serviceName = "pi-ui";
 const legacyServiceName = "pi-ui-server";

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { appendSessionPerformanceRecord } from "./session-performance-log.ts";
+import { appendSessionPerformanceRecord } from "#src/perf/session-performance-log.ts";
 
 // SDK 0.80.6 loads entries once for the header and again for manager state.
 const sdkInternalReadsPerSessionOpenEstimate = 2;

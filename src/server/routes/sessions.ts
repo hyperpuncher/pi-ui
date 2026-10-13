@@ -1,16 +1,24 @@
 import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { SessionTransitionResult } from "../../agent/session-transition-controller.ts";
-import { thumbnailImage, type ThumbnailImage } from "../../image-resize.ts";
-import { expandHomePath } from "../../utils/workspace.ts";
-import { readActionSignals, requiredString, stringField } from "../action-input.ts";
-import { datastarResponse, errorResponse, signalsResponse } from "../datastar.ts";
-import { RouteError, type RouteMap } from "../route.ts";
-import { decodeBase64Image } from "../session-image-store.ts";
-import type { StoredSessionImage } from "../session-image-store.ts";
-import { requireHost, type RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+import type { SessionTransitionResult } from "#src/agent/session-transition-controller.ts";
+import { thumbnailImage, type ThumbnailImage } from "#src/image-resize.ts";
+import {
+	readActionSignals,
+	requiredString,
+	stringField,
+} from "#src/server/action-input.ts";
+import {
+	datastarResponse,
+	errorResponse,
+	signalsResponse,
+} from "#src/server/datastar.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import { decodeBase64Image } from "#src/server/session-image-store.ts";
+import type { StoredSessionImage } from "#src/server/session-image-store.ts";
+import { expandHomePath } from "#src/utils/workspace.ts";
 
 export const sessionRoutes = {
 	[endpoints.sessionsNew]: {

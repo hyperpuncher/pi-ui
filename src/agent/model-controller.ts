@@ -1,7 +1,7 @@
 import type { ModelsRefreshOptions } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
-import type { AppStore, AppThinkingLevel } from "../state/app-store.ts";
+import type { AppStore, AppThinkingLevel } from "#src/state/app-store.ts";
 
 const thinkingLevels: ReadonlySet<string> = new Set([
 	"off",

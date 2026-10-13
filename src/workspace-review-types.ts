@@ -1,7 +1,12 @@
 import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
-import { isBoolean, isNumber, isRecord, type JsonRecord } from "./utils/type-guards.ts";
+import {
+	isBoolean,
+	isNumber,
+	isRecord,
+	type JsonRecord,
+} from "#src/utils/type-guards.ts";
 
 export const workspaceReviewHistoryPageSize = 50;
 export const gitPaneRatioDefault = 0.5;

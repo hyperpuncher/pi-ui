@@ -1,7 +1,7 @@
-import type { AvailableUpdate } from "../update-check.ts";
-import { Icon } from "./icon.tsx";
-import { ShortcutTooltip } from "./keyboard.tsx";
-import { syncHtml } from "./sync-html.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { ShortcutTooltip } from "#src/ui/keyboard.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import type { AvailableUpdate } from "#src/update-check.ts";
 
 export function renderUpdateBadge(update: AvailableUpdate): string {
 	return syncHtml(

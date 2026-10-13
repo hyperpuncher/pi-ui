@@ -8,8 +8,10 @@ import {
 	formatCacheMissNotice,
 } from "#src/agent/cache-miss.ts";
 import { assertEquals, assertMatch } from "#testing/assertions";
-
-import { assistantMessageStub, sessionEntryStub } from "./test-fixtures.ts";
+import {
+	assistantMessageStub,
+	sessionEntryStub,
+} from "#tests/src/agent/test-fixtures.ts";
 
 const models = {
 	getModel: () => ({ cost: { cacheRead: 0.1 } }),

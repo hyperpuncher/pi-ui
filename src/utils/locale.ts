@@ -1,4 +1,7 @@
-import { formatAdaptiveDateTime, formatExpandedDateTime } from "./date-time-format.ts";
+import {
+	formatAdaptiveDateTime,
+	formatExpandedDateTime,
+} from "#src/utils/date-time-format.ts";
 
 export const systemTimeLocale = posixLocaleToBcp47(
 	process.env.LC_ALL || process.env.LC_TIME || process.env.LANG,

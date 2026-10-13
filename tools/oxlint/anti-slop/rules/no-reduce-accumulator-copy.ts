@@ -6,7 +6,7 @@ import {
 	isKnownArrayExpression,
 	resolveArrayBinding,
 	unwrapArrayExpression,
-} from "../shared/array-method.ts";
+} from "#tools/oxlint/anti-slop/shared/array-method.ts";
 
 function enclosingReducer(node: ESTree.Node) {
 	let parent = node.parent;

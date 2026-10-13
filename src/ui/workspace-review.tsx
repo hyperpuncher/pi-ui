@@ -1,5 +1,8 @@
-import { activeKeybind, keybindActions, keybindAria } from "../keybinds.ts";
-import { workspaceTreeStyle } from "../workspace-review-tree.ts";
+import { activeKeybind, keybindActions, keybindAria } from "#src/keybinds.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { ShortcutKbd } from "#src/ui/keyboard.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { workspaceTreeStyle } from "#src/workspace-review-tree.ts";
 import {
 	changesRatioDefault,
 	changesRatioMax,
@@ -13,10 +16,7 @@ import {
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 	workspaceChangeStats,
-} from "../workspace-review-types.ts";
-import { Icon } from "./icon.tsx";
-import { ShortcutKbd } from "./keyboard.tsx";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/workspace-review-types.ts";
 
 type ResizePreference = "changesRatio" | "gitPaneRatio" | "reviewSidebarWidth";
 

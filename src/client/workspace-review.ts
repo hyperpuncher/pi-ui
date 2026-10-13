@@ -15,31 +15,18 @@ import {
 	FileTree,
 } from "@pierre/trees";
 
-import { getPierreThemes, isPierreThemes, setActiveCodeTheme } from "../pierre-theme.ts";
-import { isNumber, isRecord, isString } from "../utils/type-guards.ts";
-import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
-import { workspaceReviewTreeOptions } from "../workspace-review-tree.ts";
-import {
-	type WorkspaceCommitDetail,
-	type WorkspaceFileChange,
-	workspaceReviewHistoryPageSize,
-	isWorkspaceReviewSnapshot,
-	normalizeWorkspaceReviewPreferences,
-	type WorkspaceReviewPreferences,
-	type WorkspaceReviewSnapshot,
-} from "../workspace-review-types.ts";
-import { requiredButton, requiredElement } from "./dom.ts";
-import { createWorkspaceFiles, focusTreeHost } from "./workspace-files.ts";
-import { createWorkspaceReviewApi } from "./workspace-review-api.ts";
+import { requiredButton, requiredElement } from "#src/client/dom.ts";
+import { createWorkspaceFiles, focusTreeHost } from "#src/client/workspace-files.ts";
+import { createWorkspaceReviewApi } from "#src/client/workspace-review-api.ts";
 import {
 	createWorkspaceReviewComments,
 	type ReviewCommentMetadata,
-} from "./workspace-review-comments.ts";
+} from "#src/client/workspace-review-comments.ts";
 import {
 	hideWorkspaceReviewDetailHeader,
 	renderWorkspaceReviewHistory,
 	showWorkspaceReviewDetailHeader,
-} from "./workspace-review-history.ts";
+} from "#src/client/workspace-review-history.ts";
 import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
@@ -48,9 +35,26 @@ import {
 	type Selection,
 	workspaceReviewLoading,
 	workspaceReviewStateChanged,
-} from "./workspace-review-state.ts";
-import { workspaceMenuButton } from "./workspace-tree-menu.ts";
-import { createWorkspaceTreeExpansion } from "./workspace-tree.ts";
+} from "#src/client/workspace-review-state.ts";
+import { workspaceMenuButton } from "#src/client/workspace-tree-menu.ts";
+import { createWorkspaceTreeExpansion } from "#src/client/workspace-tree.ts";
+import {
+	getPierreThemes,
+	isPierreThemes,
+	setActiveCodeTheme,
+} from "#src/pierre-theme.ts";
+import { isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
+import type { WorkspaceReviewComment } from "#src/workspace-review-comments.ts";
+import { workspaceReviewTreeOptions } from "#src/workspace-review-tree.ts";
+import {
+	type WorkspaceCommitDetail,
+	type WorkspaceFileChange,
+	workspaceReviewHistoryPageSize,
+	isWorkspaceReviewSnapshot,
+	normalizeWorkspaceReviewPreferences,
+	type WorkspaceReviewPreferences,
+	type WorkspaceReviewSnapshot,
+} from "#src/workspace-review-types.ts";
 
 type ReviewMode = NonNullable<WorkspaceReviewPreferences["mode"]>;
 type ReviewItem = CodeViewItem<ReviewCommentMetadata> & { type: "diff" };

@@ -1,31 +1,31 @@
-import { activeKeybind, keybindActions, keybindAria } from "../keybinds.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
+import { activeKeybind, keybindActions, keybindAria } from "#src/keybinds.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 import {
 	sessionSidebarWidthDefault,
 	sessionSidebarWidthMax,
 	sessionSidebarWidthMin,
-} from "../session-sidebar-types.ts";
+} from "#src/session-sidebar-types.ts";
 import {
 	sessionStatus,
 	type AppSessionSummary,
 	type AppStateSnapshot,
-} from "../state/app-store.ts";
-import { calendarDayDifference, formatCalendarDay } from "../utils/date-time-format.ts";
-import { systemTimeLocale } from "../utils/locale.ts";
-import { DateTime } from "./date-time.tsx";
-import { Icon } from "./icon.tsx";
-import { ShortcutKbd } from "./keyboard.tsx";
-import { loaderIcon } from "./prompt-status.tsx";
-import { SessionRenameTitle } from "./session-rename.tsx";
-import { SessionRowAction } from "./session-row-action.tsx";
-import { sessionStatusLabel } from "./session-status.ts";
-import { SessionSubtitle } from "./session-summary.tsx";
+} from "#src/state/app-store.ts";
+import { DateTime } from "#src/ui/date-time.tsx";
+import { Icon } from "#src/ui/icon.tsx";
+import { ShortcutKbd } from "#src/ui/keyboard.tsx";
+import { loaderIcon } from "#src/ui/prompt-status.tsx";
+import { SessionRenameTitle } from "#src/ui/session-rename.tsx";
+import { SessionRowAction } from "#src/ui/session-row-action.tsx";
+import { sessionStatusLabel } from "#src/ui/session-status.ts";
+import { SessionSubtitle } from "#src/ui/session-summary.tsx";
 import {
 	resumeSessionAction,
 	resumeSessionShortcutAction,
-} from "./session-transition.tsx";
-import { StatusDot } from "./status-dot.tsx";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/ui/session-transition.tsx";
+import { StatusDot } from "#src/ui/status-dot.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { calendarDayDifference, formatCalendarDay } from "#src/utils/date-time-format.ts";
+import { systemTimeLocale } from "#src/utils/locale.ts";
 
 const sidebarPointerWidthExpression = `Math.round(Math.min(
 	Math.max(${sessionSidebarWidthMin}, Math.min(${sessionSidebarWidthMax}, innerWidth * 0.5)),

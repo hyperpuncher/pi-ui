@@ -1,9 +1,9 @@
 import { contentText } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime, SessionEntry } from "@earendil-works/pi-coding-agent";
 
-import { parseModelPattern } from "../../node_modules/@earendil-works/pi-coding-agent/dist/core/model-resolver.js";
-import type { JsonValue } from "../utils/json-types.ts";
-import { isBoolean, isRecord, isString } from "../utils/type-guards.ts";
+import { parseModelPattern } from "#pi/core/model-resolver.js";
+import type { JsonValue } from "#src/utils/json-types.ts";
+import { isBoolean, isRecord, isString } from "#src/utils/type-guards.ts";
 
 export type AutoTitleConfig = Readonly<{
 	enabled: boolean;

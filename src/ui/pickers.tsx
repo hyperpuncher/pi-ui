@@ -1,32 +1,32 @@
 import { fuzzyFilter, type AutocompleteItem } from "@earendil-works/pi-tui";
 
-import { endpoints } from "../server/routes/endpoints.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 import type {
 	WorkspaceDirectoryListing,
 	WorkspaceSuggestion,
-} from "../server/workspace-search.ts";
+} from "#src/server/workspace-search.ts";
 import {
 	sessionStatus,
 	type AppSessionSummary,
 	type AppSlashCommand,
 	type AppStateSnapshot,
 	type BackgroundSessionStatus,
-} from "../state/app-store.ts";
-import { formatHomePath, workspaceDisplayName } from "../utils/workspace.ts";
-import { DateTime } from "./date-time.tsx";
-import { Icon } from "./icon.tsx";
-import { PickerList, PickerMetadata, PickerRow } from "./picker-components.tsx";
-import { SessionRenameTitle } from "./session-rename.tsx";
-import { SessionRowAction } from "./session-row-action.tsx";
-import { renderSessionPageTrigger } from "./session-sidebar.tsx";
-import { sessionStatusLabel } from "./session-status.ts";
-import { SessionSubtitle } from "./session-summary.tsx";
+} from "#src/state/app-store.ts";
+import { DateTime } from "#src/ui/date-time.tsx";
+import { Icon } from "#src/ui/icon.tsx";
+import { PickerList, PickerMetadata, PickerRow } from "#src/ui/picker-components.tsx";
+import { SessionRenameTitle } from "#src/ui/session-rename.tsx";
+import { SessionRowAction } from "#src/ui/session-row-action.tsx";
+import { renderSessionPageTrigger } from "#src/ui/session-sidebar.tsx";
+import { sessionStatusLabel } from "#src/ui/session-status.ts";
+import { SessionSubtitle } from "#src/ui/session-summary.tsx";
 import {
 	resumeSessionAction,
 	resumeSessionShortcutAction,
-} from "./session-transition.tsx";
-import { StatusDot } from "./status-dot.tsx";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/ui/session-transition.tsx";
+import { StatusDot } from "#src/ui/status-dot.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { formatHomePath, workspaceDisplayName } from "#src/utils/workspace.ts";
 
 const bottomAnchoredPickerClass = "picker-list picker-list-bottom";
 

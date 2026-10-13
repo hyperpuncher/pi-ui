@@ -10,15 +10,15 @@ import {
 	type ThemedToken,
 } from "@pierre/diffs";
 
-import { fileUriToPath } from "../../static/file-uri.js";
-import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
-import { filePreviewUrl } from "../server/routes/endpoints.ts";
-import { escapeHtml } from "../utils/html.ts";
-import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "./diffs.ts";
-import { Icon } from "./icon.tsx";
-import { BoundedCache, deleteStringKeysWithPrefix } from "./render-cache.ts";
-import { shikiTokenStyle } from "./shiki-token-style.ts";
-import { syncHtml } from "./sync-html.ts";
+import { getActiveCodeThemeId, getPierreThemes } from "#src/pierre-theme.ts";
+import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
+import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "#src/ui/diffs.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
+import { shikiTokenStyle } from "#src/ui/shiki-token-style.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { escapeHtml } from "#src/utils/html.ts";
+import { fileUriToPath } from "#static/file-uri.js";
 
 // Streaming entries track roughly two restored pages; final results can deduplicate
 // repeated content across a much longer session.

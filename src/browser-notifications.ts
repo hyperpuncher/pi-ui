@@ -1,4 +1,4 @@
-import type { DatastarClientHub } from "./server/datastar-client-hub.ts";
+import type { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 
 export type SessionDoneNotification = Readonly<{
 	workspace: string;

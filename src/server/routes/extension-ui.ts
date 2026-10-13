@@ -3,11 +3,11 @@ import {
 	readActionSignals,
 	requiredString,
 	stringField,
-} from "../action-input.ts";
-import { datastarResponse } from "../datastar.ts";
-import type { RouteMap } from "../route.ts";
-import { requireHost, type RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+} from "#src/server/action-input.ts";
+import { datastarResponse } from "#src/server/datastar.ts";
+import type { RouteMap } from "#src/server/route.ts";
+import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 
 export const extensionUiRoutes = {
 	[endpoints.extensionUiEditor]: {

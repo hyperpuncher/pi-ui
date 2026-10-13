@@ -7,7 +7,7 @@ import {
 	formatDimensionNote,
 } from "@earendil-works/pi-coding-agent";
 
-import { resizeImage } from "../image-resize.ts";
+import { resizeImage } from "#src/image-resize.ts";
 
 type PreparedImage = Readonly<{
 	bytes: Buffer;

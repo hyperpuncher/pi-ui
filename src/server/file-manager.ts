@@ -1,8 +1,8 @@
 import { pathToFileURL } from "node:url";
 
-import { openBrowser } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/open-browser.js";
-import { outputCommand } from "../utils/command.ts";
-import { operatingSystem, type OperatingSystem } from "../utils/platform.ts";
+import { openBrowser } from "#pi/utils/open-browser.js";
+import { outputCommand } from "#src/utils/command.ts";
+import { operatingSystem, type OperatingSystem } from "#src/utils/platform.ts";
 
 function isLoopback(address: string): boolean {
 	return (

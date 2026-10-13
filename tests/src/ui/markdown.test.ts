@@ -13,9 +13,8 @@ import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
+import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
-
-import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
 
 test("streaming cache keeps one entry per stable message key", () => {
 	const baseline = markdownCacheStatsForTest().streamingEntries;

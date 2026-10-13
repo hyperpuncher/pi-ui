@@ -16,10 +16,9 @@ import {
 	assertStringIncludes as assertIncludes,
 	assertThrows,
 } from "#testing/assertions";
+import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
+import { readUntil, responseReader } from "#testing/streams.ts";
 import { makeTempDir } from "#testing/temp";
-
-import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
-import { readUntil, responseReader } from "../testing/streams.ts";
 
 const originalLog = console.log;
 const previousPerf = process.env.PI_UI_PERF;

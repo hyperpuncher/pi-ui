@@ -1,6 +1,6 @@
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppSessionSummary } from "../state/app-store.ts";
-import { syncHtml } from "./sync-html.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppSessionSummary } from "#src/state/app-store.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 function startSessionRenameAction(session: AppSessionSummary): string {
 	return `

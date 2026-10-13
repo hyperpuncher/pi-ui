@@ -2,7 +2,7 @@ import {
 	type WorkspaceCommit,
 	type WorkspaceFileChange,
 	workspaceReviewHistoryPageSize,
-} from "../workspace-review-types.ts";
+} from "#src/workspace-review-types.ts";
 
 export function workspaceReviewLoading(revision: string): boolean {
 	return revision === "git-unloaded";

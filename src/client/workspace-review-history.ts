@@ -1,14 +1,14 @@
+import type { Selection } from "#src/client/workspace-review-state.ts";
 import {
 	formatAdaptiveDateTime,
 	formatExpandedDateTime,
-} from "../utils/date-time-format.ts";
+} from "#src/utils/date-time-format.ts";
 import {
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
 	type WorkspaceFileChange,
 	workspaceChangeStats,
-} from "../workspace-review-types.ts";
-import type { Selection } from "./workspace-review-state.ts";
+} from "#src/workspace-review-types.ts";
 
 type HistoryRenderOptions = Readonly<{
 	commits: readonly WorkspaceCommit[];

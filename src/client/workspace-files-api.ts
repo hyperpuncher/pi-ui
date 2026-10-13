@@ -1,7 +1,7 @@
 import Type, { type Static, type StaticParse, type TSchema } from "typebox";
 import { Parse } from "typebox/value";
 
-import { responseErrorMessage } from "../utils/errors.ts";
+import { responseErrorMessage } from "#src/utils/errors.ts";
 
 const workspaceFilePreviewSchema = Type.Union([
 	Type.Object({

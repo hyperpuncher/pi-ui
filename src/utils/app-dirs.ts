@@ -1,7 +1,7 @@
 import os from "node:os";
 import { join } from "node:path";
 
-import { operatingSystem } from "./platform.ts";
+import { operatingSystem } from "#src/utils/platform.ts";
 
 type AppDirectory = "cache" | "config" | "data";
 

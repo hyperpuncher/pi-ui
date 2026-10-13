@@ -5,14 +5,14 @@ import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
-import { appCachePath } from "../utils/app-dirs.ts";
+import { appCachePath } from "#src/utils/app-dirs.ts";
 import {
 	attachmentDisplayName,
 	splitLeadingAttachmentReferences,
-} from "../utils/attachment-references.ts";
-import { isNotFound } from "../utils/fs-errors.ts";
-import type { JsonValue } from "../utils/json-types.ts";
-import { isNumber, isRecord, isString } from "../utils/type-guards.ts";
+} from "#src/utils/attachment-references.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
+import type { JsonValue } from "#src/utils/json-types.ts";
+import { isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
 
 const cacheVersion = 2;
 const maxSummaryTextLength = 96;

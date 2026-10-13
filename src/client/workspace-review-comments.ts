@@ -5,15 +5,15 @@ import {
 	type SelectedLineRange,
 } from "@pierre/diffs";
 
-import { hasPrimaryModifier } from "../utils/keyboard.ts";
-import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
 import {
 	createWorkspaceReviewCommentStore,
 	type ReviewAnnotation,
 	type ReviewCommentMetadata,
-} from "./workspace-review-comment-state.ts";
+} from "#src/client/workspace-review-comment-state.ts";
+import { hasPrimaryModifier } from "#src/utils/keyboard.ts";
+import type { WorkspaceReviewComment } from "#src/workspace-review-comments.ts";
 
-export type { ReviewCommentMetadata } from "./workspace-review-comment-state.ts";
+export type { ReviewCommentMetadata } from "#src/client/workspace-review-comment-state.ts";
 
 type ReviewCommentItem = Readonly<{ fileDiff: FileDiffMetadata }>;
 

@@ -1,4 +1,4 @@
-import { fontStack } from "../fonts.ts";
+import { fontStack } from "#src/fonts.ts";
 
 window.piUi.fonts = {
 	apply(mono, sans) {

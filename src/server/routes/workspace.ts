@@ -1,23 +1,13 @@
 import { basename, dirname, extname, join } from "node:path";
 
-import { renderMarkdownFinal } from "../../ui/markdown.tsx";
-import {
-	renderWorkspaceBrowserContent,
-	renderWorkspaceBrowserError,
-} from "../../ui/pickers.tsx";
-import {
-	renderWorktreeDialogContent,
-	renderWorktreeIgnoredPaths,
-} from "../../ui/worktree-dialog.tsx";
-import { isRecord, isString } from "../../utils/type-guards.ts";
 import {
 	booleanField,
 	readActionSignals,
 	requiredString,
 	stringField,
-} from "../action-input.ts";
-import { datastarResponse, signalsResponse } from "../datastar.ts";
-import { canRevealFiles, revealFile } from "../file-manager.ts";
+} from "#src/server/action-input.ts";
+import { datastarResponse, signalsResponse } from "#src/server/datastar.ts";
+import { canRevealFiles, revealFile } from "#src/server/file-manager.ts";
 import {
 	createGitBranch,
 	createGitWorktree,
@@ -28,8 +18,10 @@ import {
 	inspectGitWorktrees,
 	removeGitWorktree,
 	switchGitBranch,
-} from "../git-worktrees.ts";
-import { RouteError, type RouteMap } from "../route.ts";
+} from "#src/server/git-worktrees.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
+import { endpoints, filePreviewUrl } from "#src/server/routes/endpoints.ts";
 import {
 	createWorkspaceEntry,
 	listWorkspaceFiles,
@@ -41,11 +33,19 @@ import {
 	workspaceFilePreview,
 	writeWorkspaceFile,
 	WorkspaceFileError,
-} from "../workspace-files.ts";
-import { findGitRoot } from "../workspace-review.ts";
-import { browseWorkspaceDirectories } from "../workspace-search.ts";
-import type { RouteContext } from "./context.ts";
-import { endpoints, filePreviewUrl } from "./endpoints.ts";
+} from "#src/server/workspace-files.ts";
+import { findGitRoot } from "#src/server/workspace-review.ts";
+import { browseWorkspaceDirectories } from "#src/server/workspace-search.ts";
+import { renderMarkdownFinal } from "#src/ui/markdown.tsx";
+import {
+	renderWorkspaceBrowserContent,
+	renderWorkspaceBrowserError,
+} from "#src/ui/pickers.tsx";
+import {
+	renderWorktreeDialogContent,
+	renderWorktreeIgnoredPaths,
+} from "#src/ui/worktree-dialog.tsx";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export const workspaceRoutes = {
 	[endpoints.workspaceSearch]: {

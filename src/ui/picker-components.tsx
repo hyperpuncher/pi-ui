@@ -1,4 +1,4 @@
-import { syncHtml } from "./sync-html.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function PickerList(props: {
 	id: string;

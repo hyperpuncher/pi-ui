@@ -1,5 +1,5 @@
-import { formatShortcut, shortcutParts } from "../utils/keyboard.ts";
-import { operatingSystem } from "../utils/platform.ts";
+import { formatShortcut, shortcutParts } from "#src/utils/keyboard.ts";
+import { operatingSystem } from "#src/utils/platform.ts";
 
 function shortcutGlyph(part: string): string {
 	const key = part.toLowerCase();

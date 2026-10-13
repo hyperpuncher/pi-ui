@@ -18,12 +18,11 @@ import { AppStore } from "#src/state/app-store.ts";
 import { appWorktreeRoot } from "#src/utils/workspace.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
 import { makeTempFile } from "#testing/temp";
-
 import {
 	agentSessionEventStub,
 	agentSessionRuntimeStub,
 	sessionManagerStub,
-} from "./test-fixtures.ts";
+} from "#tests/src/agent/test-fixtures.ts";
 
 type Callback = () => void | Promise<void>;
 type ExtensionBindings = Parameters<AgentSessionRuntime["session"]["bindExtensions"]>[0];

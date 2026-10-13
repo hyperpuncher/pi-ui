@@ -8,9 +8,8 @@ import {
 	assertEquals,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
-
-import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
-import { appRenderSnapshot } from "../ui/test-fixtures.ts";
+import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
+import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 
 const ordinary = summary("/sessions/ordinary.json", "Ordinary");
 const running = summary("/sessions/running.json", "Running");

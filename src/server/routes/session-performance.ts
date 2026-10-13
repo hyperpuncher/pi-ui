@@ -1,10 +1,10 @@
 import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
-import { sessionPerformance } from "../../perf/session-performance.ts";
-import { RouteError, type RouteMap } from "../route.ts";
-import type { RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+import { sessionPerformance } from "#src/perf/session-performance.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 
 const maxClientTransitionMs = 60_000;
 

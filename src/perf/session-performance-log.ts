@@ -1,9 +1,9 @@
 import { appendFile, mkdir, stat, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import { appCachePath } from "../utils/app-dirs.ts";
-import { isNotFound } from "../utils/fs-errors.ts";
-import type { JsonValue } from "../utils/json-types.ts";
+import { appCachePath } from "#src/utils/app-dirs.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
+import type { JsonValue } from "#src/utils/json-types.ts";
 
 const maxLogBytes = 5 * 1024 * 1024;
 let pendingWrite = Promise.resolve();

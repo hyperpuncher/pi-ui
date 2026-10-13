@@ -1,10 +1,10 @@
-import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
-import { sessionPerformance } from "../perf/session-performance.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { primaryModifierExpression } from "../utils/keyboard.ts";
-import { Icon } from "./icon.tsx";
-import { syncHtml } from "./sync-html.ts";
+import { sessionTransitionOverlayVisible } from "#src/agent/session-transition-controller.ts";
+import { sessionPerformance } from "#src/perf/session-performance.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { primaryModifierExpression } from "#src/utils/keyboard.ts";
 
 export function resumeSessionAction(
 	path: string,

@@ -1,7 +1,7 @@
-import { optionalString, readActionSignals } from "../action-input.ts";
-import type { RouteMap } from "../route.ts";
-import type { RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+import { optionalString, readActionSignals } from "#src/server/action-input.ts";
+import type { RouteMap } from "#src/server/route.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 
 export const streamRoutes = {
 	[endpoints.notificationsStream]: {

@@ -1,4 +1,4 @@
-import type { BackgroundSessionStatus } from "../state/app-store.ts";
+import type { BackgroundSessionStatus } from "#src/state/app-store.ts";
 
 export type OwnedBackgroundRuntime = {
 	generation: number;

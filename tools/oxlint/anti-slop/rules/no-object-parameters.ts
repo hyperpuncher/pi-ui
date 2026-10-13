@@ -4,12 +4,12 @@ import type { ESTree } from "@oxlint/plugins";
 import {
 	functionParameterBindingName,
 	functionParameterTypeAnnotation,
-} from "../shared/function-parameters.ts";
+} from "#tools/oxlint/anti-slop/shared/function-parameters.ts";
 import {
 	createTypeAliasEnvironment,
 	resolvedTypeMatches,
 	type TypeAliasEnvironment,
-} from "../shared/type-alias-resolution.ts";
+} from "#tools/oxlint/anti-slop/shared/type-alias-resolution.ts";
 type ParameterOwner =
 	| ESTree.ArrowFunctionExpression
 	| ESTree.Function

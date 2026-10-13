@@ -3,7 +3,7 @@ import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web
 import Type from "typebox";
 import { Compile } from "typebox/compile";
 
-import { isBoolean, isRecord, isString } from "../utils/type-guards.ts";
+import { isBoolean, isRecord, isString } from "#src/utils/type-guards.ts";
 
 export class ActionInputError extends Error {
 	readonly status = 400;

@@ -1,7 +1,7 @@
-import { errorResponse } from "./datastar.ts";
-import { executeRoute, type RouteHandler } from "./route.ts";
-import { appRoutes } from "./routes.ts";
-import type { RouteContext } from "./routes/context.ts";
+import { errorResponse } from "#src/server/datastar.ts";
+import { executeRoute, type RouteHandler } from "#src/server/route.ts";
+import { appRoutes } from "#src/server/routes.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
 
 let appPromise: ReturnType<typeof loadApp> | undefined;
 
@@ -56,8 +56,8 @@ async function loadApp() {
 	const [{ registerBunOAuthFlows }, { createApp }, { compressResponse }] =
 		await Promise.all([
 			import("@earendil-works/pi-ai/bun-oauth"),
-			import("./app.ts"),
-			import("./compression.ts"),
+			import("#src/server/app.ts"),
+			import("#src/server/compression.ts"),
 		]);
 	registerBunOAuthFlows();
 	return { app: await createApp(), compressResponse };

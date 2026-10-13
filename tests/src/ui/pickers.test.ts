@@ -16,8 +16,7 @@ import {
 	renderWorktreePicker,
 } from "#src/ui/prompt-pickers.tsx";
 import { assertFalse, assertStringIncludes } from "#testing/assertions";
-
-import { appRenderSnapshot } from "./test-fixtures.ts";
+import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 
 test("slash picker anchors its selected result nearest the prompt", () => {
 	const html = renderSlashPicker(

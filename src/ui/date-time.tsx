@@ -1,4 +1,4 @@
-import { formatFullDateTime } from "../utils/locale.ts";
+import { formatFullDateTime } from "#src/utils/locale.ts";
 
 type DateTimeProps = {
 	class?: string | false;

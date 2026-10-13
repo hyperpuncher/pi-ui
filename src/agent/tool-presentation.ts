@@ -1,11 +1,11 @@
-import { stripAnsi } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/ansi.js";
+import { stripAnsi } from "#pi/utils/ansi.js";
 import type {
 	TranscriptMessageAttachment,
 	TranscriptMessageTitlePart,
-} from "../state/transcript-state.ts";
-import type { JsonValue } from "../utils/json-types.ts";
-import { asRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
-import { formatHomePath } from "../utils/workspace.ts";
+} from "#src/state/transcript-state.ts";
+import type { JsonValue } from "#src/utils/json-types.ts";
+import { asRecord, isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
+import { formatHomePath } from "#src/utils/workspace.ts";
 
 const bashPreviewLines = 4;
 const bashCompactThreshold = 7;

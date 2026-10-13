@@ -6,8 +6,7 @@ import {
 } from "#src/server/datastar-client-hub.ts";
 import { DatastarStream } from "#src/server/datastar.ts";
 import { assertEquals, assertStringIncludes } from "#testing/assertions";
-
-import { assertStringExcludes } from "../testing/assertions.ts";
+import { assertStringExcludes } from "#testing/assertions";
 
 test("hub connects, sends an initial view, broadcasts fat and targeted patches, and aborts", async () => {
 	const hub = new DatastarClientHub();

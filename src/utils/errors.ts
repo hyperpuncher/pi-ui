@@ -1,4 +1,4 @@
-import { isRecord, isString } from "./type-guards.ts";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export function errorMessage(error: ErrorOptions["cause"]): string {
 	return Error.isError(error) ? error.message : String(error);

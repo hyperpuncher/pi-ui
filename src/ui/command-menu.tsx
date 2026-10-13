@@ -1,8 +1,8 @@
-import { commandActions } from "../commands/actions.ts";
-import { appCommandCatalog, type AppCommandMetadata } from "../commands/catalog.ts";
-import { activeKeybind } from "../keybinds.ts";
-import { ShortcutKbd } from "./keyboard.tsx";
-import { syncHtml } from "./sync-html.ts";
+import { commandActions } from "#src/commands/actions.ts";
+import { appCommandCatalog, type AppCommandMetadata } from "#src/commands/catalog.ts";
+import { activeKeybind } from "#src/keybinds.ts";
+import { ShortcutKbd } from "#src/ui/keyboard.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export const resetCommandDialogOnOpen = `if (evt.newState === 'open') {
 	const input = el.querySelector('search input');

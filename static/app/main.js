@@ -1,9 +1,13 @@
-import { bindCodeCopy } from "./code-copy.js";
-import { activateCommandItem, bindControls, refreshControls } from "./controls.js";
-import { hydrateDateTime } from "./date-time.js";
-import { bindDebugFrames } from "./debug-frames.js";
-import { bindFileLinks } from "./file-links.js";
-import * as fileTransfer from "./file-transfer.js";
+import { bindCodeCopy } from "#static/app/code-copy.js";
+import {
+	activateCommandItem,
+	bindControls,
+	refreshControls,
+} from "#static/app/controls.js";
+import { hydrateDateTime } from "#static/app/date-time.js";
+import { bindDebugFrames } from "#static/app/debug-frames.js";
+import { bindFileLinks } from "#static/app/file-links.js";
+import * as fileTransfer from "#static/app/file-transfer.js";
 import {
 	afterUpdate,
 	beforeUpdate,
@@ -13,8 +17,8 @@ import {
 	isReading,
 	scrollBottom,
 	trimOldMessages,
-} from "./message-scroll.js";
-import { requestPermission, show } from "./notifications.js";
+} from "#static/app/message-scroll.js";
+import { requestPermission, show } from "#static/app/notifications.js";
 import {
 	bindPickers,
 	closePickers,
@@ -22,16 +26,16 @@ import {
 	isFileOpen,
 	isOpen as isPickerOpen,
 	syncPickerSelection,
-} from "./pickers.js";
-import { createPromptHistory } from "./prompt-history.js";
-import { focusPromptEnd, setPromptValue } from "./prompt.js";
+} from "#static/app/pickers.js";
+import { createPromptHistory } from "#static/app/prompt-history.js";
+import { focusPromptEnd, setPromptValue } from "#static/app/prompt.js";
 import {
 	readTransitionState,
 	startSessionPerformanceMeasurement,
-} from "./session-performance.js";
-import { bindTooltips } from "./tooltips.js";
-import { bindVimScroll } from "./vim-scroll.js";
-import { windowFocus } from "./window-focus.js";
+} from "#static/app/session-performance.js";
+import { bindTooltips } from "#static/app/tooltips.js";
+import { bindVimScroll } from "#static/app/vim-scroll.js";
+import { windowFocus } from "#static/app/window-focus.js";
 
 const promptHistory = createPromptHistory();
 
@@ -98,8 +102,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 	bindDebugFrames();
 
 	await Promise.all([
-		import("../../src/client/fonts.ts"),
-		import("../../src/client/code-theme.ts"),
-		import("../../src/client/workspace-review.ts"),
+		import("#src/client/fonts.ts"),
+		import("#src/client/code-theme.ts"),
+		import("#src/client/workspace-review.ts"),
 	]);
 });

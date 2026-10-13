@@ -1,6 +1,6 @@
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppLlamaDialog, AppLlamaModel } from "../state/app-store.ts";
-import { syncHtml } from "./sync-html.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppLlamaDialog, AppLlamaModel } from "#src/state/app-store.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderLlamaDialog(dialog: AppLlamaDialog | undefined): string {
 	return syncHtml(

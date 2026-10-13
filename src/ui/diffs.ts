@@ -6,7 +6,7 @@ import {
 } from "@pierre/diffs";
 import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
 
-import { getPierreThemes } from "../pierre-theme.ts";
+import { getPierreThemes } from "#src/pierre-theme.ts";
 
 const pierreUnsafeCSS = `
 	::selection {

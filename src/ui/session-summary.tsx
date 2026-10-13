@@ -1,12 +1,12 @@
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppSessionSummary } from "../state/app-store.ts";
-import { formatMessageCount } from "../utils/format.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppSessionSummary } from "#src/state/app-store.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { formatMessageCount } from "#src/utils/format.ts";
 import {
 	formatHomePath,
 	managedWorktreeParts,
 	workspaceDisplayName,
-} from "../utils/workspace.ts";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/utils/workspace.ts";
 
 export function SessionSubtitle(props: {
 	session: AppSessionSummary;

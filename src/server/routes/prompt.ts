@@ -1,6 +1,6 @@
 import type { ImageContent } from "@earendil-works/pi-ai";
 
-import { resizeImage } from "../../image-resize.ts";
+import { resizeImage } from "#src/image-resize.ts";
 import {
 	ActionInputError,
 	enumField,
@@ -8,16 +8,16 @@ import {
 	readActionSignals,
 	requiredString,
 	stringField,
-} from "../action-input.ts";
-import { datastarResponse, signalsResponse } from "../datastar.ts";
-import { RouteError, type RouteMap } from "../route.ts";
+} from "#src/server/action-input.ts";
+import { datastarResponse, signalsResponse } from "#src/server/datastar.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 import {
 	TransferredFileError,
 	validateTransferContentLength,
 	validateTransferredFiles,
-} from "../transferred-files.ts";
-import { requireHost, type RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+} from "#src/server/transferred-files.ts";
 
 export const promptRoutes = {
 	[endpoints.slashSearch]: {

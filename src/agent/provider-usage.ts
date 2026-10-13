@@ -1,7 +1,7 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
-import { withAgentHttpProxy } from "../utils/http-proxy.ts";
-import type { JsonValue } from "../utils/json-types.ts";
+import { withAgentHttpProxy } from "#src/utils/http-proxy.ts";
+import type { JsonValue } from "#src/utils/json-types.ts";
 
 const usageTimeoutMs = 15_000;
 

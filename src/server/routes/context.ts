@@ -1,10 +1,10 @@
-import type { RuntimeController } from "../../agent/runtime-controller.ts";
-import type { AppStore } from "../../state/app-store.ts";
-import type { UiRenderer } from "../../ui/ui-renderer.ts";
-import type { DatastarClientHub } from "../datastar-client-hub.ts";
-import { RouteError } from "../route.ts";
-import type { SessionImageStore } from "../session-image-store.ts";
-import type { TransferredFileStore } from "../transferred-files.ts";
+import type { RuntimeController } from "#src/agent/runtime-controller.ts";
+import type { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
+import { RouteError } from "#src/server/route.ts";
+import type { SessionImageStore } from "#src/server/session-image-store.ts";
+import type { TransferredFileStore } from "#src/server/transferred-files.ts";
+import type { AppStore } from "#src/state/app-store.ts";
+import type { UiRenderer } from "#src/ui/ui-renderer.ts";
 
 export type RouteRuntime = Pick<
 	RuntimeController,

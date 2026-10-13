@@ -1,4 +1,4 @@
-import { isRecord, isString } from "../utils/type-guards.ts";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export function providerErrorPresentation(raw: string) {
 	const text = raw.trim();

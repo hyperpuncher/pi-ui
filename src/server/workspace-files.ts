@@ -11,7 +11,7 @@ import {
 } from "node:fs/promises";
 import * as path from "node:path";
 
-import { isAlreadyExists, isNotFound, isPermissionDenied } from "../utils/fs-errors.ts";
+import { isAlreadyExists, isNotFound, isPermissionDenied } from "#src/utils/fs-errors.ts";
 
 const maxDirectoryCount = 20_000;
 const maxEntryCount = 20_000;

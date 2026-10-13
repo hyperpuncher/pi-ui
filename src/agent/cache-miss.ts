@@ -3,8 +3,8 @@ import {
 	collectCacheMisses,
 	detectCacheMiss,
 	type CacheMiss,
-} from "../../node_modules/@earendil-works/pi-coding-agent/dist/core/cache-stats.js";
-import { formatTokens } from "../utils/format.ts";
+} from "#pi/core/cache-stats.js";
+import { formatTokens } from "#src/utils/format.ts";
 
 const noticeTokenThreshold = 20_000;
 const noticeCostThreshold = 0.1;

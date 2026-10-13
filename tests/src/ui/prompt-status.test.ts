@@ -2,8 +2,7 @@ import { test } from "bun:test";
 
 import { renderUsageIndicators } from "#src/ui/prompt-status.tsx";
 import { assertStringIncludes } from "#testing/assertions";
-
-import { appRenderSnapshot } from "./test-fixtures.ts";
+import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 
 test("usage fallback explains unavailable context and preserves session cost", () => {
 	const snapshot = appRenderSnapshot({

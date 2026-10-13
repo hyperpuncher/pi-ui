@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import * as path from "node:path";
 
-import { expandHomePath } from "../utils/workspace.ts";
+import { expandHomePath } from "#src/utils/workspace.ts";
 
 export type WorkspaceSuggestion = {
 	path: string;

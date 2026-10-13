@@ -1,18 +1,18 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 
+import type { formatCacheMissNotice } from "#src/agent/cache-miss.ts";
+import {
+	formatProviderErrorMessage,
+	isAbortErrorMessage,
+} from "#src/agent/provider-error-message.ts";
+import { contentToText } from "#src/agent/tool-presentation.ts";
 import type {
 	TranscriptMessage,
 	TranscriptMessageInput,
 	TranscriptMessageOptions,
-} from "../state/transcript-state.ts";
-import type { JsonValue } from "../utils/json-types.ts";
-import { isString } from "../utils/type-guards.ts";
-import type { formatCacheMissNotice } from "./cache-miss.ts";
-import {
-	formatProviderErrorMessage,
-	isAbortErrorMessage,
-} from "./provider-error-message.ts";
-import { contentToText } from "./tool-presentation.ts";
+} from "#src/state/transcript-state.ts";
+import type { JsonValue } from "#src/utils/json-types.ts";
+import { isString } from "#src/utils/type-guards.ts";
 
 type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 	AgentSessionEvent,

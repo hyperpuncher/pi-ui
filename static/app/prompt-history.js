@@ -1,4 +1,4 @@
-import { promptInput, setPromptValue } from "./prompt.js";
+import { promptInput, setPromptValue } from "#static/app/prompt.js";
 
 export class PromptHistoryNavigator {
 	#entries = [];

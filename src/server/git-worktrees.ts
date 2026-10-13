@@ -1,9 +1,9 @@
 import { mkdir, realpath, stat } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 
-import { isNotFound } from "../utils/fs-errors.ts";
-import { appWorktreeRoot, managedWorktreeDirectoryName } from "../utils/workspace.ts";
-import { type CommandOutput, gitText, runGit } from "./git.ts";
+import { type CommandOutput, gitText, runGit } from "#src/server/git.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
+import { appWorktreeRoot, managedWorktreeDirectoryName } from "#src/utils/workspace.ts";
 
 export type GitWorktree = Readonly<{
 	path: string;

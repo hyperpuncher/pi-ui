@@ -1,6 +1,6 @@
 import type { FileTree, FileTreeBatchOperation } from "@pierre/trees";
 
-import { isBoolean, isRecord } from "../utils/type-guards.ts";
+import { isBoolean, isRecord } from "#src/utils/type-guards.ts";
 
 function pathsWithAncestors(paths: readonly string[]): Set<string> {
 	const result = new Set(paths);

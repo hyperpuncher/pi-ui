@@ -6,8 +6,7 @@ import {
 } from "#src/agent/usage-controller.ts";
 import type { AppUsage } from "#src/state/app-store.ts";
 import { assertEquals } from "#testing/assertions";
-
-import { agentSessionRuntimeStub } from "./test-fixtures.ts";
+import { agentSessionRuntimeStub } from "#tests/src/agent/test-fixtures.ts";
 
 const sessionStats = {
 	getSessionStats: () => ({

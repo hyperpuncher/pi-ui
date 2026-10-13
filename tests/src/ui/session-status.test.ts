@@ -3,8 +3,7 @@ import { test } from "bun:test";
 import { renderSessionPickerContent } from "#src/ui/pickers.tsx";
 import { renderSessionSidebarContent } from "#src/ui/session-sidebar.tsx";
 import { assertFalse, assertStringIncludes } from "#testing/assertions";
-
-import { appRenderSnapshot } from "./test-fixtures.ts";
+import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 
 for (const [name, render] of [
 	["sidebar", renderSessionSidebarContent],

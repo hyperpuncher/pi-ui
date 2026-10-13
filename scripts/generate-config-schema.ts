@@ -1,10 +1,10 @@
 import Type from "typebox";
 
-import { defaultAutoTitleConfig } from "../src/agent/auto-title.ts";
-import { codeThemesFor, defaultCodeThemes } from "../src/code-themes.ts";
-import { appConfigSchemaUrl } from "../src/config-schema.ts";
-import { defaultFonts, FONT_OPTIONS } from "../src/fonts.ts";
-import { keybindIds } from "../src/keybinds.ts";
+import { defaultAutoTitleConfig } from "#src/agent/auto-title.ts";
+import { codeThemesFor, defaultCodeThemes } from "#src/code-themes.ts";
+import { appConfigSchemaUrl } from "#src/config-schema.ts";
+import { defaultFonts, FONT_OPTIONS } from "#src/fonts.ts";
+import { keybindIds } from "#src/keybinds.ts";
 import {
 	sessionSidebarArchiveAfterDaysDefault,
 	sessionSidebarArchiveAfterDaysMax,
@@ -12,7 +12,7 @@ import {
 	sessionSidebarWidthDefault,
 	sessionSidebarWidthMax,
 	sessionSidebarWidthMin,
-} from "../src/session-sidebar-types.ts";
+} from "#src/session-sidebar-types.ts";
 import {
 	changesRatioDefault,
 	changesRatioMax,
@@ -23,7 +23,7 @@ import {
 	reviewSidebarWidthDefault,
 	reviewSidebarWidthMax,
 	reviewSidebarWidthMin,
-} from "../src/workspace-review-types.ts";
+} from "#src/workspace-review-types.ts";
 
 const codeThemes = defaultCodeThemes();
 const fonts = defaultFonts();

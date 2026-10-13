@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 
-import { setEmbeddedQuickJSWasmPath } from "../../node_modules/@earendil-works/pi-coding-agent/dist/config.js";
-import wasmPath from "../../node_modules/quickjs-wasi/quickjs.wasm" with { type: "file" };
+import wasmPath from "quickjs-wasi/quickjs.wasm" with { type: "file" };
+
+import { setEmbeddedQuickJSWasmPath } from "#pi/config.js";
 
 setEmbeddedQuickJSWasmPath(resolve(import.meta.dir, wasmPath));

@@ -18,9 +18,8 @@ import {
 	assertEquals as assertEqual,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
-
-import { assertStringExcludes as assertNotIncludes } from "../testing/assertions.ts";
-import { readUntil, responseReader } from "../testing/streams.ts";
+import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
+import { readUntil, responseReader } from "#testing/streams.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
 

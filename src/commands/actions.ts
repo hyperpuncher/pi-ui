@@ -1,6 +1,6 @@
-import { endpoints } from "../server/routes/endpoints.ts";
-import { previousSessionAction } from "../ui/session-transition.tsx";
-import type { AppCommandId } from "./catalog.ts";
+import type { AppCommandId } from "#src/commands/catalog.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import { previousSessionAction } from "#src/ui/session-transition.tsx";
 
 export function newSessionAction(temporary = false): string {
 	const endpoint = temporary ? endpoints.sessionsNewTemporary : endpoints.sessionsNew;

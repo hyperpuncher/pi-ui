@@ -1,6 +1,6 @@
-import { outputCommand } from "./command.ts";
-import { isNotFound } from "./fs-errors.ts";
-import { operatingSystem } from "./platform.ts";
+import { outputCommand } from "#src/utils/command.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
+import { operatingSystem } from "#src/utils/platform.ts";
 
 type TrashCommand = { command: string; args: string[] };
 

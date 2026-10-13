@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 
-import { comparePackageVersions } from "../node_modules/@earendil-works/pi-coding-agent/dist/utils/version-check.js";
-import { asRecord, isString } from "./utils/type-guards.ts";
-import { version as currentVersion } from "./version.ts";
+import { comparePackageVersions } from "#pi/utils/version-check.js";
+import { asRecord, isString } from "#src/utils/type-guards.ts";
+import { version as currentVersion } from "#src/version.ts";
 
 export type AvailableUpdate = {
 	readonly currentVersion: string;

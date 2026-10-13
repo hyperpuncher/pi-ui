@@ -1,6 +1,6 @@
-import { ActionInputError } from "./action-input.ts";
-import { errorResponse } from "./datastar.ts";
-import { WorkspaceFileError } from "./workspace-files.ts";
+import { ActionInputError } from "#src/server/action-input.ts";
+import { errorResponse } from "#src/server/datastar.ts";
+import { WorkspaceFileError } from "#src/server/workspace-files.ts";
 
 export type RouteHandler<Context> = (
 	request: Request,

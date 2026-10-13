@@ -13,8 +13,7 @@ import type {
 	TranscriptMessageOptions,
 } from "#src/state/transcript-state.ts";
 import { assertEquals } from "#testing/assertions";
-
-import { agentSessionEventStub } from "./test-fixtures.ts";
+import { agentSessionEventStub } from "#tests/src/agent/test-fixtures.ts";
 
 class FakeState implements SessionEventStateSink {
 	readonly appended: Array<{

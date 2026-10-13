@@ -6,11 +6,11 @@ import {
 } from "@pierre/diffs";
 import { flatTokenVariants } from "shiki/core";
 
-import { getActiveCodeThemeId, getPierreThemes } from "../pierre-theme.ts";
-import type { JsonObject, JsonValue } from "../utils/json-types.ts";
-import { isRecord, isString } from "../utils/type-guards.ts";
-import { loadPierreLanguage } from "./diffs.ts";
-import { BoundedCache } from "./render-cache.ts";
+import { getActiveCodeThemeId, getPierreThemes } from "#src/pierre-theme.ts";
+import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { BoundedCache } from "#src/ui/render-cache.ts";
+import type { JsonObject, JsonValue } from "#src/utils/json-types.ts";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 // Share script tokens across commands with different wrappers, arguments or redirects.
 const scriptTokens = new BoundedCache<string, ThemedToken[]>(128, {

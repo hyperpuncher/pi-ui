@@ -1,5 +1,10 @@
-import { clamp } from "./utils/clamp.ts";
-import { isBoolean, isNumber, isRecord, type JsonRecord } from "./utils/type-guards.ts";
+import { clamp } from "#src/utils/clamp.ts";
+import {
+	isBoolean,
+	isNumber,
+	isRecord,
+	type JsonRecord,
+} from "#src/utils/type-guards.ts";
 
 export const sessionSidebarWidthMin = 224;
 export const sessionSidebarWidthMax = 384;

@@ -1,22 +1,22 @@
-import { isRecord, isString } from "../../utils/type-guards.ts";
-import {
-	formatWorkspaceReviewPrompt,
-	parseWorkspaceReviewComments,
-} from "../../workspace-review-comments.ts";
-import { normalizeWorkspaceReviewPreferences } from "../../workspace-review-types.ts";
-import { readActionSignals } from "../action-input.ts";
-import { updateAppConfig } from "../app-config.ts";
-import { datastarResponse } from "../datastar.ts";
-import { RouteError, type RouteMap } from "../route.ts";
+import { readActionSignals } from "#src/server/action-input.ts";
+import { updateAppConfig } from "#src/server/app-config.ts";
+import { datastarResponse } from "#src/server/datastar.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 import {
 	discardWorkspaceChange,
 	readWorkspaceCommit,
 	readWorkspaceDiff,
 	readWorkspaceHistory,
 	WorkspaceReviewError,
-} from "../workspace-review.ts";
-import { requireHost, type RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+} from "#src/server/workspace-review.ts";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
+import {
+	formatWorkspaceReviewPrompt,
+	parseWorkspaceReviewComments,
+} from "#src/workspace-review-comments.ts";
+import { normalizeWorkspaceReviewPreferences } from "#src/workspace-review-types.ts";
 
 export const workspaceReviewRoutes = {
 	[endpoints.workspaceReviewPreferences]: {

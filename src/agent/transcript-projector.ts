@@ -5,21 +5,12 @@ import {
 	type SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 
-import type {
-	TranscriptMessageInput,
-	TranscriptState,
-} from "../state/transcript-state.ts";
-import {
-	attachmentDisplayName,
-	splitLeadingAttachmentReferences,
-} from "../utils/attachment-references.ts";
-import { isRecord, isString } from "../utils/type-guards.ts";
-import { collectCacheMisses, formatCacheMissNotice } from "./cache-miss.ts";
+import { collectCacheMisses, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
 import {
 	formatProviderErrorMessage,
 	isAbortErrorMessage,
-} from "./provider-error-message.ts";
-import type { ToolArguments } from "./session-event-reducer.ts";
+} from "#src/agent/provider-error-message.ts";
+import type { ToolArguments } from "#src/agent/session-event-reducer.ts";
 import {
 	compactToolOutput,
 	contentToText,
@@ -29,7 +20,16 @@ import {
 	toolResultImageAttachments,
 	toolTitle,
 	toolTitleParts,
-} from "./tool-presentation.ts";
+} from "#src/agent/tool-presentation.ts";
+import type {
+	TranscriptMessageInput,
+	TranscriptState,
+} from "#src/state/transcript-state.ts";
+import {
+	attachmentDisplayName,
+	splitLeadingAttachmentReferences,
+} from "#src/utils/attachment-references.ts";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export type ProjectedTranscript = Pick<TranscriptState, "replaceMessages">;
 type AgentMessage = Extract<AgentSessionEvent, { type: "message_start" }>["message"];

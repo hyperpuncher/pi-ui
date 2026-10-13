@@ -4,9 +4,9 @@ import {
 	fontLabel,
 	fontStack,
 	getActiveFonts,
-} from "../fonts.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/fonts.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 const codePreview = `type User = { name: string };
 

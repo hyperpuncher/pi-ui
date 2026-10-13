@@ -1,12 +1,12 @@
-import { isString } from "../../src/utils/type-guards.ts";
-import { fileUriToPath } from "../file-uri.js";
+import { isString } from "#src/utils/type-guards.ts";
 import {
 	attachmentFileExtension,
 	attachmentFileIcons,
 	attachmentFileKind,
-} from "./attachment-file.js";
-import { closePickers } from "./pickers.js";
-import { promptInput } from "./prompt.js";
+} from "#static/app/attachment-file.js";
+import { closePickers } from "#static/app/pickers.js";
+import { promptInput } from "#static/app/prompt.js";
+import { fileUriToPath } from "#static/file-uri.js";
 
 const FILE_REFERENCE_TYPES = [
 	"text/uri-list",

@@ -5,7 +5,7 @@ import {
 	createTypeAliasEnvironment,
 	resolvedTypeMatches,
 	type TypeAliasEnvironment,
-} from "../shared/type-alias-resolution.ts";
+} from "#tools/oxlint/anti-slop/shared/type-alias-resolution.ts";
 
 type FunctionWithReturnType =
 	| ESTree.ArrowFunctionExpression

@@ -2,9 +2,9 @@ import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
-import type { JsonValue } from "../utils/json-types.ts";
-import { fetchProviderUsagePayload } from "./provider-usage.ts";
-import { formatRemainingTime, remainingPercent } from "./usage-format.ts";
+import { fetchProviderUsagePayload } from "#src/agent/provider-usage.ts";
+import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
+import type { JsonValue } from "#src/utils/json-types.ts";
 
 const opencodeGoProviderId = "opencode-go";
 const opencodeGoUsageUrl = "https://opencode.ai/zen/go/v1/usage";

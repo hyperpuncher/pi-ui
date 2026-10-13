@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { isNotFound } from "../utils/fs-errors.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
 
 export const MAX_TRANSFER_FILES = 10;
 export const MAX_TRANSFER_FILE_BYTES = 20 * 1024 * 1024;

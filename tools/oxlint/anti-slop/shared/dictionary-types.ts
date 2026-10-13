@@ -5,7 +5,7 @@ import {
 	hasVisibleTypeBinding,
 	visibleTypeAlias,
 	type TypeAliasEnvironment as LexicalTypeAliasEnvironment,
-} from "./type-alias-resolution.ts";
+} from "#tools/oxlint/anti-slop/shared/type-alias-resolution.ts";
 
 const BUILT_INS = new Set([
 	"Record",

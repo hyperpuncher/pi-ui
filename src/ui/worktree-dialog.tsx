@@ -1,8 +1,8 @@
-import type { GitBranch, GitWorktreeContext } from "../server/git-worktrees.ts";
-import { defaultWorktreeBase } from "../server/git-worktrees.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import { Icon } from "./icon.tsx";
-import { syncHtml } from "./sync-html.ts";
+import type { GitBranch, GitWorktreeContext } from "#src/server/git-worktrees.ts";
+import { defaultWorktreeBase } from "#src/server/git-worktrees.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderWorktreeDialog(): string {
 	return syncHtml(

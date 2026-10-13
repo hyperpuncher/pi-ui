@@ -1,10 +1,10 @@
-import { responseErrorMessage } from "../utils/errors.ts";
+import { responseErrorMessage } from "#src/utils/errors.ts";
 import {
 	isWorkspaceCommitDetail,
 	isWorkspaceCommitHistory,
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
-} from "../workspace-review-types.ts";
+} from "#src/workspace-review-types.ts";
 
 export function createWorkspaceReviewApi(endpoint: string) {
 	return {

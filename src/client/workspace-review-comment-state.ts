@@ -4,7 +4,7 @@ import {
 	type SelectedLineRange,
 } from "@pierre/diffs";
 
-import type { WorkspaceReviewComment } from "../workspace-review-comments.ts";
+import type { WorkspaceReviewComment } from "#src/workspace-review-comments.ts";
 
 export type ReviewCommentMetadata = {
 	body: string | null;

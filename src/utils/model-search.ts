@@ -1,4 +1,4 @@
-import { getModelSelectorSearchText } from "../../node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/model-search.js";
+import { getModelSelectorSearchText } from "#pi/modes/interactive/model-search.js";
 
 export function modelSearchText(id: string, provider: string, name: string): string {
 	// Preserve camel-case boundaries that pi's case-insensitive matcher cannot see.

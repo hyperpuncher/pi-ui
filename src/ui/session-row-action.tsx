@@ -1,7 +1,7 @@
-import type { AppSessionSummary } from "../state/app-store.ts";
-import { ShortcutKbd } from "./keyboard.tsx";
-import { SessionDeleteButton } from "./session-delete-button.tsx";
-import { syncHtml } from "./sync-html.ts";
+import type { AppSessionSummary } from "#src/state/app-store.ts";
+import { ShortcutKbd } from "#src/ui/keyboard.tsx";
+import { SessionDeleteButton } from "#src/ui/session-delete-button.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function SessionRowAction(props: {
 	session: AppSessionSummary;

@@ -9,7 +9,7 @@ import type {
 	AppExtensionDialog,
 	AppExtensionWidget,
 	AppStore,
-} from "../state/app-store.ts";
+} from "#src/state/app-store.ts";
 
 const defaultWorkingVisible = true;
 // SAFETY: the proxy throws before exposing any property from the placeholder.

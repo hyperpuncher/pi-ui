@@ -2,17 +2,17 @@ import {
 	newSessionAction,
 	toggleDialogAction,
 	toggleWorkspaceReviewAction,
-} from "../commands/actions.ts";
+} from "#src/commands/actions.ts";
 import {
 	activeKeybind,
 	keybindAction,
 	keybindAria,
 	type KeybindId,
-} from "../keybinds.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { Icon, type IconName } from "./icon.tsx";
-import { ShortcutTooltip } from "./keyboard.tsx";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/keybinds.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { Icon, type IconName } from "#src/ui/icon.tsx";
+import { ShortcutTooltip } from "#src/ui/keyboard.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 type ToolbarAction =
 	| "commands"

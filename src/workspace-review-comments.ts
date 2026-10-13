@@ -1,7 +1,7 @@
 import Type from "typebox";
 import { Compile } from "typebox/compile";
 
-import { isRecord, isString, type JsonRecord } from "./utils/type-guards.ts";
+import { isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
 
 const maximumCommentCount = 100;
 const maximumCommentLength = 20_000;

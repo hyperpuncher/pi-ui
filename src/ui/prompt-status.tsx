@@ -1,9 +1,9 @@
-import type { AppUsage, AppUsageLimits } from "../state/app-store.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { clamp } from "../utils/clamp.ts";
-import { formatTokens } from "../utils/format.ts";
-import { Icon } from "./icon.tsx";
-import { syncHtml } from "./sync-html.ts";
+import type { AppUsage, AppUsageLimits } from "#src/state/app-store.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { clamp } from "#src/utils/clamp.ts";
+import { formatTokens } from "#src/utils/format.ts";
 
 export function renderPromptStatus(state: AppStateSnapshot): string {
 	const activityText = state.extensionWorkingMessage ?? state.activityText;

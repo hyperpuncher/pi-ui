@@ -2,10 +2,10 @@ import {
 	CODE_THEME_PREVIEW,
 	codeThemesFor,
 	type CodeThemeOption,
-} from "../code-themes.ts";
-import { getPierreThemes } from "../pierre-theme.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import { syncHtml } from "./sync-html.ts";
+} from "#src/code-themes.ts";
+import { getPierreThemes } from "#src/pierre-theme.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderCodeThemeDialog(): string {
 	const active = getPierreThemes();

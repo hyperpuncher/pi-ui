@@ -1,4 +1,4 @@
-import { resolvePath } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/paths.js";
+import { resolvePath } from "#pi/utils/paths.js";
 
 export type SessionResumeRuntimeState = {
 	active: boolean;

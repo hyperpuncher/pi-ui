@@ -1,5 +1,5 @@
-import { DEFAULT_PIERRE_THEMES, type PierreThemes } from "./pierre-theme.ts";
-import { isRecord, isString } from "./utils/type-guards.ts";
+import { DEFAULT_PIERRE_THEMES, type PierreThemes } from "#src/pierre-theme.ts";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export type CodeThemeAppearance = keyof PierreThemes;
 export type CodeThemeOption = Readonly<{

@@ -1,4 +1,4 @@
-import icons from "./icons.json";
+import icons from "#src/ui/icons.json";
 
 export type IconName = keyof typeof icons;
 

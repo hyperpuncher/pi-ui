@@ -1,4 +1,4 @@
-import { markUnpinned, scrollBottom } from "./message-scroll.js";
+import { markUnpinned, scrollBottom } from "#static/app/message-scroll.js";
 
 const stepPx = 100;
 const stepDurationMs = 120;

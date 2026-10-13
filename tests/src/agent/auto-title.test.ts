@@ -9,8 +9,7 @@ import {
 	sanitizeTitle,
 } from "#src/agent/auto-title.ts";
 import { assertEquals, assertStringIncludes } from "#testing/assertions";
-
-import { agentSessionRuntimeStub } from "./test-fixtures.ts";
+import { agentSessionRuntimeStub } from "#tests/src/agent/test-fixtures.ts";
 
 type TitleModelRuntime = {
 	getAvailableSnapshot(): Array<{ provider: string; id: string }>;

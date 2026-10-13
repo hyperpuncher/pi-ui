@@ -1,5 +1,5 @@
-import { sessionPerformance } from "../perf/session-performance.ts";
-import { datastarStream, type DatastarStream } from "./datastar.ts";
+import { sessionPerformance } from "#src/perf/session-performance.ts";
+import { datastarStream, type DatastarStream } from "#src/server/datastar.ts";
 
 export type DatastarClient = Pick<
 	DatastarStream,

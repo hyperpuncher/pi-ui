@@ -21,6 +21,10 @@
 	"imports": {
 		"#src/*": "./src/*",
 		"#static/*": "./static/*",
+		"#tests/*": "./tests/*",
+		"#testing/*": "./tests/src/testing/*",
+		"#tools/*": "./tools/*",
+		"#package": "./package.json",
 		"#testing/assertions": "./tests/src/testing/assertions.ts",
 		"#testing/temp": "./tests/src/testing/temp.ts"
 	},

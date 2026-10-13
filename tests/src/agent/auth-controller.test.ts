@@ -3,8 +3,7 @@ import { test } from "bun:test";
 import { AuthController } from "#src/agent/auth-controller.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { assertEquals } from "#testing/assertions";
-
-import { agentSessionRuntimeStub } from "./test-fixtures.ts";
+import { agentSessionRuntimeStub } from "#tests/src/agent/test-fixtures.ts";
 
 function nextTurn(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));

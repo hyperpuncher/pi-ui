@@ -1,6 +1,6 @@
 import type { ESTree } from "@oxlint/plugins";
 
-import { lexicalTypeParameterNames } from "./lexical-type-parameters.ts";
+import { lexicalTypeParameterNames } from "#tools/oxlint/anti-slop/shared/lexical-type-parameters.ts";
 
 type VisitorKeys = Readonly<Record<string, readonly string[]>>;
 type TypeScope = ESTree.Node;

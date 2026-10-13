@@ -5,12 +5,12 @@ import {
 	type ThemedToken,
 } from "@pierre/diffs";
 
-import { CODE_THEMES, CODE_THEME_PREVIEW } from "../code-themes.ts";
+import { CODE_THEMES, CODE_THEME_PREVIEW } from "#src/code-themes.ts";
 import {
 	DEFAULT_PIERRE_THEMES,
 	isPierreThemes,
 	type PierreThemes,
-} from "../pierre-theme.ts";
+} from "#src/pierre-theme.ts";
 
 const themeNames = CODE_THEMES.map((theme) => theme.name);
 let previewsPromise: Promise<void> | undefined;

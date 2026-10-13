@@ -1,10 +1,10 @@
 import type { AuthEvent, AuthPrompt, AuthType } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
-import { openBrowser } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/open-browser.js";
-import type { AppAuthDialog, AppAuthProvider, AppStore } from "../state/app-store.ts";
-import { errorMessage } from "../utils/errors.ts";
-import { withAgentHttpProxy } from "../utils/http-proxy.ts";
+import { openBrowser } from "#pi/utils/open-browser.js";
+import type { AppAuthDialog, AppAuthProvider, AppStore } from "#src/state/app-store.ts";
+import { errorMessage } from "#src/utils/errors.ts";
+import { withAgentHttpProxy } from "#src/utils/http-proxy.ts";
 
 type AuthInputResolver = (value: string | undefined) => void;
 

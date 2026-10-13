@@ -5,6 +5,9 @@
 		"module": "Preserve",
 		"moduleDetection": "force",
 		"moduleResolution": "bundler",
+		"paths": {
+			"#pi/*": ["./node_modules/@earendil-works/pi-coding-agent/dist/*"]
+		},
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
 		"jsx": "react-jsx",

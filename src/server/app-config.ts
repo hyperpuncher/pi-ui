@@ -3,10 +3,10 @@ import { dirname } from "node:path";
 
 import { Compile } from "typebox/compile";
 
-import { appConfigSchemaUrl } from "../config-schema.ts";
-import { appConfigPath } from "../utils/app-dirs.ts";
-import { isAlreadyExists, isNotFound } from "../utils/fs-errors.ts";
-import { type JsonObject, JsonObjectSchema } from "../utils/json-types.ts";
+import { appConfigSchemaUrl } from "#src/config-schema.ts";
+import { appConfigPath } from "#src/utils/app-dirs.ts";
+import { isAlreadyExists, isNotFound } from "#src/utils/fs-errors.ts";
+import { type JsonObject, JsonObjectSchema } from "#src/utils/json-types.ts";
 
 export type AppConfig = JsonObject;
 

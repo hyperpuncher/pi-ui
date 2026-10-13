@@ -1,7 +1,7 @@
 import {
 	formatAdaptiveDateTime,
 	formatExpandedDateTime,
-} from "../../src/utils/date-time-format.ts";
+} from "#src/utils/date-time-format.ts";
 
 export function hydrateDateTime(element) {
 	const date = new Date(element.dateTime);

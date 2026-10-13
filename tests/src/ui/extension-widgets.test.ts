@@ -2,8 +2,7 @@ import { test } from "bun:test";
 
 import { renderExtensionWidgets } from "#src/ui/extension-widgets.tsx";
 import { assertStringIncludes } from "#testing/assertions";
-
-import { assertStringExcludes } from "../testing/assertions.ts";
+import { assertStringExcludes } from "#testing/assertions";
 
 test("extension widgets render their placement and escape lines", () => {
 	const html = renderExtensionWidgets(

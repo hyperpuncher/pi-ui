@@ -1,17 +1,17 @@
 import { fuzzyFilter } from "@earendil-works/pi-tui";
 
-import { renderModelOptions } from "../../ui/prompt-pickers.tsx";
-import { modelSearchText } from "../../utils/model-search.ts";
 import {
 	enumField,
 	optionalString,
 	readActionSignals,
 	requiredString,
-} from "../action-input.ts";
-import { datastarResponse } from "../datastar.ts";
-import { RouteError, type RouteMap } from "../route.ts";
-import { requireHost, type RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+} from "#src/server/action-input.ts";
+import { datastarResponse } from "#src/server/datastar.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import { renderModelOptions } from "#src/ui/prompt-pickers.tsx";
+import { modelSearchText } from "#src/utils/model-search.ts";
 
 const directions = ["forward", "backward"] as const;
 

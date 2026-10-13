@@ -3,8 +3,7 @@ import { test } from "bun:test";
 import { ModelController } from "#src/agent/model-controller.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { assertEquals, assertStrictEquals } from "#testing/assertions";
-
-import { agentSessionRuntimeStub } from "./test-fixtures.ts";
+import { agentSessionRuntimeStub } from "#tests/src/agent/test-fixtures.ts";
 
 test("ModelController persists explicit and cycled model selections", async () => {
 	const model = { id: "kimi-k2.6", provider: "opencode-go" };

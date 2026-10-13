@@ -2,8 +2,7 @@ import { test } from "bun:test";
 
 import { renderSessionSidebar } from "#src/ui/session-sidebar.tsx";
 import { assertEquals, assertFalse, assertStringIncludes } from "#testing/assertions";
-
-import { appRenderSnapshot } from "./test-fixtures.ts";
+import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 
 test("session sidebar keeps loading visible beneath partial results", () => {
 	const html = renderSessionSidebar(

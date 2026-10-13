@@ -1,9 +1,9 @@
-import { booleanField, readActionSignals } from "../action-input.ts";
-import { updateAppConfig } from "../app-config.ts";
-import { datastarResponse } from "../datastar.ts";
-import type { RouteMap } from "../route.ts";
-import type { RouteContext } from "./context.ts";
-import { endpoints } from "./endpoints.ts";
+import { booleanField, readActionSignals } from "#src/server/action-input.ts";
+import { updateAppConfig } from "#src/server/app-config.ts";
+import { datastarResponse } from "#src/server/datastar.ts";
+import type { RouteMap } from "#src/server/route.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
 
 const booleanPreferences = [
 	{ endpoint: endpoints.keybindHints, signal: "keybindHints" },

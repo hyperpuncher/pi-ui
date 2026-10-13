@@ -1,6 +1,6 @@
 import type { AgentSessionRuntime, PromptOptions } from "@earendil-works/pi-coding-agent";
 
-import { errorMessage } from "../utils/errors.ts";
+import { errorMessage } from "#src/utils/errors.ts";
 
 export type PromptStreamingBehavior = NonNullable<PromptOptions["streamingBehavior"]>;
 export type RuntimePromptOptions = Pick<PromptOptions, "images" | "streamingBehavior">;

@@ -2,14 +2,14 @@ import { watch as watchFileSystem, type FSWatcher } from "node:fs";
 import os from "node:os";
 import * as path from "node:path";
 
-import type { AppStore } from "../state/app-store.ts";
-import { findGitProjectRoot } from "./git-worktrees.ts";
+import { findGitProjectRoot } from "#src/server/git-worktrees.ts";
 import {
 	areWorkspacePathsIgnored,
 	findGitWatchPaths,
 	readWorkspaceReview,
 	type WorkspaceReviewMetadataCache,
-} from "./workspace-review.ts";
+} from "#src/server/workspace-review.ts";
+import type { AppStore } from "#src/state/app-store.ts";
 
 const debounceMs = 200;
 

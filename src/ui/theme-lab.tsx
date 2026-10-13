@@ -1,4 +1,4 @@
-import { Icon } from "./icon.tsx";
+import { Icon } from "#src/ui/icon.tsx";
 
 const paletteGroups = [
 	{

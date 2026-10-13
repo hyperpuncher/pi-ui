@@ -1,12 +1,9 @@
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
-import {
-	LlamaClient,
-	type LlamaModelInfo,
-} from "../../node_modules/@earendil-works/pi-coding-agent/dist/extensions/llama/client.js";
-import { LLAMA_PROVIDER_ID } from "../../node_modules/@earendil-works/pi-coding-agent/dist/extensions/llama/provider.js";
-import type { AppLlamaDialog, AppLlamaModel, AppStore } from "../state/app-store.ts";
-import { errorMessage } from "../utils/errors.ts";
+import { LlamaClient, type LlamaModelInfo } from "#pi/extensions/llama/client.js";
+import { LLAMA_PROVIDER_ID } from "#pi/extensions/llama/provider.js";
+import type { AppLlamaDialog, AppLlamaModel, AppStore } from "#src/state/app-store.ts";
+import { errorMessage } from "#src/utils/errors.ts";
 type LlamaRuntime = {
 	services: {
 		modelRuntime: Pick<

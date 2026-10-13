@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
-import { expandHomePath } from "../utils/workspace.ts";
+import { expandHomePath } from "#src/utils/workspace.ts";
 
 // Mirrors pi's session storage override (`PI_CODING_AGENT_SESSION_DIR`): a single
 // directory holding session files directly, taking precedence over the default

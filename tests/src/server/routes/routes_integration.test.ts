@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 
+import { getToolPath } from "#pi/utils/tools-manager.js";
 import { notifySessionDone } from "#src/browser-notifications.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { executeRoute } from "#src/server/route.ts";
@@ -21,10 +22,8 @@ import { AppStore } from "#src/state/app-store.ts";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import { outputCommand } from "#src/utils/command.ts";
 import { assertEquals, assertStringIncludes } from "#testing/assertions";
+import { assertStringExcludes } from "#testing/assertions";
 import { makeTempDir, makeTempFile } from "#testing/temp";
-
-import { getToolPath } from "../../../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
-import { assertStringExcludes } from "../../testing/assertions.ts";
 
 test("remote clients get download rather than access to the server's file manager", async () => {
 	const context = fakeContext();

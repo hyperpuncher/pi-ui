@@ -1,43 +1,43 @@
-import { DatastarClientHub } from "../server/datastar-client-hub.ts";
+import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import {
 	searchWorkspaces,
 	type WorkspaceSuggestion,
-} from "../server/workspace-search.ts";
+} from "#src/server/workspace-search.ts";
 import type {
 	AppStateSnapshot,
 	AppStore,
 	AppStorePresentation,
 	UiCommitEffect,
-} from "../state/app-store.ts";
-import { escapeHtml } from "../utils/html.ts";
-import type { JsonObject } from "../utils/json-types.ts";
-import { renderAuthDialog } from "./auth-dialog.tsx";
-import { projectBackendSignals } from "./backend-signals.ts";
-import { renderDebugOverlay } from "./debug.tsx";
-import { renderExtensionDialog } from "./extension-dialog.tsx";
-import { renderExtensionWidgets } from "./extension-widgets.tsx";
-import { renderLlamaDialog } from "./llama-dialog.tsx";
+} from "#src/state/app-store.ts";
+import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
+import { projectBackendSignals } from "#src/ui/backend-signals.ts";
+import { renderDebugOverlay } from "#src/ui/debug.tsx";
+import { renderExtensionDialog } from "#src/ui/extension-dialog.tsx";
+import { renderExtensionWidgets } from "#src/ui/extension-widgets.tsx";
+import { renderLlamaDialog } from "#src/ui/llama-dialog.tsx";
 import {
 	MessageRenderService,
 	type MessageRenderServiceOptions,
-} from "./message-render-service.ts";
-import { renderMessages } from "./messages.tsx";
+} from "#src/ui/message-render-service.ts";
+import { renderMessages } from "#src/ui/messages.tsx";
 import {
 	renderSessionPickerContent,
 	renderSlashPicker,
 	renderWorkspaceDialogMenu,
-} from "./pickers.tsx";
-import { renderPromptAction } from "./prompt-action.tsx";
-import { renderPromptQueue } from "./prompt-box.tsx";
-import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
-import { renderPromptStart } from "./prompt-start.tsx";
-import { renderPromptStatus } from "./prompt-status.tsx";
-import type { AppRenderSnapshot } from "./render-state.ts";
-import { renderSessionSidebarContent } from "./session-sidebar.tsx";
-import { renderSessionTransition } from "./session-transition.tsx";
-import { renderToolbar } from "./toolbar.tsx";
-import { renderTreePicker } from "./tree-picker.tsx";
-import { renderWorkspaceReviewData } from "./workspace-review.tsx";
+} from "#src/ui/pickers.tsx";
+import { renderPromptAction } from "#src/ui/prompt-action.tsx";
+import { renderPromptQueue } from "#src/ui/prompt-box.tsx";
+import { renderModelPicker, renderThinkingPicker } from "#src/ui/prompt-pickers.tsx";
+import { renderPromptStart } from "#src/ui/prompt-start.tsx";
+import { renderPromptStatus } from "#src/ui/prompt-status.tsx";
+import type { AppRenderSnapshot } from "#src/ui/render-state.ts";
+import { renderSessionSidebarContent } from "#src/ui/session-sidebar.tsx";
+import { renderSessionTransition } from "#src/ui/session-transition.tsx";
+import { renderToolbar } from "#src/ui/toolbar.tsx";
+import { renderTreePicker } from "#src/ui/tree-picker.tsx";
+import { renderWorkspaceReviewData } from "#src/ui/workspace-review.tsx";
+import { escapeHtml } from "#src/utils/html.ts";
+import type { JsonObject } from "#src/utils/json-types.ts";
 
 type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestion[] };
 type ClientView = {

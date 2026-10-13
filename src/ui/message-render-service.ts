@@ -1,22 +1,26 @@
-import { sessionPerformance } from "../perf/session-performance.ts";
-import type { AppStore } from "../state/app-store.ts";
-import { EnhancementQueue } from "../state/enhancement-queue.ts";
-import { StreamingFrameScheduler } from "../state/streaming-frame-scheduler.ts";
+import { sessionPerformance } from "#src/perf/session-performance.ts";
+import type { AppStore } from "#src/state/app-store.ts";
+import { EnhancementQueue } from "#src/state/enhancement-queue.ts";
+import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
 import type {
 	TranscriptMessage,
 	TranscriptMessageAttachment,
-} from "../state/transcript-state.ts";
-import { probeImageDimensions } from "../utils/image-dimensions.ts";
-import { codeSnippets, hasEmbeddedBash, loadBashLanguages } from "./bash-highlight.ts";
-import { loadPierreLanguage, renderPierreCode, renderPierreDiff } from "./diffs.ts";
+} from "#src/state/transcript-state.ts";
+import {
+	codeSnippets,
+	hasEmbeddedBash,
+	loadBashLanguages,
+} from "#src/ui/bash-highlight.ts";
+import { loadPierreLanguage, renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
 import {
 	releaseMarkdownStreamingState,
 	renderCodeFinal,
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
-} from "./markdown.tsx";
-import { renderMessage, renderMessages } from "./messages.tsx";
-import type { AppMessage } from "./render-state.ts";
+} from "#src/ui/markdown.tsx";
+import { renderMessage, renderMessages } from "#src/ui/messages.tsx";
+import type { AppMessage } from "#src/ui/render-state.ts";
+import { probeImageDimensions } from "#src/utils/image-dimensions.ts";
 
 type MessagePresentation = Pick<
 	AppMessage,

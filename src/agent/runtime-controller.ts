@@ -17,48 +17,31 @@ import {
 	type SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
 
-import type { SessionDoneNotification } from "../browser-notifications.ts";
-import { sessionPerformance } from "../perf/session-performance.ts";
-import {
-	type AppSlashCommand,
-	AppStore,
-	type BackgroundSessionStatus,
-} from "../state/app-store.ts";
-import { TranscriptState } from "../state/transcript-state.ts";
-import { errorMessage } from "../utils/errors.ts";
-import { configureAgentHttpProxy, withAgentHttpProxy } from "../utils/http-proxy.ts";
-import { moveToTrash } from "../utils/trash.ts";
-import {
-	defaultWorkspacePath,
-	formatHomePath,
-	managedWorktreeParts,
-	workspaceDisplayName,
-} from "../utils/workspace.ts";
-import "./codemode-assets.ts";
-import { AuthController } from "./auth-controller.ts";
-import { type AutoTitleConfig, generateAutoTitle } from "./auto-title.ts";
+import { AuthController } from "#src/agent/auth-controller.ts";
+import { type AutoTitleConfig, generateAutoTitle } from "#src/agent/auto-title.ts";
 import {
 	BackgroundRuntimeOwnership,
 	ownsForegroundGeneration,
 	RuntimeOwnershipInvariantError,
-} from "./background-runtime-ownership.ts";
-import { detectCacheMiss, formatCacheMissNotice } from "./cache-miss.ts";
-import { ExtensionUiController } from "./extension-ui-controller.ts";
-import { LlamaController } from "./llama-controller.ts";
-import { llamaProviderExtension } from "./llama-provider-extension.ts";
-import { ModelController } from "./model-controller.ts";
+} from "#src/agent/background-runtime-ownership.ts";
+import { detectCacheMiss, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
+import { ExtensionUiController } from "#src/agent/extension-ui-controller.ts";
+import { LlamaController } from "#src/agent/llama-controller.ts";
+import { llamaProviderExtension } from "#src/agent/llama-provider-extension.ts";
+import { ModelController } from "#src/agent/model-controller.ts";
+import "#src/agent/codemode-assets.ts";
 import {
 	PromptLifecycle,
 	type PromptStreamingBehavior,
 	type RuntimePromptOptions,
-} from "./prompt-lifecycle.ts";
-import { createBunReadToolDefinition } from "./read-tool.ts";
+} from "#src/agent/prompt-lifecycle.ts";
+import { createBunReadToolDefinition } from "#src/agent/read-tool.ts";
 import {
 	type SessionCatalogWatch,
 	watchSessionCatalog,
-} from "./session-catalog-watcher.ts";
-import { type PreparedSessionList, SessionCatalog } from "./session-catalog.ts";
-import { resolveSessionDir, sessionDirOverride } from "./session-dir.ts";
+} from "#src/agent/session-catalog-watcher.ts";
+import { type PreparedSessionList, SessionCatalog } from "#src/agent/session-catalog.ts";
+import { resolveSessionDir, sessionDirOverride } from "#src/agent/session-dir.ts";
 import {
 	clearSessionEventToolState,
 	cloneSessionEventToolState,
@@ -68,13 +51,13 @@ import {
 	type SessionEventStateSink,
 	type SessionEventToolState,
 	type ToolArguments,
-} from "./session-event-reducer.ts";
-import { executeSessionResume } from "./session-resume.ts";
-import { shareSession } from "./session-share.ts";
+} from "#src/agent/session-event-reducer.ts";
+import { executeSessionResume } from "#src/agent/session-resume.ts";
+import { shareSession } from "#src/agent/session-share.ts";
 import {
 	SessionTransitionController,
 	type SessionTransitionResult,
-} from "./session-transition-controller.ts";
+} from "#src/agent/session-transition-controller.ts";
 import {
 	formatToolResult,
 	formatToolStart,
@@ -83,10 +66,27 @@ import {
 	toolResultImageAttachments,
 	toolTitle,
 	toolTitleParts,
-} from "./tool-presentation.ts";
-import { TranscriptProjector } from "./transcript-projector.ts";
-import { type TreeNavigationResult, TreeProjector } from "./tree-projector.ts";
-import { UsageController } from "./usage-controller.ts";
+} from "#src/agent/tool-presentation.ts";
+import { TranscriptProjector } from "#src/agent/transcript-projector.ts";
+import { type TreeNavigationResult, TreeProjector } from "#src/agent/tree-projector.ts";
+import { UsageController } from "#src/agent/usage-controller.ts";
+import type { SessionDoneNotification } from "#src/browser-notifications.ts";
+import { sessionPerformance } from "#src/perf/session-performance.ts";
+import {
+	type AppSlashCommand,
+	AppStore,
+	type BackgroundSessionStatus,
+} from "#src/state/app-store.ts";
+import { TranscriptState } from "#src/state/transcript-state.ts";
+import { errorMessage } from "#src/utils/errors.ts";
+import { configureAgentHttpProxy, withAgentHttpProxy } from "#src/utils/http-proxy.ts";
+import { moveToTrash } from "#src/utils/trash.ts";
+import {
+	defaultWorkspacePath,
+	formatHomePath,
+	managedWorktreeParts,
+	workspaceDisplayName,
+} from "#src/utils/workspace.ts";
 
 const extensionFactories = [
 	llamaProviderExtension,

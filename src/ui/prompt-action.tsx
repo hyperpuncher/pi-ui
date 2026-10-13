@@ -1,8 +1,8 @@
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { Icon } from "./icon.tsx";
-import { ShortcutTooltip } from "./keyboard.tsx";
-import { syncHtml } from "./sync-html.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { ShortcutTooltip } from "#src/ui/keyboard.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderPromptAction(state: AppStateSnapshot): string {
 	if (state.activityText) {

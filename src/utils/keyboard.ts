@@ -1,4 +1,4 @@
-import { operatingSystem, type OperatingSystem } from "./platform.ts";
+import { operatingSystem, type OperatingSystem } from "#src/utils/platform.ts";
 
 type KeyboardModifiers = Pick<KeyboardEvent, "ctrlKey" | "metaKey">;
 

@@ -9,8 +9,7 @@ import {
 	parseCodexUsage,
 } from "#src/agent/codex-usage.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
-
-import { agentSessionRuntimeStub } from "./test-fixtures.ts";
+import { agentSessionRuntimeStub } from "#tests/src/agent/test-fixtures.ts";
 
 test("uses legacy auth for Codex limits with an OpenAI model", async () => {
 	const credentials = new InMemoryCredentialStore();

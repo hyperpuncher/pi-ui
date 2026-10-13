@@ -3,8 +3,7 @@ import { runInNewContext } from "node:vm";
 
 import { renderPage } from "#src/ui/page.tsx";
 import { assertEquals, assertFalse, assertStringIncludes } from "#testing/assertions";
-
-import { appRenderSnapshot } from "./test-fixtures.ts";
+import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 
 function renderSidebarPage(options: { sessionSidebarOpen?: boolean } = {}): string {
 	return renderPage({ ...appRenderSnapshot({}), messages: [] }, options);

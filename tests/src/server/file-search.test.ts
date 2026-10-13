@@ -5,12 +5,11 @@ import { relative } from "node:path";
 
 import { CombinedAutocompleteProvider } from "@earendil-works/pi-tui";
 
+import { getToolPath } from "#pi/utils/tools-manager.js";
 import { searchFiles } from "#src/server/file-search.ts";
 import { outputCommand } from "#src/utils/command.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
-
-import { getToolPath } from "../../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
 
 // Integration tests use the real provisioned/system fd, without downloading in tests.
 const fdPath = getToolPath("fd") ?? undefined;

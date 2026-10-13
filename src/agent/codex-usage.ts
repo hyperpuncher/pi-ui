@@ -2,9 +2,9 @@ import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import Type, { type Static } from "typebox";
 import { Compile } from "typebox/compile";
 
-import { type JsonValue, JsonObjectSchema } from "../utils/json-types.ts";
-import { fetchProviderUsagePayload } from "./provider-usage.ts";
-import { formatRemainingTime, remainingPercent } from "./usage-format.ts";
+import { fetchProviderUsagePayload } from "#src/agent/provider-usage.ts";
+import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
+import { type JsonValue, JsonObjectSchema } from "#src/utils/json-types.ts";
 
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";

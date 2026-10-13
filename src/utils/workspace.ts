@@ -1,7 +1,7 @@
 import os from "node:os";
 import { isAbsolute, relative, sep } from "node:path";
 
-import { appDataPath } from "./app-dirs.ts";
+import { appDataPath } from "#src/utils/app-dirs.ts";
 
 export function defaultWorkspacePath(): string {
 	return os.homedir() || process.cwd();

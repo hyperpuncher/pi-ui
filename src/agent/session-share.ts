@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
-import { outputCommand } from "../utils/command.ts";
+import { outputCommand } from "#src/utils/command.ts";
 
 type ShareableSession = Pick<AgentSessionRuntime["session"], "exportToHtml">;
 type CommandResult = { code: number; stdout: Uint8Array; stderr: Uint8Array };

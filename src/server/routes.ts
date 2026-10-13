@@ -1,22 +1,22 @@
-import type { RouteMap } from "./route.ts";
-import { assetRoutes } from "./routes/assets.ts";
-import { authRoutes } from "./routes/auth.ts";
-import { codeThemeRoutes } from "./routes/code-theme.ts";
-import type { RouteContext } from "./routes/context.ts";
-import { displayPreferenceRoutes } from "./routes/display-preferences.ts";
-import { extensionUiRoutes } from "./routes/extension-ui.ts";
-import { fileRoutes } from "./routes/files.ts";
-import { fontRoutes } from "./routes/fonts.ts";
-import { llamaRoutes } from "./routes/llama.ts";
-import { modelRoutes } from "./routes/models.ts";
-import { promptRoutes } from "./routes/prompt.ts";
-import { sessionPerformanceRoutes } from "./routes/session-performance.ts";
-import { sessionSidebarRoutes } from "./routes/session-sidebar.ts";
-import { sessionRoutes } from "./routes/sessions.ts";
-import { streamRoutes } from "./routes/stream.ts";
-import { treeRoutes } from "./routes/tree.ts";
-import { workspaceReviewRoutes } from "./routes/workspace-review.ts";
-import { workspaceRoutes } from "./routes/workspace.ts";
+import type { RouteMap } from "#src/server/route.ts";
+import { assetRoutes } from "#src/server/routes/assets.ts";
+import { authRoutes } from "#src/server/routes/auth.ts";
+import { codeThemeRoutes } from "#src/server/routes/code-theme.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
+import { displayPreferenceRoutes } from "#src/server/routes/display-preferences.ts";
+import { extensionUiRoutes } from "#src/server/routes/extension-ui.ts";
+import { fileRoutes } from "#src/server/routes/files.ts";
+import { fontRoutes } from "#src/server/routes/fonts.ts";
+import { llamaRoutes } from "#src/server/routes/llama.ts";
+import { modelRoutes } from "#src/server/routes/models.ts";
+import { promptRoutes } from "#src/server/routes/prompt.ts";
+import { sessionPerformanceRoutes } from "#src/server/routes/session-performance.ts";
+import { sessionSidebarRoutes } from "#src/server/routes/session-sidebar.ts";
+import { sessionRoutes } from "#src/server/routes/sessions.ts";
+import { streamRoutes } from "#src/server/routes/stream.ts";
+import { treeRoutes } from "#src/server/routes/tree.ts";
+import { workspaceReviewRoutes } from "#src/server/routes/workspace-review.ts";
+import { workspaceRoutes } from "#src/server/routes/workspace.ts";
 
 export const appRoutes: RouteMap<RouteContext> = {
 	...assetRoutes,

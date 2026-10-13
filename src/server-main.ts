@@ -1,7 +1,7 @@
-import { importLoginShellEnvironment } from "./login-shell-environment.ts";
-import { disableServerAutostart, enableServerAutostart } from "./server-autostart.ts";
-import { parseServerOptions, serverUsage } from "./server-options.ts";
-import { isVersionRequest, version } from "./version.ts";
+import { importLoginShellEnvironment } from "#src/login-shell-environment.ts";
+import { disableServerAutostart, enableServerAutostart } from "#src/server-autostart.ts";
+import { parseServerOptions, serverUsage } from "#src/server-options.ts";
+import { isVersionRequest, version } from "#src/version.ts";
 
 async function main(): Promise<void> {
 	const args = process.argv.slice(2);
@@ -33,7 +33,8 @@ async function main(): Promise<void> {
 		if (options.help) {
 			console.log(serverUsage);
 		} else {
-			const { disposeApp, fallback, routes } = await import("./server/lazy-app.ts");
+			const { disposeApp, fallback, routes } =
+				await import("#src/server/lazy-app.ts");
 			const server = Bun.serve({
 				hostname: options.hostname,
 				port: options.port,

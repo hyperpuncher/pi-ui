@@ -1,7 +1,7 @@
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppTreeEntry, AppStateSnapshot } from "../state/app-store.ts";
-import { DateTime } from "./date-time.tsx";
-import { syncHtml } from "./sync-html.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppTreeEntry, AppStateSnapshot } from "#src/state/app-store.ts";
+import { DateTime } from "#src/ui/date-time.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 const treeLabelClasses = {
 	user: "tree-kind-user",

@@ -1,5 +1,5 @@
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import type { TranscriptMessage } from "../state/transcript-state.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import type { TranscriptMessage } from "#src/state/transcript-state.ts";
 
 /** Domain message combined with renderer-owned presentation metadata. */
 export type AppMessage = TranscriptMessage & {

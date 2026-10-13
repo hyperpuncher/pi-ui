@@ -2,7 +2,8 @@ import { execFile } from "node:child_process";
 
 import { parsePatchFiles } from "@pierre/diffs";
 
-import { sortWorkspaceReviewEntries } from "../workspace-review-tree.ts";
+import { gitText, runGit } from "#src/server/git.ts";
+import { sortWorkspaceReviewEntries } from "#src/workspace-review-tree.ts";
 import {
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
@@ -11,14 +12,13 @@ import {
 	type WorkspaceFileStatus,
 	workspaceReviewHistoryPageSize,
 	type WorkspaceReviewSnapshot,
-} from "../workspace-review-types.ts";
-import { gitText, runGit } from "./git.ts";
+} from "#src/workspace-review-types.ts";
 export type {
 	WorkspaceCommit,
 	WorkspaceCommitDetail,
 	WorkspaceFileChange,
 	WorkspaceReviewSnapshot,
-} from "../workspace-review-types.ts";
+} from "#src/workspace-review-types.ts";
 
 type GitResult = Readonly<{ code: number; stderr: string; stdout: string }>;
 const commitLogArgs = [

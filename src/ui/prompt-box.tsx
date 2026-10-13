@@ -1,15 +1,15 @@
-import { activeKeybind, keybindAction, keybindAria } from "../keybinds.ts";
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { renderExtensionWidgets } from "./extension-widgets.tsx";
-import { Icon } from "./icon.tsx";
-import { ShortcutKbd, ShortcutTooltip } from "./keyboard.tsx";
-import { renderSlashPicker } from "./pickers.tsx";
-import { renderPromptAction } from "./prompt-action.tsx";
-import { renderModelPicker, renderThinkingPicker } from "./prompt-pickers.tsx";
-import { renderPromptStart } from "./prompt-start.tsx";
-import { renderPromptStatus } from "./prompt-status.tsx";
-import { syncHtml } from "./sync-html.ts";
+import { activeKeybind, keybindAction, keybindAria } from "#src/keybinds.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { renderExtensionWidgets } from "#src/ui/extension-widgets.tsx";
+import { Icon } from "#src/ui/icon.tsx";
+import { ShortcutKbd, ShortcutTooltip } from "#src/ui/keyboard.tsx";
+import { renderSlashPicker } from "#src/ui/pickers.tsx";
+import { renderPromptAction } from "#src/ui/prompt-action.tsx";
+import { renderModelPicker, renderThinkingPicker } from "#src/ui/prompt-pickers.tsx";
+import { renderPromptStart } from "#src/ui/prompt-start.tsx";
+import { renderPromptStatus } from "#src/ui/prompt-status.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderPromptBox(state: AppStateSnapshot): string {
 	return syncHtml(

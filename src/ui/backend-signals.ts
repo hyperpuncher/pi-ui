@@ -1,8 +1,8 @@
-import { sessionTransitionOverlayVisible } from "../agent/session-transition-controller.ts";
-import { getActiveFonts } from "../fonts.ts";
-import { getPierreThemes } from "../pierre-theme.ts";
-import type { AppStateSnapshot } from "../state/app-store.ts";
-import { workspaceChangeStats } from "../workspace-review-types.ts";
+import { sessionTransitionOverlayVisible } from "#src/agent/session-transition-controller.ts";
+import { getActiveFonts } from "#src/fonts.ts";
+import { getPierreThemes } from "#src/pierre-theme.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { workspaceChangeStats } from "#src/workspace-review-types.ts";
 
 export type BackendSignals = {
 	_modelsRevision: number;

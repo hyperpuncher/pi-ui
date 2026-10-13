@@ -1,5 +1,5 @@
-import { responseErrorMessage } from "../../src/utils/errors.ts";
-import { fileUriToPath } from "../file-uri.js";
+import { responseErrorMessage } from "#src/utils/errors.ts";
+import { fileUriToPath } from "#static/file-uri.js";
 
 export function bindFileLinks() {
 	document.addEventListener(
@@ -42,7 +42,7 @@ async function followFileLink(uri) {
 		const result = await response.json();
 		if (result.opened) return;
 		const { openLinkedWorkspaceFile } =
-			await import("../../src/client/workspace-review.ts");
+			await import("#src/client/workspace-review.ts");
 		await openLinkedWorkspaceFile(result.path, result.workspacePath);
 	} catch (error) {
 		alert(Error.isError(error) ? error.message : "Could not open the file.");

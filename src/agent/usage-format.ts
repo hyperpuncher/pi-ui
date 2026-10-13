@@ -1,4 +1,4 @@
-import { clamp } from "../utils/clamp.ts";
+import { clamp } from "#src/utils/clamp.ts";
 
 export function remainingPercent(usedPercent: number): number {
 	return Math.round(100 - clamp(usedPercent, 0, 100));

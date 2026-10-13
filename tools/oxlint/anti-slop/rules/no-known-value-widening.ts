@@ -8,12 +8,12 @@ import {
 	isKnownEvidenceExpression,
 	type TypeEnvironment,
 	type WideningTarget,
-} from "../shared/dictionary-types.ts";
+} from "#tools/oxlint/anti-slop/shared/dictionary-types.ts";
 import {
 	containsUnknownType,
 	functionParameterBindingName,
 	functionParameterTypeAnnotation,
-} from "../shared/function-parameters.ts";
+} from "#tools/oxlint/anti-slop/shared/function-parameters.ts";
 
 type FunctionExpression = ESTree.ArrowFunctionExpression | ESTree.Function;
 

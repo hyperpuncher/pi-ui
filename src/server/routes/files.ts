@@ -2,22 +2,26 @@ import { isAbsolute, relative } from "node:path";
 
 import { detectSupportedImageMimeTypeFromFile } from "@earendil-works/pi-coding-agent";
 
-import { openBrowser } from "../../../node_modules/@earendil-works/pi-coding-agent/dist/utils/open-browser.js";
-import { fileUriToPath } from "../../../static/file-uri.js";
-import { renderFilePickerResults } from "../../ui/pickers.tsx";
-import { readActionSignals, requiredString, stringField } from "../action-input.ts";
-import { datastarResponse } from "../datastar.ts";
-import { searchFiles } from "../file-search.ts";
-import { RouteError, type RouteMap } from "../route.ts";
+import { openBrowser } from "#pi/utils/open-browser.js";
+import {
+	readActionSignals,
+	requiredString,
+	stringField,
+} from "#src/server/action-input.ts";
+import { datastarResponse } from "#src/server/datastar.ts";
+import { searchFiles } from "#src/server/file-search.ts";
+import { RouteError, type RouteMap } from "#src/server/route.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
+import { endpoints, filesPreviewBase } from "#src/server/routes/endpoints.ts";
 import {
 	getTransferredFiles,
 	TransferredFileError,
 	validateTransferContentLength,
 	validateTransferredFiles,
-} from "../transferred-files.ts";
-import { resolveFile, resolvePath } from "../workspace-files.ts";
-import type { RouteContext } from "./context.ts";
-import { endpoints, filesPreviewBase } from "./endpoints.ts";
+} from "#src/server/transferred-files.ts";
+import { resolveFile, resolvePath } from "#src/server/workspace-files.ts";
+import { renderFilePickerResults } from "#src/ui/pickers.tsx";
+import { fileUriToPath } from "#static/file-uri.js";
 
 export const fileRoutes = {
 	[endpoints.filesSearch]: {

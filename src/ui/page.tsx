@@ -1,40 +1,46 @@
-import { toggleMinimalModeAction, toggleToolOutputAction } from "../commands/actions.ts";
-import { activeFontStacks } from "../fonts.ts";
-import { activeKeybind, keybindActions } from "../keybinds.ts";
-import { getPierreThemes } from "../pierre-theme.ts";
+import {
+	toggleMinimalModeAction,
+	toggleToolOutputAction,
+} from "#src/commands/actions.ts";
+import { activeFontStacks } from "#src/fonts.ts";
+import { activeKeybind, keybindActions } from "#src/keybinds.ts";
+import { getPierreThemes } from "#src/pierre-theme.ts";
 import {
 	endpoints,
 	workspaceFilesBase,
 	workspaceReviewBase,
-} from "../server/routes/endpoints.ts";
-import { sessionSidebarWidthDefault } from "../session-sidebar-types.ts";
-import { gitPaneRatioDefault } from "../workspace-review-types.ts";
-import { renderAuthDialog } from "./auth-dialog.tsx";
-import { projectBackendSignals } from "./backend-signals.ts";
-import { renderCodeThemeDialog } from "./code-theme-dialog.tsx";
-import { renderCommandMenu, resetCommandDialogOnOpen } from "./command-menu.tsx";
-import { renderDebugOverlay } from "./debug.tsx";
-import { renderExtensionDialog } from "./extension-dialog.tsx";
-import { renderFontDialog } from "./font-dialog.tsx";
-import { Icon } from "./icon.tsx";
-import { ShortcutTooltip } from "./keyboard.tsx";
-import { renderLlamaDialog } from "./llama-dialog.tsx";
-import { renderMessages } from "./messages.tsx";
-import { renderSessionPicker, renderWorkspaceDialogMenu } from "./pickers.tsx";
-import { renderPromptBox } from "./prompt-box.tsx";
-import type { AppRenderSnapshot } from "./render-state.ts";
-import { renderSessionSidebar } from "./session-sidebar.tsx";
-import { previousSessionAction, renderSessionTransition } from "./session-transition.tsx";
-import { syncHtml } from "./sync-html.ts";
-import { renderThemeLab } from "./theme-lab.tsx";
-import { renderToolbar } from "./toolbar.tsx";
-import { renderTreePicker } from "./tree-picker.tsx";
-import { renderWorkspaceReview } from "./workspace-review.tsx";
+} from "#src/server/routes/endpoints.ts";
+import { sessionSidebarWidthDefault } from "#src/session-sidebar-types.ts";
+import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
+import { projectBackendSignals } from "#src/ui/backend-signals.ts";
+import { renderCodeThemeDialog } from "#src/ui/code-theme-dialog.tsx";
+import { renderCommandMenu, resetCommandDialogOnOpen } from "#src/ui/command-menu.tsx";
+import { renderDebugOverlay } from "#src/ui/debug.tsx";
+import { renderExtensionDialog } from "#src/ui/extension-dialog.tsx";
+import { renderFontDialog } from "#src/ui/font-dialog.tsx";
+import { Icon } from "#src/ui/icon.tsx";
+import { ShortcutTooltip } from "#src/ui/keyboard.tsx";
+import { renderLlamaDialog } from "#src/ui/llama-dialog.tsx";
+import { renderMessages } from "#src/ui/messages.tsx";
+import { renderSessionPicker, renderWorkspaceDialogMenu } from "#src/ui/pickers.tsx";
+import { renderPromptBox } from "#src/ui/prompt-box.tsx";
+import type { AppRenderSnapshot } from "#src/ui/render-state.ts";
+import { renderSessionSidebar } from "#src/ui/session-sidebar.tsx";
+import {
+	previousSessionAction,
+	renderSessionTransition,
+} from "#src/ui/session-transition.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
+import { renderThemeLab } from "#src/ui/theme-lab.tsx";
+import { renderToolbar } from "#src/ui/toolbar.tsx";
+import { renderTreePicker } from "#src/ui/tree-picker.tsx";
+import { renderWorkspaceReview } from "#src/ui/workspace-review.tsx";
 import {
 	renderBranchDeleteDialog,
 	renderWorktreeDialog,
 	renderWorktreeRemoveDialog,
-} from "./worktree-dialog.tsx";
+} from "#src/ui/worktree-dialog.tsx";
+import { gitPaneRatioDefault } from "#src/workspace-review-types.ts";
 
 export type PageRenderOptions = {
 	appVersion?: string;

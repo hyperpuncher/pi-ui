@@ -1,5 +1,5 @@
-import { type CommandOutput, outputCommand } from "../utils/command.ts";
-import { isNotFound } from "../utils/fs-errors.ts";
+import { type CommandOutput, outputCommand } from "#src/utils/command.ts";
+import { isNotFound } from "#src/utils/fs-errors.ts";
 
 /** Bounds a hung git command; a large checkout is the slowest legitimate case. */
 const gitTimeoutMs = 300_000;

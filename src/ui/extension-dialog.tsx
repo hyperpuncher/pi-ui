@@ -1,6 +1,6 @@
-import { endpoints } from "../server/routes/endpoints.ts";
-import type { AppExtensionDialog } from "../state/app-store.ts";
-import { syncHtml } from "./sync-html.ts";
+import { endpoints } from "#src/server/routes/endpoints.ts";
+import type { AppExtensionDialog } from "#src/state/app-store.ts";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderExtensionDialog(dialog: AppExtensionDialog | undefined): string {
 	return syncHtml(

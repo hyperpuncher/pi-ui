@@ -30,14 +30,13 @@ import { AppStore } from "#src/state/app-store.ts";
 import { formatTokens } from "#src/utils/format.ts";
 import { assertEquals, assertStrictEquals } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
-
 import {
 	agentSessionEventStub,
 	agentSessionRuntimeStub,
 	assistantMessageStub,
 	sessionEntryStub,
 	sessionStatsStub,
-} from "./test-fixtures.ts";
+} from "#tests/src/agent/test-fixtures.ts";
 
 test("tool presentation preserves representative and malformed values", () => {
 	for (const [ms, expected] of [

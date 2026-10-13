@@ -1,6 +1,6 @@
-import type { AppSessionSummary } from "../state/app-store.ts";
-import { Icon } from "./icon.tsx";
-import { syncHtml } from "./sync-html.ts";
+import type { AppSessionSummary } from "#src/state/app-store.ts";
+import { Icon } from "#src/ui/icon.tsx";
+import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function SessionDeleteButton(props: { session: AppSessionSummary }): string {
 	const path = JSON.stringify(props.session.path);

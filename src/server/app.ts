@@ -1,37 +1,37 @@
 import { realpath, stat } from "node:fs/promises";
 
 // pi does not publicly export its provisioner. A static import lets Bun bundle it.
-import { ensureTool } from "../../node_modules/@earendil-works/pi-coding-agent/dist/utils/tools-manager.js";
-import { parseAutoTitleConfig, type AutoTitleConfig } from "../agent/auto-title.ts";
-import { RuntimeController } from "../agent/runtime-controller.ts";
-import { SessionTransitionController } from "../agent/session-transition-controller.ts";
+import { ensureTool } from "#pi/utils/tools-manager.js";
+import { parseAutoTitleConfig, type AutoTitleConfig } from "#src/agent/auto-title.ts";
+import { RuntimeController } from "#src/agent/runtime-controller.ts";
+import { SessionTransitionController } from "#src/agent/session-transition-controller.ts";
 import {
 	notifySessionDone,
 	type SessionDoneNotification,
-} from "../browser-notifications.ts";
-import { defaultCodeThemes, validCodeThemes } from "../code-themes.ts";
-import { defaultFonts, setActiveFonts, validFonts } from "../fonts.ts";
-import { parseKeybindOverrides, setActiveKeybinds } from "../keybinds.ts";
-import { setActiveCodeTheme } from "../pierre-theme.ts";
+} from "#src/browser-notifications.ts";
+import { defaultCodeThemes, validCodeThemes } from "#src/code-themes.ts";
+import { defaultFonts, setActiveFonts, validFonts } from "#src/fonts.ts";
+import { parseKeybindOverrides, setActiveKeybinds } from "#src/keybinds.ts";
+import { setActiveCodeTheme } from "#src/pierre-theme.ts";
+import { ensureAppConfig } from "#src/server/app-config.ts";
+import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
+import type { RouteContext, RouteResources } from "#src/server/routes/context.ts";
+import { SessionImageStore } from "#src/server/session-image-store.ts";
+import { createStaticAssetServer } from "#src/server/static-assets.ts";
+import { staticRoot } from "#src/server/static-path.ts";
+import { TransferredFileStore } from "#src/server/transferred-files.ts";
+import { WorkspaceReviewController } from "#src/server/workspace-review-controller.ts";
 import {
 	normalizeSessionSidebarPreferences,
 	sessionSidebarArchiveAfterDaysDefault,
 	sessionSidebarWidthDefault,
-} from "../session-sidebar-types.ts";
-import { AppStore } from "../state/app-store.ts";
-import { loadPierreLanguage } from "../ui/diffs.ts";
-import { UiRenderer } from "../ui/ui-renderer.ts";
-import { checkForUpdate } from "../update-check.ts";
-import { expandHomePath } from "../utils/workspace.ts";
-import { normalizeWorkspaceReviewPreferences } from "../workspace-review-types.ts";
-import { ensureAppConfig } from "./app-config.ts";
-import { DatastarClientHub } from "./datastar-client-hub.ts";
-import type { RouteContext, RouteResources } from "./routes/context.ts";
-import { SessionImageStore } from "./session-image-store.ts";
-import { createStaticAssetServer } from "./static-assets.ts";
-import { staticRoot } from "./static-path.ts";
-import { TransferredFileStore } from "./transferred-files.ts";
-import { WorkspaceReviewController } from "./workspace-review-controller.ts";
+} from "#src/session-sidebar-types.ts";
+import { AppStore } from "#src/state/app-store.ts";
+import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { UiRenderer } from "#src/ui/ui-renderer.ts";
+import { checkForUpdate } from "#src/update-check.ts";
+import { expandHomePath } from "#src/utils/workspace.ts";
+import { normalizeWorkspaceReviewPreferences } from "#src/workspace-review-types.ts";
 
 export async function createApp() {
 	const fdReady = ensureTool("fd", ({ message }) => console.error(message));

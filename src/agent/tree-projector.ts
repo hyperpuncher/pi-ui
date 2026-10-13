@@ -3,9 +3,9 @@ import type {
 	SessionTreeNode,
 } from "@earendil-works/pi-coding-agent";
 
-import type { AppStore, AppTreeEntry } from "../state/app-store.ts";
-import { formatDateTime } from "../utils/locale.ts";
-import { type JsonRecord, isNumber, isRecord, isString } from "../utils/type-guards.ts";
+import type { AppStore, AppTreeEntry } from "#src/state/app-store.ts";
+import { formatDateTime } from "#src/utils/locale.ts";
+import { type JsonRecord, isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
 
 type TreeState = Pick<AppStore, "setTreeEntries"> &
 	Partial<Pick<AppStore, "setActivityText">>;
