@@ -565,10 +565,7 @@ function renderNarrativeMessage(message: AppMessage): string {
 	}
 	return syncHtml(
 		<article
-			class={[
-				"message message-narrative message-assistant",
-				message.activitySummary && "message-activity-result",
-			]}
+			class="message message-narrative message-assistant"
 			id={`message-${message.id}`}
 		>
 			{message.activitySummary && (

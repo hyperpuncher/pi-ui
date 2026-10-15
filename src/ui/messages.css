@@ -687,7 +687,7 @@
 		display: flex;
 	}
 	[data-minimal-mode] {
-		--message-gap: var(--message-tool-gap);
+		--message-gap: var(--message-tool-narrative-gap);
 	}
 
 	[data-minimal-mode] #message-list > .message-tool::before,
@@ -698,11 +698,6 @@
 	/* Keep gaps stable even when intervening activity rows are hidden. */
 	[data-minimal-mode] #message-list > .message {
 		margin-bottom: var(--message-gap);
-	}
-
-	/* Keep completed activity aligned with other minimal-mode messages. */
-	[data-minimal-mode] #message-list > .message-activity-result {
-		margin-top: var(--message-gap);
 	}
 
 	/* Keep full turn separation when activity rows are hidden. */
