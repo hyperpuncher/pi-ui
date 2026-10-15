@@ -4,7 +4,13 @@ import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web
 export class DatastarStream {
 	constructor(private readonly stream: ds) {}
 
-	patchElements(elements: string, options?: Parameters<ds["patchElements"]>[1]) {
+	patchElements(
+		elements: string,
+		// The SDK serializes this documented option but does not yet declare it.
+		options?: Parameters<ds["patchElements"]>[1] & {
+			viewTransitionSelector?: string;
+		},
+	) {
 		return this.stream.patchElements(normalizeSseData(elements), options);
 	}
 

@@ -31,7 +31,10 @@ import { renderModelPicker, renderThinkingPicker } from "#src/ui/prompt-pickers.
 import { renderPromptStart } from "#src/ui/prompt-start.tsx";
 import { renderPromptStatus } from "#src/ui/prompt-status.tsx";
 import type { AppRenderSnapshot } from "#src/ui/render-state.ts";
-import { renderSessionSidebarContent } from "#src/ui/session-sidebar.tsx";
+import {
+	renderSessionSidebarContent,
+	sessionSidebarLayoutKey,
+} from "#src/ui/session-sidebar.tsx";
 import { renderSessionTransition } from "#src/ui/session-transition.tsx";
 import { renderToolbar } from "#src/ui/toolbar.tsx";
 import { renderTreePicker } from "#src/ui/tree-picker.tsx";
@@ -60,6 +63,7 @@ export class UiRenderer implements AppStorePresentation {
 	private pendingEnhancements = new Set<string>();
 	private transcriptPending = false;
 	private compactTools: boolean;
+	private sidebarLayout = "";
 
 	constructor(
 		private readonly store: AppStore,
@@ -107,9 +111,11 @@ export class UiRenderer implements AppStorePresentation {
 						);
 					}
 					const snapshot = this.store.snapshot();
+					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
 					const elements =
 						this.renderTranscript(this.projectState(snapshot)) +
-						this.renderView(snapshot, view);
+						this.renderView(snapshot, view) +
+						renderSessionSidebarContent(snapshot);
 					if (workspaceQuery.trim())
 						queueMicrotask(() => {
 							void this.setWorkspaceSearch(workspaceQuery);
@@ -183,6 +189,19 @@ export class UiRenderer implements AppStorePresentation {
 					"#messages",
 					{
 						scripts: ["window.piUi.messageScroll.afterUpdate()"],
+					},
+				);
+			}
+			const sidebarLayout = sessionSidebarLayoutKey(state);
+			const sidebarMoved = sidebarLayout !== this.sidebarLayout;
+			if (fullView || sidebarMoved) {
+				this.sidebarLayout = sidebarLayout;
+				this.hub.patchElement(
+					renderSessionSidebarContent(state),
+					"#session-sidebar-content",
+					{
+						useViewTransition: sidebarMoved,
+						viewTransitionSelector: "#session-sidebar-viewport",
 					},
 				);
 			}
@@ -316,7 +335,6 @@ export class UiRenderer implements AppStorePresentation {
 					: snapshot,
 				query,
 			) +
-			renderSessionSidebarContent(snapshot) +
 			renderWorkspaceReviewData(
 				snapshot.workspacePath,
 				snapshot.workspaceFilesRevision,

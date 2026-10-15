@@ -176,7 +176,7 @@ export function renderSessionSidebar(
 								<ShortcutKbd shortcut={activeKeybind("focus-sessions")} />
 							</div>
 						</header>
-						<section>
+						<section id="session-sidebar-viewport">
 							<div
 								role="group"
 								class="session-sidebar-group"
@@ -190,6 +190,18 @@ export function renderSessionSidebar(
 			</dialog>
 			<script>{`{ const el = document.getElementById('session-sidebar'); ${restoreSessionSidebar(desktopOpen)} }`}</script>
 		</>,
+	);
+}
+
+/** Only row order and grouping can change the sidebar layout. */
+export function sessionSidebarLayoutKey(state: SessionSidebarState): string {
+	return JSON.stringify(
+		groupSessionsByDate(state).map((group) => [
+			group.key,
+			Boolean(group.label),
+			state.sessionSidebarArchive && group.archived,
+			group.sessions.map(({ session }) => session.path),
+		]),
 	);
 }
 

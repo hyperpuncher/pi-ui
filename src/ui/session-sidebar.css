@@ -78,7 +78,7 @@
 		grid-area: 1 / 1;
 	}
 	.status-dot-layer {
-		transition: opacity 500ms ease-out;
+		transition: opacity 120ms var(--ease-out);
 	}
 	.status-dot-running {
 		color: var(--text-muted);
@@ -238,6 +238,24 @@
 		gap: 1px;
 	}
 
+	/* Keep snapshots inside the scroll viewport. Only row positions animate. */
+	#session-sidebar-viewport::view-transition-group(*) {
+		animation-duration: 150ms;
+		animation-timing-function: var(--ease-out);
+	}
+	#session-sidebar-viewport::view-transition-group(root),
+	#session-sidebar-viewport::view-transition-new(*) {
+		animation: none;
+	}
+	#session-sidebar-viewport::view-transition-old(*) {
+		display: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		#session-sidebar-viewport::view-transition-group(*) {
+			animation: none;
+		}
+	}
+
 	.session-date-heading {
 		list-style: none;
 	}
@@ -291,7 +309,9 @@
 		color: var(--text-muted);
 	}
 
+	/* Datastar preserves row identity when it moves rows between groups. */
 	.session-sidebar-row {
+		view-transition-name: match-element;
 		position: relative;
 		list-style: none;
 		border-radius: var(--radius-md);

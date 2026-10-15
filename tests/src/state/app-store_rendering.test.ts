@@ -923,11 +923,24 @@ test("app stream refreshes current and background session statuses", async () =>
 			state.setSessionCatalog([first, second]);
 		});
 		const running = await readUntil(reader, (text) =>
-			text.includes('aria-label="Current session running"'),
+			text.includes("event: datastar-patch-signals"),
 		);
 		assertIncludes(running, 'id="session-menu-content"');
 		assertIncludes(running, 'aria-selected="true"');
 		assertIncludes(running, "First session");
+		assertIncludes(running, 'aria-label="Current session running"');
+		assertIncludes(running, "data: useViewTransition true");
+		assertIncludes(running, "data: viewTransitionSelector #session-sidebar-viewport");
+
+		state.updateSessionSummary(first.path, (session) => ({
+			...session,
+			title: "Renamed session",
+		}));
+		const renamed = await readUntil(reader, (text) =>
+			text.includes("event: datastar-patch-signals"),
+		);
+		assertIncludes(renamed, "Renamed session");
+		assertNotIncludes(renamed, "data: useViewTransition true");
 
 		state.update(() => {
 			state.setCurrentSessionPath(second.path);
@@ -938,8 +951,9 @@ test("app stream refreshes current and background session statuses", async () =>
 			]);
 		});
 		const completed = await readUntil(reader, (text) =>
-			text.includes('aria-label="Background session completed"'),
+			text.includes("event: datastar-patch-signals"),
 		);
+		assertIncludes(completed, 'aria-label="Background session completed"');
 		assertIncludes(completed, 'id="session-menu-content"');
 		assertIncludes(completed, 'aria-selected="true"');
 		assertNotIncludes(

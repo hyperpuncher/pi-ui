@@ -87,16 +87,20 @@ export class DatastarClientHub {
 	patchElement(
 		elements: string,
 		selector: string,
-		options: { scripts?: readonly string[] } = {},
+		options: Parameters<DatastarStream["patchElements"]>[1] & {
+			scripts?: readonly string[];
+		} = {},
 	): void {
+		const { scripts = [], ...patchOptions } = options;
 		this.broadcast((client) => {
-			client.patchElements(elements, { selector });
-			for (const script of options.scripts ?? []) client.executeScript(script);
+			client.patchElements(elements, { ...patchOptions, selector });
+			for (const script of scripts) client.executeScript(script);
 			if (this.recordPerformance) {
 				if (selector === "#messages") {
 					sessionPerformance.recordFatMorph(elements);
 					sessionPerformance.markFirstTranscriptPatch();
-				} else sessionPerformance.recordTargetedMessagePatch(elements);
+				} else if (selector.startsWith("#message-"))
+					sessionPerformance.recordTargetedMessagePatch(elements);
 			}
 		});
 	}
