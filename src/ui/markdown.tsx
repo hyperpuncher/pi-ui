@@ -119,33 +119,17 @@ const markdownHtmlRewriter = new HTMLRewriter()
 		},
 	});
 
-type StreamingMarkdownMeasurement = {
-	html: string;
-	markdownParseMs: number;
-	codeBlockRenderMs: number;
-};
-
 export function renderMarkdownStreaming(
 	markdown: string,
 	options: { cacheKey?: string } = {},
 ): string {
-	return renderMarkdownStreamingMeasured(markdown, options).html;
-}
-
-function renderMarkdownStreamingMeasured(
-	markdown: string,
-	options: { cacheKey?: string } = {},
-): StreamingMarkdownMeasurement {
 	const cacheKey = options.cacheKey;
 	const cached = cacheKey ? streamingCache.get(cacheKey) : undefined;
 	if (cached?.markdown === markdown) {
-		return { html: cached.html, markdownParseMs: 0, codeBlockRenderMs: 0 };
+		return cached.html;
 	}
 
-	const parseStartedAt = performance.now();
 	const compiled = compileMarkdown(hideIncompleteLinkDestination(markdown));
-	const markdownParseMs = performance.now() - parseStartedAt;
-	const codeStartedAt = performance.now();
 	const pending = /class="language-mermaid(?:\s|")/i.test(compiled)
 		? pendingMermaidBlock(markdown)
 		: undefined;
@@ -181,9 +165,8 @@ function renderMarkdownStreamingMeasured(
 		cacheKey ?? "",
 		pending ? { index: pending.index, html: diagram?.html ?? "" } : undefined,
 	);
-	const codeBlockRenderMs = performance.now() - codeStartedAt;
 	if (cacheKey) streamingCache.set(cacheKey, { markdown, html, diagram });
-	return { html, markdownParseMs, codeBlockRenderMs };
+	return html;
 }
 
 export function releaseMarkdownStreamingState(cacheKey: string): void {

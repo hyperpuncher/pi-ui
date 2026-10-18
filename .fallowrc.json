@@ -28,6 +28,7 @@
 		"@pierre/trees",
 		"@starfederation/datastar-sdk",
 		"open-props",
+		"pele",
 		"quickjs-wasi",
 		"shiki",
 		"typebox"

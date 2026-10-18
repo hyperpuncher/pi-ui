@@ -1,9 +1,4 @@
 @layer base {
-	.shiki span:where([style*="--shiki-dark"]) {
-		/* stylelint-disable-next-line declaration-no-important -- generated Shiki token boundary */
-		color: light-dark(var(--shiki-light), var(--shiki-dark)) !important;
-	}
-
 	.streaming-token {
 		background-color: light-dark(
 			var(--shiki-light-bg, transparent),
@@ -361,21 +356,6 @@
 	.markdown-content .code-block .pierre-code {
 		margin-block: 0;
 		border-radius: 0;
-	}
-
-	.markdown-content .shiki {
-		margin-block: 1rem;
-		overflow: auto;
-		border-radius: var(--radius-lg);
-		padding: 1rem;
-		font-size: var(--text-base);
-		line-height: 1.625;
-		overflow-wrap: anywhere;
-		white-space: pre-wrap;
-	}
-
-	.markdown-content .shiki code {
-		white-space: pre-wrap;
 	}
 
 	.markdown-content hr {
