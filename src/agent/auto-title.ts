@@ -1,7 +1,7 @@
 import { contentText } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime, SessionEntry } from "@earendil-works/pi-coding-agent";
 
-import { parseModelPattern } from "#pi/core/model-resolver.js";
+import { resolveModelReference } from "#pi/core/model-resolver.js";
 import type { JsonValue } from "#src/utils/json-types.ts";
 import { isBoolean, isRecord, isString } from "#src/utils/type-guards.ts";
 
@@ -59,7 +59,7 @@ export async function generateAutoTitle(
 	);
 	if (!firstUserMessage) return undefined;
 
-	const available = [...runtime.services.modelRuntime.getAvailableSnapshot()];
+	const available = runtime.services.modelRuntime.getAvailableSnapshot();
 	const promptSuffix = config.prompt
 		? ["Follow this user-configured title style:", config.prompt].join(" ")
 		: "";
@@ -80,10 +80,14 @@ export async function generateAutoTitle(
 	};
 
 	for (const pattern of config.models) {
-		const { model, thinkingLevel } = parseModelPattern(pattern, available, {
-			allowInvalidThinkingLevelFallback: false,
-		});
-		if (!model) continue;
+		const result = resolveModelReference(
+			{ text: pattern, thinkingSuffix: "strict", fuzzy: true },
+			available,
+			// The available snapshot contains only authenticated providers.
+			() => true,
+		);
+		if (result.status !== "resolved") continue;
+		const { model, thinkingLevel } = result;
 		try {
 			const response = await runtime.services.modelRuntime.completeSimple(
 				model,
