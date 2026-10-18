@@ -165,7 +165,9 @@
 
 	@container (width >= calc(50vw + 26rem)) {
 		#app:not(.review-open) #messages > .messages-stack {
-			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
+			--messages-center-offset: calc(50vw - var(--workspace-inset) - 50cqw);
+
+			translate: var(--messages-center-offset) 0;
 		}
 	}
 

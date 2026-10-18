@@ -14,6 +14,7 @@ import { getActiveCodeThemeId, getPierreThemes } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
 import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "#src/ui/diffs.ts";
 import { Icon } from "#src/ui/icon.tsx";
+import { renderMermaid } from "#src/ui/mermaid.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
 import { shikiTokenStyle } from "#src/ui/shiki-token-style.ts";
 import { syncHtml } from "#src/ui/sync-html.ts";
@@ -27,7 +28,14 @@ const maxFinalMarkdownEntries = 500;
 const maxPierreCodeBlockEntries = 500;
 const maxFinalCacheBytes = 8 * 1024 * 1024;
 
-const streamingCache = new BoundedCache<string, { markdown: string; html: string }>(
+type PendingMermaidBlock = { index: number; source: string };
+type StreamingMarkdownState = {
+	markdown: string;
+	html: string;
+	diagram?: PendingMermaidBlock & { html: string };
+};
+
+const streamingCache = new BoundedCache<string, StreamingMarkdownState>(
 	maxStreamingEntries,
 );
 const stringCacheOptions = {
@@ -46,6 +54,8 @@ const pierreCodeBlockCache = new BoundedCache<string, string>(
 );
 const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
 const incompleteLinkPattern = /^\[([^[\]\n]+)\]\([^\n)]*$/;
+const codeBlockPattern =
+	/<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g;
 
 type StreamingCodeBlockState = {
 	language: string;
@@ -127,20 +137,52 @@ function renderMarkdownStreamingMeasured(
 	options: { cacheKey?: string } = {},
 ): StreamingMarkdownMeasurement {
 	const cacheKey = options.cacheKey;
-	if (cacheKey) {
-		const cached = streamingCache.get(cacheKey);
-		if (cached?.markdown === markdown) {
-			return { html: cached.html, markdownParseMs: 0, codeBlockRenderMs: 0 };
-		}
+	const cached = cacheKey ? streamingCache.get(cacheKey) : undefined;
+	if (cached?.markdown === markdown) {
+		return { html: cached.html, markdownParseMs: 0, codeBlockRenderMs: 0 };
 	}
 
 	const parseStartedAt = performance.now();
 	const compiled = compileMarkdown(hideIncompleteLinkDestination(markdown));
 	const markdownParseMs = performance.now() - parseStartedAt;
 	const codeStartedAt = performance.now();
-	const html = renderStreamingCodeBlocks(compiled, cacheKey ?? "");
+	const pending = /class="language-mermaid(?:\s|")/i.test(compiled)
+		? pendingMermaidBlock(markdown)
+		: undefined;
+	let diagram =
+		pending &&
+		cached &&
+		markdown.startsWith(cached.markdown) &&
+		cached.diagram?.index === pending.index
+			? cached.diagram
+			: undefined;
+	// A header alone can produce an empty SVG; wait for another completed source line.
+	if (
+		pending &&
+		pending.source.trim().includes("\n") &&
+		pending.source !== diagram?.source
+	) {
+		// Keep only the latest draft in the message cache, not the completed-diagram cache.
+		diagram = {
+			...pending,
+			html:
+				renderMermaid(
+					pending.source,
+					cacheKey || compiled,
+					pending.index,
+					false,
+				) ??
+				diagram?.html ??
+				"",
+		};
+	}
+	const html = renderStreamingCodeBlocks(
+		compiled,
+		cacheKey ?? "",
+		pending ? { index: pending.index, html: diagram?.html ?? "" } : undefined,
+	);
 	const codeBlockRenderMs = performance.now() - codeStartedAt;
-	if (cacheKey) streamingCache.set(cacheKey, { markdown, html });
+	if (cacheKey) streamingCache.set(cacheKey, { markdown, html, diagram });
 	return { html, markdownParseMs, codeBlockRenderMs };
 }
 
@@ -166,13 +208,16 @@ export function markdownCacheStatsForTest(): MarkdownCacheStats {
 
 export async function renderMarkdownFinal(
 	markdown: string,
-	options: { localImageBase?: string } = {},
+	options: { localImageBase?: string; cacheKey?: string } = {},
 ): Promise<string> {
 	const localImageBase = options.localImageBase ?? "";
-	const cacheKey = `${getActiveCodeThemeId()}\0${localImageBase}\0${markdown}`;
+	const cacheKey = `${getActiveCodeThemeId()}\0${localImageBase}\0${options.cacheKey ?? ""}\0${markdown}`;
 	const cached = highlightedCache.get(cacheKey);
 	if (cached) return cached;
-	let html = await highlightCodeBlocksFinal(compileMarkdown(markdown));
+	let html = await highlightCodeBlocksFinal(
+		compileMarkdown(markdown),
+		options.cacheKey ?? markdown,
+	);
 	if (localImageBase) html = rewriteRelativeImageSources(html, localImageBase);
 	highlightedCache.set(cacheKey, html);
 	return html;
@@ -208,54 +253,104 @@ export async function renderCodeFinal(
 	return renderPlainCode(code, await codeFenceLanguageFinal(language), options);
 }
 
-function renderStreamingCodeBlocks(html: string, cacheKeyPrefix = ""): string {
-	const blocks = [
-		...html.matchAll(
-			/<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g,
-		),
-	];
-	if (blocks.length === 0) {
-		return html;
-	}
-
-	let highlighted = html;
-	for (const [index, block] of blocks.entries()) {
-		const [raw, rawLanguage, rawCode] = block;
-		const language = codeFenceLanguage(rawLanguage);
-		const code = decodeHtml(rawCode)
-			.replace(/\n$/, "")
-			.replace(/\n`{1,2}[ \t]*$/, "");
-		const replacement = cacheKeyPrefix
-			? highlightStreamingCodeBlock(code, language, `${cacheKeyPrefix}:${index}`)
-			: renderStreamingPlainCodeBlock(code, language);
-		highlighted = highlighted.replace(raw, () => replacement);
-	}
-	return highlighted;
+function pendingMermaidBlock(markdown: string): PendingMermaidBlock | undefined {
+	const marker = `pi-ui-stream-boundary-${crypto.randomUUID()}`;
+	let pending: PendingMermaidBlock | undefined;
+	let index = 0;
+	const trimmed = markdown.trimEnd();
+	// Keep the marker in the current container without completing a closing fence at EOF.
+	const prefix = markdown.endsWith("\n")
+		? (/^[ \t]*(?:>[ \t]*)*/.exec(
+				trimmed.slice(trimmed.lastIndexOf("\n") + 1),
+			)?.[0] ?? "")
+		: "";
+	Bun.markdown.render(
+		markdown + prefix + marker,
+		{
+			code: (source, meta) => {
+				if (
+					normalizedCodeFenceLanguage(meta?.language) === "mermaid" &&
+					source.endsWith(`${marker}\n`)
+				) {
+					// Exclude the in-progress line, including partial closing fences.
+					const boundary = source.length - marker.length - 1;
+					pending = {
+						index,
+						source: source.slice(
+							0,
+							source.lastIndexOf("\n", boundary - 1) + 1,
+						),
+					};
+				}
+				index += 1;
+				return "";
+			},
+		},
+		{ noHtmlBlocks: true, noHtmlSpans: true },
+	);
+	return pending;
 }
 
-async function highlightCodeBlocksFinal(html: string): Promise<string> {
-	const blocks = [
-		...html.matchAll(
-			/<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g,
-		),
-	];
-	if (blocks.length === 0) return html;
+function renderStreamingCodeBlocks(
+	html: string,
+	cacheKeyPrefix = "",
+	pending?: { index: number; html: string },
+): string {
+	let index = 0;
+	return html.replace(
+		codeBlockPattern,
+		(_raw, rawLanguage: string | undefined, rawCode: string) => {
+			const blockIndex = index++;
+			if (pending?.index === blockIndex) return pending.html;
+			const source = decodeHtml(rawCode).replace(/\n$/, "");
+			if (!source) return "";
+			if (normalizedCodeFenceLanguage(rawLanguage) === "mermaid") {
+				const diagram = renderMermaid(source, cacheKeyPrefix || html, blockIndex);
+				if (diagram !== undefined) return diagram;
+			}
+			const language = codeFenceLanguage(rawLanguage);
+			const code = source.replace(/\n`{1,2}[ \t]*$/, "");
+			return cacheKeyPrefix
+				? highlightStreamingCodeBlock(
+						code,
+						language,
+						`${cacheKeyPrefix}:${blockIndex}`,
+					)
+				: renderStreamingPlainCodeBlock(code, language);
+		},
+	);
+}
 
-	let highlighted = html;
-	for (const block of blocks) {
+async function highlightCodeBlocksFinal(html: string, scope: string): Promise<string> {
+	const parts: string[] = [];
+	let offset = 0;
+	let index = 0;
+	for (const block of html.matchAll(codeBlockPattern)) {
 		const [raw, rawLanguage, rawCode] = block;
-		const language = await codeFenceLanguageFinal(rawLanguage);
+		const blockIndex = index++;
+		parts.push(html.slice(offset, block.index));
+		offset = block.index + raw.length;
 		const code = decodeHtml(rawCode).replace(/\n$/, "");
-		const replacement = syncHtml(
-			<CodeBlock
-				pre={await cachedPierreCodeBlock(code, language)}
-				language={language}
-				source={code}
-			/>,
+		if (normalizedCodeFenceLanguage(rawLanguage) === "mermaid") {
+			const diagram = renderMermaid(code, scope, blockIndex);
+			if (diagram !== undefined) {
+				parts.push(diagram);
+				continue;
+			}
+		}
+		const language = await codeFenceLanguageFinal(rawLanguage);
+		parts.push(
+			syncHtml(
+				<CodeBlock
+					pre={await cachedPierreCodeBlock(code, language)}
+					language={language}
+					source={code}
+				/>,
+			),
 		);
-		highlighted = highlighted.replace(raw, () => replacement);
 	}
-	return highlighted;
+	parts.push(html.slice(offset));
+	return parts.join("");
 }
 
 async function cachedPierreCodeBlock(code: string, language: string): Promise<string> {
@@ -483,6 +578,7 @@ function safeUrl(value: string, options: { allowDataImage: boolean }): URL | und
 }
 
 function decodeHtml(value: string): string {
+	if (!value.includes("&")) return value;
 	return value
 		.replaceAll("&lt;", "<")
 		.replaceAll("&gt;", ">")

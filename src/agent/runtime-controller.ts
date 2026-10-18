@@ -28,6 +28,7 @@ import { detectCacheMiss, formatCacheMissNotice } from "#src/agent/cache-miss.ts
 import { ExtensionUiController } from "#src/agent/extension-ui-controller.ts";
 import { LlamaController } from "#src/agent/llama-controller.ts";
 import { llamaProviderExtension } from "#src/agent/llama-provider-extension.ts";
+import { mermaidExtension } from "#src/agent/mermaid-extension.ts";
 import { ModelController } from "#src/agent/model-controller.ts";
 import "#src/agent/codemode-assets.ts";
 import {
@@ -90,6 +91,7 @@ import {
 
 const extensionFactories = [
 	llamaProviderExtension,
+	mermaidExtension,
 	{
 		name: "codemode",
 		factory: createCodemodeExtension(),

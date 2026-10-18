@@ -455,6 +455,7 @@ async function workspaceFileViewResponse(
 			throw new RouteError(415, "This file cannot be previewed.");
 		const resolved = await resolveFile(context.store.workspacePath, filePath);
 		const html = await renderMarkdownFinal(file.contents, {
+			cacheKey: `file:${resolved.path}`,
 			localImageBase: dirname(resolved.path),
 		});
 		return workspaceFileResponse(() =>

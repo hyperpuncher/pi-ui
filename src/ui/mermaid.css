@@ -1,0 +1,36 @@
+@layer components {
+	.mermaid-diagram {
+		--pele-bg: var(--surface-base);
+		--pele-fg: var(--text);
+		--pele-muted: var(--text-muted);
+		--pele-line: var(--text-muted);
+		--pele-surface: var(--surface-control);
+		--pele-surface-alt: var(--surface-muted);
+		--pele-border: var(--text-muted);
+		--pele-accent: var(--action-primary);
+		--pele-critical: var(--status-danger);
+		--pele-font: var(--font-sans);
+		--pele-font-mono: var(--font-mono);
+		--pele-radius: var(--radius-sm);
+		--pele-title-weight: 600;
+		--pele-heading-weight: 600;
+		--pele-series-1: light-dark(oklch(52% 0.18 260deg), oklch(74% 0.13 260deg));
+		--pele-series-2: light-dark(oklch(57% 0.15 45deg), oklch(78% 0.12 45deg));
+		--pele-series-3: light-dark(oklch(52% 0.13 150deg), oklch(74% 0.13 150deg));
+		--pele-series-4: light-dark(oklch(50% 0.17 325deg), oklch(72% 0.15 325deg));
+		--pele-series-5: light-dark(oklch(52% 0.12 185deg), oklch(74% 0.13 185deg));
+		--pele-series-6: light-dark(oklch(58% 0.13 85deg), oklch(80% 0.13 85deg));
+		--pele-series-7: light-dark(oklch(52% 0.17 295deg), oklch(74% 0.13 295deg));
+		--pele-series-8: light-dark(oklch(52% 0.17 25deg), oklch(74% 0.13 25deg));
+
+		max-block-size: 64rem;
+		margin-block: 1rem;
+		overflow: auto;
+	}
+
+	.mermaid-diagram > .pele {
+		display: block;
+		max-inline-size: none;
+		margin-inline: auto;
+	}
+}

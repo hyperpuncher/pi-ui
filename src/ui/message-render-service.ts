@@ -29,7 +29,7 @@ type MessagePresentation = Pick<
 type EnhancementKind = "markdown" | "code" | "diff" | "title";
 export type MessageRenderServiceOptions = {
 	enhancementConcurrency?: number;
-	renderMarkdownFinal?: (text: string) => Promise<string>;
+	renderMarkdownFinal?: typeof renderMarkdownFinal;
 	renderCode?: (text: string, language: string) => Promise<string>;
 	renderDiff?: (text: string) => Promise<string | undefined>;
 	registerImage?: (image: { data: string; mimeType: string }) => string;
@@ -93,7 +93,7 @@ export class MessageRenderService {
 	private readonly streaming: StreamingFrameScheduler<readonly string[]>;
 	private readonly pendingStreamingIds = new Set<string>();
 	private generation = 0;
-	private readonly renderMarkdownEnhancement: (text: string) => Promise<string>;
+	private readonly renderMarkdownEnhancement: typeof renderMarkdownFinal;
 	private readonly renderCodeEnhancement: (
 		text: string,
 		language: string,
@@ -278,7 +278,7 @@ export class MessageRenderService {
 				// The message may have scrolled out of the visible window while
 				// queued. Rendering it anyway would repopulate the evicted cache.
 				if (!this.store.transcript.isMessageVisible(id)) return;
-				const html = await this.renderEnhancement(kind, text);
+				const html = await this.renderEnhancement(kind, text, id);
 				if (signal.aborted) return;
 				const current = this.store.transcript.getMessage(id);
 				if (
@@ -373,7 +373,9 @@ export class MessageRenderService {
 		) {
 			// Static messages need Markdown structure immediately. Final syntax
 			// highlighting may remain queued, but plain source must never flash.
-			presentation.renderedHtml = renderMarkdownStreaming(message.text);
+			presentation.renderedHtml = renderMarkdownStreaming(message.text, {
+				cacheKey: message.id,
+			});
 		}
 		return {
 			...message,
@@ -449,11 +451,12 @@ export class MessageRenderService {
 	private async renderEnhancement(
 		kind: EnhancementKind,
 		text: string,
+		id: string,
 	): Promise<string | undefined> {
 		if (kind === "title") return undefined;
 		if (kind === "markdown")
 			return await sessionPerformance.measure("markdownEnhancement", () =>
-				this.renderMarkdownEnhancement(text),
+				this.renderMarkdownEnhancement(text, { cacheKey: id }),
 			);
 		const end = sessionPerformance.startSpan("toolEnhancement");
 		try {

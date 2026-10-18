@@ -148,18 +148,90 @@
 		white-space: pre-wrap;
 	}
 
-	.markdown-content .table-container {
-		--markdown-table-border: oklch(from var(--text) l c h / 10%);
-
+	.markdown-content :is(.table-container, .mermaid-diagram) {
 		position: relative;
 		left: 50%;
 		width: fit-content;
 		min-width: 100%;
-		max-width: calc(100cqw - 2 * var(--messages-inline-padding, 1rem));
+		max-width: calc(
+			100cqw - 2 * var(--messages-inline-padding, 1rem) - 2 *
+				var(--messages-center-offset, 0px)
+		);
+		transform: translateX(-50%);
+	}
+
+	@keyframes overflow-fade-x {
+		0% {
+			--overflow-fade-left: 0px;
+			--overflow-fade-right: 1rem;
+		}
+		1%,
+		99% {
+			--overflow-fade-left: 1rem;
+			--overflow-fade-right: 1rem;
+		}
+		100% {
+			--overflow-fade-left: 1rem;
+			--overflow-fade-right: 0px;
+		}
+	}
+	@keyframes overflow-fade-y {
+		0% {
+			--overflow-fade-top: 0px;
+			--overflow-fade-bottom: 1rem;
+		}
+		1%,
+		99% {
+			--overflow-fade-top: 1rem;
+			--overflow-fade-bottom: 1rem;
+		}
+		100% {
+			--overflow-fade-top: 1rem;
+			--overflow-fade-bottom: 0px;
+		}
+	}
+
+	/* Decorative enhancement: unsupported and inactive timelines keep every edge opaque. */
+	@supports (animation-timeline: scroll(self x)) and (animation-range: 0% 200%) {
+		.markdown-content :is(.table-container, .mermaid-diagram) {
+			--overflow-fade-left: 0px;
+			--overflow-fade-right: 0px;
+			--overflow-fade-top: 0px;
+			--overflow-fade-bottom: 0px;
+
+			mask-image:
+				linear-gradient(
+					to right,
+					transparent,
+					oklch(0% 0 none) var(--overflow-fade-left),
+					oklch(0% 0 none) calc(100% - var(--overflow-fade-right)),
+					transparent
+				),
+				linear-gradient(
+					to bottom,
+					transparent,
+					oklch(0% 0 none) var(--overflow-fade-top),
+					oklch(0% 0 none) calc(100% - var(--overflow-fade-bottom)),
+					transparent
+				);
+			mask-composite: intersect;
+
+			/* Keep the real scroll range in the first pass. This avoids a finished
+			   fill effect sticking around when a resize removes the overflow. */
+			animation:
+				overflow-fade-x 1ms linear 2 alternate,
+				overflow-fade-y 1ms linear 2 alternate;
+			animation-timeline: scroll(self x), scroll(self y);
+			animation-range: 0% 200%;
+		}
+	}
+
+	.markdown-content .table-container {
+		--markdown-table-border: oklch(from var(--text) l c h / 10%);
+
 		overflow-x: auto;
 		border: 1px solid var(--markdown-table-border);
 		border-radius: var(--radius-md);
-		transform: translateX(-50%);
 	}
 
 	.markdown-content .table-container table {

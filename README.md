@@ -21,6 +21,7 @@ keyboard-first minimal gui for [`pi`](https://pi.dev)
 - background sessions
 - git review with commit history and inline comments
 - markdown, syntax highlighting, and rich diffs
+- diagrams and charts
 - file attachments with image previews
 
 ## built with
@@ -29,6 +30,7 @@ keyboard-first minimal gui for [`pi`](https://pi.dev)
 - [`datastar`](https://data-star.dev/)
 - [`kita-jsx`](https://github.com/kitajs/html)
 - [`pierre-diffs`](https://diffs.com/)
+- [`pele`](https://github.com/obsidianmd/pele)
 
 ## try
 
