@@ -74,6 +74,7 @@
 	},
 	"packageManager": "bun@1.4.3",
 	"patchedDependencies": {
-		"@shikijs/primitive@4.4.3": "patches/@shikijs%2Fprimitive@4.4.3.patch"
+		"@shikijs/primitive@4.4.3": "patches/@shikijs%2Fprimitive@4.4.3.patch",
+		"@earendil-works/pi-coding-agent@1.3.0": "patches/@earendil-works%2Fpi-coding-agent@1.3.0.patch"
 	}
 }

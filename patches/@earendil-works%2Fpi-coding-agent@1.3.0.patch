@@ -1,0 +1,21 @@
+diff --git a/dist/config.js b/dist/config.js
+index 62eb303e5ca396e4107081868790506673344faa..dc7bef054221b3aa684ceae668804a4402e689bb 100644
+--- a/dist/config.js
++++ b/dist/config.js
+@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
+ import { spawnProcessSync } from "./utils/child-process.js";
+ import { normalizePath } from "./utils/paths.js";
+ import { stripBom } from "./utils/text.js";
++import { version as sdkVersion } from "../package.json" with { type: "json" };
+ // =============================================================================
+ // Package Detection
+ // =============================================================================
+@@ -471,7 +472,7 @@ export const PACKAGE_NAME = pkg.name || "@earendil-works/pi-coding-agent";
+ export const APP_NAME = piConfigName || "pi";
+ export const APP_TITLE = piConfigName ? APP_NAME : "π";
+ export const CONFIG_DIR_NAME = pkg.piConfig?.configDir || ".pi";
+-export const VERSION = pkg.version || "0.0.0";
++export const VERSION = sdkVersion;
+ // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
+ export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
+ export const ENV_SESSION_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_SESSION_DIR`;
