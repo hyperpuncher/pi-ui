@@ -1,8 +1,13 @@
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import { Icon } from "#src/ui/icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 
-const themes = { system: "System", light: "Light", dark: "Dark" } as const;
+const themes = {
+	system: { label: "System", icon: "monitor" },
+	light: { label: "Light", icon: "sun" },
+	dark: { label: "Dark", icon: "moon" },
+} as const;
 
 export function renderThemeDialog(theme: AppStateSnapshot["theme"]): string {
 	return syncHtml(
@@ -24,7 +29,7 @@ export function renderThemeDialog(theme: AppStateSnapshot["theme"]): string {
 					<span id="theme-title" class="command-group-label">
 						Theme
 					</span>
-					{Object.entries(themes).map(([mode, label]) => (
+					{Object.entries(themes).map(([mode, { label, icon }]) => (
 						<button
 							type="button"
 							class="command-choice"
@@ -37,6 +42,7 @@ export function renderThemeDialog(theme: AppStateSnapshot["theme"]): string {
 								@post('${endpoints.theme}', { payload: { theme: '${mode}' }, retryMaxCount: 0 })
 							`}
 						>
+							<Icon name={icon} />
 							{label}
 							<span
 								class="selection-dot"
