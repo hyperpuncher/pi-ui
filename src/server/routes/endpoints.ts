@@ -14,6 +14,7 @@ export const endpoints = {
 	root: "/",
 	stream: "/stream",
 	notificationsStream: "/notifications/stream",
+	theme: "/theme",
 	codeTheme: "/code-theme",
 	fonts: "/fonts",
 	keybindHints: "/keybind-hints",

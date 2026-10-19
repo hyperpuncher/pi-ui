@@ -1,4 +1,8 @@
 @layer components {
+	.theme-dialog {
+		--command-dialog-width: 14rem;
+	}
+
 	.font-dialog-panel,
 	.code-theme-dialog-panel {
 		height: min(48rem, calc(100dvh - 2rem));

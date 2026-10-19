@@ -216,6 +216,14 @@ const schema = Type.Object(
 				},
 			),
 		),
+		theme: Type.Optional(
+			Type.String({
+				enum: ["system", "light", "dark"],
+				default: "system",
+				description:
+					"Interface appearance. System follows the operating system color scheme.",
+			}),
+		),
 		toolOutputHidden: Type.Optional(
 			Type.Boolean({
 				default: false,

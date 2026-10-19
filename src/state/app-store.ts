@@ -199,6 +199,7 @@ export type AppStateSnapshot = Readonly<{
 	thinkingLevel: AppThinkingLevel;
 	thinkingLevels: readonly AppThinkingLevel[];
 	thinkingHidden: boolean;
+	theme: "system" | "light" | "dark";
 	keybindHints: boolean;
 	minimalMode: boolean;
 	toolOutputHidden: boolean;
@@ -292,6 +293,7 @@ export class AppStore {
 	thinkingLevel: AppThinkingLevel = "off";
 	thinkingLevels: AppThinkingLevel[] = ["off"];
 	thinkingHidden = false;
+	theme: AppStateSnapshot["theme"] = "system";
 	keybindHints = true;
 	minimalMode = false;
 	toolOutputHidden = false;
@@ -402,6 +404,7 @@ export class AppStore {
 			thinkingLevel: this.thinkingLevel,
 			thinkingLevels: [...this.thinkingLevels],
 			thinkingHidden: this.thinkingHidden,
+			theme: this.theme,
 			keybindHints: this.keybindHints,
 			minimalMode: this.minimalMode,
 			toolOutputHidden: this.toolOutputHidden,

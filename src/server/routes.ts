@@ -14,6 +14,7 @@ import { sessionPerformanceRoutes } from "#src/server/routes/session-performance
 import { sessionSidebarRoutes } from "#src/server/routes/session-sidebar.ts";
 import { sessionRoutes } from "#src/server/routes/sessions.ts";
 import { streamRoutes } from "#src/server/routes/stream.ts";
+import { themeRoutes } from "#src/server/routes/theme.ts";
 import { treeRoutes } from "#src/server/routes/tree.ts";
 import { workspaceReviewRoutes } from "#src/server/routes/workspace-review.ts";
 import { workspaceRoutes } from "#src/server/routes/workspace.ts";
@@ -22,6 +23,7 @@ export const appRoutes: RouteMap<RouteContext> = {
 	...assetRoutes,
 	...streamRoutes,
 	...extensionUiRoutes,
+	...themeRoutes,
 	...codeThemeRoutes,
 	...fontRoutes,
 	...promptRoutes,

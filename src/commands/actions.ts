@@ -75,6 +75,8 @@ export const commandActions = {
 	"previous-session": previousSessionAction(),
 	"session-tree": openTreeAction(),
 	"command-palette": "document.getElementById('command-input')?.focus()",
+	"change-theme":
+		"document.getElementById('command-dialog')?.close(); document.getElementById('theme-dialog').showModal()",
 	"change-code-theme":
 		"document.getElementById('command-dialog')?.close(); window.dispatchEvent(new Event('pi-ui-open-code-theme'))",
 	"change-fonts":

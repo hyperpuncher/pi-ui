@@ -187,11 +187,16 @@ all options with their defaults:
 		"open": true,
 		"width": 288
 	},
+	"theme": "system",
 	"toolOutputHidden": false,
 	"toolbarHidden": false,
 	"updateCheck": true
 }
 ```
+
+use **change theme** in the command palette to select `system`, `light`, or `dark`. the choice is saved as `theme` in config and applies to all connected browsers. `system` follows each device’s operating system appearance. code syntax themes remain separate under `codeTheme`.
+
+restart pi-ui after you edit the config file directly.
 
 ## keybinds
 

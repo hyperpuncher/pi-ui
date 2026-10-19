@@ -193,7 +193,7 @@
 		font-weight: 500;
 	}
 
-	.command :where([role="option"], [role="menuitem"]),
+	.command :where([role="option"], [role="menuitem"], .command-choice),
 	.dropdown-menu :where([role^="menuitem"]) {
 		display: flex;
 		width: 100%;
@@ -207,10 +207,17 @@
 		outline-offset: -2px;
 	}
 
-	:where(.command-dialog) .command :where([role="option"], [role="menuitem"]) {
+	:where(.command-dialog)
+		.command
+		:where([role="option"], [role="menuitem"], .command-choice) {
 		border-radius: var(--radius-lg);
 	}
 
+	.command .command-choice:focus-visible {
+		outline-color: transparent;
+	}
+
+	.command .command-choice:is(:hover, :focus-visible):not(:disabled),
 	.command :where([role="option"], [role="menuitem"]).active,
 	.dropdown-menu :where([role^="menuitem"]):is(:hover, :focus-visible) {
 		background: var(--surface-control);
@@ -218,6 +225,7 @@
 	}
 
 	@media (forced-colors: active) {
+		.command .command-choice:focus-visible,
 		.command :where([role="option"], [role="menuitem"]).active {
 			outline: 1px solid Highlight;
 		}

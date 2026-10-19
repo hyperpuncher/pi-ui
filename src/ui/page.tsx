@@ -31,6 +31,7 @@ import {
 	renderSessionTransition,
 } from "#src/ui/session-transition.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
+import { renderThemeDialog } from "#src/ui/theme-dialog.tsx";
 import { renderThemeLab } from "#src/ui/theme-lab.tsx";
 import { renderToolbar } from "#src/ui/toolbar.tsx";
 import { renderTreePicker } from "#src/ui/tree-picker.tsx";
@@ -78,8 +79,10 @@ export function renderPage(
 						content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
 					/>
 					<meta name="text-scale" content="scale" />
-					<meta name="color-scheme" content="light dark" />
-					<script>{`try{var m=document.querySelector('meta[name="color-scheme"]');var s=null;try{s=localStorage.getItem("color-scheme")}catch(e){}m.content=s==="light"||s==="dark"?s:"light dark"}catch(e){}`}</script>
+					<meta
+						name="color-scheme"
+						content={state.theme === "system" ? "light dark" : state.theme}
+					/>
 					<meta name="theme-color" content="" />
 					<meta name="apple-mobile-web-app-title" content="pi-ui" />
 					<title id="document-title" safe>
@@ -142,6 +145,7 @@ export function renderPage(
 					data-attr:data-thinking-hidden="$_thinkingHidden"
 					data-attr:data-toolbar-hidden="$_toolbarHidden"
 					data-effect={`
+						window.piUiTheme.setMode($_theme);
 						window.piUi.fonts.apply($_fontMono, $_fontSans);
 						window.dispatchEvent(
 							new CustomEvent('pi-ui-code-theme-changed', {
@@ -309,6 +313,7 @@ export function renderPage(
 					</div>
 
 					{renderCommandMenu()}
+					{renderThemeDialog(state.theme)}
 					{renderCodeThemeDialog()}
 					{renderFontDialog()}
 					{renderAuthDialog(state.authDialog)}

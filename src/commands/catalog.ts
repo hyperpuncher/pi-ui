@@ -5,6 +5,7 @@ export type AppCommandId =
 	| "previous-session"
 	| "session-tree"
 	| "command-palette"
+	| "change-theme"
 	| "change-code-theme"
 	| "change-fonts"
 	| "toggle-keybind-hints"
@@ -65,6 +66,11 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Command palette",
 		description: "Open the keyboard command launcher.",
 		shortcut: "ctrl K",
+	},
+	{
+		id: "change-theme",
+		title: "Change theme",
+		description: "Choose system, light, or dark theme.",
 	},
 	{
 		id: "change-code-theme",

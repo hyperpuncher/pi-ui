@@ -1,11 +1,7 @@
 window.piUiTheme = (() => {
-	function readStored() {
-		try {
-			const stored = localStorage.getItem("color-scheme");
-			return stored === "light" || stored === "dark" ? stored : null;
-		} catch {
-			return null;
-		}
+	function currentPreference() {
+		const scheme = document.querySelector('meta[name="color-scheme"]')?.content;
+		return scheme === "light" || scheme === "dark" ? scheme : "system";
 	}
 
 	function currentMode() {
@@ -23,19 +19,13 @@ window.piUiTheme = (() => {
 	}
 
 	function apply() {
-		const stored = readStored();
-		const meta = document.querySelector('meta[name="color-scheme"]');
-		if (meta) meta.content = stored ?? "light dark";
 		window.dispatchEvent(new Event("pi-ui-theme-mode-changed"));
 	}
 
 	function setMode(preference) {
-		try {
-			if (preference === "system") localStorage.removeItem("color-scheme");
-			else localStorage.setItem("color-scheme", preference);
-		} catch {
-			// Theme editing still works when storage is unavailable.
-		}
+		if (currentPreference() === preference) return;
+		const meta = document.querySelector('meta[name="color-scheme"]');
+		if (meta) meta.content = preference === "system" ? "light dark" : preference;
 		apply();
 	}
 
@@ -48,17 +38,14 @@ window.piUiTheme = (() => {
 	try {
 		apply();
 		matchMedia("(prefers-color-scheme: dark)").addEventListener("change", apply);
-		window.addEventListener("storage", (event) => {
-			if (event.key === "color-scheme") apply();
-		});
 	} catch {
-		// Keep first paint working if storage or media queries are unavailable.
+		// Keep first paint working if media queries are unavailable.
 	}
 
 	return {
 		apply,
 		currentMode,
-		currentPreference: () => readStored() ?? "system",
+		currentPreference,
 		setMode,
 	};
 })();

@@ -51,6 +51,10 @@ export async function createApp() {
 		["bash", "javascript"].map(loadPierreLanguage),
 	);
 	const store = new AppStore();
+	store.theme =
+		appConfig.theme === "light" || appConfig.theme === "dark"
+			? appConfig.theme
+			: "system";
 	store.keybindHints = appConfig.keybindHints !== false;
 	store.minimalMode = appConfig.minimalMode === true;
 	store.toolOutputHidden = appConfig.toolOutputHidden === true;

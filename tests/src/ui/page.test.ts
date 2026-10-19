@@ -20,6 +20,19 @@ function sidebarScriptFrom(page: string): string {
 const html = renderSidebarPage();
 const sidebarScript = sidebarScriptFrom(html);
 
+test("appearance is rendered before scripts without a browser-storage override", () => {
+	for (const theme of ["system", "light", "dark"] as const) {
+		const page = renderPage({ ...appRenderSnapshot({}), theme, messages: [] });
+		const meta = `<meta name="color-scheme" content="${theme === "system" ? "light dark" : theme}"`;
+		assertStringIncludes(page, meta);
+		assertEquals(page.indexOf(meta) < page.indexOf("/theme.js"), true);
+		assertFalse(page.includes('localStorage.getItem("color-scheme")'));
+		assertStringIncludes(page, 'id="theme-dialog"');
+		assertStringIncludes(page, "window.piUiTheme.setMode($_theme)");
+		assertStringIncludes(page, "Change theme");
+	}
+});
+
 test("one native sidebar dialog initializes before the workspace is parsed", () => {
 	assertStringIncludes(html, '<dialog id="session-sidebar"');
 	assertStringIncludes(html, 'closedby="any"');

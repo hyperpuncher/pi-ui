@@ -383,6 +383,16 @@
 			"description": "Session sidebar preferences.",
 			"additionalProperties": false
 		},
+		"theme": {
+			"type": "string",
+			"enum": [
+				"system",
+				"light",
+				"dark"
+			],
+			"default": "system",
+			"description": "Interface appearance. System follows the operating system color scheme."
+		},
 		"toolOutputHidden": {
 			"type": "boolean",
 			"default": false,
