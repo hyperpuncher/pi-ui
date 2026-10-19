@@ -33,6 +33,23 @@ test("streaming cache keeps one entry per stable message key", () => {
 	assertEqual(markdownCacheStatsForTest().streamingEntries, baseline);
 });
 
+test("restores reuse final Markdown across message IDs without stale output", async () => {
+	const markdown = "```ts\nconst restored = 1;\n```";
+	const cacheKey = "before-restore";
+	const streaming = renderMarkdownStreaming(markdown, { cacheKey });
+	const final = await renderMarkdownFinal(markdown, { cacheKey });
+	assertEqual(renderMarkdownStreaming(markdown, { cacheKey }), streaming);
+	releaseMarkdownStreamingState(cacheKey);
+
+	const restored = { cacheKey: "after-restore" };
+	assertEqual(renderMarkdownStreaming(markdown, restored), final);
+	assertIncludes(
+		renderMarkdownStreaming(`${markdown}\n\nchanged`, restored),
+		"changed",
+	);
+	releaseMarkdownStreamingState(restored.cacheKey);
+});
+
 test("streaming without a key does not retain output", () => {
 	const before = markdownCacheStatsForTest().streamingEntries;
 	renderMarkdownStreaming("uncached");

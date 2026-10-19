@@ -128,6 +128,12 @@ export function renderMarkdownStreaming(
 	if (cached?.markdown === markdown) {
 		return cached.html;
 	}
+	// Restored messages can use their final HTML without starting another tokenizer.
+	// Keep active streams on their existing incremental state.
+	if (!cached && cacheKey) {
+		const final = highlightedCache.get(finalMarkdownCacheKey(markdown, cacheKey));
+		if (final !== undefined) return final;
+	}
 
 	const compiled = compileMarkdown(hideIncompleteLinkDestination(markdown));
 	const pending = /class="language-mermaid(?:\s|")/i.test(compiled)
@@ -194,7 +200,7 @@ export async function renderMarkdownFinal(
 	options: { localImageBase?: string; cacheKey?: string } = {},
 ): Promise<string> {
 	const localImageBase = options.localImageBase ?? "";
-	const cacheKey = `${getActiveCodeThemeId()}\0${localImageBase}\0${options.cacheKey ?? ""}\0${markdown}`;
+	const cacheKey = finalMarkdownCacheKey(markdown, options.cacheKey, localImageBase);
 	const cached = highlightedCache.get(cacheKey);
 	if (cached) return cached;
 	let html = await highlightCodeBlocksFinal(
@@ -204,6 +210,17 @@ export async function renderMarkdownFinal(
 	if (localImageBase) html = rewriteRelativeImageSources(html, localImageBase);
 	highlightedCache.set(cacheKey, html);
 	return html;
+}
+
+function finalMarkdownCacheKey(
+	markdown: string,
+	scope = "",
+	localImageBase = "",
+): string {
+	// Only diagrams contain message-scoped SVG identifiers. Ordinary Markdown
+	// can share final HTML even when a restore assigns new message identifiers.
+	const diagramScope = /mermaid/i.test(markdown) ? scope : "";
+	return `${getActiveCodeThemeId()}\0${localImageBase}\0${diagramScope}\0${markdown}`;
 }
 
 function hideIncompleteLinkDestination(markdown: string): string {
