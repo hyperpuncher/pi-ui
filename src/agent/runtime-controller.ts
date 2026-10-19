@@ -150,17 +150,6 @@ const systemSlashCommandNames = new Set(
 	systemSlashCommands.map((command) => command.name),
 );
 
-/**
- * Disposed sessions can hold hundreds of MiB (inline image data in session
- * entries). Collect them synchronously once a transition settles, instead of
- * waiting for allocation-driven GC. Measure this blocking cost separately;
- * changes to this policy must compare latency with retained memory.
- * Async requests were measured to be unreliable at returning pages here.
- */
-function reclaimSessionMemory(): void {
-	sessionPerformance.measureSync("memoryReclaim", () => Bun.gc(true));
-}
-
 type BackgroundSession = {
 	runtime: AgentSessionRuntime;
 	state: TranscriptState;
@@ -521,7 +510,6 @@ export class RuntimeController {
 			this.adoptRuntime(this.runtime);
 		}
 		await this.bindSession({ refreshSessions: true });
-		reclaimSessionMemory();
 		return true;
 	}
 
@@ -546,7 +534,6 @@ export class RuntimeController {
 			},
 		);
 		await this.bindSession();
-		reclaimSessionMemory();
 		return true;
 	}
 
@@ -641,7 +628,6 @@ export class RuntimeController {
 				await backgroundSession.runtime.dispose();
 				this.backgroundSessions.delete(targetSessionFile);
 				this.completedBackgroundPaths.delete(targetSessionFile);
-				reclaimSessionMemory();
 			}
 			this.state.removeSession(targetSessionFile);
 			await this.refreshSessions();
@@ -710,7 +696,6 @@ export class RuntimeController {
 		this.adoptRuntime(replacement);
 		this.state.resetChat({ preserveEmptyHint: true });
 		this.bindSessionState();
-		reclaimSessionMemory();
 		return true;
 	}
 
@@ -913,7 +898,6 @@ export class RuntimeController {
 			},
 			transitionId,
 		);
-		if (resumed) reclaimSessionMemory();
 		return resumed;
 	}
 
@@ -1349,8 +1333,7 @@ export class RuntimeController {
 			this.backgroundSessions.delete(path);
 			this.completedBackgroundPaths.add(path);
 			this.catalog.mergeCurrentStatuses();
-			void Promise.try(() => session.runtime.dispose()).then(
-				() => reclaimSessionMemory(),
+			void Promise.try(() => session.runtime.dispose()).catch(
 				(error: ErrorOptions["cause"]) =>
 					console.error("Failed to dispose background runtime", error),
 			);

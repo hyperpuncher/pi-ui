@@ -7,7 +7,6 @@ const sessionPerformanceSpanNames = [
 	"sessionManagerOpen",
 	"runtimeSwitchCreate",
 	"runtimeDispose",
-	"memoryReclaim",
 	"runtimeServicesCreate",
 	"scopedModelResolution",
 	"runtimeSessionCreate",
