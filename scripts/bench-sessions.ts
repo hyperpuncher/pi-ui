@@ -1,6 +1,6 @@
 // Build assets, then run: bun scripts/bench-sessions.ts [iterations, default 12].
-// Requires installed Playwright and Chromium. Optional overrides:
-// PLAYWRIGHT_MODULE: Playwright module entry point; CHROMIUM_PATH: browser executable.
+// Requires Chromium on PATH and an installed Playwright package.
+// Set PLAYWRIGHT_MODULE if Playwright does not resolve locally.
 // Enables PI_UI_PERF=1 only in the private server child, using a local faux model.
 // Results stay in the printed temporary directory; no user credentials are inherited.
 import { mkdtemp, mkdir } from "node:fs/promises";

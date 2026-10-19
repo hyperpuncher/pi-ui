@@ -8,7 +8,7 @@ const iterations = Number(count);
 const info = await fetch(new URL("/bench/info", base)).then((r) => r.json());
 const browser = await chromium.launch({
 	headless: true,
-	executablePath: process.env.CHROMIUM_PATH,
+	executablePath: Bun.which("chromium"),
 });
 const results = [];
 const errors = [];
