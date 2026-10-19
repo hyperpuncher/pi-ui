@@ -63,6 +63,26 @@ test("restored messages are readable before final highlighting finishes", async 
 	}
 });
 
+test("cached Markdown restores do not send identical enhancement patches", async () => {
+	const text = "```ts\nconst cachedEnhancement = true;\n```";
+	await renderMarkdownFinal(text);
+	const state = createState();
+	const controller = new AbortController();
+	connections.push(controller);
+	const reader = await openInitializedStateStream(state, controller.signal);
+	state.replaceMessages([markdownMessage(text)]);
+	const transcript = await readUntil(reader, (output) =>
+		output.includes("data: selector #messages"),
+	);
+	assertIncludes(transcript, "cachedEnhancement");
+	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
+	state.setActivityText("after cached enhancement");
+	const tail = await readUntil(reader, (output) =>
+		output.includes("after cached enhancement"),
+	);
+	assertNotIncludes(transcript + tail, "data: selector #message-");
+});
+
 test("ordinary commits exclude finalized assistant messages", async () => {
 	const gate = gatedMarkdownState();
 	const { state } = gate;

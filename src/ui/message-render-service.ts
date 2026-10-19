@@ -291,10 +291,12 @@ export class MessageRenderService {
 					return;
 				const currentValue = this.ensure(id);
 				if (currentValue.presentationVersion !== version) return;
+				const unchanged =
+					kind === "markdown" && currentValue.renderedHtml === html;
 				currentValue.renderedHtml = html;
 				currentValue.presentationState = "final";
 				releaseMarkdownStreamingState(id);
-				this.broadcast(current);
+				if (!unchanged) this.broadcast(current);
 			},
 			onCancel: () => releaseMarkdownStreamingState(id),
 			onError: (error) => {
