@@ -9,10 +9,15 @@ import { endpoints } from "#src/server/routes/endpoints.ts";
 const maxClientTransitionMs = 60_000;
 
 const clientTransitionPaintSchema = Type.Object({
-	generation: Type.Integer({ minimum: 1, maximum: maxClientTransitionMs }),
-	clickToLoadingMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
-	clickToMorphMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
-	clickToPaintMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
+	runId: Type.String({ minLength: 1, maxLength: 64 }),
+	pageId: Type.String({ minLength: 1, maxLength: 64 }),
+	generation: Type.Integer({ minimum: 1 }),
+	origin: Type.Union([Type.Literal("command"), Type.Literal("observer")]),
+	loadingObservedMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
+	firstTranscriptPatchMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
+	firstTranscriptFrameMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
+	readyObservedMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
+	readyFrameMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
 });
 const clientTransitionPaintValidator = Compile(clientTransitionPaintSchema);
 
@@ -37,8 +42,10 @@ export function parseClientTransitionPaint(
 ): ClientTransitionPaint {
 	if (
 		!clientTransitionPaintValidator.Check(value) ||
-		value.clickToLoadingMs > value.clickToMorphMs ||
-		value.clickToMorphMs > value.clickToPaintMs
+		value.loadingObservedMs > value.firstTranscriptPatchMs ||
+		value.firstTranscriptPatchMs > value.firstTranscriptFrameMs ||
+		value.loadingObservedMs > value.readyObservedMs ||
+		value.readyObservedMs > value.readyFrameMs
 	) {
 		throw new RouteError(400, "Invalid performance metrics.");
 	}

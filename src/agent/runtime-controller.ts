@@ -153,12 +153,12 @@ const systemSlashCommandNames = new Set(
 /**
  * Disposed sessions can hold hundreds of MiB (inline image data in session
  * entries). Collect them synchronously once a transition settles, instead of
- * waiting for allocation-driven GC. A full collection costs single-digit
- * milliseconds on a hundreds-of-MiB heap, negligible after a transition.
+ * waiting for allocation-driven GC. Measure this blocking cost separately;
+ * changes to this policy must compare latency with retained memory.
  * Async requests were measured to be unreliable at returning pages here.
  */
 function reclaimSessionMemory(): void {
-	Bun.gc(true);
+	sessionPerformance.measureSync("memoryReclaim", () => Bun.gc(true));
 }
 
 type BackgroundSession = {
@@ -1222,7 +1222,12 @@ export class RuntimeController {
 			await this.discardTemporaryRuntime();
 		} else {
 			this.unbindSession();
-			await this.runtime.dispose();
+			const end = sessionPerformance.startSpan("runtimeDispose");
+			try {
+				await this.runtime.dispose();
+			} finally {
+				end();
+			}
 		}
 	}
 
@@ -1692,7 +1697,9 @@ export class RuntimeController {
 	}
 
 	private loadCurrentSessionMessages(): void {
-		this.transcript.load(this.runtime, this.state);
+		sessionPerformance.measureSync("transcriptProjection", () =>
+			this.transcript.load(this.runtime, this.state),
+		);
 		this.usage.sync();
 	}
 }

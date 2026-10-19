@@ -57,6 +57,12 @@ export class DatastarClientHub {
 				}
 				try {
 					const view = initial();
+					if (
+						this.recordPerformance &&
+						sessionPerformance.enabled &&
+						view.elements
+					)
+						sessionPerformance.recordPatch("initial", view.elements, 1);
 					this.patchClient(
 						stream,
 						view.elements,
@@ -77,6 +83,8 @@ export class DatastarClientHub {
 	patchView(render: () => string, signals: string, scripts: readonly string[]): void {
 		if (this.clientCount === 0) return;
 		const elements = render();
+		if (this.recordPerformance && sessionPerformance.enabled && elements)
+			sessionPerformance.recordPatch("view", elements, this.clientCount);
 		this.broadcast((client) => this.patchClient(client, elements, signals, scripts));
 	}
 
@@ -92,17 +100,29 @@ export class DatastarClientHub {
 		} = {},
 	): void {
 		const { scripts = [], ...patchOptions } = options;
+		const measure = this.recordPerformance && sessionPerformance.enabled;
+		const transcript = selector === "#messages";
+		const marker =
+			measure && transcript
+				? sessionPerformance.transcriptPatchScript()
+				: undefined;
+		if (measure && this.clientCount > 0) {
+			const region = transcript
+				? "transcript"
+				: selector.startsWith("#message-")
+					? "message"
+					: selector === "#session-sidebar-content"
+						? "sidebar"
+						: "other";
+			sessionPerformance.recordPatch(region, elements, this.clientCount);
+		}
 		this.broadcast((client) => {
 			client.patchElements(elements, { ...patchOptions, selector });
 			for (const script of scripts) client.executeScript(script);
-			if (this.recordPerformance) {
-				if (selector === "#messages") {
-					sessionPerformance.recordFatMorph(elements);
-					sessionPerformance.markFirstTranscriptPatch();
-				} else if (selector.startsWith("#message-"))
-					sessionPerformance.recordTargetedMessagePatch(elements);
-			}
+			if (marker) client.executeScript(marker);
 		});
+		if (measure && transcript && this.clientCount > 0)
+			sessionPerformance.markFirstTranscriptPatch();
 	}
 
 	executeOnOneClient(script: string): void {
@@ -138,11 +158,6 @@ export class DatastarClientHub {
 	): void {
 		if (elements) {
 			client.patchElements(elements);
-			if (this.recordPerformance) {
-				sessionPerformance.recordFatMorph(elements);
-				if (elements.includes('id="messages"'))
-					sessionPerformance.markFirstTranscriptPatch();
-			}
 		}
 		if (signals && signals !== "{}") client.patchSignals(signals);
 		if (scripts.length > 0) client.executeScript(scripts.join(";"));

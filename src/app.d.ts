@@ -62,6 +62,7 @@ interface PiUiNamespace {
 	};
 	sessionPerformance: {
 		observe(status: string, generation: number): void;
+		transcriptPatched(generation: number, runId: string): void;
 		start(): void;
 	};
 	windowFocus: {

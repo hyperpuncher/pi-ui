@@ -1,56 +1,90 @@
+let pageId;
 let pending;
 
 export function startSessionPerformanceMeasurement() {
-	const transition = document.getElementById("session-transition");
-	if (!transition?.hasAttribute("data-session-performance-enabled")) return;
-	pending = { startedAt: performance.now() };
+	if (!enabled()) return;
+	pending = { startedAt: performance.now(), origin: "command" };
+}
+
+function enabled() {
+	return document
+		.getElementById("session-transition")
+		?.hasAttribute("data-session-performance-enabled");
 }
 
 export function readTransitionState(status, generation) {
-	if (!pending) return;
-	const now = performance.now();
+	if (!enabled()) return;
 	if (status === "loading") {
+		if (
+			!pending ||
+			(pending.generation !== undefined &&
+				pending.generation !== Number(generation))
+		) {
+			pending = { startedAt: performance.now(), origin: "observer" };
+		}
 		pending.generation = Number(generation);
-		pending.loadingAt ??= now;
+		pending.loadingObservedMs ??= performance.now() - pending.startedAt;
+		return;
+	}
+	if (status === "error") {
+		pending = undefined;
 		return;
 	}
 	if (
 		status !== "idle" ||
-		pending.generation !== Number(generation) ||
-		pending.loadingAt === undefined
-	) {
+		pending?.generation !== Number(generation) ||
+		pending.readyObservedMs !== undefined
+	)
 		return;
-	}
 	const measurement = pending;
-	pending = undefined;
-	waitForTranscriptPaint(measurement, Number(generation), now);
+	measurement.readyObservedMs = performance.now() - measurement.startedAt;
+	afterFrame(measurement, "readyFrameMs");
 }
 
-function waitForTranscriptPaint(measurement, generation, morphAt) {
-	requestAnimationFrame(() => {
-		const transition = document.getElementById("session-transition");
-		const messages = document.getElementById("messages");
-		if (
-			transition &&
-			messages &&
-			getComputedStyle(transition).display === "none" &&
-			getComputedStyle(messages).display !== "none"
-		) {
-			requestAnimationFrame(() => {
-				const metrics = {
-					generation,
-					clickToLoadingMs: measurement.loadingAt - measurement.startedAt,
-					clickToMorphMs: morphAt - measurement.startedAt,
-					clickToPaintMs: performance.now() - measurement.startedAt,
-				};
-				document.body.dispatchEvent(
-					new CustomEvent("pi-ui-session-performance", { detail: metrics }),
-				);
-			});
-			return;
-		}
-		if (performance.now() - measurement.startedAt < 60_000) {
-			waitForTranscriptPaint(measurement, generation, morphAt);
-		}
+/** Called by an ordered SSE script after the first target transcript patch. */
+export function transcriptPatched(generation, runId) {
+	if (
+		!enabled() ||
+		!pending ||
+		pending.generation !== Number(generation) ||
+		pending.firstTranscriptPatchMs !== undefined
+	)
+		return;
+	const measurement = pending;
+	measurement.runId = runId;
+	measurement.firstTranscriptPatchMs = performance.now() - measurement.startedAt;
+	afterFrame(measurement, "firstTranscriptFrameMs");
+}
+
+function afterFrame(measurement, field) {
+	// Two animation frames estimate a rendering opportunity, not a measured paint.
+	requestAnimationFrame(() =>
+		requestAnimationFrame(() => {
+			if (pending !== measurement || document.hidden) return;
+			measurement[field] = performance.now() - measurement.startedAt;
+			if (
+				measurement.firstTranscriptFrameMs === undefined ||
+				measurement.readyFrameMs === undefined
+			)
+				return;
+			pending = undefined;
+			const { startedAt: _, ...metrics } = measurement;
+			document.body.dispatchEvent(
+				new CustomEvent("pi-ui-session-performance", {
+					detail: {
+						pageId: (pageId ??= crypto
+							.getRandomValues(new Uint32Array(4))
+							.join("-")),
+						...metrics,
+					},
+				}),
+			);
+		}),
+	);
+}
+
+if (enabled()) {
+	document.addEventListener("visibilitychange", () => {
+		if (document.hidden) pending = undefined;
 	});
 }

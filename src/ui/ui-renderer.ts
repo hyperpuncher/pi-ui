@@ -1,3 +1,4 @@
+import { sessionPerformance } from "#src/perf/session-performance.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import {
 	searchWorkspaces,
@@ -181,11 +182,15 @@ export class UiRenderer implements AppStorePresentation {
 		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
 		this.compactTools = this.messages.compactTools;
 		if (this.hub.clientCount > 0) {
-			const state = this.store.snapshot();
+			const state = sessionPerformance.measureSync("stateSnapshot", () =>
+				this.store.snapshot(),
+			);
 			if (this.transcriptPending || toolPresentationChanged) {
 				this.hub.executeScript("window.piUi.messageScroll.beforeUpdate()");
 				this.hub.patchElement(
-					this.renderTranscript(this.projectState(state)),
+					sessionPerformance.measureSync("transcriptRender", () =>
+						this.renderTranscript(this.projectState(state)),
+					),
 					"#messages",
 					{
 						scripts: ["window.piUi.messageScroll.afterUpdate()"],
@@ -197,7 +202,9 @@ export class UiRenderer implements AppStorePresentation {
 			if (fullView || sidebarMoved) {
 				this.sidebarLayout = sidebarLayout;
 				this.hub.patchElement(
-					renderSessionSidebarContent(state),
+					sessionPerformance.measureSync("sidebarRender", () =>
+						renderSessionSidebarContent(state),
+					),
 					"#session-sidebar-content",
 					{
 						useViewTransition: sidebarMoved,
@@ -207,10 +214,14 @@ export class UiRenderer implements AppStorePresentation {
 			}
 			this.hub.patchView(
 				() =>
-					fullView
-						? this.renderView(state, this.view)
-						: this.renderAppElements(state),
-				this.renderSignals(state, this.effectSignalOverrides(effects)),
+					sessionPerformance.measureSync("viewRender", () =>
+						fullView
+							? this.renderView(state, this.view)
+							: this.renderAppElements(state),
+					),
+				sessionPerformance.measureSync("signalRender", () =>
+					this.renderSignals(state, this.effectSignalOverrides(effects)),
+				),
 				this.effectScripts(effects),
 			);
 		}

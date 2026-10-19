@@ -2,14 +2,12 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import { appendSessionPerformanceRecord } from "#src/perf/session-performance-log.ts";
 
-// SDK 0.80.6 loads entries once for the header and again for manager state.
-const sdkInternalReadsPerSessionOpenEstimate = 2;
-
 const sessionPerformanceSpanNames = [
 	"sessionOpen",
 	"sessionManagerOpen",
 	"runtimeSwitchCreate",
-	"runtimeLifecycleOverhead",
+	"runtimeDispose",
+	"memoryReclaim",
 	"runtimeServicesCreate",
 	"scopedModelResolution",
 	"runtimeSessionCreate",
@@ -17,7 +15,14 @@ const sessionPerformanceSpanNames = [
 	"backgroundActivation",
 	"extensionBind",
 	"transcriptProjection",
+	"transcriptInstall",
+	"stateSnapshot",
+	"signalRender",
+	"transcriptRender",
+	"viewRender",
+	"sidebarRender",
 	"firstTranscriptPatch",
+	"runtimeReady",
 	"toolEnhancement",
 	"markdownEnhancement",
 ] as const;
@@ -29,11 +34,32 @@ type SpanSnapshot = Record<SessionPerformanceSpanName, SpanSummary>;
 
 type PerformanceCounters = {
 	logicalSessionOpenCount: number;
-	fatMorphCount: number;
-	targetedMessagePatchCount: number;
-	bytesRendered: number;
+	patches: Record<
+		PatchRegion,
+		{ count: number; deliveries: number; htmlBytes: number }
+	>;
 	backgroundLookupHitCount: number;
 	backgroundLookupMissCount: number;
+};
+
+export type PatchRegion =
+	| "transcript"
+	| "message"
+	| "view"
+	| "sidebar"
+	| "initial"
+	| "other";
+
+export type ClientTransitionMetrics = {
+	runId: string;
+	pageId: string;
+	generation: number;
+	origin: "command" | "observer";
+	loadingObservedMs: number;
+	firstTranscriptPatchMs: number;
+	firstTranscriptFrameMs: number;
+	readyObservedMs: number;
+	readyFrameMs: number;
 };
 
 type RuntimeLeaveAction = "background" | "discard" | "dispose" | "keep";
@@ -59,9 +85,9 @@ type SessionOwnershipDiagnostics = {
 };
 
 type SessionPerformanceSnapshot = PerformanceCounters & {
+	runId: string;
 	enabled: boolean;
 	spans: SpanSnapshot;
-	sdkInternalReadsPerSessionOpenEstimate: number;
 };
 
 type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
@@ -74,6 +100,8 @@ type SessionTransitionPerformanceSnapshot = PerformanceCounters & {
 
 type SessionPerformanceRecord = {
 	type: "pi-ui-session-performance";
+	schemaVersion: 2;
+	runId: string;
 	transition: SessionTransitionPerformanceSnapshot;
 	cumulative: SessionPerformanceSnapshot;
 };
@@ -82,7 +110,6 @@ type Transition = PerformanceCounters & {
 	id: number;
 	generation?: number;
 	startedAt: number;
-	hostComplete: boolean;
 	transcriptProjected: boolean;
 	firstPatchAt?: number;
 	spans: SpanSnapshot;
@@ -102,9 +129,14 @@ function emptySpans(): SpanSnapshot {
 function emptyCounters(): PerformanceCounters {
 	return {
 		logicalSessionOpenCount: 0,
-		fatMorphCount: 0,
-		targetedMessagePatchCount: 0,
-		bytesRendered: 0,
+		patches: {
+			transcript: { count: 0, deliveries: 0, htmlBytes: 0 },
+			message: { count: 0, deliveries: 0, htmlBytes: 0 },
+			view: { count: 0, deliveries: 0, htmlBytes: 0 },
+			sidebar: { count: 0, deliveries: 0, htmlBytes: 0 },
+			initial: { count: 0, deliveries: 0, htmlBytes: 0 },
+			other: { count: 0, deliveries: 0, htmlBytes: 0 },
+		},
 		backgroundLookupHitCount: 0,
 		backgroundLookupMissCount: 0,
 	};
@@ -117,7 +149,10 @@ function emptyOwnershipDiagnostics(): SessionOwnershipDiagnostics {
 	};
 }
 
+const noop = () => {};
+
 class SessionPerformanceCollector {
+	readonly runId = crypto.randomUUID();
 	private spans = emptySpans();
 	private counters = emptyCounters();
 	private transitions = new Map<number, Transition>();
@@ -139,10 +174,10 @@ class SessionPerformanceCollector {
 
 	snapshot(): SessionPerformanceSnapshot {
 		return {
+			runId: this.runId,
 			enabled: this.enabled,
 			spans: structuredClone(this.spans),
-			...this.counters,
-			sdkInternalReadsPerSessionOpenEstimate,
+			...structuredClone(this.counters),
 		};
 	}
 
@@ -156,7 +191,7 @@ class SessionPerformanceCollector {
 	}
 
 	startSpan(name: SessionPerformanceSpanName, transitionId?: number): () => void {
-		if (!this.enabled) return () => {};
+		if (!this.enabled) return noop;
 		transitionId ??= this.currentTransitionId();
 		const startedAt = performance.now();
 		let ended = false;
@@ -172,6 +207,7 @@ class SessionPerformanceCollector {
 		operation: () => T,
 		transitionId?: number,
 	): T {
+		if (!this.enabled) return operation();
 		const end = this.startSpan(name, transitionId);
 		try {
 			return operation();
@@ -200,7 +236,6 @@ class SessionPerformanceCollector {
 			id,
 			generation,
 			startedAt: performance.now(),
-			hostComplete: false,
 			transcriptProjected: false,
 			spans: emptySpans(),
 			ownership: emptyOwnershipDiagnostics(),
@@ -213,8 +248,12 @@ class SessionPerformanceCollector {
 	markSessionTransitionComplete(transitionId?: number): void {
 		const transition = this.getTransition(transitionId ?? this.currentTransitionId());
 		if (!transition) return;
-		transition.hostComplete = true;
-		this.finishTransitionIfReady(transition);
+		this.recordSpan(
+			"runtimeReady",
+			performance.now() - transition.startedAt,
+			transition.id,
+		);
+		this.finishTransition(transition);
 	}
 
 	cancelSessionTransition(transitionId?: number): void {
@@ -234,25 +273,33 @@ class SessionPerformanceCollector {
 	markFirstTranscriptPatch(transitionId?: number): void {
 		transitionId ??= this.currentTransitionId();
 		const transition = this.getTransition(transitionId);
-		if (!transition?.transcriptProjected || transition.firstPatchAt) return;
+		if (!transition?.transcriptProjected || transition.firstPatchAt !== undefined)
+			return;
 		transition.firstPatchAt = performance.now();
 		this.recordSpan(
 			"firstTranscriptPatch",
 			transition.firstPatchAt - transition.startedAt,
 			transition.id,
 		);
-		this.finishTransitionIfReady(transition);
 	}
 
-	recordClientTransitionPaint(metrics: {
-		generation: number;
-		clickToLoadingMs: number;
-		clickToMorphMs: number;
-		clickToPaintMs: number;
-	}): void {
+	/** An ordered marker after the first target transcript patch, not an idle-state proxy. */
+	transcriptPatchScript(): string | undefined {
+		const transition = this.getTransition(this.currentTransitionId());
+		if (
+			!transition?.transcriptProjected ||
+			transition.firstPatchAt !== undefined ||
+			transition.generation === undefined
+		)
+			return undefined;
+		return `window.piUi.sessionPerformance.transcriptPatched(${transition.generation},${JSON.stringify(this.runId)})`;
+	}
+
+	recordClientTransitionPaint(metrics: ClientTransitionMetrics): void {
 		if (!this.enabled) return;
 		const record = {
 			type: "pi-ui-session-client-performance" as const,
+			schemaVersion: 2,
 			transition: metrics,
 		};
 		appendSessionPerformanceRecord(record);
@@ -289,18 +336,22 @@ class SessionPerformanceCollector {
 		Object.assign(transition.ownership, diagnostics);
 	}
 
-	recordFatMorph(html: string, transitionId?: number): void {
+	/** Counts generated HTML once; deliveries are separate. Bytes are not compressed wire bytes. */
+	recordPatch(
+		region: PatchRegion,
+		html: string,
+		deliveries: number,
+		transitionId?: number,
+	): void {
 		if (!this.enabled) return;
-		transitionId ??= this.currentTransitionId();
-		this.incrementCounter("fatMorphCount", 1, transitionId);
-		this.incrementCounter("bytesRendered", Buffer.byteLength(html), transitionId);
-	}
-
-	recordTargetedMessagePatch(html: string, transitionId?: number): void {
-		if (!this.enabled) return;
-		transitionId ??= this.currentTransitionId();
-		this.incrementCounter("targetedMessagePatchCount", 1, transitionId);
-		this.incrementCounter("bytesRendered", Buffer.byteLength(html), transitionId);
+		const bytes = Buffer.byteLength(html);
+		const transition = this.getTransition(transitionId ?? this.currentTransitionId());
+		for (const counters of [this.counters, ...(transition ? [transition] : [])]) {
+			const patch = counters.patches[region];
+			patch.count += 1;
+			patch.deliveries += deliveries;
+			patch.htmlBytes += bytes;
+		}
 	}
 
 	private currentTransitionId(): number | undefined {
@@ -312,7 +363,7 @@ class SessionPerformanceCollector {
 	}
 
 	private incrementCounter(
-		name: keyof PerformanceCounters,
+		name: Exclude<keyof PerformanceCounters, "patches">,
 		amount: number,
 		transitionId: number | undefined,
 	): void {
@@ -333,26 +384,24 @@ class SessionPerformanceCollector {
 		if (transition) updateSpan(transition.spans[name], durationMs);
 	}
 
-	private finishTransitionIfReady(transition: Transition): void {
-		if (!transition.hostComplete || transition.firstPatchAt === undefined) return;
+	private finishTransition(transition: Transition): void {
 		const elapsedMs = performance.now() - transition.startedAt;
 		this.recordSpan("sessionOpen", elapsedMs, transition.id);
-		setRuntimeLifecycleRemainder(transition.spans);
 		this.transitions.delete(transition.id);
 		if (this.activeTransitionId === transition.id) {
 			this.activeTransitionId = undefined;
 		}
 		const record: SessionPerformanceRecord = {
 			type: "pi-ui-session-performance",
+			schemaVersion: 2,
+			runId: this.runId,
 			transition: {
 				id: transition.id,
 				generation: transition.generation,
 				elapsedMs,
 				spans: structuredClone(transition.spans),
 				logicalSessionOpenCount: transition.logicalSessionOpenCount,
-				fatMorphCount: transition.fatMorphCount,
-				targetedMessagePatchCount: transition.targetedMessagePatchCount,
-				bytesRendered: transition.bytesRendered,
+				patches: structuredClone(transition.patches),
 				backgroundLookupHitCount: transition.backgroundLookupHitCount,
 				backgroundLookupMissCount: transition.backgroundLookupMissCount,
 				ownership: structuredClone(transition.ownership),
@@ -368,23 +417,6 @@ function updateSpan(span: SpanSummary, durationMs: number): void {
 	span.count += 1;
 	span.totalMs += durationMs;
 	span.maxMs = Math.max(span.maxMs, durationMs);
-}
-
-function setRuntimeLifecycleRemainder(spans: SpanSnapshot): void {
-	const total = spans.runtimeSwitchCreate.totalMs;
-	if (total === 0) return;
-	const measured = [
-		spans.runtimeServicesCreate,
-		spans.scopedModelResolution,
-		spans.runtimeSessionCreate,
-		spans.runtimeRebind,
-	].reduce((sum, span) => sum + span.totalMs, 0);
-	const remainder = Math.max(0, total - measured);
-	spans.runtimeLifecycleOverhead = {
-		count: spans.runtimeSwitchCreate.count,
-		totalMs: remainder,
-		maxMs: remainder,
-	};
 }
 
 export const sessionPerformance = new SessionPerformanceCollector();

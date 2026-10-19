@@ -486,7 +486,7 @@ export class AppStore {
 		return this.transcript.snapshot();
 	}
 	restoreChat(snapshot: AppChatSnapshot): void {
-		const end = sessionPerformance.startSpan("transcriptProjection");
+		const end = sessionPerformance.startSpan("transcriptInstall");
 		this.presentation?.transcriptReplacing();
 		this.transcript.restore(snapshot);
 		end();
@@ -506,7 +506,7 @@ export class AppStore {
 		if (options.broadcast !== false) this.commit();
 	}
 	replaceMessages(messages: TranscriptMessageInput[]): void {
-		const end = sessionPerformance.startSpan("transcriptProjection");
+		const end = sessionPerformance.startSpan("transcriptInstall");
 		this.presentation?.transcriptReplacing();
 		this.transcript.replaceMessages(
 			messages,

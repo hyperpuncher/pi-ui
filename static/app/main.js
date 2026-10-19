@@ -32,6 +32,7 @@ import { focusPromptEnd, setPromptValue } from "#static/app/prompt.js";
 import {
 	readTransitionState,
 	startSessionPerformanceMeasurement,
+	transcriptPatched,
 } from "#static/app/session-performance.js";
 import { bindTooltips } from "#static/app/tooltips.js";
 import { bindVimScroll } from "#static/app/vim-scroll.js";
@@ -69,6 +70,7 @@ window.piUi = {
 	sessionPerformance: {
 		observe: readTransitionState,
 		start: startSessionPerformanceMeasurement,
+		transcriptPatched,
 	},
 	windowFocus,
 	workspaceReview: { applyOpen: () => {} },
