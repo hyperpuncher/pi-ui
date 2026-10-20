@@ -119,7 +119,7 @@ export function launchAgent(config: ServerAutostartConfig): string {
 	<key>ProgramArguments</key>
 	<array>
 ${serverCommand(config)
-	.map((argument) => `\t\t<string>${xml(argument)}</string>`)
+	.map((argument) => `\t\t<string>${Bun.escapeHTML(argument)}</string>`)
 	.join("\n")}
 	</array>
 	<key>RunAtLoad</key>
@@ -130,9 +130,9 @@ ${serverCommand(config)
 		<false/>
 	</dict>
 	<key>StandardOutPath</key>
-	<string>${xml(`${logs}/pi-ui.log`)}</string>
+	<string>${Bun.escapeHTML(`${logs}/pi-ui.log`)}</string>
 	<key>StandardErrorPath</key>
-	<string>${xml(`${logs}/pi-ui.log`)}</string>
+	<string>${Bun.escapeHTML(`${logs}/pi-ui.log`)}</string>
 </dict>
 </plist>
 `;
@@ -308,13 +308,4 @@ function systemdArgument(value: string): string {
 
 function powershellString(value: string): string {
 	return value.replaceAll("'", "''");
-}
-
-function xml(value: string): string {
-	return value
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&apos;");
 }

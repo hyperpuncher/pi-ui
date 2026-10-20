@@ -35,8 +35,8 @@ test("launch agent starts at login and escapes paths", () => {
 	const agent = launchAgent({
 		platform: "darwin",
 		executable: "/Users/test/.bun/bin/bun",
-		args: ["/Users/test/pi-ui & dev/server-main.js"],
-		home: "/Users/test",
+		args: ["/Users/test/pi-ui & dev's server-main.js"],
+		home: "/Users/test & co",
 		uid: 501,
 	});
 
@@ -46,7 +46,8 @@ test("launch agent starts at login and escapes paths", () => {
 	assertStringIncludes(agent, "<key>KeepAlive</key>");
 	assertStringIncludes(agent, "<key>SuccessfulExit</key>");
 	assertStringIncludes(agent, "/Users/test/.bun/bin/bun");
-	assertStringIncludes(agent, "/Users/test/pi-ui &amp; dev/server-main.js");
+	assertStringIncludes(agent, "/Users/test &amp; co/Library/Logs/pi-ui.log");
+	assertStringIncludes(agent, "/Users/test/pi-ui &amp; dev&#x27;s server-main.js");
 });
 
 test("windows startup command launches the executable without a window", () => {
