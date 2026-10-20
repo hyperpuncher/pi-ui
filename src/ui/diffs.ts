@@ -7,6 +7,7 @@ import {
 import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
 
 import { getPierreThemes } from "#src/pierre-theme.ts";
+import { BoundedCache } from "#src/ui/render-cache.ts";
 
 const pierreUnsafeCSS = `
 	::selection {
@@ -64,8 +65,7 @@ export const pierreLanguages = [
 ] as const satisfies SupportedLanguages[];
 
 // Bound request metadata only; Shiki retains successfully loaded grammars itself.
-const languageLoads = new Map<string, Promise<boolean>>();
-const maxLanguageLoadEntries = 256;
+const languageLoads = new BoundedCache<string, Promise<boolean>>(256);
 
 export async function preloadPierreHighlighter(): Promise<void> {
 	const themes = getPierreThemes();
@@ -91,9 +91,6 @@ export function loadPierreLanguage(language: string): Promise<boolean> {
 		.then(() => isPierreLanguageLoaded(language))
 		.catch(() => false);
 	languageLoads.set(language, loading);
-	if (languageLoads.size > maxLanguageLoadEntries) {
-		languageLoads.delete(languageLoads.keys().next().value ?? "");
-	}
 	return loading;
 }
 

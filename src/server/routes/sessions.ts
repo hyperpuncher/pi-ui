@@ -18,6 +18,7 @@ import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import { decodeBase64Image } from "#src/server/session-image-store.ts";
 import type { StoredSessionImage } from "#src/server/session-image-store.ts";
+import { BoundedCache } from "#src/ui/render-cache.ts";
 import { expandHomePath } from "#src/utils/workspace.ts";
 
 export const sessionRoutes = {
@@ -170,8 +171,7 @@ export const sessionRoutes = {
 	},
 } satisfies RouteMap<RouteContext>;
 
-const maxThumbnailCacheEntries = 200;
-const sessionThumbnails = new Map<string, ThumbnailImage>();
+const sessionThumbnails = new BoundedCache<string, ThumbnailImage>(200);
 
 async function sessionThumbnail(
 	id: string,
@@ -181,10 +181,6 @@ async function sessionThumbnail(
 	if (cached) return cached;
 	const thumbnail = await thumbnailImage(decodeBase64Image(image.data), image.mimeType);
 	if (!thumbnail) return undefined;
-	if (sessionThumbnails.size >= maxThumbnailCacheEntries) {
-		const oldest = sessionThumbnails.keys().next();
-		if (!oldest.done) sessionThumbnails.delete(oldest.value);
-	}
 	sessionThumbnails.set(id, thumbnail);
 	return thumbnail;
 }
