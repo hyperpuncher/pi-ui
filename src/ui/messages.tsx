@@ -25,7 +25,6 @@ import { resumeSessionAction } from "#src/ui/session-transition.tsx";
 import { shikiTokenStyle } from "#src/ui/shiki-token-style.ts";
 import { StatusDot } from "#src/ui/status-dot.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
-import { escapeHtml } from "#src/utils/html.ts";
 import {
 	attachmentFileExtension,
 	attachmentFileIcons,
@@ -360,7 +359,7 @@ function renderInlineCode(
 			language === "bash"
 				? highlightBash(command, { format: true })
 				: highlightCodemode(command, snippets);
-		if (!result) return escapeHtml(command) + suffix;
+		if (!result) return Bun.escapeHTML(command) + suffix;
 		const { tokens, missingLanguages } = result;
 		const highlighted = tokens
 			.map((line, index) => {
@@ -375,14 +374,14 @@ function renderInlineCode(
 		inlineCodeCache.set(cacheKey, { html: highlighted, missingLanguages });
 		return highlighted;
 	} catch {
-		return escapeHtml(command) + suffix;
+		return Bun.escapeHTML(command) + suffix;
 	}
 }
 
 function renderInlineToken(token: ThemedToken): string {
 	const style = shikiTokenStyle(token);
-	const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
-	return `<span class="streaming-token"${styleAttribute}>${escapeHtml(token.content)}</span>`;
+	const styleAttribute = style ? ` style="${Bun.escapeHTML(style)}"` : "";
+	return `<span class="streaming-token"${styleAttribute}>${Bun.escapeHTML(token.content)}</span>`;
 }
 
 function renderUserFileAttachment(

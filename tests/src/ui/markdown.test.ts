@@ -264,7 +264,7 @@ test("code blocks keep dollar sequences literal", async () => {
 		// match, duplicating surrounding HTML and corrupting the document.
 		assertEqual(html.match(/ZZBEFOREZZ/g)?.length, 1);
 		assertEqual(html.match(/ZZAFTERZZ/g)?.length, 1);
-		assertIncludes(html, "value $` and $&#39; and $&amp; end");
+		assertIncludes(html, "value $` and $&#x27; and $&amp; end");
 	}
 });
 

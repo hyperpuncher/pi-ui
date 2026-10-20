@@ -18,7 +18,6 @@ import { renderMermaid } from "#src/ui/mermaid.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
 import { shikiTokenStyle } from "#src/ui/shiki-token-style.ts";
 import { syncHtml } from "#src/ui/sync-html.ts";
-import { escapeHtml } from "#src/utils/html.ts";
 import { fileUriToPath } from "#static/file-uri.js";
 
 // Streaming entries track roughly two restored pages; final results can deduplicate
@@ -411,13 +410,13 @@ function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 	const lines = [""];
 	for (const token of tokens) {
 		const style = shikiTokenStyle(token);
-		const styleAttribute = style ? ` style="${escapeHtml(style)}"` : "";
+		const styleAttribute = style ? ` style="${Bun.escapeHTML(style)}"` : "";
 		const classAttribute = style ? ` class="streaming-token"` : "";
 		const parts = token.content.split("\n");
 		for (const [index, part] of parts.entries()) {
 			if (part) {
 				lines[lines.length - 1] +=
-					`<span${classAttribute}${styleAttribute}>${escapeHtml(part)}</span>`;
+					`<span${classAttribute}${styleAttribute}>${Bun.escapeHTML(part)}</span>`;
 			}
 			if (index < parts.length - 1) lines.push("");
 		}
@@ -429,7 +428,7 @@ function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 function renderStreamingPlainCodeBlock(code: string, language: string): string {
 	return syncHtml(
 		<CodeBlock
-			pre={renderStreamingLinesPre(code.split("\n").map(escapeHtml))}
+			pre={renderStreamingLinesPre(code.split("\n").map(Bun.escapeHTML))}
 			language={language}
 			source={code}
 		/>,
@@ -450,7 +449,7 @@ function renderPlainCode(
 	language: string,
 	options: { chrome?: boolean } = {},
 ): string {
-	const pre = `<pre class="plain-code" tabindex="0"><code class="language-${escapeHtml(language)}">${escapeHtml(code)}</code></pre>`;
+	const pre = `<pre class="plain-code" tabindex="0"><code class="language-${Bun.escapeHTML(language)}">${Bun.escapeHTML(code)}</code></pre>`;
 	return options.chrome === false
 		? pre
 		: syncHtml(<CodeBlock pre={pre} language={language} />);
@@ -462,7 +461,7 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 			class="code-block"
 			data-code-block
 			data-code-source={
-				props.source === undefined ? undefined : escapeHtml(props.source)
+				props.source === undefined ? undefined : Bun.escapeHTML(props.source)
 			}
 		>
 			<div class="code-block-header">

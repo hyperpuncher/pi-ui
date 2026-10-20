@@ -193,7 +193,7 @@ test("shell tools preserve wrapped title, metadata, and escaped output", () => {
 			],
 		}),
 	);
-	assertStringIncludes(html, "&#39;a very long command&#39;");
+	assertStringIncludes(html, "&#x27;a very long command&#x27;");
 	assertStringIncludes(html, "42ms");
 	assertStringIncludes(html, "&lt;script&gt;");
 	assertStringExcludes(html, "<script>");

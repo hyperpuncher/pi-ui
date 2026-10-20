@@ -40,7 +40,6 @@ import { renderSessionTransition } from "#src/ui/session-transition.tsx";
 import { renderToolbar } from "#src/ui/toolbar.tsx";
 import { renderTreePicker } from "#src/ui/tree-picker.tsx";
 import { renderWorkspaceReviewData } from "#src/ui/workspace-review.tsx";
-import { escapeHtml } from "#src/utils/html.ts";
 import type { JsonObject } from "#src/utils/json-types.ts";
 
 type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestion[] };
@@ -297,7 +296,7 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	private renderAppElements(snapshot: AppStateSnapshot): string {
 		return (
-			`<title id="document-title">${escapeHtml(snapshot.documentTitle)}</title>` +
+			`<title id="document-title">${Bun.escapeHTML(snapshot.documentTitle)}</title>` +
 			renderPromptAction(snapshot) +
 			renderPromptQueue(snapshot) +
 			renderToolbar(snapshot) +
