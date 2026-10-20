@@ -16,7 +16,7 @@ let pendingWrite = Promise.resolve();
 
 async function readAppConfig(path = appConfigPath()): Promise<AppConfig> {
 	try {
-		const value = JSON.parse(await Bun.file(path).text());
+		const value: unknown = await Bun.file(path).json();
 		return appConfigValidator.Check(value) ? value : {};
 	} catch (error) {
 		if (isNotFound(error) || error instanceof SyntaxError) {
