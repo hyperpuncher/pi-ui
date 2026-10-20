@@ -58,6 +58,43 @@ test("sessions reuse and incrementally update the summary cache", async () => {
 	}
 });
 
+test("session indexing skips corrupt lines and waits for complete lines", async () => {
+	const { root, sessionsRoot, workspace, cachePath } = await makeSessionDirs();
+	const sessionPath = join(workspace, "session.jsonl");
+	await mkdir(workspace, { recursive: true });
+	try {
+		await Bun.write(
+			sessionPath,
+			lines([
+				{
+					type: "session",
+					version: 3,
+					id: "session-1",
+					timestamp: "2026-01-01T00:00:00.000Z",
+					cwd: "/workspace",
+				},
+				message("user", "First prompt", 1_000),
+			]) +
+				"{not json}\n" +
+				lines([message("assistant", "After corrupt", 2_000)]),
+		);
+
+		let sessions = await listCachedSessions(sessionsRoot, cachePath);
+		assertEquals(sessions[0].messageCount, 2);
+
+		const late = JSON.stringify(message("user", "Late prompt", 3_000));
+		await appendFile(sessionPath, late.slice(0, 12));
+		sessions = await listCachedSessions(sessionsRoot, cachePath);
+		assertEquals(sessions[0].messageCount, 2);
+
+		await appendFile(sessionPath, `${late.slice(12)}\n`);
+		sessions = await listCachedSessions(sessionsRoot, cachePath);
+		assertEquals(sessions[0].messageCount, 3);
+	} finally {
+		await rm(root, { recursive: true });
+	}
+});
+
 test("the cached catalog indexes every session and drops deleted files", async () => {
 	const { root, sessionsRoot, workspace, cachePath } = await makeSessionDirs();
 	await mkdir(workspace, { recursive: true });

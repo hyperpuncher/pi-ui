@@ -11,12 +11,10 @@ import {
 	splitLeadingAttachmentReferences,
 } from "#src/utils/attachment-references.ts";
 import { isNotFound } from "#src/utils/fs-errors.ts";
-import type { JsonValue } from "#src/utils/json-types.ts";
-import { isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
+import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
 
 const cacheVersion = 2;
 const maxSummaryTextLength = 96;
-const decoder = new TextDecoder();
 const cacheWrites = new Map<string, Promise<void>>();
 const cacheEntrySchema = Type.Object({
 	indexedBytes: Type.Number(),
@@ -53,7 +51,7 @@ export async function readSessionSummaryCache(
 	path = sessionSummaryCachePath(),
 ): Promise<SessionSummaryCache> {
 	try {
-		const value = JSON.parse(await Bun.file(path).text());
+		const value: unknown = await Bun.file(path).json();
 		if (
 			!isRecord(value) ||
 			value.version !== cacheVersion ||
@@ -175,28 +173,22 @@ async function parseSessionFile(
 	const start = cached?.indexedBytes ?? 0;
 	try {
 		const reader = Bun.file(candidate.path).slice(start).stream().getReader();
-		const pending: Uint8Array[] = [];
-		let pendingBytes = 0;
+		let pending: Uint8Array = Buffer.alloc(0);
 		let consumedBytes = 0;
 		while (true) {
 			const { done, value: chunk } = await reader.read();
 			if (done) break;
-			let lineStart = 0;
-			for (let index = 0; index < chunk.length; index += 1) {
-				if (chunk[index] !== 10) continue;
-				const part = chunk.subarray(lineStart, index);
-				const line = joinBytes(pending, pendingBytes, part);
-				pending.length = 0;
-				pendingBytes = 0;
-				applyLine(state, line);
-				consumedBytes += line.length + 1;
-				lineStart = index + 1;
+			const buffer: Uint8Array =
+				pending.length === 0 ? chunk : Buffer.concat([pending, chunk]);
+			const newline = buffer.lastIndexOf(10);
+			if (newline < 0) {
+				pending = buffer;
+				continue;
 			}
-			if (lineStart < chunk.length) {
-				const remainder = chunk.subarray(lineStart);
-				pending.push(remainder);
-				pendingBytes += remainder.length;
-			}
+			const complete = buffer.subarray(0, newline + 1);
+			applyCompleteLines(state, complete);
+			consumedBytes += complete.length;
+			pending = buffer.subarray(newline + 1);
 		}
 		if (!cached && !state.id) return undefined;
 		state.indexedBytes = start + consumedBytes;
@@ -207,33 +199,59 @@ async function parseSessionFile(
 	}
 }
 
-function applyLine(state: SessionSummaryCacheEntry, bytes: Uint8Array): void {
-	if (bytes.length === 0) return;
-	let value: JsonValue;
-	try {
-		value = JSON.parse(decoder.decode(bytes));
-	} catch {
+function applyCompleteLines(state: SessionSummaryCacheEntry, bytes: Uint8Array): void {
+	const result = Bun.JSONL.parseChunk(bytes);
+	if (!result.error && result.done) {
+		for (const value of result.values) {
+			if (isRecord(value)) applyRecord(state, value);
+		}
 		return;
 	}
-	if (!isRecord(value) || !isString(value.type)) return;
-	if (value.type === "session" && !state.id) {
-		if (!isString(value.id) || !isString(value.timestamp)) return;
-		state.id = value.id;
-		state.cwd = isString(value.cwd) ? value.cwd : "";
-		state.created = dateValue(value.timestamp);
-		state.parentSessionPath = isString(value.parentSession)
-			? value.parentSession
+	for (let lineStart = 0, newline = bytes.indexOf(10); newline >= 0;) {
+		const value = parseLine(bytes.subarray(lineStart, newline));
+		if (value) applyRecord(state, value);
+		lineStart = newline + 1;
+		newline = bytes.indexOf(10, lineStart);
+	}
+}
+
+function applyRecord(state: SessionSummaryCacheEntry, value: JsonRecord): void {
+	if (!isString(value.type)) return;
+	if (value.type === "session") {
+		if (!state.id) applySession(state, value);
+	} else if (value.type === "session_info") {
+		applySessionInfo(state, value);
+	} else if (value.type === "message") {
+		applyMessage(state, value);
+	}
+}
+
+function parseLine(bytes: Uint8Array): JsonRecord | undefined {
+	if (bytes.length === 0) return undefined;
+	const result = Bun.JSONL.parseChunk(bytes);
+	if (result.error || !result.done || result.values.length !== 1) return undefined;
+	const value = result.values[0];
+	return isRecord(value) ? value : undefined;
+}
+
+function applySession(state: SessionSummaryCacheEntry, value: JsonRecord): void {
+	if (!isString(value.id) || !isString(value.timestamp)) return;
+	state.id = value.id;
+	state.cwd = isString(value.cwd) ? value.cwd : "";
+	state.created = dateValue(value.timestamp);
+	state.parentSessionPath = isString(value.parentSession)
+		? value.parentSession
+		: undefined;
+}
+
+function applySessionInfo(state: SessionSummaryCacheEntry, value: JsonRecord): void {
+	state.name =
+		isString(value.name) && value.name.trim()
+			? summaryText(value.name.trim())
 			: undefined;
-		return;
-	}
-	if (value.type === "session_info") {
-		state.name =
-			isString(value.name) && value.name.trim()
-				? summaryText(value.name.trim())
-				: undefined;
-		return;
-	}
-	if (value.type !== "message") return;
+}
+
+function applyMessage(state: SessionSummaryCacheEntry, value: JsonRecord): void {
 	state.messageCount += 1;
 	if (!isRecord(value.message)) return;
 	const role = value.message.role;
@@ -285,22 +303,6 @@ function dateValue<Value>(value: Value): number {
 	if (!isString(value)) return 0;
 	const parsed = new Date(value).getTime();
 	return Number.isNaN(parsed) ? 0 : parsed;
-}
-
-function joinBytes(
-	pending: readonly Uint8Array[],
-	pendingBytes: number,
-	part: Uint8Array,
-): Uint8Array {
-	if (pendingBytes === 0) return part;
-	const result = new Uint8Array(pendingBytes + part.length);
-	let offset = 0;
-	for (const chunk of pending) {
-		result.set(chunk, offset);
-		offset += chunk.length;
-	}
-	result.set(part, offset);
-	return result;
 }
 
 function parseCacheEntry<Value>(value: Value): SessionSummaryCacheEntry | undefined {
