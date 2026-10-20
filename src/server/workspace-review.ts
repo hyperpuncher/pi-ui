@@ -182,7 +182,7 @@ export async function readWorkspaceReview(
 		commits,
 		isGitRepository: true,
 		changeCount,
-		revision: await hash(JSON.stringify([revisionInputs, counts])),
+		revision: hash(JSON.stringify([revisionInputs, counts])),
 	};
 }
 
@@ -539,9 +539,8 @@ function statusFromCode(code: string): WorkspaceFileStatus {
 	return "modified";
 }
 
-async function hash(value: string): Promise<string> {
-	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-	return new Uint8Array(digest).toHex();
+function hash(value: string): string {
+	return new Bun.CryptoHasher("sha256").update(value).digest("hex");
 }
 
 function commitPushSet(result: GitResult, hash: string): ReadonlySet<string> | undefined {
