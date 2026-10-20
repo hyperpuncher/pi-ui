@@ -27,10 +27,7 @@ test("static assets use content versions and explicit cache policies", async () 
 		const manifest = await first.serve(
 			new Request(`http://localhost/static/${first.version}/manifest.webmanifest`),
 		);
-		assertEquals(
-			manifest.headers.get("content-type"),
-			"application/manifest+json; charset=utf-8",
-		);
+		assertEquals(manifest.headers.get("content-type"), "application/manifest+json");
 
 		await Bun.write(`${root}/app.js`, "export const value = 2;\n");
 		const second = await createStaticAssetServer(root);

@@ -1,5 +1,5 @@
-import { readdir, readFile, stat } from "node:fs/promises";
-import { extname, relative, resolve, sep } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { relative, resolve, sep } from "node:path";
 
 export interface StaticAssetServer {
 	readonly version: string;
@@ -19,19 +19,13 @@ export async function createStaticAssetServer(root: string): Promise<StaticAsset
 				: url.pathname;
 			const path = safeStaticPath(root, pathname);
 			if (!path) return new Response("Not found", { status: 404 });
-			try {
-				if (!(await stat(path)).isFile()) {
-					return new Response("Not found", { status: 404 });
-				}
-			} catch {
-				return new Response("Not found", { status: 404 });
-			}
-			return new Response(Bun.file(path), {
+			const file = Bun.file(path);
+			if (!(await file.exists())) return new Response("Not found", { status: 404 });
+			return new Response(file, {
 				headers: {
 					"cache-control": immutable
 						? "public, max-age=31536000, immutable"
 						: "no-cache, must-revalidate",
-					"content-type": contentType(path),
 				},
 			});
 		},
@@ -49,26 +43,6 @@ function safeStaticPath(root: string, pathname: string): string | undefined {
 	const relativePath = relative(root, path);
 	if (relativePath.startsWith(`..${sep}`) || relativePath === "..") return undefined;
 	return path;
-}
-
-function contentType(path: string): string {
-	return (
-		{
-			".css": "text/css; charset=utf-8",
-			".gif": "image/gif",
-			".html": "text/html; charset=utf-8",
-			".ico": "image/x-icon",
-			".jpeg": "image/jpeg",
-			".jpg": "image/jpeg",
-			".js": "text/javascript; charset=utf-8",
-			".json": "application/json; charset=utf-8",
-			".png": "image/png",
-			".svg": "image/svg+xml",
-			".wasm": "application/wasm",
-			".webmanifest": "application/manifest+json; charset=utf-8",
-			".webp": "image/webp",
-		}[extname(path).toLowerCase()] ?? "application/octet-stream"
-	);
 }
 
 async function staticContentVersion(root: string): Promise<string> {
