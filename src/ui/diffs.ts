@@ -67,15 +67,6 @@ export const pierreLanguages = [
 // Bound request metadata only; Shiki retains successfully loaded grammars itself.
 const languageLoads = new BoundedCache<string, Promise<boolean>>(256);
 
-export async function preloadPierreHighlighter(): Promise<void> {
-	const themes = getPierreThemes();
-	await preloadHighlighter({
-		themes: [themes.dark, themes.light],
-		langs: [...pierreLanguages],
-		preferredHighlighter: "shiki-wasm",
-	});
-}
-
 export function loadPierreLanguage(language: string): Promise<boolean> {
 	if (isPierreLanguageLoaded(language)) return Promise.resolve(true);
 

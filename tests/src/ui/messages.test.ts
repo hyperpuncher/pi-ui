@@ -2,7 +2,7 @@ import { test } from "bun:test";
 
 import { toolTitleParts } from "#src/agent/tool-presentation.ts";
 import { AppStore } from "#src/state/app-store.ts";
-import { preloadPierreHighlighter } from "#src/ui/diffs.ts";
+import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import { MessageRenderService } from "#src/ui/message-render-service.ts";
 import { renderMessage, renderMessages } from "#src/ui/messages.tsx";
 import type { AppMessage } from "#src/ui/render-state.ts";
@@ -200,7 +200,7 @@ test("shell tools preserve wrapped title, metadata, and escaped output", () => {
 });
 
 test("codemode reuses highlighted tool titles and nests ordinary tool rows", async () => {
-	await preloadPierreHighlighter();
+	await loadPierreLanguage("javascript");
 	const code = '// preserve comments\ntext("<script>");';
 	const message = tool({
 		titleParts: toolTitleParts("codemode", { code }),
@@ -272,7 +272,7 @@ test.each(["read", "bash", "codemode"])(
 test.each(["bash", "codemode"])(
 	"compact %s previews omit long source, later lines, outputs, and nested rows",
 	async (name) => {
-		await preloadPierreHighlighter();
+		await loadPierreLanguage(name === "bash" ? "bash" : "javascript");
 		const source = `text("${"😀".repeat(300)}hidden_tail");\ntext("hidden_line");`;
 		const message = tool({
 			titleParts: toolTitleParts(name, { command: source, code: source }),

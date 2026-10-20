@@ -2,7 +2,7 @@ import { test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { loadPierreLanguage, preloadPierreHighlighter } from "#src/ui/diffs.ts";
+import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import {
 	markdownCacheStatsForTest,
 	releaseMarkdownStreamingState,
@@ -269,7 +269,7 @@ test("code blocks keep dollar sequences literal", async () => {
 });
 
 test("code blocks omit the parser-added terminal display line", async () => {
-	await preloadPierreHighlighter();
+	await loadPierreLanguage("typescript");
 	const markdown = "```ts\none\n\nthree\n```";
 	const key = "terminal-newline";
 	const streaming = renderMarkdownStreaming(markdown, { cacheKey: key });
