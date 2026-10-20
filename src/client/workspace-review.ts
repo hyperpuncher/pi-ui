@@ -107,7 +107,7 @@ const commentStatus = requiredElement("review-comment-status");
 const dataRegion = requiredElement("workspace-review-data-region");
 const data = requiredElement("workspace-review-data");
 
-const initialData = JSON.parse(data.textContent ?? "");
+const initialData: unknown = JSON.parse(data.textContent ?? "");
 if (
 	!isRecord(initialData) ||
 	!isNumber(initialData.filesRevision) ||
@@ -250,7 +250,7 @@ window.addEventListener("pi-ui-theme-mode-changed", updateViewerOptions);
 function applyWorkspaceReviewData(): void {
 	try {
 		const currentData = document.getElementById("workspace-review-data");
-		const value = JSON.parse(currentData?.textContent ?? "");
+		const value: unknown = JSON.parse(currentData?.textContent ?? "");
 		if (
 			isRecord(value) &&
 			isNumber(value.filesRevision) &&
