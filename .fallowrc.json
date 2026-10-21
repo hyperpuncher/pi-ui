@@ -17,7 +17,6 @@
 		"tools/oxlint/anti-slop/index.ts"
 	],
 	"ignorePatterns": ["static/vendor/**"],
-	"dynamicallyLoaded": ["tests/src/ui/bash-highlight-loading-fixture.ts"],
 	"ignoreDependencies": [
 		"@earendil-works/pi-ai",
 		"@earendil-works/pi-coding-agent",
@@ -25,12 +24,12 @@
 		"@iconify-json/lucide",
 		"@oxlint/plugins",
 		"@pierre/diffs",
+		"@pierre/highlights",
 		"@pierre/trees",
 		"@starfederation/datastar-sdk",
 		"open-props",
 		"pele",
 		"quickjs-wasi",
-		"shiki",
 		"typebox"
 	],
 	"ignoreUnresolvedImports": ["../pierre-worker.js"],
@@ -55,5 +54,6 @@
 	},
 	"rules": {
 		"private-type-leaks": "off"
-	}
+	},
+	"dynamicallyLoaded": ["tests/src/ui/bash-highlight-loading-fixture.ts"]
 }

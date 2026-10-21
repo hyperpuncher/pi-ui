@@ -26,7 +26,7 @@ import {
 } from "#src/client/workspace-files-api.ts";
 import { workspaceMenuButton } from "#src/client/workspace-tree-menu.ts";
 import { createWorkspaceTreeExpansion } from "#src/client/workspace-tree.ts";
-import { getPierreThemes } from "#src/pierre-theme.ts";
+import { activeCodeThemes } from "#src/pierre-theme.ts";
 import { errorMessage } from "#src/utils/errors.ts";
 import {
 	workspaceTreeStyle,
@@ -338,7 +338,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			disableFileHeader: true,
 			overflow: wrap ? "wrap" : "scroll",
 			tokenizeMaxLineLength: 10_000,
-			theme: getPierreThemes(),
+			theme: activeCodeThemes,
 			themeType: "system",
 			onEditChange({ file }) {
 				draft = file.contents;
@@ -590,10 +590,10 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			lang: language,
 			name: current.path,
 		};
-		const themes = getPierreThemes();
 		await preloadHighlighter({
 			langs: [language],
-			themes: [themes.dark, themes.light],
+			themes: [activeCodeThemes.dark, activeCodeThemes.light],
+			preferredHighlighter: "highlights",
 		}).catch(() => undefined);
 		if (generation !== fileGeneration) return;
 		viewer.render({ file, containerWrapper: viewHost });

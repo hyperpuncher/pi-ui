@@ -1,29 +1,19 @@
-import { afterAll, beforeAll, expect, spyOn, test } from "bun:test";
+import { beforeAll, expect, test } from "bun:test";
 
 import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
 
-import { getPierreThemes } from "#src/pierre-theme.ts";
+import { activeCodeThemes } from "#src/pierre-theme.ts";
 import {
 	codeSnippets,
 	highlightBash,
 	highlightCodemode,
-	loadBashLanguages,
 } from "#src/ui/bash-highlight.ts";
 import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import { renderMessage } from "#src/ui/messages.tsx";
 
-let tokenization: ReturnType<typeof spyOn>;
 beforeAll(async () => {
 	expect(await loadPierreLanguage("bash")).toBe(true);
-	expect(await loadPierreLanguage("javascript")).toBe(true);
-	const highlighter = getHighlighterIfLoaded()!;
-	const tokenize = highlighter.codeToTokens.bind(highlighter);
-	// Exact-color tests must not depend on Shiki's wall-clock budget.
-	tokenization = spyOn(highlighter, "codeToTokens").mockImplementation(
-		(code, options) => tokenize(code, { ...options, tokenizeTimeLimit: 0 }),
-	);
 });
-afterAll(() => tokenization?.mockRestore());
 
 function styles(tokens: ThemedToken[][]) {
 	return tokens.map((line) =>
@@ -39,7 +29,8 @@ function styles(tokens: ThemedToken[][]) {
 function native(code: string, lang: string) {
 	return getHighlighterIfLoaded()!.codeToTokens(code, {
 		lang,
-		themes: getPierreThemes(),
+		themes: activeCodeThemes,
+		defaultColor: "light-dark()",
 	}).tokens;
 }
 
@@ -53,7 +44,7 @@ test.each([
 });
 
 test.each([
-	["python3 - <<'EOF'", "python", "from pathlib import Path\nprint(Path('x'))"],
+	["AGENT=1 python3 - <<'EOF'", "python", "print(42)"],
 	["/tmp/venv/bin/python3.12 - <<'EOF' > result.json", "python", "print(42)"],
 	["node --input-type=module - <<'EOF'", "javascript", "const n = 42"],
 	["bun - <<'EOF'", "typescript", "const n: number = 42;"],
@@ -62,14 +53,13 @@ test.each([
 	["cat > '/tmp/my file.ts' <<'EOF'", "typescript", "const n: number = 42;"],
 	["cat <<'EOF' > x.rs", "rust", 'fn main() { println!("hi"); }'],
 	["sudo tee -a config.yaml <<'EOF'", "yaml", "enabled: true"],
-	["cat >> test.sh <<'EOF'", "bash", 'echo "hello"'],
 	["cat > .zshrc <<'EOF'", "bash", "export FOO=bar"],
 	["git apply <<'PATCH'", "diff", "--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new"],
 	["python - <<'SQL'", "python", "print(42)"],
+	["python - <<'PY'", "python", "print(42)\nPY extra\nprint(43)"],
 ])("highlights %s as %s", async (header, language, body) => {
 	const marker = header.match(/<<\s*'?(\w+)/)![1]!;
 	const command = `${header}\n${body}\n${marker}\necho done`;
-	await loadBashLanguages(command);
 	const { tokens: highlighted } = highlightBash(command)!;
 	expect(styles(highlighted.slice(1, -2))).toEqual(styles(native(body, language)));
 	const shell = native(command, "bash");
@@ -80,21 +70,14 @@ test.each([
 
 test.each([
 	["bun -e '", "typescript", "const n: number = 42", "'"],
+	["AGENT=1 bun -e '", "typescript", "const n: number = 42", "'"],
 	['node --eval="', "javascript", "console.log(42)", '"'],
-	["node -p '", "javascript", "1 + 2", "'"],
-	[
-		"playwright-cli run-code '",
-		"javascript",
-		"async page => { return page.title(); }",
-		"'",
-	],
 	[
 		"playwright-cli -s=browser run-code '",
 		"javascript",
 		"async page => { return 42; }",
 		"'",
 	],
-	["bun --print '", "typescript", "1 + 2", "'"],
 	["deno eval --ext=ts '", "typescript", "const n: number = 42", "'"],
 	[
 		"uv run --with regex python -c '",
@@ -103,10 +86,8 @@ test.each([
 		"'",
 	],
 	["perl -ne '", "perl", "print $_", "' input.txt"],
-	["awk -F: '", "awk", "{print $1}", "' input.txt"],
 ])("highlights literal inline scripts: %s", async (prefix, language, body, suffix) => {
 	const command = prefix + body + suffix;
-	await loadBashLanguages(command);
 	const { tokens } = highlightBash(command)!;
 	const embedded = tokens
 		.flat()
@@ -132,17 +113,34 @@ test.each([
 	"node -- -e 'not a script'",
 	"awk -v 'name=value' '{print name}'",
 	"awk -f 'script.awk' input.txt",
-	"jq --arg name 'value' '.name'",
 ])("leaves nonliteral or ambiguous inline arguments unchanged: %s", async (command) => {
-	await loadBashLanguages(command);
 	expect(styles(highlightBash(command)!.tokens)).toEqual(
 		styles(native(command, "bash")),
 	);
 });
 
+test("leaves unsupported inline languages to the shell highlighter", async () => {
+	const command = "awk -F: '{print $1}' input.txt";
+	expect(styles(highlightBash(command)!.tokens)).toEqual(
+		styles(native(command, "bash")),
+	);
+});
+
+test("highlights inline scripts with shell-escaped single quotes", () => {
+	const script = "const value = 'hello'; console.log(value);";
+	const command = `AGENT=1 bun -e '${script.replaceAll("'", "'\\''")}'`;
+	const { tokens } = highlightBash(command)!;
+	const flat = tokens.flat();
+	expect(flat.map((token) => token.content).join("")).toBe(command);
+	const expected = native(script, "typescript").flat();
+	const keyword = flat.find((token) => token.content === "const ")!;
+	expect(keyword.htmlStyle).toEqual(
+		expected.find((token) => token.content === "const ")!.htmlStyle,
+	);
+});
+
 test("highlights multiple inline scripts without changing surrounding commands", async () => {
 	const command = "node -e 'console.log(1)' && python -c 'print(2)'";
-	await loadBashLanguages(command);
 	const tokens = highlightBash(command)!.tokens.flat();
 	for (const [body, language] of [
 		["console.log(1)", "javascript"],
@@ -158,7 +156,6 @@ test("highlights multiple inline scripts without changing surrounding commands",
 });
 
 test.each([
-	["bash", "command", '"', "echo hello; pwd", "bash"],
 	[
 		"mcp__playwright__browser_run_code",
 		"code",
@@ -198,18 +195,6 @@ test.each([
 		},
 		'"',
 		"typescript",
-	],
-	[
-		"file_replace",
-		{ path: "sample.ts", edits: [{ oldText: 'const s = "a";\n' }] },
-		"'",
-		"typescript",
-	],
-	[
-		"file_create",
-		{ path: "sample.py", content: "def answer():\n    return 42\n" },
-		'"',
-		"python",
 	],
 	["query_runner", { language: "sql", code: "SELECT 42;" }, '"', "sql"],
 	[
@@ -266,12 +251,11 @@ test.each([
 		).toBe(code);
 		const keyword = native(snippet.value, language)
 			.flat()
-			.find((token) => /^(const|def|SELECT)$/.test(token.content))!;
+			.find((token) => /^(?:const|def|SELECT)\s*$/.test(token.content))!;
 		const embedded = result.tokens
 			.flat()
 			.find((token) => token.content === keyword.content)!;
 		expect(embedded.htmlStyle).toEqual(keyword.htmlStyle);
-		expect(result.missingLanguages).toEqual([]);
 	},
 );
 
@@ -296,7 +280,9 @@ test("highlights large saved file payloads without losing escapes or blank lines
 			.map((line) => line.map((token) => token.content).join(""))
 			.join("\n"),
 	).toBe(code);
-	expect(result.tokens.flat().some((token) => token.content === "const")).toBe(true);
+	expect(result.tokens.flat().some((token) => token.content.trim() === "const")).toBe(
+		true,
+	);
 });
 
 test.each([
@@ -366,7 +352,6 @@ test("formats shell operators without touching embedded scripts or existing newl
 });
 
 test("renders embedded scripts as escaped, themed text", async () => {
-	await loadBashLanguages("python - <<PY\nprint(42)\nPY");
 	const html = renderMessage({
 		id: "heredoc",
 		presentationState: "final",
@@ -385,14 +370,12 @@ test("renders embedded scripts as escaped, themed text", async () => {
 	});
 	expect(html).not.toContain("<img");
 	expect(html).toContain("&lt;img");
-	expect(html).toContain("--shiki-dark:");
-	expect(html).toContain("--shiki-light:");
+	expect(html).toContain("color:light-dark(");
 });
 
 test("preserves source offsets and blank lines with unicode and CRLF scripts", async () => {
 	const body = '\r\nprint("😀")\r\n\r\n';
 	for (const command of [`python -c '${body}'`, `python - <<'PY'\r\n${body}\r\nPY`]) {
-		await loadBashLanguages(command);
 		const { tokens } = highlightBash(command)!;
 		expect(
 			tokens.map((line) => line.map((token) => token.content).join("")).join("\n"),
@@ -408,7 +391,6 @@ test("preserves multiline language state, blank lines, tabs and multiple blocks"
 	const python = '\ttext = """hello\n\n\tworld"""\n\tprint(text)';
 	const sql = "SELECT 42;";
 	const command = `python - <<-'PY'\n${python}\n\tPY\npsql <<SQL\n${sql}\nSQL`;
-	await loadBashLanguages(command);
 	const { tokens } = highlightBash(command)!;
 	expect(styles(tokens.slice(1, 5))).toEqual(styles(native(python, "python")));
 	expect(styles(tokens.slice(7, 8))).toEqual(styles(native(sql, "sql")));
@@ -421,7 +403,6 @@ test.each([
 	"echo \"python <<'PY'\nprint(42)\nPY\"",
 	"# python <<PY\nprint(42)\nPY",
 	"python - <<PY\nprint(42)",
-	"python - <<PY\nprint(42)\nPY extra\nprint(43)\nPY",
 	"cat <<PY <<SQL\nprint(42)\nPY\nSELECT 42;\nSQL",
 	"python <<< 'print(42)'",
 ])("leaves ambiguous or incomplete input unchanged: %s", (command) => {

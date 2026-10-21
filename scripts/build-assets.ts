@@ -25,7 +25,9 @@ const results = await Promise.all([
 		},
 		define: { "process.env.NODE_ENV": JSON.stringify("production") },
 		minify: true,
-		external: ["shiki/wasm"],
+		// All client highlighting uses Highlights. Keep the optional Shiki
+		// backend out of the browser bundles and the compiled executable.
+		external: ["shiki/*"],
 		// Pierre registers the diffs-container custom element (and its adopted
 		// base stylesheet) through an import side effect. Bun's tree shaking
 		// drops that module on Windows by missing the package sideEffects entry,
@@ -38,9 +40,11 @@ const results = await Promise.all([
 		naming: "pierre-worker.js",
 		target: "browser",
 		format: "esm",
-		external: ["shiki/wasm"],
 		define: { "process.env.NODE_ENV": JSON.stringify("production") },
 		minify: true,
+		// All client highlighting uses Highlights. Keep the optional Shiki
+		// backend out of the browser bundles and the compiled executable.
+		external: ["shiki/*"],
 	}),
 	Bun.build({
 		entrypoints: ["src/ui/app.css", ...(themeLab ? ["src/ui/theme-lab.css"] : [])],

@@ -4,7 +4,7 @@ import {
 } from "#src/commands/actions.ts";
 import { activeFontStacks } from "#src/fonts.ts";
 import { activeKeybind, keybindActions } from "#src/keybinds.ts";
-import { getPierreThemes } from "#src/pierre-theme.ts";
+import { activeCodeThemes } from "#src/pierre-theme.ts";
 import {
 	endpoints,
 	workspaceFilesBase,
@@ -60,7 +60,7 @@ export function renderPage(
 	}: PageRenderOptions = {},
 ): string {
 	const staticBase = `/static/${appVersion}`;
-	const codeThemes = getPierreThemes();
+	const codeThemes = activeCodeThemes;
 	const fonts = activeFontStacks();
 	const initialSignals = JSON.stringify(projectBackendSignals(state));
 

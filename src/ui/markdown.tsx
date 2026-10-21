@@ -5,18 +5,22 @@ import { resolve } from "node:path";
 import {
 	getFiletypeFromFileName,
 	getHighlighterIfLoaded,
-	ShikiStreamTokenizer,
-	type SupportedLanguages,
+	tokenStyle,
+	type DiffsStreamTokenizer,
 	type ThemedToken,
 } from "@pierre/diffs";
+import { isSupportedLanguage } from "@pierre/highlights";
 
-import { getActiveCodeThemeId, getPierreThemes } from "#src/pierre-theme.ts";
+import { codeThemeKey, activeCodeThemes } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
-import { loadPierreLanguage, pierreLanguages, renderPierreCode } from "#src/ui/diffs.ts";
+import {
+	isPierreLanguageLoaded,
+	loadPierreLanguage,
+	renderPierreCode,
+} from "#src/ui/diffs.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import { renderMermaid } from "#src/ui/mermaid.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
-import { shikiTokenStyle } from "#src/ui/shiki-token-style.ts";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { fileUriToPath } from "#static/file-uri.js";
 
@@ -59,7 +63,9 @@ const codeBlockPattern =
 type StreamingCodeBlockState = {
 	language: string;
 	code: string;
-	tokenizer: ShikiStreamTokenizer;
+	tokenizer: DiffsStreamTokenizer;
+	stable: ThemedToken[];
+	unstable: ThemedToken[];
 };
 
 const markdownHtmlRewriter = new HTMLRewriter()
@@ -178,7 +184,7 @@ export function releaseMarkdownStreamingState(cacheKey: string): void {
 	streamingCache.delete(cacheKey);
 	deleteStringKeysWithPrefix(
 		streamingCodeBlockStates,
-		`${getActiveCodeThemeId()}:${cacheKey}:`,
+		`${codeThemeKey()}:${cacheKey}:`,
 	);
 }
 
@@ -219,7 +225,7 @@ function finalMarkdownCacheKey(
 	// Only diagrams contain message-scoped SVG identifiers. Ordinary Markdown
 	// can share final HTML even when a restore assigns new message identifiers.
 	const diagramScope = /mermaid/i.test(markdown) ? scope : "";
-	return `${getActiveCodeThemeId()}\0${localImageBase}\0${diagramScope}\0${markdown}`;
+	return `${codeThemeKey()}\0${localImageBase}\0${diagramScope}\0${markdown}`;
 }
 
 function hideIncompleteLinkDestination(markdown: string): string {
@@ -353,7 +359,7 @@ async function highlightCodeBlocksFinal(html: string, scope: string): Promise<st
 }
 
 async function cachedPierreCodeBlock(code: string, language: string): Promise<string> {
-	const key = `${getActiveCodeThemeId()}\0${language}\0${code}`;
+	const key = `${codeThemeKey()}\0${language}\0${code}`;
 	const cached = pierreCodeBlockCache.get(key);
 	if (cached) return cached;
 	const highlighted = await renderPierreCode(code, language);
@@ -367,39 +373,42 @@ function highlightStreamingCodeBlock(
 	cacheKey: string,
 ): string {
 	const highlighter = getHighlighterIfLoaded();
-	if (!highlighter || !loadedCodeLanguage(language)) {
+	if (!highlighter || !isPierreLanguageLoaded(language)) {
 		if (language !== "text") void loadPierreLanguage(language);
 		return renderStreamingPlainCodeBlock(code, language);
 	}
 
-	const themedCacheKey = `${getActiveCodeThemeId()}:${cacheKey}`;
+	const themedCacheKey = `${codeThemeKey()}:${cacheKey}`;
 	let state = streamingCodeBlockStates.get(themedCacheKey);
 	if (!state || state.language !== language || !code.startsWith(state.code)) {
+		state?.tokenizer.dispose();
 		state = {
 			language,
 			code: "",
-			tokenizer: new ShikiStreamTokenizer({
-				highlighter,
-				// SAFETY: codeFenceLanguage only returns languages accepted by Pierre or Shiki.
-				lang: language as SupportedLanguages,
-				themes: getPierreThemes(),
+			tokenizer: highlighter.createStreamTokenizer({
+				lang: language,
+				themes: activeCodeThemes,
+				defaultColor: "light-dark()",
 			}),
+			stable: [],
+			unstable: [],
 		};
 		streamingCodeBlockStates.set(themedCacheKey, state);
 	}
 
 	const chunk = code.slice(state.code.length);
 	if (chunk) {
-		void state.tokenizer.enqueue(chunk).catch(() => state.tokenizer.clear());
+		const result = state.tokenizer.enqueue(chunk);
+		if (result instanceof Promise)
+			throw new Error("Highlights stream tokenizer must be synchronous");
+		state.stable.push(...result.stable);
+		state.unstable = result.unstable;
 		state.code = code;
 	}
 
 	return syncHtml(
 		<CodeBlock
-			pre={renderStreamingTokensPre([
-				...state.tokenizer.tokensStable,
-				...state.tokenizer.tokensUnstable,
-			])}
+			pre={renderStreamingTokensPre([...state.stable, ...state.unstable])}
 			language={language}
 			source={code}
 		/>,
@@ -409,14 +418,13 @@ function highlightStreamingCodeBlock(
 function renderStreamingTokensPre(tokens: ThemedToken[]): string {
 	const lines = [""];
 	for (const token of tokens) {
-		const style = shikiTokenStyle(token);
+		const style = tokenStyle(token, true);
 		const styleAttribute = style ? ` style="${Bun.escapeHTML(style)}"` : "";
-		const classAttribute = style ? ` class="streaming-token"` : "";
 		const parts = token.content.split("\n");
 		for (const [index, part] of parts.entries()) {
 			if (part) {
 				lines[lines.length - 1] +=
-					`<span${classAttribute}${styleAttribute}>${Bun.escapeHTML(part)}</span>`;
+					`<span${styleAttribute}>${Bun.escapeHTML(part)}</span>`;
 			}
 			if (index < parts.length - 1) lines.push("");
 		}
@@ -483,43 +491,35 @@ function CodeBlock(props: { pre: string; language: string; source?: string }) {
 	);
 }
 
-const supportedCodeLanguages = new Set<string>([...pierreLanguages, "text"]);
-const plainCodeLanguages = new Set(["plain", "plaintext", "text", "txt"]);
+const codeLanguageAliases = new Map([
+	["bash", "bash"],
+	["sh", "shellscript"],
+	["tf", "terraform"],
+	["yml", "yaml"],
+]);
 
 async function codeFenceLanguageFinal(language: string | undefined): Promise<string> {
-	const normalized = normalizedCodeFenceLanguage(language);
-	if (plainCodeLanguages.has(normalized)) return "text";
-	await loadPierreLanguage(normalized);
-	return codeFenceLanguage(normalized);
+	const canonical = canonicalCodeLanguage(language);
+	return (await loadPierreLanguage(canonical)) ? canonical : "text";
 }
 
 function codeFenceLanguage(language: string | undefined): string {
-	const normalized = normalizedCodeFenceLanguage(language);
-	if (plainCodeLanguages.has(normalized)) return "text";
-	if (supportedCodeLanguages.has(normalized)) return normalized;
-
-	const loaded = loadedCodeLanguage(normalized);
-	if (loaded) return loaded;
-
-	const mapped = getFiletypeFromFileName(`code.${normalized}`);
-	if (supportedCodeLanguages.has(mapped)) return mapped;
-	const loadedMapped = loadedCodeLanguage(mapped);
-	if (loadedMapped) return loadedMapped;
-
-	void loadPierreLanguage(normalized);
+	const canonical = canonicalCodeLanguage(language);
+	if (isPierreLanguageLoaded(canonical)) return canonical;
+	if (canonical !== "text") void loadPierreLanguage(canonical);
 	return "text";
+}
+
+function canonicalCodeLanguage(language: string | undefined): string {
+	const normalized = normalizedCodeFenceLanguage(language);
+	const alias = codeLanguageAliases.get(normalized);
+	if (alias) return alias;
+	const mapped = getFiletypeFromFileName(`code.${normalized}`);
+	return mapped !== "text" && isSupportedLanguage(mapped) ? mapped : normalized;
 }
 
 function normalizedCodeFenceLanguage(language: string | undefined): string {
 	return language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
-}
-
-function loadedCodeLanguage(language: string): string | undefined {
-	try {
-		return getHighlighterIfLoaded()?.getLanguage(language).name;
-	} catch {
-		return undefined;
-	}
 }
 
 const localImagePattern = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i;

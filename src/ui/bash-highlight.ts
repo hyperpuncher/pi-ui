@@ -4,11 +4,19 @@ import {
 	getHighlighterIfLoaded,
 	type ThemedToken,
 } from "@pierre/diffs";
-import { flatTokenVariants } from "shiki/core";
+import { isSupportedLanguage } from "@pierre/highlights";
 
-import { getActiveCodeThemeId, getPierreThemes } from "#src/pierre-theme.ts";
-import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { activeCodeThemes, codeThemeKey } from "#src/pierre-theme.ts";
 import { BoundedCache } from "#src/ui/render-cache.ts";
+import {
+	isInRanges,
+	lineSegments,
+	scanShell,
+	type ShellHeredoc,
+	type ShellLine,
+	type ShellSegment,
+	type ShellWord,
+} from "#src/ui/shell-scanner.ts";
 import type { JsonObject, JsonValue } from "#src/utils/json-types.ts";
 import { isRecord, isString } from "#src/utils/type-guards.ts";
 
@@ -18,30 +26,6 @@ const scriptTokens = new BoundedCache<string, ThemedToken[]>(128, {
 	weight: (key, tokens) => key.length * 2 + tokens.length * 256,
 });
 
-const embeddedLanguages = new Set([
-	"python",
-	"javascript",
-	"typescript",
-	"rust",
-	"sql",
-	"bash",
-	"lua",
-	"html",
-	"css",
-	"xml",
-	"jsx",
-	"tsx",
-	"svelte",
-	"astro",
-	"json",
-	"jsonc",
-	"yaml",
-	"toml",
-	"go",
-	"markdown",
-	"diff",
-	"typst",
-]);
 const markerLanguages = new Map(
 	Object.entries({
 		PY: "python",
@@ -74,10 +58,7 @@ const markerLanguages = new Map(
 	}),
 );
 const wrappers = new Set(["uv", "env", "sudo", "timeout", "direnv"]);
-const heredocOperator = "keyword.operator.heredoc.shell";
-const heredocDelimiter = "punctuation.definition.string.heredoc.delimiter.shell";
-type Explanation = NonNullable<ThemedToken["explanation"]>[number];
-type ShellPart = Explanation & { offset: number };
+const breakOperators = new Set([";", ";;", ";&", ";;&", "&&", "||", "|", "|&"]);
 type Script = {
 	start: number;
 	end: number;
@@ -111,7 +92,7 @@ export function codeSnippets(
 				? args.file_path
 				: "";
 		const detected = explicit
-			? embeddedLanguages.has(explicit)
+			? isSupportedLanguage(explicit)
 				? explicit
 				: getFiletypeFromFileName(`snippet.${explicit}`)
 			: path
@@ -135,6 +116,7 @@ export function codeSnippets(
 
 function encodeLiteral(value: string, quote: string, next = ""): string {
 	if (quote === "`") return value;
+	if (quote === "shell") return value.replaceAll("'", "'\\''");
 	if (quote === "template") {
 		const encoded = value
 			.replaceAll("\\", "\\\\")
@@ -152,47 +134,32 @@ function encodeLiteral(value: string, quote: string, next = ""): string {
 }
 
 export function hasEmbeddedBash(command: string): boolean {
-	return /<<|(?:^|\s)(?:-[np]*[epc]\b|--(?:eval|print)\b|eval\b)|\b(?:awk|gawk|mawk)\b|\bplaywright-cli\s+(?:-s=\S+\s+)?run-code\b/.test(
+	return /<<|(?:^|\s)(?:-[np]*[epc]\b|--(?:eval|print)\b|eval\b)|\bplaywright-cli\s+(?:-s=\S+\s+)?run-code\b/.test(
 		command,
 	);
 }
 
-export async function loadBashLanguages(command: string): Promise<void> {
-	if (!hasEmbeddedBash(command)) return;
-	if (!(await loadPierreLanguage("bash"))) return;
-	const tokens = bashTokens(command);
-	if (!tokens) return;
-	const languages = new Set([
-		...heredocs(command, tokens).map((block) => block.language),
-		...inlineScripts(command, tokens).map((script) => script.language),
-	]);
-	await Promise.all([...languages].map(loadPierreLanguage));
-}
-
-function bashTokens(command: string, format = false): ThemedToken[][] | undefined {
+function bashTokens(command: string): ThemedToken[][] | undefined {
 	return getHighlighterIfLoaded()?.codeToTokens(command, {
 		lang: "bash",
-		themes: getPierreThemes(),
-		includeExplanation:
-			hasEmbeddedBash(command) ||
-			(format && command.length > 90 && /[;&|]/.test(command))
-				? "scopeName"
-				: false,
+		themes: activeCodeThemes,
+		defaultColor: "light-dark()",
 	}).tokens;
 }
 
 export function highlightBash(
 	command: string,
 	options: { format?: boolean } = {},
-): { tokens: ThemedToken[][]; missingLanguages: string[] } | undefined {
-	const highlighter = getHighlighterIfLoaded();
-	const tokens = bashTokens(command, options.format);
-	if (!highlighter || !tokens) return undefined;
-	const breaks = options.format ? displayBreaks(command, tokens) : [];
+): { tokens: ThemedToken[][] } | undefined {
+	const tokens = bashTokens(command);
+	if (!tokens) return undefined;
+	const format = options.format === true && command.length > 90;
+	const scan = hasEmbeddedBash(command) ? scanShell(command) : undefined;
+	const breaks = format ? displayBreaks(command, tokens, scan?.bodyRanges ?? []) : [];
 	return highlightScripts(
 		command,
 		tokens,
-		[...heredocs(command, tokens), ...inlineScripts(command, tokens)],
+		scan ? [...heredocs(scan), ...inlineScripts(command, scan)] : [],
 		breaks,
 	);
 }
@@ -200,25 +167,16 @@ export function highlightBash(
 export function highlightCodemode(code: string, snippets: CodeSnippet[] = []) {
 	const highlighter = getHighlighterIfLoaded();
 	if (!highlighter) return undefined;
-	const key = `${getActiveCodeThemeId()}\0codemode\0${code}`;
+	const key = `${codeThemeKey()}\0codemode\0${code}`;
 	let base = scriptTokens.get(key);
 	if (!base) {
 		base = highlighter
-			.codeToTokensWithThemes(code, {
+			.codeToTokens(code, {
 				lang: "javascript",
-				themes: getPierreThemes(),
-				includeExplanation: "tokenType",
-				tokenizeTimeLimit: 0,
+				themes: activeCodeThemes,
+				defaultColor: "light-dark()",
 			})
-			.flat()
-			.map((token) => {
-				// SAFETY: tokenType metadata is retained in variants by Shiki, though TokenStyles omits it.
-				const typed = token.variants.light as Pick<ThemedToken, "type">;
-				return {
-					...flatTokenVariants(token, ["light", "dark"], "--shiki-", "light"),
-					type: typed.type,
-				};
-			});
+			.tokens.flat();
 		scriptTokens.set(key, base);
 	}
 
@@ -301,31 +259,26 @@ function highlightScripts(
 	breaks: number[] = [],
 ) {
 	const highlighter = getHighlighterIfLoaded()!;
-	const loadedLanguages = new Set(highlighter.getLoadedLanguages());
-	const missingLanguages = new Set<string>();
 	scripts.sort((a, b) => a.start - b.start);
 	const source = tokens.flat();
 	const highlighted: ThemedToken[] = [];
 	let index = 0;
 	for (const { start, end, language, value, quote } of scripts) {
-		if (!loadedLanguages.has(language)) {
-			missingLanguages.add(language);
-			continue;
-		}
 		const code = value ?? command.slice(start, end);
-		const key = `${getActiveCodeThemeId()}\0${language}\0${code}`;
+		const key = `${codeThemeKey()}\0${language}\0${code}`;
 		let body = scriptTokens.get(key);
 		if (!body) {
 			try {
 				if (language === "bash") {
-					const result = highlightBash(code)!;
-					body = result.tokens.flat();
-					for (const missing of result.missingLanguages)
-						missingLanguages.add(missing);
-					if (!result.missingLanguages.length) scriptTokens.set(key, body);
+					body = highlightBash(code)!.tokens.flat();
+					scriptTokens.set(key, body);
 				} else {
 					body = highlighter
-						.codeToTokens(code, { lang: language, themes: getPierreThemes() })
+						.codeToTokens(code, {
+							lang: language,
+							themes: activeCodeThemes,
+							defaultColor: "light-dark()",
+						})
 						.tokens.flat();
 					scriptTokens.set(key, body);
 				}
@@ -386,272 +339,277 @@ function highlightScripts(
 			};
 	}
 	for (; index < source.length; index++) highlighted.push(source[index]!);
-	return {
-		tokens: tokenLines(command, highlighted, breaks),
-		missingLanguages: [...missingLanguages],
-	};
+	return { tokens: tokenLines(command, highlighted, breaks) };
 }
 
-function heredocs(command: string, tokens: ThemedToken[][]) {
+function heredocs(scan: ReturnType<typeof scanShell>): Script[] {
 	const blocks: Script[] = [];
-	if (!command.includes("<<")) return blocks;
-	const lines = command.split(/\r?\n/);
-	let offset = 0;
-	const offsets = command.split("\n").map((line) => {
-		const start = offset;
-		offset += line.length + 1;
-		return start;
-	});
-	for (let index = 0; index < tokens.length; index++) {
-		const header = explanations(tokens[index] ?? []);
-		const operators = header.filter((part) => hasScope(part, heredocOperator));
-		// Multiple queued heredocs are not reliably represented by the bash grammar.
-		if (operators.length !== 1 || (lines[index]?.match(/<</g)?.length ?? 0) !== 1)
-			continue;
-		const marker = header.find((part) => hasScope(part, heredocDelimiter))?.content;
-		if (!marker) continue;
-		const language = heredocLanguage(header, marker);
-		if (!language) continue;
-		const indent = operators[0]?.content === "<<-";
-		let end = index + 1;
-		for (; end < tokens.length; end++) {
-			const line = lines[end] ?? "";
-			if ((indent ? line.replace(/^\t+/, "") : line) === marker) break;
-			const parts = explanations(tokens[end] ?? []);
-			if (
-				parts.some(
-					(part) =>
-						!part.scopes.some(
-							({ scopeName }) =>
-								scopeName ===
-									`string.quoted.heredoc.${indent ? "indent" : "no-indent"}.${marker}` ||
-								scopeName ===
-									`string.unquoted.heredoc.${indent ? "indent" : "no-indent"}.${marker}`,
-						),
-				)
-			)
-				break;
-		}
-		// Only replace complete blocks whose boundaries agree with the grammar.
-		if (
-			end >= lines.length ||
-			(indent ? lines[end]?.replace(/^\t+/, "") : lines[end]) !== marker
-		)
-			continue;
-		if (end === index + 1) continue;
-		const bodyEnd = offsets[end]! - (command[offsets[end]! - 2] === "\r" ? 2 : 1);
-		blocks.push({ start: offsets[index + 1]!, end: bodyEnd, language });
-		index = end;
+	for (const heredoc of scan.heredocs) {
+		const language = heredocLanguage(scan.lines[heredoc.lineIndex]!, heredoc);
+		if (language) blocks.push({ start: heredoc.start, end: heredoc.end, language });
 	}
 	return blocks;
 }
 
-function explanations(tokens: ThemedToken[]): Explanation[] {
-	return tokens.flatMap((token) => token.explanation ?? []);
-}
-
-function hasScope(part: Explanation, name: string): boolean {
-	return part.scopes.some(({ scopeName }) => scopeName === name);
-}
-
-function heredocLanguage(header: Explanation[], marker: string): string | undefined {
-	const operator = header.findIndex((part) => hasScope(part, heredocOperator));
-	const separator = (part: Explanation) =>
-		part.scopes.some(
-			({ scopeName }) =>
-				scopeName.startsWith("punctuation.separator.statement.") ||
-				scopeName === "punctuation.terminator.statement.semicolon.shell",
-		);
-	let start = operator;
-	while (
-		start > 0 &&
-		!separator(header[start - 1]!) &&
-		!hasScope(header[start - 1]!, "keyword.operator.pipe.shell")
-	)
-		start--;
-	let end = operator + 1;
-	while (end < header.length && !separator(header[end]!)) end++;
-	const parts = header.slice(start, end);
-	let wrapped = false;
-	let writesFile = false;
-	for (const part of parts) {
-		const isCommand = hasScope(part, "entity.name.command.shell");
-		if (!isCommand && !(wrapped && hasScope(part, "string.unquoted.argument.shell")))
-			continue;
-		const name = part.content.split("/").at(-1) ?? "";
-		if (isCommand) wrapped = wrappers.has(name);
-		if (name === "cat" || name === "tee") writesFile = true;
-		if (/^python(?:\d+(?:\.\d+)*)?$/.test(name)) return "python";
-		if (name === "node") return "javascript";
-		if (name === "bun" || name === "deno") return "typescript";
-		if (name === "psql" || name === "sqlite3") return "sql";
-		if (name === "lua") return "lua";
-		if (name === "bash" || name === "sh" || name === "zsh") return "bash";
-	}
-	if (writesFile) {
-		const text = parts.map((part) => part.content).join("");
-		const filename = text.match(
-			/(?:>{1,2}\s*|\btee\s+(?:-a\s+)?)(?:"([^"]+)"|'([^']+)'|([^\s<>|;&]+))/,
-		);
-		const path = filename?.[1] ?? filename?.[2] ?? filename?.[3];
-		if (path) {
-			let language = getFiletypeFromFileName(path);
-			if (
-				/\.(?:svg|xml)$/.test(path) ||
-				/(?:^|\/)fonts\.conf$/.test(path) ||
-				path.includes("fontconfig/")
-			)
-				language = "xml";
-			if (language === "zsh" || /(?:^|\/)\.zshrc$/.test(path)) language = "bash";
-			if (embeddedLanguages.has(language)) return language;
-		}
-	}
-	return markerLanguages.get(marker);
-}
-
-function shellParts(tokens: ThemedToken[][]): ShellPart[] {
-	const parts: ShellPart[] = [];
-	for (const line of tokens)
-		for (const token of line) {
-			let offset = token.offset;
-			for (const part of token.explanation ?? []) {
-				parts.push({ content: part.content, scopes: part.scopes, offset });
-				offset += part.content.length;
-			}
-		}
-	return parts;
-}
-
-function isShellSyntax(part: Explanation): boolean {
-	return !part.scopes.some(
-		({ scopeName }) =>
-			scopeName.startsWith("string.quoted.") ||
-			scopeName.startsWith("string.unquoted.heredoc.") ||
-			scopeName.startsWith("comment."),
+function heredocLanguage(line: ShellLine, heredoc: ShellHeredoc): string | undefined {
+	const segments = lineSegments(line);
+	let start = segments.findIndex(
+		(segment, index) =>
+			heredoc.operatorStart >= segment.start &&
+			(index === segments.length - 1 ||
+				heredoc.operatorStart < segments[index + 1]!.start),
 	);
+	if (start < 0) return markerLanguages.get(heredoc.marker);
+	let end = start + 1;
+	while (
+		end < segments.length &&
+		line.operators.some(
+			(operator) =>
+				operator.start >= segments[end - 1]!.end &&
+				operator.end <= segments[end]!.start &&
+				(operator.value === "|" || operator.value === "|&"),
+		)
+	)
+		end += 1;
+	for (const segment of segments.slice(start, end)) {
+		const commandWord = effectiveCommand(segment);
+		if (!commandWord) continue;
+		const name = basename(commandWord.word.value);
+		const language = commandLanguage(name);
+		if (language) return language;
+		if (name === "cat" || name === "tee") {
+			const pathLanguage = languageFromPath(
+				writtenPath(segment, commandWord.index),
+			);
+			if (pathLanguage) return pathLanguage;
+		}
+	}
+	return markerLanguages.get(heredoc.marker);
 }
 
-function inlineScripts(command: string, tokens: ThemedToken[][]): Script[] {
+type EffectiveCommand = { word: ShellWord; index: number };
+
+const commandLanguages = new Map([
+	["node", "javascript"],
+	["playwright-cli", "javascript"],
+	["bun", "typescript"],
+	["deno", "typescript"],
+	["psql", "sql"],
+	["sqlite3", "sql"],
+	["lua", "lua"],
+	["bash", "bash"],
+	["sh", "bash"],
+	["zsh", "bash"],
+]);
+
+function effectiveCommand(segment: ShellSegment): EffectiveCommand | undefined {
+	const index = segment.words.findIndex(
+		(word) => !word.redirectedBy && !isAssignment(word.value),
+	);
+	if (index < 0) return undefined;
+	const word = segment.words[index]!;
+	return wrappers.has(basename(word.value))
+		? wrapperTarget(segment, index)
+		: { word, index };
+}
+
+function wrapperTarget(
+	segment: ShellSegment,
+	start: number,
+): EffectiveCommand | undefined {
+	for (let index = start + 1; index < segment.words.length; index++) {
+		const word = segment.words[index]!;
+		if (word.redirectedBy) continue;
+		const name = basename(word.value);
+		if (
+			commandLanguage(name) ||
+			inlineLanguage(name) ||
+			name === "cat" ||
+			name === "tee" ||
+			name === "git"
+		)
+			return { word, index };
+	}
+	return undefined;
+}
+
+function commandLanguage(name: string): string | undefined {
+	return /^python(?:\d+(?:\.\d+)*)?$/.test(name)
+		? "python"
+		: commandLanguages.get(name);
+}
+
+function writtenPath(segment: ShellSegment, commandIndex: number): string | undefined {
+	for (const word of segment.words.slice(commandIndex + 1)) {
+		if (word.redirectedBy === "<<" || word.redirectedBy === "<<-") continue;
+		if (word.redirectedBy === ">" || word.redirectedBy === ">>") return word.value;
+		if (word.value.startsWith("-")) continue;
+		if (basename(segment.words[commandIndex]!.value) === "tee") return word.value;
+	}
+	return undefined;
+}
+
+function languageFromPath(path: string | undefined): string | undefined {
+	if (!path) return undefined;
+	let language = getFiletypeFromFileName(path);
+	if (
+		/\.(?:svg|xml)$/.test(path) ||
+		/(?:^|\/)fonts\.conf$/.test(path) ||
+		path.includes("fontconfig/")
+	)
+		language = "xml";
+	if (language === "zsh" || /(?:^|\/)\.zshrc$/.test(path)) language = "bash";
+	return language !== "text" && isSupportedLanguage(language) ? language : undefined;
+}
+
+function inlineScripts(command: string, scan: ReturnType<typeof scanShell>): Script[] {
 	const scripts: Script[] = [];
-	if (!hasEmbeddedBash(command)) return scripts;
-	const parts = shellParts(tokens);
-	for (let index = 0; index < parts.length; index++) {
-		const opening = parts[index]!;
-		if (
-			!hasScope(opening, "punctuation.definition.string.begin.shell") ||
-			!["'", '"'].includes(opening.content)
-		)
-			continue;
-		if (opening.scopes.some(({ scopeName }) => scopeName.includes("heredoc")))
-			continue;
-		const end = parts.findIndex(
-			(part, candidate) =>
-				candidate > index &&
-				hasScope(part, "punctuation.definition.string.end.shell"),
-		);
-		if (end < 0) continue;
-		const closing = parts[end]!;
-		if (closing.content !== opening.content) continue;
-		const start = opening.offset + 1;
-		const code = command.slice(start, closing.offset);
-		// Highlight literal arguments only, never shell expansions or concatenated words.
-		if (!code || (opening.content === '"' && /[$`\\]/.test(code))) continue;
-		if (
-			command[opening.offset - 1] === "$" ||
-			/[^\s;|&)]/.test(command[closing.offset + 1] ?? "")
-		)
-			continue;
-		let commandIndex = index - 1;
-		while (
-			commandIndex >= 0 &&
-			!hasScope(parts[commandIndex]!, "entity.name.command.shell")
-		)
-			commandIndex--;
-		if (commandIndex < 0) continue;
-		const executable = parts[commandIndex]!;
-		if (!isShellSyntax(executable)) continue;
-		let name = executable.content.split("/").at(-1) ?? "";
-		let interpreter = executable;
-		if (wrappers.has(name)) {
-			const target = parts
-				.slice(commandIndex + 1, index)
-				.findLast(
-					(part) =>
-						hasScope(part, "string.unquoted.argument.shell") &&
-						inlineLanguage(part.content.split("/").at(-1) ?? ""),
-				);
-			if (!target) continue;
-			interpreter = target;
-			name = target.content.split("/").at(-1) ?? "";
+	for (const line of scan.lines) {
+		if (isInRanges(line.start, scan.bodyRanges)) continue;
+		for (const segment of lineSegments(line)) {
+			const commandWord = effectiveCommand(segment);
+			if (!commandWord) continue;
+			const script = segmentScript(command, segment, commandWord);
+			if (script) scripts.push(script);
 		}
-		const language = inlineLanguage(name);
-		if (!language) continue;
-		const prefix = command
-			.slice(interpreter.offset + interpreter.content.length, opening.offset)
-			.replace(/\\\r?\n/g, " ");
-		if (/\n|(?:^|\s)--(?:\s|$)/.test(prefix)) continue;
-		let isScript = false;
-		if (language === "python") isScript = /^\s+(?:-[A-Za-z]+\s+)*-c\s*$/.test(prefix);
-		else if (name === "playwright-cli")
-			isScript = /^\s+(?:-s=\S+\s+)?run-code\s+$/.test(prefix);
-		else if (name === "deno") isScript = /^\s+eval(?:\s+--[\w=-]+)*\s+$/.test(prefix);
-		else if (["node", "bun"].includes(name))
-			isScript =
-				/^\s+(?:--[\w-]+(?:=[^\s'"]+)?\s+)*(?:-[ep]|--(?:eval|print)=?)\s*$/.test(
-					prefix,
-				);
-		else if (["ruby", "perl", "lua"].includes(name))
-			isScript = /^\s+(?:-[A-Za-z]+\s+)*-[np]*e\s*$/.test(prefix);
-		else if (["awk", "gawk", "mawk"].includes(name)) {
-			isScript =
-				/^(?:\s+-[^\s'"]+)*\s+$/.test(prefix) &&
-				!/(?:^|\s)(?:-[fv]|--(?:file|assign)\b)/.test(prefix);
-		}
-		if (isScript) scripts.push({ start, end: closing.offset, language });
-		index = end;
 	}
 	return scripts;
+}
+
+function segmentScript(
+	command: string,
+	segment: ShellSegment,
+	commandWord: EffectiveCommand,
+): Script | undefined {
+	const name = basename(commandWord.word.value);
+	const language = inlineLanguage(name);
+	if (!language) return undefined;
+	for (const word of segment.words.slice(commandWord.index + 1)) {
+		if (word.redirectedBy) continue;
+		const script = wordScript(command, word, commandWord, name, language);
+		if (script) return script;
+	}
+	return undefined;
+}
+
+function wordScript(
+	command: string,
+	word: ShellWord,
+	commandWord: EffectiveCommand,
+	name: string,
+	language: string,
+): Script | undefined {
+	for (const quoted of word.quoted) {
+		if (!quoted.closed || quoted.quote === "`" || !quoted.simple) continue;
+		if (quoted.end !== word.end) continue;
+		const code = command.slice(quoted.contentStart, quoted.contentEnd);
+		if (!code) continue;
+		const prefix = scriptPrefix(command, commandWord, quoted.start);
+		if (prefix === undefined) continue;
+		if (isInlineScript(name, language, prefix))
+			return {
+				start: quoted.contentStart,
+				end: quoted.contentEnd,
+				language,
+			};
+	}
+	return shellScriptWord(command, word, commandWord, name, language);
+}
+
+function shellScriptWord(
+	command: string,
+	word: ShellWord,
+	commandWord: EffectiveCommand,
+	name: string,
+	language: string,
+): Script | undefined {
+	const bounds = shellScriptBounds(command, word);
+	if (!bounds) return undefined;
+	const prefix = scriptPrefix(command, commandWord, word.start);
+	if (prefix === undefined || !isInlineScript(name, language, prefix)) return undefined;
+	return { ...bounds, language, value: word.value, quote: "shell" };
+}
+
+function shellScriptBounds(
+	command: string,
+	word: ShellWord,
+): { start: number; end: number } | undefined {
+	const quoted = word.quoted;
+	if (quoted.length < 2) return undefined;
+	const first = quoted[0]!;
+	const last = quoted.at(-1)!;
+	if (word.start !== first.start || word.end !== last.end) return undefined;
+	for (const [index, segment] of quoted.entries()) {
+		if (segment.quote !== "'" || !segment.closed) return undefined;
+		if (index > 0 && command.slice(quoted[index - 1]!.end, segment.start) !== "\\'")
+			return undefined;
+	}
+	return { start: first.contentStart, end: last.contentEnd };
+}
+
+function scriptPrefix(
+	command: string,
+	commandWord: EffectiveCommand,
+	start: number,
+): string | undefined {
+	const prefix = command.slice(commandWord.word.end, start).replace(/\\\r?\n/g, " ");
+	return /\n|(?:^|\s)--(?:\s|$)/.test(prefix) ? undefined : prefix;
+}
+
+function isInlineScript(name: string, language: string, prefix: string): boolean {
+	if (language === "python") return /^\s+(?:-[A-Za-z]+\s+)*-c\s*$/.test(prefix);
+	if (name === "playwright-cli") return /^\s+(?:-s=\S+\s+)?run-code\s+$/.test(prefix);
+	if (name === "deno") return /^\s+eval(?:\s+--[\w=-]+)*\s+$/.test(prefix);
+	if (name === "node" || name === "bun")
+		return /^\s+(?:--[\w-]+(?:=[^\s'"]+)?\s+)*(?:-[ep]|--(?:eval|print)=?)\s*$/.test(
+			prefix,
+		);
+	if (["ruby", "perl", "lua"].includes(name))
+		return /^\s+(?:-[A-Za-z]+\s+)*-[np]*e\s*$/.test(prefix);
+	return false;
 }
 
 function inlineLanguage(name: string): string | undefined {
 	if (/^python(?:\d+(?:\.\d+)*)?$/.test(name)) return "python";
 	if (name === "bun" || name === "deno") return "typescript";
 	if (name === "node" || name === "playwright-cli") return "javascript";
-	if (name === "gawk" || name === "mawk") return "awk";
-	if (["ruby", "perl", "lua", "awk"].includes(name)) return name;
+	if (["ruby", "perl", "lua"].includes(name)) return name;
 	return undefined;
 }
 
-/** Use the original shell scopes before embedded highlighting replaces them. */
-function displayBreaks(command: string, tokens: ThemedToken[][]): number[] {
+function displayBreaks(
+	command: string,
+	tokens: ThemedToken[][],
+	bodyRanges: ReturnType<typeof scanShell>["bodyRanges"],
+): number[] {
 	const breaks: number[] = [];
 	if (command.length <= 90) return breaks;
 	for (const line of tokens) {
-		const parts = shellParts([line]);
-		// Breaking a heredoc declaration line would move the start of its body.
-		if (parts.some((part) => hasScope(part, heredocOperator))) continue;
-		for (const part of parts) {
-			if (!isShellSyntax(part)) continue;
-			if (
-				[
-					"punctuation.separator.statement.and.shell",
-					"punctuation.separator.statement.or.shell",
-					"punctuation.terminator.statement.semicolon.shell",
-					"punctuation.terminator.statement.case.shell",
-					"keyword.operator.pipe.shell",
-				].some((scope) => hasScope(part, scope))
-			) {
-				if ((breaks.at(-1) ?? -1) > part.offset) continue;
-				// The grammar splits some compound operators, notably |&.
-				const operator =
-					command
-						.slice(part.offset)
-						.match(/^(?:;;&|&&|\|\||\|&|;;|;&|\||;)/)?.[0] ?? part.content;
-				breaks.push(part.offset + operator.length);
-			}
+		if (line.length === 0 || isInRanges(line[0]!.offset, bodyRanges)) continue;
+		if (
+			line.some(
+				(token) =>
+					!token.type &&
+					(token.content.trim() === "<<" || token.content.trim() === "<<-"),
+			)
+		)
+			continue;
+		for (const token of line) {
+			if (token.type) continue;
+			const value = token.content.trim();
+			if (!breakOperators.has(value)) continue;
+			breaks.push(token.offset + token.content.indexOf(value) + value.length);
 		}
 	}
 	return breaks.filter((offset) => !/^[ \t]*(?:\r?\n|$)/.test(command.slice(offset)));
+}
+
+function isAssignment(value: string): boolean {
+	return /^[A-Za-z_][A-Za-z0-9_]*\+?=/.test(value);
+}
+
+function basename(path: string): string {
+	return path.split("/").at(-1) ?? path;
 }
 
 /** One ordered pass handles both original newlines and display-only breaks. */

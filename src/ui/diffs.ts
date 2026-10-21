@@ -5,110 +5,43 @@ import {
 	type SupportedLanguages,
 } from "@pierre/diffs";
 import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
+import { isSupportedLanguage } from "@pierre/highlights";
 
-import { getPierreThemes } from "#src/pierre-theme.ts";
-import { BoundedCache } from "#src/ui/render-cache.ts";
+import { activeCodeThemes } from "#src/pierre-theme.ts";
 
-const pierreUnsafeCSS = `
-	::selection {
-		background: var(--selection);
-		color: currentColor;
-	}
-
-	[data-additions-count] {
-		order: 1;
-	}
-
-	[data-deletions-count] {
-		order: 2;
-	}
-
-	[data-metadata] slot {
-		order: 3;
-	}
-
-	[data-code] {
-		align-self: stretch;
-		background: var(--diffs-bg);
-		overflow: auto clip;
-		width: 100%;
-	}
-
-	[data-diff],
-	[data-file] {
-		width: 100%;
-	}
-`;
-
-export const pierreLanguages = [
-	"astro",
-	"bash",
-	"css",
-	"diff",
-	"elixir",
-	"html",
-	"ini",
-	"javascript",
-	"json",
-	"json5",
-	"jsonc",
-	"lua",
-	"markdown",
-	"nu",
-	"nushell",
-	"odin",
-	"powershell",
-	"shellscript",
-	"tsx",
-	"typescript",
-	"typst",
-] as const satisfies SupportedLanguages[];
-
-// Bound request metadata only; Shiki retains successfully loaded grammars itself.
-const languageLoads = new BoundedCache<string, Promise<boolean>>(256);
-
-export function loadPierreLanguage(language: string): Promise<boolean> {
-	if (isPierreLanguageLoaded(language)) return Promise.resolve(true);
-
-	const cached = languageLoads.get(language);
-	if (cached) return cached;
-
-	const themes = getPierreThemes();
-	const loading = preloadHighlighter({
-		themes: [themes.dark, themes.light],
-		langs: [language],
-		preferredHighlighter: "shiki-wasm",
-	})
-		.then(() => isPierreLanguageLoaded(language))
-		.catch(() => false);
-	languageLoads.set(language, loading);
-	return loading;
-}
-
-function isPierreLanguageLoaded(language: string): boolean {
-	const highlighter = getHighlighterIfLoaded();
-	if (!highlighter) return false;
+export async function loadPierreLanguage(language: string): Promise<boolean> {
+	if (isPierreLanguageLoaded(language)) return true;
+	if (!isSupportedLanguage(language)) return false;
 	try {
-		highlighter.getLanguage(language);
-		return true;
+		await preloadHighlighter({
+			themes: [activeCodeThemes.dark, activeCodeThemes.light],
+			langs: [],
+			preferredHighlighter: "highlights",
+		});
 	} catch {
 		return false;
 	}
+	return isPierreLanguageLoaded(language);
+}
+
+export function isPierreLanguageLoaded(language: string): boolean {
+	if (!isSupportedLanguage(language)) return false;
+	return getHighlighterIfLoaded()?.hasLoadedLanguages([language]) ?? false;
 }
 
 export async function renderPierreDiff(patch: string): Promise<string | undefined> {
 	const files = await preloadPatchFile({
 		patch,
 		options: {
-			theme: getPierreThemes(),
+			theme: activeCodeThemes,
 			themeType: "system",
+			preferredHighlighter: "highlights",
 			disableFileHeader: true,
 			diffStyle: "unified",
 			diffIndicators: "none",
 			overflow: "wrap",
 			hunkSeparators: "simple",
 			lineHoverHighlight: "both",
-			unsafeCSS: pierreUnsafeCSS,
 		},
 	});
 
@@ -128,16 +61,16 @@ export async function renderPierreCode(
 		file: {
 			name: language === "text" ? "code" : `code.${language}`,
 			contents: code,
-			// SAFETY: callers normalize the language through Pierre or Shiki before rendering.
+			// SAFETY: callers normalize the language through Pierre before rendering.
 			lang: language as SupportedLanguages,
 		},
 		options: {
-			theme: getPierreThemes(),
+			theme: activeCodeThemes,
 			themeType: "system",
+			preferredHighlighter: "highlights",
 			disableFileHeader: true,
 			disableLineNumbers: options.disableLineNumbers,
 			overflow: "wrap",
-			unsafeCSS: pierreUnsafeCSS,
 		},
 	});
 

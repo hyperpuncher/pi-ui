@@ -15,7 +15,7 @@ Read relevant docs in full before implementing against them:
 - Browser target: Baseline newly available. Prefer native platform features; do not add non-Baseline features or polyfills for unsupported browsers.
 - Interactivity: Datastar, using `@starfederation/datastar-sdk` server-side.
 - HTML rendering: Kita JSX (`@kitajs/html`), not React.
-- Markdown rendering: Bun Markdown with HTMLRewriter sanitization plus Shiki for finalized code highlighting.
+- Markdown rendering: Bun Markdown with HTMLRewriter sanitization plus Pierre Highlights for code highlighting.
 - Styling: project-owned semantic CSS over selective Open Props primitive packs, with central foundations and colocated feature styles.
 - Project-owned UI colors use OKLCH, including translucent overlays and shadows; externally supplied code-highlighting themes are exempt.
 - Shared controls use native HTML plus semantic classes and `data-*` variants or sizes; do not wrap basic elements in Kita components solely for styling.

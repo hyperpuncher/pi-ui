@@ -1,4 +1,5 @@
 import {
+	createSpanFromToken,
 	getHighlighterIfLoaded,
 	preloadHighlighter,
 	resolveTheme,
@@ -6,11 +7,7 @@ import {
 } from "@pierre/diffs";
 
 import { CODE_THEMES, CODE_THEME_PREVIEW } from "#src/code-themes.ts";
-import {
-	DEFAULT_PIERRE_THEMES,
-	isPierreThemes,
-	type PierreThemes,
-} from "#src/pierre-theme.ts";
+import { DEFAULT_CODE_THEMES, isCodeThemes, type CodeThemes } from "#src/pierre-theme.ts";
 
 const themeNames = CODE_THEMES.map((theme) => theme.name);
 let previewsPromise: Promise<void> | undefined;
@@ -32,7 +29,7 @@ if (initialLightTheme && initialDarkTheme) {
 	});
 }
 window.addEventListener("pi-ui-code-theme-changed", (event) => {
-	if (event instanceof CustomEvent && isPierreThemes(event.detail)) {
+	if (event instanceof CustomEvent && isCodeThemes(event.detail)) {
 		void syncStatusColors(event.detail);
 	}
 });
@@ -45,7 +42,7 @@ let statusThemeKey = "";
 let statusColors: Readonly<{ dark: StatusColors; light: StatusColors }> | undefined;
 const statusColorLoads = new Map<string, Promise<StatusColors>>();
 
-async function syncStatusColors(themes: PierreThemes): Promise<void> {
+async function syncStatusColors(themes: CodeThemes): Promise<void> {
 	const themeKey = `${themes.light}:${themes.dark}`;
 	if (themeKey === statusThemeKey) return;
 	statusThemeKey = themeKey;
@@ -53,8 +50,8 @@ async function syncStatusColors(themes: PierreThemes): Promise<void> {
 	const [light, dark, fallbackLight, fallbackDark] = await Promise.all([
 		loadStatusColors(themes.light),
 		loadStatusColors(themes.dark),
-		loadStatusColors(DEFAULT_PIERRE_THEMES.light),
-		loadStatusColors(DEFAULT_PIERRE_THEMES.dark),
+		loadStatusColors(DEFAULT_CODE_THEMES.light),
+		loadStatusColors(DEFAULT_CODE_THEMES.dark),
 	]);
 	if (generation !== statusColorGeneration) return;
 	statusColors = {
@@ -108,7 +105,11 @@ async function loadFontPreviews(theme: string): Promise<void> {
 	if (!code) return;
 
 	try {
-		await preloadHighlighter({ langs: ["typescript"], themes: [theme] });
+		await preloadHighlighter({
+			langs: ["typescript"],
+			themes: [theme],
+			preferredHighlighter: "highlights",
+		});
 		const highlighter = getHighlighterIfLoaded();
 		if (!highlighter) return;
 		const result = highlighter.codeToTokens(code, { lang: "typescript", theme });
@@ -126,6 +127,7 @@ async function loadPreviews(): Promise<void> {
 		await preloadHighlighter({
 			langs: ["typescript"],
 			themes: themeNames,
+			preferredHighlighter: "highlights",
 		});
 		const highlighter = getHighlighterIfLoaded();
 		if (!highlighter) throw new Error("Highlighter unavailable");
@@ -159,15 +161,7 @@ function renderPreview(
 	preview.style.removeProperty("background-color");
 	const code = document.createElement("code");
 	for (const [lineIndex, line] of lines.entries()) {
-		for (const token of line) {
-			const span = document.createElement("span");
-			span.textContent = token.content;
-			if (token.color) span.style.color = token.color;
-			for (const [property, value] of Object.entries(token.htmlStyle ?? {})) {
-				span.style.setProperty(property, value);
-			}
-			code.append(span);
-		}
+		for (const token of line) code.append(createSpanFromToken(token, true));
 		if (lineIndex < lines.length - 1) code.append("\n");
 	}
 	preview.append(code);

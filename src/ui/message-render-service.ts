@@ -6,11 +6,7 @@ import type {
 	TranscriptMessage,
 	TranscriptMessageAttachment,
 } from "#src/state/transcript-state.ts";
-import {
-	codeSnippets,
-	hasEmbeddedBash,
-	loadBashLanguages,
-} from "#src/ui/bash-highlight.ts";
+import { hasEmbeddedBash } from "#src/ui/bash-highlight.ts";
 import { loadPierreLanguage, renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
 import {
 	releaseMarkdownStreamingState,
@@ -263,17 +259,7 @@ export class MessageRenderService {
 			key: `${generation}:${id}:${version}:${kind}`,
 			priority: this.store.transcript.getMessageIndex(id) ?? 0,
 			run: async (signal) => {
-				for (const part of message.titleParts ?? []) {
-					if (signal.aborted) return;
-					if (part.highlight === "bash") await loadBashLanguages(part.text);
-				}
-				await Promise.all(
-					codeSnippets(message.nestedCalls).map((snippet) =>
-						snippet.language === "bash"
-							? loadBashLanguages(snippet.value)
-							: loadPierreLanguage(snippet.language),
-					),
-				);
+				await loadPierreLanguage("bash");
 				if (signal.aborted) return;
 				// The message may have scrolled out of the visible window while
 				// queued. Rendering it anyway would repopulate the evicted cache.

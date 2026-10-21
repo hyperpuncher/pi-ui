@@ -235,7 +235,7 @@ test("codemode reuses highlighted tool titles and nests ordinary tool rows", asy
 		"arguments omitted: 100000 bytes",
 		"Nested call record is incomplete.",
 		"parent output",
-		"--shiki-light:",
+		"color:light-dark(",
 		"// preserve comments",
 		"&lt;script&gt;",
 	])
@@ -301,7 +301,7 @@ test.each(["bash", "codemode"])(
 			"�",
 		])
 			assertStringExcludes(compact, hidden);
-		for (const visible of ["😀", "…", "--shiki-light:", "tool-title-compact"])
+		for (const visible of ["😀", "…", "color:light-dark(", "tool-title-compact"])
 			assertStringIncludes(compact, visible);
 		const expanded = renderMessage(message);
 		for (const full of ["hidden_tail", "hidden_line", "hidden_output", "hidden_path"])

@@ -1,7 +1,7 @@
-import { DEFAULT_PIERRE_THEMES, type PierreThemes } from "#src/pierre-theme.ts";
+import { DEFAULT_CODE_THEMES, type CodeThemes } from "#src/pierre-theme.ts";
 import { isRecord, isString } from "#src/utils/type-guards.ts";
 
-export type CodeThemeAppearance = keyof PierreThemes;
+export type CodeThemeAppearance = keyof CodeThemes;
 export type CodeThemeOption = Readonly<{
 	appearance: CodeThemeAppearance;
 	label: string;
@@ -147,13 +147,13 @@ export function findCodeTheme<Value>(
 		: undefined;
 }
 
-export function validCodeThemes<Value>(value: Value): PierreThemes | undefined {
+export function validCodeThemes<Value>(value: Value): CodeThemes | undefined {
 	if (!isRecord(value)) return undefined;
 	const light = findCodeTheme("light", value.light)?.name;
 	const dark = findCodeTheme("dark", value.dark)?.name;
 	return light && dark ? { dark, light } : undefined;
 }
 
-export function defaultCodeThemes(): PierreThemes {
-	return { ...DEFAULT_PIERRE_THEMES };
+export function defaultCodeThemes(): CodeThemes {
+	return { ...DEFAULT_CODE_THEMES };
 }

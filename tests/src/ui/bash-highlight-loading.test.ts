@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-test("loads only encountered languages and refreshes running and restored tool titles", async () => {
+test("refreshes running and restored tool titles after the highlighter loads", async () => {
 	const child = Bun.spawn(
 		[process.execPath, `${import.meta.dir}/bash-highlight-loading-fixture.ts`],
 		{

@@ -1,13 +1,3 @@
-@layer base {
-	.streaming-token {
-		background-color: light-dark(
-			var(--shiki-light-bg, transparent),
-			var(--shiki-dark-bg, transparent)
-		);
-		color: light-dark(var(--shiki-light), var(--shiki-dark));
-	}
-}
-
 @layer components {
 	.markdown-table {
 		width: 100%;

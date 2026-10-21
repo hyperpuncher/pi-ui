@@ -1,7 +1,7 @@
 import { preloadHighlighter } from "@pierre/diffs";
 
 import { findCodeTheme } from "#src/code-themes.ts";
-import { getPierreThemes, setActiveCodeTheme } from "#src/pierre-theme.ts";
+import { activeCodeThemes, setCodeThemes } from "#src/pierre-theme.ts";
 import {
 	enumField,
 	readActionSignals,
@@ -28,13 +28,13 @@ export const codeThemeRoutes = {
 			await preloadHighlighter({
 				langs: [],
 				themes: [theme.name],
-				preferredHighlighter: "shiki-wasm",
+				preferredHighlighter: "highlights",
 			});
-			const themes = { ...getPierreThemes(), [appearance]: theme.name };
+			const themes = { ...activeCodeThemes, [appearance]: theme.name };
 			await updateAppConfig((config) => {
 				config.codeTheme = themes;
 			});
-			setActiveCodeTheme(themes);
+			setCodeThemes(themes);
 			context.renderer.codeThemeChanged();
 			return datastarResponse();
 		},

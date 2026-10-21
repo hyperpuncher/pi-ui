@@ -1,6 +1,6 @@
 import { sessionTransitionOverlayVisible } from "#src/agent/session-transition-controller.ts";
 import { getActiveFonts } from "#src/fonts.ts";
-import { getPierreThemes } from "#src/pierre-theme.ts";
+import { activeCodeThemes } from "#src/pierre-theme.ts";
 import type { AppStateSnapshot } from "#src/state/app-store.ts";
 import { workspaceChangeStats } from "#src/workspace-review-types.ts";
 
@@ -30,7 +30,7 @@ export type BackendSignals = {
 };
 
 export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
-	const codeThemes = getPierreThemes();
+	const codeThemes = activeCodeThemes;
 	const fonts = getActiveFonts();
 	const stats = workspaceChangeStats(state.workspaceReview.changes);
 	return {

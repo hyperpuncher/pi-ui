@@ -3,12 +3,12 @@ import {
 	codeThemesFor,
 	type CodeThemeOption,
 } from "#src/code-themes.ts";
-import { getPierreThemes } from "#src/pierre-theme.ts";
+import { activeCodeThemes } from "#src/pierre-theme.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function renderCodeThemeDialog(): string {
-	const active = getPierreThemes();
+	const active = activeCodeThemes;
 	const themeLabels = Object.fromEntries(
 		(["light", "dark"] as const).map((appearance) => [
 			appearance,

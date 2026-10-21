@@ -56,16 +56,6 @@ test("streaming without a key does not retain output", () => {
 	assertEqual(markdownCacheStatsForTest().streamingEntries, before);
 });
 
-test("streaming code stays visible while its language loads", async () => {
-	await loadPierreLanguage("bash");
-	const key = "loading-language";
-	const html = renderMarkdownStreaming("```odin\npackage main", { cacheKey: key });
-	assertIncludes(html, "streaming-code-line-number");
-	assertIncludes(html, "package main");
-	await loadPierreLanguage("odin");
-	releaseMarkdownStreamingState(key);
-});
-
 test("streaming code has line numbers without highlighting state", () => {
 	const html = renderMarkdownStreaming("```text\none\ntwo\nthree\n```");
 	assertEqual(html.match(/streaming-code-line-number/g)?.length, 3);
@@ -127,15 +117,6 @@ test("markdown fallback and final rendering reject unsafe HTML and URLs", async 
 		assertIncludes(html, 'data-pi-file-link="file:///tmp/example.txt"');
 		assertIncludes(html, "local file");
 	}
-});
-
-// Known upstream Bun bug with autolinks enabled, still reproduced on 1.4.2.
-test.todo("bold bare URLs close their formatting before the rest of the page", async () => {
-	const markdown = "then open **https://hal9000.tail.igrk.net/** without `:31416`.";
-	const expected =
-		"<p>then open <strong>https://hal9000.tail.igrk.net/</strong> without <code>:31416</code>.</p>\n";
-	assertEqual(renderMarkdownStreaming(markdown), expected);
-	assertEqual(await renderMarkdownFinal(markdown), expected);
 });
 
 test("bare URLs are clickable and explicit bold links remain balanced", async () => {

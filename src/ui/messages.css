@@ -228,18 +228,6 @@
 	.tool-rendered-output .pierre-diff + .pierre-diff {
 		margin-block-start: 0.75rem;
 	}
-	.tool-rendered-output .shiki {
-		margin: 0;
-		/* stylelint-disable-next-line declaration-no-important -- generated Shiki surface boundary */
-		background: transparent !important;
-		font-size: var(--text-base);
-		line-height: 1.625;
-		overflow-wrap: anywhere;
-		white-space: pre-wrap;
-	}
-	.tool-rendered-output .shiki code {
-		white-space: pre-wrap;
-	}
 	.tool-plain-output {
 		max-height: calc(5lh + 1px);
 		overflow: auto;

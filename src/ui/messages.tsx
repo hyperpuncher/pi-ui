@@ -1,10 +1,10 @@
-import { getHighlighterIfLoaded, type ThemedToken } from "@pierre/diffs";
+import { tokenStyle, type ThemedToken } from "@pierre/diffs";
 
 import { providerErrorPresentation } from "#src/agent/provider-error-message.ts";
 import { formatDuration, toolTitleParts } from "#src/agent/tool-presentation.ts";
 import { authDialogAction } from "#src/commands/actions.ts";
 import { keybindActions, keybindAria } from "#src/keybinds.ts";
-import { getActiveCodeThemeId } from "#src/pierre-theme.ts";
+import { codeThemeKey } from "#src/pierre-theme.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import type { AppKeybindHint, AppSessionSummary } from "#src/state/app-store.ts";
 import type { TranscriptMessageTitlePart } from "#src/state/transcript-state.ts";
@@ -22,7 +22,6 @@ import { BoundedCache } from "#src/ui/render-cache.ts";
 import type { AppMessage } from "#src/ui/render-state.ts";
 import { SessionSubtitle } from "#src/ui/session-summary.tsx";
 import { resumeSessionAction } from "#src/ui/session-transition.tsx";
-import { shikiTokenStyle } from "#src/ui/shiki-token-style.ts";
 import { StatusDot } from "#src/ui/status-dot.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import {
@@ -31,7 +30,7 @@ import {
 	attachmentFileKind,
 } from "#static/app/attachment-file.js";
 
-type InlineCodeCacheEntry = { html: string; missingLanguages: string[] };
+type InlineCodeCacheEntry = { html: string };
 const inlineCodeCache = new BoundedCache<string, InlineCodeCacheEntry>(500);
 
 // Matches the 18rem cap on .message-image. Both sides must agree or the
@@ -343,16 +342,9 @@ function renderInlineCode(
 	const hintsKey = snippets
 		.map(({ field, language, value }) => `${field}:${language}:${Bun.hash(value)}`)
 		.join("\0");
-	const cacheKey = `${getActiveCodeThemeId()}\0${language}\0${command}\0${suffix}\0${hintsKey}`;
+	const cacheKey = `${codeThemeKey()}\0${language}\0${command}\0${suffix}\0${hintsKey}`;
 	const cached = inlineCodeCache.get(cacheKey);
-	// Only retry when one of this command's missing grammars becomes available.
-	if (
-		cached &&
-		!cached.missingLanguages.some((language) =>
-			getHighlighterIfLoaded()?.getLoadedLanguages().includes(language),
-		)
-	)
-		return cached.html;
+	if (cached) return cached.html;
 
 	try {
 		const result =
@@ -360,7 +352,7 @@ function renderInlineCode(
 				? highlightBash(command, { format: true })
 				: highlightCodemode(command, snippets);
 		if (!result) return Bun.escapeHTML(command) + suffix;
-		const { tokens, missingLanguages } = result;
+		const { tokens } = result;
 		const highlighted = tokens
 			.map((line, index) => {
 				const text = line.map((token) => token.content).join("");
@@ -371,7 +363,7 @@ function renderInlineCode(
 				return `<span class="shell-line" style="--shell-indent:${indent + 2}ch">${line.map(renderInlineToken).join("")}${index === tokens.length - 1 ? suffix : ""}</span>`;
 			})
 			.join("\n");
-		inlineCodeCache.set(cacheKey, { html: highlighted, missingLanguages });
+		inlineCodeCache.set(cacheKey, { html: highlighted });
 		return highlighted;
 	} catch {
 		return Bun.escapeHTML(command) + suffix;
@@ -379,9 +371,9 @@ function renderInlineCode(
 }
 
 function renderInlineToken(token: ThemedToken): string {
-	const style = shikiTokenStyle(token);
+	const style = tokenStyle(token, true);
 	const styleAttribute = style ? ` style="${Bun.escapeHTML(style)}"` : "";
-	return `<span class="streaming-token"${styleAttribute}>${Bun.escapeHTML(token.content)}</span>`;
+	return `<span${styleAttribute}>${Bun.escapeHTML(token.content)}</span>`;
 }
 
 function renderUserFileAttachment(

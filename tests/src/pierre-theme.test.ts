@@ -1,24 +1,24 @@
 import { test } from "bun:test";
 
 import {
-	DEFAULT_PIERRE_THEMES,
-	getPierreThemes,
-	setActiveCodeTheme,
+	DEFAULT_CODE_THEMES,
+	activeCodeThemes,
+	setCodeThemes,
 } from "#src/pierre-theme.ts";
 import { assertEquals } from "#testing/assertions";
 
-test("active Pierre themes discard catalog metadata", () => {
+test("active code themes discard catalog metadata", () => {
 	const catalogTheme = {
 		dark: "dark-theme",
 		light: "light-theme",
 		group: "pierre",
 		label: "Catalog Theme",
 	};
-	setActiveCodeTheme(catalogTheme);
-	assertEquals(getPierreThemes(), {
+	setCodeThemes(catalogTheme);
+	assertEquals(activeCodeThemes, {
 		dark: "dark-theme",
 		light: "light-theme",
 	});
 
-	setActiveCodeTheme(DEFAULT_PIERRE_THEMES);
+	setCodeThemes(DEFAULT_CODE_THEMES);
 });

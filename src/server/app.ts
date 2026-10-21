@@ -12,7 +12,7 @@ import {
 import { defaultCodeThemes, validCodeThemes } from "#src/code-themes.ts";
 import { defaultFonts, setActiveFonts, validFonts } from "#src/fonts.ts";
 import { parseKeybindOverrides, setActiveKeybinds } from "#src/keybinds.ts";
-import { setActiveCodeTheme } from "#src/pierre-theme.ts";
+import { setCodeThemes } from "#src/pierre-theme.ts";
 import { ensureAppConfig } from "#src/server/app-config.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import type { RouteContext, RouteResources } from "#src/server/routes/context.ts";
@@ -45,11 +45,9 @@ export async function createApp() {
 		appConfig.gitView,
 	);
 	const sessionSidebar = normalizeSessionSidebarPreferences(appConfig.sessionSidebar);
-	setActiveCodeTheme(codeTheme);
+	setCodeThemes(codeTheme);
 	setActiveFonts(fonts);
-	const preloadToolHighlighterPromise = Promise.all(
-		["bash", "javascript"].map(loadPierreLanguage),
-	);
+	const preloadToolHighlighterPromise = loadPierreLanguage("bash");
 	const store = new AppStore();
 	store.theme =
 		appConfig.theme === "light" || appConfig.theme === "dark"
@@ -90,7 +88,7 @@ export async function createApp() {
 		console.error("Failed to start pi SDK runtime", error);
 		return undefined;
 	});
-	if (!(await preloadToolHighlighterPromise).every(Boolean)) {
+	if (!(await preloadToolHighlighterPromise)) {
 		console.error("Failed to preload tool highlighter");
 	}
 	const workspaceReview = new WorkspaceReviewController(store);

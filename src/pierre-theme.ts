@@ -1,33 +1,24 @@
-import Type from "typebox";
-import { Compile } from "typebox/compile";
+import { isRecord, isString } from "#src/utils/type-guards.ts";
 
-export type PierreThemes = Readonly<{ dark: string; light: string }>;
+export type CodeThemes = Readonly<{ dark: string; light: string }>;
 
-const pierreThemesValidator = Compile(
-	Type.Object({ dark: Type.String(), light: Type.String() }),
-);
-
-export function isPierreThemes<Value>(value: Value): value is Value & PierreThemes {
-	return pierreThemesValidator.Check(value);
+export function isCodeThemes<Value>(value: Value): value is Value & CodeThemes {
+	return isRecord(value) && isString(value.dark) && isString(value.light);
 }
 
-export const DEFAULT_PIERRE_THEMES: PierreThemes = {
+export const DEFAULT_CODE_THEMES: CodeThemes = {
 	dark: "pierre-dark-soft",
 	light: "pierre-light",
 };
 
-let activeThemes = DEFAULT_PIERRE_THEMES;
+export let activeCodeThemes = DEFAULT_CODE_THEMES;
 
-export function getActiveCodeThemeId(): string {
-	return `${activeThemes.light}:${activeThemes.dark}`;
+export function codeThemeKey(): string {
+	return `${activeCodeThemes.light}:${activeCodeThemes.dark}`;
 }
 
-export function getPierreThemes(): PierreThemes {
-	return activeThemes;
-}
-
-export function setActiveCodeTheme(themes: PierreThemes): void {
+export function setCodeThemes(themes: CodeThemes): void {
 	// Pierre treats every enumerable value as a theme name. Copy only the
 	// supported keys because callers may pass richer catalog objects.
-	activeThemes = { dark: themes.dark, light: themes.light };
+	activeCodeThemes = { dark: themes.dark, light: themes.light };
 }

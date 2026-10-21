@@ -38,11 +38,7 @@ import {
 } from "#src/client/workspace-review-state.ts";
 import { workspaceMenuButton } from "#src/client/workspace-tree-menu.ts";
 import { createWorkspaceTreeExpansion } from "#src/client/workspace-tree.ts";
-import {
-	getPierreThemes,
-	isPierreThemes,
-	setActiveCodeTheme,
-} from "#src/pierre-theme.ts";
+import { activeCodeThemes, isCodeThemes, setCodeThemes } from "#src/pierre-theme.ts";
 import { isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
 import type { WorkspaceReviewComment } from "#src/workspace-review-comments.ts";
 import { workspaceReviewTreeOptions } from "#src/workspace-review-tree.ts";
@@ -67,16 +63,16 @@ const historyNavigationCodes = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
 const codeThemeLight = document.body.dataset.codeThemeLight;
 const codeThemeDark = document.body.dataset.codeThemeDark;
 if (codeThemeLight && codeThemeDark) {
-	setActiveCodeTheme({ dark: codeThemeDark, light: codeThemeLight });
+	setCodeThemes({ dark: codeThemeDark, light: codeThemeLight });
 }
 const endpoint = document.body.dataset.workspaceReviewEndpoint ?? "";
 const filesEndpoint = document.body.dataset.workspaceFilesEndpoint ?? "";
 const api = createWorkspaceReviewApi(endpoint);
 
 window.addEventListener("pi-ui-code-theme-changed", (event) => {
-	if (!(event instanceof CustomEvent) || !isPierreThemes(event.detail)) return;
+	if (!(event instanceof CustomEvent) || !isCodeThemes(event.detail)) return;
 	const themes = event.detail;
-	setActiveCodeTheme(themes);
+	setCodeThemes(themes);
 	if (viewer) {
 		void createWorkerPool()
 			.setRenderOptions({ theme: themes })
@@ -681,7 +677,9 @@ function itemMap(value: readonly ReviewItem[]): Map<string, ReviewItem> {
 
 function emptyDiff(change: WorkspaceFileChange): FileDiffMetadata {
 	return {
+		additionCharacterCount: 0,
 		additionLines: [],
+		deletionCharacterCount: 0,
 		deletionLines: [],
 		hunks: [],
 		isPartial: true,
@@ -785,7 +783,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata, undefined> {
 		lineHoverHighlight: "both",
 		overflow: wrap ? "wrap" : "scroll",
 		stickyHeaders: true,
-		theme: getPierreThemes(),
+		theme: activeCodeThemes,
 		themeType: window.piUiTheme.currentMode(),
 		unsafeCSS: `
 			:host {
@@ -854,8 +852,8 @@ function createWorkerPool() {
 	return getOrCreateWorkerPoolSingleton({
 		highlighterOptions: {
 			langs: ["text"],
-			preferredHighlighter: "shiki-js",
-			theme: getPierreThemes(),
+			preferredHighlighter: "highlights",
+			theme: activeCodeThemes,
 			useTokenTransformer: true,
 		},
 		poolOptions: {

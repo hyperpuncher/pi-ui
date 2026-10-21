@@ -1,0 +1,27 @@
+--- a/dist/modules/createThemeResolver.js
++++ b/dist/modules/createThemeResolver.js
+@@ -18,7 +18,7 @@
+ 		this.name = "UnresolvedThemeError";
+ 	}
+ };
+-function createThemeResolver() {
++function createThemeResolver(options = {}) {
+ 	const loaders = /* @__PURE__ */ new Map();
+ 	const resolved = /* @__PURE__ */ new Map();
+ 	const inflight = /* @__PURE__ */ new Map();
+@@ -41,10 +41,12 @@
+ 		const existing = inflight.get(name);
+ 		if (existing !== void 0) return existing;
+ 		const loader = loaders.get(name);
+-		if (loader === void 0) return Promise.reject(new UnregisteredThemeError(name));
++		if (loader === void 0 && options.fallbackLoader === void 0) return Promise.reject(new UnregisteredThemeError(name));
+ 		const generation = cacheGeneration;
+-		const promise = loader().then((result) => {
+-			const theme = unwrapDefault(result);
++		const promise = Promise.resolve().then(() => loader !== void 0 ? loader() : options.fallbackLoader?.(name)).then(async (result) => {
++			if (result === void 0) throw new UnregisteredThemeError(name);
++			const loaded = unwrapDefault(result);
++			const theme = options.normalizeTheme === void 0 ? loaded : await options.normalizeTheme(loaded, name);
+ 			if (generation === cacheGeneration) resolved.set(name, theme);
+ 			if (inflight.get(name) === promise) inflight.delete(name);
+ 			return theme;
