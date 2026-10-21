@@ -151,6 +151,8 @@
 			pointer-events: none;
 		}
 	}
+
+	/* The widest centered element (the prompt box) sets the shared breakpoint. */
 	@container (width >= calc(50vw + 28rem)) {
 		#app:not(.review-open) :is(#prompt-box, #session-transition > *) {
 			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
@@ -161,9 +163,6 @@
 				)
 				0;
 		}
-	}
-
-	@container (width >= calc(50vw + 26rem)) {
 		#app:not(.review-open) #messages > .messages-stack {
 			--messages-center-offset: calc(50vw - var(--workspace-inset) - 50cqw);
 
