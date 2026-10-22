@@ -179,7 +179,7 @@ jobs:
                   echo "$AUR_KEY" > ~/.ssh/aur_key
                   chmod 600 ~/.ssh/aur_key
                   ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts
-                  export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur_key"
+                  export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur_key -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
                   git clone ssh://aur@aur.archlinux.org/pi-ui-bin.git /tmp/aur-repo
                   cp /tmp/PKGBUILD /tmp/aur-repo/PKGBUILD
                   cp /tmp/.SRCINFO /tmp/aur-repo/.SRCINFO
