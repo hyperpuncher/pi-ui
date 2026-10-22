@@ -1,4 +1,4 @@
-import { afterEach, test } from "bun:test";
+import { expect, onTestFinished, spyOn, test } from "bun:test";
 
 import { attributesToString } from "@kitajs/html";
 
@@ -27,49 +27,47 @@ test("restored messages are readable before final highlighting finishes", async 
 	const gates: Array<(html: string) => void> = [];
 	const render = () => new Promise<string>((resolve) => gates.push(resolve));
 	const state = createState({ renderMarkdownFinal: render, renderCode: render });
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.replaceMessages([
-			{
-				role: "assistant",
-				text: "**answer**",
-				timestamp,
-			},
-			{
-				role: "tool",
-				text: "tool output",
-				timestamp,
-				format: "code",
-			},
-		]);
-		const fallback = await readUntil(
-			reader,
-			(text) =>
-				text.includes("<strong>answer</strong>") && text.includes("message-tool"),
-		);
-		assertNotIncludes(fallback, "data-enhanced");
-		await waitFor(() => gates.length === 2);
-		gates.forEach((resolve, index) =>
-			resolve(`<div data-enhanced="${index}">safe</div>`),
-		);
-		await readUntil(
-			reader,
-			(text) =>
-				text.includes('data-enhanced="0"') && text.includes('data-enhanced="1"'),
-		);
-	} finally {
-		controller.abort();
-	}
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
+	state.replaceMessages([
+		{
+			role: "assistant",
+			text: "**answer**",
+			timestamp,
+		},
+		{
+			role: "tool",
+			text: "tool output",
+			timestamp,
+			format: "code",
+		},
+	]);
+	const fallback = await readUntil(
+		reader,
+		(text) =>
+			text.includes("<strong>answer</strong>") && text.includes("message-tool"),
+	);
+	assertNotIncludes(fallback, "data-enhanced");
+	const message = state.snapshot().messages[0];
+	assertEqual("renderedHtml" in message, false);
+	assertEqual("presentationState" in message, false);
+	assertEqual("presentationVersion" in message, false);
+	await waitFor(() => gates.length === 2);
+	gates.forEach((resolve, index) =>
+		resolve(`<div data-enhanced="${index}">safe</div>`),
+	);
+	await readUntil(
+		reader,
+		(text) =>
+			text.includes('data-enhanced="0"') && text.includes('data-enhanced="1"'),
+	);
 });
 
 test("cached Markdown restores do not send identical enhancement patches", async () => {
 	const text = "```ts\nconst cachedEnhancement = true;\n```";
 	await renderMarkdownFinal(text);
 	const state = createState();
-	const controller = new AbortController();
-	connections.push(controller);
-	const reader = await openInitializedStateStream(state, controller.signal);
+	const reader = await openInitializedStateStream(state, connection().signal);
 	state.replaceMessages([markdownMessage(text)]);
 	const transcript = await readUntil(reader, (output) =>
 		output.includes("data: selector #messages"),
@@ -83,115 +81,78 @@ test("cached Markdown restores do not send identical enhancement patches", async
 	assertNotIncludes(transcript + tail, "data: selector #message-");
 });
 
-test("ordinary commits exclude finalized assistant messages", async () => {
-	const gate = gatedMarkdownState();
-	const { state } = gate;
-	const controller = new AbortController();
-	try {
-		const response = state.createStream(controller.signal);
-		state.replaceMessages([markdownMessage("lightweight source")]);
-		await waitFor(() => gate.ready);
-		gate.resolve("<p>large finalized HTML</p>");
+test.each([
+	markdownMessage("lightweight source"),
+	{ role: "tool", text: "@@ -1 +1 @@\n-old\n+new", timestamp, format: "diff" },
+] satisfies TranscriptMessageInput[])(
+	"ordinary commits exclude finalized $role messages",
+	async (message) => {
+		const render = async () => "<p>finalized content</p>";
+		const state = createState({ renderMarkdownFinal: render, renderDiff: render });
+		const response = state.createStream(connection().signal);
+		state.replaceMessages([message]);
 		const { finalized, ordinary } = await collectFinalizedPatches(
 			state,
 			response,
-			"large finalized HTML",
+			"finalized content",
 		);
-		assertIncludes(finalized, "large finalized HTML");
-		assertNotIncludes(ordinary, "large finalized HTML");
-		assertNotIncludes(ordinary, "lightweight source");
+		assertIncludes(finalized, "finalized content");
+		assertNotIncludes(ordinary, "finalized content");
+		assertNotIncludes(ordinary, message.text);
 		assertNotIncludes(ordinary, 'id="messages"');
-	} finally {
-		controller.abort();
-	}
-});
+	},
+);
 
 test("ordinary commits skip stable views until their state changes", async () => {
 	const state = createState();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.setActivityText("Working...");
-		const ordinary = await readUntil(reader, (text) => text.includes("Working..."));
-		assertIncludes(ordinary, 'class="prompt-status-message"');
-		assertNotIncludes(ordinary, 'id="model-picker"');
-		assertNotIncludes(ordinary, 'id="session-sidebar-content"');
-		assertNotIncludes(ordinary, 'id="workspace-review-data"');
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
+	state.setActivityText("Working...");
+	const ordinary = await readUntil(reader, (text) => text.includes("Working..."));
+	assertIncludes(ordinary, 'class="prompt-status-message"');
+	assertNotIncludes(ordinary, 'id="model-picker"');
+	assertNotIncludes(ordinary, 'id="session-sidebar-content"');
+	assertNotIncludes(ordinary, 'id="workspace-review-data"');
 
-		state.setModels(
-			[
-				{
-					id: "fixture-model",
-					provider: "fixture",
-					name: "Fixture model",
-					configured: true,
-					scoped: true,
-				},
-			],
-			"fixture/fixture-model",
-		);
-		const full = await readUntil(
-			reader,
-			(text) =>
-				text.includes("fixture-model") && text.includes("workspace-review-data"),
-		);
-		assertIncludes(full, 'id="model-picker"');
-		assertIncludes(full, 'id="session-sidebar-content"');
-		assertIncludes(full, 'id="workspace-review-data"');
-	} finally {
-		controller.abort();
-	}
-});
-
-test("ordinary commits exclude finalized tool messages", async () => {
-	const state = createState({
-		renderDiff: () =>
-			Promise.resolve('<div data-pierre-diff="">highlighted edit</div>'),
-	});
-	const controller = new AbortController();
-	try {
-		const response = state.createStream(controller.signal);
-		state.replaceMessages([
+	state.setModels(
+		[
 			{
-				role: "tool",
-				text: "@@ -1 +1 @@\n-old\n+new",
-				timestamp,
-				format: "diff",
+				id: "fixture-model",
+				provider: "fixture",
+				name: "Fixture model",
+				configured: true,
+				scoped: true,
 			},
-		]);
-		const { ordinary } = await collectFinalizedPatches(
-			state,
-			response,
-			"highlighted edit",
-		);
-		assertNotIncludes(ordinary, "highlighted edit");
-		assertNotIncludes(ordinary, 'id="messages"');
-	} finally {
-		controller.abort();
-	}
+		],
+		"fixture/fixture-model",
+	);
+	const full = await readUntil(
+		reader,
+		(text) =>
+			text.includes("fixture-model") && text.includes("workspace-review-data"),
+	);
+	assertIncludes(full, 'id="model-picker"');
+	assertIncludes(full, 'id="session-sidebar-content"');
+	assertIncludes(full, 'id="workspace-review-data"');
 });
 
 test("new messages morph the complete transcript", async () => {
 	const state = createState();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.appendMessage("user", "first");
-		const first = await readUntil(reader, (text) => text.includes("first"));
-		assertIncludes(first, "data: selector #messages");
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
+	state.appendMessage("user", "first");
+	const first = await readUntil(reader, (text) => text.includes("first"));
+	assertIncludes(first, "data: selector #messages");
 
-		state.appendMessage("tool", "one", { format: "output", state: "running" });
-		state.appendMessage("tool", "two", { format: "output", state: "running" });
-		const tools = await readUntil(
-			reader,
-			(text) => text.includes("one") && text.includes("two"),
-		);
-		assertIncludes(tools, "data: selector #messages");
-		assertNotIncludes(tools, "data: mode replace");
-		assertIncludes(tools, '<main id="messages"');
-	} finally {
-		controller.abort();
-	}
+	state.appendMessage("tool", "one", { format: "output", state: "running" });
+	state.appendMessage("tool", "two", { format: "output", state: "running" });
+	const tools = await readUntil(
+		reader,
+		(text) => text.includes("one") && text.includes("two"),
+	);
+	assertIncludes(tools, "data: selector #messages");
+	assertNotIncludes(tools, "data: mode replace");
+	assertIncludes(tools, '<main id="messages"');
 });
 
 test("tool display changes rerender only the active presentation", async () => {
@@ -209,157 +170,136 @@ test("tool display changes rerender only the active presentation", async () => {
 			state: "success",
 		},
 	]);
-	const controller = new AbortController();
-	try {
-		const reader = responseReader(state.createStream(controller.signal));
-		const expanded = await readUntil(reader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		assertIncludes(expanded, "tool-header");
-		assertNotIncludes(expanded, "tool-title-compact");
+	const controller = connection();
+	const reader = responseReader(state.createStream(controller.signal));
+	const expanded = await readUntil(reader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(expanded, "tool-header");
+	assertNotIncludes(expanded, "tool-title-compact");
 
-		state.update(() => {
-			state.toolOutputHidden = true;
-		});
-		const compactOutput = await readUntil(
-			reader,
-			(text) =>
-				text.includes("data: selector #messages") &&
-				text.includes("tool-title-compact"),
-		);
-		const compact = compactOutput.slice(
-			compactOutput.indexOf("data: selector #messages"),
-		);
-		assertIncludes(compact, "data: selector #messages");
-		assertNotIncludes(compact, "full_output");
-		assertNotIncludes(compact, "later_line");
-		assertNotIncludes(compact, "tool-header");
+	state.update(() => {
+		state.toolOutputHidden = true;
+	});
+	const compactOutput = await readUntil(
+		reader,
+		(text) =>
+			text.includes("data: selector #messages") &&
+			text.includes("tool-title-compact"),
+	);
+	const compact = compactOutput.slice(
+		compactOutput.indexOf("data: selector #messages"),
+	);
+	assertIncludes(compact, "data: selector #messages");
+	assertNotIncludes(compact, "full_output");
+	assertNotIncludes(compact, "later_line");
+	assertNotIncludes(compact, "tool-header");
 
-		const id = state.messages[0]!.id;
-		state.updateMessage(id, { text: "updated_output", meta: "9ms" });
-		const update = await readUntil(reader, (text) => text.includes("9ms"));
-		assertIncludes(update, "tool-title-compact");
-		assertNotIncludes(update, "updated_output");
-		assertNotIncludes(update, "tool-header");
+	const id = state.messages[0]!.id;
+	state.updateMessage(id, { text: "updated_output", meta: "9ms" });
+	const update = await readUntil(reader, (text) => text.includes("9ms"));
+	assertIncludes(update, "tool-title-compact");
+	assertNotIncludes(update, "updated_output");
+	assertNotIncludes(update, "tool-header");
 
-		state.appendMessage("tool", "appended_output", {
-			title: "append_preview",
-			format: "output",
-		});
-		const appended = await readUntil(reader, (text) =>
-			text.includes("append_preview"),
-		);
-		assertIncludes(appended, "tool-title-compact");
-		assertNotIncludes(appended, "appended_output");
-		assertNotIncludes(appended, "tool-header");
+	state.appendMessage("tool", "appended_output", {
+		title: "append_preview",
+		format: "output",
+	});
+	const appended = await readUntil(reader, (text) => text.includes("append_preview"));
+	assertIncludes(appended, "tool-title-compact");
+	assertNotIncludes(appended, "appended_output");
+	assertNotIncludes(appended, "tool-header");
 
-		const older = state.renderer.messages.renderMessagesElement();
-		assertIncludes(older, "tool-title-compact");
-		assertNotIncludes(older, "updated_output");
-		assertNotIncludes(older, "tool-header");
+	const older = state.renderer.messages.renderMessagesElement();
+	assertIncludes(older, "tool-title-compact");
+	assertNotIncludes(older, "updated_output");
+	assertNotIncludes(older, "tool-header");
 
-		const reconnected = await readStateOutput(state, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		assertIncludes(reconnected, "tool-title-compact");
-		assertNotIncludes(reconnected, "updated_output");
-		assertNotIncludes(reconnected, "tool-header");
+	const reconnected = await readStateOutput(state, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(reconnected, "tool-title-compact");
+	assertNotIncludes(reconnected, "updated_output");
+	assertNotIncludes(reconnected, "tool-header");
 
-		state.update(() => {
-			state.minimalMode = true;
-			state.toolOutputHidden = false;
-		});
-		await readUntil(reader, (text) => text.includes('"_minimalMode":true'));
-		assertIncludes(
-			state.renderer.messages.renderMessageElement(id)!,
-			"tool-title-compact",
-		);
+	state.update(() => {
+		state.minimalMode = true;
+		state.toolOutputHidden = false;
+	});
+	await readUntil(reader, (text) => text.includes('"_minimalMode":true'));
+	assertIncludes(
+		state.renderer.messages.renderMessageElement(id)!,
+		"tool-title-compact",
+	);
 
-		state.update(() => {
-			state.minimalMode = false;
-		});
-		const restored = await readUntil(reader, (text) =>
-			text.includes("updated_output"),
-		);
-		assertIncludes(restored, "tool-header");
-		assertIncludes(restored, "later_line");
-		assertNotIncludes(restored, "tool-title-compact");
-	} finally {
-		controller.abort();
-	}
+	state.update(() => {
+		state.minimalMode = false;
+	});
+	const restored = await readUntil(reader, (text) => text.includes("updated_output"));
+	assertIncludes(restored, "tool-header");
+	assertIncludes(restored, "later_line");
+	assertNotIncludes(restored, "tool-title-compact");
 });
 
 test("parallel message updates all reach their final state", async () => {
 	const state = createState();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.appendMessage("user", "first");
-		await readUntil(reader, (text) => text.includes("first"));
-		const firstId = state.appendMessage("tool", "", {
-			title: "read",
-			format: "pre",
-			state: "running",
-		});
-		const secondId = state.appendMessage("tool", "", {
-			title: "read",
-			format: "pre",
-			state: "running",
-		});
-		await readUntil(
-			reader,
-			(text) => text.includes(firstId) && text.includes(secondId),
-		);
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
+	state.appendMessage("user", "first");
+	await readUntil(reader, (text) => text.includes("first"));
+	const firstId = state.appendMessage("tool", "", {
+		title: "read",
+		format: "pre",
+		state: "running",
+	});
+	const secondId = state.appendMessage("tool", "", {
+		title: "read",
+		format: "pre",
+		state: "running",
+	});
+	await readUntil(reader, (text) => text.includes(firstId) && text.includes(secondId));
 
-		state.updateMessage(firstId, { title: "read first.ts", state: "success" });
-		state.updateMessage(secondId, { title: "read second.ts", state: "success" });
-		const updates = await readUntil(
-			reader,
-			(text) => text.includes("read first.ts") && text.includes("read second.ts"),
-		);
+	state.updateMessage(firstId, { title: "read first.ts", state: "success" });
+	state.updateMessage(secondId, { title: "read second.ts", state: "success" });
+	const updates = await readUntil(
+		reader,
+		(text) => text.includes("read first.ts") && text.includes("read second.ts"),
+	);
 
-		assertEqual(count(updates, "data: selector #message-"), 2);
-		assertEqual(count(updates, "tool-status-success"), 2);
-	} finally {
-		controller.abort();
-	}
+	assertEqual(count(updates, "data: selector #message-"), 2);
+	assertEqual(count(updates, "tool-status-success"), 2);
 });
 
 test("session transitions preserve targeted transcript replacement and ordinary presentation", async () => {
 	const state = createState();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
 
-		state.setSessionTransition({
-			status: "loading",
-			generation: 1,
-			targetPath: "/session.jsonl",
-			overlay: true,
-		});
-		await readUntil(reader, (text) =>
-			text.includes('"_sessionTransitionStatus":"loading"'),
-		);
+	state.setSessionTransition({
+		status: "loading",
+		generation: 1,
+		targetPath: "/session.jsonl",
+		overlay: true,
+	});
+	await readUntil(reader, (text) =>
+		text.includes('"_sessionTransitionStatus":"loading"'),
+	);
 
-		state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
-		const restored = await readUntil(
-			reader,
-			(text) =>
-				text.includes("restored transcript") &&
-				text.includes('id="prompt-action"') &&
-				text.includes("datastar-patch-signals"),
-		);
-		assertIncludes(restored, 'id="messages"');
-		assertIncludes(restored, "data: selector #messages");
-		assertNotIncludes(restored, "data: mode replace");
+	state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
+	const restored = await readUntil(
+		reader,
+		(text) =>
+			text.includes("restored transcript") &&
+			text.includes('id="prompt-action"') &&
+			text.includes("datastar-patch-signals"),
+	);
+	assertIncludes(restored, 'id="messages"');
+	assertIncludes(restored, "data: selector #messages");
+	assertNotIncludes(restored, "data: mode replace");
 
-		state.setSessionTransition({ status: "idle", generation: 1 });
-		await readUntil(reader, (text) =>
-			text.includes('"_sessionTransitionStatus":"idle"'),
-		);
-	} finally {
-		controller.abort();
-	}
+	state.setSessionTransition({ status: "idle", generation: 1 });
+	await readUntil(reader, (text) => text.includes('"_sessionTransitionStatus":"idle"'));
 });
 
 test("loading older pages enqueues only newly revealed messages", async () => {
@@ -407,7 +347,11 @@ test("theme changes highlight only loaded messages and invalidate older cached p
 	await waitFor(() => rendered.length === 30);
 	state.renderer.patchOlderMessages(state.loadOlderMessages());
 	await waitFor(() => rendered.length === 60);
-	await settleMicrotasks();
+	await waitFor(() =>
+		projectedMessages(state).every(
+			({ presentationState }) => presentationState === "final",
+		),
+	);
 	state.showRecentMessages();
 	assertEqual(state.messages.length, 30);
 
@@ -438,40 +382,34 @@ test("theme changes highlight only loaded messages and invalidate older cached p
 
 test("older history patches only the loaded page and the trigger", async () => {
 	const state = stateWithMessages(130);
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		const older = state.loadOlderMessages();
-		assertEqual(older.length, 30);
-		state.renderer.patchOlderMessages(older);
-		const output = await readUntil(reader, (text) => text.includes("afterOlder()"));
-		assertEqual(output.indexOf("beforeOlder()") >= 0, true);
-		assertEqual(output.indexOf("beforeOlder()") < output.indexOf("message 70"), true);
-		assertEqual(output.indexOf("message 70") < output.indexOf("afterOlder()"), true);
-		assertIncludes(output, "data: selector #older-messages-trigger");
-		assertIncludes(output, "data: mode after");
-		assertIncludes(output, "message 70");
-		assertNotIncludes(output, "message 69");
-		assertNotIncludes(output, "data: selector #messages");
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
+	const older = state.loadOlderMessages();
+	assertEqual(older.length, 30);
+	state.renderer.patchOlderMessages(older);
+	const output = await readUntil(reader, (text) => text.includes("afterOlder()"));
+	assertEqual(output.indexOf("beforeOlder()") >= 0, true);
+	assertEqual(output.indexOf("beforeOlder()") < output.indexOf("message 70"), true);
+	assertEqual(output.indexOf("message 70") < output.indexOf("afterOlder()"), true);
+	assertIncludes(output, "data: selector #older-messages-trigger");
+	assertIncludes(output, "data: mode after");
+	assertIncludes(output, "message 70");
+	assertNotIncludes(output, "message 69");
+	assertNotIncludes(output, "data: selector #messages");
 
-		while (state.hasOlderMessages) {
-			state.renderer.patchOlderMessages(state.loadOlderMessages());
-		}
-		const complete = await readUntil(reader, (text) =>
-			text.includes('data: elements <div id="older-messages-trigger"'),
-		);
-		assertIncludes(complete, "message 0");
-		assertNotIncludes(complete, 'data-active="1"');
-
-		state.trimOldMessages(state.messages[0].id, state.messages[29].id);
-		const trimmed = await readUntil(reader, (text) =>
-			text.includes('data-active="1"'),
-		);
-		assertIncludes(trimmed, "data: mode remove");
-		assertNotIncludes(trimmed, "data: selector #messages");
-	} finally {
-		controller.abort();
+	while (state.hasOlderMessages) {
+		state.renderer.patchOlderMessages(state.loadOlderMessages());
 	}
+	const complete = await readUntil(reader, (text) =>
+		text.includes('data: elements <div id="older-messages-trigger"'),
+	);
+	assertIncludes(complete, "message 0");
+	assertNotIncludes(complete, 'data-active="1"');
+
+	state.trimOldMessages(state.messages[0].id, state.messages[29].id);
+	const trimmed = await readUntil(reader, (text) => text.includes('data-active="1"'));
+	assertIncludes(trimmed, "data: mode remove");
+	assertNotIncludes(trimmed, "data: selector #messages");
 });
 
 test("trimmed messages release their rendered presentations", async () => {
@@ -503,21 +441,17 @@ test("repaging morphs the transcript and moves to the recent page", async () => 
 		})),
 	);
 	state.loadOlderMessages();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
 
-		state.showRecentMessages();
-		const output = await readUntil(reader, (text) =>
-			text.includes("window.piUi.messageScroll.scrollBottom()"),
-		);
+	state.showRecentMessages();
+	const output = await readUntil(reader, (text) =>
+		text.includes("window.piUi.messageScroll.scrollBottom()"),
+	);
 
-		assertIncludes(output, 'id="messages"');
-		assertIncludes(output, 'data-active="1"');
-		assertIncludes(output, "message 50");
-	} finally {
-		controller.abort();
-	}
+	assertIncludes(output, 'id="messages"');
+	assertIncludes(output, 'data-active="1"');
+	assertIncludes(output, "message 50");
 });
 
 test("replacement discards stale enhancement completion", async () => {
@@ -529,7 +463,11 @@ test("replacement discards stale enhancement completion", async () => {
 	gates[0].resolve("<p>stale A</p>");
 	await waitFor(() => gates.length >= 2);
 	gates[1].resolve("<p>final B</p>");
-	await settleMicrotasks();
+	await waitFor(() =>
+		projectedMessages(state).every(
+			({ presentationState }) => presentationState === "final",
+		),
+	);
 
 	assertEqual(state.messages.length, 1);
 	assertEqual(state.messages[0].text, "session B");
@@ -573,8 +511,7 @@ for (const message of [
 		assertIncludes(text, "large fallback");
 		assertNotIncludes(interim, "Enhance formatting");
 		finish?.("<p>highlighting finished</p>");
-		await settleMicrotasks();
-		assertEqual(projectedMessages(state)[0].presentationState, "final");
+		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 		assertIncludes(
 			state.renderer.messages.renderMessagesElement(),
 			"highlighting finished",
@@ -595,7 +532,7 @@ test("skill and compaction instructions render Markdown without enhancement work
 		{ role: "skill", text: "**Skill instructions**", timestamp },
 		{ role: "compaction", text: "**Compaction summary**", timestamp },
 	]);
-	await settleMicrotasks();
+	await Bun.sleep(0);
 
 	assertEqual(renderCount, 0);
 	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
@@ -614,7 +551,7 @@ test("assistant completion immediately flushes newest streaming content", () => 
 	);
 });
 
-test("running background transcript restores streaming state and queued messages", async () => {
+test("background activation resumes streaming and enhances completed messages", async () => {
 	let enhancementCount = 0;
 	const background = new TranscriptState({ keys: "N", description: "New" });
 	background.appendAssistantDelta("```ts\nconst partial = true");
@@ -622,6 +559,7 @@ test("running background transcript restores streaming state and queued messages
 		state: "running",
 		format: "code",
 	});
+	background.setActivityText("Working...");
 	background.setQueuedMessages(["steer"], ["follow"]);
 
 	const foreground = createState({
@@ -636,132 +574,55 @@ test("running background transcript restores streaming state and queued messages
 	});
 	connect(foreground);
 	foreground.restoreChat(background.snapshot());
-	await settleMicrotasks();
+	await waitFor(() => enhancementCount === 1);
 
-	assertEqual(enhancementCount, 1);
 	assertEqual(projectedMessages(foreground)[0].presentationState, "streaming");
 	assertIncludes(projectedMessages(foreground)[0].renderedHtml ?? "", "partial");
 	assertEqual(foreground.messages[1].state, "running");
-	assertEqual(foreground.queuedSteeringMessages.join(","), "steer");
-	assertEqual(foreground.queuedFollowUpMessages.join(","), "follow");
-});
+	assertEqual(foreground.activityText, "Working...");
+	assertEqual(foreground.queuedSteeringMessages, ["steer"]);
+	assertEqual(foreground.queuedFollowUpMessages, ["follow"]);
+	// SAFETY: Deliberately mutate a returned copy to check queue ownership.
+	(foreground.queuedSteeringMessages as string[]).push("external mutation");
+	assertEqual(foreground.queuedSteeringMessages, ["steer"]);
 
-test("AppStore transcript metadata has one owner and restores with chat", () => {
-	const state = createState();
-	state.setActivityText("Working...");
-	state.setQueuedMessages(["steer"], ["follow"]);
-	const snapshot = state.snapshotChat();
-
-	state.setActivityText(undefined);
-	state.setQueuedMessages([], []);
-	state.restoreChat(snapshot);
-
-	assertEqual(state.activityText, "Working...");
-	assertEqual(state.queuedSteeringMessages.join(","), "steer");
-	assertEqual(state.queuedFollowUpMessages.join(","), "follow");
-	// SAFETY: The test deliberately attempts to mutate the runtime copy behind its readonly API.
-	const steering = state.queuedSteeringMessages as string[];
-	steering.push("external mutation");
-	assertEqual(state.queuedSteeringMessages.join(","), "steer");
-});
-
-test("completed background transcript enhances on activation", async () => {
-	let enhancementCount = 0;
-	const background = new TranscriptState({ keys: "N", description: "New" });
-	background.appendAssistantDelta("completed **answer**");
 	background.finishAssistant();
-
-	const foreground = createState({
-		renderMarkdownFinal: () => {
-			enhancementCount += 1;
-			return Promise.resolve("<p>enhanced</p>");
-		},
-	});
-	connect(foreground);
 	foreground.restoreChat(background.snapshot());
-	await waitFor(() => projectedMessages(foreground)[0]?.presentationState === "final");
-	assertEqual(enhancementCount, 1);
+	await waitFor(() => projectedMessages(foreground)[0].presentationState === "final");
+	assertIncludes(projectedMessages(foreground)[0].renderedHtml ?? "", "partial");
 });
 
 test("enhancement errors retain the rendered Markdown fallback", async () => {
-	const originalWarn = console.warn;
-	console.warn = () => {};
-	try {
-		const state = createState({
-			renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
-		});
-		connect(state);
-		state.replaceMessages([markdownMessage("**fallback**")]);
-		await settleMicrotasks();
-		assertEqual(
-			projectedMessages(state)[0].renderedHtml,
-			"<p><strong>fallback</strong></p>\n",
-		);
-		assertEqual(projectedMessages(state)[0].presentationState, "plain");
-		assertIncludes(
-			state.renderer.messages.renderMessagesElement(),
-			"<p><strong>fallback</strong></p>",
-		);
-	} finally {
-		console.warn = originalWarn;
-	}
+	const warn = spyOn(console, "warn").mockImplementation(() => {});
+	onTestFinished(() => warn.mockRestore());
+	const state = createState({
+		renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
+	});
+	connect(state);
+	state.replaceMessages([markdownMessage("**fallback**")]);
+	await waitFor(() => warn.mock.calls.length > 0);
+	expect(warn).toHaveBeenCalledTimes(1);
+	assertEqual(projectedMessages(state)[0].presentationState, "plain");
+	assertIncludes(
+		state.renderer.messages.renderMessagesElement(),
+		"<p><strong>fallback</strong></p>",
+	);
 });
 
 test("a thrown update still commits its completed mutations", async () => {
 	const state = createState();
-	const controller = new AbortController();
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
 	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		try {
-			state.update(() => {
-				state.setWorkspacePath("/tmp/committed-before-throw");
-				throw new Error("stop");
-			});
-		} catch {
-			// The mutator error is expected; already-applied state remains authoritative.
-		}
-		assertEqual(state.workspacePath, "/tmp/committed-before-throw");
-		await readUntil(reader, (text) => text.includes("/tmp/committed-before-throw"));
-	} finally {
-		controller.abort();
+		state.update(() => {
+			state.setWorkspacePath("/tmp/committed-before-throw");
+			throw new Error("stop");
+		});
+	} catch {
+		// The mutator error is expected; already-applied state remains authoritative.
 	}
-});
-
-test("headless updates initialize one current view and tolerate disconnect", async () => {
-	let renderCount = 0;
-	const state = createState({
-		renderMarkdownFinal: (text) => {
-			renderCount++;
-			return renderMarkdownFinal(text);
-		},
-	});
-	state.setWorkspacePath("/tmp/headless");
-	const controller = new AbortController();
-	const response = state.createStream(controller.signal);
-	const reader = responseReader(response);
-	await readElementAndSignalPatches(reader);
-
-	controller.abort();
-	state.setActivityText("disconnected");
-	assertEqual(state.activityText, "disconnected");
-
-	state.replaceMessages([markdownMessage("**offline answer**")]);
-	await settleMicrotasks();
-	assertEqual(renderCount, 0);
-
-	const reconnect = new AbortController();
-	try {
-		const reader = responseReader(state.createStream(reconnect.signal));
-		const output = await readUntil(reader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		assertIncludes(output, "<strong>offline answer</strong>");
-		assertEqual(count(output, "event: datastar-patch-elements"), 1);
-		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
-		assertEqual(renderCount, 1);
-	} finally {
-		reconnect.abort();
-	}
+	assertEqual(state.workspacePath, "/tmp/committed-before-throw");
+	await readUntil(reader, (text) => text.includes("/tmp/committed-before-throw"));
 });
 
 test("message work waits for a client and continues while another tab remains", async () => {
@@ -778,16 +639,19 @@ test("message work waits for a client and continues while another tab remains", 
 		state: "running",
 	});
 	state.updateMessage(toolId, { text: "finished tool", state: "success" });
-	await settleMicrotasks();
+	await Bun.sleep(0);
 	assertEqual(rendered, []);
 	assertEqual(
 		state.messages.map(({ text }) => text),
 		["offline answer", "finished tool"],
 	);
 
-	const first = connect(state);
+	const first = connection();
+	const firstReader = responseReader(state.createStream(first.signal));
+	const initial = await readElementAndSignalPatches(firstReader);
+	assertIncludes(initial, "offline answer");
 	await waitFor(() => rendered.length === 2);
-	await settleMicrotasks();
+	await Bun.sleep(0);
 	const second = connect(state);
 	first.abort();
 	state.appendAssistantDelta("one tab remains");
@@ -799,8 +663,16 @@ test("message work waits for a client and continues while another tab remains", 
 	second.abort();
 	state.appendAssistantDelta("offline again");
 	state.finishAssistant();
-	await settleMicrotasks();
+	await Bun.sleep(0);
 	assertEqual(rendered.length, 3);
+
+	state.setActivityText("disconnected");
+	const reconnect = responseReader(state.createStream(connection().signal));
+	const restored = await readElementAndSignalPatches(reconnect);
+	assertIncludes(restored, "offline again");
+	assertIncludes(restored, "disconnected");
+	await waitFor(() => projectedMessages(state).at(-1)?.presentationState === "final");
+	assertEqual(rendered.filter((text) => text === "offline again").length, 1);
 });
 
 test("reconnecting during a turn resumes streaming and final highlighting", async () => {
@@ -863,31 +735,25 @@ test("workspace review snapshots travel through the app stream", async () => {
 
 test("title changes render escaped HTML on updates and reconnect, never executable scripts", async () => {
 	const state = createState();
-	const controller = new AbortController();
-	try {
-		const reader = await openInitializedStateStream(state, controller.signal);
-		state.setDocumentTitle(
-			"</title><script>globalThis.titleInjected = true</script>",
-		);
-		const updated = await readUntil(reader, (text) =>
-			text.includes('id="document-title"'),
-		);
-		assertIncludes(updated, "&lt;/title&gt;&lt;script&gt;");
-		assertNotIncludes(updated, "<script>");
-		assertNotIncludes(updated, "document.title =");
-		const reconnect = await readStateOutput(state, (text) =>
-			text.includes('id="document-title"'),
-		);
-		assertIncludes(reconnect, "&lt;/title&gt;&lt;script&gt;");
-		assertNotIncludes(reconnect, "document.title =");
-	} finally {
-		controller.abort();
-	}
+	const controller = connection();
+	const reader = await openInitializedStateStream(state, controller.signal);
+	state.setDocumentTitle("</title><script>globalThis.titleInjected = true</script>");
+	const updated = await readUntil(reader, (text) =>
+		text.includes('id="document-title"'),
+	);
+	assertIncludes(updated, "&lt;/title&gt;&lt;script&gt;");
+	assertNotIncludes(updated, "<script>");
+	assertNotIncludes(updated, "document.title =");
+	const reconnect = await readStateOutput(state, (text) =>
+		text.includes('id="document-title"'),
+	);
+	assertIncludes(reconnect, "&lt;/title&gt;&lt;script&gt;");
+	assertNotIncludes(reconnect, "document.title =");
 });
 
 test("app stream refreshes current and background session statuses", async () => {
 	const state = createState();
-	const controller = new AbortController();
+	const controller = connection();
 	const first = {
 		path: "/sessions/first.jsonl",
 		cwd: "/workspace",
@@ -902,57 +768,50 @@ test("app stream refreshes current and background session statuses", async () =>
 		messageCount: 2,
 		modified: "earlier",
 	};
-	try {
-		const response = state.renderer.createStream(controller.signal);
-		const reader = responseReader(response);
-		await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
+	const response = state.renderer.createStream(controller.signal);
+	const reader = responseReader(response);
+	await readUntil(reader, (text) => text.includes("event: datastar-patch-signals"));
 
-		state.update(() => {
-			state.setCurrentSessionPath(first.path);
-			state.setActivityText("Working...");
-			state.setSessionCatalog([first, second]);
-		});
-		const running = await readUntil(reader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		assertIncludes(running, 'id="session-menu-content"');
-		assertIncludes(running, 'aria-selected="true"');
-		assertIncludes(running, "First session");
-		assertIncludes(running, 'aria-label="Current session running"');
-		assertIncludes(running, "data: useViewTransition true");
-		assertIncludes(running, "data: viewTransitionSelector #session-sidebar-viewport");
+	state.update(() => {
+		state.setCurrentSessionPath(first.path);
+		state.setActivityText("Working...");
+		state.setSessionCatalog([first, second]);
+	});
+	const running = await readUntil(reader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(running, 'id="session-menu-content"');
+	assertIncludes(running, 'aria-selected="true"');
+	assertIncludes(running, "First session");
+	assertIncludes(running, 'aria-label="Current session running"');
+	assertIncludes(running, "data: useViewTransition true");
+	assertIncludes(running, "data: viewTransitionSelector #session-sidebar-viewport");
 
-		state.updateSessionSummary(first.path, (session) => ({
-			...session,
-			title: "Renamed session",
-		}));
-		const renamed = await readUntil(reader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		assertIncludes(renamed, "Renamed session");
-		assertNotIncludes(renamed, "data: useViewTransition true");
+	state.updateSessionSummary(first.path, (session) => ({
+		...session,
+		title: "Renamed session",
+	}));
+	const renamed = await readUntil(reader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(renamed, "Renamed session");
+	assertNotIncludes(renamed, "data: useViewTransition true");
 
-		state.update(() => {
-			state.setCurrentSessionPath(second.path);
-			state.setActivityText(undefined);
-			state.setSessionCatalog([
-				{ ...first, backgroundStatus: "completed" },
-				second,
-			]);
-		});
-		const completed = await readUntil(reader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		assertIncludes(completed, 'aria-label="Background session completed"');
-		assertIncludes(completed, 'id="session-menu-content"');
-		assertIncludes(completed, 'aria-selected="true"');
-		assertNotIncludes(
-			completed.slice(completed.lastIndexOf('id="session-menu-content"')),
-			'aria-label="Current session running"',
-		);
-	} finally {
-		controller.abort();
-	}
+	state.update(() => {
+		state.setCurrentSessionPath(second.path);
+		state.setActivityText(undefined);
+		state.setSessionCatalog([{ ...first, backgroundStatus: "completed" }, second]);
+	});
+	const completed = await readUntil(reader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(completed, 'aria-label="Background session completed"');
+	assertIncludes(completed, 'id="session-menu-content"');
+	assertIncludes(completed, 'aria-selected="true"');
+	assertNotIncludes(
+		completed.slice(completed.lastIndexOf('id="session-menu-content"')),
+		'aria-label="Current session running"',
+	);
 });
 
 test("slash search is shared across connections and survives reconnect", async () => {
@@ -971,64 +830,45 @@ test("slash search is shared across connections and survives reconnect", async (
 		{ name: "login", description: "Log in", source: "system" },
 		{ name: "skill:review", description: "Review code", source: "skill" },
 	]);
-	const first = new AbortController();
-	const second = new AbortController();
-	const reconnect = new AbortController();
-	try {
-		const firstReader = responseReader(state.renderer.createStream(first.signal));
-		const secondReader = responseReader(state.renderer.createStream(second.signal));
-		await readUntil(firstReader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		await readUntil(secondReader, (text) =>
-			text.includes("event: datastar-patch-signals"),
-		);
-		state.renderer.setSlashSearch("review");
-		const firstFiltered = await readUntil(firstReader, (text) =>
-			text.includes("workspace-review-data"),
-		);
-		const secondFiltered = await readUntil(secondReader, (text) =>
-			text.includes("workspace-review-data"),
-		);
-		for (const filtered of [firstFiltered, secondFiltered]) {
-			assertIncludes(filtered, 'id="model-select-options"');
-			assertNotIncludes(filtered, 'id="model-option-fixture%2Fdeepseek-v4"');
-			assertIncludes(filtered, 'id="slash-option-skill%3Areview"');
-			assertNotIncludes(filtered, 'id="slash-option-login"');
-		}
-
-		state.setThinking("high", ["off", "high"]);
-		const update = await readUntil(firstReader, (text) =>
-			text.includes("workspace-review-data"),
-		);
-		assertNotIncludes(update, 'id="slash-option-login"');
-		first.abort();
-		const restored = await readUntil(
-			responseReader(
-				state.renderer.createStream(reconnect.signal, "", "", "review"),
-			),
-			(text) => text.includes("event: datastar-patch-signals"),
-		);
-		assertIncludes(restored, 'id="model-select-options"');
-		assertNotIncludes(restored, 'id="model-option-fixture%2Fdeepseek-v4"');
-		assertIncludes(restored, 'id="slash-option-skill%3Areview"');
-		assertNotIncludes(restored, 'id="slash-option-login"');
-	} finally {
-		first.abort();
-		second.abort();
-		reconnect.abort();
+	const first = connection();
+	const second = connection();
+	const reconnect = connection();
+	const firstReader = responseReader(state.renderer.createStream(first.signal));
+	const secondReader = responseReader(state.renderer.createStream(second.signal));
+	await readUntil(firstReader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	await readUntil(secondReader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	state.renderer.setSlashSearch("review");
+	const firstFiltered = await readUntil(firstReader, (text) =>
+		text.includes("workspace-review-data"),
+	);
+	const secondFiltered = await readUntil(secondReader, (text) =>
+		text.includes("workspace-review-data"),
+	);
+	for (const filtered of [firstFiltered, secondFiltered]) {
+		assertIncludes(filtered, 'id="model-select-options"');
+		assertNotIncludes(filtered, 'id="model-option-fixture%2Fdeepseek-v4"');
+		assertIncludes(filtered, 'id="slash-option-skill%3Areview"');
+		assertNotIncludes(filtered, 'id="slash-option-login"');
 	}
-});
 
-test("state snapshots contain domain messages only", () => {
-	const state = createState();
-	state.appendMessage("assistant", "**answer**");
-
-	const message = state.snapshot().messages[0];
-	assertEqual("renderedHtml" in message, false);
-	assertEqual("presentationState" in message, false);
-	assertEqual("presentationVersion" in message, false);
-	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
+	state.setThinking("high", ["off", "high"]);
+	const update = await readUntil(firstReader, (text) =>
+		text.includes("workspace-review-data"),
+	);
+	assertNotIncludes(update, 'id="slash-option-login"');
+	first.abort();
+	const restored = await readUntil(
+		responseReader(state.renderer.createStream(reconnect.signal, "", "", "review")),
+		(text) => text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(restored, 'id="model-select-options"');
+	assertNotIncludes(restored, 'id="model-option-fixture%2Fdeepseek-v4"');
+	assertIncludes(restored, 'id="slash-option-skill%3Areview"');
+	assertNotIncludes(restored, 'id="slash-option-login"');
 });
 
 test("initial page signals match live state after activity and session transitions", async () => {
@@ -1107,23 +947,6 @@ function stateWithMessages(count: number): TestStore {
 	return state;
 }
 
-function gatedMarkdownState() {
-	let resolveEnhancement: ((html: string) => void) | undefined;
-	const state = createState({
-		renderMarkdownFinal: () =>
-			new Promise<string>((resolve) => (resolveEnhancement = resolve)),
-	});
-	return {
-		state,
-		get ready(): boolean {
-			return resolveEnhancement !== undefined;
-		},
-		resolve(html: string): void {
-			resolveEnhancement?.(html);
-		},
-	};
-}
-
 function gatedEnhancementQueue() {
 	const gates: Array<{ text: string; resolve: (html: string) => void }> = [];
 	const state = createState({
@@ -1134,14 +957,14 @@ function gatedEnhancementQueue() {
 	return { state, gates };
 }
 
-const connections: AbortController[] = [];
-afterEach(() => {
-	for (const controller of connections.splice(0)) controller.abort();
-});
+function connection(): AbortController {
+	const controller = new AbortController();
+	onTestFinished(() => controller.abort());
+	return controller;
+}
 
 function connect(state: TestStore): AbortController {
-	const controller = new AbortController();
-	connections.push(controller);
+	const controller = connection();
 	state.createStream(controller.signal);
 	return controller;
 }
@@ -1152,10 +975,6 @@ function projectedMessages(state: TestStore) {
 
 function markdownMessage(text: string): TranscriptMessageInput {
 	return { role: "assistant", text, timestamp };
-}
-
-async function settleMicrotasks(): Promise<void> {
-	for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
 
 async function waitFor(complete: () => boolean): Promise<void> {
@@ -1181,9 +1000,7 @@ async function readStateOutput(
 	state: TestStore,
 	complete: (text: string) => boolean,
 ): Promise<string> {
-	const controller = new AbortController();
-	connections.push(controller);
-	return readUntil(responseReader(state.createStream(controller.signal)), complete);
+	return readUntil(responseReader(state.createStream(connection().signal)), complete);
 }
 
 async function readElementAndSignalPatches(
