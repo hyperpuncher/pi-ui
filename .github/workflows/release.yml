@@ -15,9 +15,9 @@ jobs:
             matrix:
                 include:
                     - name: linux-x64
-                      os: ubuntu-latest
+                      os: ubuntu-26.04
                     - name: linux-arm64
-                      os: ubuntu-24.04-arm
+                      os: ubuntu-26.04-arm
                     - name: darwin-x64
                       os: macos-26-intel
                     - name: darwin-arm64
@@ -53,13 +53,17 @@ jobs:
                   path: dist/pi-ui-${{ matrix.name }}.*
 
     publish:
-        name: Publish release and packages
+        name: Publish GitHub release
         if: github.event_name == 'push'
         needs: [build]
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         permissions:
             contents: write
-            id-token: write
+        outputs:
+            linux-x64: ${{ steps.sha.outputs.linux-x64 }}
+            linux-arm64: ${{ steps.sha.outputs.linux-arm64 }}
+            darwin-x64: ${{ steps.sha.outputs.darwin-x64 }}
+            darwin-arm64: ${{ steps.sha.outputs.darwin-arm64 }}
 
         steps:
             - uses: actions/checkout@v7
@@ -80,14 +84,6 @@ jobs:
               with:
                   files: dist/*
                   body_path: /tmp/release-notes.md
-            - uses: oven-sh/setup-bun@v2
-            - name: Install npm package dependencies
-              run: bun ci
-            - uses: actions/setup-node@v7
-              with:
-                  node-version: 24
-            - name: Publish npm package
-              run: npm publish
             - name: Compute checksums
               id: sha
               run: |
@@ -97,12 +93,41 @@ jobs:
                     echo "darwin-x64=$(sha256sum dist/pi-ui-darwin-x64.zip | cut -d' ' -f1)"
                     echo "darwin-arm64=$(sha256sum dist/pi-ui-darwin-arm64.zip | cut -d' ' -f1)"
                   } >> "$GITHUB_OUTPUT"
+
+    npm:
+        name: Publish npm package
+        needs: [publish]
+        runs-on: ubuntu-26.04
+        permissions:
+            contents: read
+            id-token: write
+
+        steps:
+            - uses: actions/checkout@v7
+            - uses: oven-sh/setup-bun@v2
+            - name: Install npm package dependencies
+              run: bun ci
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: 26
+            - name: Publish npm package
+              run: npm publish
+
+    homebrew:
+        name: Publish Homebrew formula
+        needs: [publish]
+        runs-on: ubuntu-26.04
+        permissions:
+            contents: read
+
+        steps:
+            - uses: actions/checkout@v7
             - name: Generate Homebrew formula
               run: |
                   V="${GITHUB_REF_NAME#v}"
                   sed -e "s/{{VERSION}}/$V/g" \
-                      -e "s/{{SHA_DARWIN_X64}}/${{ steps.sha.outputs.darwin-x64 }}/g" \
-                      -e "s/{{SHA_DARWIN_ARM64}}/${{ steps.sha.outputs.darwin-arm64 }}/g" \
+                      -e "s/{{SHA_DARWIN_X64}}/${{ needs.publish.outputs.darwin-x64 }}/g" \
+                      -e "s/{{SHA_DARWIN_ARM64}}/${{ needs.publish.outputs.darwin-arm64 }}/g" \
                       packaging/homebrew/pi-ui.rb.in > /tmp/pi-ui.rb
             - name: Push Homebrew formula
               env:
@@ -121,22 +146,31 @@ jobs:
                   git add -A Formula Casks formula_renames.json
                   git diff --staged --quiet || git commit -m "pi-ui: renamed from pi-ui-server"
                   git push
+
+    aur:
+        name: Publish AUR package
+        needs: [publish]
+        runs-on: ubuntu-26.04
+        container: archlinux:base-devel
+        permissions:
+            contents: read
+
+        steps:
+            - name: Install publishing tools
+              run: pacman -Syu --noconfirm --needed git openssh
+            - uses: actions/checkout@v7
             - name: Generate AUR package
               run: |
                   V="${GITHUB_REF_NAME#v}"
                   LICENSE_SHA=$(sha256sum LICENSE | cut -d' ' -f1)
                   sed -e "s/{{VERSION}}/$V/g" \
                       -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
-                      -e "s/{{SHA_LINUX_X64}}/${{ steps.sha.outputs.linux-x64 }}/g" \
-                      -e "s/{{SHA_LINUX_ARM64}}/${{ steps.sha.outputs.linux-arm64 }}/g" \
+                      -e "s/{{SHA_LINUX_X64}}/${{ needs.publish.outputs.linux-x64 }}/g" \
+                      -e "s/{{SHA_LINUX_ARM64}}/${{ needs.publish.outputs.linux-arm64 }}/g" \
                       packaging/aur/PKGBUILD.in > /tmp/PKGBUILD
-                  docker run --rm --interactive archlinux:base-devel bash -c '
-                    useradd --create-home builder
-                    cat > /home/builder/PKGBUILD
-                    chown builder:builder /home/builder/PKGBUILD
-                    cd /home/builder
-                    runuser --user builder -- makepkg --printsrcinfo
-                  ' < /tmp/PKGBUILD > /tmp/.SRCINFO
+                  useradd --create-home builder
+                  install -o builder -g builder -m 644 /tmp/PKGBUILD /home/builder/PKGBUILD
+                  runuser --user builder -- bash -c 'cd /home/builder && makepkg --printsrcinfo' > /tmp/.SRCINFO
             - name: Push AUR package
               env:
                   AUR_KEY: ${{ secrets.AUR_KEY }}
