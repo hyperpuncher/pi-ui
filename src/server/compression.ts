@@ -1,10 +1,10 @@
 import { Readable } from "node:stream";
 import {
+	type BrotliCompress,
 	constants,
 	createBrotliCompress,
 	createGzip,
 	createZstdCompress,
-	type BrotliCompress,
 	type Gzip,
 	type ZstdCompress,
 } from "node:zlib";

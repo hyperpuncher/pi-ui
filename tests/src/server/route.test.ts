@@ -1,8 +1,7 @@
 import { test } from "bun:test";
 
 import { executeRoute } from "#src/server/route.ts";
-import { assertEquals } from "#testing/assertions";
-import { assertStringExcludes } from "#testing/assertions";
+import { assertEquals, assertStringExcludes } from "#testing/assertions";
 
 test("route errors hide details and report unexpected failures", async () => {
 	const reported: unknown[] = [];

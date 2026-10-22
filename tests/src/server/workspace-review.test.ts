@@ -8,15 +8,15 @@ import {
 	discardWorkspaceChange,
 	findGitRoot,
 	findGitWatchPaths,
+	maximumWorkspaceDiffBytes,
 	parseCommitLog,
 	parseNameStatus,
 	parsePorcelainStatus,
 	readWorkspaceCommit,
 	readWorkspaceDiff,
-	maximumWorkspaceDiffBytes,
-	WorkspaceReviewError,
 	readWorkspaceHistory,
 	readWorkspaceReview,
+	WorkspaceReviewError,
 	type WorkspaceReviewMetadataCache,
 } from "#src/server/workspace-review.ts";
 import { outputCommand } from "#src/utils/command.ts";

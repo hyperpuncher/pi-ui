@@ -42,12 +42,7 @@ type PerformanceCounters = {
 };
 
 export type PatchRegion =
-	| "transcript"
-	| "message"
-	| "view"
-	| "sidebar"
-	| "initial"
-	| "other";
+	"transcript" | "message" | "view" | "sidebar" | "initial" | "other";
 
 export type ClientTransitionMetrics = {
 	runId: string;
@@ -63,10 +58,7 @@ export type ClientTransitionMetrics = {
 
 type RuntimeLeaveAction = "background" | "discard" | "dispose" | "keep";
 type RuntimeOwnershipLocation =
-	| "foreground"
-	| "background-running"
-	| "background-completed"
-	| "disposed";
+	"foreground" | "background-running" | "background-completed" | "disposed";
 
 type SessionOwnershipDiagnostics = {
 	sourceGeneration?: number;

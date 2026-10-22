@@ -34,7 +34,7 @@ keyboard-first minimal gui for [`pi`](https://pi.dev)
 
 ## try
 
-> requires bun 1.4+
+> requires bun 1.4.4+
 
 ```sh
 bunx @hyperpuncher/pi-ui
@@ -64,7 +64,7 @@ open [http://127.0.0.1:31415](http://127.0.0.1:31415) in your browser
 
 #### bun
 
-> requires bun 1.4+
+> requires bun 1.4.4+
 
 ```sh
 bun i -g @hyperpuncher/pi-ui
@@ -109,7 +109,7 @@ brew services stop pi-ui
 
 ## development
 
-> requires bun 1.4+
+> requires bun 1.4.4+
 
 ```sh
 bun ci

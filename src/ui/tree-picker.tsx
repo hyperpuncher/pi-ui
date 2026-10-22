@@ -1,5 +1,5 @@
 import { endpoints } from "#src/server/routes/endpoints.ts";
-import type { AppTreeEntry, AppStateSnapshot } from "#src/state/app-store.ts";
+import type { AppStateSnapshot, AppTreeEntry } from "#src/state/app-store.ts";
 import { DateTime } from "#src/ui/date-time.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 

@@ -5,9 +5,9 @@ import { parsePatchFiles } from "@pierre/diffs";
 import { gitText, runGit } from "#src/server/git.ts";
 import { sortWorkspaceReviewEntries } from "#src/workspace-review-tree.ts";
 import {
+	emptyWorkspaceReviewSnapshot,
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
-	emptyWorkspaceReviewSnapshot,
 	type WorkspaceFileChange,
 	type WorkspaceFileStatus,
 	workspaceReviewHistoryPageSize,

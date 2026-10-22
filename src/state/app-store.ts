@@ -7,11 +7,11 @@ import {
 	sessionSidebarWidthDefault,
 } from "#src/session-sidebar-types.ts";
 import {
-	TranscriptState,
 	type TranscriptMessage,
 	type TranscriptMessageInput,
 	type TranscriptMessageOptions,
 	type TranscriptSnapshot,
+	TranscriptState,
 } from "#src/state/transcript-state.ts";
 import type { AvailableUpdate } from "#src/update-check.ts";
 import { formatMessageCount } from "#src/utils/format.ts";
@@ -19,9 +19,9 @@ import type { JsonObject } from "#src/utils/json-types.ts";
 import { formatShortcut } from "#src/utils/keyboard.ts";
 import { defaultWorkspacePath, managedWorktreeParts } from "#src/utils/workspace.ts";
 import {
+	unloadedWorkspaceReviewSnapshot,
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
-	unloadedWorkspaceReviewSnapshot,
 } from "#src/workspace-review-types.ts";
 
 export type AppChatSnapshot = TranscriptSnapshot;
@@ -33,13 +33,7 @@ export type AppModel = {
 	scoped: boolean;
 };
 export type AppThinkingLevel =
-	| "off"
-	| "minimal"
-	| "low"
-	| "medium"
-	| "high"
-	| "xhigh"
-	| "max";
+	"off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export type AppSlashCommand = {
 	name: string;
 	description: string;

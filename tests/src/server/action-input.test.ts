@@ -11,10 +11,10 @@ import {
 import {
 	assertEquals,
 	assertRejects,
+	assertStringExcludes,
 	assertStringIncludes,
 	assertThrows,
 } from "#testing/assertions";
-import { assertStringExcludes } from "#testing/assertions";
 
 test("action inputs reject malformed JSON instead of returning empty signals", async () => {
 	await assertRejects(

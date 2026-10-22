@@ -25,8 +25,7 @@ export function reconcileReviewAvailability(
 }
 
 export type Selection =
-	| { kind: "working"; path?: string }
-	| { hash: string; kind: "commit"; path?: string };
+	{ kind: "working"; path?: string } | { hash: string; kind: "commit"; path?: string };
 
 type HistoryState = Readonly<{
 	commits: WorkspaceCommit[];

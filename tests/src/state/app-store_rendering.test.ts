@@ -16,9 +16,9 @@ import { renderPage } from "#src/ui/page.tsx";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import {
 	assertEquals as assertEqual,
+	assertStringExcludes as assertNotIncludes,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
-import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
 import { readUntil, responseReader } from "#testing/streams.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");

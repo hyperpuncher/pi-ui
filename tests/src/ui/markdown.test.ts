@@ -11,9 +11,9 @@ import {
 } from "#src/ui/markdown.tsx";
 import {
 	assertEquals as assertEqual,
+	assertStringExcludes as assertNotIncludes,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
-import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
 
 test("streaming cache keeps one entry per stable message key", () => {

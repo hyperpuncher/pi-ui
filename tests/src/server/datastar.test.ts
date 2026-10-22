@@ -1,8 +1,11 @@
 import { test } from "bun:test";
 
 import { datastarResponse, datastarStream } from "#src/server/datastar.ts";
-import { assertEquals, assertStringIncludes } from "#testing/assertions";
-import { assertStringExcludes } from "#testing/assertions";
+import {
+	assertEquals,
+	assertStringExcludes,
+	assertStringIncludes,
+} from "#testing/assertions";
 
 test("element patches normalize carriage returns into valid SSE data lines", async () => {
 	const response = datastarStream((stream) => {

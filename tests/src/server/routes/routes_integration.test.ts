@@ -13,16 +13,19 @@ import { appRoutes } from "#src/server/routes.ts";
 import type { RouteContext, RuntimeResource } from "#src/server/routes/context.ts";
 import {
 	endpoints,
-	filesPreviewBase,
 	filePreviewUrl,
+	filesPreviewBase,
 } from "#src/server/routes/endpoints.ts";
 import { fileRoutes } from "#src/server/routes/files.ts";
 import { SessionImageStore } from "#src/server/session-image-store.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import { outputCommand } from "#src/utils/command.ts";
-import { assertEquals, assertStringIncludes } from "#testing/assertions";
-import { assertStringExcludes } from "#testing/assertions";
+import {
+	assertEquals,
+	assertStringExcludes,
+	assertStringIncludes,
+} from "#testing/assertions";
 import { makeTempDir, makeTempFile } from "#testing/temp";
 
 test("remote clients get download rather than access to the server's file manager", async () => {
@@ -673,8 +676,7 @@ test("extension UI tracks the browser editor for synchronous extension reads", a
 
 test("extension UI responses return to the active agent backend", async () => {
 	let response:
-		| { requestId: string; value: string | undefined; cancelled: boolean }
-		| undefined;
+		{ requestId: string; value: string | undefined; cancelled: boolean } | undefined;
 	const host = fakeHost({
 		respondExtensionUi: (requestId, value, cancelled) => {
 			response = { requestId, value, cancelled };

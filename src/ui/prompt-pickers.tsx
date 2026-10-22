@@ -6,8 +6,7 @@ import {
 } from "#src/commands/actions.ts";
 import { activeKeybind, keybindAction, keybindActions } from "#src/keybinds.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
-import type { AppThinkingLevel } from "#src/state/app-store.ts";
-import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import type { AppStateSnapshot, AppThinkingLevel } from "#src/state/app-store.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import icons from "#src/ui/icons.json";
 import { ShortcutKbd, ShortcutTooltip } from "#src/ui/keyboard.tsx";

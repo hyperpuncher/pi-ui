@@ -2,8 +2,8 @@ import type { AssistantMessage } from "@earendil-works/pi-ai";
 import {
 	type AgentSessionEvent,
 	type AgentSessionRuntime,
-	SessionManager,
 	type SessionEntry,
+	SessionManager,
 	type SessionStats,
 } from "@earendil-works/pi-coding-agent";
 

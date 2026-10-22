@@ -4,7 +4,7 @@ import { Compile } from "typebox/compile";
 
 import { fetchProviderUsagePayload } from "#src/agent/provider-usage.ts";
 import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
-import { type JsonValue, JsonObjectSchema } from "#src/utils/json-types.ts";
+import { JsonObjectSchema, type JsonValue } from "#src/utils/json-types.ts";
 
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";

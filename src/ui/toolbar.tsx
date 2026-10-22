@@ -15,11 +15,7 @@ import { ShortcutTooltip } from "#src/ui/keyboard.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 
 type ToolbarAction =
-	| "commands"
-	| "review"
-	| "new-chat"
-	| "new-temporary-chat"
-	| "sessions";
+	"commands" | "review" | "new-chat" | "new-temporary-chat" | "sessions";
 
 const toolbarDialogTargets: Partial<Record<ToolbarAction, string>> = {
 	commands: "command-dialog",

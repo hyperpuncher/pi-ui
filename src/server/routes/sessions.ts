@@ -2,7 +2,7 @@ import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { SessionTransitionResult } from "#src/agent/session-transition-controller.ts";
-import { thumbnailImage, type ThumbnailImage } from "#src/image-resize.ts";
+import { type ThumbnailImage, thumbnailImage } from "#src/image-resize.ts";
 import {
 	readActionSignals,
 	requiredString,

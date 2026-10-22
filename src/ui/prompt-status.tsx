@@ -1,5 +1,4 @@
-import type { AppUsage, AppUsageLimits } from "#src/state/app-store.ts";
-import type { AppStateSnapshot } from "#src/state/app-store.ts";
+import type { AppStateSnapshot, AppUsage, AppUsageLimits } from "#src/state/app-store.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { clamp } from "#src/utils/clamp.ts";

@@ -1,6 +1,6 @@
 import {
-	CombinedAutocompleteProvider,
 	type AutocompleteItem,
+	CombinedAutocompleteProvider,
 } from "@earendil-works/pi-tui";
 
 export async function searchFiles(

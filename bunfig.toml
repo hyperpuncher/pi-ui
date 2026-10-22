@@ -1,0 +1,7 @@
+[fmt]
+printWidth = 90
+tabWidth = 4
+useTabs = true
+sortImports = true
+sortPackageJson = true
+ignorePatterns = ["config.schema.json", "static/vendor/**"]

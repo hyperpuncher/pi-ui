@@ -6,8 +6,11 @@ import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import { MessageRenderService } from "#src/ui/message-render-service.ts";
 import { renderMessage, renderMessages } from "#src/ui/messages.tsx";
 import type { AppMessage } from "#src/ui/render-state.ts";
-import { assertEquals, assertStringIncludes } from "#testing/assertions";
-import { assertStringExcludes } from "#testing/assertions";
+import {
+	assertEquals,
+	assertStringExcludes,
+	assertStringIncludes,
+} from "#testing/assertions";
 
 function tool(overrides: Partial<AppMessage> = {}): AppMessage {
 	return {

@@ -14,10 +14,10 @@ import {
 } from "#src/server/routes/session-performance.ts";
 import {
 	assertEquals as assertEqual,
+	assertStringExcludes as assertNotIncludes,
 	assertStringIncludes as assertIncludes,
 	assertThrows,
 } from "#testing/assertions";
-import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
 
 const originalLog = console.log;

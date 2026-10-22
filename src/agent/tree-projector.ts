@@ -5,7 +5,7 @@ import type {
 
 import type { AppStore, AppTreeEntry } from "#src/state/app-store.ts";
 import { formatDateTime } from "#src/utils/locale.ts";
-import { type JsonRecord, isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
+import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
 
 type TreeState = Pick<AppStore, "setTreeEntries"> &
 	Partial<Pick<AppStore, "setActivityText">>;

@@ -41,7 +41,8 @@
 		"release": "bun scripts/release.ts",
 		"schema:build": "bun scripts/generate-config-schema.ts",
 		"schema:check": "bun scripts/generate-config-schema.ts --check",
-		"fmt": "bun run schema:build && dsfmt --write . && bunx oxfmt",
+		"fmt": "bun run schema:build && dsfmt --write . && bun fmt",
+		"fmt:check": "bun run schema:check && bun fmt --no-script --check",
 		"lint": "bunx oxlint && bun run lint:css",
 		"lint:css": "bunx stylelint \"src/**/*.css\"",
 		"lint:fix": "bunx oxlint --fix && bun run lint:css --fix",
@@ -62,7 +63,6 @@
 		"@starfederation/datastar-sdk": "^1.0.0",
 		"@types/bun": "^1.4.3",
 		"open-props": "^1.7.23",
-		"oxfmt": "^0.74.0",
 		"oxlint": "1.89.0",
 		"pele": "1.8.0",
 		"stylelint": "^17.16.0",
@@ -71,9 +71,9 @@
 		"typescript": "^7.0.2"
 	},
 	"engines": {
-		"bun": ">=1.4.3"
+		"bun": ">=1.4.4"
 	},
-	"packageManager": "bun@1.4.3",
+	"packageManager": "bun@1.4.4",
 	"patchedDependencies": {
 		"@earendil-works/pi-coding-agent@1.4.0": "patches/@earendil-works%2Fpi-coding-agent@1.4.0.patch"
 	}

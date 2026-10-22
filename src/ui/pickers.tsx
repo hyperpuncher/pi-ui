@@ -1,4 +1,4 @@
-import { fuzzyFilter, type AutocompleteItem } from "@earendil-works/pi-tui";
+import { type AutocompleteItem, fuzzyFilter } from "@earendil-works/pi-tui";
 
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import type {
@@ -6,11 +6,11 @@ import type {
 	WorkspaceSuggestion,
 } from "#src/server/workspace-search.ts";
 import {
-	sessionStatus,
 	type AppSessionSummary,
 	type AppSlashCommand,
 	type AppStateSnapshot,
 	type BackgroundSessionStatus,
+	sessionStatus,
 } from "#src/state/app-store.ts";
 import { DateTime } from "#src/ui/date-time.tsx";
 import { Icon } from "#src/ui/icon.tsx";

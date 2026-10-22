@@ -1,14 +1,14 @@
 import { test } from "bun:test";
 
 import { mergeBackgroundSessionStatuses } from "#src/agent/background-session-status.ts";
-import { AppStore, type AppSessionSummary } from "#src/state/app-store.ts";
+import { type AppSessionSummary, AppStore } from "#src/state/app-store.ts";
 import { renderSessionPicker } from "#src/ui/pickers.tsx";
 import { renderSessionSidebar } from "#src/ui/session-sidebar.tsx";
 import {
 	assertEquals,
+	assertStringExcludes as assertNotIncludes,
 	assertStringIncludes as assertIncludes,
 } from "#testing/assertions";
-import { assertStringExcludes as assertNotIncludes } from "#testing/assertions";
 import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 
 const ordinary = summary("/sessions/ordinary.json", "Ordinary");

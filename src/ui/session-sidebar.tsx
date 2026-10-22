@@ -6,9 +6,9 @@ import {
 	sessionSidebarWidthMin,
 } from "#src/session-sidebar-types.ts";
 import {
-	sessionStatus,
 	type AppSessionSummary,
 	type AppStateSnapshot,
+	sessionStatus,
 } from "#src/state/app-store.ts";
 import { DateTime } from "#src/ui/date-time.tsx";
 import { Icon } from "#src/ui/icon.tsx";

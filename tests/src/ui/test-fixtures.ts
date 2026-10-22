@@ -1,4 +1,4 @@
-import { AppStore, type AppStateSnapshot } from "#src/state/app-store.ts";
+import { type AppStateSnapshot, AppStore } from "#src/state/app-store.ts";
 
 export function appRenderSnapshot(
 	overrides: Partial<AppStateSnapshot>,

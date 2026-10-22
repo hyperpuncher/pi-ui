@@ -2,7 +2,7 @@ import { pathToFileURL } from "node:url";
 
 import { openBrowser } from "#pi/utils/open-browser.js";
 import { outputCommand } from "#src/utils/command.ts";
-import { operatingSystem, type OperatingSystem } from "#src/utils/platform.ts";
+import { type OperatingSystem, operatingSystem } from "#src/utils/platform.ts";
 
 function isLoopback(address: string): boolean {
 	return (

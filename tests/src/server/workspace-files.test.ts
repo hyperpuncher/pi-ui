@@ -5,8 +5,8 @@ import { relative } from "node:path";
 import {
 	createWorkspaceEntry,
 	listWorkspaceFiles,
-	moveWorkspaceEntry,
 	maximumWorkspaceFileBytes,
+	moveWorkspaceEntry,
 	readWorkspaceFile,
 	removeWorkspaceEntry,
 	WorkspaceFileError,

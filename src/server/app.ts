@@ -2,7 +2,7 @@ import { realpath, stat } from "node:fs/promises";
 
 // pi does not publicly export its provisioner. A static import lets Bun bundle it.
 import { ensureTool } from "#pi/utils/tools-manager.js";
-import { parseAutoTitleConfig, type AutoTitleConfig } from "#src/agent/auto-title.ts";
+import { type AutoTitleConfig, parseAutoTitleConfig } from "#src/agent/auto-title.ts";
 import { RuntimeController } from "#src/agent/runtime-controller.ts";
 import { SessionTransitionController } from "#src/agent/session-transition-controller.ts";
 import {

@@ -1,4 +1,4 @@
-import { watch as watchFileSystem, type FSWatcher } from "node:fs";
+import { type FSWatcher, watch as watchFileSystem } from "node:fs";
 import os from "node:os";
 import * as path from "node:path";
 

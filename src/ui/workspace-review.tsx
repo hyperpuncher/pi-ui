@@ -13,9 +13,9 @@ import {
 	reviewSidebarWidthDefault,
 	reviewSidebarWidthMax,
 	reviewSidebarWidthMin,
+	workspaceChangeStats,
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
-	workspaceChangeStats,
 } from "#src/workspace-review-types.ts";
 
 type ResizePreference = "changesRatio" | "gitPaneRatio" | "reviewSidebarWidth";

@@ -3,15 +3,15 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 
 import {
+	type DiffsStreamTokenizer,
 	getFiletypeFromFileName,
 	getHighlighterIfLoaded,
-	tokenStyle,
-	type DiffsStreamTokenizer,
 	type ThemedToken,
+	tokenStyle,
 } from "@pierre/diffs";
 import { isSupportedLanguage } from "@pierre/highlights";
 
-import { codeThemeKey, activeCodeThemes } from "#src/pierre-theme.ts";
+import { activeCodeThemes, codeThemeKey } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
 import {
 	isPierreLanguageLoaded,

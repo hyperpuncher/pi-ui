@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 
-import { shareSession, type SessionShareDependencies } from "#src/agent/session-share.ts";
+import { type SessionShareDependencies, shareSession } from "#src/agent/session-share.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
 
 const encoder = new TextEncoder();

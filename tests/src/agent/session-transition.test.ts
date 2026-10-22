@@ -10,8 +10,11 @@ import { renderSessionSidebar } from "#src/ui/session-sidebar.tsx";
 import { renderSessionTransition } from "#src/ui/session-transition.tsx";
 import { renderToolbar } from "#src/ui/toolbar.tsx";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
-import { assertEquals, assertStringIncludes } from "#testing/assertions";
-import { assertStringExcludes } from "#testing/assertions";
+import {
+	assertEquals,
+	assertStringExcludes,
+	assertStringIncludes,
+} from "#testing/assertions";
 import { readUntil, responseReader } from "#testing/streams.ts";
 import { appRenderSnapshot } from "#tests/src/ui/test-fixtures.ts";
 test("session transition renderer escapes targets and renders loading and errors", () => {

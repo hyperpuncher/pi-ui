@@ -1,4 +1,4 @@
-import { DEFAULT_CODE_THEMES, type CodeThemes } from "#src/pierre-theme.ts";
+import { type CodeThemes, DEFAULT_CODE_THEMES } from "#src/pierre-theme.ts";
 import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export type CodeThemeAppearance = keyof CodeThemes;

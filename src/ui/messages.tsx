@@ -1,4 +1,4 @@
-import { tokenStyle, type ThemedToken } from "@pierre/diffs";
+import { type ThemedToken, tokenStyle } from "@pierre/diffs";
 
 import { providerErrorPresentation } from "#src/agent/provider-error-message.ts";
 import { formatDuration, toolTitleParts } from "#src/agent/tool-presentation.ts";
@@ -9,8 +9,8 @@ import { endpoints } from "#src/server/routes/endpoints.ts";
 import type { AppKeybindHint, AppSessionSummary } from "#src/state/app-store.ts";
 import type { TranscriptMessageTitlePart } from "#src/state/transcript-state.ts";
 import {
-	codeSnippets,
 	type CodeSnippet,
+	codeSnippets,
 	highlightBash,
 	highlightCodemode,
 } from "#src/ui/bash-highlight.ts";

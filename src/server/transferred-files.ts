@@ -13,10 +13,7 @@ export const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
 export const MAX_TRANSFER_REQUEST_BYTES = MAX_TRANSFER_TOTAL_BYTES + 1024 * 1024;
 
 export type TransferredFileErrorCode =
-	| "too-many-files"
-	| "file-too-large"
-	| "total-too-large"
-	| "request-too-large";
+	"too-many-files" | "file-too-large" | "total-too-large" | "request-too-large";
 
 export interface TransferredFileErrorDetails {
 	code: TransferredFileErrorCode;

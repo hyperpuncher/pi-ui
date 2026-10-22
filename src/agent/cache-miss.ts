@@ -1,8 +1,8 @@
 import {
 	CACHE_TTL_MS,
+	type CacheMiss,
 	collectCacheMisses,
 	detectCacheMiss,
-	type CacheMiss,
 } from "#pi/core/cache-stats.js";
 import { formatTokens } from "#src/utils/format.ts";
 

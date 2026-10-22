@@ -3,7 +3,7 @@
 // Set PLAYWRIGHT_MODULE if Playwright does not resolve locally.
 // Enables PI_UI_PERF=1 only in the private server child, using a local faux model.
 // Results stay in the printed temporary directory; no user credentials are inherited.
-import { mkdtemp, mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 

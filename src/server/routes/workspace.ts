@@ -30,9 +30,9 @@ import {
 	removeWorkspaceEntry,
 	resolveFile,
 	resolvePath,
+	WorkspaceFileError,
 	workspaceFilePreview,
 	writeWorkspaceFile,
-	WorkspaceFileError,
 } from "#src/server/workspace-files.ts";
 import { findGitRoot } from "#src/server/workspace-review.ts";
 import { browseWorkspaceDirectories } from "#src/server/workspace-search.ts";

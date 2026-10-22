@@ -1,8 +1,8 @@
 import { test } from "bun:test";
 
 import {
-	DEFAULT_CODE_THEMES,
 	activeCodeThemes,
+	DEFAULT_CODE_THEMES,
 	setCodeThemes,
 } from "#src/pierre-theme.ts";
 import { assertEquals } from "#testing/assertions";

@@ -4,10 +4,10 @@ import {
 	formatExpandedDateTime,
 } from "#src/utils/date-time-format.ts";
 import {
+	workspaceChangeStats,
 	type WorkspaceCommit,
 	type WorkspaceCommitDetail,
 	type WorkspaceFileChange,
-	workspaceChangeStats,
 } from "#src/workspace-review-types.ts";
 
 type HistoryRenderOptions = Readonly<{

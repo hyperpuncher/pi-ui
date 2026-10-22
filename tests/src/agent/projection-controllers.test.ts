@@ -13,8 +13,8 @@ import {
 } from "#src/agent/session-catalog.ts";
 import {
 	contentToText,
-	formatToolResult,
 	formatDuration,
+	formatToolResult,
 	formatToolStart,
 	summarizeValue,
 	toolTitleParts,

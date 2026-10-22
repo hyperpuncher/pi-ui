@@ -3,9 +3,7 @@ import Type from "typebox";
 export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue =
-	| JsonPrimitive
-	| readonly JsonValue[]
-	| { [key: string]: JsonValue };
+	JsonPrimitive | readonly JsonValue[] | { [key: string]: JsonValue };
 
 const jsonValueSchema = Type.Cyclic(
 	{

@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 
 import {
+	releaseMarkdownStreamingState,
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
-	releaseMarkdownStreamingState,
 } from "#src/ui/markdown.tsx";
 
 const flow =

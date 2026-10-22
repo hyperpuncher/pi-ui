@@ -3,8 +3,8 @@ import type { ESTree } from "@oxlint/plugins";
 import {
 	createTypeAliasEnvironment,
 	hasVisibleTypeBinding,
-	visibleTypeAlias,
 	type TypeAliasEnvironment as LexicalTypeAliasEnvironment,
+	visibleTypeAlias,
 } from "#tools/oxlint/anti-slop/shared/type-alias-resolution.ts";
 
 const BUILT_INS = new Set([
@@ -32,11 +32,7 @@ export type UnsafeDictionary = {
 };
 
 export type WideningTargetKind =
-	| "anonymous object"
-	| "generic container"
-	| "object"
-	| "open dictionary"
-	| "unknown";
+	"anonymous object" | "generic container" | "object" | "open dictionary" | "unknown";
 
 export type WideningTarget = {
 	readonly kind: WideningTargetKind;

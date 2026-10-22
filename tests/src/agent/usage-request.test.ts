@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 
-import { UsageRequestTracker, matchesUsageRequest } from "#src/agent/usage-request.ts";
+import { matchesUsageRequest, UsageRequestTracker } from "#src/agent/usage-request.ts";
 import { assert } from "#testing/assertions";
 
 const runtime = {};

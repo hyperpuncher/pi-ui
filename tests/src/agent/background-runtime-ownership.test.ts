@@ -2,8 +2,8 @@ import { test } from "bun:test";
 
 import {
 	BackgroundRuntimeOwnership,
-	RuntimeOwnershipInvariantError,
 	type OwnedBackgroundRuntime,
+	RuntimeOwnershipInvariantError,
 } from "#src/agent/background-runtime-ownership.ts";
 import { assertEquals, assertStrictEquals, assertThrows } from "#testing/assertions";
 

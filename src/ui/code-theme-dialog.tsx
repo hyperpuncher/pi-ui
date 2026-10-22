@@ -1,7 +1,7 @@
 import {
 	CODE_THEME_PREVIEW,
-	codeThemesFor,
 	type CodeThemeOption,
+	codeThemesFor,
 } from "#src/code-themes.ts";
 import { activeCodeThemes } from "#src/pierre-theme.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";

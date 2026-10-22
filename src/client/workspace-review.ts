@@ -31,8 +31,8 @@ import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
 	reconcileSelection,
-	selectionForReviewOpen,
 	type Selection,
+	selectionForReviewOpen,
 	workspaceReviewLoading,
 	workspaceReviewStateChanged,
 } from "#src/client/workspace-review-state.ts";
@@ -43,11 +43,11 @@ import { isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
 import type { WorkspaceReviewComment } from "#src/workspace-review-comments.ts";
 import { workspaceReviewTreeOptions } from "#src/workspace-review-tree.ts";
 import {
+	isWorkspaceReviewSnapshot,
+	normalizeWorkspaceReviewPreferences,
 	type WorkspaceCommitDetail,
 	type WorkspaceFileChange,
 	workspaceReviewHistoryPageSize,
-	isWorkspaceReviewSnapshot,
-	normalizeWorkspaceReviewPreferences,
 	type WorkspaceReviewPreferences,
 	type WorkspaceReviewSnapshot,
 } from "#src/workspace-review-types.ts";
