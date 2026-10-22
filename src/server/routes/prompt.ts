@@ -85,15 +85,20 @@ export const promptRoutes = {
 			return datastarResponse();
 		},
 	},
-	[endpoints.messagesOlder]: {
-		POST: (_request, context) => {
-			context.store.loadOlderMessages();
+	[endpoints.messagesTrim]: {
+		POST: async (request, context) => {
+			const signals = await readActionSignals(request);
+			context.store.trimOldMessages(
+				requiredString(signals, "firstId"),
+				requiredString(signals, "throughId"),
+			);
 			return datastarResponse();
 		},
 	},
-	[endpoints.messagesTrim]: {
+	[endpoints.messagesOlder]: {
 		POST: (_request, context) => {
-			context.store.trimOldMessages();
+			const messages = context.store.loadOlderMessages();
+			context.renderer.patchOlderMessages(messages);
 			return datastarResponse();
 		},
 	},

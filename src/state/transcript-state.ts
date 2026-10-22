@@ -71,7 +71,6 @@ export type TranscriptSnapshot = {
 
 const initialVisibleMessageCount = 30;
 const olderMessageBatchSize = 30;
-const maximumVisibleMessageCount = 100;
 
 /** Renderer-independent, authoritative transcript state. */
 export type FinishedAssistantIds = {
@@ -235,6 +234,8 @@ export class TranscriptState {
 		messages: readonly TranscriptMessageInput[],
 		emptyChatHint?: TranscriptEmptyHint,
 	): void {
+		const previousLength = this.transcriptMessages.length;
+		const previousHiddenCount = this.visibleMessageStart;
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
 		if (emptyChatHint) this.emptyChatHint = { ...emptyChatHint };
@@ -243,10 +244,10 @@ export class TranscriptState {
 			return { ...message, id: `m-${this.messageSeq}` };
 		});
 		this.rebuildMessageIndex();
-		this.visibleMessageStart = Math.max(
-			0,
-			this.transcriptMessages.length - initialVisibleMessageCount,
-		);
+		this.visibleMessageStart =
+			previousLength === 0
+				? Math.max(0, this.transcriptMessages.length - initialVisibleMessageCount)
+				: Math.min(previousHiddenCount, this.transcriptMessages.length);
 	}
 
 	showRecentMessages(): boolean {
@@ -266,16 +267,21 @@ export class TranscriptState {
 		return this.transcriptMessages.slice(this.visibleMessageStart, previousStart);
 	}
 
-	trimOldMessages(): readonly string[] {
-		const nextStart = Math.max(
-			this.visibleMessageStart,
-			this.transcriptMessages.length - maximumVisibleMessageCount,
-		);
-		const ids = this.transcriptMessages
-			.slice(this.visibleMessageStart, nextStart)
-			.map((message) => message.id);
-		this.visibleMessageStart = nextStart;
-		return ids;
+	trimOldMessages(firstId: string, throughId: string): readonly string[] {
+		// A history load changes the first row. Never trim that newly loaded page.
+		if (this.transcriptMessages[this.visibleMessageStart]?.id !== firstId) return [];
+		const through = this.messageIndexById.get(throughId);
+		if (
+			through === undefined ||
+			through < this.visibleMessageStart ||
+			through >= this.transcriptMessages.length - 100
+		)
+			return [];
+		const removed = this.transcriptMessages
+			.slice(this.visibleMessageStart, through + 1)
+			.map(({ id }) => id);
+		this.visibleMessageStart = through + 1;
+		return removed;
 	}
 
 	private rebuildMessageIndex(): void {

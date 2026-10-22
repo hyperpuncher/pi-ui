@@ -11,6 +11,38 @@ let observedMessageStack;
 let observedPrompt;
 let messageResizeObserver;
 let pointerStart;
+let olderAnchor;
+
+// Capture immediately before the DOM patch, not when the request starts:
+// the reader can keep scrolling while the network request is in flight.
+export function beforeOlder() {
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	markUnpinned();
+	messages.style.overflowAnchor = "none";
+	const viewportTop = messages.getBoundingClientRect().top;
+	const row = [...messages.querySelectorAll("#message-list > .message[id]")].find(
+		(element) => {
+			const rect = element.getBoundingClientRect();
+			return rect.height > 0 && rect.bottom > viewportTop;
+		},
+	);
+	olderAnchor = row && { messages, row, top: row.getBoundingClientRect().top };
+}
+
+export function afterOlder() {
+	const saved = olderAnchor;
+	olderAnchor = undefined;
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	if (saved?.messages === messages && messages.contains(saved.row)) {
+		messages.scrollTop += saved.row.getBoundingClientRect().top - saved.top;
+		// A programmatic restore is not downward reader input.
+		state.scrollTop = messages.scrollTop;
+	}
+	setFollowMode(messages, state.pinnedToBottom);
+	checkOlder();
+}
 
 // Follow mode drives scrollTop itself; native anchoring would fight it, so
 // the platform hold is off while pinned and back on while reading.
@@ -19,48 +51,39 @@ function setFollowMode(messages, enabled) {
 	else messages.style.removeProperty("overflow-anchor");
 }
 
-// Native anchoring holds early history loads, including active gestures.
-// Only the zero-offset case needs a measured hold.
-let viewportAnchor;
-
-export function beforeUpdate() {
-	const messages = document.getElementById("messages");
-	if (
-		!(messages instanceof HTMLElement) ||
-		state.pinnedToBottom ||
-		messages.scrollTop > 0
-	)
-		return;
-	const top = messages.getBoundingClientRect().top;
-	const row = [...messages.querySelectorAll(".message[id]")].find(
-		(element) => element.getBoundingClientRect().bottom > top,
-	);
-	if (!row) return;
-	viewportAnchor = {
-		row,
-		top: row.getBoundingClientRect().top,
-		scrollTop: messages.scrollTop,
-	};
-	messages.style.overflowAnchor = "none";
+export function checkOlder() {
+	setTimeout(() => {
+		const messages = document.getElementById("messages");
+		const trigger = document.getElementById("older-messages-trigger");
+		if (!(messages instanceof HTMLElement) || !trigger?.hasAttribute("data-active"))
+			return;
+		if (messages.scrollTop > 2 * messages.clientHeight) return;
+		trigger.dispatchEvent(new CustomEvent("pi-ui-older"));
+	}, 0);
 }
 
-export function afterUpdate() {
-	const saved = viewportAnchor;
-	viewportAnchor = undefined;
+function trimOldMessages() {
+	if (!state.pinnedToBottom || olderAnchor) return;
 	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement) || !saved) return;
-	if (!state.pinnedToBottom && messages.contains(saved.row)) {
-		const movement = messages.scrollTop - saved.scrollTop;
-		messages.scrollTop +=
-			saved.row.getBoundingClientRect().top - saved.top + movement;
-		state.scrollTop = messages.scrollTop;
+	if (!(messages instanceof HTMLElement)) return;
+	const rows = [...messages.querySelectorAll("#message-list > .message[id]")];
+	const excess = rows.length - 100;
+	if (excess <= 0 || messages.scrollTop <= 2 * messages.clientHeight) return;
+	// Keep the preload area as well as the viewport. Otherwise cleanup would
+	// immediately load the removed page again.
+	const cutoff = messages.getBoundingClientRect().top - 2 * messages.clientHeight;
+	for (const row of rows.slice(0, excess)) {
+		const rect = row.getBoundingClientRect();
+		if (rect.height > 0 && rect.bottom >= cutoff) return;
 	}
-	setFollowMode(messages, state.pinnedToBottom);
-	updateScrollControl();
-}
-
-export function isReading() {
-	return !state.pinnedToBottom;
+	messages.dispatchEvent(
+		new CustomEvent("pi-ui-trim", {
+			detail: {
+				firstId: rows[0].id.slice("message-".length),
+				throughId: rows[excess - 1].id.slice("message-".length),
+			},
+		}),
+	);
 }
 
 export function bindMessageScroll() {
@@ -179,29 +202,6 @@ export function bindMessageScroll() {
 
 	bindMessageResize();
 	scrollBottom();
-}
-
-export function trimOldMessages() {
-	if (!state.pinnedToBottom) return;
-	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement)) return;
-	const messageElements = document.querySelectorAll("#message-list > .message[id]");
-	const excess = messageElements.length - 100;
-	const lastCandidate = messageElements[excess - 1];
-	if (
-		!lastCandidate ||
-		!shouldTrimOldMessages(
-			excess,
-			lastCandidate.getBoundingClientRect().bottom,
-			messages.getBoundingClientRect().top,
-		)
-	)
-		return;
-	messages.dispatchEvent(new CustomEvent("pi-ui-trim"));
-}
-
-export function shouldTrimOldMessages(excess, candidateBottom, viewportTop) {
-	return excess > 0 && candidateBottom <= viewportTop;
 }
 
 export function hasPointerDragIntent(startX, startY, currentX, currentY) {

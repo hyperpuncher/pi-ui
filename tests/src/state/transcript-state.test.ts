@@ -54,36 +54,44 @@ test("transcript snapshots restore independent domain state and queue metadata",
 	assertEquals(restored.activeAssistantMessageId, activeId);
 });
 
-test("live transcripts trim only when requested", () => {
+test("trimming releases only the checked prefix and keeps history loadable", () => {
 	const state = new TranscriptState(hint);
-	for (let index = 0; index < 101; index += 1) {
+	for (let index = 0; index < 180; index += 1) {
 		state.appendMessage("tool", `message ${index}`);
 	}
-	assertEquals(state.messages.length, 101);
-	assertEquals(state.trimOldMessages(), ["m-1"]);
+	const messages = state.messages;
+	assertEquals(messages.length, 180);
+	assertEquals(state.trimOldMessages(messages[0].id, messages[80].id), []);
+	assertEquals(state.trimOldMessages(messages[0].id, "missing"), []);
+	assertEquals(
+		state.trimOldMessages(messages[0].id, messages[79].id),
+		messages.slice(0, 80).map(({ id }) => id),
+	);
 	assertEquals(state.messages.length, 100);
-	assertEquals(state.messages[0].text, "message 1");
-	assertEquals(state.trimOldMessages(), []);
+	assertEquals(state.allMessages.length, 180);
+	assertEquals(state.messages[0].text, "message 80");
+	assertEquals(state.isMessageVisible(messages[0].id), false);
+	assertEquals(state.loadOlderMessages()[0].text, "message 50");
+	// Replaying the old cleanup must not remove the newly loaded page.
+	assertEquals(state.trimOldMessages(messages[0].id, messages[79].id), []);
+	assertEquals(state.messages.length, 130);
 });
 
-test("transcript visibility tracks the window", () => {
+test("transcript replacement preserves the loaded history window", () => {
 	const state = new TranscriptState(hint);
-	state.replaceMessages(
-		Array.from({ length: 130 }, (_, index) => ({
+	const messages = (count: number) =>
+		Array.from({ length: count }, (_, index) => ({
 			role: "assistant" as const,
 			text: `message ${index}`,
 			timestamp,
-		})),
-	);
-	const [first, last] = [state.allMessages.at(0)!, state.allMessages.at(-1)!];
-	assertEquals(state.isMessageVisible(first.id), false);
-	assertEquals(state.isMessageVisible(last.id), true);
-	assertEquals(state.isMessageVisible("missing"), false);
-	for (let page = 0; page < 3; page += 1) state.loadOlderMessages();
-	const trimmed = state.trimOldMessages();
-	assertEquals(trimmed.length, 20);
-	assertEquals(state.isMessageVisible(last.id), true);
-	for (const id of trimmed) assertEquals(state.isMessageVisible(id), false);
+		}));
+	state.replaceMessages(messages(130));
+	state.loadOlderMessages();
+	assertEquals(state.messages.length, 60);
+	state.replaceMessages(messages(131));
+	assertEquals(state.messages.length, 61);
+	assertEquals(state.hasOlderMessages, true);
+	assertEquals(state.loadOlderMessages()[0].text, "message 40");
 });
 
 test("transcript paging and reset have no presentation state", () => {
@@ -97,8 +105,12 @@ test("transcript paging and reset have no presentation state", () => {
 	);
 	assertEquals(state.messages.length, 30);
 	assertEquals(state.hasOlderMessages, true);
+	assertEquals(state.isMessageVisible(state.allMessages[0].id), false);
+	assertEquals(state.isMessageVisible(state.messages.at(-1)!.id), true);
+	assertEquals(state.isMessageVisible("missing"), false);
 	const olderMessages = state.loadOlderMessages();
 	assertEquals(olderMessages.length, 30);
+	assertEquals(state.isMessageVisible(olderMessages[0].id), true);
 	assertEquals(olderMessages[0].text, "message 120");
 	assertEquals(olderMessages.at(-1)?.text, "message 149");
 	while (state.hasOlderMessages) {

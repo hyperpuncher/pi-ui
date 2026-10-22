@@ -10,6 +10,7 @@ import type {
 	AppStorePresentation,
 	UiCommitEffect,
 } from "#src/state/app-store.ts";
+import type { TranscriptMessage } from "#src/state/transcript-state.ts";
 import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
 import { renderDebugOverlay } from "#src/ui/debug.tsx";
@@ -20,7 +21,7 @@ import {
 	MessageRenderService,
 	type MessageRenderServiceOptions,
 } from "#src/ui/message-render-service.ts";
-import { renderMessages } from "#src/ui/messages.tsx";
+import { renderMessages, renderOlderMessagesTrigger } from "#src/ui/messages.tsx";
 import {
 	renderSessionPickerContent,
 	renderSlashPicker,
@@ -185,15 +186,12 @@ export class UiRenderer implements AppStorePresentation {
 				this.store.snapshot(),
 			);
 			if (this.transcriptPending || toolPresentationChanged) {
-				this.hub.executeScript("window.piUi.messageScroll.beforeUpdate()");
 				this.hub.patchElement(
 					sessionPerformance.measureSync("transcriptRender", () =>
 						this.renderTranscript(this.projectState(state)),
 					),
 					"#messages",
-					{
-						scripts: ["window.piUi.messageScroll.afterUpdate()"],
-					},
+					{ scripts: ["window.piUi.messageScroll.checkOlder()"] },
 				);
 			}
 			const sidebarLayout = sessionSidebarLayoutKey(state);
@@ -235,6 +233,15 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	messagesRemoved(ids: readonly string[]): void {
 		this.messages.dropMessages(ids);
+		this.hub.patchElement(
+			"",
+			`#message-list > :nth-child(-n+${ids.length} of .message[id])`,
+			{ mode: "remove" },
+		);
+		this.hub.patchElement(
+			renderOlderMessagesTrigger(this.store.hasOlderMessages),
+			"#older-messages-trigger",
+		);
 	}
 	messageUpdated(id: string): void {
 		if (this.hub.clientCount === 0) return;
@@ -276,6 +283,29 @@ export class UiRenderer implements AppStorePresentation {
 	): void {
 		if (this.hub.clientCount > 0)
 			this.messages.transcriptReplaced(activeIds, enhancementIds);
+	}
+	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
+		if (this.hub.clientCount === 0) return;
+		if (messages.length > 0) {
+			this.hub.executeScript("window.piUi.messageScroll.beforeOlder()");
+			this.hub.patchElement(
+				messages.map(({ id }) => this.messages.renderMessageElement(id)).join(""),
+				"#older-messages-trigger",
+				{
+					mode: "after",
+					scripts: ["window.piUi.messageScroll.afterOlder()"],
+				},
+			);
+		}
+		if (!this.store.hasOlderMessages) {
+			this.hub.patchElement(
+				renderOlderMessagesTrigger(false),
+				"#older-messages-trigger",
+			);
+		}
+		for (const message of messages.toReversed()) {
+			this.messages.enqueueEnhancement(message.id);
+		}
 	}
 	projectState(snapshot: AppStateSnapshot): AppRenderSnapshot {
 		return {

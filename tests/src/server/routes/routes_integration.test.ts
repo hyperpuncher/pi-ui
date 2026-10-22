@@ -225,12 +225,6 @@ test("history commands update backend state and return no HTML", async () => {
 		assertEquals(await response.text(), "");
 	}
 	assertEquals(context.store.messages.length, 120);
-	const trimmed = await router.fetch(
-		new Request("http://localhost/messages/trim", { method: "POST" }),
-	);
-	assertEquals(trimmed.status, 204);
-	assertEquals(await trimmed.text(), "");
-	assertEquals(context.store.messages.length, 100);
 	while (context.store.hasOlderMessages) context.store.loadOlderMessages();
 	const empty = await router.fetch(
 		new Request("http://localhost/messages/older", { method: "POST" }),
@@ -1158,6 +1152,7 @@ function fakeContext(
 			overrides.renderer ??
 			uiRendererStub({
 				createStream: () => new Response(),
+				patchOlderMessages: () => {},
 			}),
 		notificationClients: new DatastarClientHub(),
 		resources: {

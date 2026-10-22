@@ -15,6 +15,7 @@ import {
 	renderMarkdownStreaming,
 } from "#src/ui/markdown.tsx";
 import { renderMessage, renderMessages } from "#src/ui/messages.tsx";
+import { deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
 import type { AppMessage } from "#src/ui/render-state.ts";
 import { probeImageDimensions } from "#src/utils/image-dimensions.ts";
 
@@ -75,8 +76,6 @@ function formatActivityDuration(milliseconds: number): string {
 	const seconds = totalSeconds % 60;
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
-
-export type MessagePresentationStats = { entries: number };
 
 /** Owns message presentation caches, frame scheduling, and bounded enhancement work. */
 export class MessageRenderService {
@@ -217,22 +216,12 @@ export class MessageRenderService {
 		for (const id of activeIds) if (id) this.initializeStreaming(id);
 		for (const id of enhancementIds.toReversed()) this.deferEnhancement(id);
 	}
-	/** Drops presentation retained for messages that left the visible window. */
 	dropMessages(ids: readonly string[]): void {
 		for (const id of ids) {
 			this.presentation.delete(id);
-			// Streaming tokenizers, markdown caches, and image urls are keyed
-			// by message id. Without this each trim leaks one batch of
-			// entries for messages that left the visible window.
 			releaseMarkdownStreamingState(id);
-			for (const key of this.imageUrls.keys()) {
-				if (key === id || key.startsWith(`${id}:`)) this.imageUrls.delete(key);
-			}
+			deleteStringKeysWithPrefix(this.imageUrls, `${id}:`);
 		}
-	}
-	/** Test hook: number of retained message presentation entries. */
-	presentationStatsForTest(): MessagePresentationStats {
-		return { entries: this.presentation.size };
 	}
 	enqueueEnhancement(id: string): void {
 		if (!this.store.transcript.isMessageVisible(id)) return;

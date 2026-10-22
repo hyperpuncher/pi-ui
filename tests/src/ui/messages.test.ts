@@ -6,7 +6,7 @@ import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import { MessageRenderService } from "#src/ui/message-render-service.ts";
 import { renderMessage, renderMessages } from "#src/ui/messages.tsx";
 import type { AppMessage } from "#src/ui/render-state.ts";
-import { assert, assertEquals, assertStringIncludes } from "#testing/assertions";
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
 import { assertStringExcludes } from "#testing/assertions";
 
 function tool(overrides: Partial<AppMessage> = {}): AppMessage {
@@ -340,29 +340,17 @@ test("older messages use one wrapper with a load spinner", () => {
 		timestamp: new Date(0),
 	};
 	const html = renderMessages([message], { description: "Send", keys: "enter" }, true);
-	const listIndex = html.indexOf('id="message-list"');
-	const spinnerIndex = html.indexOf('class="older-messages-loading"');
-	const messageIndex = html.indexOf('id="message-user-1"');
-	assert(listIndex >= 0 && listIndex < spinnerIndex && spinnerIndex < messageIndex);
-	assertEquals(html.match(/data-on-intersect/g)?.length ?? 0, 0);
-	assertEquals(html.match(/older-messages-sensor/g)?.length ?? 0, 0);
-	assertStringExcludes(html, "_olderMessagesLoading");
-	assertStringIncludes(html, "classList.add('loading')");
+	assertStringIncludes(html, "data-indicator:_history-loading");
+	assertStringIncludes(html, 'data-show="$_historyLoading"');
 	assertStringIncludes(html, "@post('/messages/older'");
-	assertStringExcludes(html, "@get('/messages/older'");
 	assertStringIncludes(html, "data-on:scroll=");
-	assertStringIncludes(html, "el.scrollTop <= 2 * el.clientHeight");
-	assertStringIncludes(html, "data-on:scrollend");
-	assertStringExcludes(html, "data-on:pi-ui-older");
-	assertStringIncludes(html, "data-on:pi-ui-trim");
-	assertStringExcludes(html, 'id="messages-trim"');
-	assertStringIncludes(html, 'data-has-older="1"');
-	assertStringIncludes(html, "/messages/older");
+	assertStringIncludes(html, "checkOlder()");
+	assertStringIncludes(html, "!$_historyLoading");
 	assertStringIncludes(html, "Loading older messages");
 	const idle = renderMessages([message], { description: "Send", keys: "enter" }, false);
-	assertStringExcludes(idle, 'id="older-messages-trigger"');
-	assertStringExcludes(idle, 'class="older-messages-loading"');
-	assertStringExcludes(idle, 'data-has-older="1"');
+	assertStringIncludes(idle, 'id="older-messages-trigger"');
+	assertStringExcludes(idle, 'data-active="1"');
+	assertStringExcludes(idle, "@post('/messages/older'");
 });
 
 test("thought visibility does not wait for per-row signal effects", () => {

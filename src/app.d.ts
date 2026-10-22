@@ -38,13 +38,12 @@ interface PiUiNamespace {
 		resetDrag(): void;
 	};
 	messageScroll: {
+		beforeOlder(): void;
+		afterOlder(): void;
 		bindResize(): void;
-		beforeUpdate(): void;
-		afterUpdate(): void;
+		checkOlder(): void;
 		hydratePierreDiff(element: HTMLElement): void;
-		isReading(): boolean;
 		scrollBottom(behavior?: "auto" | "smooth"): void;
-		trimOldMessages(): void;
 	};
 	pickers: {
 		close(): void;

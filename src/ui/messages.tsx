@@ -53,41 +53,35 @@ export function renderMessages(
 	sessionCatalogLoading = false,
 	compactTools = false,
 ): string {
-	const loadOlder = `if (window.piUi.messageScroll.isReading() && el.hasAttribute('data-has-older') && !el.matches('.loading, .trimming')) {
-		el.classList.add('loading');
-		@post('${endpoints.messagesOlder}', { payload: {}, retry: 'never' });
-	}`;
 	return syncHtml(
 		<main
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
-			data-has-older={hasOlderMessages ? "1" : undefined}
 			data-class:messages-loading="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading'"
 			data-attr:aria-busy="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
-			data-init="window.piUi.messageScroll.bindResize()"
+			data-init="
+				window.piUi.messageScroll.bindResize();
+				window.piUi.messageScroll.checkOlder()
+			"
 			data-preserve-attr="style"
-			data-on:scroll={`if (evt.target === el && el.scrollTop > 0 && el.scrollTop <= 2 * el.clientHeight) { ${loadOlder} }`}
-			data-on:scrollend={`if (evt.target === el && el.scrollTop <= 2 * el.clientHeight) { ${loadOlder} }`}
-			data-on:wheel={`if (evt.deltaY < 0 && el.scrollHeight <= el.clientHeight) { ${loadOlder} }`}
-			data-on:touchend={`if (el.scrollHeight <= el.clientHeight) { ${loadOlder} }`}
-			data-on:pi-ui-trim={`if (!el.matches('.loading, .trimming')) {
-				el.classList.add('trimming');
-				@post('${endpoints.messagesTrim}', { payload: {}, retry: 'never' });
+			data-on:scroll="window.piUi.messageScroll.checkOlder()"
+			data-indicator:_history-trimming
+			data-on:pi-ui-trim={`if (!$_historyLoading && !$_historyTrimming && !$_sessionTransitionPending) {
+				@post('${endpoints.messagesTrim}', { payload: evt.detail, retry: 'never' });
 			}`}
-			data-on:datastar-fetch="
+			data-on:datastar-fetch={`
 				if (evt.detail.type === 'started') {
 					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
 						$_sessionTransitionPending = true;
 				}
 				if (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') {
-					if (evt.detail.el === el) el.classList.remove('loading', 'trimming');
 					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
 						$_sessionTransitionPending = false;
 				}
-			"
+			`}
 			data-on:keydown__window={keybindActions(
 				[
 					"toggle-thinking",
@@ -98,16 +92,19 @@ export function renderMessages(
 		>
 			<div class="messages-stack">
 				<div id="message-list">
-					{hasOlderMessages && (
-						<div class="older-messages-loading">
-							<Icon
-								name="loader"
-								label="Loading older messages"
-								role="status"
-								class="icon-spin"
-							/>
-						</div>
-					)}
+					<div
+						class="older-messages-loading"
+						data-show="$_historyLoading"
+						style="display: none"
+					>
+						<Icon
+							name="loader"
+							label="Loading older messages"
+							role="status"
+							class="icon-spin"
+						/>
+					</div>
+					{renderOlderMessagesTrigger(hasOlderMessages)}
 					{messages.length === 0
 						? renderEmptyMessages(
 								emptyHint,
@@ -129,6 +126,26 @@ export function renderMessages(
 				)}
 			</div>
 		</main>,
+	);
+}
+
+export function renderOlderMessagesTrigger(active: boolean): string {
+	return syncHtml(
+		<div
+			id="older-messages-trigger"
+			style="height: 1px"
+			data-active={active && "1"}
+			data-indicator:_history-loading
+			data-on:pi-ui-older={
+				active &&
+				`if (!$_historyLoading) { @post('${endpoints.messagesOlder}', { payload: {}, retry: 'never' }) }`
+			}
+			data-on:datastar-fetch={
+				active &&
+				`if (evt.detail.el === el && evt.detail.type === 'finished') window.piUi.messageScroll.checkOlder()`
+			}
+			aria-hidden="true"
+		/>,
 	);
 }
 

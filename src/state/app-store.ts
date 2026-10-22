@@ -533,19 +533,11 @@ export class AppStore {
 		this.commit({ type: "scroll-transcript-bottom" });
 	}
 	loadOlderMessages(): readonly TranscriptMessage[] {
-		const messages = this.transcript.loadOlderMessages();
-		this.presentation?.transcriptReplaced(
-			[],
-			messages.map((message) => message.id),
-		);
-		this.commit({ type: "render-transcript" });
-		return messages;
+		return this.transcript.loadOlderMessages();
 	}
-	trimOldMessages(): readonly string[] {
-		const ids = this.transcript.trimOldMessages();
-		this.presentation?.messagesRemoved(ids);
-		this.commit({ type: "render-transcript" });
-		return ids;
+	trimOldMessages(firstId: string, throughId: string): void {
+		const removed = this.transcript.trimOldMessages(firstId, throughId);
+		if (removed.length > 0) this.presentation?.messagesRemoved(removed);
 	}
 	setModels(models: AppModel[], currentModel: string | undefined): void {
 		this.models = models;

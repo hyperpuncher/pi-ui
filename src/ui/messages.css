@@ -52,7 +52,6 @@
 		display: contents;
 	}
 	.older-messages-loading {
-		display: none;
 		position: absolute;
 		top: -4rem;
 		left: 50%;
@@ -60,9 +59,6 @@
 		translate: -50% 0;
 		color: var(--text-muted);
 		pointer-events: none;
-	}
-	#messages.loading .older-messages-loading {
-		display: block;
 	}
 	.older-messages-loading > svg {
 		width: 1rem;

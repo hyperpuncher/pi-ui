@@ -210,6 +210,7 @@ export class RuntimeController {
 	private readonly usage: UsageController;
 	private readonly extensionUi: ExtensionUiController;
 	private readonly transcript = new TranscriptProjector();
+	private projectedSessionId: string | undefined;
 	private readonly tree: TreeProjector;
 	private foregroundGeneration: number;
 	private foregroundObservedRunning: boolean;
@@ -1680,6 +1681,14 @@ export class RuntimeController {
 	}
 
 	private loadCurrentSessionMessages(): void {
+		const sessionId = this.runtime.session.sessionManager.getSessionId();
+		if (
+			this.projectedSessionId !== undefined &&
+			this.projectedSessionId !== sessionId
+		) {
+			this.state.resetChat();
+		}
+		this.projectedSessionId = sessionId;
 		sessionPerformance.measureSync("transcriptProjection", () =>
 			this.transcript.load(this.runtime, this.state),
 		);
