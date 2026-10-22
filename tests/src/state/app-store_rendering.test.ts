@@ -49,7 +49,7 @@ test("restored messages are readable before final highlighting finishes", async 
 				text.includes("<strong>answer</strong>") && text.includes("message-tool"),
 		);
 		assertNotIncludes(fallback, "data-enhanced");
-		while (gates.length < 2) await Promise.resolve();
+		await waitFor(() => gates.length === 2);
 		gates.forEach((resolve, index) =>
 			resolve(`<div data-enhanced="${index}">safe</div>`),
 		);
@@ -90,7 +90,7 @@ test("ordinary commits exclude finalized assistant messages", async () => {
 	try {
 		const response = state.createStream(controller.signal);
 		state.replaceMessages([markdownMessage("lightweight source")]);
-		while (!gate.ready) await Promise.resolve();
+		await waitFor(() => gate.ready);
 		gate.resolve("<p>large finalized HTML</p>");
 		const { finalized, ordinary } = await collectFinalizedPatches(
 			state,
@@ -379,12 +379,11 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 	assertEqual(older.length, 30);
 	state.renderer.patchOlderMessages(older);
 
-	await waitFor(() => renderCount === 60);
-	assertEqual(state.loadOlderMessages(), []);
 	const immediatePage = state.renderer.messages.renderMessagesElement();
 	assertIncludes(immediatePage, "<strong>message 0</strong>");
 	assertNotIncludes(immediatePage, "**message 0**");
-	assertEqual(renderCount, 60);
+	await waitFor(() => renderCount === 60);
+	assertEqual(state.loadOlderMessages(), []);
 	await waitFor(() =>
 		projectedMessages(state).every(
 			({ presentationState }) => presentationState === "final",
@@ -525,10 +524,10 @@ test("replacement discards stale enhancement completion", async () => {
 	const { state, gates } = gatedEnhancementQueue();
 	connect(state);
 	state.replaceMessages([markdownMessage("session A")]);
-	while (gates.length < 1) await Promise.resolve();
+	await waitFor(() => gates.length >= 1);
 	state.replaceMessages([markdownMessage("session B")]);
 	gates[0].resolve("<p>stale A</p>");
-	while (gates.length < 2) await Promise.resolve();
+	await waitFor(() => gates.length >= 2);
 	gates[1].resolve("<p>final B</p>");
 	await settleMicrotasks();
 
@@ -1160,11 +1159,13 @@ async function settleMicrotasks(): Promise<void> {
 }
 
 async function waitFor(complete: () => boolean): Promise<void> {
-	for (let index = 0; index < 500; index += 1) {
-		if (complete()) return;
-		await Promise.resolve();
+	const deadline = Date.now() + 2_000;
+	while (!complete()) {
+		if (Date.now() >= deadline)
+			throw new Error("Expected asynchronous work did not complete");
+		// Let pending imports and timers run, not only promise callbacks.
+		await Bun.sleep(0);
 	}
-	throw new Error("Expected asynchronous work did not complete");
 }
 
 async function openInitializedStateStream(
