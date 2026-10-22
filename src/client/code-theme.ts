@@ -72,7 +72,9 @@ async function syncStatusColors(themes: CodeThemes): Promise<void> {
 function loadStatusColors(themeName: string): Promise<StatusColors> {
 	const cached = statusColorLoads.get(themeName);
 	if (cached) return cached;
-	const loading = resolveTheme(themeName)
+	// The browser bundle includes Highlights only. Without the explicit backend
+	// this falls back to Shiki, which is external in the client build.
+	const loading = resolveTheme(themeName, "highlights")
 		.then((theme) => ({
 			error:
 				theme.colors?.["gitDecoration.deletedResourceForeground"] ??
