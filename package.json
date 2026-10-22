@@ -70,17 +70,11 @@
 		"typebox": "1.3.27",
 		"typescript": "^7.0.2"
 	},
-	"overrides": {
-		"@pierre/diffs": {
-			"@pierre/highlights": "0.2.0"
-		}
-	},
 	"engines": {
 		"bun": ">=1.4.3"
 	},
 	"packageManager": "bun@1.4.3",
 	"patchedDependencies": {
-		"@earendil-works/pi-coding-agent@1.3.0": "patches/@earendil-works%2Fpi-coding-agent@1.3.0.patch",
-		"@pierre/theming@1.0.1": "patches/@pierre%2Ftheming@1.0.1.patch"
+		"@earendil-works/pi-coding-agent@1.4.0": "patches/@earendil-works%2Fpi-coding-agent@1.4.0.patch"
 	}
 }
