@@ -1,6 +1,7 @@
 const liveEdgeThresholdPx = 8;
 const promptSpacerClearancePx = 48;
 const scrollControlThresholdPx = 48;
+const followTimeConstantMs = 60;
 const state = {
 	middleScrolling: false,
 	pinnedToBottom: true,
@@ -12,6 +13,51 @@ let observedPrompt;
 let messageResizeObserver;
 let pointerStart;
 let olderAnchor;
+let followFrame;
+let followTarget = 0;
+let olderCheckTimer;
+let reducedMotion;
+let latestVisible = false;
+
+function cancelFollow() {
+	if (followFrame !== undefined) cancelAnimationFrame(followFrame);
+	followFrame = undefined;
+}
+
+function bottomOffset(messages) {
+	return Math.max(0, messages.scrollHeight - messages.clientHeight);
+}
+
+// The target is measured by the resize observer, not each frame: reading
+// scrollHeight after a streamed DOM update would force layout every frame.
+function followBottom(messages, target) {
+	followTarget = target;
+	if (followFrame !== undefined || document.hidden) return;
+	reducedMotion ??= window.matchMedia("(prefers-reduced-motion: reduce)");
+	if (reducedMotion.matches) {
+		messages.scrollTop = target;
+		state.scrollTop = messages.scrollTop;
+		return;
+	}
+	let previousTime = performance.now();
+	// Keep fractional progress even though displayed positions use whole pixels.
+	let position = messages.scrollTop;
+	const step = (time) => {
+		followFrame = undefined;
+		if (!state.pinnedToBottom || document.hidden || !messages.isConnected) return;
+		const amount =
+			1 - Math.exp(-Math.max(0, time - previousTime) / followTimeConstantMs);
+		position += (followTarget - position) * amount;
+		if (reducedMotion.matches || followTarget - position <= 1)
+			position = followTarget;
+		messages.scrollTo({ top: Math.round(position), behavior: "instant" });
+		state.scrollTop = messages.scrollTop;
+		previousTime = time;
+		if (position !== followTarget) followFrame = requestAnimationFrame(step);
+		else trimOldMessages();
+	};
+	followFrame = requestAnimationFrame(step);
+}
 
 // Capture immediately before the DOM patch, not when the request starts:
 // the reader can keep scrolling while the network request is in flight.
@@ -52,7 +98,10 @@ function setFollowMode(messages, enabled) {
 }
 
 export function checkOlder() {
-	setTimeout(() => {
+	// Follow scrolls are not reader movement toward older history.
+	if (followFrame !== undefined || olderCheckTimer !== undefined) return;
+	olderCheckTimer = setTimeout(() => {
+		olderCheckTimer = undefined;
 		const messages = document.getElementById("messages");
 		const trigger = document.getElementById("older-messages-trigger");
 		if (!(messages instanceof HTMLElement) || !trigger?.hasAttribute("data-active"))
@@ -100,14 +149,12 @@ export function bindMessageScroll() {
 				messages.scrollTop < state.scrollTop
 			)
 				markUnpinned();
-			const distance =
-				messages.scrollHeight - messages.scrollTop - messages.clientHeight;
 			if (
+				!state.pinnedToBottom &&
 				shouldRearmAfterScroll(
-					state.pinnedToBottom,
 					state.scrollTop,
 					messages.scrollTop,
-					distance,
+					messages.scrollHeight - messages.scrollTop - messages.clientHeight,
 				)
 			) {
 				state.pinnedToBottom = true;
@@ -200,6 +247,13 @@ export function bindMessageScroll() {
 		true,
 	);
 
+	document.addEventListener("visibilitychange", () => {
+		cancelFollow();
+		const messages = document.getElementById("messages");
+		if (!document.hidden && state.pinnedToBottom && messages instanceof HTMLElement)
+			followBottom(messages, bottomOffset(messages));
+	});
+
 	bindMessageResize();
 	scrollBottom();
 }
@@ -208,26 +262,34 @@ export function hasPointerDragIntent(startX, startY, currentX, currentY) {
 	return Math.hypot(currentX - startX, currentY - startY) >= 8;
 }
 
-export function shouldRearmAfterScroll(wasPinned, previousTop, scrollTop, distance) {
-	return !wasPinned && scrollTop > previousTop && distance <= liveEdgeThresholdPx;
+export function shouldRearmAfterScroll(previousTop, scrollTop, distance) {
+	return scrollTop > previousTop && distance <= liveEdgeThresholdPx;
 }
 
 export function scrollBottom(behavior = "auto") {
+	cancelFollow();
 	state.middleScrolling = false;
 	state.pinnedToBottom = true;
 	state.pointerScrolling = false;
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
 	setFollowMode(messages, true);
-	messages.scrollTo({ top: messages.scrollHeight, behavior });
+	reducedMotion ??= window.matchMedia("(prefers-reduced-motion: reduce)");
+	messages.scrollTo({
+		top: messages.scrollHeight,
+		behavior: reducedMotion.matches ? "instant" : behavior,
+	});
 	updateScrollControl();
 	trimOldMessages();
 }
 
 export function markUnpinned() {
+	cancelFollow();
 	state.pinnedToBottom = false;
 	const messages = document.getElementById("messages");
 	if (messages instanceof HTMLElement) {
+		// Stop any native follow animation before returning control to the reader.
+		messages.scrollTo({ top: messages.scrollTop, behavior: "instant" });
 		setFollowMode(messages, false);
 	}
 	updateScrollControl();
@@ -254,24 +316,25 @@ function isUpwardScrollKey(event) {
 export function bindMessageResize() {
 	const stack = document.querySelector("#messages > .messages-stack");
 	const prompt = document.getElementById("prompt-box");
-	if (!(stack instanceof HTMLElement) || !(prompt instanceof HTMLElement)) return;
+	const messages = document.getElementById("messages");
+	if (!stack || !prompt || !messages) return;
 	if (stack === observedMessageStack && prompt === observedPrompt) return;
 	messageResizeObserver ??= new ResizeObserver(() => {
 		updatePromptSpacer();
 		const messages = document.getElementById("messages");
 		if (messages instanceof HTMLElement && state.pinnedToBottom) {
 			setFollowMode(messages, true);
-			messages.scrollTop = messages.scrollHeight;
+			followBottom(messages, bottomOffset(messages));
 		}
 		updateScrollControl();
 		trimOldMessages();
 	});
-	if (observedMessageStack) messageResizeObserver.unobserve(observedMessageStack);
-	if (observedPrompt) messageResizeObserver.unobserve(observedPrompt);
+	messageResizeObserver.disconnect();
 	observedMessageStack = stack;
 	observedPrompt = prompt;
 	messageResizeObserver.observe(stack);
 	messageResizeObserver.observe(prompt);
+	messageResizeObserver.observe(messages);
 }
 
 function updatePromptSpacer() {
@@ -284,14 +347,14 @@ function updatePromptSpacer() {
 
 function updateScrollControl() {
 	const messages = document.getElementById("messages");
-	const button = document.getElementById("messages-latest");
-	if (!(messages instanceof HTMLElement) || !(button instanceof HTMLButtonElement))
-		return;
-	const distance = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
-	const active = !state.pinnedToBottom && distance >= scrollControlThresholdPx;
-	button.hidden = !active;
-	button.inert = !active;
-	button.tabIndex = active ? 0 : -1;
+	if (!(messages instanceof HTMLElement)) return;
+	const active =
+		!state.pinnedToBottom &&
+		messages.scrollHeight - messages.scrollTop - messages.clientHeight >=
+			scrollControlThresholdPx;
+	if (active === latestVisible) return;
+	latestVisible = active;
+	document.dispatchEvent(new CustomEvent("pi-ui-latest-changed", { detail: active }));
 }
 
 export function hydratePierreDiff(host) {

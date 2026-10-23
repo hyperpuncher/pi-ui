@@ -14,8 +14,7 @@ test("pointer presses require drag intent before releasing follow mode", () => {
 });
 
 test("downward scrolling that reaches the live edge re-arms following", () => {
-	assertEquals(shouldRearmAfterScroll(false, 400, 420, 8), true);
-	assertEquals(shouldRearmAfterScroll(false, 400, 420, 8.1), false);
-	assertEquals(shouldRearmAfterScroll(false, 420, 400, 0), false);
-	assertEquals(shouldRearmAfterScroll(true, 400, 420, 0), false);
+	assertEquals(shouldRearmAfterScroll(400, 420, 8), true);
+	assertEquals(shouldRearmAfterScroll(400, 420, 8.1), false);
+	assertEquals(shouldRearmAfterScroll(420, 400, 0), false);
 });

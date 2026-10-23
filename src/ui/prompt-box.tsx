@@ -210,12 +210,13 @@ function renderLatestButton() {
 			class="btn messages-latest"
 			data-variant="outline"
 			data-size="icon"
-			data-preserve-attr="hidden inert tabindex"
+			data-signals:_latest-visible__ifmissing="false"
+			data-on:pi-ui-latest-changed__document="$_latestVisible = evt.detail"
+			data-attr:hidden="!$_latestVisible"
+			data-preserve-attr="hidden"
 			data-on:click="window.piUi.messageScroll.scrollBottom('smooth')"
 			aria-label="Jump to latest message"
 			hidden
-			inert
-			tabindex="-1"
 		>
 			<Icon name="arrow-down" />
 		</button>
