@@ -136,10 +136,6 @@ export class DatastarClientHub {
 		}
 	}
 
-	patchSignals(signals: string): void {
-		this.broadcast((client) => client.patchSignals(signals));
-	}
-
 	private broadcast(send: (client: DatastarClient) => void): void {
 		for (const { stream, disconnect } of this.clients.values()) {
 			try {
