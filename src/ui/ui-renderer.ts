@@ -185,7 +185,11 @@ export class UiRenderer implements AppStorePresentation {
 			const state = sessionPerformance.measureSync("stateSnapshot", () =>
 				this.store.snapshot(),
 			);
-			if (this.transcriptPending || toolPresentationChanged) {
+			if (
+				this.transcriptPending ||
+				toolPresentationChanged ||
+				(fullView && state.messages.length === 0)
+			) {
 				this.hub.patchElement(
 					sessionPerformance.measureSync("transcriptRender", () =>
 						this.messages.renderTranscript(state),

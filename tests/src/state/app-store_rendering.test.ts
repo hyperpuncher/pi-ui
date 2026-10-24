@@ -22,6 +22,13 @@ import {
 import { readUntil, responseReader } from "#testing/streams.ts";
 
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
+const configuredModel = {
+	id: "fixture-model",
+	provider: "fixture",
+	name: "Fixture model",
+	configured: true,
+	scoped: true,
+};
 
 test("restored messages are readable before final highlighting finishes", async () => {
 	const gates: Array<(html: string) => void> = [];
@@ -104,36 +111,71 @@ test.each([
 );
 
 test("ordinary commits skip stable views until their state changes", async () => {
-	const state = createState();
+	const state = stateWithMessages(1);
 	const controller = connection();
 	const reader = await openInitializedStateStream(state, controller.signal);
 	state.setActivityText("Working...");
 	const ordinary = await readUntil(reader, (text) => text.includes("Working..."));
 	assertIncludes(ordinary, 'class="prompt-status-message"');
+	assertNotIncludes(ordinary, 'id="messages"');
 	assertNotIncludes(ordinary, 'id="model-picker"');
 	assertNotIncludes(ordinary, 'id="session-sidebar-content"');
 	assertNotIncludes(ordinary, 'id="workspace-review-data"');
 
-	state.setModels(
-		[
-			{
-				id: "fixture-model",
-				provider: "fixture",
-				name: "Fixture model",
-				configured: true,
-				scoped: true,
-			},
-		],
-		"fixture/fixture-model",
-	);
+	state.setModels([configuredModel], "fixture/fixture-model");
 	const full = await readUntil(
 		reader,
 		(text) =>
 			text.includes("fixture-model") && text.includes("workspace-review-data"),
 	);
+	assertNotIncludes(full, 'id="messages"');
 	assertIncludes(full, 'id="model-picker"');
 	assertIncludes(full, 'id="session-sidebar-content"');
 	assertIncludes(full, 'id="workspace-review-data"');
+});
+
+test("empty chat refreshes login, catalog loading, and recent sessions", async () => {
+	const state = createState();
+	const reader = responseReader(state.createStream(connection().signal));
+	const initial = await readUntil(reader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(initial, "messages-empty-login");
+
+	state.setActivityText("Working...");
+	const ordinary = await readUntil(
+		reader,
+		(text) =>
+			text.includes("Working...") && text.includes("event: datastar-patch-signals"),
+	);
+	assertNotIncludes(ordinary, 'id="messages"');
+	state.setModels([configuredModel], "fixture/fixture-model");
+	const authenticated = await readUntil(reader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	assertIncludes(authenticated, "data: selector #messages");
+	assertNotIncludes(authenticated, "messages-empty-login");
+	assertIncludes(authenticated, "recent-sessions-loading");
+
+	state.setSessionCatalog([
+		{
+			path: "/sessions/recent.jsonl",
+			cwd: "/workspace",
+			title: "Recent fixture",
+			messageCount: 1,
+			modified: "now",
+		},
+	]);
+	state.setSessionCatalogLoading(false);
+	const loaded = await readUntil(reader, (text) =>
+		text.includes("event: datastar-patch-signals"),
+	);
+	const transcript =
+		loaded
+			.split("\n\n")
+			.find((event) => event.includes("data: selector #messages\n")) ?? "";
+	assertIncludes(transcript, "Recent fixture");
+	assertNotIncludes(transcript, "recent-sessions-loading");
 });
 
 test("new messages morph the complete transcript", async () => {
