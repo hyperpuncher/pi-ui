@@ -21,6 +21,7 @@ import { makeTempFile } from "#testing/temp";
 import {
 	agentSessionEventStub,
 	agentSessionRuntimeStub,
+	sessionEntryStub,
 	sessionManagerStub,
 } from "#tests/src/agent/test-fixtures.ts";
 
@@ -255,6 +256,35 @@ async function activate(
 	controller.activate();
 	return controller;
 }
+
+test("resuming from a running session shows only the latest page", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime();
+	const target = fakeRuntime("/sessions/b.jsonl");
+	source.setStreaming(true);
+	target.runtime.session.sessionManager.getBranch = () =>
+		Array.from({ length: 31 }, (_, index) =>
+			sessionEntryStub({
+				type: "message",
+				message: { role: "user", content: `target ${index}`, timestamp: 0 },
+			}),
+		);
+	const controller = await activate(state, [source, target]);
+	try {
+		state.appendMessage("user", "source message");
+		assertEquals(
+			(await controller.resumeSession("/sessions/b.jsonl")).status,
+			"success",
+		);
+		assertEquals(
+			state.messages.map((message) => message.text),
+			Array.from({ length: 30 }, (_, index) => `target ${index + 1}`),
+		);
+		assertEquals(state.hasOlderMessages, true);
+	} finally {
+		await controller.dispose();
+	}
+});
 
 function streamingRuntimes(): [RuntimeFake, RuntimeFake] {
 	const a = fakeRuntime("/sessions/a.jsonl");

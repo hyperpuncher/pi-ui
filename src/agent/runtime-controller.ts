@@ -858,6 +858,8 @@ export class RuntimeController {
 					() => this.bindSession(),
 					transitionId,
 				);
+				// A new session must not inherit the outgoing session's history window.
+				this.state.resetChat({ broadcast: false });
 				this.loadCurrentSessionMessages();
 				sessionPerformance.recordOwnershipDiagnostics(
 					{
