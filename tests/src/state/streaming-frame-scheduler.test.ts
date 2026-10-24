@@ -23,7 +23,6 @@ test("streaming scheduler is latest-wins with one queued frame", () => {
 	assertEqual(clock.pending, 1);
 	clock.advance(streamingIntervalMs);
 	assertEqual(rendered.join(","), "latest");
-	assertEqual(scheduler.stats.coalescedSnapshots, 2);
 });
 
 test("streaming scheduler does not overlap reentrant rendering", () => {
@@ -99,29 +98,35 @@ test("streaming scheduler commits on the fixed streaming cadence", () => {
 	assertNear(times[2] - times[1], streamingIntervalMs, 0.001);
 });
 
-test("streaming scheduler reports skipped and late deadlines", () => {
+test("streaming scheduler keeps its cadence after a late frame", () => {
 	let now = 0;
+	let delayMs = 0;
 	let timer: (() => void) | undefined;
-	const scheduler = new StreamingFrameScheduler<number>(() => {}, {
-		now: () => now,
-		setTimer: (callback) => {
-			timer = callback;
-			return 1;
+	const rendered: number[] = [];
+	const scheduler = new StreamingFrameScheduler<number>(
+		(value) => rendered.push(value),
+		{
+			now: () => now,
+			setTimer: (callback, delay) => {
+				timer = callback;
+				delayMs = delay;
+				return 1;
+			},
+			clearTimer: () => {
+				timer = undefined;
+			},
 		},
-		clearTimer: () => {
-			timer = undefined;
-		},
-	});
+		0,
+	);
 
 	scheduler.schedule(0);
-	scheduler.flush();
-	now = streamingIntervalMs * 2 + 5;
-	scheduler.schedule(1);
-	assertEqual(scheduler.stats.skippedDeadlines, 2);
-
-	now = streamingIntervalMs * 3 + 7;
+	now = streamingIntervalMs + 7;
 	timer?.();
-	assertNear(scheduler.stats.maximumTimerLatenessMs, 7, 0.001);
+	scheduler.schedule(1);
+	assertNear(delayMs, streamingIntervalMs - 7, 0.001);
+	now = streamingIntervalMs * 2;
+	timer?.();
+	assertEqual(rendered, [0, 1]);
 });
 
 test("streaming scheduler skips idle gaps and exact deadlines without losing cadence", () => {
@@ -144,7 +149,6 @@ test("streaming scheduler skips idle gaps and exact deadlines without losing cad
 		clock.advance(idleMs);
 		scheduler.schedule("after idle");
 
-		assertEqual(scheduler.stats.skippedDeadlines, Math.floor(idleMs / interval));
 		const nextDeadline = (Math.floor(idleMs / interval) + 1) * interval;
 		clock.advance(nextDeadline - idleMs - 0.25);
 		assertEqual(rendered, ["before idle"]);

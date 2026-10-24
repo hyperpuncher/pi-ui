@@ -4,13 +4,6 @@ export type StreamingFrameSchedulerClock = {
 	clearTimer: (id: number) => void;
 };
 
-export type StreamingFrameSchedulerStats = {
-	committedFrames: number;
-	coalescedSnapshots: number;
-	skippedDeadlines: number;
-	maximumTimerLatenessMs: number;
-};
-
 const defaultClock: StreamingFrameSchedulerClock = {
 	now: () => performance.now(),
 	setTimer: (callback, delayMs) => Number(setTimeout(callback, delayMs)),
@@ -29,10 +22,6 @@ export class StreamingFrameScheduler<T> {
 	private timer: number | undefined;
 	private nextDeadline: number | undefined;
 	private readonly intervalMs = streamingIntervalMs;
-	private committedFrames = 0;
-	private coalescedSnapshots = 0;
-	private skippedDeadlines = 0;
-	private maximumTimerLatenessMs = 0;
 
 	constructor(
 		private readonly render: (snapshot: T) => void,
@@ -40,17 +29,7 @@ export class StreamingFrameScheduler<T> {
 		private readonly schedulingToleranceMs = 0.5,
 	) {}
 
-	get stats(): StreamingFrameSchedulerStats {
-		return {
-			committedFrames: this.committedFrames,
-			coalescedSnapshots: this.coalescedSnapshots,
-			skippedDeadlines: this.skippedDeadlines,
-			maximumTimerLatenessMs: this.maximumTimerLatenessMs,
-		};
-	}
-
 	schedule(snapshot: T): void {
-		if (this.dirty) this.coalescedSnapshots += 1;
 		this.latest = snapshot;
 		this.dirty = true;
 		if (!this.rendering) this.scheduleTimer();
@@ -85,16 +64,11 @@ export class StreamingFrameScheduler<T> {
 		if (this.nextDeadline <= now) {
 			const skipped = Math.floor((now - this.nextDeadline) / this.intervalMs) + 1;
 			this.nextDeadline += skipped * this.intervalMs;
-			this.skippedDeadlines += skipped;
 		}
 		const deadline = this.nextDeadline;
 		const delay = Math.max(0, deadline - now - this.schedulingToleranceMs);
 		this.timer = this.clock.setTimer(() => {
 			this.timer = undefined;
-			this.maximumTimerLatenessMs = Math.max(
-				this.maximumTimerLatenessMs,
-				Math.max(0, this.clock.now() - deadline),
-			);
 			this.nextDeadline = deadline + this.intervalMs;
 			this.commitLatest();
 		}, delay);
@@ -107,7 +81,6 @@ export class StreamingFrameScheduler<T> {
 		this.rendering = true;
 		try {
 			this.render(snapshot);
-			this.committedFrames += 1;
 		} finally {
 			this.rendering = false;
 		}
