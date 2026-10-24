@@ -211,7 +211,7 @@ test("tool display changes rerender only the active presentation", async () => {
 	assertNotIncludes(appended, "appended_output");
 	assertNotIncludes(appended, "tool-header");
 
-	const older = state.renderer.messages.renderMessagesElement();
+	const older = state.renderer.messages.renderTranscript(state.snapshot());
 	assertIncludes(older, "tool-title-compact");
 	assertNotIncludes(older, "updated_output");
 	assertNotIncludes(older, "tool-header");
@@ -319,7 +319,7 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 	assertEqual(older.length, 30);
 	state.renderer.patchOlderMessages(older);
 
-	const immediatePage = state.renderer.messages.renderMessagesElement();
+	const immediatePage = state.renderer.messages.renderTranscript(state.snapshot());
 	assertIncludes(immediatePage, "<strong>message 0</strong>");
 	assertNotIncludes(immediatePage, "**message 0**");
 	await waitFor(() => renderCount === 60);
@@ -498,7 +498,7 @@ for (const message of [
 		]);
 		await waitFor(() => finish !== undefined);
 		assertEqual(projectedMessages(state)[0].presentationState, "enhancing");
-		const interim = state.renderer.messages.renderMessagesElement();
+		const interim = state.renderer.messages.renderTranscript(state.snapshot());
 		let text = "";
 		await new HTMLRewriter()
 			.on("main", {
@@ -513,7 +513,7 @@ for (const message of [
 		finish?.("<p>highlighting finished</p>");
 		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 		assertIncludes(
-			state.renderer.messages.renderMessagesElement(),
+			state.renderer.messages.renderTranscript(state.snapshot()),
 			"highlighting finished",
 		);
 	});
@@ -604,7 +604,7 @@ test("enhancement errors retain the rendered Markdown fallback", async () => {
 	expect(warn).toHaveBeenCalledTimes(1);
 	assertEqual(projectedMessages(state)[0].presentationState, "plain");
 	assertIncludes(
-		state.renderer.messages.renderMessagesElement(),
+		state.renderer.messages.renderTranscript(state.snapshot()),
 		"<p><strong>fallback</strong></p>",
 	);
 });
@@ -700,7 +700,10 @@ test("last-client disconnect discards in-flight rendering before reconnect", asy
 	gates[0].resolve("<p>stale rendering</p>");
 	await waitFor(() => gates.length === 2);
 	assertEqual(gates[1].text, "current content");
-	assertNotIncludes(state.renderer.messages.renderMessagesElement(), "stale rendering");
+	assertNotIncludes(
+		state.renderer.messages.renderTranscript(state.snapshot()),
+		"stale rendering",
+	);
 	gates[1].resolve("<p>current rendering</p>");
 	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>current rendering</p>");

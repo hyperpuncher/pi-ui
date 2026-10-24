@@ -1,5 +1,5 @@
 import { sessionPerformance } from "#src/perf/session-performance.ts";
-import type { AppStore } from "#src/state/app-store.ts";
+import type { AppStateSnapshot, AppStore } from "#src/state/app-store.ts";
 import { EnhancementQueue } from "#src/state/enhancement-queue.ts";
 import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
 import type {
@@ -125,15 +125,15 @@ export class MessageRenderService {
 	get compactTools(): boolean {
 		return this.store.minimalMode || this.store.toolOutputHidden;
 	}
-	renderMessagesElement(): string {
+	renderTranscript(snapshot: AppStateSnapshot): string {
 		return renderMessages(
-			this.projectMessages(this.store.messages),
-			this.store.emptyChatHint,
-			this.store.hasOlderMessages,
-			this.store.sessions,
-			this.store.models.some((model) => model.configured),
-			this.store.sessionCatalogLoading,
-			this.compactTools,
+			this.projectMessages(snapshot.messages),
+			snapshot.emptyChatHint,
+			snapshot.hasOlderMessages,
+			snapshot.sessions,
+			snapshot.models.some((model) => model.configured),
+			snapshot.sessionCatalogLoading,
+			snapshot.minimalMode || snapshot.toolOutputHidden,
 		);
 	}
 	renderMessageElement(id: string): string | undefined {

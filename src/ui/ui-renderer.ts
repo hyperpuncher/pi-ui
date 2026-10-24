@@ -21,7 +21,7 @@ import {
 	MessageRenderService,
 	type MessageRenderServiceOptions,
 } from "#src/ui/message-render-service.ts";
-import { renderMessages, renderOlderMessagesTrigger } from "#src/ui/messages.tsx";
+import { renderOlderMessagesTrigger } from "#src/ui/messages.tsx";
 import {
 	renderSessionPickerContent,
 	renderSlashPicker,
@@ -114,7 +114,7 @@ export class UiRenderer implements AppStorePresentation {
 					const snapshot = this.store.snapshot();
 					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
 					const elements =
-						this.renderTranscript(this.projectState(snapshot)) +
+						this.messages.renderTranscript(snapshot) +
 						this.renderView(snapshot, view) +
 						renderSessionSidebarContent(snapshot);
 					if (workspaceQuery.trim())
@@ -188,7 +188,7 @@ export class UiRenderer implements AppStorePresentation {
 			if (this.transcriptPending || toolPresentationChanged) {
 				this.hub.patchElement(
 					sessionPerformance.measureSync("transcriptRender", () =>
-						this.renderTranscript(this.projectState(state)),
+						this.messages.renderTranscript(state),
 					),
 					"#messages",
 					{ scripts: ["window.piUi.messageScroll.checkOlder()"] },
@@ -312,17 +312,6 @@ export class UiRenderer implements AppStorePresentation {
 			...snapshot,
 			messages: this.messages.projectMessages(snapshot.messages),
 		};
-	}
-	private renderTranscript(snapshot: AppRenderSnapshot): string {
-		return renderMessages(
-			snapshot.messages,
-			snapshot.emptyChatHint,
-			snapshot.hasOlderMessages,
-			snapshot.sessions,
-			snapshot.models.some((model) => model.configured),
-			snapshot.sessionCatalogLoading,
-			snapshot.minimalMode || snapshot.toolOutputHidden,
-		);
 	}
 	private renderAppElements(snapshot: AppStateSnapshot): string {
 		return (
