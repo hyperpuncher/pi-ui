@@ -517,6 +517,22 @@ test("replacement discards stale enhancement completion", async () => {
 	assertEqual(projectedMessages(state)[0].presentationState, "final");
 });
 
+test("cancelled enhancement cannot change an identical restored message", async () => {
+	const { state, gates } = gatedEnhancementQueue();
+	connect(state);
+	state.replaceMessages([markdownMessage("same content")]);
+	await waitFor(() => gates.length === 1);
+	state.restoreChat(state.snapshotChat());
+	gates[0].resolve("<p>stale output</p>");
+	await waitFor(() => gates.length === 2);
+	assertNotIncludes(projectedMessages(state)[0].renderedHtml ?? "", "stale output");
+
+	gates[1].resolve("<p>current output</p>");
+	await waitFor(
+		() => projectedMessages(state)[0].renderedHtml === "<p>current output</p>",
+	);
+});
+
 for (const message of [
 	{ role: "assistant" },
 	{ role: "thought" },

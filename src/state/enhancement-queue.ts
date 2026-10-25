@@ -1,18 +1,14 @@
 export type EnhancementQueueJob = {
-	key: string;
 	priority: number;
 	run: (signal: AbortSignal) => Promise<void>;
 	onError?: (error: ErrorOptions["cause"]) => void;
 	onCancel?: () => void;
 };
 
-type QueuedJob = EnhancementQueueJob & { sequence: number };
-
 /** Runs presentation-only work without allowing an unbounded restore burst. */
 export class EnhancementQueue {
-	private readonly pending: QueuedJob[] = [];
-	private readonly active = new Map<QueuedJob, AbortController>();
-	private sequence = 0;
+	private readonly pending: EnhancementQueueJob[] = [];
+	private readonly active = new Map<EnhancementQueueJob, AbortController>();
 
 	constructor(private readonly concurrency = 2) {
 		if (!Number.isInteger(concurrency) || concurrency < 1) {
@@ -21,11 +17,8 @@ export class EnhancementQueue {
 	}
 
 	enqueue(job: EnhancementQueueJob): void {
-		this.pending.push({ ...job, sequence: this.sequence++ });
-		this.pending.sort(
-			(left, right) =>
-				right.priority - left.priority || left.sequence - right.sequence,
-		);
+		this.pending.push(job);
+		this.pending.sort((left, right) => right.priority - left.priority);
 		this.drain();
 	}
 

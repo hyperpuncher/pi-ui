@@ -87,7 +87,6 @@ export class MessageRenderService {
 	private readonly queue: EnhancementQueue;
 	private readonly streaming: StreamingFrameScheduler<readonly string[]>;
 	private readonly pendingStreamingIds = new Set<string>();
-	private generation = 0;
 	private readonly renderMarkdownEnhancement: typeof renderMarkdownFinal;
 	private readonly renderCodeEnhancement: (
 		text: string,
@@ -172,7 +171,6 @@ export class MessageRenderService {
 	codeThemeChanged(): void {
 		const streamingIds = new Set(this.streamingIds());
 		this.clearScheduledMessages();
-		this.generation += 1;
 		this.queue.cancelAll();
 		for (const id of this.presentation.keys()) releaseMarkdownStreamingState(id);
 		this.presentation.clear();
@@ -201,7 +199,6 @@ export class MessageRenderService {
 	}
 	transcriptReplacing(): void {
 		this.clearScheduledMessages();
-		this.generation += 1;
 		this.queue.cancelAll();
 		for (const message of this.store.transcript.allMessages)
 			releaseMarkdownStreamingState(message.id);
@@ -239,13 +236,11 @@ export class MessageRenderService {
 			value.presentationState === "final"
 		)
 			return;
-		const generation = this.generation;
 		const text = message.text;
 		const format = message.format;
 		const version = value.presentationVersion;
 		value.presentationState = "enhancing";
 		this.queue.enqueue({
-			key: `${generation}:${id}:${version}:${kind}`,
 			priority: this.store.transcript.getMessageIndex(id) ?? 0,
 			run: async (signal) => {
 				await loadPierreLanguage("bash");
@@ -257,7 +252,6 @@ export class MessageRenderService {
 				if (signal.aborted) return;
 				const current = this.store.transcript.getMessage(id);
 				if (
-					generation !== this.generation ||
 					!current ||
 					current.text !== text ||
 					current.format !== format ||
@@ -275,15 +269,10 @@ export class MessageRenderService {
 			},
 			onCancel: () => releaseMarkdownStreamingState(id),
 			onError: (error) => {
-				if (
-					generation !== this.generation ||
-					!this.store.transcript.isMessageVisible(id)
-				)
-					return;
+				if (!this.store.transcript.isMessageVisible(id)) return;
 				const current = this.store.transcript.getMessage(id);
 				const currentValue = this.ensure(id);
 				if (
-					generation === this.generation &&
 					current?.text === text &&
 					current.format === format &&
 					currentValue.presentationVersion === version
