@@ -39,6 +39,7 @@ import {
 import { workspaceMenuButton } from "#src/client/workspace-tree-menu.ts";
 import { createWorkspaceTreeExpansion } from "#src/client/workspace-tree.ts";
 import { activeCodeThemes, isCodeThemes, setCodeThemes } from "#src/pierre-theme.ts";
+import { deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
 import { isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
 import type { WorkspaceReviewComment } from "#src/workspace-review-comments.ts";
 import { workspaceReviewTreeOptions } from "#src/workspace-review-tree.ts";
@@ -426,7 +427,7 @@ function activateWorking(path?: string): void {
 	selection = { kind: "working", path };
 	items = workingItems;
 	itemsByPath = itemMap(items);
-	hideDetailHeader();
+	hideWorkspaceReviewDetailHeader(detailHeader);
 	publish();
 }
 
@@ -486,9 +487,7 @@ function loadCommit(hash: string): Promise<CommitView | undefined> {
 			while (commitCache.size > maxCommitCacheEntries) {
 				const oldest = commitCache.keys().next().value!;
 				commitCache.delete(oldest);
-				for (const key of itemRevisions.keys()) {
-					if (key.startsWith(`${oldest}:`)) itemRevisions.delete(key);
-				}
+				deleteStringKeysWithPrefix(itemRevisions, `${oldest}:`);
 			}
 			return view;
 		})
@@ -744,10 +743,6 @@ function renderDetailHeader(detail: CommitView["detail"]): void {
 	const commit =
 		historyCommits.find(({ hash }) => hash === detail.commit.hash) ?? detail.commit;
 	showWorkspaceReviewDetailHeader(detailHeader, { ...detail, commit });
-}
-
-function hideDetailHeader(): void {
-	hideWorkspaceReviewDetailHeader(detailHeader);
 }
 
 function canAddComments(): boolean {

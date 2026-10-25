@@ -343,7 +343,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			onEditChange({ file }) {
 				draft = file.contents;
 				dirty = draft !== current?.contents;
-				syncSaveButton();
+				syncToolbar();
 			},
 			unsafeCSS: `
 				@media (prefers-reduced-motion: no-preference) {
@@ -386,7 +386,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	function refreshAfterDiscard(path: string): void {
 		if (current?.path === path) {
 			dirty = false;
-			syncSaveButton();
+			syncToolbar();
 		}
 		void refreshFromDisk();
 	}
@@ -727,7 +727,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			editor = undefined;
 			setStatus(errorMessage(error));
 		} finally {
-			syncSaveButton();
+			syncToolbar();
 		}
 	}
 
@@ -745,7 +745,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		} catch (error) {
 			setStatus(errorMessage(error));
 		} finally {
-			syncSaveButton();
+			syncToolbar();
 		}
 	}
 
@@ -754,16 +754,12 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		// over the disk snapshot, even when its contents are unchanged.
 		editor?.cleanUp("discard");
 		editor = undefined;
-		syncSaveButton();
+		syncToolbar();
 	}
 
 	function setSelectedFilePath(path?: string): void {
 		selectedFilePath = path;
 		downloadButton.hidden = !path;
-	}
-
-	function syncSaveButton(): void {
-		syncToolbar();
 	}
 
 	function syncToolbar(): void {
@@ -892,7 +888,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		tree.cleanUp();
 	}
 
-	syncSaveButton();
+	syncToolbar();
 	showEmpty("Open a file from the workspace");
 	return {
 		cleanUp,

@@ -245,7 +245,7 @@ export class RuntimeController {
 		this.llama = new LlamaController(
 			() => this.runtime,
 			state,
-			() => this.syncModels(),
+			() => this.models.sync(),
 		);
 		this.usage = new UsageController(() => this.runtime, state);
 		this.tree = new TreeProjector(
@@ -1399,7 +1399,7 @@ export class RuntimeController {
 					? "Working..."
 					: undefined,
 			);
-			this.syncModels();
+			this.models.sync();
 			this.models.syncThinking();
 			this.state.setThinkingHidden(
 				session.settingsManager?.getHideThinkingBlock() ?? false,
@@ -1485,10 +1485,6 @@ export class RuntimeController {
 		this.models.syncThinking();
 		this.usage.sync();
 		this.usage.refresh(true);
-	}
-
-	private syncModels(): void {
-		this.models.sync();
 	}
 
 	private handleEvent(event: AgentSessionEvent): void {
