@@ -7,6 +7,7 @@ import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 
 import { getToolPath } from "#pi/utils/tools-manager.js";
 import { notifySessionDone } from "#src/browser-notifications.ts";
+import { compressResponse } from "#src/server/compression.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { executeRoute } from "#src/server/route.ts";
 import { appRoutes } from "#src/server/routes.ts";
@@ -919,12 +920,15 @@ test("native media previews expose metadata and byte ranges", async () => {
 	const workspace = await makeTempDir();
 	const context = fakeContext();
 	context.store.setWorkspacePath(workspace);
-	const router = createRouter(context);
+	const server = serveRouter(context);
 	const bytes = Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 	try {
 		await Bun.write(`${workspace}/clip.mp4`, bytes);
-		const url = `http://localhost${endpoints.workspaceFileContent}?path=clip.mp4`;
-		const metadata = await (await router.fetch(new Request(url))).json();
+		const url = new URL(
+			`${endpoints.workspaceFileContent}?path=clip.mp4`,
+			server.url,
+		);
+		const metadata = await (await fetch(url)).json();
 		assertEquals(metadata, {
 			path: "clip.mp4",
 			preview: {
@@ -935,25 +939,58 @@ test("native media previews expose metadata and byte ranges", async () => {
 			revision: `${Bun.file(`${workspace}/clip.mp4`).lastModified}:${bytes.length}`,
 			size: bytes.length,
 		});
-		const partial = await router.fetch(
-			new Request(`${url}&preview=1`, { headers: { range: "bytes=2-5" } }),
-		);
+		const partial = await fetch(`${url}&preview=1`, {
+			headers: { range: "bytes=2-5" },
+		});
 		assertEquals(partial.status, 206);
 		assertEquals(partial.headers.get("accept-ranges"), "bytes");
 		assertEquals(partial.headers.get("content-range"), "bytes 2-5/10");
 		assertEquals(partial.headers.get("content-type"), "video/mp4");
 		assertEquals(await partial.bytes(), bytes.slice(2, 6));
-		const suffix = await router.fetch(
-			new Request(`${url}&preview=1`, { headers: { range: "bytes=-3" } }),
-		);
+		const suffix = await fetch(`${url}&preview=1`, {
+			headers: { range: "bytes=-3" },
+		});
 		assertEquals(suffix.headers.get("content-range"), "bytes 7-9/10");
 		assertEquals(await suffix.bytes(), bytes.slice(7));
-		const invalid = await router.fetch(
-			new Request(`${url}&preview=1`, { headers: { range: "bytes=10-" } }),
-		);
+		const invalid = await fetch(`${url}&preview=1`, {
+			headers: { range: "bytes=10-" },
+		});
 		assertEquals(invalid.status, 416);
 		assertEquals(invalid.headers.get("content-range"), "bytes */10");
+		await invalid.arrayBuffer();
 	} finally {
+		await server.stop(true);
+		await rm(workspace, { recursive: true });
+	}
+});
+
+test("SVG preview ranges keep security headers and bypass compression", async () => {
+	const workspace = await makeTempDir();
+	const context = fakeContext();
+	context.store.setWorkspacePath(workspace);
+	const server = serveRouter(context);
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg">${" ".repeat(2048)}</svg>`;
+	try {
+		await Bun.write(`${workspace}/vector.svg`, svg);
+		const url = new URL(
+			`${endpoints.workspaceFileContent}?path=vector.svg&preview=1`,
+			server.url,
+		);
+		const partial = await fetch(url, {
+			headers: { range: "bytes=0-3", "accept-encoding": "zstd" },
+		});
+		assertEquals(partial.status, 206);
+		assertEquals(partial.headers.get("content-encoding"), null);
+		assertStringIncludes(
+			partial.headers.get("content-security-policy") ?? "",
+			"sandbox;",
+		);
+		assertEquals(await partial.text(), "<svg");
+		const full = await fetch(url, { headers: { "accept-encoding": "zstd" } });
+		assertEquals(full.headers.get("content-encoding"), "zstd");
+		assertEquals(await full.text(), svg);
+	} finally {
+		await server.stop(true);
 		await rm(workspace, { recursive: true });
 	}
 });
@@ -1119,6 +1156,15 @@ test("HTML previews render outside the workspace with relative assets", async ()
 		await rm(outsideDirectory, { recursive: true });
 	}
 });
+
+function serveRouter(context: RouteContext) {
+	const router = createRouter(context);
+	return Bun.serve({
+		hostname: "127.0.0.1",
+		port: 0,
+		fetch: async (request) => compressResponse(request, await router.fetch(request)),
+	});
+}
 
 function createRouter(context: RouteContext) {
 	return {

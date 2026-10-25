@@ -37,6 +37,8 @@ export function compressResponse(request: Request, response: Response): Response
 	}
 	if (
 		request.method === "HEAD" ||
+		// Bun applies file ranges after the handler returns.
+		request.headers.has("range") ||
 		response.status === 206 ||
 		response.headers.has("content-range") ||
 		response.headers.get("cache-control")?.toLowerCase().includes("no-transform") ||

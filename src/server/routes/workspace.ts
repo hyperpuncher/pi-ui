@@ -206,7 +206,7 @@ export const workspaceRoutes = {
 		},
 	},
 	[endpoints.workspaceFileContent]: {
-		GET: async (request, context, url) => {
+		GET: async (_request, context, url) => {
 			const params = url.searchParams;
 			const filePath = params.get("path") ?? "";
 			if (params.get("download") === "1") {
@@ -235,13 +235,7 @@ export const workspaceRoutes = {
 				if (!preview || preview.kind === "html" || preview.kind === "markdown") {
 					throw new RouteError(415, "This file cannot be previewed.");
 				}
-				return previewFileResponse(
-					request,
-					file,
-					filePath,
-					size,
-					preview.mimeType,
-				);
+				return previewFileResponse(file, filePath, size, preview.mimeType);
 			}
 			return workspaceFileViewResponse(context, filePath);
 		},
@@ -465,17 +459,16 @@ async function workspaceFileViewResponse(
 }
 
 function previewFileResponse(
-	request: Request,
-	file: Blob,
+	file: Bun.BunFile,
 	filePath: string,
 	size: number,
 	mimeType: string,
 ): Response {
 	const headers = new Headers({
-		"accept-ranges": "bytes",
 		"cache-control": "no-store",
 		"content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(basename(filePath))}`,
 		"content-type": mimeType,
+		"content-length": String(size),
 		"x-content-type-options": "nosniff",
 	});
 	if (mimeType === "image/svg+xml") {
@@ -484,37 +477,5 @@ function previewFileResponse(
 			"sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
 		);
 	}
-	const requested = request.headers.get("range");
-	if (!requested) {
-		headers.set("content-length", String(size));
-		return new Response(file, { headers });
-	}
-	const range = parseByteRange(requested, size);
-	if (!range) {
-		headers.set("content-range", `bytes */${size}`);
-		return new Response(null, { status: 416, headers });
-	}
-	const [start, end] = range;
-	headers.set("content-length", String(end - start + 1));
-	headers.set("content-range", `bytes ${start}-${end}/${size}`);
-	return new Response(file.slice(start, end + 1), { status: 206, headers });
-}
-
-function parseByteRange(value: string, size: number): [number, number] | undefined {
-	const match = /^bytes=(\d*)-(\d*)$/.exec(value);
-	if (!match || (!match[1] && !match[2]) || size === 0) return undefined;
-	const first = match[1] ? Number(match[1]) : undefined;
-	const last = match[2] ? Number(match[2]) : undefined;
-	if (
-		(first !== undefined && !Number.isSafeInteger(first)) ||
-		(last !== undefined && (!Number.isSafeInteger(last) || last < 0))
-	)
-		return undefined;
-	if (first === undefined) {
-		if (!last) return undefined;
-		return [Math.max(0, size - last), size - 1];
-	}
-	if (first >= size) return undefined;
-	const end = last === undefined ? size - 1 : Math.min(last, size - 1);
-	return end < first ? undefined : [first, end];
+	return new Response(file, { headers });
 }
