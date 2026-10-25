@@ -4,35 +4,13 @@ export type UsageRequestModel = {
 };
 
 export type UsageRequestIdentity<Runtime extends object, Session extends object> = {
-	generation: number;
 	runtime: Runtime;
 	session: Session;
 	provider: string | undefined;
 	modelId: string | undefined;
 };
 
-type UsageRequestContext<Runtime extends object, Session extends object> = {
-	generation: number;
-	runtime: Runtime;
-	session: Session;
-	model: UsageRequestModel | undefined;
-};
-
-export function matchesUsageRequest<Runtime extends object, Session extends object>(
-	request: UsageRequestIdentity<Runtime, Session>,
-	current: UsageRequestContext<Runtime, Session>,
-): boolean {
-	return (
-		request.generation === current.generation &&
-		request.runtime === current.runtime &&
-		request.session === current.session &&
-		request.provider === current.model?.provider &&
-		request.modelId === current.model?.id
-	);
-}
-
 export class UsageRequestTracker {
-	private generation = 0;
 	private active: UsageRequestIdentity<object, object> | undefined;
 
 	begin<Runtime extends object, Session extends object>(
@@ -40,9 +18,7 @@ export class UsageRequestTracker {
 		session: Session,
 		model: UsageRequestModel | undefined,
 	): UsageRequestIdentity<Runtime, Session> {
-		this.generation += 1;
 		const request = {
-			generation: this.generation,
 			runtime,
 			session,
 			provider: model?.provider,
@@ -53,7 +29,6 @@ export class UsageRequestTracker {
 	}
 
 	invalidate(): void {
-		this.generation += 1;
 		this.active = undefined;
 	}
 
@@ -65,12 +40,10 @@ export class UsageRequestTracker {
 	): boolean {
 		return (
 			this.active === request &&
-			matchesUsageRequest(request, {
-				generation: this.generation,
-				runtime,
-				session,
-				model,
-			})
+			request.runtime === runtime &&
+			request.session === session &&
+			request.provider === model?.provider &&
+			request.modelId === model?.id
 		);
 	}
 
