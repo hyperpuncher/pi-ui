@@ -45,18 +45,17 @@ export function bindDebugFrames() {
 	function tick(now) {
 		const sample = sampler.add(now);
 		if (sample) {
-			rate.textContent = `${Math.round(sample.rate)} /s`;
-			median.textContent = `${sample.median.toFixed(1)} ms`;
-			p95.textContent = `${sample.p95.toFixed(1)} ms`;
-			max.textContent = `${sample.max.toFixed(1)} ms`;
+			rate.textContent = String(Math.round(sample.rate));
+			median.textContent = sample.median.toFixed(1);
+			p95.textContent = sample.p95.toFixed(1);
+			max.textContent = sample.max.toFixed(1);
 		}
 		frame = requestAnimationFrame(tick);
 	}
 	function updateVisibility() {
 		if (frame !== undefined) cancelAnimationFrame(frame);
 		sampler.reset();
-		rate.textContent = document.hidden ? "paused" : "sampling";
-		median.textContent = p95.textContent = max.textContent = "—";
+		rate.textContent = median.textContent = p95.textContent = max.textContent = "—";
 		if (!document.hidden) frame = requestAnimationFrame(tick);
 	}
 	document.addEventListener("visibilitychange", updateVisibility);
