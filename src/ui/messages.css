@@ -225,9 +225,15 @@
 		margin-block-start: 0.75rem;
 	}
 	.tool-plain-output {
+		/* Bottom-align the single text block without measuring each DOM update. */
+		display: flex;
 		max-height: calc(5lh + 1px);
+		flex-direction: column-reverse;
 		overflow: auto;
 		line-height: 1.375rem;
+	}
+	.tool-plain-output > pre {
+		flex: none;
 	}
 
 	.tool-command-title {

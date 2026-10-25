@@ -258,13 +258,7 @@ function renderCodeOutput(message: AppMessage) {
 
 function renderPlainOutput(message: AppMessage) {
 	return (
-		<div
-			class="tool-output tool-output-surface tool-plain-output"
-			data-init={`
-				el.scrollTop = el.scrollHeight;
-				${message.presentationVersion};
-			`}
-		>
+		<div class="tool-output tool-output-surface tool-plain-output">
 			{renderPendingToolOutput(message.text, "tool-output-padding")}
 		</div>
 	);
