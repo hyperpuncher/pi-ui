@@ -227,9 +227,6 @@
 	.session-sidebar-group {
 		padding: 0 0.5rem 0.5rem;
 	}
-	body:not([data-keybind-hints]) .session-sidebar-group {
-		padding-block-start: 0.5rem;
-	}
 
 	#session-sidebar-content,
 	#session-sidebar-content ul {

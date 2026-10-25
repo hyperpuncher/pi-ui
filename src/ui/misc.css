@@ -114,7 +114,10 @@
 @layer utilities {
 	body:not([data-keybind-hints]) [data-keybind-hint],
 	[data-minimal-mode] [data-keybind-hint] {
-		display: none;
+		/* Keep control sizes unchanged when hints are hidden. */
+		visibility: hidden;
+		opacity: 0;
+		transition: none;
 	}
 
 	@media (width <= 48rem) {

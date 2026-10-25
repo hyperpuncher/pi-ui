@@ -269,28 +269,26 @@
 	}
 	#workspace-review .workspace-mode-control > .workspace-mode-button {
 		display: flex;
-		flex: 1;
+		flex: 1 1 0;
+		min-inline-size: 0;
+		min-block-size: 1.5rem;
 		align-items: center;
 		justify-content: center;
-		gap: 0;
+		gap: 0.5rem;
 		border-radius: 4px;
 		padding: 0.125rem 0.5rem;
 	}
-	.workspace-mode-button .shortcut {
-		inline-size: max-content;
-		margin-inline-start: 0.5rem;
-		overflow: clip;
-	}
+
+	/* Keep tab sizes stable, but center labels when their hints are hidden. */
+	body:not([data-keybind-hints]) .workspace-mode-button .shortcut,
+	[data-minimal-mode] .workspace-mode-button .shortcut,
 	#workspace-files-sidebar:has(.review-sidebar-panel:focus-within)
 		.workspace-mode-button[data-workspace-mode="files"]
 		.shortcut,
 	#review-git-sidebar:has(.review-sidebar-panel:focus-within)
 		.workspace-mode-button[data-workspace-mode="git"]
 		.shortcut {
-		inline-size: 0;
-		margin-inline-start: 0;
-		opacity: 0;
-		visibility: hidden;
+		display: none;
 	}
 	.review-main:focus-within > .review-toolbar .review-toolbar-controls > .shortcut {
 		visibility: hidden;
