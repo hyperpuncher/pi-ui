@@ -31,6 +31,7 @@ import { llamaProviderExtension } from "#src/agent/llama-provider-extension.ts";
 import { mermaidExtension } from "#src/agent/mermaid-extension.ts";
 import { ModelController } from "#src/agent/model-controller.ts";
 import "#src/agent/codemode-assets.ts";
+import { resolvePath } from "#pi/utils/paths.js";
 import {
 	PromptLifecycle,
 	type PromptStreamingBehavior,
@@ -53,7 +54,6 @@ import {
 	type SessionEventToolState,
 	type ToolArguments,
 } from "#src/agent/session-event-reducer.ts";
-import { executeSessionResume } from "#src/agent/session-resume.ts";
 import { shareSession } from "#src/agent/session-share.ts";
 import {
 	SessionTransitionController,
@@ -757,12 +757,12 @@ export class RuntimeController {
 		sessionPath: string,
 		transitionId?: number,
 	): Promise<boolean> {
-		const sourceStreaming = this.runtime.session.isStreaming;
+		if (!sessionPath.trim()) return false;
 		const sourcePersisted = this.runtime.session.sessionManager.isPersisted();
 		sessionPerformance.recordOwnershipDiagnostics(
 			{
 				sourceGeneration: this.foregroundGeneration,
-				sourceSdkStreaming: sourceStreaming,
+				sourceSdkStreaming: this.runtime.session.isStreaming,
 				sourceObservedRunning: this.foregroundObservedRunning,
 				sourcePersisted,
 				sourceLocationBefore: "foreground",
@@ -772,95 +772,34 @@ export class RuntimeController {
 			},
 			transitionId,
 		);
-		const resumed = await executeSessionResume(sessionPath, {
-			state: () => ({
-				active: this.isCurrentRuntimeActive(),
-				persisted: sourcePersisted,
-			}),
-			findBackground: (path) => {
-				const session = this.backgroundSessions.get(path);
-				sessionPerformance.recordOwnershipDiagnostics(
-					{
-						targetBackgroundLookup: session ? "hit" : "miss",
-						targetLocationBefore: session
-							? session.status === "running"
-								? "background-running"
-								: "background-completed"
-							: "disposed",
-					},
-					transitionId,
-				);
-				return session;
+		const canonicalPath = resolvePath(sessionPath);
+		const background = this.backgroundSessions.get(canonicalPath);
+		sessionPerformance.recordOwnershipDiagnostics(
+			{
+				targetBackgroundLookup: background ? "hit" : "miss",
+				targetLocationBefore: background
+					? background.status === "running"
+						? "background-running"
+						: "background-completed"
+					: "disposed",
 			},
-			activateBackground: async (path, session) => {
-				const activation = this.backgroundSessions.beginActivation(path);
-				if (!activation || activation.runtime !== session) {
-					throw new RuntimeOwnershipInvariantError();
-				}
-				session.activating = true;
-				const action = this.currentRuntimeLeaveAction();
-				sessionPerformance.recordOwnershipDiagnostics(
-					{ leaveAction: action },
-					transitionId,
-				);
-				try {
-					await sessionPerformance.measure(
-						"backgroundActivation",
-						() => this.activateRuntime(session),
-						transitionId,
-					);
-					activation.commit();
-					sessionPerformance.recordOwnershipDiagnostics(
-						{
-							sourceLocationAfter: this.leaveActionLocation(action),
-							targetLocationAfter: "foreground",
-						},
-						transitionId,
-					);
-				} catch (error) {
-					activation.rollback();
-					if (session.status === "completed") {
-						this.releaseBackgroundSession(session);
-					}
-					throw error;
-				} finally {
-					session.activating = false;
-				}
-			},
-			openSession: (path) => {
-				const manager = sessionPerformance.measureSync(
-					"sessionManagerOpen",
-					() => this.dependencies.openSessionManager(path, this.sessionDir),
-					transitionId,
-				);
-				sessionPerformance.recordSessionOpen(transitionId);
-				return manager;
-			},
-			replaceRuntime: async (sessionManager, action) => {
-				sessionPerformance.recordOwnershipDiagnostics(
-					{ leaveAction: action },
-					transitionId,
-				);
-				await this.leaveCurrentRuntimeForReplacement(action);
-				const replacement = await sessionPerformance.measure(
-					"runtimeSwitchCreate",
-					() =>
-						this.dependencies.createRuntime(this.runtimeFactory, {
-							cwd: sessionManager.getCwd(),
-							agentDir: this.dependencies.getAgentDir(),
-							sessionManager,
-						}),
-					transitionId,
-				);
-				this.adoptRuntime(replacement);
+			transitionId,
+		);
+		let resumed = true;
+		if (background) {
+			background.activating = true;
+			const action = this.currentRuntimeLeaveAction();
+			sessionPerformance.recordOwnershipDiagnostics(
+				{ leaveAction: action },
+				transitionId,
+			);
+			try {
 				await sessionPerformance.measure(
-					"runtimeRebind",
-					() => this.bindSession(),
+					"backgroundActivation",
+					() => this.activateRuntime(background),
 					transitionId,
 				);
-				// A new session must not inherit the outgoing session's history window.
-				this.state.resetChat({ broadcast: false });
-				this.loadCurrentSessionMessages();
+				this.backgroundSessions.release(canonicalPath, background);
 				sessionPerformance.recordOwnershipDiagnostics(
 					{
 						sourceLocationAfter: this.leaveActionLocation(action),
@@ -868,31 +807,76 @@ export class RuntimeController {
 					},
 					transitionId,
 				);
-			},
-			switchSession: async (path) => {
+			} catch (error) {
+				if (background.status === "completed")
+					this.releaseBackgroundSession(background);
+				throw error;
+			} finally {
+				background.activating = false;
+			}
+		} else if (!this.isCurrentRuntimeActive() && sourcePersisted) {
+			sessionPerformance.recordOwnershipDiagnostics(
+				{ leaveAction: "dispose" },
+				transitionId,
+			);
+			const result = await sessionPerformance.measure(
+				"runtimeSwitchCreate",
+				() => this.runtime.switchSession(sessionPath),
+				transitionId,
+			);
+			resumed = !result.cancelled;
+			if (resumed) {
+				sessionPerformance.recordSessionOpen(transitionId);
+				this.adoptRuntime(this.runtime);
 				sessionPerformance.recordOwnershipDiagnostics(
-					{ leaveAction: "dispose" },
+					{
+						sourceLocationAfter: "disposed",
+						targetLocationAfter: "foreground",
+					},
 					transitionId,
 				);
-				const result = await sessionPerformance.measure(
-					"runtimeSwitchCreate",
-					() => this.runtime.switchSession(path),
-					transitionId,
-				);
-				if (!result.cancelled) {
-					sessionPerformance.recordSessionOpen(transitionId);
-					this.adoptRuntime(this.runtime);
-					sessionPerformance.recordOwnershipDiagnostics(
-						{
-							sourceLocationAfter: "disposed",
-							targetLocationAfter: "foreground",
-						},
-						transitionId,
-					);
-				}
-				return result;
-			},
-		});
+			}
+		} else {
+			// Parse the target before changing ownership of the outgoing runtime.
+			const manager = sessionPerformance.measureSync(
+				"sessionManagerOpen",
+				() => this.dependencies.openSessionManager(sessionPath, this.sessionDir),
+				transitionId,
+			);
+			sessionPerformance.recordSessionOpen(transitionId);
+			const action = this.currentRuntimeLeaveAction();
+			sessionPerformance.recordOwnershipDiagnostics(
+				{ leaveAction: action },
+				transitionId,
+			);
+			await this.leaveCurrentRuntimeForReplacement(action);
+			const replacement = await sessionPerformance.measure(
+				"runtimeSwitchCreate",
+				() =>
+					this.dependencies.createRuntime(this.runtimeFactory, {
+						cwd: manager.getCwd(),
+						agentDir: this.dependencies.getAgentDir(),
+						sessionManager: manager,
+					}),
+				transitionId,
+			);
+			this.adoptRuntime(replacement);
+			await sessionPerformance.measure(
+				"runtimeRebind",
+				() => this.bindSession(),
+				transitionId,
+			);
+			// A new session must not inherit the outgoing session's history window.
+			this.state.resetChat({ broadcast: false });
+			this.loadCurrentSessionMessages();
+			sessionPerformance.recordOwnershipDiagnostics(
+				{
+					sourceLocationAfter: this.leaveActionLocation(action),
+					targetLocationAfter: "foreground",
+				},
+				transitionId,
+			);
+		}
 		sessionPerformance.recordOwnershipDiagnostics(
 			{
 				ownedLiveRuntimeCount: this.ownedLiveRuntimeCount(),

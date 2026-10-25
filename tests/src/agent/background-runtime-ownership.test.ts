@@ -9,20 +9,20 @@ import { assertEquals, assertStrictEquals, assertThrows } from "#testing/asserti
 
 type FakeRuntime = OwnedBackgroundRuntime & { name: string };
 
-test("activation rollback retains its runtime", () => {
-	const { ownership, target, activation } = activateOwnedRuntime();
-	activation.rollback();
+test("release rejects a changed runtime owner", () => {
+	const { ownership, target } = ownedRuntime();
+	const replacement = fakeRuntime("B", ownership.allocateGeneration());
+	ownership.delete("A");
+	ownership.register("A", replacement);
 
-	assertStrictEquals(ownership.get("A"), target);
+	assertThrows(() => ownership.release("A", target), RuntimeOwnershipInvariantError);
+	assertStrictEquals(ownership.get("A"), replacement);
+	assertEquals(ownership.invariantFailureCount, 1);
 });
 
-test("activation commit removes its runtime exactly once", () => {
-	const { ownership, target, activation } = activateOwnedRuntime();
-
-	target.observedRunning = false;
-	target.status = "completed";
-	activation.commit();
-	activation.commit();
+test("release removes its owned runtime", () => {
+	const { ownership, target } = ownedRuntime();
+	ownership.release("A", target);
 
 	assertEquals(ownership.get("A"), undefined);
 	assertEquals(ownership.invariantFailureCount, 0);
@@ -42,13 +42,11 @@ test("register rejects replacing an owned runtime", () => {
 	assertEquals(ownership.invariantFailureCount, 1);
 });
 
-function activateOwnedRuntime() {
+function ownedRuntime() {
 	const ownership = new BackgroundRuntimeOwnership<FakeRuntime>();
 	const target = fakeRuntime("A", ownership.allocateGeneration());
 	ownership.register("A", target);
-	const activation = ownership.beginActivation("A");
-	if (!activation) throw new Error("missing activation");
-	return { ownership, target, activation };
+	return { ownership, target };
 }
 
 function fakeRuntime(name: string, generation: number): FakeRuntime {

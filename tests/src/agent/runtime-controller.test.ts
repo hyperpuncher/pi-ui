@@ -286,6 +286,99 @@ test("resuming from a running session shows only the latest page", async () => {
 	}
 });
 
+test("cancelled resume keeps the current session and chat", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime();
+	source.runtime.switchSession = async () => ({ cancelled: true });
+	const controller = await activate(state, [source]);
+	state.appendMessage("user", "source content");
+	const path = state.currentSessionPath;
+	try {
+		assertEquals(
+			(await controller.resumeSession("/sessions/b.jsonl")).status,
+			"cancelled",
+		);
+		assertEquals(state.currentSessionPath, path);
+		assertEquals(
+			state.messages.map((message) => message.text),
+			["source content"],
+		);
+		assertEquals(source.disposeCount, 0);
+	} finally {
+		await controller.dispose();
+	}
+});
+
+test("resume uses the target workspace", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
+	const target = fakeRuntime("/sessions/target.jsonl", true, "/work/target");
+	source.setStreaming(true);
+	const base = dependencies([source, target]);
+	let createdCwd: string | undefined;
+	const controller = await RuntimeController.prepare(state, "/work/source", {
+		dependencies: {
+			...base,
+			createRuntime: (factory, options) => {
+				createdCwd = options?.cwd;
+				return base.createRuntime(factory, options);
+			},
+			openSessionManager: (path) => manager(path, true, "/work/target"),
+		},
+	});
+	controller.activate();
+	try {
+		assertEquals(
+			(await controller.resumeSession("/sessions/target.jsonl")).status,
+			"success",
+		);
+		assertEquals(state.workspacePath, "/work/target");
+		assertEquals(createdCwd, "/work/target");
+	} finally {
+		await controller.dispose();
+	}
+});
+
+test("malformed resume target keeps the outgoing runtime usable", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime();
+	source.setStreaming(true);
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: {
+			...dependencies([source]),
+			openSessionManager: () => {
+				throw new Error("malformed");
+			},
+		},
+	});
+	controller.activate();
+	state.appendMessage("user", "source content");
+	const path = state.currentSessionPath;
+	try {
+		assertEquals(
+			(await controller.resumeSession("/sessions/bad.jsonl")).status,
+			"error",
+		);
+		assertEquals(state.currentSessionPath, path);
+		assertEquals(
+			state.messages.map((message) => message.text),
+			["source content"],
+		);
+		assertEquals(source.disposeCount, 0);
+		assertEquals(source.runtime.session.isStreaming, true);
+		source.emit(
+			agentSessionEventStub({
+				type: "queue_update",
+				steering: ["continue"],
+				followUp: [],
+			}),
+		);
+		assertEquals(state.queuedSteeringMessages, ["continue"]);
+	} finally {
+		await controller.dispose();
+	}
+});
+
 function streamingRuntimes(): [RuntimeFake, RuntimeFake] {
 	const a = fakeRuntime("/sessions/a.jsonl");
 	const b = fakeRuntime("/sessions/b.jsonl");
@@ -872,7 +965,18 @@ test("RuntimeController create activates event handling and keeps activity visib
 test("RuntimeController reuses streaming runtimes across repeated background activation", async () => {
 	const state = new AppStore();
 	const [a, b] = streamingRuntimes();
-	const controller = await activate(state, [a, b]);
+	const base = dependencies([a, b]);
+	let opens = 0;
+	const controller = await RuntimeController.prepare(state, "/workspace", {
+		dependencies: {
+			...base,
+			openSessionManager: (path) => {
+				opens += 1;
+				return base.openSessionManager(path);
+			},
+		},
+	});
+	controller.activate();
 	a.emit(
 		agentSessionEventStub({
 			type: "tool_execution_start",
@@ -892,6 +996,7 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 		assertEquals(result, { status: "success" });
 	}
 
+	assertEquals(opens, 1);
 	assertEquals(a.calls.filter((call) => call === "create").length, 1);
 	assertEquals(b.calls.filter((call) => call === "create").length, 1);
 	assertEquals(a.calls.filter((call) => call === "subscribe").length, 5);

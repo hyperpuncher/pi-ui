@@ -6,12 +6,6 @@ export type OwnedBackgroundRuntime = {
 	observedRunning: boolean;
 };
 
-export type RuntimeActivation<T> = {
-	runtime: T;
-	commit(): void;
-	rollback(): void;
-};
-
 /** Also rejects callbacks retained across an in-place session generation change. */
 export function ownsForegroundGeneration<T>(
 	current: T,
@@ -75,25 +69,12 @@ export class BackgroundRuntimeOwnership<T extends OwnedBackgroundRuntime> {
 		return this.runtimes.delete(path);
 	}
 
-	beginActivation(path: string): RuntimeActivation<T> | undefined {
-		const runtime = this.runtimes.get(path);
-		if (!runtime) return undefined;
-		let settled = false;
-		return {
-			runtime,
-			commit: () => {
-				if (settled) return;
-				settled = true;
-				if (this.runtimes.get(path) !== runtime) {
-					this.failures += 1;
-					throw new RuntimeOwnershipInvariantError();
-				}
-				this.runtimes.delete(path);
-			},
-			rollback: () => {
-				settled = true;
-			},
-		};
+	release(path: string, runtime: T): void {
+		if (this.runtimes.get(path) !== runtime) {
+			this.failures += 1;
+			throw new RuntimeOwnershipInvariantError();
+		}
+		this.runtimes.delete(path);
 	}
 
 	liveCount(foregroundActive: boolean): number {
