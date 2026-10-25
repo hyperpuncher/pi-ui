@@ -2,6 +2,7 @@ import { onTestFinished, spyOn, test } from "bun:test";
 
 import { attributesToString } from "@kitajs/html";
 
+import { ExtensionUiController } from "#src/agent/extension-ui-controller.ts";
 import { toolTitleParts } from "#src/agent/tool-presentation.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { AppStore } from "#src/state/app-store.ts";
@@ -107,11 +108,12 @@ test.each([
 	},
 );
 
-test("ordinary commits skip stable views until their state changes", async () => {
+test("ordinary commits and empty extension cleanup skip stable views until their state changes", async () => {
 	const state = stateWithMessages(1);
 	const controller = connection();
 	const reader = await openInitializedStateStream(state, controller.signal);
 	state.setActivityText("Working...");
+	new ExtensionUiController(state).cancelAll();
 	const ordinary = await readUntil(reader, (text) => text.includes("Working..."));
 	assertIncludes(ordinary, 'class="prompt-status-message"');
 	assertNotIncludes(ordinary, 'id="messages"');

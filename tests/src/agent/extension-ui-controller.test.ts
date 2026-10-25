@@ -23,7 +23,7 @@ test("extension UI resolves queued web dialogs in order", async () => {
 	assertEquals(store.extensionDialog, undefined);
 });
 
-test("extension UI cancels dialogs on abort and inactive runtimes", async () => {
+test("extension UI cancels dialogs on abort, teardown, and inactive runtimes", async () => {
 	const store = new AppStore();
 	const controller = new ExtensionUiController(store);
 	const abort = new AbortController();
@@ -32,6 +32,13 @@ test("extension UI cancels dialogs on abort and inactive runtimes", async () => 
 	abort.abort();
 
 	assertEquals(await input, undefined);
+	assertEquals(store.extensionDialog, undefined);
+
+	const confirmed = ui.confirm("Continue?", "Pending confirmation");
+	const selected = ui.select("Choose", ["one", "two"]);
+	controller.cancelAll();
+	assertEquals(await confirmed, false);
+	assertEquals(await selected, undefined);
 	assertEquals(store.extensionDialog, undefined);
 	assertEquals(await controller.context(() => false).confirm("No", "No"), false);
 });

@@ -160,7 +160,7 @@ export class ExtensionUiController {
 		this.#workingIndicator = undefined;
 		this.#workingMessage = undefined;
 		this.#workingVisible = defaultWorkingVisible;
-		this.store.setExtensionDialog(undefined);
+		if (pending.length > 0) this.store.setExtensionDialog(undefined);
 		this.store.setExtensionStatuses([]);
 		this.store.setExtensionWidgets([]);
 		this.syncWorking();
