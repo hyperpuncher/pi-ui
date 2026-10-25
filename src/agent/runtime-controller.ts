@@ -728,29 +728,23 @@ export class RuntimeController {
 		if (sessionPath === this.runtime.session.sessionManager.getSessionFile()) {
 			return { status: "success" };
 		}
-		return await this.transitionController.run(
+		let transitionId: number | undefined;
+		const result = await this.transitionController.run(
 			sessionPath,
-			async (generation) => {
-				const transitionId =
-					sessionPerformance.startSessionTransition(generation);
-				try {
-					const resumed = await sessionPerformance.runInTransition(
-						transitionId,
-						() => this.resumeSessionTransition(sessionPath, transitionId),
-					);
-					if (resumed) {
-						sessionPerformance.markSessionTransitionComplete(transitionId);
-					} else {
-						sessionPerformance.cancelSessionTransition(transitionId);
-					}
-					return resumed;
-				} catch (error) {
-					sessionPerformance.cancelSessionTransition(transitionId);
-					throw error;
-				}
+			(generation) => {
+				transitionId = sessionPerformance.startSessionTransition(generation);
+				return sessionPerformance.runInTransition(transitionId, () =>
+					this.resumeSessionTransition(sessionPath, transitionId),
+				);
 			},
 			{ overlay: false },
 		);
+		if (transitionId !== undefined) {
+			if (result.status === "success")
+				sessionPerformance.markSessionTransitionComplete(transitionId);
+			else sessionPerformance.cancelSessionTransition(transitionId);
+		}
+		return result;
 	}
 
 	private async resumeSessionTransition(

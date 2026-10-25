@@ -1,4 +1,4 @@
-import { setSystemTime, spyOn, test } from "bun:test";
+import { onTestFinished, setSystemTime, spyOn, test } from "bun:test";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -14,7 +14,10 @@ import {
 } from "#src/agent/runtime-controller.ts";
 import type { PreparedSessionList } from "#src/agent/session-catalog.ts";
 import type { SessionDoneNotification } from "#src/browser-notifications.ts";
+import { sessionPerformance } from "#src/perf/session-performance.ts";
+import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { AppStore } from "#src/state/app-store.ts";
+import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import { appWorktreeRoot } from "#src/utils/workspace.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
 import { makeTempFile } from "#testing/temp";
@@ -282,6 +285,55 @@ test("resuming from a running session shows only the latest page", async () => {
 		);
 		assertEquals(state.hasOlderMessages, true);
 	} finally {
+		await controller.dispose();
+	}
+});
+
+test("session readiness delivers the target transcript and its performance marker", async () => {
+	const previous = {
+		PI_UI_PERF: process.env.PI_UI_PERF,
+		PI_UI_PERF_FILE: process.env.PI_UI_PERF_FILE,
+	};
+	const log = spyOn(console, "log").mockImplementation(() => {});
+	onTestFinished(() => {
+		log.mockRestore();
+		sessionPerformance.reset();
+		for (const [name, value] of Object.entries(previous)) {
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+	});
+	process.env.PI_UI_PERF = "1";
+	process.env.PI_UI_PERF_FILE = "off";
+	sessionPerformance.reset();
+	const state = new AppStore();
+	const source = fakeRuntime();
+	source.setStreaming(true);
+	const target = fakeRuntime("/sessions/b.jsonl");
+	target.runtime.session.sessionManager.getBranch = () => [
+		sessionEntryStub({
+			type: "message",
+			message: { role: "user", content: "target transcript", timestamp: 0 },
+		}),
+	];
+	const renderer = new UiRenderer(state, new DatastarClientHub());
+	const controller = await activate(state, [source, target]);
+	const connection = new AbortController();
+	const response = renderer.createStream(connection.signal);
+	try {
+		assertEquals(
+			(await controller.resumeSession("/sessions/b.jsonl")).status,
+			"success",
+		);
+		connection.abort();
+		const output = await response.text();
+		assertEquals(output.includes("target transcript"), true);
+		assertEquals(
+			output.includes("window.piUi.sessionPerformance.transcriptPatched("),
+			true,
+		);
+	} finally {
+		connection.abort();
 		await controller.dispose();
 	}
 });

@@ -10,6 +10,7 @@ import type {
 	AppStorePresentation,
 	UiCommitEffect,
 } from "#src/state/app-store.ts";
+import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
 import type { TranscriptMessage } from "#src/state/transcript-state.ts";
 import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
@@ -58,7 +59,7 @@ export class UiRenderer implements AppStorePresentation {
 		slashQuery: "",
 		workspaceSearch: { query: "", results: [] },
 	};
-	private commitScheduled = false;
+	private readonly commits = new StreamingFrameScheduler<true>(() => this.flush());
 	private fullViewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
@@ -73,7 +74,10 @@ export class UiRenderer implements AppStorePresentation {
 	) {
 		this.messages = new MessageRenderService(
 			store,
-			(html, selector) => hub.patchElement(html, selector),
+			(html, selector) => {
+				// The pending transcript includes the latest message presentation.
+				if (!this.transcriptPending) hub.patchElement(html, selector);
+			},
 			(id) => this.pendingEnhancements.add(id),
 			options,
 		);
@@ -87,7 +91,7 @@ export class UiRenderer implements AppStorePresentation {
 		workspaceQuery = "",
 		slashQuery = "",
 	): Response {
-		this.flush();
+		this.commits.flush();
 		const view = this.view;
 		view.sessionQuery = query;
 		view.slashQuery = slashQuery;
@@ -166,13 +170,9 @@ export class UiRenderer implements AppStorePresentation {
 	requestCommit(effect?: UiCommitEffect): void {
 		if (effect?.type === "render-transcript") this.transcriptPending = true;
 		else if (effect) this.pendingEffects.push(effect);
-		if (this.commitScheduled) return;
-		this.commitScheduled = true;
-		queueMicrotask(() => this.flush());
+		this.commits.schedule(true);
 	}
 	private flush(): void {
-		if (!this.commitScheduled) return;
-		this.commitScheduled = false;
 		const effects = this.pendingEffects;
 		this.pendingEffects = [];
 		const fullView = this.fullViewPending;
@@ -272,6 +272,8 @@ export class UiRenderer implements AppStorePresentation {
 			values: { _sessionTransitionPending: false },
 		});
 		if (scrollToBottom) this.requestCommit({ type: "scroll-transcript-bottom" });
+		// Loading, readiness, and errors are lifecycle boundaries, not progress ticks.
+		this.commits.flush();
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
 		if (this.hub.clientCount === 0) return;

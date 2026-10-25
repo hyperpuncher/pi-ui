@@ -10,6 +10,7 @@ import {
 	TranscriptState,
 } from "#src/state/transcript-state.ts";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
+import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import { renderMarkdownFinal } from "#src/ui/markdown.tsx";
 import type { MessageRenderServiceOptions } from "#src/ui/message-render-service.ts";
 import { renderPage } from "#src/ui/page.tsx";
@@ -128,6 +129,42 @@ test("ordinary commits skip stable views until their state changes", async () =>
 	assertIncludes(full, 'id="model-picker"');
 	assertIncludes(full, 'id="session-sidebar-content"');
 	assertIncludes(full, 'id="workspace-review-data"');
+});
+
+test("asynchronous state changes send one latest view instead of intermediate transcripts", async () => {
+	const state = stateWithMessages(1);
+	state.setSessionCatalog([
+		{
+			path: "/sessions/batch.jsonl",
+			cwd: "/workspace",
+			title: "Batch fixture",
+			messageCount: 1,
+			modified: "now",
+		},
+	]);
+	const reader = await openInitializedStateStream(state, connection().signal);
+	for (let index = 0; index < 4; index += 1) {
+		state.appendMessage("tool", `batch output ${index}`, { format: "pre" });
+		state.updateSessionSummary("/sessions/batch.jsonl", (session) => ({
+			...session,
+			messageCount: index + 2,
+		}));
+		state.setUsage({ text: `batch usage ${index}`, costText: "$0.000" });
+		state.setPromptEditorText(`batch draft ${index}`);
+		await Promise.resolve();
+	}
+	const output = await readUntil(
+		reader,
+		(text) =>
+			text.includes("batch usage 3") && text.includes('"prompt":"batch draft 3"'),
+	);
+	assertEqual(count(output, "data: selector #messages\n"), 1);
+	const transcript = output
+		.split("\n\n")
+		.find((event) => event.includes("data: selector #messages\n"))!;
+	for (let index = 0; index < 4; index += 1)
+		assertIncludes(transcript, `batch output ${index}`);
+	assertNotIncludes(output, "batch usage 0");
 });
 
 test("empty chat refreshes login, catalog loading, and recent sessions", async () => {
@@ -278,6 +315,26 @@ test("tool display changes rerender only the active presentation", async () => {
 	assertIncludes(restored, "tool-header");
 	assertIncludes(restored, "later_line");
 	assertNotIncludes(restored, "tool-title-compact");
+});
+
+test("fast tool highlighting never arrives before its transcript row", async () => {
+	await loadPierreLanguage("bash");
+	const state = createState({
+		renderCode: async () => "<pre>final tool rendering</pre>",
+	});
+	const reader = await openInitializedStateStream(state, connection().signal);
+	state.appendMessage("tool", "tool source", { format: "code", state: "success" });
+	const output = await readUntil(
+		reader,
+		(text) =>
+			text.includes("data: selector #messages\n") &&
+			text.includes("final tool rendering"),
+	);
+	assertEqual(
+		output.indexOf("data: selector #messages\n") <
+			output.indexOf("final tool rendering"),
+		true,
+	);
 });
 
 test("parallel message updates all reach their final state", async () => {
