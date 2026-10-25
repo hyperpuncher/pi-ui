@@ -76,9 +76,6 @@
 		min-height: 0;
 		grid-template-rows: minmax(0, 1fr);
 		overflow: hidden;
-		transition:
-			width 150ms var(--ease-out),
-			margin-inline-start 150ms var(--ease-out);
 	}
 
 	#workspace-shell {
