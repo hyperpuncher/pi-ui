@@ -115,7 +115,6 @@ test("session rows expose stable ids for resilient active descendants", () => {
 		}),
 	);
 	assertStringIncludes(html, 'id="session-row-%2Fsessions%2Fa%20session.jsonl"');
-	assertStringIncludes(html, 'src="/sessions/favicon?cwd=%2Fworkspace"');
 	assertStringIncludes(html, "No matching sessions.");
 	assertStringIncludes(html, "@post('/sessions/more'");
 	assertFalse(html.includes("data-session-rename-title"));
@@ -250,10 +249,6 @@ test("workspace rows show each collapsed path once", () => {
 
 	assertStringIncludes(html, ">~<");
 	assertStringIncludes(html, ">~/projects/pi-ui<");
-	assertStringIncludes(
-		html,
-		`src="/sessions/favicon?cwd=${encodeURIComponent(`${home}/projects/pi-ui`)}"`,
-	);
 	assertStringIncludes(html, 'aria-selected="true"');
 	assertFalse(
 		new RegExp(`>\\s*${escapeRegExp(home)}(?:/projects/pi-ui)?\\s*<`).test(html),

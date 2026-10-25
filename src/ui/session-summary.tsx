@@ -24,7 +24,11 @@ export function SessionSubtitle(props: {
 	return syncHtml(
 		<span class={props.class}>
 			<span class="session-subtitle-content">
-				<img class="session-favicon" src={faviconUrl} alt="" aria-hidden="true" />
+				<span
+					class="session-favicon"
+					style={`--favicon: url("${faviconUrl}")`}
+					aria-hidden="true"
+				/>
 				<span class="session-workspace" safe>
 					{workspace}
 				</span>

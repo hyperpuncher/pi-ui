@@ -200,6 +200,7 @@
 		padding: 0.5rem;
 	}
 	.workspace-favicon {
+		background: var(--favicon) center / contain no-repeat;
 		width: 1rem;
 		height: 1rem;
 		flex-shrink: 0;

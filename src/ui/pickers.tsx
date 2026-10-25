@@ -416,7 +416,11 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-attr:aria-disabled="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
-			<img class="workspace-favicon" src={faviconUrl} alt="" aria-hidden="true" />
+			<span
+				class="workspace-favicon"
+				style={`--favicon: url("${faviconUrl}")`}
+				aria-hidden="true"
+			/>
 			<span class="workspace-row-label" safe>
 				{label}
 			</span>
