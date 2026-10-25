@@ -182,8 +182,8 @@ export const workspaceRoutes = {
 			)
 				throw new RouteError(400, "Invalid workspace entry.");
 			const { kind, path } = value;
-			return workspaceFileResponse(() =>
-				createWorkspaceEntry(context.store.workspacePath, path, kind),
+			return workspaceFileResponse(
+				await createWorkspaceEntry(context.store.workspacePath, path, kind),
 			);
 		},
 		PATCH: async (request, context) => {
@@ -191,8 +191,8 @@ export const workspaceRoutes = {
 			if (!isRecord(value) || !isString(value.path) || !isString(value.destination))
 				throw new RouteError(400, "Invalid workspace entry move.");
 			const { destination, path } = value;
-			return workspaceFileResponse(() =>
-				moveWorkspaceEntry(context.store.workspacePath, path, destination),
+			return workspaceFileResponse(
+				await moveWorkspaceEntry(context.store.workspacePath, path, destination),
 			);
 		},
 		DELETE: async (request, context) => {
@@ -201,10 +201,8 @@ export const workspaceRoutes = {
 				throw new RouteError(400, "Invalid workspace entry deletion.");
 			}
 			const { path } = value;
-			return workspaceFileResponse(async () => {
-				await removeWorkspaceEntry(context.store.workspacePath, path);
-				return { path };
-			});
+			await removeWorkspaceEntry(context.store.workspacePath, path);
+			return workspaceFileResponse({ path });
 		},
 	},
 	[endpoints.workspaceFileContent]: {
@@ -434,10 +432,8 @@ async function worktreeAction(
 	}
 }
 
-async function workspaceFileResponse<Value>(
-	operation: () => Promise<Value>,
-): Promise<Response> {
-	return Response.json(await operation(), {
+function workspaceFileResponse<Value>(value: Value): Response {
+	return Response.json(value, {
 		headers: { "cache-control": "no-store" },
 	});
 }
@@ -448,8 +444,7 @@ async function workspaceFileViewResponse(
 	file?: Awaited<ReturnType<typeof readWorkspaceFile>>,
 ): Promise<Response> {
 	file ??= await readWorkspaceFile(context.store.workspacePath, filePath);
-	if (!("preview" in file) || !file.preview)
-		return workspaceFileResponse(() => Promise.resolve(file));
+	if (!("preview" in file) || !file.preview) return workspaceFileResponse(file);
 	if (file.preview.kind === "markdown") {
 		if (!("contents" in file))
 			throw new RouteError(415, "This file cannot be previewed.");
@@ -458,9 +453,7 @@ async function workspaceFileViewResponse(
 			cacheKey: `file:${resolved.path}`,
 			localImageBase: dirname(resolved.path),
 		});
-		return workspaceFileResponse(() =>
-			Promise.resolve({ ...file, preview: { ...file.preview, html } }),
-		);
+		return workspaceFileResponse({ ...file, preview: { ...file.preview, html } });
 	}
 	const url =
 		file.preview.kind === "html"
@@ -468,9 +461,7 @@ async function workspaceFileViewResponse(
 					(await resolveFile(context.store.workspacePath, filePath)).path,
 				)
 			: `${endpoints.workspaceFileContent}?path=${encodeURIComponent(file.path)}&preview=1`;
-	return workspaceFileResponse(() =>
-		Promise.resolve({ ...file, preview: { ...file.preview, url } }),
-	);
+	return workspaceFileResponse({ ...file, preview: { ...file.preview, url } });
 }
 
 function previewFileResponse(
