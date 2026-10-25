@@ -6,13 +6,11 @@
 		"src/extensions/codemode/worker.ts",
 		"scripts/*.ts",
 		"src/client/code-theme.ts",
-		"src/client/pi-fuzzy.ts",
 		"src/client/theme-lab.js",
 		"src/client/workspace-review.ts",
 		"src/ui/app.css",
 		"src/ui/theme-lab.css",
 		"static/app/main.js",
-		"static/app/model-search.js",
 		"static/theme.js",
 		"tools/oxlint/anti-slop/index.ts"
 	],
@@ -35,16 +33,8 @@
 	"ignoreUnresolvedImports": ["../pierre-worker.js"],
 	"ignoreExports": [
 		{
-			"file": "static/app/dialogs.js",
-			"exports": ["*"]
-		},
-		{
 			"file": "static/app/file-transfer.js",
 			"exports": ["*"]
-		},
-		{
-			"file": "static/app/model-search.js",
-			"exports": ["bindModelSearch", "preserveModelSearch", "restoreModelSearch"]
 		}
 	],
 	"typeAware": {
