@@ -8,16 +8,16 @@ import {
 	setActiveKeybinds,
 } from "#src/keybinds.ts";
 import { operatingSystem } from "#src/utils/platform.ts";
-import { assertEquals, assertStringIncludes } from "#testing/assertions";
+import { assertEquals } from "#testing/assertions";
 
 afterEach(() => setActiveKeybinds({}));
 
-function execute(expression: string, event: Partial<KeyboardEvent>) {
+function execute(expression: string, event: Partial<KeyboardEvent>, modal = false) {
 	let called = 0;
 	let prevented = 0;
 	new Function("evt", "document", "action", expression)(
 		{ ...event, preventDefault: () => prevented++ },
-		{ querySelector: () => null },
+		{ querySelector: () => (modal ? {} : null) },
 		() => called++,
 	);
 	return { called, prevented };
@@ -53,12 +53,24 @@ test("invalid, untyped, and unknown overrides keep the default", () => {
 	assertEquals(activeKeybind("toggle-review"), "ctrl G");
 });
 
-test("only modal-guarded keybinds skip open dialogs", () => {
-	assertStringIncludes(
-		keybindAction("focus-prompt", "focus();"),
-		"document.querySelector(':modal')",
+test("modal dialogs block guarded focus shortcuts but not new-chat actions", () => {
+	assertEquals(
+		execute(
+			keybindAction("focus-prompt", "action();"),
+			{ altKey: true, code: "KeyP" },
+			true,
+		),
+		{ called: 0, prevented: 0 },
 	);
-	assertEquals(keybindAction("new-chat", "go();").includes(":modal"), false);
+	const primary = operatingSystem === "darwin" ? { metaKey: true } : { ctrlKey: true };
+	assertEquals(
+		execute(
+			keybindAction("new-chat", "action();"),
+			{ ...primary, code: "KeyO" },
+			true,
+		),
+		{ called: 1, prevented: 1 },
+	);
 });
 
 test("generated actions match the effective chord on the running platform", () => {

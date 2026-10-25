@@ -70,8 +70,8 @@ export function renderWorkspaceReviewHistory({
 		const date = document.createElement("time");
 		date.className = "formatted-date";
 		date.dateTime = commit.authoredAt;
-		date.title = formatCommitDetailDate(commit.authoredAt);
-		date.textContent = formatCommitDate(commit.authoredAt);
+		date.title = formatExpandedDateTime(new Date(commit.authoredAt));
+		date.textContent = formatAdaptiveDateTime(new Date(commit.authoredAt));
 		metadata.append(shortHash, author, date);
 		const heading = document.createElement("span");
 		heading.className = "review-commit-heading";
@@ -139,7 +139,7 @@ export function showWorkspaceReviewDetailHeader(
 	const date = document.createElement("time");
 	date.className = "formatted-date";
 	date.dateTime = detail.commit.authoredAt;
-	date.title = formatCommitDetailDate(detail.commit.authoredAt);
+	date.title = formatExpandedDateTime(new Date(detail.commit.authoredAt));
 	date.textContent = date.title;
 	metadata.append(hash, author, date);
 	detailHeader.append(heading, metadata);
@@ -195,18 +195,6 @@ function renderCommitFiles(
 		files.append(button);
 	}
 	return files;
-}
-
-export function formatCommitDetailDate(value: string, locale?: string): string {
-	return formatExpandedDateTime(new Date(value), locale);
-}
-
-export function formatCommitDate(
-	value: string,
-	now = new Date(),
-	locale?: string,
-): string {
-	return formatAdaptiveDateTime(new Date(value), now, locale);
 }
 
 function statusLetter(status: WorkspaceFileChange["status"]): string {

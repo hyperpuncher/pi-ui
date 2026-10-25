@@ -179,7 +179,7 @@ test("session favicons use workspace assets and fall back to a folder", async ()
 			fallback.headers.get("content-type"),
 			"image/svg+xml; charset=utf-8",
 		);
-		assertStringIncludes(await fallback.text(), "M20 20a2 2");
+		assertStringIncludes(await fallback.text(), "<svg");
 	} finally {
 		await rm(workspace, { recursive: true });
 	}
@@ -593,7 +593,7 @@ test("file imports report content-detected image MIME types", async () => {
 	}
 });
 
-test("accepted prompts do not clear a newer frontend draft", async () => {
+test("accepted prompt responses do not contain editor patches", async () => {
 	const router = createRouter(fakeContext());
 	for (const path of ["/prompt", "/prompt/follow-up"]) {
 		const response = await router.fetch(signalRequest(path, { prompt: "hello" }));
@@ -787,7 +787,15 @@ test("model rows load on demand through the list endpoint", async () => {
 	assertStringIncludes(body, 'id="model-select-options"');
 	assertStringIncludes(body, 'id="model-option-fixture%2Fdeepseek-v4"');
 	assertStringIncludes(body, "data: selector #model-select-options");
-	assertStringIncludes(body, "data: mode replace");
+	for (const modelSearch of ["fixture", "DeepSeek", "v4"]) {
+		const matched = await createRouter(context).fetch(
+			signalGet("/models/list", { modelSearch }),
+		);
+		assertStringIncludes(
+			await matched.text(),
+			'id="model-option-fixture%2Fdeepseek-v4"',
+		);
+	}
 	const filtered = await createRouter(context).fetch(
 		signalGet("/models/list", { modelSearch: "nomatch-xyz" }),
 	);
@@ -929,15 +937,10 @@ test("native media previews expose metadata and byte ranges", async () => {
 			server.url,
 		);
 		const metadata = await (await fetch(url)).json();
-		assertEquals(metadata, {
-			path: "clip.mp4",
-			preview: {
-				kind: "video",
-				mimeType: "video/mp4",
-				url: `${endpoints.workspaceFileContent}?path=clip.mp4&preview=1`,
-			},
-			revision: `${Bun.file(`${workspace}/clip.mp4`).lastModified}:${bytes.length}`,
-			size: bytes.length,
+		assertEquals(metadata.preview, {
+			kind: "video",
+			mimeType: "video/mp4",
+			url: `${endpoints.workspaceFileContent}?path=clip.mp4&preview=1`,
 		});
 		const partial = await fetch(`${url}&preview=1`, {
 			headers: { range: "bytes=2-5" },

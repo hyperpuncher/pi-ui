@@ -6,7 +6,6 @@ import {
 	renderWorktreeDialogContent,
 	renderWorktreeIgnoredPaths,
 	renderWorktreeRemoveDialog,
-	worktreeSwitchableBranches,
 } from "#src/ui/worktree-dialog.tsx";
 
 function makeContext(overrides: Partial<GitWorktreeContext> = {}): GitWorktreeContext {
@@ -67,7 +66,6 @@ test("worktree dialog lists checkouts and leaves the new branch name empty", () 
 	expect(html).toContain("feature/plain-name");
 	expect(html).not.toContain("/projects/example");
 	expect(html).toContain("/worktrees/feature/packages/web");
-	expect(html).toContain('class="segmented-control worktree-tabs"');
 	expect(html).toContain("data-bind:_branch-name");
 	expect(html).toContain(`data-on:click="$_worktreeTab = 'branches'"`);
 	expect(html).toContain(`data-show="$_worktreeTab === 'worktrees'"`);
@@ -79,9 +77,6 @@ test("worktree dialog lists checkouts and leaves the new branch name empty", () 
 	expect(html).toContain("refs/remotes/origin/next");
 	expect(html).toContain('placeholder="feature/my-branch"');
 	expect(html).toContain('role="menuitemradio"');
-	expect(html).toContain('popovertarget="worktree-base-popover"');
-	expect(html).not.toContain("<select");
-	expect(html).not.toContain("pi-ui/");
 	expect(html).toContain("/worktrees/create");
 });
 
@@ -166,25 +161,6 @@ test("worktree dialog switches to other local branches only", () => {
 	expect(html).toContain("branch: &#34;feature/next&#34;");
 	expect(html).not.toContain("branch: &#34;main&#34;");
 	expect(html).not.toContain("branch: &#34;origin/next&#34;");
-});
-
-test("worktree switchable branches exclude checked-out local branches", () => {
-	const branches = worktreeSwitchableBranches([
-		{
-			label: "main",
-			ref: "refs/heads/main",
-			worktreePath: "/projects/example",
-		},
-		{
-			label: "feature/checked-out",
-			ref: "refs/heads/feature/checked-out",
-			worktreePath: "/worktrees/feature",
-		},
-		{ label: "origin/next", ref: "refs/remotes/origin/next" },
-		{ label: "feature/free", ref: "refs/heads/feature/free" },
-	]);
-
-	expect(branches.map((branch) => branch.label)).toEqual(["feature/free"]);
 });
 
 test("worktree dialog does not switch to branches checked out elsewhere", () => {

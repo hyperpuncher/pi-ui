@@ -188,18 +188,6 @@ export function releaseMarkdownStreamingState(cacheKey: string): void {
 	);
 }
 
-export type MarkdownCacheStats = {
-	streamingEntries: number;
-	streamingCodeBlockStates: number;
-};
-
-export function markdownCacheStatsForTest(): MarkdownCacheStats {
-	return {
-		streamingEntries: streamingCache.size,
-		streamingCodeBlockStates: streamingCodeBlockStates.size,
-	};
-}
-
 export async function renderMarkdownFinal(
 	markdown: string,
 	options: { localImageBase?: string; cacheKey?: string } = {},

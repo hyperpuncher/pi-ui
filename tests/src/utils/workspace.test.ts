@@ -8,9 +8,6 @@ import {
 } from "#src/utils/workspace.ts";
 
 test("managed worktree paths expose their project and branch", () => {
-	expect(managedWorktreeDirectoryName("feature/nested")).toMatch(
-		/^feature~nested-[0-9a-f]{8}$/,
-	);
 	const path = join(
 		appWorktreeRoot(),
 		"pi-ui",

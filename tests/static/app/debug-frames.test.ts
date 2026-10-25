@@ -6,9 +6,7 @@ import { assertEquals } from "#testing/assertions";
 test("frame sampler excludes the initial callback and uses elapsed time", () => {
 	const sampler = createFrameSampler();
 	assertEquals(sampler.add(500), undefined);
-	for (let now = 510; now < 1500; now += 10) {
-		assertEquals(sampler.add(now), undefined);
-	}
+	for (let now = 510; now < 1500; now += 10) sampler.add(now);
 	assertEquals(sampler.add(1500), { rate: 100, median: 10, p95: 10, max: 10 });
 	for (let now = 1510; now < 2500; now += 10) sampler.add(now);
 	assertEquals(sampler.add(2500), { rate: 100, median: 10, p95: 10, max: 10 });

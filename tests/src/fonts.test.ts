@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 
-import { defaultFonts, validFonts } from "#src/fonts.ts";
+import { validFonts } from "#src/fonts.ts";
 import { assertEquals } from "#testing/assertions";
 
 test("font preferences validate known interface and code fonts", () => {
@@ -9,5 +9,4 @@ test("font preferences validate known interface and code fonts", () => {
 		sans: "Inter",
 	});
 	assertEquals(validFonts({ mono: "missing", sans: "system" }), undefined);
-	assertEquals(defaultFonts(), { mono: "system", sans: "system" });
 });

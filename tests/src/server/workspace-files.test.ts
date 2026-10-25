@@ -142,12 +142,9 @@ test("workspace files describe native previews and preserve editable source", as
 		await Bun.write(`${workspace}/vector.svg`, "<svg></svg>");
 		await Bun.write(`${workspace}/README.md`, "# Preview");
 		await Bun.write(`${workspace}/font.woff2`, new Uint8Array([0x77, 0x4f]));
-		assertEquals(await readWorkspaceFile(workspace, "image.png"), {
-			path: "image.png",
-			preview: { kind: "image", mimeType: "image/png" },
-			revision: `${Bun.file(`${workspace}/image.png`).lastModified}:2`,
-			size: 2,
-		});
+		const image = await readWorkspaceFile(workspace, "image.png");
+		if (!("preview" in image)) throw new Error("Missing image preview");
+		assertEquals(image.preview, { kind: "image", mimeType: "image/png" });
 		const vector = await readWorkspaceFile(workspace, "vector.svg");
 		if (!("contents" in vector)) throw new Error("Missing SVG source");
 		assertEquals(vector.contents, "<svg></svg>");
@@ -162,12 +159,9 @@ test("workspace files describe native previews and preserve editable source", as
 			kind: "markdown",
 			mimeType: "text/markdown",
 		});
-		assertEquals(await readWorkspaceFile(workspace, "font.woff2"), {
-			path: "font.woff2",
-			preview: { kind: "font", mimeType: "font/woff2" },
-			revision: `${Bun.file(`${workspace}/font.woff2`).lastModified}:2`,
-			size: 2,
-		});
+		const font = await readWorkspaceFile(workspace, "font.woff2");
+		if (!("preview" in font)) throw new Error("Missing font preview");
+		assertEquals(font.preview, { kind: "font", mimeType: "font/woff2" });
 	} finally {
 		await rm(workspace, { recursive: true });
 	}

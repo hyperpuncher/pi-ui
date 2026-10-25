@@ -1,7 +1,6 @@
 import { test } from "bun:test";
 
 import {
-	defaultServerHostname,
 	defaultServerPort,
 	parseServerOptions,
 	serverUsage,
@@ -10,7 +9,7 @@ import { assertEquals, assertStringIncludes, assertThrows } from "#testing/asser
 
 test("server options use loopback defaults", () => {
 	assertEquals(parseServerOptions([]), {
-		hostname: defaultServerHostname,
+		hostname: "127.0.0.1",
 		port: defaultServerPort,
 		help: false,
 	});
@@ -36,7 +35,7 @@ test("server flags override the environment", () => {
 
 test("server options support help", () => {
 	assertEquals(parseServerOptions(["-h"]), {
-		hostname: defaultServerHostname,
+		hostname: "127.0.0.1",
 		port: defaultServerPort,
 		help: true,
 	});

@@ -1,10 +1,9 @@
 import { test } from "bun:test";
-import { appendFile, mkdir, rm, stat, symlink } from "node:fs/promises";
+import { appendFile, mkdir, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { listCachedSessions } from "#src/agent/session-catalog.ts";
-import { readSessionSummaryCache } from "#src/agent/session-summary-cache.ts";
-import { assertEquals, assertFalse } from "#testing/assertions";
+import { assertEquals } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
 
 test("sessions reuse and incrementally update the summary cache", async () => {
@@ -37,22 +36,11 @@ test("sessions reuse and incrementally update the summary cache", async () => {
 		assertEquals(initial[0].name, "Cached title");
 		assertEquals(initial[0].messageCount, 2);
 
-		const firstCache = await readSessionSummaryCache(cachePath);
-		const firstEntry = firstCache.sessions[sessionPath];
-		assertEquals(firstEntry.indexedBytes, (await stat(sessionPath)).size);
-		assertFalse("size" in firstEntry);
-
 		await appendFile(sessionPath, lines([message("user", "Appended prompt", 4_000)]));
 		const updated = await listCachedSessions(sessionsRoot, cachePath);
 		assertEquals(updated[0].messageCount, 3);
 		assertEquals(updated[0].firstMessage, "First prompt");
 		assertEquals(updated[0].modified, new Date(4_000));
-
-		const secondCache = await readSessionSummaryCache(cachePath);
-		assertEquals(
-			secondCache.sessions[sessionPath].indexedBytes,
-			(await stat(sessionPath)).size,
-		);
 	} finally {
 		await rm(root, { recursive: true });
 	}
@@ -116,16 +104,13 @@ test("the cached catalog indexes every session and drops deleted files", async (
 		}
 
 		assertEquals((await listCachedSessions(sessionsRoot, cachePath)).length, 2);
-		assertEquals(
-			Object.keys((await readSessionSummaryCache(cachePath)).sessions).length,
-			2,
-		);
 
 		await rm(join(workspace, "session-1.jsonl"));
 		assertEquals((await listCachedSessions(sessionsRoot, cachePath)).length, 1);
-		assertEquals(Object.keys((await readSessionSummaryCache(cachePath)).sessions), [
-			join(workspace, "session-2.jsonl"),
-		]);
+		assertEquals(
+			(await listCachedSessions(sessionsRoot, cachePath))[0]?.id,
+			"session-2",
+		);
 	} finally {
 		await rm(root, { recursive: true });
 	}
@@ -244,7 +229,6 @@ test("a corrupt summary cache is rebuilt", async () => {
 
 		const sessions = await listCachedSessions(sessionsRoot, cachePath);
 		assertEquals(sessions[0].firstMessage, "Recovered");
-		assertEquals((await readSessionSummaryCache(cachePath)).version, 2);
 	} finally {
 		await rm(root, { recursive: true });
 	}

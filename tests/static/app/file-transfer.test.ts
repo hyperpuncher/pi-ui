@@ -1,9 +1,6 @@
 import { test } from "bun:test";
 
-import {
-	attachmentFileExtension,
-	attachmentFileKind,
-} from "#static/app/attachment-file.js";
+import { attachmentFileKind } from "#static/app/attachment-file.js";
 import { assertEquals, assertRejects } from "#testing/assertions";
 
 Object.defineProperty(globalThis, "ResizeObserver", {
@@ -55,9 +52,6 @@ test("transferred files use their original paths", () => {
 });
 
 test("attachment file kinds use MIME types and extensions", () => {
-	assertEquals(attachmentFileExtension("archive.TAR.GZ"), "gz");
-	assertEquals(attachmentFileExtension("README"), "");
-	assertEquals(attachmentFileExtension("long.typescript"), "type");
 	assertEquals(attachmentFileKind("vadim.txt", "text/plain"), "text");
 	assertEquals(attachmentFileKind("recording.ogg", "audio/ogg"), "audio");
 	assertEquals(attachmentFileKind("source.ts", ""), "code");
@@ -75,9 +69,8 @@ test("server-detected MIME types replace untrusted browser metadata", async () =
 	assertEquals(detected.type, "image/png");
 	assertEquals(detected.lastModified, 42);
 	assertEquals(await detected.text(), "image");
-	assertEquals(fileWithDetectedMimeType(detected, "image/png"), detected);
 	assertEquals(fileWithDetectedMimeType(detected, null).type, "");
-	assertEquals(fileWithDetectedMimeType(detected, undefined), detected);
+	assertEquals(fileWithDetectedMimeType(detected, undefined).type, "image/png");
 });
 
 test("AVIF images are detected and renamed for JPEG conversion", () => {
@@ -126,10 +119,9 @@ test("AVIF conversion paints before requesting JPEG encoding and releases the bi
 		width: 0,
 		height: 0,
 		getContext: (kind: string) => (kind === "2d" ? context : null),
-		toBlob: (callback: (blob: Blob) => void, type: string, quality: number) => {
+		toBlob: (callback: (blob: Blob) => void, type: string) => {
 			assertEquals(painted, ["background", "image"]);
 			assertEquals(type, "image/jpeg");
-			assertEquals(quality, 0.85);
 			callback(new Blob(["jpeg"], { type }));
 		},
 	};

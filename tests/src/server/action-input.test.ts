@@ -47,7 +47,7 @@ test("action input readers validate required and optional field types", () => {
 				"backward",
 			] as const),
 	]) {
-		assertRejects(async () => callback(), ActionInputError);
+		assertThrows(callback, ActionInputError);
 	}
 });
 

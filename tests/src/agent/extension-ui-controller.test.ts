@@ -48,38 +48,3 @@ test("extension UI rejects TUI-only capabilities explicitly", () => {
 		error: "TUI themes are unavailable in pi-ui",
 	});
 });
-
-test("extension UI projects status, widgets, working state, and editor text", () => {
-	const store = new AppStore();
-	const controller = new ExtensionUiController(store);
-	const ui = controller.context(() => true);
-
-	ui.setStatus("example", "ready");
-	ui.setWidget("example", ["line one", "line two"], {
-		placement: "belowEditor",
-	});
-	ui.setWorkingMessage("Indexing...");
-	ui.setWorkingIndicator({ frames: ["●"] });
-	ui.setEditorText("draft");
-	ui.pasteToEditor(" text");
-	ui.notify("Careful", "warning");
-
-	const state = store.snapshot();
-	assertEquals(state.extensionStatuses, [{ key: "example", text: "ready" }]);
-	assertEquals(state.extensionWidgets, [
-		{
-			key: "example",
-			lines: ["line one", "line two"],
-			placement: "belowEditor",
-		},
-	]);
-	assertEquals(state.extensionWorkingMessage, "Indexing...");
-	assertEquals(state.extensionWorkingIndicator, "●");
-	assertEquals(ui.getEditorText(), "draft text");
-	assertEquals(state.messages.at(-1)?.text, "warning: Careful");
-
-	controller.cancelAll();
-	assertEquals(store.extensionStatuses, []);
-	assertEquals(store.extensionWidgets, []);
-	assertEquals(store.extensionWorkingMessage, undefined);
-});

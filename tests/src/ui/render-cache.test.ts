@@ -34,7 +34,7 @@ test("BoundedCache evicts entries that exceed its weight budget", () => {
 	assertEqual(cache.get("b"), "345");
 	assertEqual(cache.get("c"), "67");
 	cache.set("oversized", "123456");
-	assertEqual(cache.size, 0);
+	assertEqual(cache.get("oversized"), undefined);
 });
 
 test("BoundedCache evicts, deletes, and clears entries", () => {

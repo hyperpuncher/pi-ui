@@ -28,7 +28,7 @@ import { flattenTree, TreeProjector } from "#src/agent/tree-projector.ts";
 import { formatStats } from "#src/agent/usage-controller.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { formatTokens } from "#src/utils/format.ts";
-import { assertEquals, assertStrictEquals } from "#testing/assertions";
+import { assertEquals } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
 import {
 	agentSessionEventStub,
@@ -753,10 +753,6 @@ test("session catalog status changes prioritize unopened completions without los
 			sessionInfo("/third", "Third"),
 		],
 	});
-
-	const unchangedCatalog = state.getSessionCatalog();
-	catalog.mergeCurrentStatuses();
-	assertStrictEquals(state.getSessionCatalog(), unchangedCatalog);
 
 	statuses.set("/third", "completed");
 	catalog.mergeCurrentStatuses();

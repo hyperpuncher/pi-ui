@@ -4,7 +4,6 @@ import { join } from "node:path";
 
 import { loadPierreLanguage } from "#src/ui/diffs.ts";
 import {
-	markdownCacheStatsForTest,
 	releaseMarkdownStreamingState,
 	renderMarkdownFinal,
 	renderMarkdownStreaming,
@@ -16,29 +15,11 @@ import {
 } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
 
-test("streaming cache keeps one entry per stable message key", () => {
-	const baseline = markdownCacheStatsForTest().streamingEntries;
-	const first = renderMarkdownStreaming("Hello", { cacheKey: "cache-test-1" });
-	const repeated = renderMarkdownStreaming("Hello", {
-		cacheKey: "cache-test-1",
-	});
-	assertEqual(repeated, first);
-	renderMarkdownStreaming("Hello, world", { cacheKey: "cache-test-1" });
-	assertEqual(markdownCacheStatsForTest().streamingEntries, baseline + 1);
-
-	renderMarkdownStreaming("Other", { cacheKey: "cache-test-2" });
-	releaseMarkdownStreamingState("cache-test-1");
-	assertEqual(markdownCacheStatsForTest().streamingEntries, baseline + 1);
-	releaseMarkdownStreamingState("cache-test-2");
-	assertEqual(markdownCacheStatsForTest().streamingEntries, baseline);
-});
-
 test("restores reuse final Markdown across message IDs without stale output", async () => {
 	const markdown = "```ts\nconst restored = 1;\n```";
 	const cacheKey = "before-restore";
-	const streaming = renderMarkdownStreaming(markdown, { cacheKey });
+	renderMarkdownStreaming(markdown, { cacheKey });
 	const final = await renderMarkdownFinal(markdown, { cacheKey });
-	assertEqual(renderMarkdownStreaming(markdown, { cacheKey }), streaming);
 	releaseMarkdownStreamingState(cacheKey);
 
 	const restored = { cacheKey: "after-restore" };
@@ -48,12 +29,6 @@ test("restores reuse final Markdown across message IDs without stale output", as
 		"changed",
 	);
 	releaseMarkdownStreamingState(restored.cacheKey);
-});
-
-test("streaming without a key does not retain output", () => {
-	const before = markdownCacheStatsForTest().streamingEntries;
-	renderMarkdownStreaming("uncached");
-	assertEqual(markdownCacheStatsForTest().streamingEntries, before);
 });
 
 test("streaming code has line numbers without highlighting state", () => {

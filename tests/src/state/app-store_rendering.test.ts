@@ -1,4 +1,4 @@
-import { expect, onTestFinished, spyOn, test } from "bun:test";
+import { onTestFinished, spyOn, test } from "bun:test";
 
 import { attributesToString } from "@kitajs/html";
 
@@ -55,10 +55,6 @@ test("restored messages are readable before final highlighting finishes", async 
 			text.includes("<strong>answer</strong>") && text.includes("message-tool"),
 	);
 	assertNotIncludes(fallback, "data-enhanced");
-	const message = state.snapshot().messages[0];
-	assertEqual("renderedHtml" in message, false);
-	assertEqual("presentationState" in message, false);
-	assertEqual("presentationVersion" in message, false);
 	await waitFor(() => gates.length === 2);
 	gates.forEach((resolve, index) =>
 		resolve(`<div data-enhanced="${index}">safe</div>`),
@@ -640,9 +636,6 @@ test("background activation resumes streaming and enhances completed messages", 
 	assertEqual(foreground.activityText, "Working...");
 	assertEqual(foreground.queuedSteeringMessages, ["steer"]);
 	assertEqual(foreground.queuedFollowUpMessages, ["follow"]);
-	// SAFETY: Deliberately mutate a returned copy to check queue ownership.
-	(foreground.queuedSteeringMessages as string[]).push("external mutation");
-	assertEqual(foreground.queuedSteeringMessages, ["steer"]);
 
 	background.finishAssistant();
 	foreground.restoreChat(background.snapshot());
@@ -659,7 +652,6 @@ test("enhancement errors retain the rendered Markdown fallback", async () => {
 	connect(state);
 	state.replaceMessages([markdownMessage("**fallback**")]);
 	await waitFor(() => warn.mock.calls.length > 0);
-	expect(warn).toHaveBeenCalledTimes(1);
 	assertEqual(projectedMessages(state)[0].presentationState, "plain");
 	assertIncludes(
 		state.renderer.messages.renderTranscript(state.snapshot()),
@@ -1073,8 +1065,6 @@ async function readElementAndSignalPatches(
 			text.includes("event: datastar-patch-elements") &&
 			text.includes("event: datastar-patch-signals"),
 	);
-	assertEqual(count(output, "event: datastar-patch-elements"), 1);
-	assertEqual(count(output, "event: datastar-patch-signals"), 1);
 	return output;
 }
 

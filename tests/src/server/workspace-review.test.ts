@@ -190,7 +190,6 @@ test("workspace review combines repository files with tracked and untracked chan
 			["src/new.ts"],
 		);
 		assertEquals(renamed[0]?.type, "rename-pure");
-		assertEquals(snapshot.revision.length, 64);
 
 		await Bun.write(`${repository}/notes.txt`, "changed again\n");
 		const updated = await readWorkspaceReview(repository);

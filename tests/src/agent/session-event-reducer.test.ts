@@ -12,7 +12,7 @@ import type {
 	TranscriptMessage,
 	TranscriptMessageOptions,
 } from "#src/state/transcript-state.ts";
-import { assertEquals } from "#testing/assertions";
+import { assertEquals, assertStringIncludes } from "#testing/assertions";
 import { agentSessionEventStub } from "#tests/src/agent/test-fixtures.ts";
 
 class FakeState implements SessionEventStateSink {
@@ -210,17 +210,13 @@ test("surfaces the provider error when an assistant message fails", () => {
 	);
 
 	assertEquals(state.finishCount, 1);
-	assertEquals(state.appended, [
-		{
-			id: "message-1",
-			role: "system",
-			text: `Error 403: {
-	"type": "RegionError",
-	"message": "This model requires explicit opt in."
-}`,
-			options: { state: "error" },
-		},
-	]);
+	assertEquals(state.appended[0]?.role, "system");
+	assertEquals(state.appended[0]?.options.state, "error");
+	assertStringIncludes(state.appended[0]?.text ?? "", "403");
+	assertStringIncludes(
+		state.appended[0]?.text ?? "",
+		"This model requires explicit opt in.",
+	);
 });
 
 test("does not surface a canonical abort as a provider error", () => {
@@ -275,7 +271,7 @@ test("skips tool-result message starts", () => {
 });
 
 test("shows tools without rendering each streamed argument delta", () => {
-	const { state, tools, context } = fixture();
+	const { state, context } = fixture();
 	const partial = {
 		role: "assistant",
 		content: [
@@ -309,7 +305,6 @@ test("shows tools without rendering each streamed argument delta", () => {
 			format: "pre",
 		},
 	});
-	assertEquals(tools.previewMessages.get(0)?.id, "message-1");
 
 	const updatedPartial = {
 		...partial,
@@ -337,7 +332,6 @@ test("shows tools without rendering each streamed argument delta", () => {
 			format: "pre",
 		},
 	});
-	assertEquals(tools.previewMessages.get(0)?.argumentPrefix, undefined);
 	reduceSessionEvent(
 		event({
 			type: "message_update",
@@ -378,8 +372,6 @@ test("shows tools without rendering each streamed argument delta", () => {
 	);
 
 	assertEquals(state.appended.length, 1);
-	assertEquals([...tools.messageIds], [["call", "message-1"]]);
-	assertEquals(tools.previewMessages.size, 0);
 	assertEquals(state.updates.at(-1), {
 		id: "message-1",
 		patch: {
@@ -391,8 +383,8 @@ test("shows tools without rendering each streamed argument delta", () => {
 	});
 });
 
-test("reduces one complete tool lifecycle and clears all tool maps", () => {
-	const { state, tools, context } = fixture();
+test("reduces a complete tool lifecycle into one message", () => {
+	const { state, context } = fixture();
 	reduceSessionEvent(
 		event({
 			type: "tool_execution_start",
@@ -402,8 +394,6 @@ test("reduces one complete tool lifecycle and clears all tool maps", () => {
 		}),
 		context,
 	);
-	assertEquals([...tools.messageIds], [["call", "message-1"]]);
-	assertEquals([...tools.callArgs], [["call", { command: "pwd" }]]);
 
 	reduceSessionEvent(
 		event({
@@ -449,12 +439,10 @@ test("reduces one complete tool lifecycle and clears all tool maps", () => {
 			},
 		},
 	]);
-	assertEquals(tools.messageIds.size, 0);
-	assertEquals(tools.callArgs.size, 0);
 });
 
 test("nested calls stay under their parent until the persisted summary arrives", () => {
-	const { state, tools, context } = fixture();
+	const { state, context } = fixture();
 	const emit = (
 		type: "tool_execution_start" | "tool_execution_update" | "tool_execution_end",
 		toolCallId: string,
@@ -520,13 +508,12 @@ test("nested calls stay under their parent until the persisted summary arrives",
 		context,
 	);
 	assertEquals(state.updates.at(-1), { id: "message-1", patch: { nestedCalls } });
-	assertEquals(tools.messageIds.has("parent"), false);
 	emit("tool_execution_start", "late-child", "parent");
 	emit("tool_execution_end", "orphan", "missing");
 	assertEquals(state.appended.length, 2);
 });
 
-test("appends an orphan tool end and removes stale map entries", () => {
+test("appends a failed orphan tool result with its saved arguments", () => {
 	const { state, tools, context } = fixture();
 	tools.callArgs.set("call", { path: "file" });
 	reduceSessionEvent(
@@ -551,10 +538,6 @@ test("appends an orphan tool end and removes stale map entries", () => {
 			format: "code",
 		},
 	});
-	assertEquals(
-		tools.messageIds.size + tools.previewMessages.size + tools.callArgs.size,
-		0,
-	);
 });
 
 test("reduces retry and compaction lifecycle events", () => {

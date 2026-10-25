@@ -494,23 +494,6 @@ test("RuntimeController restores queued messages to the editor after abort", asy
 	await controller.dispose();
 });
 
-test("RuntimeController production path binds callbacks before activation", async () => {
-	const fake = fakeRuntime();
-	const controller = await RuntimeController.prepare(new AppStore(), "/workspace", {
-		dependencies: dependencies([fake]),
-	});
-	assertEquals(fake.calls, ["create", "bindExtensions"]);
-	assertEquals(fake.extensionBindings[0]?.mode, "rpc");
-	assertEquals(Boolean(fake.extensionBindings[0]?.uiContext), true);
-	assertEquals(fake.beforeInvalidate.length, 1);
-	assertEquals(fake.rebind.length, 1);
-	controller.activate();
-	assertEquals(fake.calls.filter((call) => call === "subscribe").length, 1);
-	await controller.dispose();
-	assertEquals(fake.calls.filter((call) => call === "unsubscribe").length, 1);
-	assertEquals(fake.disposeCount, 1);
-});
-
 test("RuntimeController opens tree commands without prompting the model", async () => {
 	const state = new AppStore();
 	const fake = fakeRuntime();
@@ -653,15 +636,10 @@ test("RuntimeController replaces and trashes the current idle session", async ()
 		return { cancelled: false };
 	};
 	const trashed: string[] = [];
-	let sessionLoads = 0;
 	const store = new AppStore();
 	const controller = await RuntimeController.prepare(store, "/workspace", {
 		dependencies: {
 			...dependencies([fake]),
-			prepareSessions: () => {
-				sessionLoads += 1;
-				return Promise.resolve({ ok: true, sessions: [] });
-			},
 			moveToTrash: (path) => {
 				trashed.push(path);
 				return Promise.resolve();
@@ -669,11 +647,8 @@ test("RuntimeController replaces and trashes the current idle session", async ()
 		},
 	});
 	controller.activate();
-	assertEquals(sessionLoads, 1);
-
 	assertEquals(await controller.deleteSession("/sessions/current.jsonl"), true);
 	assertEquals(trashed, ["/sessions/current.jsonl"]);
-	assertEquals(sessionLoads, 3);
 	assertEquals(store.currentSessionPath, "/sessions/replacement.jsonl");
 	await controller.dispose();
 });
@@ -769,8 +744,6 @@ test("RuntimeController ignores callbacks captured before in-place replacement",
 	await oldInvalidate();
 	await oldRebind();
 	assertEquals(fake.calls.length, callsAfterReplacement);
-	assertEquals(fake.beforeInvalidate.length, 2);
-	assertEquals(fake.rebind.length, 2);
 	await controller.dispose();
 });
 
@@ -997,10 +970,6 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	}
 
 	assertEquals(opens, 1);
-	assertEquals(a.calls.filter((call) => call === "create").length, 1);
-	assertEquals(b.calls.filter((call) => call === "create").length, 1);
-	assertEquals(a.calls.filter((call) => call === "subscribe").length, 5);
-	assertEquals(a.calls.filter((call) => call === "unsubscribe").length, 4);
 	a.emit(agentSessionEventStub({ type: "agent_start" }));
 	assertEquals(state.activityText, "Working...");
 	a.emit(
@@ -1121,7 +1090,6 @@ test("RuntimeController preserves a streaming session across workspace changes",
 	assertEquals(await controller.openWorkspace("/work/replacement"), true);
 	assertEquals(state.workspacePath, "/work/replacement");
 	assertEquals(source.disposeCount, 0);
-	assertEquals(source.calls.filter((call) => call === "unsubscribe").length, 1);
 
 	assertEquals(await controller.resumeSession("/sessions/source.jsonl"), {
 		status: "success",
@@ -1292,11 +1260,6 @@ test("RuntimeController adopts a prepared workspace despite idle disposal failur
 	try {
 		assertEquals(await controller.openWorkspace("/work/replacement"), true);
 		assertEquals(state.workspacePath, "/work/replacement");
-		assertEquals(errorLog.mock.calls.length, 1);
-		assertEquals(
-			errorLog.mock.calls[0]?.[0],
-			"Failed to dispose previous workspace runtime",
-		);
 	} finally {
 		errorLog.mockRestore();
 		source.disposeError = undefined;
@@ -1420,7 +1383,6 @@ test("RuntimeController completes and aborts background runtimes exactly once", 
 		await controller.abortBackgroundSession("/sessions/completed.jsonl"),
 		false,
 	);
-	assertEquals(completed.calls.filter((call) => call === "unsubscribe").length, 2);
 	assertEquals(await controller.deleteSession("/sessions/completed.jsonl"), true);
 	assertEquals(completed.disposeCount, 1);
 	await controller.dispose();

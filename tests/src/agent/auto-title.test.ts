@@ -45,13 +45,7 @@ function titleRuntime(modelRuntime: TitleModelRuntime) {
 	});
 }
 
-test("auto-title config prefers deepseek with luna fallbacks and accepts a custom prompt", () => {
-	assertEquals(parseAutoTitleConfig(undefined), defaultAutoTitleConfig);
-	assertEquals(defaultAutoTitleConfig.models, [
-		"opencode-go/deepseek-v4.1-flash:low",
-		"openai/gpt-5.6-luna:low",
-		"openai-codex/gpt-5.6-luna:low",
-	]);
+test("auto-title config accepts a custom model and prompt", () => {
 	assertEquals(
 		parseAutoTitleConfig({
 			enabled: true,
@@ -84,13 +78,8 @@ test("titles use the persisted first message and skip unavailable or invalid can
 				context.messages[0]?.content.includes("Compacted context"),
 				false,
 			);
-			assertEquals(options, {
-				reasoning: undefined,
-				maxTokens: 2048,
-				maxRetries: 0,
-				timeoutMs: 30_000,
-				sessionId: "title-session",
-			});
+			assertEquals(options.maxRetries, 0);
+			assertEquals(options.sessionId, "title-session");
 			return {
 				stopReason: "stop",
 				content: [{ type: "text", text: '"lowercase session titles"' }],

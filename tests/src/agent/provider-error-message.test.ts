@@ -6,30 +6,18 @@ import {
 } from "#src/agent/provider-error-message.ts";
 import { assertEquals } from "#testing/assertions";
 
-test("pretty prints a structured provider error without dropping fields", () => {
-	assertEquals(
-		formatProviderErrorMessage(
-			'403: {"type":"RegionError","message":"This model requires explicit opt in."}',
-		),
-		`Error 403: {
-	"type": "RegionError",
-	"message": "This model requires explicit opt in."
-}`,
-	);
-});
-
-test("pretty prints nested provider errors without assuming their schema", () => {
-	assertEquals(
-		formatProviderErrorMessage(
-			'429: {"error":{"message":"Rate limit exceeded","type":"rate_limit"}}',
-		),
-		`Error 429: {
-	"error": {
-		"message": "Rate limit exceeded",
-		"type": "rate_limit"
+test("provider errors preserve the HTTP status and all JSON fields", () => {
+	for (const [status, details] of [
+		[403, { type: "RegionError", message: "This model requires explicit opt in." }],
+		[429, { error: { message: "Rate limit exceeded", type: "rate_limit" } }],
+	] as const) {
+		const result = formatProviderErrorMessage(
+			status + ": " + JSON.stringify(details),
+		);
+		const prefix = "Error " + status + ": ";
+		assertEquals(result.startsWith(prefix), true);
+		assertEquals(JSON.parse(result.slice(prefix.length)), details);
 	}
-}`,
-	);
 });
 
 test("recognizes the canonical abort error without hiding other failures", () => {
