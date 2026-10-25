@@ -3,7 +3,6 @@ import { test } from "bun:test";
 import {
 	appendHistoryPage,
 	reconcileFirstHistoryPage,
-	reconcileReviewAvailability,
 	reconcileSelection,
 	selectionForReviewOpen,
 	workspaceReviewLoading,
@@ -49,23 +48,6 @@ test("workspace changes reconcile equal Git revisions", () => {
 			{ revision: "same", workspacePath: "/first" },
 			{ revision: "same", workspacePath: "/first" },
 		),
-		false,
-	);
-});
-
-test("loading another workspace preserves Git view availability", () => {
-	assertEquals(
-		reconcileReviewAvailability(true, {
-			isGitRepository: false,
-			revision: "git-unloaded",
-		}),
-		true,
-	);
-	assertEquals(
-		reconcileReviewAvailability(true, {
-			isGitRepository: false,
-			revision: "non-git",
-		}),
 		false,
 	);
 });

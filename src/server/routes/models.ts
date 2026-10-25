@@ -16,7 +16,7 @@ import { modelSearchText } from "#src/utils/model-search.ts";
 const directions = ["forward", "backward"] as const;
 
 /** Caps one picker payload so hundreds of models stay out of every patch. */
-export const maxModelOptions = 60;
+const maxModelOptions = 60;
 
 export const modelRoutes = {
 	[endpoints.modelsRefresh]: {

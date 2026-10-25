@@ -4,8 +4,8 @@ import { InMemoryCredentialStore } from "@earendil-works/pi-ai";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 
 import {
+	describeCodexUsage,
 	fetchCodexUsage,
-	formatCodexUsage,
 	parseCodexUsage,
 } from "#src/agent/codex-usage.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
@@ -100,26 +100,32 @@ test("keeps valid Codex windows when another window is malformed", () => {
 
 test("formats Codex windows from their reported duration", () => {
 	assertEquals(
-		formatCodexUsage({
+		describeCodexUsage({
 			primary: { usedPercent: 22, windowSeconds: 604_800 },
 		}),
-		"Weekly 78% ?",
+		[{ label: "Weekly", usedPercent: 22, remainingPercent: 78, resetText: "?" }],
 	);
 	assertEquals(
-		formatCodexUsage({
+		describeCodexUsage({
 			primary: { usedPercent: 25, windowSeconds: 18_000 },
 			secondary: { usedPercent: 50, windowSeconds: 604_800 },
 		}),
-		"5 hours 75% ?  Weekly 50% ?",
+		[
+			{ label: "5 hours", usedPercent: 25, remainingPercent: 75, resetText: "?" },
+			{ label: "Weekly", usedPercent: 50, remainingPercent: 50, resetText: "?" },
+		],
 	);
 });
 
 test("uses legacy labels when Codex omits window durations", () => {
 	assertEquals(
-		formatCodexUsage({
+		describeCodexUsage({
 			primary: { usedPercent: 10 },
 			secondary: { usedPercent: 20 },
 		}),
-		"5 hours 90% ?  Weekly 80% ?",
+		[
+			{ label: "5 hours", usedPercent: 10, remainingPercent: 90, resetText: "?" },
+			{ label: "Weekly", usedPercent: 20, remainingPercent: 80, resetText: "?" },
+		],
 	);
 });

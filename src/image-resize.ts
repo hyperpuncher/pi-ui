@@ -15,7 +15,7 @@ export type ResizedImage = Readonly<{
 
 // Chat images render at most this wide (see .message-image max-width and the
 // reserved box math in messages.tsx). Thumbnails encode to this target.
-export const thumbnailDisplayWidth = 768;
+const thumbnailDisplayWidth = 768;
 
 export type ThumbnailImage = Readonly<{
 	data: Uint8Array<ArrayBuffer>;

@@ -45,14 +45,6 @@ export async function fetchCodexUsage(
 	return payload === undefined ? undefined : parseCodexUsage(payload);
 }
 
-export function formatCodexUsage(usage: CodexUsage): string {
-	return describeCodexUsage(usage)
-		.map(
-			(window) => `${window.label} ${window.remainingPercent}% ${window.resetText}`,
-		)
-		.join("  ");
-}
-
 export function describeCodexUsage(usage: CodexUsage): CodexUsageWindowDescription[] {
 	const windows: CodexUsageWindowDescription[] = [];
 	if (usage.primary) windows.push(describeCodexWindow(usage.primary, "5 hours"));

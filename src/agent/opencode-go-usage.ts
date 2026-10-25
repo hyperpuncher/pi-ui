@@ -66,14 +66,6 @@ export function parseOpenCodeGoUsage(payload: JsonValue): OpenCodeGoUsage | unde
 	return parsed.rolling || parsed.weekly || parsed.monthly ? parsed : undefined;
 }
 
-export function formatOpenCodeGoUsage(usage: OpenCodeGoUsage): string {
-	return describeOpenCodeGoUsage(usage)
-		.map(
-			(window) => `${window.label} ${window.remainingPercent}% ${window.resetText}`,
-		)
-		.join("  ");
-}
-
 export function describeOpenCodeGoUsage(
 	usage: OpenCodeGoUsage,
 ): OpenCodeGoUsageWindowDescription[] {

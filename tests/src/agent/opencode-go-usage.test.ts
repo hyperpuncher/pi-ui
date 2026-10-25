@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 
 import {
-	formatOpenCodeGoUsage,
+	describeOpenCodeGoUsage,
 	parseOpenCodeGoUsage,
 } from "#src/agent/opencode-go-usage.ts";
 import { assertEquals } from "#testing/assertions";
@@ -25,12 +25,16 @@ test("parses OpenCode Go usage windows", () => {
 
 test("formats OpenCode Go limits as remaining percentages", () => {
 	assertEquals(
-		formatOpenCodeGoUsage({
+		describeOpenCodeGoUsage({
 			rolling: { usedPercent: 12 },
 			weekly: { usedPercent: 8 },
 			monthly: { usedPercent: 35 },
 		}),
-		"5 hours 88% ?  Weekly 92% ?  Monthly 65% ?",
+		[
+			{ label: "5 hours", usedPercent: 12, remainingPercent: 88, resetText: "?" },
+			{ label: "Weekly", usedPercent: 8, remainingPercent: 92, resetText: "?" },
+			{ label: "Monthly", usedPercent: 35, remainingPercent: 65, resetText: "?" },
+		],
 	);
 });
 

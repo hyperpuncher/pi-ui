@@ -17,13 +17,6 @@ export function workspaceReviewStateChanged(
 	);
 }
 
-export function reconcileReviewAvailability(
-	current: boolean,
-	next: { isGitRepository: boolean; revision: string },
-): boolean {
-	return next.revision === "git-unloaded" ? current : next.isGitRepository;
-}
-
 export type Selection =
 	{ kind: "working"; path?: string } | { hash: string; kind: "commit"; path?: string };
 
