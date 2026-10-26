@@ -120,7 +120,7 @@ test("session rows expose stable ids for resilient active descendants", () => {
 	assertFalse(html.includes("data-session-rename-title"));
 });
 
-test("current running session is live but does not resume itself", () => {
+test("current running session remains selected and exposes rename and abort", () => {
 	const path = "/sessions/current.jsonl";
 	const html = renderSessionPicker(
 		appRenderSnapshot({
@@ -142,7 +142,6 @@ test("current running session is live but does not resume itself", () => {
 	assertStringIncludes(html, 'aria-label="Current session running"');
 	assertStringIncludes(html, "@post('/sessions/rename'");
 	assertStringIncludes(html, "@post('/abort'");
-	assertFalse(html.includes("/sessions/resume"));
 });
 
 test("background sessions expose statuses and shortcuts", () => {

@@ -10,7 +10,7 @@ export function resumeSessionAction(
 	path: string,
 	options: { closeDialog?: boolean } = {},
 ): string {
-	return `if (!$_sessionLoading && $_sessionTransitionStatus !== 'loading') {
+	return `if ($_sessionTransitionStatus !== 'loading') {
 		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
 		window.piUi.sessionPerformance.start();
 		@post('${endpoints.sessionsResume}', {
@@ -27,14 +27,14 @@ export function resumeSessionShortcutAction(
 ): string {
 	const dialogOpen = "document.getElementById('session-dialog')?.open";
 	const scope = options.inDialog ? dialogOpen : `!(${dialogOpen})`;
-	return `if (${scope} && ${primaryModifierExpression()} && !evt.shiftKey && evt.code === 'Digit${index + 1}') {
+	return `if (!evt.defaultPrevented && ${scope} && ${primaryModifierExpression()} && !evt.shiftKey && evt.code === 'Digit${index + 1}') {
 		evt.preventDefault();
 		${resumeSessionAction(path, { closeDialog: options.inDialog })}
 	}`;
 }
 
 export function previousSessionAction(): string {
-	return `if (!$_sessionLoading && $_sessionTransitionStatus !== 'loading') {
+	return `if ($_sessionTransitionStatus !== 'loading') {
 		document.getElementById('session-dialog')?.close();
 		window.piUi.sessionPerformance.start();
 		@post('${endpoints.sessionsPrevious}', { payload: {}, retryMaxCount: 0 });

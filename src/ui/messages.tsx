@@ -57,8 +57,8 @@ export function renderMessages(
 		<main
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
-			data-class:messages-loading="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading'"
-			data-attr:aria-busy="$_sessionTransitionPending || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
+			data-class:messages-loading="$_sessionTransitionStatus === 'loading'"
+			data-attr:aria-busy="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
@@ -69,19 +69,9 @@ export function renderMessages(
 			data-preserve-attr="style"
 			data-on:scroll="window.piUi.messageScroll.checkOlder()"
 			data-indicator:_history-trimming
-			data-on:pi-ui-trim={`if (!$_historyLoading && !$_historyTrimming && !$_sessionTransitionPending) {
+			data-on:pi-ui-trim={`if (!$_historyLoading && !$_historyTrimming && $_sessionTransitionStatus !== 'loading') {
 				@post('${endpoints.messagesTrim}', { payload: evt.detail, retry: 'never' });
 			}`}
-			data-on:datastar-fetch={`
-				if (evt.detail.type === 'started') {
-					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
-						$_sessionTransitionPending = true;
-				}
-				if (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') {
-					if (evt.detail.el?.hasAttribute('data-indicator:_session-loading'))
-						$_sessionTransitionPending = false;
-				}
-			`}
 			data-on:keydown__window={keybindActions(
 				[
 					"toggle-thinking",
@@ -208,7 +198,6 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 		<button
 			type="button"
 			class="recent-session"
-			data-indicator:_session-loading
 			data-attr:disabled="$_sessionTransitionStatus === 'loading'"
 			data-on:click={resumeSessionAction(session.path)}
 		>

@@ -1,14 +1,15 @@
 import { test } from "bun:test";
 
-import { newSessionAction } from "#src/commands/actions.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { sessionTransitionResponse } from "#src/server/routes/sessions.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { renderMessages } from "#src/ui/messages.tsx";
 import { renderSessionPicker } from "#src/ui/pickers.tsx";
 import { renderSessionSidebar } from "#src/ui/session-sidebar.tsx";
-import { renderSessionTransition } from "#src/ui/session-transition.tsx";
-import { renderToolbar } from "#src/ui/toolbar.tsx";
+import {
+	renderSessionTransition,
+	resumeSessionShortcutAction,
+} from "#src/ui/session-transition.tsx";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import {
 	assertEquals,
@@ -59,26 +60,51 @@ test("session transition renderer escapes targets and renders loading and errors
 	assertStringIncludes(error, "Try another session.");
 });
 
-test("new session actions lock without driving the transition overlay", () => {
-	const action = newSessionAction();
-	assertStringIncludes(action, "$_newSessionPending");
-	const toolbar = renderToolbar(appRenderSnapshot({ isTemporarySession: false }));
-	assertStringIncludes(toolbar, "data-indicator:_new-session-pending");
-	assertStringIncludes(toolbar, "Review workspace");
-	assertStringExcludes(toolbar, "data-indicator:_session-loading");
-});
-
-test("transcript loading starts with the request and ends with the backend transition", () => {
-	const state = new AppStore();
-	const transition = renderSessionTransition(state.snapshot());
-	const messages = renderMessages([], { keys: "/", description: "Commands" });
-	assertStringExcludes(transition, "$_sessionLoading || $_sessionTransitionVisible");
-	assertStringExcludes(messages, "$_sessionLoading || $_sessionTransitionVisible");
-	assertStringIncludes(messages, "data-class:messages-loading");
-	assertStringIncludes(messages, "evt.detail.type === 'started'");
-	assertStringExcludes(messages, "if ($_sessionLoading)");
-	assertStringIncludes(messages, "$_sessionTransitionPending");
-	assertStringIncludes(messages, "$_sessionTransitionStatus === 'loading'");
+test("a picker shortcut is not also handled by the sidebar after closing the dialog", () => {
+	const picker = resumeSessionShortcutAction("/sessions/one.jsonl", 0, {
+		inDialog: true,
+	});
+	const sidebar = resumeSessionShortcutAction("/sessions/one.jsonl", 0);
+	for (const actions of [
+		[picker, sidebar],
+		[sidebar, picker],
+	]) {
+		const requests: string[] = [];
+		const dialog = {
+			open: true,
+			close() {
+				this.open = false;
+			},
+		};
+		const event = {
+			ctrlKey: true,
+			metaKey: false,
+			shiftKey: false,
+			code: "Digit1",
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		};
+		for (const action of actions) {
+			new Function(
+				"evt",
+				"document",
+				"window",
+				"$_sessionTransitionStatus",
+				"post",
+				action.replaceAll("@post(", "post("),
+			)(
+				event,
+				{ getElementById: () => dialog },
+				{ piUi: { sessionPerformance: { start() {} } } },
+				"idle",
+				(url: string) => requests.push(url),
+			);
+		}
+		assertEquals(requests, ["/sessions/resume"]);
+		assertEquals(dialog.open, false);
+	}
 });
 
 test("empty chat shows login instead of recent sessions without auth", () => {
@@ -122,7 +148,6 @@ test("resume renderers share loading behavior and disable controls", () => {
 	);
 	for (const html of [recent, picker]) {
 		assertStringIncludes(html, "/sessions/resume");
-		assertStringIncludes(html, "_sessionLoading");
 		assertStringIncludes(html, "$_sessionTransitionStatus");
 	}
 	const shortcuts = renderSessionSidebar({

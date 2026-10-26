@@ -267,11 +267,9 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.streamingMessageChanged();
 	}
 	sessionTransitionChanged(scrollToBottom: boolean): void {
-		this.requestCommit({
-			type: "signal-overrides",
-			values: { _sessionTransitionPending: false },
-		});
-		if (scrollToBottom) this.requestCommit({ type: "scroll-transcript-bottom" });
+		this.requestCommit(
+			scrollToBottom ? { type: "scroll-transcript-bottom" } : undefined,
+		);
 		// Loading, readiness, and errors are lifecycle boundaries, not progress ticks.
 		this.commits.flush();
 	}

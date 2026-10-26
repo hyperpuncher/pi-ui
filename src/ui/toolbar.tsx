@@ -140,10 +140,9 @@ function ToolbarButton(props: {
 			}
 			data-size="icon-sm"
 			type="button"
-			data-indicator:_new-session-pending={isSessionChangingAction(props.action)}
 			data-attr:disabled={
 				isSessionChangingAction(props.action)
-					? "$_newSessionPending || $_sessionTransitionStatus === 'loading'"
+					? "$_sessionTransitionStatus === 'loading'"
 					: undefined
 			}
 			data-on:click={toolbarClickAction(props.action)}

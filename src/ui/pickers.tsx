@@ -412,7 +412,6 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-preserve-attr="class"
 			tabindex="-1"
 			aria-selected={current ? "true" : "false"}
-			data-indicator:_session-loading
 			data-attr:aria-disabled="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
@@ -539,7 +538,7 @@ function renderSessionRow(
 	current: boolean,
 	displayStatus: BackgroundSessionStatus | undefined,
 ): string {
-	const shortcut = index < 9 && !current ? `ctrl ${index + 1}` : undefined;
+	const shortcut = index < 9 ? `ctrl ${index + 1}` : undefined;
 	const deletable = displayStatus !== "running";
 	return syncHtml(
 		<div
@@ -549,13 +548,8 @@ function renderSessionRow(
 			aria-selected={current ? "true" : "false"}
 			data-preserve-attr="class"
 			data-keep-command-open
-			data-indicator:_session-loading
 			data-attr:aria-disabled="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
-			data-on:click={
-				current
-					? "document.getElementById('session-dialog')?.close()"
-					: resumeSessionAction(session.path, { closeDialog: true })
-			}
+			data-on:click={resumeSessionAction(session.path, { closeDialog: true })}
 			data-on:keydown__window={
 				shortcut
 					? resumeSessionShortcutAction(session.path, index, { inDialog: true })
@@ -615,7 +609,7 @@ function renderSessionRow(
 				<SessionSubtitle session={session} class="session-menu-subtitle" />
 				<SessionRowAction
 					session={session}
-					shortcut={shortcut}
+					shortcut={current ? undefined : shortcut}
 					deletable={deletable}
 				/>
 			</span>

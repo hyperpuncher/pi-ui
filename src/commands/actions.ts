@@ -4,7 +4,7 @@ import { previousSessionAction } from "#src/ui/session-transition.tsx";
 
 export function newSessionAction(temporary = false): string {
 	const endpoint = temporary ? endpoints.sessionsNewTemporary : endpoints.sessionsNew;
-	return `if (!$_newSessionPending && $_sessionTransitionStatus !== 'loading') { @post('${endpoint}', { payload: {}, retryMaxCount: 0 }); requestAnimationFrame(() => window.piUi.prompt.autofocus()); }`;
+	return `if ($_sessionTransitionStatus !== 'loading') { @post('${endpoint}', { payload: {}, retryMaxCount: 0 }); requestAnimationFrame(() => window.piUi.prompt.autofocus()); }`;
 }
 
 export function toggleDialogAction(): string {

@@ -177,9 +177,6 @@ export function renderPage(
 					`}
 					data-signals__ifmissing={JSON.stringify({
 						_isDraggingFile: false,
-						_sessionLoading: false,
-						_sessionTransitionPending: false,
-						_newSessionPending: false,
 						sessionSearch: "",
 						modelSearch: "",
 						workspaceDraft: "",
