@@ -53,6 +53,7 @@ interface PiUiNamespace {
 		sync(reset?: boolean): void;
 	};
 	prompt: {
+		autofocus(): void;
 		clear(): void;
 	};
 	promptHistory: {

@@ -94,7 +94,7 @@ export function signalsResponse(signals: Record<string, Jsonifiable>): Response 
 function clientEffectScript(effect: ClientEffect): string {
 	switch (effect.type) {
 		case "focus-prompt":
-			return "document.getElementById('prompt-input')?.focus({ preventScroll: true })";
+			return "window.piUi.prompt.autofocus()";
 		case "focus-session-picker":
 			return "document.getElementById('session-input')?.focus()";
 		case "close-worktree-picker":

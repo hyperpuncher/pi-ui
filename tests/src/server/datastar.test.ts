@@ -33,6 +33,6 @@ test("Datastar response preserves ordered events and response metadata", async (
 	assertStringIncludes(response.headers.get("content-type") ?? "", "text/event-stream");
 	const elements = body.indexOf("datastar-patch-elements");
 	const signals = body.indexOf("datastar-patch-signals");
-	const effect = body.indexOf("prompt-input", signals);
+	const effect = body.indexOf("window.piUi.prompt.autofocus()", signals);
 	assertEquals(elements >= 0 && signals > elements && effect > signals, true);
 });

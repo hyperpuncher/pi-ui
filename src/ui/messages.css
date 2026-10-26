@@ -65,6 +65,7 @@
 		height: 1rem;
 	}
 	.messages-prompt-spacer {
+		height: 12rem;
 		min-height: 12rem;
 		flex-shrink: 0;
 		pointer-events: none;
@@ -559,6 +560,9 @@
 		}
 		.messages-stack {
 			width: 100%;
+		}
+		.messages-prompt-spacer {
+			min-height: 0;
 		}
 		.message-user {
 			max-width: 88%;

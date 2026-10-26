@@ -27,7 +27,7 @@ import {
 	syncPickerSelection,
 } from "#static/app/pickers.js";
 import { createPromptHistory } from "#static/app/prompt-history.js";
-import { focusPromptEnd, setPromptValue } from "#static/app/prompt.js";
+import { autofocusPrompt, setPromptValue } from "#static/app/prompt.js";
 import {
 	readTransitionState,
 	startSessionPerformanceMeasurement,
@@ -62,6 +62,7 @@ window.piUi = {
 		sync: syncPickerSelection,
 	},
 	prompt: {
+		autofocus: autofocusPrompt,
 		clear: () => setPromptValue(""),
 	},
 	promptHistory,
@@ -93,7 +94,7 @@ bindFileLinks();
 
 window.addEventListener("DOMContentLoaded", async () => {
 	bindControls();
-	focusPromptEnd();
+	autofocusPrompt();
 	bindPickers();
 	bindMessageScroll();
 	bindCodeCopy();

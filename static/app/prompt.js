@@ -10,6 +10,11 @@ export function setPromptValue(value) {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+export function autofocusPrompt() {
+	if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+	focusPromptEnd();
+}
+
 export function focusPromptEnd() {
 	const input = promptInput();
 	if (!input) return;

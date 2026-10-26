@@ -112,9 +112,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 							$_filePickerOpen = false;
 						`}
 						data-effect={`if ($_sessionTransitionStatus !== 'loading') {
-							el.focus({ preventScroll: true });
-							el.selectionStart = el.value.length;
-							el.selectionEnd = el.value.length;
+							window.piUi.prompt.autofocus();
 						}`}
 						data-on:paste={`if (window.piUi.fileTransfer.hasFiles(evt.clipboardData)) {
 							evt.preventDefault();
