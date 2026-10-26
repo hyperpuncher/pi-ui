@@ -335,6 +335,9 @@ export function renderPage(
 								class="workspace-command-header"
 								aria-label="Search workspaces"
 							>
+								<label class="sr-only" for="workspace-input">
+									Search workspaces
+								</label>
 								<input
 									id="workspace-input"
 									class="workspace-command-input"
@@ -436,6 +439,9 @@ export function renderPage(
 								data-class:sr-only="$treeSelectedId"
 							>
 								<Icon name="search" />
+								<label class="sr-only" for="tree-input">
+									Search tree
+								</label>
 								<input
 									id="tree-input"
 									type="text"
@@ -469,6 +475,9 @@ export function renderPage(
 					>
 						<div class="command">
 							<search aria-label="Search sessions">
+								<label class="sr-only" for="session-input">
+									Search sessions
+								</label>
 								<input
 									id="session-input"
 									type="text"

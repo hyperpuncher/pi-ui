@@ -282,6 +282,9 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 				>
 					<div class="command">
 						<search aria-label="Search models">
+							<label class="sr-only" for="model-select-input">
+								Search models
+							</label>
 							<input
 								id="model-select-input"
 								type="text"

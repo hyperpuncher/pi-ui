@@ -75,6 +75,9 @@ export function renderCodeThemeDialog(): string {
 							))}
 						</div>
 					</div>
+					<label class="sr-only" for="code-theme-search">
+						Search code themes
+					</label>
 					<input
 						id="code-theme-search"
 						type="search"

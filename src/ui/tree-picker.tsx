@@ -65,9 +65,13 @@ function SummaryChoice(): string {
 					queueMicrotask(() => document.getElementById('tree-summary-input')?.focus());
 				`,
 			})}
-			<span role="heading" data-show="$treeCustomSummary">
+			<label
+				class="command-group-label"
+				for="tree-summary-input"
+				data-show="$treeCustomSummary"
+			>
 				Summary instructions
-			</span>
+			</label>
 			<div class="input-group tree-summary-input" data-show="$treeCustomSummary">
 				<input
 					id="tree-summary-input"

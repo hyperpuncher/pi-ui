@@ -12,7 +12,7 @@ export function renderUpdateBadge(update: AvailableUpdate): string {
 			data-variant="ghost"
 			data-size="sm"
 			popovertarget="update-popover"
-			aria-haspopup="true"
+			aria-haspopup="dialog"
 			aria-label={`Update pi-ui to ${update.latestVersion}`}
 			data-tooltip="Update available"
 			data-tooltip-delay
@@ -56,6 +56,7 @@ export function renderUpdatePopover(update: AvailableUpdate): string {
 					data-size="icon-xs"
 					type="button"
 					data-copy-code
+					autofocus
 					aria-label="Copy upgrade command"
 				>
 					<Icon name="copy" />

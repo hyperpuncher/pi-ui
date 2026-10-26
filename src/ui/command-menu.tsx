@@ -22,6 +22,9 @@ export function renderCommandMenu(): string {
 		>
 			<div class="command">
 				<search aria-label="Search commands">
+					<label class="sr-only" for="command-input">
+						Search commands
+					</label>
 					<input
 						id="command-input"
 						type="text"

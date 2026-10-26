@@ -4,6 +4,7 @@ const contentSelector = '[data-slot="tooltip-content"]';
 /** Shows tooltips as top-layer popovers so they stay above panels and inside the viewport. */
 export function bindTooltips() {
 	if (!("popover" in HTMLElement.prototype)) return;
+	let focusFrame;
 	document.addEventListener("pointerover", (event) => {
 		if (event.pointerType === "touch") return;
 		showTooltip(event.target);
@@ -16,7 +17,9 @@ export function bindTooltips() {
 		if (!trigger) return;
 		// Keyboard focus shows every tooltip; usage indicators also reveal on tap.
 		if (!trigger.matches(":focus-visible") && !isUsageTrigger(trigger)) return;
-		queueMicrotask(() => {
+		cancelAnimationFrame(focusFrame);
+		// Let native popover focus restoration finish before opening another popover.
+		focusFrame = requestAnimationFrame(() => {
 			if (trigger.matches(":focus-within")) showTooltip(trigger);
 		});
 	});
@@ -24,7 +27,10 @@ export function bindTooltips() {
 		hideTooltip(event.target, event.relatedTarget);
 	});
 	document.addEventListener("keydown", (event) => {
-		if (event.key === "Escape") hideTooltips();
+		if (event.key === "Escape") {
+			cancelAnimationFrame(focusFrame);
+			hideTooltips();
+		}
 	});
 }
 
@@ -47,7 +53,7 @@ function showTooltip(target) {
 	const trigger = tooltipTrigger(target);
 	const content = tooltipContent(trigger);
 	if (!content || content.matches(":popover-open")) return;
-	content.showPopover();
+	content.showPopover({ source: trigger });
 }
 
 function hideTooltip(target, related) {

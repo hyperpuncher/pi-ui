@@ -345,14 +345,12 @@
 
 	[data-tooltip] {
 		position: relative;
-		anchor-name: --tooltip;
-		anchor-scope: --tooltip;
 	}
 
 	[data-slot="tooltip-content"] {
 		--tooltip-shift: -50%;
 
-		position-anchor: --tooltip;
+		position-anchor: auto;
 		inset: auto;
 		inset-block-end: anchor(top);
 		inset-inline-start: anchor(center);
