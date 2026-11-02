@@ -227,15 +227,30 @@ function hideIncompleteLinkDestination(markdown: string): string {
 }
 
 function compileMarkdown(markdown: string): string {
-	const html = Bun.markdown.html(markdown, {
-		autolinks: true,
+	const options = {
 		noHtmlBlocks: true,
 		noHtmlSpans: true,
 		strikethrough: true,
 		tables: true,
 		tasklists: true,
-	});
+	};
+	let html = Bun.markdown.html(markdown, { ...options, autolinks: true });
+	// Temporary workaround for https://github.com/oven-sh/bun/issues/43980.
+	// Bare URLs can consume emphasis delimiters and leave formatting tags open.
+	if (hasUnbalancedEmphasis(html)) {
+		html = Bun.markdown.html(markdown, { ...options, autolinks: false });
+	}
 	return markdownHtmlRewriter.transform(html);
+}
+
+function hasUnbalancedEmphasis(html: string): boolean {
+	const stack: string[] = [];
+	// Raw HTML is disabled, so these tags can only come from the renderer.
+	for (const [, closing, tag] of html.matchAll(/<(\/?)(strong|em|del)>/g)) {
+		if (!closing) stack.push(tag);
+		else if (stack.pop() !== tag) return true;
+	}
+	return stack.length > 0;
 }
 
 export async function renderCodeFinal(

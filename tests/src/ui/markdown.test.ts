@@ -113,6 +113,18 @@ test("bare URLs are clickable and explicit bold links remain balanced", async ()
 	}
 });
 
+test("bold bare URLs do not make later content bold", async () => {
+	const markdown =
+		"- Feed **https://github.com/hyperpuncher/leantube/releases/latest/download/repo.json**.\n- next normal\n\n[explicit](https://example.com/)";
+	for (const html of [
+		renderMarkdownStreaming(markdown),
+		await renderMarkdownFinal(markdown),
+	]) {
+		assertIncludes(html, "repo.json</strong>.</li>\n<li>next normal</li>");
+		assertIncludes(html, 'href="https://example.com/"');
+	}
+});
+
 test("streaming links show their label until the destination closes", async () => {
 	const prefix = "Read [the Bun issue]";
 	for (const suffix of [
