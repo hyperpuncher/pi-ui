@@ -497,11 +497,9 @@ function renderImageAttachment(
 	// browser honors max-width before load, so a narrow container shrinks the
 	// reserved box the same way it shrinks the image.
 	const size = displayImageSize(image.width, image.height);
-	// The frame look lives on the image itself, so there is no wrapper div:
-	// one node unlinked, two linked (a bare link around it).
-	const framed = (
+	const content = (
 		<img
-			class="message-image message-image-frame"
+			class="message-image"
 			src={src}
 			alt={attachment.name || `Attached image ${index + 1}`}
 			loading="lazy"
@@ -510,7 +508,13 @@ function renderImageAttachment(
 			height={size?.height}
 		/>
 	);
-	return thumb ? <a href={full}>{framed}</a> : framed;
+	return thumb ? (
+		<a class="message-image-frame" href={full}>
+			{content}
+		</a>
+	) : (
+		<span class="message-image-frame">{content}</span>
+	);
 }
 
 function renderUserMessage(message: AppMessage): string {

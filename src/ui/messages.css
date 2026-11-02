@@ -356,18 +356,23 @@
 		gap: 0.5rem;
 	}
 	.message-image-frame {
+		--image-frame-padding: 0.1875rem;
+
+		display: block;
+		min-width: 0;
+		max-width: 100%;
 		overflow: clip;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-xl);
 		background: var(--surface-control);
-		padding: 0.1875rem;
+		padding: var(--image-frame-padding);
 	}
 	.message-image {
 		display: block;
 		max-width: 100%;
 		max-height: 18rem;
 		height: auto;
-		border-radius: var(--radius-lg);
+		border-radius: calc(var(--radius-xl) - (var(--image-frame-padding) + 1px) * 0.75);
 		object-fit: contain;
 	}
 	.tool-image-attachments {
