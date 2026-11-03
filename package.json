@@ -51,9 +51,9 @@
 		"audit": "bunx fallow audit"
 	},
 	"devDependencies": {
-		"@earendil-works/pi-ai": "^1.4.0",
-		"@earendil-works/pi-coding-agent": "^1.4.0",
-		"@earendil-works/pi-tui": "^1.4.0",
+		"@earendil-works/pi-ai": "^1.5.0",
+		"@earendil-works/pi-coding-agent": "^1.5.0",
+		"@earendil-works/pi-tui": "^1.5.0",
 		"@iconify-json/lucide": "^1.2.150",
 		"@kitajs/html": "5.0.0-next.1",
 		"@oxlint/plugins": "1.90.0",
@@ -75,6 +75,6 @@
 	},
 	"packageManager": "bun@1.4.4",
 	"patchedDependencies": {
-		"@earendil-works/pi-coding-agent@1.4.0": "patches/@earendil-works%2Fpi-coding-agent@1.4.0.patch"
+		"@earendil-works/pi-coding-agent@1.5.0": "patches/@earendil-works%2Fpi-coding-agent@1.5.0.patch"
 	}
 }

@@ -1,5 +1,5 @@
 diff --git a/dist/config.js b/dist/config.js
-index 62eb303e5ca396e4107081868790506673344faa..dc7bef054221b3aa684ceae668804a4402e689bb 100644
+index 8566260a142337b80861d41a70ca27425a066a36..377c27edcd00e4f94bdd6ecc082a91aaf4ffc260 100644
 --- a/dist/config.js
 +++ b/dist/config.js
 @@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
@@ -10,7 +10,7 @@ index 62eb303e5ca396e4107081868790506673344faa..dc7bef054221b3aa684ceae668804a44
  // =============================================================================
  // Package Detection
  // =============================================================================
-@@ -471,7 +472,7 @@ export const PACKAGE_NAME = pkg.name || "@earendil-works/pi-coding-agent";
+@@ -490,7 +491,7 @@ export const PACKAGE_NAME = pkg.name || "@earendil-works/pi-coding-agent";
  export const APP_NAME = piConfigName || "pi";
  export const APP_TITLE = piConfigName ? APP_NAME : "π";
  export const CONFIG_DIR_NAME = pkg.piConfig?.configDir || ".pi";
