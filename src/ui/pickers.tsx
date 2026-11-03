@@ -482,16 +482,20 @@ function uniqueWorkspaces(workspaces: readonly string[]): string[] {
 
 export function renderSessionPicker(state: AppStateSnapshot): string {
 	return syncHtml(
-		<div
-			role="listbox"
-			id="session-menu"
-			class="session-menu"
-			aria-orientation="vertical"
-			data-empty="No matching sessions."
-			data-signals:background-session-path__ifmissing="''"
-		>
-			{renderSessionPickerContent(state)}
-		</div>,
+		<>
+			<div
+				role="listbox"
+				id="session-menu"
+				class="session-menu"
+				aria-orientation="vertical"
+				data-signals:background-session-path__ifmissing="''"
+			>
+				{renderSessionPickerContent(state)}
+			</div>
+			<p class="command-empty" role="status">
+				No matching sessions.
+			</p>
+		</>,
 	);
 }
 

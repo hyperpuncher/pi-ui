@@ -250,16 +250,20 @@
 		display: none;
 	}
 
-	.command
-		:where([role="listbox"], [role="menu"]):not(
-			:has(:is([role="option"], [role="menuitem"]):not([hidden]))
-		)::before {
-		display: block;
+	.command-empty {
 		padding: 1.5rem;
 		color: var(--text-muted);
 		font-size: var(--text-base);
 		text-align: center;
-		content: attr(data-empty) / attr(data-empty);
+	}
+
+	.command
+		:where(
+			[role="listbox"]:has([role="option"]:not([hidden])),
+			.tree-menu:has(.tree-row:not([hidden]))
+		)
+		+ .command-empty {
+		display: none;
 	}
 
 	[data-popover] {

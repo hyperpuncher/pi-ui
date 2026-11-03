@@ -14,13 +14,7 @@ const treeLabelClasses = {
 export function renderTreePicker(state: AppStateSnapshot): string {
 	return syncHtml(
 		<div id="tree-picker">
-			<div
-				role="menu"
-				id="tree-menu"
-				class="tree-menu"
-				aria-orientation="vertical"
-				data-empty="No session entries found."
-			>
+			<div role="menu" id="tree-menu" class="tree-menu" aria-orientation="vertical">
 				<div
 					role="group"
 					aria-labelledby="tree-menu-heading"
@@ -33,6 +27,9 @@ export function renderTreePicker(state: AppStateSnapshot): string {
 				</div>
 				<SummaryChoice />
 			</div>
+			<p class="command-empty" role="status" data-show="!$treeSelectedId">
+				No session entries found.
+			</p>
 		</div>,
 	);
 }

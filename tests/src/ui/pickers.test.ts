@@ -345,7 +345,7 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 				],
 			}),
 		),
-		'data-empty="No models found."',
+		'<p class="command-empty" role="status">No models found.</p>',
 	);
 });
 

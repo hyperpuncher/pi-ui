@@ -44,12 +44,7 @@ export function renderCommandMenu(): string {
 						"
 					/>
 				</search>
-				<div
-					role="listbox"
-					id="command-menu"
-					aria-orientation="vertical"
-					data-empty="No commands found."
-				>
+				<div role="listbox" id="command-menu" aria-orientation="vertical">
 					<div role="group" aria-labelledby="command-menu-heading">
 						<span id="command-menu-heading" class="command-group-label">
 							Commands
@@ -59,6 +54,9 @@ export function renderCommandMenu(): string {
 							.map(renderCommandRow)}
 					</div>
 				</div>
+				<p class="command-empty" role="status">
+					No commands found.
+				</p>
 			</div>
 		</dialog>,
 	);

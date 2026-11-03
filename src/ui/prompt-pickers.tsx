@@ -312,7 +312,6 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 							id="model-select-menu"
 							class="model-menu"
 							aria-labelledby="model-select-trigger"
-							data-empty="No models found."
 							data-indicator:_model-select-loading
 							data-on-signal-patch-filter="{ include: /^_modelsRevision$/ }"
 							data-on-signal-patch={`document.getElementById('model-select-popover')?.matches(':popover-open') &&
@@ -366,6 +365,9 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 								<div id="model-select-options" data-ignore-morph></div>
 							</div>
 						</div>
+						<p class="command-empty" role="status">
+							No models found.
+						</p>
 					</div>
 				</dialog>
 			</div>
