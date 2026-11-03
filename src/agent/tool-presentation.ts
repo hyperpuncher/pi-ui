@@ -3,8 +3,13 @@ import type {
 	TranscriptMessageAttachment,
 	TranscriptMessageTitlePart,
 } from "#src/state/transcript-state.ts";
-import type { JsonValue } from "#src/utils/json-types.ts";
-import { asRecord, isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
+import {
+	asRecord,
+	isNumber,
+	isRecord,
+	isString,
+	type JsonValue,
+} from "#src/utils/type-guards.ts";
 import { formatHomePath } from "#src/utils/workspace.ts";
 
 const bashPreviewLines = 4;

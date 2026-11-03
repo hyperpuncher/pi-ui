@@ -15,8 +15,8 @@ import {
 } from "#src/state/transcript-state.ts";
 import type { AvailableUpdate } from "#src/update-check.ts";
 import { formatMessageCount } from "#src/utils/format.ts";
-import type { JsonObject } from "#src/utils/json-types.ts";
 import { formatShortcut } from "#src/utils/keyboard.ts";
+import type { JsonObject } from "#src/utils/type-guards.ts";
 import { defaultWorkspacePath, managedWorktreeParts } from "#src/utils/workspace.ts";
 import {
 	unloadedWorkspaceReviewSnapshot,
@@ -63,6 +63,8 @@ export type AppAuthDialog = {
 	url?: string;
 	instructions?: string;
 	deviceCode?: string;
+	openBrowserOnConfirm?: boolean;
+	copyCodeOnConfirm?: boolean;
 	prompt?: AppAuthPrompt;
 	progress: string[];
 	error?: string;

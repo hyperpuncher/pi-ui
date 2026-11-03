@@ -1,5 +1,7 @@
 import { test } from "bun:test";
 
+import type { AuthInteraction } from "@earendil-works/pi-ai";
+
 import { AuthController } from "#src/agent/auth-controller.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { assertEquals } from "#testing/assertions";
@@ -11,6 +13,8 @@ function nextTurn(): Promise<void> {
 
 test("OAuth login preserves account metadata and supplies a stable device ID", async () => {
 	let loginDeviceId: string | undefined;
+	let loginInteraction: AuthInteraction | undefined;
+	const login = Promise.withResolvers<void>();
 	const providers = [
 		{
 			id: "openai",
@@ -29,10 +33,12 @@ test("OAuth login preserves account metadata and supplies a stable device ID", a
 		login: async (
 			_providerId: string,
 			_type: string,
-			_interaction: unknown,
+			interaction: AuthInteraction,
 			options: { getDeviceId?: () => string },
 		) => {
 			loginDeviceId = options.getDeviceId?.();
+			loginInteraction = interaction;
+			await login.promise;
 		},
 	};
 	const runtime = agentSessionRuntimeStub({
@@ -62,6 +68,40 @@ test("OAuth login preserves account metadata and supplies a stable device ID", a
 		],
 	);
 	assertEquals(controller.startLogin("openai", "oauth"), true);
+	const interaction = loginInteraction!;
+	interaction.notify({
+		type: "device_code",
+		userCode: "ABCD",
+		verificationUri: "https://example.com/device",
+	});
+	assertEquals(state.authDialog?.openBrowserOnConfirm, true);
+	assertEquals(state.authDialog?.copyCodeOnConfirm, true);
+	interaction.notify({
+		type: "device_code",
+		userCode: "ABCD",
+		verificationUri: "https://example.com/device",
+		openBrowserOnConfirm: false,
+		copyCodeOnConfirm: false,
+	});
+	assertEquals(state.authDialog?.openBrowserOnConfirm, false);
+	assertEquals(state.authDialog?.copyCodeOnConfirm, false);
+	for (const url of ["javascript:alert(1)", "file:///tmp/sign-in"]) {
+		interaction.notify({ type: "auth_url", url });
+		assertEquals(state.authDialog?.url, undefined);
+		interaction.notify({
+			type: "device_code",
+			userCode: "ABCD",
+			verificationUri: url,
+		});
+		assertEquals(state.authDialog?.url, undefined);
+		interaction.notify({
+			type: "info",
+			message: "Sign in",
+			links: [{ url }],
+		});
+		assertEquals(state.authDialog?.url, undefined);
+	}
+	login.resolve();
 	await nextTurn();
 	assertEquals(loginDeviceId, "0199a00a-1234-7000-8000-123456789abc");
 });

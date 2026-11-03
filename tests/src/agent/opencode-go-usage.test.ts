@@ -9,8 +9,14 @@ import { assertEquals } from "#testing/assertions";
 test("parses OpenCode Go usage windows", () => {
 	assertEquals(
 		parseOpenCodeGoUsage({
+			plan: "go",
 			usage: {
-				rolling: { percent: 12, resetsAt: "2030-01-02T03:04:05.000Z" },
+				remaining: 88,
+				rolling: {
+					percent: 12,
+					resetsAt: "2030-01-02T03:04:05.000Z",
+					limit: 100,
+				},
 				weekly: { percent: "8", resetsAt: 1_900_000_000 },
 				monthly: { percent: 35 },
 			},

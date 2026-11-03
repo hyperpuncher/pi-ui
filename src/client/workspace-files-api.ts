@@ -1,54 +1,77 @@
-import Type, { type Static, type StaticParse, type TSchema } from "typebox";
-import { Parse } from "typebox/value";
+import {
+	arr,
+	bool,
+	compile,
+	lit,
+	num,
+	obj,
+	oneOf,
+	opt,
+	type Schema,
+	type Static,
+	str,
+	union,
+} from "@earendil-works/pi-schema";
 
 import { responseErrorMessage } from "#src/utils/errors.ts";
 
-const workspaceFilePreviewSchema = Type.Union([
-	Type.Object({
-		kind: Type.Union([
-			Type.Literal("audio"),
-			Type.Literal("font"),
-			Type.Literal("html"),
-			Type.Literal("image"),
-			Type.Literal("pdf"),
-			Type.Literal("video"),
-		]),
-		mimeType: Type.String(),
-		url: Type.String(),
-	}),
-	Type.Object({
-		html: Type.String(),
-		kind: Type.Literal("markdown"),
-		mimeType: Type.String(),
-	}),
+const workspaceFilePreviewSchema = union([
+	obj(
+		{
+			kind: oneOf(["audio", "font", "html", "image", "pdf", "video"]),
+			mimeType: str(),
+			url: str(),
+		},
+		{ open: true },
+	),
+	obj(
+		{
+			html: str(),
+			kind: lit("markdown"),
+			mimeType: str(),
+		},
+		{ open: true },
+	),
 ]);
-const workspaceFileSchema = Type.Object({
-	path: Type.String(),
-	contents: Type.String(),
-	preview: Type.Optional(workspaceFilePreviewSchema),
-	revision: Type.String(),
-	size: Type.Number(),
-});
-const workspaceFileViewSchema = Type.Union([
+const workspaceFileSchema = obj(
+	{
+		path: str(),
+		contents: str(),
+		preview: opt(workspaceFilePreviewSchema),
+		revision: str(),
+		size: num(),
+	},
+	{ open: true },
+);
+const workspaceFileViewSchema = union([
 	workspaceFileSchema,
-	Type.Object({
-		path: Type.String(),
-		preview: workspaceFilePreviewSchema,
-		revision: Type.String(),
-		size: Type.Number(),
-	}),
-	Type.Object({
-		message: Type.String(),
-		path: Type.String(),
-		size: Type.Number(),
-	}),
+	obj(
+		{
+			path: str(),
+			preview: workspaceFilePreviewSchema,
+			revision: str(),
+			size: num(),
+		},
+		{ open: true },
+	),
+	obj(
+		{
+			message: str(),
+			path: str(),
+			size: num(),
+		},
+		{ open: true },
+	),
 ]);
-const workspaceFilesSchema = Type.Object({
-	paths: Type.Array(Type.String()),
-	workspacePath: Type.String(),
-});
-const workspaceEntrySchema = Type.Object({ path: Type.String() });
-const fileRevealSchema = Type.Object({ available: Type.Boolean() });
+const workspaceFilesSchema = obj(
+	{
+		paths: arr(str()),
+		workspacePath: str(),
+	},
+	{ open: true },
+);
+const workspaceEntrySchema = obj({ path: str() }, { open: true });
+const fileRevealSchema = obj({ available: bool() }, { open: true });
 
 export type WorkspaceFileData = Static<typeof workspaceFileSchema>;
 export type WorkspaceFilePreviewData = Static<typeof workspaceFilePreviewSchema>;
@@ -116,11 +139,11 @@ export function createWorkspaceFilesApi(endpoint: string) {
 	};
 }
 
-async function requestJson<Schema extends TSchema>(
+async function requestJson<S extends Schema>(
 	url: string,
-	schema: Schema,
+	schema: S,
 	init?: RequestInit,
-): Promise<StaticParse<Schema>> {
+): Promise<Static<S>> {
 	const response = await fetch(url, {
 		...init,
 		headers: { accept: "application/json", ...init?.headers },
@@ -130,5 +153,10 @@ async function requestJson<Schema extends TSchema>(
 			await responseErrorMessage(response, `Request failed (${response.status})`),
 		);
 	}
-	return Parse(schema, await response.json());
+	const value: unknown = await response.json();
+	const validator = compile(schema);
+	if (!validator.check(value)) {
+		throw new Error("Invalid workspace response.");
+	}
+	return value;
 }

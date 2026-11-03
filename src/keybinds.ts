@@ -1,5 +1,4 @@
 import { appCommandCatalog, type AppCommandId } from "#src/commands/catalog.ts";
-import type { JsonValue } from "#src/utils/json-types.ts";
 import {
 	ariaKeyshortcuts,
 	canonicalShortcut,
@@ -7,7 +6,7 @@ import {
 	shortcutMatchExpression,
 	type ShortcutSpec,
 } from "#src/utils/keyboard.ts";
-import { isRecord, isString } from "#src/utils/type-guards.ts";
+import { isRecord, isString, type JsonValue } from "#src/utils/type-guards.ts";
 
 const focusKeybindIds = [
 	"cycle-model-backward",

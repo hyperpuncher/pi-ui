@@ -17,8 +17,12 @@ import {
 	type ShellSegment,
 	type ShellWord,
 } from "#src/ui/shell-scanner.ts";
-import type { JsonObject, JsonValue } from "#src/utils/json-types.ts";
-import { isRecord, isString } from "#src/utils/type-guards.ts";
+import {
+	isRecord,
+	isString,
+	type JsonObject,
+	type JsonValue,
+} from "#src/utils/type-guards.ts";
 
 // Share script tokens across commands with different wrappers, arguments or redirects.
 const scriptTokens = new BoundedCache<string, ThemedToken[]>(128, {

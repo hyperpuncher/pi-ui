@@ -1,4 +1,4 @@
-import { bindCodeCopy } from "#static/app/code-copy.js";
+import { bindCodeCopy, copyText } from "#static/app/code-copy.js";
 import {
 	activateCommandItem,
 	bindControls,
@@ -40,6 +40,7 @@ import { windowFocus } from "#static/app/window-focus.js";
 const promptHistory = createPromptHistory();
 
 window.piUi = {
+	copyText,
 	controls: { refresh: refreshControls, activate: activateCommandItem },
 	codeTheme: { loadPreviews() {} },
 	dateTime: { hydrate: hydrateDateTime },

@@ -296,27 +296,33 @@ export class AuthController {
 	private notifyAuthentication(run: AuthLoginRun, event: AuthEvent): void {
 		if (!this.isCurrentRun(run)) return;
 		if (event.type === "auth_url") {
-			openExternalUrl(event.url);
+			const url = authWebUrl(event.url);
+			if (url) openBrowser(url);
 			this.patchAuthenticationDialog({
-				url: event.url,
+				url,
+				deviceCode: undefined,
 				instructions: event.instructions,
 				status: "Complete authentication in your browser.",
+				error: url ? undefined : "Invalid sign-in URL.",
 			});
 			return;
 		}
 		if (event.type === "device_code") {
-			openExternalUrl(event.verificationUri);
+			const url = authWebUrl(event.verificationUri);
 			this.patchAuthenticationDialog({
-				url: event.verificationUri,
+				url,
 				deviceCode: event.userCode,
+				openBrowserOnConfirm: event.openBrowserOnConfirm ?? true,
+				copyCodeOnConfirm: event.copyCodeOnConfirm ?? true,
 				status: "Waiting for authentication…",
+				error: url ? undefined : "Invalid sign-in URL.",
 			});
 			return;
 		}
 		if (event.type === "info") {
 			this.patchAuthenticationDialog({
 				status: event.message,
-				url: event.links?.[0]?.url,
+				url: event.links?.[0] ? authWebUrl(event.links[0].url) : undefined,
 			});
 			return;
 		}
@@ -372,6 +378,9 @@ function compareAuthProviders(a: AppAuthProvider, b: AppAuthProvider): number {
 	return a.authType.localeCompare(b.authType);
 }
 
-function openExternalUrl(url: string): void {
-	openBrowser(url);
+function authWebUrl(value: string): string | undefined {
+	const url = URL.parse(value);
+	return url && (url.protocol === "http:" || url.protocol === "https:")
+		? url.href
+		: undefined;
 }

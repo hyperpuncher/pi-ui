@@ -1,16 +1,10 @@
-import Type from "typebox";
-import { Compile } from "typebox/compile";
-
-import { isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
+import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
 
 const maximumCommentCount = 100;
 const maximumCommentLength = 20_000;
 const maximumPathLength = 4_096;
 const maximumReviewLength = 200_000;
 const maximumLineNumber = 10_000_000;
-const lineNumberValidator = Compile(
-	Type.Integer({ minimum: 1, maximum: maximumLineNumber }),
-);
 
 export type WorkspaceReviewCommentSide = "additions" | "deletions";
 
@@ -82,7 +76,12 @@ function requiredText(value: JsonRecord[string], label: string, maximum: number)
 }
 
 function lineNumber(value: JsonRecord[string]): number {
-	if (!lineNumberValidator.Check(value)) {
+	if (
+		!isNumber(value) ||
+		!Number.isInteger(value) ||
+		value < 1 ||
+		value > maximumLineNumber
+	) {
 		throw new Error("Invalid review comment line number.");
 	}
 	return value;

@@ -2,8 +2,7 @@ import { mkdir, rename, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
-import Type, { type Static } from "typebox";
-import { Compile } from "typebox/compile";
+import { compile, num, obj, opt, type Static, str } from "@earendil-works/pi-schema";
 
 import { appCachePath } from "#src/utils/app-dirs.ts";
 import {
@@ -16,19 +15,22 @@ import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-g
 const cacheVersion = 2;
 const maxSummaryTextLength = 96;
 const cacheWrites = new Map<string, Promise<void>>();
-const cacheEntrySchema = Type.Object({
-	indexedBytes: Type.Number(),
-	mtime: Type.Number(),
-	id: Type.String(),
-	cwd: Type.String(),
-	name: Type.Optional(Type.String()),
-	firstMessage: Type.String(),
-	messageCount: Type.Number(),
-	lastActivity: Type.Number(),
-	created: Type.Number(),
-	parentSessionPath: Type.Optional(Type.String()),
-});
-const cacheEntryValidator = Compile(cacheEntrySchema);
+const cacheEntrySchema = obj(
+	{
+		indexedBytes: num(),
+		mtime: num(),
+		id: str(),
+		cwd: str(),
+		name: opt(str()),
+		firstMessage: str(),
+		messageCount: num(),
+		lastActivity: num(),
+		created: num(),
+		parentSessionPath: opt(str()),
+	},
+	{ open: true },
+);
+const cacheEntryValidator = compile(cacheEntrySchema);
 
 export type SessionSummaryCacheEntry = Static<typeof cacheEntrySchema>;
 
@@ -306,5 +308,5 @@ function dateValue<Value>(value: Value): number {
 }
 
 function parseCacheEntry<Value>(value: Value): SessionSummaryCacheEntry | undefined {
-	return cacheEntryValidator.Check(value) ? value : undefined;
+	return cacheEntryValidator.check(value) ? value : undefined;
 }

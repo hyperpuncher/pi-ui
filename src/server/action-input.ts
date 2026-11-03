@@ -1,9 +1,7 @@
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web";
-import Type from "typebox";
-import { Compile } from "typebox/compile";
 
-import { isBoolean, isRecord, isString } from "#src/utils/type-guards.ts";
+import { isBoolean, isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
 
 export class ActionInputError extends Error {
 	readonly status = 400;
@@ -15,8 +13,6 @@ export class ActionInputError extends Error {
 }
 
 export type ActionSignals = Readonly<Record<string, Jsonifiable>>;
-
-const nonnegativeIntegerValidator = Compile(Type.Integer({ minimum: 0 }));
 
 export async function readActionSignals(request: Request): Promise<ActionSignals> {
 	const result = await ds.readSignals(request);
@@ -69,7 +65,7 @@ export function booleanField(
 
 export function nonnegativeIntegerField(signals: ActionSignals, field: string): number {
 	const value = signals[field];
-	if (!nonnegativeIntegerValidator.Check(value)) {
+	if (!isNumber(value) || !Number.isInteger(value) || value < 0) {
 		throw new ActionInputError(`Invalid ${field}.`);
 	}
 	return value;

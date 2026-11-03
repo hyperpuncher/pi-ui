@@ -1,5 +1,12 @@
-import Type, { type Static } from "typebox";
-import { Compile } from "typebox/compile";
+import {
+	compile,
+	int,
+	num,
+	obj,
+	oneOf,
+	type Static,
+	str,
+} from "@earendil-works/pi-schema";
 
 import { sessionPerformance } from "#src/perf/session-performance.ts";
 import { RouteError, type RouteMap } from "#src/server/route.ts";
@@ -8,22 +15,25 @@ import { endpoints } from "#src/server/routes/endpoints.ts";
 
 const maxClientTransitionMs = 60_000;
 
-const clientTransitionPaintSchema = Type.Object({
-	runId: Type.String({ minLength: 1, maxLength: 64 }),
-	pageId: Type.String({ minLength: 1, maxLength: 64 }),
-	generation: Type.Integer({ minimum: 1 }),
-	origin: Type.Union([Type.Literal("command"), Type.Literal("observer")]),
-	loadingObservedMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
-	firstTranscriptPatchMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
-	firstTranscriptFrameMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
-	readyObservedMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
-	readyFrameMs: Type.Number({ minimum: 0, maximum: maxClientTransitionMs }),
-});
-const clientTransitionPaintValidator = Compile(clientTransitionPaintSchema);
+const clientTransitionPaintSchema = obj(
+	{
+		runId: str({ minLength: 1, maxLength: 64 }),
+		pageId: str({ minLength: 1, maxLength: 64 }),
+		generation: int({ minimum: 1 }),
+		origin: oneOf(["command", "observer"]),
+		loadingObservedMs: num({ minimum: 0, maximum: maxClientTransitionMs }),
+		firstTranscriptPatchMs: num({ minimum: 0, maximum: maxClientTransitionMs }),
+		firstTranscriptFrameMs: num({ minimum: 0, maximum: maxClientTransitionMs }),
+		readyObservedMs: num({ minimum: 0, maximum: maxClientTransitionMs }),
+		readyFrameMs: num({ minimum: 0, maximum: maxClientTransitionMs }),
+	},
+	{ open: true },
+);
+const clientTransitionPaintValidator = compile(clientTransitionPaintSchema);
 
 type ClientTransitionPaint = Static<typeof clientTransitionPaintSchema>;
 type ClientTransitionPaintInput = Parameters<
-	typeof clientTransitionPaintValidator.Check
+	typeof clientTransitionPaintValidator.check
 >[0];
 
 export const sessionPerformanceRoutes = {
@@ -41,7 +51,7 @@ export function parseClientTransitionPaint(
 	value: ClientTransitionPaintInput,
 ): ClientTransitionPaint {
 	if (
-		!clientTransitionPaintValidator.Check(value) ||
+		!clientTransitionPaintValidator.check(value) ||
 		value.loadingObservedMs > value.firstTranscriptPatchMs ||
 		value.firstTranscriptPatchMs > value.firstTranscriptFrameMs ||
 		value.loadingObservedMs > value.readyObservedMs ||

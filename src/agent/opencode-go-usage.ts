@@ -1,31 +1,42 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
-import Type, { type Static } from "typebox";
-import { Compile } from "typebox/compile";
+import {
+	compile,
+	num,
+	obj,
+	opt,
+	type Static,
+	str,
+	union,
+} from "@earendil-works/pi-schema";
 
 import { fetchProviderUsagePayload } from "#src/agent/provider-usage.ts";
 import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
-import type { JsonValue } from "#src/utils/json-types.ts";
+import { isString, type JsonValue } from "#src/utils/type-guards.ts";
 
 const opencodeGoProviderId = "opencode-go";
 const opencodeGoUsageUrl = "https://opencode.ai/zen/go/v1/usage";
-const stringInputSchema = Type.String({ pattern: "\\S" });
-const numericInputSchema = Type.Union([Type.Number(), stringInputSchema]);
-const timestampInputSchema = Type.Union([Type.Number(), stringInputSchema]);
-const usageWindowSchema = Type.Object({
-	percent: numericInputSchema,
-	resetsAt: Type.Optional(timestampInputSchema),
-});
-const openCodeGoPayloadSchema = Type.Object({
-	usage: Type.Object({
-		rolling: Type.Optional(usageWindowSchema),
-		weekly: Type.Optional(usageWindowSchema),
-		monthly: Type.Optional(usageWindowSchema),
-	}),
-});
-const openCodeGoPayloadValidator = Compile(openCodeGoPayloadSchema);
-const stringInputValidator = Compile(stringInputSchema);
-type NumericInput = Static<typeof numericInputSchema>;
-type TimestampInput = Static<typeof timestampInputSchema>;
+const numericInputSchema = union([num(), str({ pattern: "\\S" })]);
+const usageWindowSchema = obj(
+	{
+		percent: numericInputSchema,
+		resetsAt: opt(numericInputSchema),
+	},
+	{ open: true },
+);
+const openCodeGoPayloadSchema = obj(
+	{
+		usage: obj(
+			{
+				rolling: opt(usageWindowSchema),
+				weekly: opt(usageWindowSchema),
+				monthly: opt(usageWindowSchema),
+			},
+			{ open: true },
+		),
+	},
+	{ open: true },
+);
+const openCodeGoPayloadValidator = compile(openCodeGoPayloadSchema);
 type UsageWindowInput = Static<typeof usageWindowSchema>;
 export type OpenCodeGoWindow = {
 	usedPercent: number;
@@ -57,7 +68,7 @@ export async function fetchOpenCodeGoUsage(
 }
 
 export function parseOpenCodeGoUsage(payload: JsonValue): OpenCodeGoUsage | undefined {
-	if (!openCodeGoPayloadValidator.Check(payload)) return undefined;
+	if (!openCodeGoPayloadValidator.check(payload)) return undefined;
 	const parsed = {
 		rolling: parseWindow(payload.usage.rolling),
 		weekly: parseWindow(payload.usage.weekly),
@@ -78,8 +89,8 @@ export function describeOpenCodeGoUsage(
 
 function parseWindow(window: UsageWindowInput | undefined): OpenCodeGoWindow | undefined {
 	if (!window) return undefined;
-	const usedPercent = finiteNumber(window.percent);
-	if (usedPercent === undefined) return undefined;
+	const usedPercent = Number(window.percent);
+	if (!Number.isFinite(usedPercent)) return undefined;
 	return { usedPercent, resetsAt: timestamp(window.resetsAt) };
 }
 
@@ -95,14 +106,9 @@ function describeWindow(
 	};
 }
 
-function finiteNumber(value: NumericInput): number | undefined {
-	const parsed = Number(value);
-	return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function timestamp(value: TimestampInput | undefined): number | undefined {
+function timestamp(value: UsageWindowInput["resetsAt"]): number | undefined {
 	if (value === undefined) return undefined;
-	if (stringInputValidator.Check(value)) {
+	if (isString(value)) {
 		const parsed = Date.parse(value);
 		return Number.isFinite(parsed) ? parsed : undefined;
 	}

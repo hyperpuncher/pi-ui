@@ -18,6 +18,7 @@
 	"ignoreDependencies": [
 		"@earendil-works/pi-ai",
 		"@earendil-works/pi-coding-agent",
+		"@earendil-works/pi-schema",
 		"@earendil-works/pi-tui",
 		"@iconify-json/lucide",
 		"@oxlint/plugins",
@@ -27,8 +28,7 @@
 		"@starfederation/datastar-sdk",
 		"open-props",
 		"pele",
-		"quickjs-wasi",
-		"typebox"
+		"quickjs-wasi"
 	],
 	"ignoreUnresolvedImports": ["../pierre-worker.js"],
 	"ignoreExports": [

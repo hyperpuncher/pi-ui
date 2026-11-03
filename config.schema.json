@@ -1,4 +1,6 @@
 {
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://pi-ui.app/config.schema.json",
 	"type": "object",
 	"properties": {
 		"$schema": {
@@ -34,18 +36,13 @@
 					"description": "Additional title style instructions."
 				}
 			},
-			"description": "Automatic session title generation.",
-			"additionalProperties": false
+			"additionalProperties": false,
+			"description": "Automatic session title generation."
 		},
 		"codeTheme": {
 			"type": "object",
-			"required": [
-				"dark",
-				"light"
-			],
 			"properties": {
 				"dark": {
-					"type": "string",
 					"enum": [
 						"andromeeda",
 						"aurora-x",
@@ -100,7 +97,6 @@
 					"default": "pierre-dark-soft"
 				},
 				"light": {
-					"type": "string",
 					"enum": [
 						"ayu-light",
 						"catppuccin-latte",
@@ -132,18 +128,17 @@
 					"default": "pierre-light"
 				}
 			},
-			"description": "Code themes selected for each appearance.",
-			"additionalProperties": false
+			"required": [
+				"dark",
+				"light"
+			],
+			"additionalProperties": false,
+			"description": "Code themes selected for each appearance."
 		},
 		"fonts": {
 			"type": "object",
-			"required": [
-				"mono",
-				"sans"
-			],
 			"properties": {
 				"mono": {
-					"type": "string",
 					"enum": [
 						"system",
 						"Atkinson Hyperlegible Mono",
@@ -167,7 +162,6 @@
 					"default": "system"
 				},
 				"sans": {
-					"type": "string",
 					"enum": [
 						"system",
 						"Atkinson Hyperlegible Next",
@@ -180,8 +174,12 @@
 					"default": "system"
 				}
 			},
-			"description": "Fonts used for interface text and code.",
-			"additionalProperties": false
+			"required": [
+				"mono",
+				"sans"
+			],
+			"additionalProperties": false,
+			"description": "Fonts used for interface text and code."
 		},
 		"gitView": {
 			"type": "object",
@@ -199,27 +197,15 @@
 					"default": 0.5
 				},
 				"layout": {
-					"anyOf": [
-						{
-							"type": "string",
-							"const": "split"
-						},
-						{
-							"type": "string",
-							"const": "unified"
-						}
+					"enum": [
+						"split",
+						"unified"
 					]
 				},
 				"mode": {
-					"anyOf": [
-						{
-							"type": "string",
-							"const": "all"
-						},
-						{
-							"type": "string",
-							"const": "selected"
-						}
+					"enum": [
+						"all",
+						"selected"
 					]
 				},
 				"reviewSidebarWidth": {
@@ -229,23 +215,17 @@
 					"default": 272
 				},
 				"tab": {
-					"anyOf": [
-						{
-							"type": "string",
-							"const": "files"
-						},
-						{
-							"type": "string",
-							"const": "git"
-						}
+					"enum": [
+						"files",
+						"git"
 					]
 				},
 				"wrap": {
 					"type": "boolean"
 				}
 			},
-			"description": "Workspace panel preferences.",
-			"additionalProperties": false
+			"additionalProperties": false,
+			"description": "Workspace panel preferences."
 		},
 		"keybindHints": {
 			"type": "boolean",
@@ -344,8 +324,8 @@
 					"pattern": "^[a-zA-Z0-9^/]+( [a-zA-Z0-9^/]+)*$"
 				}
 			},
-			"description": "Keyboard shortcut overrides by action id, for example ctrl O, ctrl alt O, or alt shift T.",
-			"additionalProperties": false
+			"additionalProperties": false,
+			"description": "Keyboard shortcut overrides by action id, for example ctrl O, ctrl alt O, or alt shift T."
 		},
 		"minimalMode": {
 			"type": "boolean",
@@ -380,11 +360,10 @@
 					"description": "Number of days of sessions to keep visible before archiving them."
 				}
 			},
-			"description": "Session sidebar preferences.",
-			"additionalProperties": false
+			"additionalProperties": false,
+			"description": "Session sidebar preferences."
 		},
 		"theme": {
-			"type": "string",
 			"enum": [
 				"system",
 				"light",
@@ -409,9 +388,6 @@
 			"description": "Check for a newer pi-ui release and show an update notice."
 		}
 	},
-	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "https://pi-ui.app/config.schema.json",
 	"title": "pi-ui configuration",
-	"description": "Configuration for pi-ui.",
-	"additionalProperties": true
+	"description": "Configuration for pi-ui."
 }

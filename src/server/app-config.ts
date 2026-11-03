@@ -1,23 +1,19 @@
 import { mkdir, open } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import { Compile } from "typebox/compile";
-
 import { appConfigSchemaUrl } from "#src/config-schema.ts";
 import { appConfigPath } from "#src/utils/app-dirs.ts";
 import { isAlreadyExists, isNotFound } from "#src/utils/fs-errors.ts";
-import { type JsonObject, JsonObjectSchema } from "#src/utils/json-types.ts";
+import { isJsonObject, type JsonObject, type JsonValue } from "#src/utils/type-guards.ts";
 
 export type AppConfig = JsonObject;
-
-const appConfigValidator = Compile(JsonObjectSchema);
 
 let pendingWrite = Promise.resolve();
 
 async function readAppConfig(path = appConfigPath()): Promise<AppConfig> {
 	try {
-		const value: unknown = await Bun.file(path).json();
-		return appConfigValidator.Check(value) ? value : {};
+		const value: JsonValue = await Bun.file(path).json();
+		return isJsonObject(value) ? value : {};
 	} catch (error) {
 		if (isNotFound(error) || error instanceof SyntaxError) {
 			return {};

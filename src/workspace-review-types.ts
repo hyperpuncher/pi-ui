@@ -1,5 +1,14 @@
-import Type, { type Static } from "typebox";
-import { Compile } from "typebox/compile";
+import {
+	arr,
+	bool,
+	compile,
+	nullable,
+	num,
+	obj,
+	oneOf,
+	type Static,
+	str,
+} from "@earendil-works/pi-schema";
 
 import {
 	isBoolean,
@@ -19,10 +28,16 @@ export const changesRatioDefault = 0.5;
 export const changesRatioMin = 0.3;
 export const changesRatioMax = 0.7;
 
+type ReadonlyData<T> = {
+	readonly [K in keyof T]: T[K] extends object ? ReadonlyData<T[K]> : T[K];
+};
+
 export type WorkspaceFileStatus = WorkspaceFileChange["status"];
-export type WorkspaceFileChange = Static<typeof workspaceFileChangeSchema>;
-export type WorkspaceCommit = Static<typeof workspaceCommitSchema>;
-export type WorkspaceCommitDetail = Static<typeof workspaceCommitDetailSchema>;
+export type WorkspaceFileChange = ReadonlyData<Static<typeof workspaceFileChangeSchema>>;
+export type WorkspaceCommit = ReadonlyData<Static<typeof workspaceCommitSchema>>;
+export type WorkspaceCommitDetail = ReadonlyData<
+	Static<typeof workspaceCommitDetailSchema>
+>;
 
 export function workspaceChangeStats(changes: readonly WorkspaceFileChange[]) {
 	let additions = 0;
@@ -84,12 +99,12 @@ function normalizedNumber(
 	minimum: number,
 	maximum: number,
 ): number | undefined {
-	return isNumber(value) && Number.isFinite(value)
-		? Math.min(Math.max(value, minimum), maximum)
-		: undefined;
+	return isNumber(value) ? Math.min(Math.max(value, minimum), maximum) : undefined;
 }
 
-export type WorkspaceReviewSnapshot = Static<typeof workspaceReviewSnapshotSchema>;
+export type WorkspaceReviewSnapshot = ReadonlyData<
+	Static<typeof workspaceReviewSnapshotSchema>
+>;
 
 export const emptyWorkspaceReviewSnapshot: WorkspaceReviewSnapshot = {
 	branch: null,
@@ -105,70 +120,68 @@ export const unloadedWorkspaceReviewSnapshot: WorkspaceReviewSnapshot = {
 	revision: "git-unloaded",
 };
 
-const workspaceFileChangeSchema = Type.ReadonlyObject(
-	Type.Object({
-		additions: Type.Number(),
-		deletions: Type.Number(),
-		path: Type.String(),
-		status: Type.Union([
-			Type.Literal("added"),
-			Type.Literal("deleted"),
-			Type.Literal("modified"),
-			Type.Literal("renamed"),
-			Type.Literal("untracked"),
-		]),
-	}),
+const workspaceFileChangeSchema = obj(
+	{
+		additions: num(),
+		deletions: num(),
+		path: str(),
+		status: oneOf(["added", "deleted", "modified", "renamed", "untracked"]),
+	},
+	{ open: true },
 );
 
-const workspaceCommitSchema = Type.ReadonlyObject(
-	Type.Object({
-		author: Type.String(),
-		authoredAt: Type.String(),
-		hash: Type.String(),
-		pushed: Type.Union([Type.Boolean(), Type.Null()]),
-		shortHash: Type.String(),
-		subject: Type.String(),
-		tags: Type.Readonly(Type.Array(Type.String())),
-	}),
+const workspaceCommitSchema = obj(
+	{
+		author: str(),
+		authoredAt: str(),
+		hash: str(),
+		pushed: nullable(bool()),
+		shortHash: str(),
+		subject: str(),
+		tags: arr(str()),
+	},
+	{ open: true },
 );
 
-const workspaceCommitDetailSchema = Type.ReadonlyObject(
-	Type.Object({
-		changes: Type.ReadonlyObject(Type.Array(workspaceFileChangeSchema)),
+const workspaceCommitDetailSchema = obj(
+	{
+		changes: arr(workspaceFileChangeSchema),
 		commit: workspaceCommitSchema,
-		patch: Type.String(),
-	}),
+		patch: str(),
+	},
+	{ open: true },
 );
 
-const workspaceReviewSnapshotSchema = Type.ReadonlyObject(
-	Type.Object({
-		branch: Type.Union([Type.String(), Type.Null()]),
-		changes: Type.ReadonlyObject(Type.Array(workspaceFileChangeSchema)),
-		commits: Type.ReadonlyObject(Type.Array(workspaceCommitSchema)),
-		isGitRepository: Type.Boolean(),
-		changeCount: Type.Number(),
-		revision: Type.String(),
-	}),
+const workspaceReviewSnapshotSchema = obj(
+	{
+		branch: nullable(str()),
+		changes: arr(workspaceFileChangeSchema),
+		commits: arr(workspaceCommitSchema),
+		isGitRepository: bool(),
+		changeCount: num(),
+		revision: str(),
+	},
+	{ open: true },
 );
 
-const workspaceCommitDetailValidator = Compile(workspaceCommitDetailSchema);
-const workspaceCommitHistoryValidator = Compile(Type.Array(workspaceCommitSchema));
-const workspaceReviewSnapshotValidator = Compile(workspaceReviewSnapshotSchema);
+const workspaceCommitDetailValidator = compile(workspaceCommitDetailSchema);
+const workspaceCommitHistoryValidator = compile(arr(workspaceCommitSchema));
+const workspaceReviewSnapshotValidator = compile(workspaceReviewSnapshotSchema);
 
 export function isWorkspaceCommitDetail<Value>(
 	value: Value,
 ): value is Value & WorkspaceCommitDetail {
-	return workspaceCommitDetailValidator.Check(value);
+	return workspaceCommitDetailValidator.check(value);
 }
 
 export function isWorkspaceCommitHistory<Value>(
 	value: Value,
 ): value is Value & WorkspaceCommit[] {
-	return workspaceCommitHistoryValidator.Check(value);
+	return workspaceCommitHistoryValidator.check(value);
 }
 
 export function isWorkspaceReviewSnapshot<Value>(
 	value: Value,
 ): value is Value & WorkspaceReviewSnapshot {
-	return workspaceReviewSnapshotValidator.Check(value);
+	return workspaceReviewSnapshotValidator.check(value);
 }

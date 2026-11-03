@@ -10,7 +10,7 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 			aria-labelledby="auth-dialog-title"
 			closedby="any"
 			data-preserve-attr="open"
-			data-effect={
+			data-init={
 				dialog ? "if (!el.open) el.showModal()" : "if (el.open) el.close()"
 			}
 			data-on:close={
@@ -21,20 +21,14 @@ export function renderAuthDialog(dialog: AppAuthDialog | undefined): string {
 				_authInput: "",
 			})}
 		>
-			{renderAuthDialogContent(dialog)}
+			<div
+				id="auth-dialog-content"
+				class="dialog-wide"
+				data-init={!dialog?.prompt && "$_authInput = ''"}
+			>
+				{dialog && renderDialogContent(dialog)}
+			</div>
 		</dialog>,
-	);
-}
-
-function renderAuthDialogContent(dialog: AppAuthDialog | undefined): string {
-	return syncHtml(
-		<div
-			id="auth-dialog-content"
-			class="dialog-wide"
-			data-effect={!dialog?.prompt && "$_authInput = ''"}
-		>
-			{dialog ? renderDialogContent(dialog) : <div />}
-		</div>,
 	);
 }
 
@@ -162,6 +156,7 @@ function providerSearchHaystack(provider: AppAuthProvider): string {
 
 function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 	const hasTextPrompt = Boolean(dialog.prompt && !dialog.prompt.options);
+
 	return syncHtml(
 		<>
 			<header>
@@ -171,32 +166,8 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 				{dialog.status && <p safe>{dialog.status}</p>}
 			</header>
 			<div class="dialog-flow">
-				{dialog.url && (
-					<div class="dialog-flow-compact">
-						<a
-							class="dialog-link"
-							href={dialog.url}
-							target="_blank"
-							rel="noreferrer"
-							safe
-						>
-							{dialog.url}
-						</a>
-						{dialog.instructions && (
-							<p class="dialog-description" safe>
-								{dialog.instructions}
-							</p>
-						)}
-					</div>
-				)}
-				{dialog.deviceCode && (
-					<div class="dialog-callout">
-						<p class="dialog-description">Enter this code in the browser:</p>
-						<code class="dialog-device-code" safe>
-							{dialog.deviceCode}
-						</code>
-					</div>
-				)}
+				{renderAuthenticationLink(dialog)}
+				{renderDeviceCode(dialog)}
 				{dialog.prompt && renderAuthenticationPrompt(dialog)}
 				{dialog.progress.length > 0 && (
 					<div class="dialog-progress-messages">
@@ -206,7 +177,7 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 					</div>
 				)}
 				{dialog.error && (
-					<p class="error-foreground dialog-message" safe>
+					<p id="auth-input-error" class="error-foreground dialog-message" safe>
 						{dialog.error}
 					</p>
 				)}
@@ -238,6 +209,66 @@ function renderAuthenticationFlow(dialog: AppAuthDialog): string {
 	);
 }
 
+const copyDeviceCodeAction = `window.piUi.copyText(el.dataset.code).then((copied) => {
+	$_authCopyStatus = copied ? 'Code copied.' : 'Copy the code shown above.';
+});`;
+
+function renderAuthenticationLink(dialog: AppAuthDialog): string {
+	if (!dialog.url) return "";
+	const copyOnLink =
+		dialog.deviceCode && dialog.copyCodeOnConfirm && dialog.openBrowserOnConfirm;
+	return syncHtml(
+		<div class="dialog-flow-compact">
+			<a
+				class="dialog-link"
+				href={dialog.url}
+				target="_blank"
+				rel="noreferrer"
+				data-code={!!copyOnLink && dialog.deviceCode}
+				data-on:click={!!copyOnLink && copyDeviceCodeAction}
+				safe
+			>
+				{copyOnLink ? "Copy code and open browser" : dialog.url}
+			</a>
+			{dialog.instructions && (
+				<p class="dialog-description" safe>
+					{dialog.instructions}
+				</p>
+			)}
+		</div>,
+	);
+}
+
+function renderDeviceCode(dialog: AppAuthDialog): string {
+	if (!dialog.deviceCode) return "";
+	const copyOnLink = dialog.openBrowserOnConfirm && dialog.url;
+	return syncHtml(
+		<div class="dialog-callout" data-signals:_auth-copy-status="''">
+			<p class="dialog-description">Enter this code in the browser:</p>
+			<code class="dialog-device-code" safe>
+				{dialog.deviceCode}
+			</code>
+			{dialog.copyCodeOnConfirm && !copyOnLink && (
+				<button
+					type="button"
+					class="btn"
+					data-code={dialog.deviceCode}
+					data-on:click={copyDeviceCodeAction}
+				>
+					Copy code
+				</button>
+			)}
+			{dialog.copyCodeOnConfirm && (
+				<p
+					class="dialog-description"
+					role="status"
+					data-text="$_authCopyStatus"
+				/>
+			)}
+		</div>,
+	);
+}
+
 function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 	const prompt = dialog.prompt!;
 	if (prompt.options) {
@@ -266,7 +297,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 			role="group"
 			class="field"
 			data-init="$_authInput = ''"
-			data-invalid={dialog.error ? "true" : undefined}
+			data-invalid={!!dialog.error && "true"}
 		>
 			<label for="auth-input" safe>
 				{prompt.message}
@@ -277,7 +308,8 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 				autocomplete="off"
 				spellcheck="false"
 				placeholder={prompt.placeholder}
-				aria-invalid={dialog.error ? "true" : undefined}
+				aria-invalid={!!dialog.error && "true"}
+				aria-describedby={!!dialog.error && "auth-input-error"}
 				data-bind:_auth-input
 				autofocus
 				data-on:keydown={`if (evt.code === 'Enter' && !evt.isComposing) {
@@ -299,7 +331,7 @@ function renderResult(dialog: AppAuthDialog): string {
 				<h2 id="auth-dialog-title">
 					{dialog.error ? "Authentication failed" : "Authentication updated"}
 				</h2>
-				<p class={dialog.error ? "error-foreground" : undefined} safe>
+				<p class={[dialog.error && "error-foreground"]} safe>
 					{dialog.error ?? dialog.status}
 				</p>
 			</header>

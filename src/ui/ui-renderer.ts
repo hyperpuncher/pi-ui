@@ -42,7 +42,7 @@ import { renderSessionTransition } from "#src/ui/session-transition.tsx";
 import { renderToolbar } from "#src/ui/toolbar.tsx";
 import { renderTreePicker } from "#src/ui/tree-picker.tsx";
 import { renderWorkspaceReviewData } from "#src/ui/workspace-review.tsx";
-import type { JsonObject } from "#src/utils/json-types.ts";
+import type { JsonObject } from "#src/utils/type-guards.ts";
 
 type WorkspaceSearchView = { query: string; results: readonly WorkspaceSuggestion[] };
 type ClientView = {

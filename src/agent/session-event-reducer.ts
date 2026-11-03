@@ -11,8 +11,7 @@ import type {
 	TranscriptMessageInput,
 	TranscriptMessageOptions,
 } from "#src/state/transcript-state.ts";
-import type { JsonValue } from "#src/utils/json-types.ts";
-import { isString } from "#src/utils/type-guards.ts";
+import { isString, type JsonValue } from "#src/utils/type-guards.ts";
 
 type EventOf<Type extends AgentSessionEvent["type"]> = Extract<
 	AgentSessionEvent,

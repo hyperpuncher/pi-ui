@@ -28,6 +28,12 @@
 	},
 	"overrides": [
 		{
+			"files": ["src/utils/type-guards.ts"],
+			"rules": {
+				"anti-slop/no-unsafe-dictionary-type": "off"
+			}
+		},
+		{
 			"files": ["**/*.test.ts", "**/*.test.tsx", "tests/src/testing/**/*.ts"],
 			"rules": {
 				"anti-slop/no-chained-type-assertions": "off",

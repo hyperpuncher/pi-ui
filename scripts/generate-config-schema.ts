@@ -1,4 +1,4 @@
-import Type from "typebox";
+import { arr, bool, num, obj, oneOf, opt, str } from "@earendil-works/pi-schema";
 
 import { defaultAutoTitleConfig } from "#src/agent/auto-title.ts";
 import { codeThemesFor, defaultCodeThemes } from "#src/code-themes.ts";
@@ -28,26 +28,26 @@ import {
 const codeThemes = defaultCodeThemes();
 const fonts = defaultFonts();
 
-const schema = Type.Object(
+const schema = obj(
 	{
-		$schema: Type.Optional(
-			Type.String({
+		$schema: opt(
+			str({
 				format: "uri",
 				description: "JSON Schema used to validate this file.",
 			}),
 		),
-		autoTitle: Type.Optional(
-			Type.Object(
+		autoTitle: opt(
+			obj(
 				{
-					enabled: Type.Optional(
-						Type.Boolean({
+					enabled: opt(
+						bool({
 							default: defaultAutoTitleConfig.enabled,
 							description: "Generate a title after the first user message.",
 						}),
 					),
-					models: Type.Optional(
-						Type.Array(
-							Type.String({
+					models: opt(
+						arr(
+							str({
 								minLength: 1,
 								description:
 									"Model in provider/model:thinking-level format.",
@@ -58,8 +58,8 @@ const schema = Type.Object(
 							},
 						),
 					),
-					prompt: Type.Optional(
-						Type.String({
+					prompt: opt(
+						str({
 							default: defaultAutoTitleConfig.prompt,
 							description: "Additional title style instructions.",
 						}),
@@ -67,141 +67,132 @@ const schema = Type.Object(
 				},
 				{
 					description: "Automatic session title generation.",
-					additionalProperties: false,
 				},
 			),
 		),
-		codeTheme: Type.Optional(
-			Type.Object(
+		codeTheme: opt(
+			obj(
 				{
-					dark: Type.String({
-						enum: codeThemesFor("dark").map((theme) => theme.name),
-						default: codeThemes.dark,
-					}),
-					light: Type.String({
-						enum: codeThemesFor("light").map((theme) => theme.name),
-						default: codeThemes.light,
-					}),
+					dark: oneOf(
+						codeThemesFor("dark").map((theme) => theme.name),
+						{
+							default: codeThemes.dark,
+						},
+					),
+					light: oneOf(
+						codeThemesFor("light").map((theme) => theme.name),
+						{
+							default: codeThemes.light,
+						},
+					),
 				},
 				{
 					description: "Code themes selected for each appearance.",
-					additionalProperties: false,
 				},
 			),
 		),
-		fonts: Type.Optional(
-			Type.Object(
+		fonts: opt(
+			obj(
 				{
-					mono: Type.String({
-						enum: FONT_OPTIONS.mono,
+					mono: oneOf<readonly string[]>(FONT_OPTIONS.mono, {
 						default: fonts.mono,
 					}),
-					sans: Type.String({
-						enum: FONT_OPTIONS.sans,
+					sans: oneOf<readonly string[]>(FONT_OPTIONS.sans, {
 						default: fonts.sans,
 					}),
 				},
 				{
 					description: "Fonts used for interface text and code.",
-					additionalProperties: false,
 				},
 			),
 		),
-		gitView: Type.Optional(
-			Type.Object(
+		gitView: opt(
+			obj(
 				{
-					changesRatio: Type.Optional(
-						Type.Number({
+					changesRatio: opt(
+						num({
 							minimum: changesRatioMin,
 							maximum: changesRatioMax,
 							default: changesRatioDefault,
 						}),
 					),
-					gitPaneRatio: Type.Optional(
-						Type.Number({
+					gitPaneRatio: opt(
+						num({
 							minimum: gitPaneRatioMin,
 							maximum: gitPaneRatioMax,
 							default: gitPaneRatioDefault,
 						}),
 					),
-					layout: Type.Optional(
-						Type.Union([Type.Literal("split"), Type.Literal("unified")]),
-					),
-					mode: Type.Optional(
-						Type.Union([Type.Literal("all"), Type.Literal("selected")]),
-					),
-					reviewSidebarWidth: Type.Optional(
-						Type.Number({
+					layout: opt(oneOf(["split", "unified"])),
+					mode: opt(oneOf(["all", "selected"])),
+					reviewSidebarWidth: opt(
+						num({
 							minimum: reviewSidebarWidthMin,
 							maximum: reviewSidebarWidthMax,
 							default: reviewSidebarWidthDefault,
 						}),
 					),
-					tab: Type.Optional(
-						Type.Union([Type.Literal("files"), Type.Literal("git")]),
-					),
-					wrap: Type.Optional(Type.Boolean()),
+					tab: opt(oneOf(["files", "git"])),
+					wrap: opt(bool()),
 				},
 				{
 					description: "Workspace panel preferences.",
-					additionalProperties: false,
 				},
 			),
 		),
-		keybindHints: Type.Optional(
-			Type.Boolean({
+		keybindHints: opt(
+			bool({
 				default: true,
 				description: "Show keyboard shortcut hints in the interface.",
 			}),
 		),
-		keybinds: Type.Optional(
-			Type.Partial(
-				Type.Record(
-					Type.Union(keybindIds().map((id) => Type.Literal(id))),
-					Type.String({
-						pattern: "^[a-zA-Z0-9^/]+( [a-zA-Z0-9^/]+)*$",
-					}),
+		keybinds: opt(
+			obj(
+				Object.fromEntries(
+					keybindIds().map((id) => [
+						id,
+						opt(str({ pattern: "^[a-zA-Z0-9^/]+( [a-zA-Z0-9^/]+)*$" })),
+					]),
 				),
 				{
 					description:
 						"Keyboard shortcut overrides by action id, for example ctrl O, ctrl alt O, or alt shift T.",
-					additionalProperties: false,
 				},
 			),
 		),
-		minimalMode: Type.Optional(
-			Type.Boolean({
+		minimalMode: opt(
+			bool({
 				default: false,
 				description: "Hide thinking details, keybind hints, and tool output.",
 			}),
 		),
-		sessionSidebar: Type.Optional(
-			Type.Object(
+		sessionSidebar: opt(
+			obj(
 				{
-					open: Type.Optional(
-						Type.Boolean({
+					open: opt(
+						bool({
 							default: true,
 							description:
 								"Open the session sidebar on desktop (mobile always starts closed).",
 						}),
 					),
-					width: Type.Optional(
-						Type.Number({
+					width: opt(
+						num({
 							minimum: sessionSidebarWidthMin,
 							maximum: sessionSidebarWidthMax,
 							default: sessionSidebarWidthDefault,
 							description: "Session sidebar width in pixels on desktop.",
 						}),
 					),
-					archive: Type.Optional(
-						Type.Boolean({
+					archive: opt(
+						bool({
 							default: true,
 							description:
 								"Group sessions older than the archive threshold into a collapsed Archive section.",
 						}),
 					),
-					archiveAfterDays: Type.Optional(
-						Type.Number({
+					archiveAfterDays: opt(
+						num({
 							minimum: sessionSidebarArchiveAfterDaysMin,
 							maximum: sessionSidebarArchiveAfterDaysMax,
 							default: sessionSidebarArchiveAfterDaysDefault,
@@ -212,47 +203,51 @@ const schema = Type.Object(
 				},
 				{
 					description: "Session sidebar preferences.",
-					additionalProperties: false,
 				},
 			),
 		),
-		theme: Type.Optional(
-			Type.String({
-				enum: ["system", "light", "dark"],
+		theme: opt(
+			oneOf(["system", "light", "dark"], {
 				default: "system",
 				description:
 					"Interface appearance. System follows the operating system color scheme.",
 			}),
 		),
-		toolOutputHidden: Type.Optional(
-			Type.Boolean({
+		toolOutputHidden: opt(
+			bool({
 				default: false,
 				description: "Hide tool output and show compact one-line tool calls.",
 			}),
 		),
-		toolbarHidden: Type.Optional(
-			Type.Boolean({
+		toolbarHidden: opt(
+			bool({
 				default: false,
 				description: "Hide the toolbar.",
 			}),
 		),
-		updateCheck: Type.Optional(
-			Type.Boolean({
+		updateCheck: opt(
+			bool({
 				default: true,
 				description: "Check for a newer pi-ui release and show an update notice.",
 			}),
 		),
 	},
 	{
-		$schema: "https://json-schema.org/draft/2020-12/schema",
-		$id: appConfigSchemaUrl,
 		title: "pi-ui configuration",
 		description: "Configuration for pi-ui.",
-		additionalProperties: true,
+		open: true,
 	},
 );
 
-const output = `${JSON.stringify(schema, null, "\t")}\n`;
+const output = `${JSON.stringify(
+	{
+		$schema: "https://json-schema.org/draft/2020-12/schema",
+		$id: appConfigSchemaUrl,
+		...schema,
+	},
+	null,
+	"\t",
+)}\n`;
 const outputUrl = new URL("../config.schema.json", import.meta.url);
 
 if (process.argv.includes("--check")) {

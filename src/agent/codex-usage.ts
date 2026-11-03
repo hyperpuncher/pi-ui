@@ -1,17 +1,16 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
-import Type, { type Static } from "typebox";
-import { Compile } from "typebox/compile";
 
 import { fetchProviderUsagePayload } from "#src/agent/provider-usage.ts";
 import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
-import { JsonObjectSchema, type JsonValue } from "#src/utils/json-types.ts";
+import {
+	isJsonObject,
+	isNumber,
+	isString,
+	type JsonValue,
+} from "#src/utils/type-guards.ts";
 
 const codexProviderId = "openai-codex";
 const codexUsageUrl = "https://chatgpt.com/backend-api/wham/usage";
-const numericInputSchema = Type.Union([Type.Number(), Type.String({ pattern: "\\S" })]);
-const numericInputValidator = Compile(numericInputSchema);
-const jsonObjectValidator = Compile(JsonObjectSchema);
-type NumericInput = Static<typeof numericInputSchema>;
 export type CodexWindow = {
 	usedPercent: number;
 	windowSeconds?: number;
@@ -67,9 +66,9 @@ function describeCodexWindow(
 }
 
 export function parseCodexUsage(payload: JsonValue): CodexUsage | undefined {
-	if (!jsonObjectValidator.Check(payload)) return undefined;
+	if (!isJsonObject(payload)) return undefined;
 	const rateLimit = payload.rate_limit;
-	if (!jsonObjectValidator.Check(rateLimit)) return undefined;
+	if (!isJsonObject(rateLimit)) return undefined;
 
 	const primary = parseCodexWindow(rateLimit.primary_window);
 	const secondary = parseCodexWindow(rateLimit.secondary_window);
@@ -77,7 +76,7 @@ export function parseCodexUsage(payload: JsonValue): CodexUsage | undefined {
 }
 
 function parseCodexWindow(value: JsonValue | undefined): CodexWindow | undefined {
-	if (!jsonObjectValidator.Check(value)) return undefined;
+	if (!isJsonObject(value)) return undefined;
 	const usedPercent = parseFiniteNumber(value.used_percent);
 	if (usedPercent === undefined) return undefined;
 	return {
@@ -88,11 +87,7 @@ function parseCodexWindow(value: JsonValue | undefined): CodexWindow | undefined
 }
 
 function parseFiniteNumber(value: JsonValue | undefined): number | undefined {
-	if (!numericInputValidator.Check(value)) return undefined;
-	return finiteNumber(value);
-}
-
-function finiteNumber(value: NumericInput): number | undefined {
+	if (!isNumber(value) && (!isString(value) || value.trim() === "")) return undefined;
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
 }
