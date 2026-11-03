@@ -139,7 +139,7 @@ function renderText(
 						placeholder={dialog.placeholder}
 						data-bind:_extension-response
 						autocomplete="off"
-						data-on:keydown={`if (evt.code === 'Enter' && !evt.isComposing) { evt.preventDefault(); ${submit} }`}
+						data-on:keydown={`if (evt.key === 'Enter' && !evt.isComposing) { evt.preventDefault(); ${submit} }`}
 						autofocus
 					/>
 				)}

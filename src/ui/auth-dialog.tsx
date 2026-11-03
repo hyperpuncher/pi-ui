@@ -312,7 +312,7 @@ function renderAuthenticationPrompt(dialog: AppAuthDialog): string {
 				aria-describedby={!!dialog.error && "auth-input-error"}
 				data-bind:_auth-input
 				autofocus
-				data-on:keydown={`if (evt.code === 'Enter' && !evt.isComposing) {
+				data-on:keydown={`if (evt.key === 'Enter' && !evt.isComposing) {
 					evt.preventDefault();
 					@post('${endpoints.authInput}', {
 						payload: { authInput: $_authInput },

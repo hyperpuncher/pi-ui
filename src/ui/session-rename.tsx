@@ -60,7 +60,7 @@ export function SessionRenameTitle(props: { session: AppSessionSummary }): strin
 				data-indicator:_session-renaming
 				data-attr:disabled="$_sessionRenaming"
 				data-on:dblclick__stop="true"
-				data-on:keydown__stop={`if (evt.key === 'Enter') {
+				data-on:keydown__stop={`if (evt.key === 'Enter' && !evt.isComposing) {
 					evt.preventDefault();
 					evt.currentTarget.blur();
 				} else if (evt.key === 'Escape') {

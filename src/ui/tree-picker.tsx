@@ -77,7 +77,7 @@ function SummaryChoice(): string {
 					id="tree-summary-input"
 					placeholder="What should the summary focus on?"
 					data-bind:tree-summary-instructions
-					data-on:keydown={`if (evt.key === 'Enter') { ${navigateAction(true, true)} }`}
+					data-on:keydown={`if (evt.key === 'Enter' && !evt.isComposing) { evt.preventDefault(); ${navigateAction(true, true)} }`}
 				/>
 				<button
 					type="button"
