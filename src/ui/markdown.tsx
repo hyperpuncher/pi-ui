@@ -97,8 +97,7 @@ const markdownHtmlRewriter = new HTMLRewriter()
 				element.remove();
 				return;
 			}
-			const local = localImageUrl(src);
-			if (local) element.setAttribute("src", local);
+			rewriteLocalImageSource(element, src);
 			// Markdown images are rare next to attachments; lazy keeps them
 			// from being fetched or decoded offscreen. No reserved box here:
 			// dimensions are only known for attachment images.
@@ -541,30 +540,35 @@ function rewriteRelativeImageSources(html: string, basePath: string): string {
 					const relativePath = decodeURIComponent(
 						source.split(/[?#]/, 1)[0] ?? "",
 					);
-					const local = localImageUrl(resolve(basePath, relativePath));
-					if (local) element.setAttribute("src", local);
-					element.setAttribute("loading", "lazy");
-					element.setAttribute("decoding", "async");
+					rewriteLocalImageSource(element, resolve(basePath, relativePath));
 				} catch {
-					// Leave malformed and missing sources untouched so alt text remains visible.
+					// Leave malformed sources unchanged.
 				}
 			},
 		})
 		.transform(html);
 }
 
-// The browser cannot load local files, so route existing image files through the
-// server's preview endpoint.
-function localImageUrl(source: string): string | undefined {
-	const path = source.startsWith("file:")
+// Serve local images over HTTP. Missing files must not leave a source that the
+// browser will try to load, such as a temporary file removed after a reboot.
+function rewriteLocalImageSource(
+	element: HTMLRewriterTypes.Element,
+	source: string,
+): void {
+	const path = source.toLowerCase().startsWith("file:")
 		? fileUriToPath(source)
 		: source.startsWith("~/")
 			? `${homedir()}${source.slice(1)}`
-			: source.startsWith("/")
+			: source.startsWith("/") && !source.startsWith("//")
 				? source
 				: undefined;
-	if (!path || !localImagePattern.test(path) || !existsSync(path)) return undefined;
-	return filePreviewUrl(path);
+	if (!path || !localImagePattern.test(path)) return;
+	if (existsSync(path)) {
+		element.setAttribute("src", filePreviewUrl(path));
+	} else {
+		const alt = decodeHtml(element.getAttribute("alt") ?? "");
+		element.replace(alt ? `[image unavailable: ${alt}]` : "[image unavailable]");
+	}
 }
 
 function safeUrl(value: string, options: { allowDataImage: boolean }): URL | undefined {

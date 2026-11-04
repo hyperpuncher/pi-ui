@@ -70,9 +70,40 @@ test("local image sources are served through the file preview route", async () =
 	}
 });
 
-test("missing local image sources are left untouched", () => {
-	const html = renderMarkdownStreaming("![shot](/definitely/missing/pi-ui-image.png)");
-	assertIncludes(html, 'src="/definitely/missing/pi-ui-image.png"');
+test("missing local images show safe placeholders instead of image sources", async () => {
+	for (const source of [
+		"/definitely/missing/pi-ui-image.png",
+		"file:///definitely/missing/pi-ui-image.png",
+		"FILE:///definitely/missing/pi-ui-image.png",
+		"~/definitely/missing/pi-ui-image.png",
+	]) {
+		const markdown = `![<script>alert(1)</script> & friends](${source}) ![](${source})`;
+		for (const html of [
+			renderMarkdownStreaming(markdown),
+			await renderMarkdownFinal(markdown),
+		]) {
+			assertEqual(
+				html,
+				"<p>[image unavailable: &lt;script&gt;alert(1)&lt;/script&gt; &amp; friends] [image unavailable]</p>\n",
+			);
+		}
+	}
+	assertEqual(
+		await renderMarkdownFinal("![shot](missing.png)", {
+			localImageBase: "/definitely/missing",
+		}),
+		"<p>[image unavailable: shot]</p>\n",
+	);
+});
+
+test("network-relative images are not treated as local files", async () => {
+	const markdown = "![shot](//example.com/image.png)";
+	for (const html of [
+		renderMarkdownStreaming(markdown),
+		await renderMarkdownFinal(markdown, { localImageBase: "/definitely/missing" }),
+	]) {
+		assertIncludes(html, 'src="//example.com/image.png"');
+	}
 });
 
 test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
