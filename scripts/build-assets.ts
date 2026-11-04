@@ -1,7 +1,6 @@
 import { rm } from "node:fs/promises";
 
 const themeLab = process.env.PI_UI_THEME_LAB === "1";
-const pierreWorker = Bun.resolveSync("@pierre/diffs/worker/worker.js", import.meta.dir);
 
 await Promise.all([
 	rm("static/build", { recursive: true, force: true }),
@@ -33,18 +32,6 @@ const results = await Promise.all([
 		// drops that module on Windows by missing the package sideEffects entry,
 		// which renders file previews unstyled.
 		ignoreDCEAnnotations: true,
-	}),
-	Bun.build({
-		entrypoints: [pierreWorker],
-		outdir: "static/build",
-		naming: "pierre-worker.js",
-		target: "browser",
-		format: "esm",
-		define: { "process.env.NODE_ENV": JSON.stringify("production") },
-		minify: true,
-		// All client highlighting uses Highlights. Keep the optional Shiki
-		// backend out of the browser bundles and the compiled executable.
-		external: ["shiki/*"],
 	}),
 	Bun.build({
 		entrypoints: ["src/ui/app.css", ...(themeLab ? ["src/ui/theme-lab.css"] : [])],

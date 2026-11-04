@@ -6,10 +6,6 @@ import {
 	parsePatchFiles,
 } from "@pierre/diffs";
 import {
-	getOrCreateWorkerPoolSingleton,
-	terminateWorkerPoolSingleton,
-} from "@pierre/diffs/worker";
-import {
 	type ContextMenuItem,
 	type ContextMenuOpenContext,
 	FileTree,
@@ -72,14 +68,8 @@ const api = createWorkspaceReviewApi(endpoint);
 
 window.addEventListener("pi-ui-code-theme-changed", (event) => {
 	if (!(event instanceof CustomEvent) || !isCodeThemes(event.detail)) return;
-	const themes = event.detail;
-	setCodeThemes(themes);
-	if (viewer) {
-		void createWorkerPool()
-			.setRenderOptions({ theme: themes })
-			.then(updateViewerOptions)
-			.catch((error) => console.error("Failed to update workspace theme", error));
-	}
+	setCodeThemes(event.detail);
+	updateViewerOptions();
 });
 
 const app = requiredElement("app");
@@ -297,7 +287,6 @@ window.addEventListener(
 		workspaceFiles.cleanUp();
 		viewer?.cleanUp();
 		cancelWorkingDiff();
-		terminateWorkerPoolSingleton();
 	},
 	{ once: true },
 );
@@ -628,7 +617,7 @@ function publish(): void {
 	if (!viewer) {
 		observedDiffLayout = effectiveLayout();
 		const options = viewerOptions();
-		viewer = new CodeView(options, createWorkerPool());
+		viewer = new CodeView(options);
 		viewerCommentsEnabled = options.enableGutterUtility;
 		viewer.setup(diffRoot);
 	} else if (viewerCommentsEnabled !== canAddComments()) {
@@ -766,6 +755,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata, undefined> {
 			if (context.item.type === "diff") comments.add(context.item, range);
 		},
 		pointerEventsOnScroll: true,
+		preferredHighlighter: "highlights",
 		renderAnnotation: comments.render,
 		diffStyle: effectiveLayout(),
 		hunkSeparators: "simple",
@@ -841,25 +831,6 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata, undefined> {
 
 		`,
 	};
-}
-
-function createWorkerPool() {
-	return getOrCreateWorkerPoolSingleton({
-		highlighterOptions: {
-			langs: ["text"],
-			preferredHighlighter: "highlights",
-			theme: activeCodeThemes,
-			useTokenTransformer: true,
-		},
-		poolOptions: {
-			poolSize: 1,
-			totalASTLRUCacheSize: 100,
-			workerFactory: () =>
-				new Worker(new URL("../pierre-worker.js", import.meta.url), {
-					type: "module",
-				}),
-		},
-	});
 }
 
 function initialPanelMode(
