@@ -224,9 +224,9 @@ for (const committed of [false, true]) {
 			const review = committed
 				? await readWorkspaceCommit(repository, snapshot.commits[0].hash)
 				: { patch: await readWorkspaceDiff(repository) };
-			const files = parsePatchFiles(review?.patch ?? "", undefined, true).flatMap(
-				(patch) => patch.files,
-			);
+			const files = parsePatchFiles(review?.patch ?? "", {
+				throwOnError: true,
+			}).flatMap((patch) => patch.files);
 			assertEquals(files.length, 2);
 			assertEquals(
 				files.find((file) => file.name === "tracked.txt")?.additionLines,
