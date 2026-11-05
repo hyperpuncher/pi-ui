@@ -1,0 +1,6 @@
+# ubuntu-26.04 is a real GitHub-hosted label that actionlint's runner
+# database does not know yet. treat it as known so lint stays green.
+self-hosted-runner:
+    labels:
+        - ubuntu-26.04
+        - ubuntu-26.04-arm
