@@ -26,6 +26,7 @@ import {
 	isOpen as isPickerOpen,
 	syncPickerSelection,
 } from "#static/app/pickers.js";
+import { PromptDrafts } from "#static/app/prompt-drafts.js";
 import { createPromptHistory } from "#static/app/prompt-history.js";
 import { autofocusPrompt, setPromptValue } from "#static/app/prompt.js";
 import {
@@ -38,6 +39,7 @@ import { bindVimScroll } from "#static/app/vim-scroll.js";
 import { windowFocus } from "#static/app/window-focus.js";
 
 const promptHistory = createPromptHistory();
+const promptDrafts = new PromptDrafts();
 
 window.piUi = {
 	copyText,
@@ -65,8 +67,10 @@ window.piUi = {
 	prompt: {
 		autofocus: autofocusPrompt,
 		clear: () => setPromptValue(""),
+		setValue: setPromptValue,
 	},
 	promptHistory,
+	promptDrafts,
 	sessionPerformance: {
 		observe: readTransitionState,
 		start: startSessionPerformanceMeasurement,

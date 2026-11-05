@@ -1383,6 +1383,9 @@ export class RuntimeController {
 			const resetToolState = options.resetToolState ?? true;
 			this.state.setWorkspacePath(session.sessionManager.getCwd());
 			const sessionFile = session.sessionManager.getSessionFile();
+			this.state.setPromptSessionKey(
+				sessionFile ?? session.sessionManager.getSessionId(),
+			);
 			this.state.setCurrentSessionPath(sessionFile);
 			if (sessionFile) this.completedBackgroundPaths.delete(sessionFile);
 			this.state.setTemporarySession(!session.sessionManager.isPersisted());

@@ -221,6 +221,7 @@ export type AppStateSnapshot = Readonly<{
 	hasOlderMessages: boolean;
 	promptHistory: readonly string[];
 	promptEditorText: string;
+	promptSessionKey: string;
 	emptyChatHint: Readonly<AppKeybindHint>;
 }>;
 
@@ -267,6 +268,7 @@ export class AppStore {
 	documentTitle = "pi-ui";
 	updateAvailable: AvailableUpdate | undefined;
 	promptEditorText = "";
+	promptSessionKey = "";
 	models: AppModel[] = [];
 	modelsRevision = 0;
 	sessionCatalogLoading = true;
@@ -426,6 +428,7 @@ export class AppStore {
 			hasOlderMessages: this.hasOlderMessages,
 			promptHistory: this.promptHistory,
 			promptEditorText: this.promptEditorText,
+			promptSessionKey: this.promptSessionKey,
 			emptyChatHint: { ...this.emptyChatHint },
 		});
 	}
@@ -655,6 +658,12 @@ export class AppStore {
 	setDocumentTitle(title: string): void {
 		this.documentTitle = title;
 		this.commit();
+	}
+	/** Keeps the editor mirror in the current session. Drafts stay in the browser. */
+	setPromptSessionKey(key: string): void {
+		if (key === this.promptSessionKey) return;
+		this.promptSessionKey = key;
+		this.setPromptEditorText("", { broadcast: false });
 	}
 	setPromptEditorText(text: string, options: { broadcast?: boolean } = {}): void {
 		this.promptEditorText = text;

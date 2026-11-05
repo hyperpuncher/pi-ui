@@ -11,6 +11,7 @@ export type BackendSignals = {
 	_fontMono: string;
 	_fontSans: string;
 	_promptHistory: readonly string[];
+	_promptSessionKey: string;
 	_thinkingHidden: boolean;
 	_theme: AppStateSnapshot["theme"];
 	_keybindHints: boolean;
@@ -40,6 +41,7 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 		_fontMono: fonts.mono,
 		_fontSans: fonts.sans,
 		_promptHistory: state.promptHistory,
+		_promptSessionKey: state.promptSessionKey,
 		_thinkingHidden: state.thinkingHidden,
 		_theme: state.theme,
 		_keybindHints: state.keybindHints,

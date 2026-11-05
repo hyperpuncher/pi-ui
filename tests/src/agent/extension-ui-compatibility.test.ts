@@ -70,13 +70,13 @@ test("a discovered pi extension uses the web UI bridge end to end", async () => 
 	await Bun.write(`${agentDir}/extensions/ui-fixture.js`, fixtureSource);
 
 	const store = new AppStore();
-	store.setPromptEditorText("browser draft");
 	let controller: RuntimeController | undefined;
 	try {
 		controller = await RuntimeController.prepare(store, cwd, {
 			dependencies: dependencies(agentDir),
 		});
 		controller.activate();
+		store.setPromptEditorText("browser draft");
 		assertEquals(
 			store.slashCommands.find((command) => command.name === "ui-fixture"),
 			{

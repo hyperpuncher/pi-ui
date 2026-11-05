@@ -27,6 +27,8 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 			})}
 			data-on:pointerdown__outside="window.piUi.pickers.close()"
 			data-effect="
+				const draft = window.piUi.promptDrafts.sync($_promptSessionKey, $prompt);
+				if (draft !== null) window.piUi.prompt.setValue(draft);
 				$_filePickerOpen;
 				$_slashPickerOpen;
 				$slashSearch = $prompt.startsWith('/') && !$prompt.includes(' ') ? $prompt.slice(1) : '';

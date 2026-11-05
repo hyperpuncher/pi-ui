@@ -391,6 +391,31 @@ test("resume uses the target workspace", async () => {
 	}
 });
 
+test("session changes update the prompt session key", async () => {
+	const state = new AppStore();
+	const source = fakeRuntime("/sessions/source.jsonl");
+	const target = fakeRuntime("/sessions/target.jsonl");
+	source.setStreaming(true);
+	const controller = await activate(state, [source, target]);
+	try {
+		state.setPromptEditorText("source draft");
+		assertEquals(state.promptSessionKey, "/sessions/source.jsonl");
+		assertEquals(
+			(await controller.resumeSession("/sessions/target.jsonl")).status,
+			"success",
+		);
+		assertEquals(state.promptSessionKey, "/sessions/target.jsonl");
+		assertEquals(state.promptEditorText, "");
+		assertEquals(
+			(await controller.resumeSession("/sessions/source.jsonl")).status,
+			"success",
+		);
+		assertEquals(state.promptSessionKey, "/sessions/source.jsonl");
+	} finally {
+		await controller.dispose();
+	}
+});
+
 test("malformed resume target keeps the outgoing runtime usable", async () => {
 	const state = new AppStore();
 	const source = fakeRuntime();

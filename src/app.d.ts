@@ -55,10 +55,14 @@ interface PiUiNamespace {
 	prompt: {
 		autofocus(): void;
 		clear(): void;
+		setValue(value: string): void;
 	};
 	promptHistory: {
 		handleInput(): void;
 		handleKeydown(event: KeyboardEvent, entries: readonly string[]): boolean;
+	};
+	promptDrafts: {
+		sync(key: string, text: string): string | null;
 	};
 	sessionPerformance: {
 		observe(status: string, generation: number): void;
