@@ -7,17 +7,13 @@ import {
 	getFiletypeFromFileName,
 	getHighlighterIfLoaded,
 	type ThemedToken,
-	tokenStyle,
+	tokensToHtml,
 } from "@pierre/diffs";
 import { isSupportedLanguage } from "@pierre/highlights";
 
 import { activeCodeThemes, codeThemeKey } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
-import {
-	isPierreLanguageLoaded,
-	loadPierreLanguage,
-	renderPierreCode,
-} from "#src/ui/diffs.ts";
+import { isPierreLanguageLoaded, loadPierreLanguage } from "#src/ui/diffs.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import { renderMermaid } from "#src/ui/mermaid.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
@@ -28,7 +24,7 @@ import { fileUriToPath } from "#static/file-uri.js";
 // repeated content across a much longer session.
 const maxStreamingEntries = 100;
 const maxFinalMarkdownEntries = 500;
-const maxPierreCodeBlockEntries = 500;
+const maxCodeBlockEntries = 500;
 const maxFinalCacheBytes = 8 * 1024 * 1024;
 
 type PendingMermaidBlock = { index: number; source: string };
@@ -51,8 +47,8 @@ const highlightedCache = new BoundedCache<string, string>(
 	maxFinalMarkdownEntries,
 	stringCacheOptions,
 );
-const pierreCodeBlockCache = new BoundedCache<string, string>(
-	maxPierreCodeBlockEntries,
+const codeBlockCache = new BoundedCache<string, string>(
+	maxCodeBlockEntries,
 	stringCacheOptions,
 );
 const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
@@ -349,7 +345,7 @@ async function highlightCodeBlocksFinal(html: string, scope: string): Promise<st
 		parts.push(
 			syncHtml(
 				<CodeBlock
-					pre={await cachedPierreCodeBlock(code, language)}
+					pre={cachedCodeBlock(code, language)}
 					language={language}
 					source={code}
 				/>,
@@ -360,12 +356,17 @@ async function highlightCodeBlocksFinal(html: string, scope: string): Promise<st
 	return parts.join("");
 }
 
-async function cachedPierreCodeBlock(code: string, language: string): Promise<string> {
+function cachedCodeBlock(code: string, language: string): string {
 	const key = `${codeThemeKey()}\0${language}\0${code}`;
-	const cached = pierreCodeBlockCache.get(key);
+	const cached = codeBlockCache.get(key);
 	if (cached) return cached;
-	const highlighted = await renderPierreCode(code, language);
-	pierreCodeBlockCache.set(key, highlighted);
+	const highlighted =
+		getHighlighterIfLoaded()?.codeToHtml(code, {
+			lang: language,
+			themes: activeCodeThemes,
+			defaultColor: "light-dark()",
+		}) ?? renderCodeTokensPre(code);
+	codeBlockCache.set(key, highlighted);
 	return highlighted;
 }
 
@@ -410,48 +411,39 @@ function highlightStreamingCodeBlock(
 
 	return syncHtml(
 		<CodeBlock
-			pre={renderStreamingTokensPre([...state.stable, ...state.unstable])}
+			pre={renderCodeTokensPre(code, [...state.stable, ...state.unstable])}
 			language={language}
 			source={code}
 		/>,
 	);
 }
 
-function renderStreamingTokensPre(tokens: ThemedToken[]): string {
-	const lines = [""];
+function renderCodeTokensPre(
+	code: string,
+	tokens: ThemedToken[] = [{ content: code, offset: 0 }],
+): string {
+	const lines: ThemedToken[][] = [[]];
+	// The stream returns flat tokens; Pierre's HTML renderer expects source lines.
 	for (const token of tokens) {
-		const style = tokenStyle(token, true);
-		const styleAttribute = style ? ` style="${Bun.escapeHTML(style)}"` : "";
-		const parts = token.content.split("\n");
-		for (const [index, part] of parts.entries()) {
-			if (part) {
-				lines[lines.length - 1] +=
-					`<span${styleAttribute}>${Bun.escapeHTML(part)}</span>`;
-			}
-			if (index < parts.length - 1) lines.push("");
+		let offset = token.offset;
+		for (const [index, content] of token.content.split("\n").entries()) {
+			if (index > 0) lines.push([]);
+			if (content) lines[lines.length - 1]!.push({ ...token, content, offset });
+			offset += content.length + 1;
 		}
 	}
-	if (lines.length > 1 && lines.at(-1) === "") lines.pop();
-	return renderStreamingLinesPre(lines);
+	return tokensToHtml(
+		code,
+		{ tokens: lines, rootStyle: false },
+		{ lang: "text", themes: activeCodeThemes, defaultColor: "light-dark()" },
+		true,
+	);
 }
 
 function renderStreamingPlainCodeBlock(code: string, language: string): string {
 	return syncHtml(
-		<CodeBlock
-			pre={renderStreamingLinesPre(code.split("\n").map(Bun.escapeHTML))}
-			language={language}
-			source={code}
-		/>,
+		<CodeBlock pre={renderCodeTokensPre(code)} language={language} source={code} />,
 	);
-}
-
-function renderStreamingLinesPre(lines: string[]): string {
-	return `<pre class="plain-code" tabindex="0"><code class="streaming-code">${lines
-		.map(
-			(line, index) =>
-				`<span class="streaming-code-line-number">${index + 1}</span><span class="streaming-code-line">${line || "&nbsp;"}</span>`,
-		)
-		.join("")}</code></pre>`;
 }
 
 function renderPlainCode(

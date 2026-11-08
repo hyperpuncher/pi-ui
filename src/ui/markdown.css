@@ -35,8 +35,30 @@
 		line-height: 1.375rem;
 		tab-size: 4;
 	}
-	.code-block pre:has(> .streaming-code) {
+	.code-block pre.diffs {
 		padding-inline: 0;
+		/* stylelint-disable-next-line declaration-no-important -- override Pierre's inline theme background, as the file widgets do */
+		background-color: var(--surface-code) !important;
+	}
+	.code-block pre.diffs > code {
+		display: grid;
+		counter-reset: code-line;
+	}
+	.code-block .line {
+		position: relative;
+		min-block-size: 1lh;
+		padding-inline: 5ch 1ch;
+		white-space: pre-wrap;
+		counter-increment: code-line;
+	}
+	.code-block .line::before {
+		position: absolute;
+		inset-inline-start: 1ch;
+		width: 3ch;
+		color: var(--text-muted);
+		text-align: right;
+		content: counter(code-line) / "";
+		user-select: none;
 	}
 	.code-block-header {
 		display: flex;
@@ -313,39 +335,6 @@
 	.markdown-content pre code {
 		background: transparent;
 		padding: 0;
-	}
-
-	.streaming-code {
-		display: grid;
-		grid-template-columns: max-content minmax(0, 1fr);
-		background: var(--surface-code);
-	}
-
-	.streaming-code-line-number {
-		box-sizing: content-box;
-		min-width: 1ch;
-		padding-inline: 2ch 1ch;
-		color: var(--text-muted);
-		text-align: right;
-		user-select: none;
-	}
-
-	.streaming-code-line {
-		min-width: 0;
-		padding-inline: 1ch;
-		white-space: pre-wrap;
-	}
-
-	.markdown-content .pierre-code {
-		display: block;
-		margin-block: 1rem;
-		overflow: hidden;
-		border-radius: var(--radius-lg);
-	}
-
-	.markdown-content .code-block .pierre-code {
-		margin-block: 0;
-		border-radius: 0;
 	}
 
 	.markdown-content hr {

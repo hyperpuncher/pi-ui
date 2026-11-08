@@ -31,11 +31,6 @@ test("restores reuse final Markdown across message IDs without stale output", as
 	releaseMarkdownStreamingState(restored.cacheKey);
 });
 
-test("streaming code has line numbers without highlighting state", () => {
-	const html = renderMarkdownStreaming("```text\none\ntwo\nthree\n```");
-	assertEqual(html.match(/streaming-code-line-number/g)?.length, 3);
-});
-
 test("streaming code does not show a partial closing fence", () => {
 	const source = "```html\n<div>";
 	const expected = renderMarkdownStreaming(source);
@@ -267,14 +262,35 @@ test("code blocks keep dollar sequences literal", async () => {
 	}
 });
 
-test("code blocks omit the parser-added terminal display line", async () => {
-	await loadPierreLanguage("typescript");
-	const markdown = "```ts\none\n\nthree\n```";
-	const key = "terminal-newline";
-	const streaming = renderMarkdownStreaming(markdown, { cacheKey: key });
-	assertEqual(streaming.match(/streaming-code-line-number/g)?.length, 3);
-	releaseMarkdownStreamingState(key);
-
-	const final = await renderMarkdownFinal(markdown);
-	assertEqual(final.match(/<div data-line="\d+"/g)?.length, 3);
-});
+test.each([
+	["text", "one\n\nthree"],
+	["ts", "first\n\nlast\n"],
+])(
+	"streaming and completed %s code preserve the same source lines",
+	async (language, source) => {
+		await loadPierreLanguage(language);
+		const markdown = `\`\`\`${language}\n${source}\n\`\`\``;
+		const cacheKey = `source-lines-${language}`;
+		renderMarkdownStreaming(`\`\`\`${language}\n${source[0]}`, { cacheKey });
+		const highlighted = renderMarkdownStreaming(markdown, { cacheKey });
+		releaseMarkdownStreamingState(cacheKey);
+		for (const html of [
+			renderMarkdownStreaming(markdown),
+			highlighted,
+			await renderMarkdownFinal(markdown),
+		]) {
+			const lines: string[] = [];
+			new HTMLRewriter()
+				.on(".code-block .line", {
+					element() {
+						lines.push("");
+					},
+					text(chunk) {
+						lines[lines.length - 1] += chunk.text;
+					},
+				})
+				.transform(html);
+			assertEqual(lines, source.split("\n"));
+		}
+	},
+);
