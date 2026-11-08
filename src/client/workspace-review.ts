@@ -157,7 +157,7 @@ const workspaceFiles = createWorkspaceFiles({
 let preferredPanelMode: "files" | "git" | undefined = preferences.tab;
 let panelMode = initialPanelMode(preferredPanelMode, snapshot.isGitRepository);
 
-const visibility = createVisibility(app, (open) => {
+const visibility = createWorkspaceVisibility(app, workspacePath, (open) => {
 	workspaceFiles.setVisible(open && panelMode === "files");
 	if (open && panelMode === "git") openGitView();
 	else cancelWorkingDiff();
@@ -321,6 +321,7 @@ function applyWorkspaceReview(
 		selection = { kind: "working" };
 	}
 	applySnapshot(next);
+	if (workspaceChanged) visibility.setWorkspace(workspacePath);
 }
 
 function applySnapshot(next: WorkspaceReviewSnapshot): void {
@@ -1067,8 +1068,13 @@ function openGitView(): void {
 	}
 }
 
-function createVisibility(app: HTMLElement, onChange: (open: boolean) => void) {
+function createWorkspaceVisibility(
+	app: EventTarget,
+	workspacePath: string,
+	onChange: (open: boolean) => void,
+) {
 	let open = false;
+	const openWorkspaces = new Set<string>();
 	const requestOpen = (open: boolean) => {
 		app.dispatchEvent(
 			new CustomEvent("pi-ui-workspace-review-open", { detail: { open } }),
@@ -1077,14 +1083,22 @@ function createVisibility(app: HTMLElement, onChange: (open: boolean) => void) {
 	const applyOpen = (next: boolean) => {
 		if (open === next) return;
 		open = next;
+		if (open) openWorkspaces.add(workspacePath);
+		else openWorkspaces.delete(workspacePath);
 		onChange(open);
 	};
-	applyOpen(app.classList.contains("review-open"));
 	return {
 		applyOpen,
 		close: () => requestOpen(false),
 		isOpen: () => open,
 		open: () => requestOpen(true),
+		setWorkspace(next: string) {
+			if (workspacePath === next) return;
+			workspacePath = next;
+			const restored = openWorkspaces.has(workspacePath);
+			applyOpen(restored);
+			requestOpen(restored);
+		},
 	};
 }
 
