@@ -1,4 +1,5 @@
-// Usage: bun scripts/bench-real-session.ts <session.jsonl> [visibleCount]
+// Usage: bun scripts/bench-real-session.ts <copied-session.jsonl> [visibleCount]
+// Use a private copy: SessionManager.open can migrate a session file.
 // visibleCount=0 renders every Markdown message; >0 renders the last N messages and tools.
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
@@ -20,7 +21,7 @@ const memory = () => {
 globalThis.Bun.gc?.(true);
 const started = performance.now();
 const manager = SessionManager.open(sessionPath);
-const entries = manager.getEntries();
+const entries = manager.getBranch();
 const opened = performance.now();
 const projector = new TranscriptProjector();
 const pending = new Map();
