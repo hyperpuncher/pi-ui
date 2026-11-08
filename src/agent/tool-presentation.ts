@@ -191,12 +191,20 @@ function countBashResults(text: string): number {
 
 export function compactToolOutput(text: string): string {
 	const trimmed = text.trimEnd();
-	const lines = trimmed.split("\n");
-	if (lines.length <= bashCompactThreshold) {
-		return trimmed;
+	let lineCount = 1;
+	for (
+		let newline = trimmed.indexOf("\n");
+		newline >= 0;
+		newline = trimmed.indexOf("\n", newline + 1)
+	) {
+		lineCount += 1;
 	}
-	const skipped = lines.length - bashPreviewLines;
-	return `... (${skipped} earlier lines)\n${lines.slice(-bashPreviewLines).join("\n")}`;
+	if (lineCount <= bashCompactThreshold) return trimmed;
+	let previewStart = trimmed.length;
+	for (let line = 0; line < bashPreviewLines; line++) {
+		previewStart = trimmed.lastIndexOf("\n", previewStart - 1);
+	}
+	return `... (${lineCount - bashPreviewLines} earlier lines)\n${trimmed.slice(previewStart + 1)}`;
 }
 
 function extractToolText<Result>(result: Result): string {
