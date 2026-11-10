@@ -39,7 +39,7 @@ jobs:
               run: |
                   case "$NAME" in
                     linux-*)
-                      ZSTD_CLEVEL=19 tar --zstd -cf "dist/pi-ui-$NAME.tar.zst" -C dist pi-ui
+                      tar -I 'zstd -10 -T0' -cf "dist/pi-ui-$NAME.tar.zst" -C dist pi-ui
                       ;;
                     darwin-*)
                       (cd dist && ditto -c -k --keepParent pi-ui "pi-ui-$NAME.zip")
@@ -50,8 +50,8 @@ jobs:
                   esac
             - uses: actions/upload-artifact@v7
               with:
-                  name: ${{ matrix.name }}
                   path: dist/pi-ui-${{ matrix.name }}.*
+                  archive: false
 
     release:
         name: release
@@ -70,11 +70,8 @@ jobs:
             - uses: actions/download-artifact@v8
               with:
                   path: dist
-            - name: flatten artifacts
-              run: |
-                  find dist -mindepth 2 -type f -exec mv {} dist/ \;
-                  find dist -mindepth 1 -type d -empty -delete
-                  ls -lh dist
+                  merge-multiple: true
+                  skip-decompress: true
             - uses: hyperpuncher/release-notes@v1
               id: notes
             - run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file "${{ steps.notes.outputs.path }}"
@@ -82,7 +79,7 @@ jobs:
     npm:
         name: npm
         needs: [release]
-        runs-on: ubuntu-26.04
+        runs-on: ubuntu-slim
         permissions:
             contents: read
             id-token: write
