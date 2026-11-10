@@ -510,7 +510,10 @@ export class RuntimeController {
 			// SDK in-place replacement overwrites lifecycle callbacks before returning.
 			this.adoptRuntime(this.runtime);
 		}
-		await this.bindSession({ refreshSessions: true });
+		this.unbindSession();
+		// In-place replacement starts extensions through the SDK rebind callback.
+		if (active || !persisted) await this.bindSessionExtensions();
+		this.bindSessionState({ refreshSessions: true });
 		return true;
 	}
 
@@ -1352,7 +1355,7 @@ export class RuntimeController {
 		restoreSessionEventToolState(this.tools, backgroundSession.tools);
 		this.bindSessionState({ resetToolState: false, syncSessions: false });
 		this.state.restoreChat(backgroundSession.state.snapshot());
-		await this.bindSessionExtensions();
+		// This session is still running with its original extension bindings.
 		this.catalog.mergeCurrentStatuses();
 	}
 

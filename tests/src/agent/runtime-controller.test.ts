@@ -1047,6 +1047,8 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	}
 
 	assertEquals(opens, 1);
+	assertEquals(a.extensionBindings.length, 1);
+	assertEquals(b.extensionBindings.length, 1);
 	a.emit(agentSessionEventStub({ type: "agent_start" }));
 	assertEquals(state.activityText, "Working...");
 	a.emit(

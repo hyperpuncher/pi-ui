@@ -129,6 +129,42 @@ test("a discovered pi extension uses the web UI bridge end to end", async () => 
 	}
 });
 
+test("new session starts its extensions only once", async () => {
+	const root = await makeTempDir();
+	const agentDir = `${root}/agent`;
+	const cwd = `${root}/workspace`;
+	await mkdir(`${agentDir}/extensions`, { recursive: true });
+	await mkdir(cwd);
+	await Bun.write(
+		`${agentDir}/extensions/startup.js`,
+		`export default function (pi) {
+	pi.on("session_start", () => pi.appendEntry("fixture-start"));
+	pi.registerCommand("startup-count", {
+		handler: (_args, ctx) => ctx.ui.notify(String(ctx.sessionManager.getEntries()
+			.filter(entry => entry.type === "custom" && entry.customType === "fixture-start").length)),
+	});
+}`,
+	);
+
+	const store = new AppStore();
+	let controller: RuntimeController | undefined;
+	try {
+		controller = await RuntimeController.create(store, cwd, {
+			dependencies: {
+				...dependencies(agentDir),
+				createSessionManager: (cwd) =>
+					SessionManager.create(cwd, `${root}/sessions`),
+			},
+		});
+		assertEquals(await controller.newSession(), { status: "success" });
+		assertEquals(await controller.prompt("/startup-count"), true);
+		assertEquals(store.messages.at(-1)?.text, "1");
+	} finally {
+		await controller?.dispose();
+		await rm(root, { recursive: true });
+	}
+});
+
 function dependencies(agentDir: string): RuntimeControllerDependencies {
 	return {
 		createRuntime: (_factory, options) =>
