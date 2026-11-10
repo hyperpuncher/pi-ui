@@ -13,7 +13,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 				data-variant="destructive"
 				data-size="icon"
 				type="button"
-				data-on:click={`@post('${endpoints.abort}', { payload: {}, retryMaxCount: 0 })`}
+				data-on:click={`@post('${endpoints.abort}', { payload: {}, retry: 'never' })`}
 				data-on:keydown__window={`if (
 					evt.code === 'Escape' &&
 					!evt.ctrlKey &&
@@ -23,7 +23,7 @@ export function renderPromptAction(state: AppStateSnapshot): string {
 					window.piUi.shouldAbortOnEscape(evt)
 				) {
 					evt.preventDefault();
-					@post('${endpoints.abort}', { payload: {}, retryMaxCount: 0 });
+					@post('${endpoints.abort}', { payload: {}, retry: 'never' });
 				}`}
 				data-tooltip="Abort"
 				data-align="end"

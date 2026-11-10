@@ -98,7 +98,7 @@ export function renderWorktreeDialogContent(
 										data-attr:disabled="$_worktreeCreating"
 										data-on:click={`@post('${endpoints.branchSwitch}', {
 										payload: { branch: ${JSON.stringify(branch.label)} },
-										retryMaxCount: 0,
+										retry: 'never',
 										});`}
 									>
 										<Icon name="git-branch" />
@@ -132,7 +132,7 @@ export function renderWorktreeDialogContent(
 						$_worktreeError = '';
 						@post('${endpoints.branchCreate}', {
 							payload: { branch: $_branchName },
-							retryMaxCount: 0,
+							retry: 'never',
 						});
 					}`}
 				>
@@ -188,7 +188,7 @@ export function renderWorktreeDialogContent(
 											}
 											data-on:click={`@post('${endpoints.workspaceOpen}', {
 											payload: { workspacePath: ${JSON.stringify(worktree.sessionPath)} },
-											retryMaxCount: 0,
+											retry: 'never',
 											});`}
 										>
 											<Icon name="folder" />
@@ -221,7 +221,7 @@ export function renderWorktreeDialogContent(
 													$_worktreeRemoveError = '';
 													@get('${endpoints.worktreeRemove}', {
 														payload: { path: $_worktreeRemovePath },
-														retryMaxCount: 0,
+														retry: 'never',
 													});
 												`}
 											>
@@ -242,7 +242,7 @@ export function renderWorktreeDialogContent(
 						$_worktreeError = '';
 						@post('${endpoints.worktreeCreate}', {
 							payload: { branch: $_worktreeBranch, base: $_worktreeBase },
-							retryMaxCount: 0,
+							retry: 'never',
 						});
 					}`}
 				>
@@ -378,7 +378,7 @@ export function renderBranchDeleteDialog(): string {
 						data-attr:disabled="$_branchDeleteName === ''"
 						data-on:click={`@post('${endpoints.branchDelete}', {
 							payload: { branch: $_branchDeleteName },
-							retryMaxCount: 0,
+							retry: 'never',
 						})`}
 					>
 						Delete branch
@@ -473,7 +473,7 @@ export function renderWorktreeRemoveDialog(): string {
 						data-attr:disabled="!$_worktreeRemoveReady || $_worktreeRemoving"
 						data-on:click={`@post('${endpoints.worktreeRemove}', {
 							payload: { path: $_worktreeRemovePath, revision: $_worktreeRemoveRevision },
-							retryMaxCount: 0,
+							retry: 'never',
 						})`}
 						data-text="$_worktreeRemoveCount > 0 ? 'Remove checkout and ignored files' : 'Remove checkout'"
 					>

@@ -4,7 +4,7 @@ import { previousSessionAction } from "#src/ui/session-transition.tsx";
 
 export function newSessionAction(temporary = false): string {
 	const endpoint = temporary ? endpoints.sessionsNewTemporary : endpoints.sessionsNew;
-	return `if ($_sessionTransitionStatus !== 'loading') { @post('${endpoint}', { payload: {}, retryMaxCount: 0 }); requestAnimationFrame(() => window.piUi.prompt.autofocus()); }`;
+	return `if ($_sessionTransitionStatus !== 'loading') { @post('${endpoint}', { payload: {}, retry: 'never' }); requestAnimationFrame(() => window.piUi.prompt.autofocus()); }`;
 }
 
 export function toggleDialogAction(): string {
@@ -20,11 +20,11 @@ function cycleDirectionExpression(direction: CycleDirection): string {
 }
 
 export function cycleModelAction(direction: CycleDirection): string {
-	return `@post('${endpoints.modelCycle}', { payload: { modelCycleDirection: ${cycleDirectionExpression(direction)} }, retryMaxCount: 0 })`;
+	return `@post('${endpoints.modelCycle}', { payload: { modelCycleDirection: ${cycleDirectionExpression(direction)} }, retry: 'never' })`;
 }
 
 export function cycleThinkingAction(direction: CycleDirection): string {
-	return `@post('${endpoints.thinkingCycle}', { payload: { thinkingCycleDirection: ${cycleDirectionExpression(direction)} }, retryMaxCount: 0 })`;
+	return `@post('${endpoints.thinkingCycle}', { payload: { thinkingCycleDirection: ${cycleDirectionExpression(direction)} }, retry: 'never' })`;
 }
 
 export function authDialogAction(mode: "login" | "logout"): string {
@@ -65,7 +65,7 @@ function toggleToolbarAction(): string {
 }
 
 function toggleArchiveAction(): string {
-	return `@post('${endpoints.sessionSidebarArchive}', { payload: {}, retryMaxCount: 0 })`;
+	return `@post('${endpoints.sessionSidebarArchive}', { payload: {}, retry: 'never' })`;
 }
 
 export const commandActions = {
@@ -91,7 +91,7 @@ export const commandActions = {
 	"cycle-model": cycleModelAction("forward"),
 	"cycle-thinking": cycleThinkingAction("forward"),
 	"cycle-thinking-backward": cycleThinkingAction("backward"),
-	"toggle-thinking": `document.getElementById('command-dialog')?.close(); @post('${endpoints.thinkingVisibilityToggle}', { payload: {}, retryMaxCount: 0 })`,
+	"toggle-thinking": `document.getElementById('command-dialog')?.close(); @post('${endpoints.thinkingVisibilityToggle}', { payload: {}, retry: 'never' })`,
 	"change-workspace": openWorkspaceDialogAction(true),
 	"fork-session-to-workspace": openWorkspaceDialogAction(true, "fork"),
 	"toggle-review": toggleWorkspaceReviewAction(),

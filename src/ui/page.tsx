@@ -171,7 +171,7 @@ export function renderPage(
 					data-on:pi-ui-workspace-review-submit={`
 						$workspaceReviewComments = evt.detail;
 						@post('${endpoints.workspaceReviewSubmit}', {
-							retryMaxCount: 0,
+							retry: 'never',
 							filterSignals: { include: /^workspaceReviewComments\\./ },
 						});
 					`}
@@ -545,7 +545,7 @@ export function renderPage(
 									command="close"
 									data-attr:disabled="$sessionDeletePath === ''"
 									data-on:click={`@post('${endpoints.sessionsDelete}', {
-										retryMaxCount: 0,
+										retry: 'never',
 										payload: { sessionDeletePath: $sessionDeletePath },
 									})`}
 								>

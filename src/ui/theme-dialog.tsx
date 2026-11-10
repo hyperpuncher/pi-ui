@@ -39,7 +39,7 @@ export function renderThemeDialog(theme: AppStateSnapshot["theme"]): string {
 							data-attr:disabled="$_themeSaving"
 							data-on:click={`
 								$_themeStatus = '';
-								@post('${endpoints.theme}', { payload: { theme: '${mode}' }, retryMaxCount: 0 })
+								@post('${endpoints.theme}', { payload: { theme: '${mode}' }, retry: 'never' })
 							`}
 						>
 							<Icon name={icon} />

@@ -326,7 +326,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 									const row = scope.closest('[data-model-value]');
 									if (row)
 										@post('${endpoints.modelsScopeToggle}', {
-											retryMaxCount: 0,
+											retry: 'never',
 											payload: { model: row.dataset.modelValue },
 										});
 									return;

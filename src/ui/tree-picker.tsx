@@ -116,7 +116,7 @@ function navigateAction(summarize: boolean, custom = false): string {
 	return `
 		document.getElementById('tree-dialog')?.close();
 		@post('${endpoints.treeNavigate}', {
-			retryMaxCount: 0,
+			retry: 'never',
 			payload: {
 				treeEntryId: $treeSelectedId,
 				treeSummarize: ${summarize},

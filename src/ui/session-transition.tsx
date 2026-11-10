@@ -15,7 +15,7 @@ export function resumeSessionAction(
 		window.piUi.sessionPerformance.start();
 		@post('${endpoints.sessionsResume}', {
 			payload: { sessionPath: ${JSON.stringify(path)} },
-			retryMaxCount: 0,
+			retry: 'never',
 		});
 	}`;
 }
@@ -37,7 +37,7 @@ export function previousSessionAction(): string {
 	return `if ($_sessionTransitionStatus !== 'loading') {
 		document.getElementById('session-dialog')?.close();
 		window.piUi.sessionPerformance.start();
-		@post('${endpoints.sessionsPrevious}', { payload: {}, retryMaxCount: 0 });
+		@post('${endpoints.sessionsPrevious}', { payload: {}, retry: 'never' });
 	}`;
 }
 
