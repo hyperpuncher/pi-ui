@@ -1,3 +1,4 @@
+import { createReadStream } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 
 import {
@@ -22,6 +23,7 @@ export function createBunReadToolDefinition(cwd: string) {
 		autoResizeImages: false,
 		operations: {
 			access,
+			createReadStream: (path, { signal }) => createReadStream(path, { signal }),
 			async detectImageMimeType(path) {
 				const mimeType = await detectSupportedImageMimeTypeFromFile(path);
 				if (!mimeType) return null;
