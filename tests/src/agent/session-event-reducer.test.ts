@@ -193,6 +193,55 @@ test("reduces agent, message, queue, and completion events", () => {
 	assertEquals(outcome, { agentCompleted: true });
 });
 
+test("refreshes usage for idle cache warming without changing the transcript", () => {
+	let usageSyncs = 0;
+	const { state, context } = fixture({ syncUsage: () => usageSyncs++ });
+	const entry = {
+		id: "warm-1",
+		parentId: null,
+		timestamp: new Date(0).toISOString(),
+	};
+	reduceSessionEvent(
+		{
+			type: "entry_appended",
+			entry: {
+				...entry,
+				type: "usage",
+				kind: "cache_warm",
+				provider: "anthropic",
+				model: "claude-opus-5-5",
+				usage: {
+					input: 0,
+					output: 1,
+					cacheRead: 100_000,
+					cacheWrite: 0,
+					totalTokens: 100_001,
+					cost: {
+						input: 0,
+						output: 0.000025,
+						cacheRead: 0.05,
+						cacheWrite: 0,
+						total: 0.050025,
+					},
+				},
+			},
+		},
+		context,
+	);
+	assertEquals(usageSyncs, 1);
+	assertEquals(state.appended, []);
+	assertEquals(state.activity, []);
+
+	reduceSessionEvent(
+		{
+			type: "entry_appended",
+			entry: { ...entry, type: "custom", customType: "test" },
+		},
+		context,
+	);
+	assertEquals(usageSyncs, 1);
+});
+
 test("surfaces the provider error when an assistant message fails", () => {
 	const { state, context } = fixture();
 	reduceSessionEvent(

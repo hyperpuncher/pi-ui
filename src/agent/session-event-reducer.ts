@@ -327,6 +327,9 @@ export function reduceSessionEvent(
 			tools.callArgs.delete(event.toolCallId);
 			break;
 		}
+		case "entry_appended":
+			if (event.entry.type === "usage") context.syncUsage?.();
+			break;
 		case "queue_update":
 			state.setQueuedMessages(event.steering, event.followUp);
 			break;
