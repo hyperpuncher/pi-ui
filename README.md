@@ -79,7 +79,7 @@ paru -S pi-ui-bin
 #### homebrew
 
 ```sh
-brew install hyperpuncher/tap/pi-ui
+brew i hyperpuncher/tap/pi-ui
 ```
 
 > package-manager installs must be started with `pi-ui` or configured as a background service below
