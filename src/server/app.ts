@@ -80,6 +80,7 @@ export async function createApp() {
 	const transitions = new SessionTransitionController((transition) =>
 		store.setSessionTransition(transition),
 	);
+	const workspaceReview = new WorkspaceReviewController(store);
 	const host = await RuntimeController.create(store, undefined, {
 		autoTitle,
 		notifySessionDone: onSessionDone,
@@ -91,7 +92,6 @@ export async function createApp() {
 	if (!(await preloadToolHighlighterPromise)) {
 		console.error("Failed to preload tool highlighter");
 	}
-	const workspaceReview = new WorkspaceReviewController(store);
 	workspaceReview.open(store.workspacePath);
 	const fdPath = await fdReady;
 	const resources: RouteResources = { host, sessionImages, fdPath };

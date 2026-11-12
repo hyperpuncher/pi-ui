@@ -141,7 +141,6 @@ const comments = createWorkspaceReviewComments({
 let workingItems: ReviewItem[] = [];
 let workingRequest: AbortController | undefined;
 let workingKey: string | undefined;
-let displayedWorkingKey: string | undefined;
 let workingError: string | undefined;
 let items = workingItems;
 let itemsByPath = itemMap(items);
@@ -320,11 +319,10 @@ function applyWorkspaceReview(
 		initializedSelection = false;
 		selection = { kind: "working" };
 	}
-	applySnapshot(next);
-	if (workspaceChanged) visibility.setWorkspace(workspacePath);
+	applySnapshot(next, workspaceChanged);
 }
 
-function applySnapshot(next: WorkspaceReviewSnapshot): void {
+function applySnapshot(next: WorkspaceReviewSnapshot, workspaceChanged = false): void {
 	const wasUnloaded =
 		workspaceReviewLoading(snapshot.revision) || !initializedSelection;
 	const previousPaths = wasUnloaded
@@ -346,6 +344,7 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 	}
 	if (!snapshot.isGitRepository) panelMode = "files";
 	else if (!gitWasAvailable && preferredPanelMode !== "files") panelMode = "git";
+	if (workspaceChanged) visibility.setWorkspace(workspacePath);
 	workspaceFiles.setVisible(visibility.isOpen() && panelMode === "files");
 	invalidateWorkingDiff();
 	treeExpansion.sync(
@@ -357,7 +356,6 @@ function applySnapshot(next: WorkspaceReviewSnapshot): void {
 		initializedSelection = false;
 		renderHistory();
 		viewer?.setItems([]);
-		displayedWorkingKey = undefined;
 		fileActionButton.hidden = true;
 		showEmpty("Loading Git data…");
 		return;
@@ -423,7 +421,6 @@ function activateWorking(path?: string): void {
 
 async function activateCommit(hash: string, path?: string): Promise<void> {
 	cancelWorkingDiff();
-	displayedWorkingKey = undefined;
 	selection = { hash, kind: "commit", path };
 	clearTreeSelection();
 	renderHistory();
@@ -432,7 +429,7 @@ async function activateCommit(hash: string, path?: string): Promise<void> {
 		applyCommitView(cached, path);
 		return;
 	}
-	showEmpty("Loading commit…");
+	if (!viewer) showEmpty("Loading commit…");
 	const view = await loadCommit(hash);
 	if (selection.kind !== "commit" || selection.hash !== hash) return;
 	if (!view) {
@@ -461,8 +458,10 @@ function loadCommit(hash: string): Promise<CommitView | undefined> {
 	const existing = commitRequests.get(hash);
 	if (existing) return existing;
 	const requestedWorkspaceVersion = workspaceVersion;
-	const request = api
-		.loadCommit(hash)
+	const initial = snapshot.initialView?.commit;
+	const request = (
+		initial?.commit.hash === hash ? Promise.resolve(initial) : api.loadCommit(hash)
+	)
 		.then((detail) => {
 			if (!detail) return undefined;
 			const view = {
@@ -507,6 +506,7 @@ function scrollToPath(path: string): void {
 }
 
 function preferredWorkingChanges(): readonly WorkspaceFileChange[] {
+	if (snapshot.initialView) return snapshot.changes;
 	const changedPaths = new Set(snapshot.changes.map(({ path }) => path));
 	const firstPath = tree
 		.getVisibleRows(0, tree.getVisibleCount())
@@ -540,17 +540,21 @@ async function loadWorkingDiff(key: string): Promise<void> {
 	workingKey = key;
 	const request = new AbortController();
 	workingRequest = request;
-	if (displayedWorkingKey !== key) {
-		displayedWorkingKey = undefined;
-		viewer?.setItems([]);
-		showEmpty("Loading diff…");
-	}
+	if (!viewer) showEmpty("Loading diff…");
 	const path = mode === "selected" ? selection.path : undefined;
 	const changes = snapshot.changes.filter(
 		(change) => path === undefined || change.path === path,
 	);
 	try {
-		const patch = await api.loadDiff(workspacePath, path, request.signal);
+		const initial = snapshot.initialView;
+		// Consume the prepared diff once. Later disk refreshes must read fresh contents.
+		snapshot = { ...snapshot, initialView: undefined };
+		const prepared = initial !== undefined && initial.path === path;
+		if (prepared && initial.error) throw new Error(initial.error);
+		const patch =
+			prepared && initial.patch !== undefined
+				? initial.patch
+				: await api.loadDiff(workspacePath, path, request.signal);
 		if (request.signal.aborted) return;
 		const nextItems = createItems(changes, patch, "working");
 		comments.reconcileItems(
@@ -558,11 +562,9 @@ async function loadWorkingDiff(key: string): Promise<void> {
 			new Set(snapshot.changes.map((change) => change.path)),
 		);
 		workingItems = withWorkingAnnotations(nextItems);
-		displayedWorkingKey = key;
 	} catch (error) {
 		if (request.signal.aborted) return;
 		workingItems = [];
-		displayedWorkingKey = undefined;
 		viewer?.setItems([]);
 		workingError = Error.isError(error) ? error.message : "Unable to load diff";
 	} finally {
@@ -598,7 +600,8 @@ function publish(): void {
 			return;
 		}
 		if (workingRequest || workingError) {
-			if (displayedWorkingKey !== key) showEmpty(workingError ?? "Loading diff…");
+			if (workingError) showEmpty(workingError);
+			else if (!viewer) showEmpty("Loading diff…");
 			return;
 		}
 	}
@@ -609,7 +612,6 @@ function publish(): void {
 				? [itemsByPath.get(selection.path)!]
 				: [];
 	if (visible.length === 0) {
-		displayedWorkingKey = undefined;
 		viewer?.setItems([]);
 		showEmpty(emptyMessage());
 		return;

@@ -186,8 +186,8 @@ export async function readWorkspaceReview(
 	};
 }
 
-// Diff contents never belong in the live workspace snapshot. Read them only
-// for an explicit review request, bounded before buffering or parsing them.
+// Watch snapshots contain metadata only. Session preparation and review requests
+// read diff contents here, with a limit before buffering or parsing them.
 export async function readWorkspaceDiff(
 	workspacePath: string,
 	path?: string,

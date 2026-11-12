@@ -66,6 +66,7 @@ export class UiRenderer implements AppStorePresentation {
 	private transcriptPending = false;
 	private compactTools: boolean;
 	private sidebarLayout = "";
+	private workspaceReviewKey = "";
 
 	constructor(
 		private readonly store: AppStore,
@@ -119,7 +120,7 @@ export class UiRenderer implements AppStorePresentation {
 					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
 					const elements =
 						this.messages.renderTranscript(snapshot) +
-						this.renderView(snapshot, view) +
+						this.renderView(snapshot, view, true) +
 						renderSessionSidebarContent(snapshot);
 					if (workspaceQuery.trim())
 						queueMicrotask(() => {
@@ -348,8 +349,21 @@ export class UiRenderer implements AppStorePresentation {
 			...overrides,
 		});
 	}
-	private renderView(snapshot: AppStateSnapshot, view?: ClientView): string {
+	private renderView(
+		snapshot: AppStateSnapshot,
+		view?: ClientView,
+		initial = false,
+	): string {
 		const query = view?.sessionQuery ?? "";
+		const reviewKey = JSON.stringify([
+			snapshot.workspacePath,
+			snapshot.workspaceFilesRevision,
+			snapshot.workspaceTreeRevision,
+			snapshot.workspaceReview.revision,
+			snapshot.workspaceReviewPreferences,
+		]);
+		const reviewChanged = initial || reviewKey !== this.workspaceReviewKey;
+		this.workspaceReviewKey = reviewKey;
 		return (
 			this.renderAppElements(snapshot) +
 			this.renderPickerElements(snapshot, view) +
@@ -368,13 +382,15 @@ export class UiRenderer implements AppStorePresentation {
 					: snapshot,
 				query,
 			) +
-			renderWorkspaceReviewData(
-				snapshot.workspacePath,
-				snapshot.workspaceFilesRevision,
-				snapshot.workspaceTreeRevision,
-				snapshot.workspaceReview,
-				snapshot.workspaceReviewPreferences,
-			)
+			(reviewChanged
+				? renderWorkspaceReviewData(
+						snapshot.workspacePath,
+						snapshot.workspaceFilesRevision,
+						snapshot.workspaceTreeRevision,
+						snapshot.workspaceReview,
+						snapshot.workspaceReviewPreferences,
+					)
+				: "")
 		);
 	}
 	private effectSignalOverrides(effects: readonly UiCommitEffect[]): JsonObject {

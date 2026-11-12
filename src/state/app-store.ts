@@ -308,6 +308,7 @@ export class AppStore {
 	workspaceReview = unloadedWorkspaceReviewSnapshot;
 	workspaceReviewPreferences: WorkspaceReviewPreferences = {};
 	recentWorkspaces: string[] = [];
+	prepareWorkspace?: (path: string) => Promise<WorkspaceReviewSnapshot>;
 	private workspacePathListener: ((path: string) => void) | undefined;
 	sessionTransition: SessionTransitionState = { status: "idle", generation: 0 };
 
@@ -720,12 +721,15 @@ export class AppStore {
 		this.updateAvailable = value;
 		this.commit();
 	}
-	setWorkspacePath(value: string): void {
-		if (this.workspacePath === value) return;
+	setWorkspacePath(value: string, prepared?: WorkspaceReviewSnapshot): void {
+		if (this.workspacePath === value) {
+			if (prepared) this.setWorkspaceReview(prepared);
+			return;
+		}
 		this.workspacePath = value;
 		this.workspaceFilesRevision = 0;
 		this.workspaceTreeRevision = 0;
-		this.workspaceReview = unloadedWorkspaceReviewSnapshot;
+		this.workspaceReview = prepared ?? unloadedWorkspaceReviewSnapshot;
 		this.commitView();
 		this.workspacePathListener?.(value);
 	}
@@ -735,6 +739,9 @@ export class AppStore {
 		this.commitView();
 	}
 	workspaceFilesChanged(treeChanged = true): void {
+		if (this.workspaceReview.initialView) {
+			this.workspaceReview = { ...this.workspaceReview, initialView: undefined };
+		}
 		this.workspaceFilesRevision += 1;
 		if (treeChanged) this.workspaceTreeRevision += 1;
 		this.commitView();

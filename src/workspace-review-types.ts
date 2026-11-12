@@ -6,6 +6,7 @@ import {
 	num,
 	obj,
 	oneOf,
+	opt,
 	type Static,
 	str,
 } from "@earendil-works/pi-schema";
@@ -29,7 +30,7 @@ export const changesRatioMin = 0.3;
 export const changesRatioMax = 0.7;
 
 type ReadonlyData<T> = {
-	readonly [K in keyof T]: T[K] extends object ? ReadonlyData<T[K]> : T[K];
+	readonly [K in keyof T]: ReadonlyData<T[K]>;
 };
 
 export type WorkspaceFileStatus = WorkspaceFileChange["status"];
@@ -158,6 +159,14 @@ const workspaceReviewSnapshotSchema = obj(
 		changes: arr(workspaceFileChangeSchema),
 		commits: arr(workspaceCommitSchema),
 		isGitRepository: bool(),
+		initialView: opt(
+			obj({
+				path: opt(str()),
+				patch: opt(str()),
+				error: opt(str()),
+				commit: opt(workspaceCommitDetailSchema),
+			}),
+		),
 		changeCount: num(),
 		revision: str(),
 	},

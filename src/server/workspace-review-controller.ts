@@ -6,10 +6,14 @@ import { findGitProjectRoot } from "#src/server/git-worktrees.ts";
 import {
 	areWorkspacePathsIgnored,
 	findGitWatchPaths,
+	readWorkspaceCommit,
+	readWorkspaceDiff,
 	readWorkspaceReview,
 	type WorkspaceReviewMetadataCache,
 } from "#src/server/workspace-review.ts";
 import type { AppStore } from "#src/state/app-store.ts";
+import { errorMessage } from "#src/utils/errors.ts";
+import type { WorkspaceReviewSnapshot } from "#src/workspace-review-types.ts";
 
 const debounceMs = 200;
 
@@ -20,7 +24,36 @@ export class WorkspaceReviewController {
 	private watchers: FSWatcher[] = [];
 
 	constructor(private readonly store: AppStore) {
+		store.prepareWorkspace = (path) => this.prepare(path);
 		store.listenForWorkspacePath((path) => this.open(path));
+	}
+
+	async prepare(path: string): Promise<WorkspaceReviewSnapshot> {
+		if (
+			path === this.store.workspacePath &&
+			this.store.workspaceReview.revision !== "git-unloaded"
+		) {
+			return this.store.workspaceReview;
+		}
+		const snapshot = await readWorkspaceReview(path);
+		const preferences = this.store.workspaceReviewPreferences;
+		if (!snapshot.isGitRepository || preferences.tab === "files") return snapshot;
+		const selectedPath =
+			preferences.mode === "all" ? undefined : snapshot.changes[0]?.path;
+		try {
+			if (snapshot.changes.length > 0) {
+				const patch = await readWorkspaceDiff(path, selectedPath);
+				return { ...snapshot, initialView: { path: selectedPath, patch } };
+			}
+			const hash = snapshot.commits[0]?.hash;
+			const commit = hash ? await readWorkspaceCommit(path, hash) : undefined;
+			return { ...snapshot, initialView: { commit } };
+		} catch (error) {
+			return {
+				...snapshot,
+				initialView: { path: selectedPath, error: errorMessage(error) },
+			};
+		}
 	}
 
 	open(path: string): Promise<void> {
@@ -38,6 +71,9 @@ export class WorkspaceReviewController {
 	}
 
 	private async watch(path: string, generation: number): Promise<void> {
+		const prepared =
+			path === this.store.workspacePath &&
+			this.store.workspaceReview.revision !== "git-unloaded";
 		let refreshing = false;
 		let refreshAgain = false;
 		let metadataCache: WorkspaceReviewMetadataCache = {};
@@ -60,7 +96,7 @@ export class WorkspaceReviewController {
 		};
 
 		await Promise.all([
-			refresh(),
+			prepared ? undefined : refresh(),
 			findGitProjectRoot(path).then((projectRoot) => {
 				if (active()) this.store.setProjectRoot(projectRoot ?? path);
 			}),

@@ -2,6 +2,7 @@ import { realpath } from "node:fs/promises";
 import { sep } from "node:path";
 
 import {
+	type AgentSession,
 	type AgentSessionEvent,
 	type AgentSessionRuntime,
 	createAgentSessionFromServices,
@@ -88,6 +89,7 @@ import {
 	managedWorktreeParts,
 	workspaceDisplayName,
 } from "#src/utils/workspace.ts";
+import type { WorkspaceReviewSnapshot } from "#src/workspace-review-types.ts";
 
 const extensionFactories = [
 	llamaProviderExtension,
@@ -230,6 +232,10 @@ export class RuntimeController {
 		private readonly preparedSessions: Promise<PreparedSessionList>,
 		sessionDir: string | undefined,
 		private readonly activationOptions: RuntimeControllerActivationOptions,
+		private readonly preparedWorkspaces: WeakMap<
+			AgentSession,
+			WorkspaceReviewSnapshot
+		>,
 	) {
 		this.dependencies =
 			activationOptions.dependencies ?? runtimeControllerDependencies;
@@ -347,8 +353,23 @@ export class RuntimeController {
 			};
 		};
 
+		const preparedWorkspaces = new WeakMap<AgentSession, WorkspaceReviewSnapshot>();
+		const prepareRuntime: CreateAgentSessionRuntimeFactory = async (target) => {
+			const [runtime, workspace] = await Promise.allSettled([
+				createRuntime(target),
+				state.prepareWorkspace?.(target.cwd),
+			]);
+			if (runtime.status === "rejected") throw runtime.reason;
+			if (workspace.status === "rejected") {
+				runtime.value.session.dispose();
+				throw workspace.reason;
+			}
+			if (workspace.value)
+				preparedWorkspaces.set(runtime.value.session, workspace.value);
+			return runtime.value;
+		};
 		const sessionDir = sessionDirOverride();
-		const runtime = await dependencies.createRuntime(createRuntime, {
+		const runtime = await dependencies.createRuntime(prepareRuntime, {
 			cwd,
 			agentDir: dependencies.getAgentDir(),
 			sessionManager: dependencies.createSessionManager(cwd, sessionDir),
@@ -357,10 +378,11 @@ export class RuntimeController {
 			const host = new RuntimeController(
 				runtime,
 				state,
-				createRuntime,
+				prepareRuntime,
 				sessionsPromise,
 				sessionDir,
 				options,
+				preparedWorkspaces,
 			);
 			host.bindRuntimeCallbacks(runtime);
 			await host.bindSessionExtensions();
@@ -1349,7 +1371,15 @@ export class RuntimeController {
 	}
 
 	private async activateRuntime(backgroundSession: BackgroundSession): Promise<void> {
-		await this.leaveCurrentRuntimeForReplacement();
+		const cwd = backgroundSession.runtime.session.sessionManager.getCwd();
+		const [workspace] = await Promise.all([
+			cwd !== this.state.workspacePath
+				? this.state.prepareWorkspace?.(cwd)
+				: undefined,
+			this.leaveCurrentRuntimeForReplacement(),
+		]);
+		if (workspace)
+			this.preparedWorkspaces.set(backgroundSession.runtime.session, workspace);
 		this.unsubscribeBackgroundSession(backgroundSession);
 		this.adoptRuntime(backgroundSession.runtime, backgroundSession);
 		restoreSessionEventToolState(this.tools, backgroundSession.tools);
@@ -1384,7 +1414,11 @@ export class RuntimeController {
 		this.state.update(() => {
 			const session = this.runtime.session;
 			const resetToolState = options.resetToolState ?? true;
-			this.state.setWorkspacePath(session.sessionManager.getCwd());
+			this.state.setWorkspacePath(
+				session.sessionManager.getCwd(),
+				this.preparedWorkspaces.get(session),
+			);
+			this.preparedWorkspaces.delete(session);
 			const sessionFile = session.sessionManager.getSessionFile();
 			this.state.setPromptSessionKey(
 				sessionFile ?? session.sessionManager.getSessionId(),

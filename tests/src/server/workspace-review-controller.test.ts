@@ -2,6 +2,7 @@ import { test } from "bun:test";
 import { rename, rm } from "node:fs/promises";
 
 import { WorkspaceReviewController } from "#src/server/workspace-review-controller.ts";
+import { maximumWorkspaceDiffBytes } from "#src/server/workspace-review.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { outputCommand } from "#src/utils/command.ts";
 import { assertEquals } from "#testing/assertions";
@@ -30,9 +31,9 @@ test.concurrent(
 
 			assertEquals(store.workspaceReview.changes[0]?.path, "example.txt");
 			assertEquals(store.workspaceTreeRevision, treeRevision);
-			await new Promise((resolve) => setTimeout(resolve, 300));
+			await Bun.sleep(300);
 			const settledFilesRevision = store.workspaceFilesRevision;
-			await new Promise((resolve) => setTimeout(resolve, 300));
+			await Bun.sleep(300);
 			assertEquals(store.workspaceFilesRevision, settledFilesRevision);
 		} finally {
 			controller.dispose();
@@ -70,7 +71,7 @@ test.concurrent(
 			const filesRevision = store.workspaceFilesRevision;
 			await Bun.write(`${workspace}/ignored.log`, "ignored edit\n");
 			await waitFor(() => store.workspaceFilesRevision > filesRevision);
-			await new Promise((resolve) => setTimeout(resolve, 300));
+			await Bun.sleep(300);
 			assertEquals(store.refreshes, refreshes);
 			await Bun.write(`${workspace}/ignored.log`, "mixed edit\n");
 			await Bun.write(`${workspace}/tracked.log`, "tracked edit\n");
@@ -108,7 +109,7 @@ for (const linkedWorktree of [false, true]) {
 				await Bun.write(`${repository}/.git/objects/pack/noise.tmp`, "noise");
 				await Bun.write(`${repository}/.git/logs/noise`, "noise");
 				await Bun.write(`${repository}/.git/index.lock`, "noise");
-				await new Promise((resolve) => setTimeout(resolve, 500));
+				await Bun.sleep(500);
 				assertEquals(store.workspaceFilesRevision, filesRevision);
 				await rm(`${repository}/.git/index.lock`);
 
@@ -176,6 +177,49 @@ test.concurrent(
 	},
 );
 
+test.concurrent(
+	"workspace preparation supplies initial content without changing the active workspace",
+	async () => {
+		const workspace = await makeTempDir();
+		const store = new AppStore();
+		const controller = new WorkspaceReviewController(store);
+		const activePath = store.workspacePath;
+		try {
+			await initGit(workspace);
+			await Bun.write(`${workspace}/a.txt`, "initial\n");
+			await git(workspace, "add", ".");
+			await git(workspace, "commit", "-m", "initial");
+			const clean = await controller.prepare(workspace);
+			assertEquals(clean.initialView?.commit?.patch.includes("initial"), true);
+
+			await Bun.write(`${workspace}/a.txt`, "first file\n");
+			await Bun.write(`${workspace}/b.txt`, "second file\n");
+			const selected = await controller.prepare(workspace);
+			assertEquals(selected.initialView?.patch?.includes("first file"), true);
+			assertEquals(selected.initialView?.patch?.includes("second file"), false);
+			assertEquals(store.workspacePath, activePath);
+
+			store.setWorkspaceReviewPreferences({ mode: "all" });
+			assertEquals(
+				(await controller.prepare(workspace)).initialView?.patch?.includes(
+					"second file",
+				),
+				true,
+			);
+
+			await Bun.write(
+				`${workspace}/a.txt`,
+				"x".repeat(maximumWorkspaceDiffBytes * 2),
+			);
+			const large = await controller.prepare(workspace);
+			assertEquals(large.initialView?.error?.includes("Diff too large"), true);
+		} finally {
+			controller.dispose();
+			await rm(workspace, { recursive: true });
+		}
+	},
+);
+
 async function initGit(cwd: string): Promise<void> {
 	await git(cwd, "init");
 	await git(cwd, "config", "user.email", "pi-ui@example.test");
@@ -193,6 +237,6 @@ async function waitFor(predicate: () => boolean): Promise<void> {
 	const deadline = Date.now() + 5_000;
 	while (!predicate()) {
 		if (Date.now() >= deadline) throw new Error("Timed out waiting for Git state");
-		await new Promise((resolve) => setTimeout(resolve, 20));
+		await Bun.sleep(20);
 	}
 }

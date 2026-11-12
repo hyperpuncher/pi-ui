@@ -122,15 +122,11 @@ test("ordinary commits and empty extension cleanup skip stable views until their
 	assertNotIncludes(ordinary, 'id="workspace-review-data"');
 
 	state.setModels([configuredModel], "fixture/fixture-model");
-	const full = await readUntil(
-		reader,
-		(text) =>
-			text.includes("fixture-model") && text.includes("workspace-review-data"),
-	);
+	const full = await readUntil(reader, (text) => text.includes("fixture-model"));
 	assertNotIncludes(full, 'id="messages"');
 	assertIncludes(full, 'id="model-picker"');
 	assertIncludes(full, 'id="session-sidebar-content"');
-	assertIncludes(full, 'id="workspace-review-data"');
+	assertNotIncludes(full, 'id="workspace-review-data"');
 });
 
 test("asynchronous state changes send one latest view instead of intermediate transcripts", async () => {
@@ -818,9 +814,10 @@ test("last-client disconnect discards in-flight rendering before reconnect", asy
 	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>current rendering</p>");
 });
 
-test("workspace review snapshots travel through the app stream", async () => {
+test("workspace switches stream prepared content and restore it on reconnect", async () => {
 	const state = createState();
-	state.setWorkspaceReview({
+	const reader = await openInitializedStateStream(state, connection().signal);
+	state.setWorkspacePath("/prepared", {
 		branch: "main",
 		changes: ["new/a.txt", "new/b.txt"].map((path) => ({
 			path,
@@ -832,11 +829,13 @@ test("workspace review snapshots travel through the app stream", async () => {
 		isGitRepository: true,
 		changeCount: 1,
 		revision: "review-1",
+		initialView: { path: "new/a.txt", patch: "prepared diff contents" },
 	});
-	const output = await readStateOutput(
-		state,
-		(text) => text.includes("workspace-review-data") && text.includes("review-1"),
-	);
+	const output = await readUntil(reader, (text) => text.includes("review-1"));
+	assertIncludes(output, "prepared diff contents");
+	assertNotIncludes(output, "git-unloaded");
+	const reconnect = await readStateOutput(state, (text) => text.includes("review-1"));
+	assertIncludes(reconnect, "prepared diff contents");
 	assertIncludes(output, '"branch":"main"');
 	const signals = projectBackendSignals(state.snapshot());
 	assertEqual(signals._workspaceReviewChangeCount, 1);
@@ -955,10 +954,10 @@ test("slash search is shared across connections and survives reconnect", async (
 	);
 	state.renderer.setSlashSearch("review");
 	const firstFiltered = await readUntil(firstReader, (text) =>
-		text.includes("workspace-review-data"),
+		text.includes("event: datastar-patch-signals"),
 	);
 	const secondFiltered = await readUntil(secondReader, (text) =>
-		text.includes("workspace-review-data"),
+		text.includes("event: datastar-patch-signals"),
 	);
 	for (const filtered of [firstFiltered, secondFiltered]) {
 		assertIncludes(filtered, 'id="model-select-options"');
@@ -969,7 +968,7 @@ test("slash search is shared across connections and survives reconnect", async (
 
 	state.setThinking("high", ["off", "high"]);
 	const update = await readUntil(firstReader, (text) =>
-		text.includes("workspace-review-data"),
+		text.includes("event: datastar-patch-signals"),
 	);
 	assertNotIncludes(update, 'id="slash-option-login"');
 	first.abort();
