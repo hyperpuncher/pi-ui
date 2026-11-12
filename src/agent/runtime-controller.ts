@@ -1,4 +1,4 @@
-import { realpath } from "node:fs/promises";
+import { realpath, unlink } from "node:fs/promises";
 import { sep } from "node:path";
 
 import {
@@ -32,6 +32,12 @@ import { llamaProviderExtension } from "#src/agent/llama-provider-extension.ts";
 import { mermaidExtension } from "#src/agent/mermaid-extension.ts";
 import { ModelController } from "#src/agent/model-controller.ts";
 import "#src/agent/codemode-assets.ts";
+import {
+	assertSessionCwdExists,
+	formatMissingSessionCwdPrompt,
+	getMissingSessionCwdOptions,
+	MissingSessionCwdError,
+} from "#pi/core/session-cwd.js";
 import { resolvePath } from "#pi/utils/paths.js";
 import {
 	PromptLifecycle,
@@ -170,6 +176,7 @@ export type RuntimeControllerDependencies = Readonly<{
 	createMemorySessionManager: typeof SessionManager.inMemory;
 	forkSessionManager: typeof SessionManager.forkFrom;
 	openSessionManager: typeof SessionManager.open;
+	assertSessionCwdExists: typeof assertSessionCwdExists;
 	moveToTrash: typeof moveToTrash;
 	shareSession: typeof shareSession;
 	getAgentDir: typeof getAgentDir;
@@ -183,6 +190,7 @@ const runtimeControllerDependencies: RuntimeControllerDependencies = {
 	createMemorySessionManager: SessionManager.inMemory,
 	forkSessionManager: SessionManager.forkFrom,
 	openSessionManager: SessionManager.open,
+	assertSessionCwdExists,
 	moveToTrash,
 	shareSession,
 	getAgentDir,
@@ -737,14 +745,7 @@ export class RuntimeController {
 
 		return await this.transitionController.run(
 			`Fork to ${formatHomePath(cwd)}`,
-			async () => {
-				const targetPath = this.dependencies
-					.forkSessionManager(sourcePath, cwd, this.sessionDir)
-					.getSessionFile();
-				return targetPath
-					? await this.resumeSessionTransition(targetPath)
-					: false;
-			},
+			() => this.forkAndResumeSession(sourcePath, cwd),
 			{ overlay: false },
 		);
 	}
@@ -759,7 +760,7 @@ export class RuntimeController {
 			(generation) => {
 				transitionId = sessionPerformance.startSessionTransition(generation);
 				return sessionPerformance.runInTransition(transitionId, () =>
-					this.resumeSessionTransition(sessionPath, transitionId),
+					this.resumeSessionWithRecovery(sessionPath, transitionId),
 				);
 			},
 			{ overlay: false },
@@ -772,9 +773,55 @@ export class RuntimeController {
 		return result;
 	}
 
+	private async resumeSessionWithRecovery(
+		sessionPath: string,
+		transitionId?: number,
+	): Promise<boolean> {
+		try {
+			return await this.resumeSessionTransition(sessionPath, transitionId);
+		} catch (error) {
+			if (!(error instanceof MissingSessionCwdError)) throw error;
+			const options = getMissingSessionCwdOptions(error.issue).filter(
+				({ value }) => value !== undefined,
+			);
+			const selected = await this.extensionUi
+				.context(() => !this.disposal)
+				.select(
+					formatMissingSessionCwdPrompt(error.issue),
+					options.map(({ label }) => label),
+				);
+			const choice = options.find(({ label }) => label === selected)?.value;
+			if (!choice || this.disposal) return false;
+			const cwd = error.issue.fallbackCwd;
+			if (choice === "continue") {
+				return this.resumeSessionTransition(sessionPath, transitionId, cwd);
+			}
+			return this.forkAndResumeSession(sessionPath, cwd, transitionId);
+		}
+	}
+
+	private async forkAndResumeSession(
+		sessionPath: string,
+		cwd: string,
+		transitionId?: number,
+	): Promise<boolean> {
+		const path = this.dependencies
+			.forkSessionManager(sessionPath, cwd, this.sessionDir)
+			.getSessionFile();
+		if (!path) return false;
+		let resumed = false;
+		try {
+			resumed = await this.resumeSessionTransition(path, transitionId);
+			return resumed;
+		} finally {
+			if (!resumed) await unlink(path);
+		}
+	}
+
 	private async resumeSessionTransition(
 		sessionPath: string,
 		transitionId?: number,
+		cwdOverride?: string,
 	): Promise<boolean> {
 		if (!sessionPath.trim()) return false;
 		const sourcePersisted = this.runtime.session.sessionManager.isPersisted();
@@ -840,7 +887,7 @@ export class RuntimeController {
 			);
 			const result = await sessionPerformance.measure(
 				"runtimeSwitchCreate",
-				() => this.runtime.switchSession(sessionPath),
+				() => this.runtime.switchSession(sessionPath, { cwdOverride }),
 				transitionId,
 			);
 			resumed = !result.cancelled;
@@ -859,9 +906,15 @@ export class RuntimeController {
 			// Parse the target before changing ownership of the outgoing runtime.
 			const manager = sessionPerformance.measureSync(
 				"sessionManagerOpen",
-				() => this.dependencies.openSessionManager(sessionPath, this.sessionDir),
+				() =>
+					this.dependencies.openSessionManager(
+						sessionPath,
+						this.sessionDir,
+						cwdOverride,
+					),
 				transitionId,
 			);
+			this.dependencies.assertSessionCwdExists(manager, this.getWorkspacePath());
 			sessionPerformance.recordSessionOpen(transitionId);
 			const action = this.currentRuntimeLeaveAction();
 			sessionPerformance.recordOwnershipDiagnostics(

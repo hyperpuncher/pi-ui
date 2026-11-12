@@ -1,13 +1,14 @@
 import { onTestFinished, setSystemTime, spyOn, test } from "bun:test";
-import { unlink } from "node:fs/promises";
+import { mkdir, rm, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
-import type {
-	AgentSessionEvent,
-	AgentSessionRuntime,
+import {
+	type AgentSessionEvent,
+	type AgentSessionRuntime,
 	SessionManager,
 } from "@earendil-works/pi-coding-agent";
 
+import { assertSessionCwdExists } from "#pi/core/session-cwd.js";
 import {
 	RuntimeController,
 	type RuntimeControllerDependencies,
@@ -20,7 +21,7 @@ import { AppStore } from "#src/state/app-store.ts";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import { appWorktreeRoot } from "#src/utils/workspace.ts";
 import { assertEquals, assertRejects } from "#testing/assertions";
-import { makeTempFile } from "#testing/temp";
+import { makeTempDir, makeTempFile } from "#testing/temp";
 import {
 	agentSessionEventStub,
 	agentSessionRuntimeStub,
@@ -238,6 +239,7 @@ function dependencies(runtimes: RuntimeFake[]): RuntimeControllerDependencies {
 		forkSessionManager: (_sourcePath, cwd) =>
 			manager("/sessions/fork.jsonl", true, cwd),
 		openSessionManager: (path) => manager(path),
+		assertSessionCwdExists: () => {},
 		moveToTrash: () => Promise.resolve(),
 		shareSession: () =>
 			Promise.resolve({
@@ -1100,6 +1102,108 @@ test("RuntimeController tracks the previous session for alternate jumps", async 
 	assertEquals(state.previousSessionPath, "/sessions/b.jsonl");
 	await controller.dispose();
 });
+
+for (const [choice, status] of [
+	["continue", "success"],
+	["fork", "success"],
+	["cancel", "cancelled"],
+	["fork-failure", "error"],
+] as const) {
+	test(`missing session folder recovery: ${choice}`, async () => {
+		const root = await makeTempDir();
+		onTestFinished(() => rm(root, { recursive: true, force: true }));
+		const cwd = join(root, "working");
+		await mkdir(cwd);
+		const missingCwd = join(root, "missing");
+		const path = join(root, "original.jsonl");
+		const sessionDir = join(root, "sessions");
+		const original = `${JSON.stringify({
+			type: "session",
+			version: 3,
+			id: "original",
+			timestamp: new Date(0).toISOString(),
+			cwd: missingCwd,
+		})}\n${JSON.stringify({
+			type: "message",
+			id: "user",
+			parentId: null,
+			timestamp: new Date(0).toISOString(),
+			message: { role: "user", content: "keep this conversation", timestamp: 0 },
+		})}\n`;
+		await Bun.write(path, original);
+		const state = new AppStore();
+		const source = fakeRuntime(join(root, "source.jsonl"), true, cwd);
+		source.setStreaming(true);
+		const base = dependencies([source]);
+		let forkPath: string | undefined;
+		const controller = await RuntimeController.prepare(state, cwd, {
+			dependencies: {
+				...base,
+				getAgentDir: () => root,
+				assertSessionCwdExists,
+				openSessionManager: (target, _directory, override) =>
+					SessionManager.open(target, sessionDir, override),
+				forkSessionManager: (target, workspace) => {
+					const fork = SessionManager.forkFrom(target, workspace, sessionDir);
+					forkPath = fork.getSessionFile();
+					return fork;
+				},
+				createRuntime: async (factory, options) => {
+					if (!options.sessionManager.getSessionFile()) {
+						return base.createRuntime(factory, options);
+					}
+					if (choice === "fork-failure") throw new Error("replacement failed");
+					return fakeRuntime(
+						options.sessionManager.getSessionFile(),
+						true,
+						options.cwd,
+					).runtime;
+				},
+			},
+		});
+		onTestFinished(() => controller.dispose());
+		controller.activate();
+		const opening = controller.resumeSession(path);
+		for (let attempt = 0; !state.extensionDialog && attempt < 100; attempt++) {
+			await Bun.sleep(1);
+		}
+		const dialog = state.extensionDialog;
+		if (dialog?.kind !== "select") throw new Error("missing recovery dialog");
+		assertEquals(source.disposeCount, 0);
+		assertEquals(state.currentSessionPath, join(root, "source.jsonl"));
+		const option = dialog.options.find((label) =>
+			label.startsWith(choice === "continue" ? "Continue" : "Fork"),
+		);
+		controller.respondExtensionUi(dialog.id, option, choice === "cancel");
+		assertEquals((await opening).status, status);
+		assertEquals(await Bun.file(path).text(), original);
+		assertEquals(state.extensionDialog, undefined);
+		if (choice === "continue" || choice === "fork") {
+			assertEquals(state.workspacePath, cwd);
+			assertEquals(
+				state.currentSessionPath,
+				choice === "continue" ? path : forkPath,
+			);
+			if (choice === "fork") {
+				if (!forkPath) throw new Error("missing fork");
+				const fork = SessionManager.open(forkPath, sessionDir);
+				assertEquals(fork.getHeader()?.parentSession, path);
+				assertEquals(fork.getSessionId() === "original", false);
+				assertEquals(fork.getCwd(), cwd);
+				assertEquals(
+					fork.getBranch().some((entry) => entry.type === "message"),
+					true,
+				);
+			}
+		} else if (choice === "fork-failure") {
+			if (!forkPath) throw new Error("missing fork path");
+			assertEquals(await Bun.file(forkPath).exists(), false);
+		} else {
+			assertEquals(state.currentSessionPath, join(root, "source.jsonl"));
+			assertEquals(forkPath, undefined);
+		}
+	});
+}
 
 test("RuntimeController forks the current session to another workspace", async () => {
 	const state = new AppStore();

@@ -8,6 +8,7 @@ import {
 	SessionManager,
 } from "@earendil-works/pi-coding-agent";
 
+import { assertSessionCwdExists } from "#pi/core/session-cwd.js";
 import {
 	RuntimeController,
 	type RuntimeControllerDependencies,
@@ -193,6 +194,7 @@ function dependencies(agentDir: string): RuntimeControllerDependencies {
 		createMemorySessionManager: (cwd) => SessionManager.inMemory(cwd),
 		forkSessionManager: SessionManager.forkFrom,
 		openSessionManager: () => SessionManager.inMemory(),
+		assertSessionCwdExists,
 		moveToTrash: () => Promise.resolve(),
 		shareSession: () =>
 			Promise.resolve({
