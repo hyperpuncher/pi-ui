@@ -9,7 +9,7 @@ interface FileTransferData {
 
 interface PiUiNamespace {
 	controls: {
-		refresh(root?: Document | Element): void;
+		refresh(root?: Document | Element, options?: { resetScroll?: boolean }): void;
 		activate(command: HTMLElement, active: HTMLElement): void;
 	};
 	codeTheme: {

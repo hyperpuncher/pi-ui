@@ -10,8 +10,9 @@ export function bindControls() {
 	refreshControls();
 }
 
-export function refreshControls(root = document) {
-	for (const command of controlsIn(root, commandSelector)) refreshCommand(command);
+export function refreshControls(root = document, options = {}) {
+	for (const command of controlsIn(root, commandSelector))
+		refreshCommand(command, options);
 }
 
 function controlsIn(root, selector) {
@@ -41,11 +42,21 @@ function visibleCommandItems(command) {
 	return commandItems(menu).filter((item) => !item.hidden);
 }
 
-function refreshCommand(command) {
+function refreshCommand(command, { resetScroll = true } = {}) {
 	const { input, menu } = commandParts(command);
 	if (!(input instanceof HTMLInputElement) || !(menu instanceof HTMLElement)) return;
-	menu.scrollTop = 0;
-	activateCommandItem(command, visibleCommandItems(command)[0]);
+	const items = visibleCommandItems(command);
+	if (resetScroll) {
+		menu.scrollTop = 0;
+		activateCommandItem(command, items[0]);
+		return;
+	}
+	// Keep the current choice when the list only grows, so appending rows does
+	// not move the keyboard selection away from what the user already picked.
+	activateCommandItem(
+		command,
+		items.find((item) => item.classList.contains("active")) ?? items[0],
+	);
 }
 
 export function activateCommandItem(command, active) {

@@ -514,7 +514,7 @@ export function renderSessionPickerContent(
 			class="session-menu-content"
 			data-effect={`
 				${Bun.hash(JSON.stringify([query, ...state.sessions.map((session) => session.path)]))}n;
-				queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command')));
+				queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command'), { resetScroll: ${query.trim() !== ""} }));
 			`}
 		>
 			{state.sessions.map((session, index) => {
