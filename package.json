@@ -51,16 +51,16 @@
 		"audit": "bunx fallow audit"
 	},
 	"devDependencies": {
-		"@earendil-works/pi-ai": "^1.5.1",
-		"@earendil-works/pi-coding-agent": "^1.5.1",
-		"@earendil-works/pi-schema": "^1.5.1",
-		"@earendil-works/pi-tui": "^1.5.1",
+		"@earendil-works/pi-ai": "^1.5.2",
+		"@earendil-works/pi-coding-agent": "^1.5.2",
+		"@earendil-works/pi-schema": "^1.5.2",
+		"@earendil-works/pi-tui": "^1.5.2",
 		"@iconify-json/lucide": "^1.2.153",
 		"@kitajs/html": "5.0.0-next.1",
 		"@oxlint/plugins": "1.93.0",
 		"@pierre/diffs": "^1.6.4",
-		"@pierre/highlights": "0.5.0",
-		"@pierre/trees": "^1.0.0-beta.6",
+		"@pierre/highlights": "0.5.1",
+		"@pierre/trees": "^1.0.0",
 		"@starfederation/datastar-sdk": "^1.0.0",
 		"@types/bun": "^1.4.4",
 		"open-props": "^1.7.23",
@@ -75,6 +75,6 @@
 	},
 	"packageManager": "bun@1.4.4",
 	"patchedDependencies": {
-		"@earendil-works/pi-coding-agent@1.5.1": "patches/@earendil-works%2Fpi-coding-agent@1.5.1.patch"
+		"@earendil-works/pi-coding-agent@1.5.2": "patches/@earendil-works%2Fpi-coding-agent@1.5.2.patch"
 	}
 }
