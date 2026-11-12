@@ -76,6 +76,10 @@ bun i -g @hyperpuncher/pi-ui
 paru -S pi-ui-bin
 ```
 
+```sh
+paru -S pi-ui-git
+```
+
 #### homebrew
 
 ```sh
