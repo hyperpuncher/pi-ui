@@ -181,9 +181,11 @@ jobs:
                       -e "s/{{SHA_LINUX_ARM64}}/$linux_arm64/g" \
                       packaging/aur/PKGBUILD.in > "$RUNNER_TEMP/PKGBUILD"
                   useradd --create-home builder
-                  install -o builder -g builder -m 644 "$RUNNER_TEMP/PKGBUILD" /home/builder/PKGBUILD
-                  runuser --user builder -- bash -c 'cd /home/builder && makepkg --printsrcinfo' > "$RUNNER_TEMP/.SRCINFO"
-            - name: publish package
+                  install -D -o builder -g builder -m 644 "$RUNNER_TEMP/PKGBUILD" /home/builder/pi-ui-bin/PKGBUILD
+                  install -D -o builder -g builder -m 644 packaging/aur/pi-ui-git/PKGBUILD /home/builder/pi-ui-git/PKGBUILD
+                  runuser --user builder -- bash -c 'cd /home/builder/pi-ui-bin && makepkg --printsrcinfo > .SRCINFO'
+                  runuser --user builder -- bash -c 'cd /home/builder/pi-ui-git && makepkg --printsrcinfo > .SRCINFO'
+            - name: publish packages
               env:
                   AUR_KEY: ${{ secrets.AUR_KEY }}
               run: |
@@ -192,13 +194,17 @@ jobs:
                   printf '%s\n' "$AUR_KEY" > "$RUNNER_TEMP/aur_key"
                   trap 'shred -u "$RUNNER_TEMP/aur_key"' EXIT
                   export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/aur_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$GITHUB_WORKSPACE/.github/aur_known_hosts"
-                  directory="$RUNNER_TEMP/aur-repo"
-                  git -c init.defaultBranch=master clone --depth=1 --single-branch --no-tags ssh://aur@aur.archlinux.org/pi-ui-bin.git "$directory"
-                  cp "$RUNNER_TEMP/PKGBUILD" "$RUNNER_TEMP/.SRCINFO" LICENSE "$directory/"
-                  git -C "$directory" config user.name hyperpuncher
-                  git -C "$directory" config user.email hyperpuncher@users.noreply.github.com
-                  git -C "$directory" add PKGBUILD .SRCINFO LICENSE
-                  if ! git -C "$directory" diff --cached --quiet; then
-                    git -C "$directory" commit -m "upgpkg: pi-ui-bin ${GITHUB_REF_NAME#v}"
+                  for package in pi-ui-bin pi-ui-git; do
+                    directory="$RUNNER_TEMP/$package"
+                    git -c init.defaultBranch=master clone --depth=1 --single-branch --no-tags "ssh://aur@aur.archlinux.org/$package.git" "$directory"
+                    cp "/home/builder/$package/PKGBUILD" "/home/builder/$package/.SRCINFO" LICENSE "$directory/"
+                    git -C "$directory" config user.name hyperpuncher
+                    git -C "$directory" config user.email hyperpuncher@users.noreply.github.com
+                    git -C "$directory" add PKGBUILD .SRCINFO LICENSE
+                    if git -C "$directory" diff --cached --quiet; then
+                      echo "$package is current"
+                      continue
+                    fi
+                    git -C "$directory" commit -m "upgpkg: $package ${GITHUB_REF_NAME#v}"
                     git -C "$directory" push origin HEAD:master
-                  fi
+                  done
