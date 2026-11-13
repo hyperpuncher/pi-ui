@@ -368,35 +368,35 @@ export class AppStore {
 		return [...this.transcript.queuedFollowUpMessages];
 	}
 
+	/**
+	 * Live references, not copies. Consumers render synchronously from the
+	 * returned snapshot, and updates replace arrays and dialogs wholesale; the
+	 * one in-place mutation (updateMessage's patch) only lands between renders.
+	 */
 	snapshot(): AppStateSnapshot {
 		return Object.freeze({
-			messages: this.messages.map((message) => ({ ...message })),
-			models: this.models.map((model) => ({ ...model })),
+			messages: this.messages,
+			models: this.models,
 			modelsRevision: this.modelsRevision,
-			sessions: this.sessions.map((session) => ({ ...session })),
+			sessions: this.sessions,
 			sessionsHasMore: this.sessionsHasMore,
 			sessionCatalogLoading: this.sessionCatalogLoading,
-			treeEntries: this.treeEntries.map((entry) => ({ ...entry })),
-			slashCommands: this.slashCommands.map((command) => ({ ...command })),
-			authDialog: this.authDialog ? structuredClone(this.authDialog) : undefined,
-			extensionDialog: this.extensionDialog
-				? structuredClone(this.extensionDialog)
-				: undefined,
-			extensionStatuses: this.extensionStatuses.map((status) => ({ ...status })),
-			extensionWidgets: this.extensionWidgets.map((widget) => ({
-				...widget,
-				lines: [...widget.lines],
-			})),
+			treeEntries: this.treeEntries,
+			slashCommands: this.slashCommands,
+			authDialog: this.authDialog,
+			extensionDialog: this.extensionDialog,
+			extensionStatuses: this.extensionStatuses,
+			extensionWidgets: this.extensionWidgets,
 			extensionWorkingIndicator: this.extensionWorkingIndicator,
 			extensionWorkingMessage: this.extensionWorkingMessage,
 			extensionWorkingVisible: this.extensionWorkingVisible,
-			llamaDialog: this.llamaDialog ? structuredClone(this.llamaDialog) : undefined,
+			llamaDialog: this.llamaDialog,
 			currentModel: this.currentModel,
 			currentSessionPath: this.currentSessionPath,
 			previousSessionPath: this.previousSessionPath,
 			isTemporarySession: this.isTemporarySession,
 			thinkingLevel: this.thinkingLevel,
-			thinkingLevels: [...this.thinkingLevels],
+			thinkingLevels: this.thinkingLevels,
 			thinkingHidden: this.thinkingHidden,
 			theme: this.theme,
 			keybindHints: this.keybindHints,
@@ -405,7 +405,7 @@ export class AppStore {
 			toolbarHidden: this.toolbarHidden,
 			sessionSidebarArchive: this.sessionSidebarArchive,
 			sessionSidebarArchiveAfterDays: this.sessionSidebarArchiveAfterDays,
-			usage: { ...this.usage },
+			usage: this.usage,
 			activityText: this.activityText,
 			queuedSteeringMessages: this.queuedSteeringMessages,
 			queuedFollowUpMessages: this.queuedFollowUpMessages,
@@ -414,9 +414,9 @@ export class AppStore {
 			workspaceFilesRevision: this.workspaceFilesRevision,
 			workspaceTreeRevision: this.workspaceTreeRevision,
 			workspaceReview: this.workspaceReview,
-			workspaceReviewPreferences: { ...this.workspaceReviewPreferences },
-			recentWorkspaces: [...this.recentWorkspaces],
-			sessionTransition: { ...this.sessionTransition },
+			workspaceReviewPreferences: this.workspaceReviewPreferences,
+			recentWorkspaces: this.recentWorkspaces,
+			sessionTransition: this.sessionTransition,
 			debugUi: this.debugUi,
 			datastarInspector: this.datastarInspector,
 			documentTitle: this.documentTitle,
@@ -425,7 +425,7 @@ export class AppStore {
 			promptHistory: this.promptHistory,
 			promptEditorText: this.promptEditorText,
 			promptSessionKey: this.promptSessionKey,
-			emptyChatHint: { ...this.emptyChatHint },
+			emptyChatHint: this.emptyChatHint,
 		});
 	}
 
