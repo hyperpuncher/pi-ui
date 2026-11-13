@@ -206,7 +206,7 @@ export const workspaceRoutes = {
 		},
 	},
 	[endpoints.workspaceFileContent]: {
-		GET: async (_request, context, url) => {
+		GET: async (request, context, url) => {
 			const params = url.searchParams;
 			const filePath = params.get("path") ?? "";
 			if (params.get("download") === "1") {
@@ -237,7 +237,7 @@ export const workspaceRoutes = {
 				}
 				return previewFileResponse(file, filePath, size, preview.mimeType);
 			}
-			return workspaceFileViewResponse(context, filePath);
+			return workspaceFileViewResponse(context, request, filePath);
 		},
 		PUT: async (request, context) => {
 			const value: unknown = await request.json();
@@ -256,7 +256,7 @@ export const workspaceRoutes = {
 				contents,
 				revision,
 			);
-			return workspaceFileViewResponse(context, path, file);
+			return workspaceFileViewResponse(context, request, path, file);
 		},
 	},
 	[endpoints.workspaceOpen]: {
@@ -434,9 +434,21 @@ function workspaceFileResponse<Value>(value: Value): Response {
 
 async function workspaceFileViewResponse(
 	context: RouteContext,
+	request: Request,
 	filePath: string,
 	file?: Awaited<ReturnType<typeof readWorkspaceFile>>,
 ): Promise<Response> {
+	const knownRevision = request.headers.get("if-none-match");
+	if (!file && knownRevision) {
+		const candidate = await readWorkspaceFile(context.store.workspacePath, filePath);
+		if ("revision" in candidate && candidate.revision === knownRevision) {
+			return new Response(null, {
+				status: 304,
+				headers: { "cache-control": "no-store", etag: candidate.revision },
+			});
+		}
+		file = candidate;
+	}
 	file ??= await readWorkspaceFile(context.store.workspacePath, filePath);
 	if (!("preview" in file) || !file.preview) return workspaceFileResponse(file);
 	if (file.preview.kind === "markdown") {

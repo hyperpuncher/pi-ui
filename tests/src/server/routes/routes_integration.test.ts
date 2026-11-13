@@ -853,6 +853,35 @@ test("file links resolve inside and outside paths to the editor without download
 	}
 });
 
+test("unchanged workspace files answer conditional requests with 304", async () => {
+	const workspace = await makeTempDir();
+	const context = fakeContext();
+	context.store.setWorkspacePath(workspace);
+	const router = createRouter(context);
+	const url = `http://localhost${endpoints.workspaceFileContent}?path=value.ts`;
+	try {
+		await Bun.write(`${workspace}/value.ts`, "export const value = 1;\n");
+		const first = await router.fetch(new Request(url));
+		assertEquals(first.status, 200);
+		const file = await first.json();
+
+		const unchanged = await router.fetch(
+			new Request(url, { headers: { "if-none-match": file.revision } }),
+		);
+		assertEquals(unchanged.status, 304);
+		assertEquals(await unchanged.text(), "");
+
+		await Bun.write(`${workspace}/value.ts`, "export const value = 22;\n");
+		const changed = await router.fetch(
+			new Request(url, { headers: { "if-none-match": file.revision } }),
+		);
+		assertEquals(changed.status, 200);
+		assertEquals((await changed.json()).contents, "export const value = 22;\n");
+	} finally {
+		await rm(workspace, { recursive: true });
+	}
+});
+
 test("outside files can be read, edited and downloaded without changing workspaces", async () => {
 	const workspace = await makeTempDir();
 	const outside = await makeTempFile({ suffix: "-example ü.ts" });

@@ -112,11 +112,31 @@ export function createWorkspaceFilesApi(endpoint: string) {
 				})
 			).path;
 		},
-		async read(path: string): Promise<Static<typeof workspaceFileViewSchema>> {
-			return await requestJson(
+		/** Returns undefined when the known revision still matches the file on disk. */
+		async read(
+			path: string,
+			revision?: string,
+		): Promise<Static<typeof workspaceFileViewSchema> | undefined> {
+			const headers: HeadersInit = { accept: "application/json" };
+			if (revision) headers["if-none-match"] = revision;
+			const response = await fetch(
 				`${contentEndpoint}?path=${encodeURIComponent(path)}`,
-				workspaceFileViewSchema,
+				{ headers },
 			);
+			if (response.status === 304) return undefined;
+			if (!response.ok) {
+				throw new Error(
+					await responseErrorMessage(
+						response,
+						`Request failed (${response.status})`,
+					),
+				);
+			}
+			const value: unknown = await response.json();
+			if (!compile(workspaceFileViewSchema).check(value)) {
+				throw new Error("Invalid workspace response.");
+			}
+			return value;
 		},
 		async remove(path: string): Promise<void> {
 			await requestJson(entryEndpoint, workspaceEntrySchema, {

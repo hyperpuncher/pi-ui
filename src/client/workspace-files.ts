@@ -399,7 +399,9 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		await loadFiles(treeChanged);
 		if (!observedPath || fileGeneration !== observedGeneration) return;
 		try {
-			const file = await api.read(observedPath);
+			// The revision short-circuits unchanged files without a body transfer.
+			const file = await api.read(observedPath, observedRevision);
+			if (!file) return;
 			if (
 				selectedFilePath !== observedPath ||
 				fileGeneration !== observedGeneration
@@ -529,7 +531,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		setStatus("");
 		try {
 			const file = await api.read(path);
-			if (generation !== fileGeneration) return;
+			if (!file || generation !== fileGeneration) return;
 			setSelectedFilePath(file.path);
 			pathLabel.textContent = file.path;
 			setStatus(formatBytes(file.size));
