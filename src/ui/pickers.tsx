@@ -296,8 +296,9 @@ export function renderWorkspaceBrowserContent(
 					type="button"
 					class="btn"
 					data-attr:disabled="$_sessionTransitionStatus === 'loading'"
-					data-on:click={openWorkspaceFromBrowserAction(
+					data-on:click={openWorkspaceAction(
 						JSON.stringify(listing.path),
+						true,
 					)}
 				>
 					<span data-show="$_workspaceAction !== 'fork'">Open folder</span>
@@ -428,9 +429,16 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 	);
 }
 
-function openWorkspaceAction(valueExpression: string): string {
+function openWorkspaceAction(
+	valueExpression: string,
+	closeBrowserDialog = false,
+): string {
 	return `if ($_sessionTransitionStatus !== 'loading') {
-		if ($_workspaceAction === 'fork') {
+		${
+			closeBrowserDialog
+				? "document.getElementById('workspace-browser-dialog')?.close();\n\t\t"
+				: ""
+		}if ($_workspaceAction === 'fork') {
 			@post('${endpoints.sessionsForkToWorkspace}', {
 				payload: { workspacePath: ${valueExpression} },
 				retry: 'never',
@@ -455,23 +463,6 @@ function browseWorkspaceAction(
 		},
 		requestCancellation: 'cleanup',
 	})`;
-}
-
-function openWorkspaceFromBrowserAction(valueExpression: string): string {
-	return `if ($_sessionTransitionStatus !== 'loading') {
-		document.getElementById('workspace-browser-dialog')?.close();
-		if ($_workspaceAction === 'fork') {
-			@post('${endpoints.sessionsForkToWorkspace}', {
-				payload: { workspacePath: ${valueExpression} },
-				retry: 'never',
-			});
-		} else {
-			@post('${endpoints.workspaceOpen}', {
-				payload: { workspacePath: ${valueExpression} },
-				retry: 'never',
-			});
-		}
-	}`;
 }
 
 function uniqueWorkspaces(workspaces: readonly string[]): string[] {
