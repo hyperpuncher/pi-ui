@@ -1,3 +1,4 @@
+import { formatBytes } from "#src/utils/format.ts";
 import { isString } from "#src/utils/type-guards.ts";
 import {
 	attachmentFileExtension,
@@ -458,10 +459,4 @@ function attachmentFileIcon(kind) {
 		svg.append(circle);
 	}
 	return svg;
-}
-
-function formatBytes(bytes) {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }

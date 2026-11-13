@@ -23,6 +23,7 @@ import type {
 	BackgroundSessionStatus,
 } from "#src/state/app-store.ts";
 import { errorMessage } from "#src/utils/errors.ts";
+import { truncate } from "#src/utils/format.ts";
 import { isNotFound } from "#src/utils/fs-errors.ts";
 import { formatDateTime } from "#src/utils/locale.ts";
 import { isRecord, isString } from "#src/utils/type-guards.ts";
@@ -465,8 +466,4 @@ export function formatSessionSummary(info: SessionInfo): AppSessionSummary {
 		modified: formatDateTime(info.modified),
 		modifiedAt: info.modified.toISOString(),
 	};
-}
-
-function truncate(value: string, maxLength: number): string {
-	return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }

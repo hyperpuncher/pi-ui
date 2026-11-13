@@ -10,6 +10,7 @@ import {
 	attachmentDisplayName,
 	splitLeadingAttachmentReferences,
 } from "#src/utils/attachment-references.ts";
+import { truncate } from "#src/utils/format.ts";
 import { isNotFound } from "#src/utils/fs-errors.ts";
 import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
 
@@ -250,7 +251,7 @@ function applySession(state: SessionSummaryCacheEntry, value: JsonRecord): void 
 function applySessionInfo(state: SessionSummaryCacheEntry, value: JsonRecord): void {
 	state.name =
 		isString(value.name) && value.name.trim()
-			? summaryText(value.name.trim())
+			? truncate(value.name.trim(), maxSummaryTextLength)
 			: undefined;
 }
 
@@ -272,8 +273,9 @@ function firstMessageTitle<Content>(content: Content): string {
 	const text = textContent(content);
 	const { prompt, paths } = splitLeadingAttachmentReferences(text);
 	const promptTitle = prompt.trim();
-	if (promptTitle) return summaryText(promptTitle);
-	if (paths.length === 1) return summaryText(attachmentDisplayName(paths[0]));
+	if (promptTitle) return truncate(promptTitle, maxSummaryTextLength);
+	if (paths.length === 1)
+		return truncate(attachmentDisplayName(paths[0]), maxSummaryTextLength);
 	if (paths.length > 1) return `${paths.length} attachments`;
 
 	const imageCount = Array.isArray(content)
@@ -281,13 +283,7 @@ function firstMessageTitle<Content>(content: Content): string {
 		: 0;
 	if (imageCount === 1) return "Image";
 	if (imageCount > 1) return `${imageCount} images`;
-	return summaryText(text.trim());
-}
-
-function summaryText(value: string): string {
-	return value.length > maxSummaryTextLength
-		? `${value.slice(0, maxSummaryTextLength - 1)}…`
-		: value;
+	return truncate(text.trim(), maxSummaryTextLength);
 }
 
 function dateValue<Value>(value: Value): number {

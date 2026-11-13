@@ -14,7 +14,7 @@ import {
 	TranscriptState,
 } from "#src/state/transcript-state.ts";
 import type { AvailableUpdate } from "#src/update-check.ts";
-import { formatMessageCount } from "#src/utils/format.ts";
+import { formatMessageCount, uniqueStrings } from "#src/utils/format.ts";
 import { formatShortcut } from "#src/utils/keyboard.ts";
 import type { JsonObject } from "#src/utils/type-guards.ts";
 import { defaultWorkspacePath, managedWorktreeParts } from "#src/utils/workspace.ts";
@@ -252,11 +252,6 @@ function debugUiEnabled(): boolean {
 }
 function datastarInspectorEnabled(): boolean {
 	return process.env.PI_UI_INSPECTOR === "1";
-}
-function uniqueStrings(values: string[]): string[] {
-	const unique = new Set(values);
-	unique.delete("");
-	return [...unique];
 }
 
 /** Mutable authoritative application state. It has no renderer or transport dependency. */

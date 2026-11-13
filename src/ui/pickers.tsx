@@ -26,6 +26,7 @@ import {
 } from "#src/ui/session-transition.tsx";
 import { StatusDot } from "#src/ui/status-dot.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
+import { uniqueStrings } from "#src/utils/format.ts";
 import { formatHomePath, workspaceDisplayName } from "#src/utils/workspace.ts";
 
 const bottomAnchoredPickerClass = "picker-list picker-list-bottom";
@@ -109,7 +110,7 @@ export function renderWorkspaceDialogMenu(
 	query = "",
 	results: readonly WorkspaceSuggestion[] = [],
 ): string {
-	const workspaces = uniqueWorkspaces([
+	const workspaces = uniqueStrings([
 		state.projectRoot,
 		...state.recentWorkspaces,
 	]).filter((workspacePath) =>
@@ -361,8 +362,8 @@ function renderWorkspaceSearchResults(
 	searchWorkspaces: readonly WorkspaceSuggestion[],
 	currentWorkspacePath: string,
 ): string {
-	const recent = uniqueWorkspaces(recentWorkspaces);
-	const search = uniqueWorkspaces(
+	const recent = uniqueStrings(recentWorkspaces);
+	const search = uniqueStrings(
 		searchWorkspaces.map((workspace) => workspace.path),
 	).filter((workspacePath) => !recent.includes(workspacePath));
 	return syncHtml(
@@ -463,12 +464,6 @@ function browseWorkspaceAction(
 		},
 		requestCancellation: 'cleanup',
 	})`;
-}
-
-function uniqueWorkspaces(workspaces: readonly string[]): string[] {
-	const unique = new Set(workspaces);
-	unique.delete("");
-	return [...unique];
 }
 
 export function renderSessionPicker(state: AppStateSnapshot): string {

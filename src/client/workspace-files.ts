@@ -28,6 +28,7 @@ import { workspaceMenuButton } from "#src/client/workspace-tree-menu.ts";
 import { createWorkspaceTreeExpansion } from "#src/client/workspace-tree.ts";
 import { activeCodeThemes } from "#src/pierre-theme.ts";
 import { errorMessage } from "#src/utils/errors.ts";
+import { formatBytes } from "#src/utils/format.ts";
 import {
 	workspaceTreeStyle,
 	workspaceTreeUnsafeCss,
@@ -925,10 +926,4 @@ function parentPath(value: string): string {
 
 function joinPath(parent: string, name: string): string {
 	return parent ? `${parent}/${name}` : name;
-}
-
-function formatBytes(bytes: number): string {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
