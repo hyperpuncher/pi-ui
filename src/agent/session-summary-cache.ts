@@ -203,6 +203,11 @@ async function parseSessionFile(
 	}
 }
 
+/**
+ * Fast pass: parseChunk consumes the whole chunk in one call. A corrupt line
+ * stops it, so the same loop resumes per line (start/end offsets, no copies)
+ * and later records survive.
+ */
 function applyCompleteLines(state: SessionSummaryCacheEntry, bytes: Uint8Array): void {
 	const result = Bun.JSONL.parseChunk(bytes);
 	if (!result.error && result.done) {
@@ -211,11 +216,15 @@ function applyCompleteLines(state: SessionSummaryCacheEntry, bytes: Uint8Array):
 		}
 		return;
 	}
-	for (let lineStart = 0, newline = bytes.indexOf(10); newline >= 0;) {
-		const value = parseLine(bytes.subarray(lineStart, newline));
-		if (value) applyRecord(state, value);
-		lineStart = newline + 1;
-		newline = bytes.indexOf(10, lineStart);
+	for (let start = 0, newline = bytes.indexOf(10); newline >= 0;) {
+		const parsed = Bun.JSONL.parseChunk(bytes, start, newline);
+		if (!parsed.error) {
+			for (const value of parsed.values) {
+				if (isRecord(value)) applyRecord(state, value);
+			}
+		}
+		start = newline + 1;
+		newline = bytes.indexOf(10, start);
 	}
 }
 
@@ -228,14 +237,6 @@ function applyRecord(state: SessionSummaryCacheEntry, value: JsonRecord): void {
 	} else if (value.type === "message") {
 		applyMessage(state, value);
 	}
-}
-
-function parseLine(bytes: Uint8Array): JsonRecord | undefined {
-	if (bytes.length === 0) return undefined;
-	const result = Bun.JSONL.parseChunk(bytes);
-	if (result.error || !result.done || result.values.length !== 1) return undefined;
-	const value = result.values[0];
-	return isRecord(value) ? value : undefined;
 }
 
 function applySession(state: SessionSummaryCacheEntry, value: JsonRecord): void {
