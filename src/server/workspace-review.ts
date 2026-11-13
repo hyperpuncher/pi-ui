@@ -102,13 +102,6 @@ export async function readWorkspaceReview(
 		"--untracked-files=all",
 		"-z",
 	);
-	const summaryPromise = git(
-		root,
-		"status",
-		"--porcelain=v1",
-		"--untracked-files=normal",
-		"-z",
-	);
 	const upstreamPromise = git(
 		root,
 		"rev-list",
@@ -128,7 +121,10 @@ export async function readWorkspaceReview(
 		(branchResult.code === 0 || branchResult.code === 1)
 	)
 		metadataCache.value = metadata;
-	const upstreamResult = await upstreamPromise;
+	const [upstreamResult, statusResult] = await Promise.all([
+		upstreamPromise,
+		statusPromise,
+	]);
 	const branch =
 		branchResult.code === 0
 			? branchResult.stdout.trim()
@@ -146,17 +142,32 @@ export async function readWorkspaceReview(
 		upstreamResult.stdout,
 		branchResult.stdout,
 	];
-	const [statusResult, summaryResult] = await Promise.all([
-		statusPromise,
-		summaryPromise,
-	]);
 	assertGit(statusResult, "read repository status");
-	assertGit(summaryResult, "read grouped repository status");
-	const changeCount = parsePorcelainEntries(summaryResult.stdout).length;
 	let changes = sortWorkspaceReviewEntries(parsePorcelainStatus(statusResult.stdout));
+	// Collapsed untracked directories keep the badge honest without a second
+	// full worktree scan: ls-files --directory walks only untracked paths.
+	const untrackedCount = changes.reduce(
+		(count, change) => (change.status === "untracked" ? count + 1 : count),
+		0,
+	);
+	let collapsedUntracked = "";
+	if (untrackedCount > 0) {
+		const collapsed = await git(
+			root,
+			"ls-files",
+			"--others",
+			"--exclude-standard",
+			"--directory",
+			"-z",
+		);
+		assertGit(collapsed, "read grouped repository status");
+		collapsedUntracked = collapsed.stdout;
+	}
+	const changeCount =
+		changes.length - untrackedCount + parsePorcelainCount(collapsedUntracked);
 	const revisionInputs = [
 		statusResult.stdout,
-		summaryResult.stdout,
+		collapsedUntracked,
 		...metadataRevisionInputs,
 	];
 	let counts = "";
@@ -447,6 +458,14 @@ export function parsePorcelainStatus(output: string): WorkspaceFileChange[] {
 		path,
 		status: statusFromCode(code),
 	}));
+}
+
+function parsePorcelainCount(output: string): number {
+	let count = 0;
+	for (const record of output.split("\0")) {
+		if (record) count += 1;
+	}
+	return count;
 }
 
 function parsePorcelainEntries(output: string): Array<{
