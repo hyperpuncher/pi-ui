@@ -131,7 +131,7 @@
 		flex: 1;
 		color: var(--text);
 		font-size: var(--text-sm);
-		font-weight: 500;
+		font-weight: 400;
 		cursor: text;
 		pointer-events: auto;
 	}
@@ -337,39 +337,40 @@
 		padding: 0.5rem;
 		pointer-events: none;
 	}
-	.session-sidebar-row-heading {
+
+	/* Shared row layout for the sidebar and the session picker. */
+	.session-row-heading {
 		display: flex;
 		min-width: 0;
 		align-items: center;
 		gap: 0.5rem;
 	}
-	.session-sidebar .session-rename {
-		font-weight: 400;
-	}
-	.session-sidebar-title {
+	.session-row-title {
 		min-width: 0;
 		flex: 1;
 		overflow: hidden;
-		color: var(--text-muted);
 		font-size: var(--text-sm);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.session-sidebar-row:is(:hover, :focus-within) .session-sidebar-title {
-		color: var(--text);
-	}
-	.session-sidebar-row-meta {
+	.session-row-meta {
 		display: flex;
 		min-width: 0;
 		height: 1.5rem;
 		align-items: center;
 		gap: 0.5rem;
 	}
-	.session-sidebar-subtitle {
+	.session-row-subtitle {
 		min-width: 0;
 		flex: 1;
 		overflow: hidden;
 		font-size: var(--text-xs);
+	}
+	.session-sidebar-title {
+		color: var(--text-muted);
+	}
+	.session-sidebar-row:is(:hover, :focus-within) .session-sidebar-title {
+		color: var(--text);
 	}
 
 	@media (width <= 48rem) {

@@ -26,7 +26,6 @@ import { errorMessage } from "#src/utils/errors.ts";
 import { truncate } from "#src/utils/format.ts";
 import { isNotFound } from "#src/utils/fs-errors.ts";
 import { formatDateTime } from "#src/utils/locale.ts";
-import { isRecord, isString } from "#src/utils/type-guards.ts";
 
 export type PreparedSessionList =
 	{ ok: true; sessions: SessionInfo[] } | { ok: false; error: unknown };

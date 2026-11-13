@@ -378,7 +378,7 @@ function renderSessionSidebarRow(
 				}
 			/>
 			<span class="session-sidebar-row-content">
-				<span class="session-sidebar-row-heading">
+				<span class="session-row-heading">
 					<span
 						class={[
 							"session-status-transition",
@@ -394,7 +394,7 @@ function renderSessionSidebarRow(
 					{current ? (
 						<SessionRenameTitle session={session} />
 					) : (
-						<span class="session-sidebar-title" safe>
+						<span class="session-row-title session-sidebar-title" safe>
 							{session.title}
 						</span>
 					)}
@@ -405,10 +405,10 @@ function renderSessionSidebarRow(
 						/>
 					)}
 				</span>
-				<span class="session-sidebar-row-meta">
+				<span class="session-row-meta">
 					<SessionSubtitle
 						session={session}
-						class="fine-print session-sidebar-subtitle"
+						class="fine-print session-row-subtitle"
 						workspaceNameOnly
 						showSubtitle={false}
 					/>

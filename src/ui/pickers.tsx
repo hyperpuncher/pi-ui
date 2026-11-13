@@ -546,7 +546,7 @@ function renderSessionRow(
 					: undefined
 			}
 		>
-			<span class="session-menu-heading">
+			<span class="session-row-heading">
 				<span
 					class={[
 						"session-status-transition",
@@ -566,7 +566,7 @@ function renderSessionRow(
 				{current ? (
 					<SessionRenameTitle session={session} />
 				) : (
-					<span class="session-menu-title" safe>
+					<span class="session-row-title session-menu-title" safe>
 						{session.title}
 					</span>
 				)}
@@ -595,8 +595,11 @@ function renderSessionRow(
 					</button>
 				)}
 			</span>
-			<span class="session-menu-meta">
-				<SessionSubtitle session={session} class="session-menu-subtitle" />
+			<span class="session-row-meta">
+				<SessionSubtitle
+					session={session}
+					class="fine-print session-row-subtitle"
+				/>
 				<SessionRowAction
 					session={session}
 					shortcut={current ? undefined : shortcut}
