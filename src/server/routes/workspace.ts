@@ -442,18 +442,15 @@ async function workspaceFileViewResponse(
 	if (file.preview.kind === "markdown") {
 		if (!("contents" in file))
 			throw new RouteError(415, "This file cannot be previewed.");
-		const resolved = await resolveFile(context.store.workspacePath, filePath);
 		const html = await renderMarkdownFinal(file.contents, {
-			cacheKey: `file:${resolved.path}`,
-			localImageBase: dirname(resolved.path),
+			cacheKey: `file:${file.resolvedPath}`,
+			localImageBase: dirname(file.resolvedPath),
 		});
 		return workspaceFileResponse({ ...file, preview: { ...file.preview, html } });
 	}
 	const url =
 		file.preview.kind === "html"
-			? filePreviewUrl(
-					(await resolveFile(context.store.workspacePath, filePath)).path,
-				)
+			? filePreviewUrl(file.resolvedPath)
 			: `${endpoints.workspaceFileContent}?path=${encodeURIComponent(file.path)}&preview=1`;
 	return workspaceFileResponse({ ...file, preview: { ...file.preview, url } });
 }

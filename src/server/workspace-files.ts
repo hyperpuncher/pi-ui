@@ -34,6 +34,7 @@ export type WorkspaceFilePreview = {
 
 export type WorkspaceFile = {
 	path: string;
+	resolvedPath: string;
 	contents: string;
 	revision: string;
 	size: number;
@@ -42,6 +43,7 @@ export type WorkspaceFile = {
 
 export type WorkspacePreviewFile = {
 	path: string;
+	resolvedPath: string;
 	preview: WorkspaceFilePreview;
 	revision: string;
 	size: number;
@@ -129,10 +131,12 @@ export async function readWorkspaceFile(
 		preview?.kind === "markdown" ||
 		preview?.mimeType === "image/svg+xml";
 	const previewRevision = `${file.lastModified}:${size}`;
-	if (preview && !hasSource) return { path, preview, revision: previewRevision, size };
+	if (preview && !hasSource) {
+		return { path, resolvedPath: resolved, preview, revision: previewRevision, size };
+	}
 	if (size > maximumWorkspaceFileBytes) {
 		return preview && preview.kind !== "markdown"
-			? { path, preview, revision: previewRevision, size }
+			? { path, resolvedPath: resolved, preview, revision: previewRevision, size }
 			: { message: "File is too large to view in pi-ui.", path, size };
 	}
 	const bytes = await file.bytes();
@@ -141,10 +145,17 @@ export async function readWorkspaceFile(
 		contents = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 	} catch {
 		return preview && preview.kind !== "markdown"
-			? { path, preview, revision: previewRevision, size }
+			? { path, resolvedPath: resolved, preview, revision: previewRevision, size }
 			: { message: "Only text files can be viewed.", path, size };
 	}
-	return { path, contents, preview, revision: fileRevision(bytes), size };
+	return {
+		path,
+		resolvedPath: resolved,
+		contents,
+		preview,
+		revision: fileRevision(bytes),
+		size,
+	};
 }
 
 export type WorkspaceUnavailableFile = {
