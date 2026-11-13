@@ -7,6 +7,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { mergeBackgroundSessionStatuses } from "#src/agent/background-session-status.ts";
+import { textContent } from "#src/agent/content-text.ts";
 import type { SessionCatalogWatch } from "#src/agent/session-catalog-watcher.ts";
 import { resolveSessionDir } from "#src/agent/session-dir.ts";
 import {
@@ -105,7 +106,7 @@ export class SessionCatalog {
 			this.messageStarted(
 				path,
 				event.message.role === "user"
-					? sessionEventMessageText(event.message.content)
+					? textContent(event.message.content)
 					: undefined,
 				cwd,
 			);
@@ -347,18 +348,6 @@ export class SessionCatalog {
 		];
 		this.state.setSessionCatalog(order.map((path) => sessionsByPath.get(path)!));
 	}
-}
-
-function sessionEventMessageText<Content>(content: Content): string {
-	if (isString(content)) return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.flatMap((block) =>
-			isRecord(block) && block.type === "text" && isString(block.text)
-				? [block.text]
-				: [],
-		)
-		.join(" ");
 }
 
 export async function listCachedSessions(

@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { compile, num, obj, opt, type Static, str } from "@earendil-works/pi-schema";
 
+import { textContent } from "#src/agent/content-text.ts";
 import { appCachePath } from "#src/utils/app-dirs.ts";
 import {
 	attachmentDisplayName,
@@ -268,7 +269,7 @@ function applyMessage(state: SessionSummaryCacheEntry, value: JsonRecord): void 
 }
 
 function firstMessageTitle<Content>(content: Content): string {
-	const text = messageText(content);
+	const text = textContent(content);
 	const { prompt, paths } = splitLeadingAttachmentReferences(text);
 	const promptTitle = prompt.trim();
 	if (promptTitle) return summaryText(promptTitle);
@@ -281,18 +282,6 @@ function firstMessageTitle<Content>(content: Content): string {
 	if (imageCount === 1) return "Image";
 	if (imageCount > 1) return `${imageCount} images`;
 	return summaryText(text.trim());
-}
-
-function messageText<Content>(content: Content): string {
-	if (isString(content)) return content;
-	if (!Array.isArray(content)) return "";
-	const parts: string[] = [];
-	for (const block of content) {
-		if (isRecord(block) && block.type === "text" && isString(block.text)) {
-			parts.push(block.text);
-		}
-	}
-	return parts.join(" ");
 }
 
 function summaryText(value: string): string {

@@ -1,4 +1,5 @@
 import { stripAnsi } from "#pi/utils/ansi.js";
+import { contentToText, summarizeValue } from "#src/agent/content-text.ts";
 import type {
 	TranscriptMessageAttachment,
 	TranscriptMessageTitlePart,
@@ -254,49 +255,4 @@ export function toolResultImageAttachments<Result>(
 			},
 		];
 	});
-}
-
-export function contentToText<Content>(
-	content: Content,
-	includeImagePlaceholders = true,
-): string {
-	if (isString(content)) {
-		return stripAnsi(content);
-	}
-	if (!Array.isArray(content)) {
-		return summarizeValue(content);
-	}
-	return content
-		.map((part) => {
-			if (isRecord(part) && part.type === "text" && isString(part.text)) {
-				return stripAnsi(part.text);
-			}
-			if (isRecord(part) && part.type === "image") {
-				return includeImagePlaceholders
-					? `[image: ${String(part.mimeType ?? "unknown")}]`
-					: "";
-			}
-			if (isRecord(part) && part.type === "thinking") {
-				return "";
-			}
-			if (isRecord(part) && part.type === "toolCall") {
-				return "";
-			}
-			return summarizeValue(part);
-		})
-		.filter(Boolean)
-		.join("\n");
-}
-
-export { stripAnsi };
-
-export function summarizeValue<Value>(value: Value): string {
-	if (isString(value)) {
-		return value;
-	}
-	try {
-		return JSON.stringify(value, null, 2);
-	} catch {
-		return String(value);
-	}
 }

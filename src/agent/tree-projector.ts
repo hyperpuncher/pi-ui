@@ -3,6 +3,7 @@ import type {
 	SessionTreeNode,
 } from "@earendil-works/pi-coding-agent";
 
+import { textContent } from "#src/agent/content-text.ts";
 import type { AppStore, AppTreeEntry } from "#src/state/app-store.ts";
 import { formatDateTime } from "#src/utils/locale.ts";
 import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
@@ -219,7 +220,7 @@ function shouldDisplayTreeNode(node: SessionTreeNode, activeId: string | null): 
 		entry.type === "message" &&
 		entry.message.role === "assistant" &&
 		entry.id !== activeId &&
-		!normalizeTreeText(extractTreeText(entry.message.content)) &&
+		!normalizeTreeText(textContent(entry.message.content)) &&
 		(entry.message.stopReason === "stop" ||
 			entry.message.stopReason === "toolUse" ||
 			!entry.message.stopReason)
@@ -244,12 +245,12 @@ function formatTreeEntry(
 			return {
 				kind: "user",
 				role: "user",
-				text: normalizeTreeText(extractTreeText(message.content)),
+				text: normalizeTreeText(textContent(message.content)),
 				...metadata,
 			};
 		}
 		if (message.role === "assistant") {
-			const text = normalizeTreeText(extractTreeText(message.content));
+			const text = normalizeTreeText(textContent(message.content));
 			const fallback =
 				message.stopReason === "aborted"
 					? "(aborted)"
@@ -284,7 +285,7 @@ function formatTreeEntry(
 		return {
 			kind: "other",
 			role: entry.customType,
-			text: normalizeTreeText(extractTreeText(entry.content)),
+			text: normalizeTreeText(textContent(entry.content)),
 			...metadata,
 		};
 	}
@@ -382,18 +383,6 @@ function formatToolDetail(name: string, args: JsonRecord): string {
 			return `${serialized.slice(0, 60)}${serialized.length > 60 ? "..." : ""}`;
 		}
 	}
-}
-
-function extractTreeText<Content>(content: Content): string {
-	if (isString(content)) return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.filter(
-			(item): item is { type: "text"; text: string } =>
-				isRecord(item) && item.type === "text" && isString(item.text),
-		)
-		.map((item) => item.text)
-		.join(" ");
 }
 
 function normalizeTreeText(text: string): string {

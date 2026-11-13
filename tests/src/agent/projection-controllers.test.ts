@@ -3,6 +3,7 @@ import { mkdir, rm, utimes } from "node:fs/promises";
 
 import type { SessionTreeNode } from "@earendil-works/pi-coding-agent";
 
+import { contentToText, summarizeValue } from "#src/agent/content-text.ts";
 import { compareModelPickerOrder } from "#src/agent/model-controller.ts";
 import {
 	formatSessionSummary,
@@ -12,11 +13,9 @@ import {
 	SessionCatalog,
 } from "#src/agent/session-catalog.ts";
 import {
-	contentToText,
 	formatDuration,
 	formatToolResult,
 	formatToolStart,
-	summarizeValue,
 	toolTitleParts,
 } from "#src/agent/tool-presentation.ts";
 import {

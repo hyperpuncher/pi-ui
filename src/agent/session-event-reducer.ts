@@ -1,11 +1,11 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 
 import type { formatCacheMissNotice } from "#src/agent/cache-miss.ts";
+import { contentToText } from "#src/agent/content-text.ts";
 import {
 	formatProviderErrorMessage,
 	isAbortErrorMessage,
 } from "#src/agent/provider-error-message.ts";
-import { contentToText } from "#src/agent/tool-presentation.ts";
 import type {
 	TranscriptMessage,
 	TranscriptMessageInput,

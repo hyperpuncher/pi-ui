@@ -6,6 +6,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { collectCacheMisses, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
+import { contentToText, stripAnsi, textContent } from "#src/agent/content-text.ts";
 import {
 	formatProviderErrorMessage,
 	isAbortErrorMessage,
@@ -13,9 +14,7 @@ import {
 import type { ToolArguments } from "#src/agent/session-event-reducer.ts";
 import {
 	compactToolOutput,
-	contentToText,
 	formatToolResult,
-	stripAnsi,
 	toolEndMeta,
 	toolResultImageAttachments,
 	toolTitle,
@@ -209,13 +208,7 @@ export function userContentToMessages(
 
 function userContentRawText(content: UserContent): string {
 	return Array.isArray(content)
-		? content
-				.flatMap((part) =>
-					isRecord(part) && part.type === "text" && isString(part.text)
-						? [stripAnsi(part.text)]
-						: [],
-				)
-				.join("\n")
+		? stripAnsi(textContent(content, "\n"))
 		: contentToText(content);
 }
 
