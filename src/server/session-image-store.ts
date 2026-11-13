@@ -1,13 +1,18 @@
 export type StoredSessionImage = {
-	data: string;
+	data: Uint8Array<ArrayBuffer>;
 	mimeType: string;
 };
 
 export class SessionImageStore {
 	readonly #images = new Map<string, StoredSessionImage>();
-	register(image: StoredSessionImage): string {
+
+	/** Decodes the base64 payload once; later requests serve the stored bytes. */
+	register(image: { data: string; mimeType: string }): string {
 		const id = crypto.randomUUID();
-		this.#images.set(id, image);
+		this.#images.set(id, {
+			data: Uint8Array.fromBase64(image.data),
+			mimeType: image.mimeType,
+		});
 		return `/sessions/image?id=${encodeURIComponent(id)}`;
 	}
 
@@ -18,8 +23,4 @@ export class SessionImageStore {
 	clear(): void {
 		this.#images.clear();
 	}
-}
-
-export function decodeBase64Image(data: string): Uint8Array<ArrayBuffer> {
-	return Uint8Array.fromBase64(data);
 }

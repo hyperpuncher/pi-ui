@@ -16,7 +16,6 @@ import {
 import { RouteError, type RouteMap } from "#src/server/route.ts";
 import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
-import { decodeBase64Image } from "#src/server/session-image-store.ts";
 import type { StoredSessionImage } from "#src/server/session-image-store.ts";
 import { BoundedCache } from "#src/ui/render-cache.ts";
 import { expandHomePath } from "#src/utils/workspace.ts";
@@ -50,7 +49,7 @@ export const sessionRoutes = {
 			);
 			if (!image) throw new RouteError(404, "Session image not found.");
 			if (!url.searchParams.has("thumb")) {
-				return new Response(decodeBase64Image(image.data), {
+				return new Response(image.data, {
 					headers: {
 						"cache-control": "private, max-age=3600",
 						"content-type": image.mimeType,
@@ -64,10 +63,7 @@ export const sessionRoutes = {
 			);
 			// Unresizable sources (tiny, animated, exotic) fall back to full.
 			const body: { data: Uint8Array<ArrayBuffer>; mimeType: string } =
-				thumbnail ?? {
-					data: decodeBase64Image(image.data),
-					mimeType: image.mimeType,
-				};
+				thumbnail ?? { data: image.data, mimeType: image.mimeType };
 			return new Response(body.data, {
 				headers: {
 					"cache-control": "private, max-age=3600",
@@ -178,7 +174,7 @@ async function sessionThumbnail(
 ): Promise<ThumbnailImage | undefined> {
 	const cached = sessionThumbnails.get(id);
 	if (cached) return cached;
-	const thumbnail = await thumbnailImage(decodeBase64Image(image.data), image.mimeType);
+	const thumbnail = await thumbnailImage(image.data, image.mimeType);
 	if (!thumbnail) return undefined;
 	sessionThumbnails.set(id, thumbnail);
 	return thumbnail;
