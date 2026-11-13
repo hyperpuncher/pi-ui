@@ -8,8 +8,10 @@ export function deleteStringKeysWithPrefix<Value>(
 }
 
 export type BoundedCacheOptions<Key, Value> = {
-	maxWeight: number;
-	weight: (key: Key, value: Value) => number;
+	/** Reports entries dropped to stay within bounds, not explicit deletes. */
+	onEvict?: (key: Key, value: Value) => void;
+	maxWeight?: number;
+	weight?: (key: Key, value: Value) => number;
 };
 
 export class BoundedCache<Key, Value> {
@@ -23,7 +25,10 @@ export class BoundedCache<Key, Value> {
 		if (!Number.isInteger(maxSize) || maxSize <= 0) {
 			throw new RangeError("BoundedCache maxSize must be a positive integer");
 		}
-		if (options && (!Number.isFinite(options.maxWeight) || options.maxWeight <= 0)) {
+		if (
+			options?.maxWeight !== undefined &&
+			(!Number.isFinite(options.maxWeight) || options.maxWeight <= 0)
+		) {
 			throw new RangeError("BoundedCache maxWeight must be positive");
 		}
 	}
@@ -38,7 +43,7 @@ export class BoundedCache<Key, Value> {
 
 	set(key: Key, value: Value): void {
 		this.delete(key);
-		const weight = this.options?.weight(key, value) ?? 0;
+		const weight = this.options?.weight?.(key, value) ?? 0;
 		if (!Number.isFinite(weight) || weight < 0) {
 			throw new RangeError("BoundedCache entry weight must be non-negative");
 		}
@@ -46,12 +51,21 @@ export class BoundedCache<Key, Value> {
 		this.#weight += weight;
 		while (
 			this.#entries.size > this.maxSize ||
-			(this.options && this.#weight > this.options.maxWeight)
+			(this.options?.maxWeight !== undefined &&
+				this.#weight > this.options.maxWeight)
 		) {
 			const oldest = this.#entries.keys().next();
 			if (oldest.done) break;
-			this.delete(oldest.value);
+			this.#evict(oldest.value);
 		}
+	}
+
+	#evict(key: Key): void {
+		const entry = this.#entries.get(key);
+		if (!entry) return;
+		this.#entries.delete(key);
+		this.#weight -= entry.weight;
+		this.options?.onEvict?.(key, entry.value);
 	}
 
 	delete(key: Key): boolean {

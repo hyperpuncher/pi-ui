@@ -35,7 +35,7 @@ import {
 import { workspaceMenuButton } from "#src/client/workspace-tree-menu.ts";
 import { createWorkspaceTreeExpansion } from "#src/client/workspace-tree.ts";
 import { activeCodeThemes, isCodeThemes, setCodeThemes } from "#src/pierre-theme.ts";
-import { deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
+import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
 import { isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
 import type { WorkspaceReviewComment } from "#src/workspace-review-comments.ts";
 import { workspaceReviewTreeOptions } from "#src/workspace-review-tree.ts";
@@ -145,7 +145,10 @@ let workingError: string | undefined;
 let items = workingItems;
 let itemsByPath = itemMap(items);
 let initializedSelection = snapshot.revision !== "git-unloaded";
-const commitCache = new Map<string, CommitView>();
+const maxCommitCacheEntries = 20;
+const commitCache = new BoundedCache<string, CommitView>(maxCommitCacheEntries, {
+	onEvict: (hash) => deleteStringKeysWithPrefix(itemRevisions, `${hash}:`),
+});
 const commitRequests = new Map<string, Promise<CommitView | undefined>>();
 let workspaceVersion = 0;
 const workspaceFiles = createWorkspaceFiles({
@@ -452,8 +455,6 @@ function applyCommitView(view: CommitView, path?: string): void {
 	publish();
 }
 
-const maxCommitCacheEntries = 20;
-
 function loadCommit(hash: string): Promise<CommitView | undefined> {
 	const existing = commitRequests.get(hash);
 	if (existing) return existing;
@@ -471,13 +472,7 @@ function loadCommit(hash: string): Promise<CommitView | undefined> {
 			if (requestedWorkspaceVersion !== workspaceVersion) return undefined;
 			// Commit diffs hold parsed Pierre items; browsing history for an
 			// hour without a bound keeps every diff alive in the tab heap.
-			commitCache.delete(hash);
 			commitCache.set(hash, view);
-			while (commitCache.size > maxCommitCacheEntries) {
-				const oldest = commitCache.keys().next().value!;
-				commitCache.delete(oldest);
-				deleteStringKeysWithPrefix(itemRevisions, `${oldest}:`);
-			}
 			return view;
 		})
 		.finally(() => commitRequests.delete(hash));
