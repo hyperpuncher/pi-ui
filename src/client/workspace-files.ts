@@ -2,7 +2,6 @@ import {
 	File,
 	type FileOptions,
 	getFiletypeFromFileName,
-	preloadHighlighter,
 	type SupportedLanguages,
 } from "@pierre/diffs";
 import type { Editor as PierreEditor } from "@pierre/diffs/edit";
@@ -338,6 +337,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		return {
 			disableFileHeader: true,
 			overflow: wrap ? "wrap" : "scroll",
+			preferredHighlighter: "highlights",
 			tokenizeMaxLineLength: 10_000,
 			theme: activeCodeThemes,
 			themeType: "system",
@@ -593,12 +593,6 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			lang: language,
 			name: current.path,
 		};
-		await preloadHighlighter({
-			langs: [language],
-			themes: [activeCodeThemes.dark, activeCodeThemes.light],
-			preferredHighlighter: "highlights",
-		}).catch(() => undefined);
-		if (generation !== fileGeneration) return;
 		viewer.render({ file, containerWrapper: viewHost });
 		await startEditing(generation);
 	}

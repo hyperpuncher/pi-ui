@@ -1,4 +1,4 @@
-import { onTestFinished, spyOn, test } from "bun:test";
+import { onTestFinished, test } from "bun:test";
 
 import { attributesToString } from "@kitajs/html";
 
@@ -652,16 +652,6 @@ function markdownMessage(text: string): TranscriptMessageInput {
 	return { role: "assistant", text, timestamp };
 }
 
-async function waitFor(complete: () => boolean): Promise<void> {
-	const deadline = Date.now() + 2_000;
-	while (!complete()) {
-		if (Date.now() >= deadline)
-			throw new Error("Expected asynchronous work did not complete");
-		// Let pending imports and timers run, not only promise callbacks.
-		await Bun.sleep(0);
-	}
-}
-
 async function openInitializedStateStream(
 	state: TestStore,
 	signal: AbortSignal,
@@ -688,18 +678,6 @@ async function readElementAndSignalPatches(
 			text.includes("event: datastar-patch-signals"),
 	);
 	return output;
-}
-
-async function collectFinalizedPatches(
-	state: TestStore,
-	response: Response,
-	finalText: string,
-) {
-	const reader = responseReader(response);
-	const finalized = await readUntil(reader, (text) => text.includes(finalText));
-	state.setUsage({ text: "$1.000 • 1 token", costText: "$1.000" });
-	const ordinary = await readUntil(reader, (text) => text.includes("$1.000"));
-	return { finalized, ordinary };
 }
 
 function count(value: string, search: string): number {
