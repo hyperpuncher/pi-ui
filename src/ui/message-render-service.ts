@@ -1,6 +1,5 @@
 import type { AppStateSnapshot, AppStore } from "#src/state/app-store.ts";
 import { EnhancementQueue } from "#src/state/enhancement-queue.ts";
-import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
 import type {
 	TranscriptMessage,
 	TranscriptMessageAttachment,
@@ -84,8 +83,7 @@ export class MessageRenderService {
 		{ data: string; url: string; width?: number; height?: number }
 	>();
 	private readonly queue: EnhancementQueue;
-	private readonly streaming: StreamingFrameScheduler<readonly string[]>;
-	private readonly pendingStreamingIds = new Set<string>();
+	private readonly dirtyIds = new Set<string>();
 	private readonly renderMarkdownEnhancement: typeof renderMarkdownFinal;
 	private readonly renderCodeEnhancement: (
 		text: string,
@@ -100,6 +98,7 @@ export class MessageRenderService {
 		private readonly patchMessage: (html: string, selector: string) => void,
 		private readonly deferEnhancement: (id: string) => void,
 		options: MessageRenderServiceOptions = {},
+		private readonly frames = { schedule: () => {}, flush: () => {} },
 	) {
 		this.queue = new EnhancementQueue(options.enhancementConcurrency ?? 2);
 		this.renderMarkdownEnhancement =
@@ -111,10 +110,6 @@ export class MessageRenderService {
 		this.renderDiffEnhancement = options.renderDiff ?? renderPierreDiff;
 		this.registerImage = options.registerImage;
 		this.clearImages = options.clearImages;
-		this.streaming = new StreamingFrameScheduler((ids) => {
-			for (const id of ids) this.pendingStreamingIds.delete(id);
-			for (const id of ids) this.patchScheduledMessage(id);
-		});
 	}
 
 	projectMessages(messages: readonly TranscriptMessage[]): AppMessage[] {
@@ -289,17 +284,22 @@ export class MessageRenderService {
 			this.store.transcript.activeAssistantMessageId,
 		]);
 	}
+	/** Renders messages changed since the last frame. The renderer calls this once per frame. */
+	patchChangedMessages(transcriptPatched: boolean): void {
+		const ids = [...this.dirtyIds];
+		this.dirtyIds.clear();
+		for (const id of ids) this.patchScheduledMessage(id, !transcriptPatched);
+	}
 	private scheduleMessages(ids: readonly string[]): void {
-		for (const id of ids) this.pendingStreamingIds.add(id);
-		this.streaming.schedule([...this.pendingStreamingIds]);
+		for (const id of ids) this.dirtyIds.add(id);
+		this.frames.schedule();
 	}
 	private flushMessages(ids: readonly string[]): void {
-		for (const id of ids) this.pendingStreamingIds.add(id);
-		this.streaming.flush([...this.pendingStreamingIds]);
+		for (const id of ids) this.dirtyIds.add(id);
+		this.frames.flush();
 	}
 	private clearScheduledMessages(): void {
-		this.pendingStreamingIds.clear();
-		this.streaming.clear();
+		this.dirtyIds.clear();
 	}
 	private initializeStreaming(id: string): void {
 		const message = this.store.transcript.getMessage(id);
@@ -312,7 +312,7 @@ export class MessageRenderService {
 			presentationVersion: 0,
 		});
 	}
-	private patchScheduledMessage(id: string): void {
+	private patchScheduledMessage(id: string, patch: boolean): void {
 		const message = this.store.transcript.getMessage(id);
 		if (!message) return;
 		if (rendersMarkdown(message.role) && message.text.trim()) {
@@ -320,7 +320,7 @@ export class MessageRenderService {
 			value.renderedHtml = renderMarkdownStreaming(message.text, { cacheKey: id });
 			value.presentationState = "streaming";
 		}
-		this.broadcast(message);
+		if (patch) this.broadcast(message);
 		if (
 			message.role === "tool" &&
 			(message.state !== "running" || enhancementKind(message) === "title")

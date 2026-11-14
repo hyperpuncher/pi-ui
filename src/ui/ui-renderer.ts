@@ -58,7 +58,8 @@ export class UiRenderer implements AppStorePresentation {
 		slashQuery: "",
 		workspaceSearch: { query: "", results: [] },
 	};
-	private readonly commits = new StreamingFrameScheduler<true>(() => this.flush());
+	private readonly frames = new StreamingFrameScheduler<true>(() => this.flush());
+	private viewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
 	private transcriptPending = false;
@@ -79,6 +80,10 @@ export class UiRenderer implements AppStorePresentation {
 			},
 			(id) => this.pendingEnhancements.add(id),
 			options,
+			{
+				schedule: () => this.frames.schedule(true),
+				flush: () => this.frames.flush(true),
+			},
 		);
 		this.compactTools = this.messages.compactTools;
 		store.attachPresentation(this);
@@ -90,7 +95,7 @@ export class UiRenderer implements AppStorePresentation {
 		workspaceQuery = "",
 		slashQuery = "",
 	): Response {
-		this.commits.flush();
+		this.frames.flush();
 		const view = this.view;
 		view.sessionQuery = query;
 		view.slashQuery = slashQuery;
@@ -165,7 +170,8 @@ export class UiRenderer implements AppStorePresentation {
 	requestCommit(effect?: UiCommitEffect): void {
 		if (effect?.type === "render-transcript") this.transcriptPending = true;
 		else if (effect) this.pendingEffects.push(effect);
-		this.commits.schedule(true);
+		this.viewPending = true;
+		this.frames.schedule(true);
 	}
 	private flush(): void {
 		const effects = this.pendingEffects;
@@ -174,19 +180,27 @@ export class UiRenderer implements AppStorePresentation {
 		this.pendingEnhancements.clear();
 		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
 		this.compactTools = this.messages.compactTools;
+		const viewPending = this.viewPending;
+		this.viewPending = false;
 		if (this.hub.clientCount > 0) {
 			const state = this.store;
-			if (
+			const transcript =
 				this.transcriptPending ||
 				toolPresentationChanged ||
-				state.messages.length === 0
-			) {
+				(viewPending && state.messages.length === 0);
+			// A transcript patch already contains every changed message.
+			this.messages.patchChangedMessages(transcript);
+			if (transcript) {
 				this.hub.patchElement(
 					this.messages.renderTranscript(state),
 					"#messages",
 					{ scripts: [clientScripts.checkOlderMessages] },
 				);
 			}
+			this.transcriptPending = false;
+		}
+		if (this.hub.clientCount > 0 && viewPending) {
+			const state = this.store;
 			const sidebarLayout = sessionSidebarLayoutKey(state);
 			const sidebarMoved = sidebarLayout !== this.sidebarLayout;
 			this.sidebarLayout = sidebarLayout;
@@ -251,7 +265,7 @@ export class UiRenderer implements AppStorePresentation {
 				: undefined,
 		);
 		// Loading, readiness, and errors are lifecycle boundaries, not progress ticks.
-		this.commits.flush();
+		this.frames.flush();
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
 		if (this.hub.clientCount === 0) return;
