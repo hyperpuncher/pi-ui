@@ -66,8 +66,7 @@
 		"oxlint": "1.93.0",
 		"pele": "1.13.0",
 		"stylelint": "^18.0.0",
-		"stylelint-config-standard": "^41.0.0",
-		"typescript": "^7.0.2"
+		"stylelint-config-standard": "^41.0.0"
 	},
 	"engines": {
 		"bun": ">=1.4.4"

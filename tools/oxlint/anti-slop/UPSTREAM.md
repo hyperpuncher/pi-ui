@@ -70,7 +70,7 @@ formatting was normalized.
   `oxc/no-accumulating-spread`. `.values().filter().map().toArray()`, `flatMap`, and
   mutating a fresh accumulator are accepted.
 - `bunx oxfmt --check tools/oxlint/anti-slop .oxlintrc.json` passes.
-- `bun run check` (schema check + `tsc --noEmit`) passes.
+- `bun run check` (schema check + `bun check`) passes.
 - `bun test` passes: 507 pass, 1 todo, 0 fail.
 - `bunx oxlint` over the project currently reports 4 `anti-slop/no-array-filter-map`
   findings in owned source (see below). These are application cleanup requiring owner
