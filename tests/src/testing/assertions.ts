@@ -4,15 +4,6 @@ export function assert(value: unknown, message?: string): asserts value {
 	strictAssert.ok(value, message ?? "");
 }
 
-export function assertAlmostEquals(
-	actual: number,
-	expected: number,
-	tolerance = 1e-7,
-	message?: string,
-): void {
-	strictAssert.ok(Math.abs(actual - expected) <= tolerance, message ?? "");
-}
-
 export function assertEquals<T>(actual: T, expected: T, message?: string): void {
 	strictAssert.deepStrictEqual(actual, expected, message ?? "");
 }

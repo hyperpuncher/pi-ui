@@ -384,8 +384,6 @@ export class AppStore {
 		this.presentation?.messageAppended(id);
 		return id;
 	}
-	// Called through the session reducer's structural state-sink interface.
-	// fallow-ignore-next-line unused-class-member
 	getMessage(id: string): TranscriptMessage | undefined {
 		return this.transcript.getMessage(id);
 	}
@@ -394,8 +392,6 @@ export class AppStore {
 		if (!this.transcript.updateMessage(id, patch)) return;
 		this.presentation?.messageUpdated(id);
 	}
-	// Called through the session reducer's computed state-sink member.
-	// fallow-ignore-next-line unused-class-member
 	appendThoughtDelta(delta: string): void {
 		const previousId = this.transcript.activeThoughtMessageId;
 		const id = this.transcript.appendThoughtDelta(delta);
