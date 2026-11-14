@@ -162,11 +162,8 @@ export interface AppStorePresentation {
 	streamingMessageChanged(): void;
 	sessionTransitionChanged(scrollToBottom: boolean): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
-	transcriptReplacing(): void;
-	transcriptReplaced(
-		activeIds: readonly (string | undefined)[],
-		enhancementIds: readonly string[],
-	): void;
+	/** Discards message presentation, runs the replacement, and restarts rendering. */
+	transcriptReplaced(replace: () => void): void;
 }
 
 /** Read view of AppStore that renderers depend on. */
@@ -418,43 +415,38 @@ export class AppStore {
 	snapshotChat(): AppChatSnapshot {
 		return this.transcript.snapshot();
 	}
+	private replaceTranscript(replace: () => void): void {
+		if (this.presentation) this.presentation.transcriptReplaced(replace);
+		else replace();
+	}
 	restoreChat(snapshot: AppChatSnapshot): void {
-		this.presentation?.transcriptReplacing();
-		this.transcript.restore(snapshot);
-		this.presentation?.transcriptReplaced(
-			[snapshot.activeThoughtId, snapshot.activeAssistantId],
-			this.transcript.messages.map((message) => message.id),
-		);
+		this.replaceTranscript(() => this.transcript.restore(snapshot));
 		this.commit();
 	}
 	resetChat(options: { preserveEmptyHint?: boolean; broadcast?: boolean } = {}): void {
-		this.presentation?.transcriptReplacing();
-		this.transcript.reset(
-			options.preserveEmptyHint ? undefined : randomEmptyChatHint(),
+		this.replaceTranscript(() =>
+			this.transcript.reset(
+				options.preserveEmptyHint ? undefined : randomEmptyChatHint(),
+			),
 		);
-		this.presentation?.transcriptReplaced([], []);
 		if (options.broadcast !== false) this.commit();
 	}
 	replaceMessages(messages: TranscriptMessageInput[]): void {
-		this.presentation?.transcriptReplacing();
-		this.transcript.replaceMessages(
-			messages,
-			messages.length === 0 ? randomEmptyChatHint() : undefined,
-		);
-		this.presentation?.transcriptReplaced(
-			[],
-			this.transcript.messages.map((message) => message.id),
+		this.replaceTranscript(() =>
+			this.transcript.replaceMessages(
+				messages,
+				messages.length === 0 ? randomEmptyChatHint() : undefined,
+			),
 		);
 		this.commit();
 	}
 	showRecentMessages(): void {
-		if (!this.transcript.showRecentMessages()) return;
-		this.presentation?.transcriptReplacing();
-		this.presentation?.transcriptReplaced(
-			[],
-			this.transcript.messages.map((message) => message.id),
-		);
-		this.commit({ type: "script", script: clientScripts.scrollTranscriptBottom });
+		let changed = false;
+		this.replaceTranscript(() => {
+			changed = this.transcript.showRecentMessages();
+		});
+		if (changed)
+			this.commit({ type: "script", script: clientScripts.scrollTranscriptBottom });
 	}
 	loadOlderMessages(): readonly TranscriptMessage[] {
 		return this.transcript.loadOlderMessages();

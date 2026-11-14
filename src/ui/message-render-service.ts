@@ -191,7 +191,8 @@ export class MessageRenderService {
 		this.flushMessages(ids);
 		for (const id of ids) this.deferEnhancement(id);
 	}
-	transcriptReplacing(): void {
+	/** Drops all presentation state before the transcript changes wholesale. */
+	reset(): void {
 		this.clearScheduledMessages();
 		this.queue.cancelAll();
 		for (const message of this.store.transcript.allMessages)
@@ -200,12 +201,12 @@ export class MessageRenderService {
 		this.imageUrls.clear();
 		this.clearImages?.();
 	}
-	transcriptReplaced(
-		activeIds: readonly (string | undefined)[],
-		enhancementIds: readonly string[],
-	): void {
-		for (const id of activeIds) if (id) this.initializeStreaming(id);
-		for (const id of enhancementIds.toReversed()) this.deferEnhancement(id);
+	/** Restarts streaming and queues final rendering for the visible messages. */
+	restart(enhance: boolean): void {
+		for (const id of this.streamingIds()) this.initializeStreaming(id);
+		if (!enhance) return;
+		for (const message of this.store.messages.toReversed())
+			this.deferEnhancement(message.id);
 	}
 	dropMessages(ids: readonly string[]): void {
 		for (const id of ids) {

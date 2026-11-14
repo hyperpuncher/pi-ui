@@ -103,22 +103,14 @@ export class UiRenderer implements AppStorePresentation {
 		const disconnect = () => {
 			if (this.hub.clientCount === 0) {
 				this.pendingEnhancements.clear();
-				this.messages.transcriptReplacing();
+				this.messages.reset();
 			}
 		};
 		try {
 			return this.hub.createStream(
 				signal,
 				() => {
-					if (this.hub.clientCount === 1) {
-						this.messages.transcriptReplaced(
-							[
-								this.store.transcript.activeThoughtMessageId,
-								this.store.transcript.activeAssistantMessageId,
-							],
-							[],
-						);
-					}
+					if (this.hub.clientCount === 1) this.messages.restart(false);
 					const snapshot = this.store;
 					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
 					const elements =
@@ -245,7 +237,7 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	codeThemeChanged(): void {
 		if (this.hub.clientCount > 0) this.messages.codeThemeChanged();
-		else this.messages.transcriptReplacing();
+		else this.messages.reset();
 		this.transcriptPending = true;
 		this.requestCommit();
 	}
@@ -271,16 +263,11 @@ export class UiRenderer implements AppStorePresentation {
 		if (this.hub.clientCount === 0) return;
 		this.messages.assistantFinished(ids);
 	}
-	transcriptReplacing(): void {
+	transcriptReplaced(replace: () => void): void {
 		this.transcriptPending = true;
-		this.messages.transcriptReplacing();
-	}
-	transcriptReplaced(
-		activeIds: readonly (string | undefined)[],
-		enhancementIds: readonly string[],
-	): void {
-		if (this.hub.clientCount > 0)
-			this.messages.transcriptReplaced(activeIds, enhancementIds);
+		this.messages.reset();
+		replace();
+		if (this.hub.clientCount > 0) this.messages.restart(true);
 	}
 	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
 		if (this.hub.clientCount === 0) return;
