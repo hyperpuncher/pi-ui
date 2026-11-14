@@ -504,7 +504,6 @@ export class RuntimeController {
 		if (active || !persisted) {
 			const cwd = session.sessionManager.getCwd();
 			await this.replaceRuntime(
-				cwd,
 				this.dependencies.createSessionManager(cwd, this.sessionDir),
 				{ type: "session_start", reason: "new" },
 			);
@@ -540,33 +539,34 @@ export class RuntimeController {
 	private async createNewTemporarySession(): Promise<boolean> {
 		const previousSessionFile = this.runtime.session.sessionManager.getSessionFile();
 		const cwd = this.runtime.session.sessionManager.getCwd();
-		await this.replaceRuntime(
-			cwd,
-			this.dependencies.createMemorySessionManager(cwd),
-			{
-				type: "session_start",
-				reason: "new",
-				previousSessionFile,
-			},
-		);
+		await this.replaceRuntime(this.dependencies.createMemorySessionManager(cwd), {
+			type: "session_start",
+			reason: "new",
+			previousSessionFile,
+		});
 		await this.bindSession();
 		return true;
 	}
 
 	private async replaceRuntime(
-		cwd: string,
 		sessionManager: SessionManager,
 		sessionStartEvent: SessionStartEvent,
 	): Promise<void> {
 		await this.leaveCurrentRuntimeForReplacement();
 		this.state.resetChat();
-		const runtime = await this.dependencies.createRuntime(this.runtimeFactory, {
-			cwd,
+		this.adoptRuntime(await this.createRuntime(sessionManager, sessionStartEvent));
+	}
+
+	private createRuntime(
+		sessionManager: SessionManager,
+		sessionStartEvent?: SessionStartEvent,
+	): Promise<AgentSessionRuntime> {
+		return this.dependencies.createRuntime(this.runtimeFactory, {
+			cwd: sessionManager.getCwd(),
 			agentDir: this.dependencies.getAgentDir(),
 			sessionManager,
 			sessionStartEvent,
 		});
-		this.adoptRuntime(runtime);
 	}
 
 	async listSessions(): Promise<void> {
@@ -678,11 +678,9 @@ export class RuntimeController {
 	async openWorkspace(cwd: string): Promise<boolean> {
 		if (cwd === this.getWorkspacePath()) return true;
 
-		const replacement = await this.dependencies.createRuntime(this.runtimeFactory, {
-			cwd,
-			agentDir: this.dependencies.getAgentDir(),
-			sessionManager: this.dependencies.createSessionManager(cwd, this.sessionDir),
-		});
+		const replacement = await this.createRuntime(
+			this.dependencies.createSessionManager(cwd, this.sessionDir),
+		);
 		try {
 			await this.bindSessionExtensions(replacement);
 		} catch (error) {
@@ -811,12 +809,7 @@ export class RuntimeController {
 		);
 		this.dependencies.assertSessionCwdExists(manager, this.getWorkspacePath());
 		await this.leaveCurrentRuntimeForReplacement();
-		const replacement = await this.dependencies.createRuntime(this.runtimeFactory, {
-			cwd: manager.getCwd(),
-			agentDir: this.dependencies.getAgentDir(),
-			sessionManager: manager,
-		});
-		this.adoptRuntime(replacement);
+		this.adoptRuntime(await this.createRuntime(manager));
 		await this.bindSession();
 		// A new session must not inherit the outgoing session's history window.
 		this.state.resetChat({ broadcast: false });
