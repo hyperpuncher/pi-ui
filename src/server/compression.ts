@@ -152,7 +152,13 @@ function isCompressibleContentType(contentType: string): boolean {
 function createCompressor(encoding: ResponseEncoding): Compressor {
 	switch (encoding) {
 		case "zstd":
-			return createZstdCompress();
+			// A 4 MiB window keeps earlier SSE frames as history for the next ones.
+			return createZstdCompress({
+				params: {
+					[constants.ZSTD_c_compressionLevel]: 6,
+					[constants.ZSTD_c_windowLog]: 22,
+				},
+			});
 		case "br":
 			return createBrotliCompress({
 				params: { [constants.BROTLI_PARAM_QUALITY]: 6 },
