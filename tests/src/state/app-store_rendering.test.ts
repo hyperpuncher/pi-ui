@@ -2,7 +2,6 @@ import { onTestFinished, spyOn, test } from "bun:test";
 
 import { attributesToString } from "@kitajs/html";
 
-import { ExtensionUiController } from "#src/agent/extension-ui-controller.ts";
 import { toolTitleParts } from "#src/agent/tool-presentation.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { AppStore } from "#src/state/app-store.ts";
@@ -108,27 +107,6 @@ test.each([
 	},
 );
 
-test("ordinary commits and empty extension cleanup skip stable views until their state changes", async () => {
-	const state = stateWithMessages(1);
-	const controller = connection();
-	const reader = await openInitializedStateStream(state, controller.signal);
-	state.setActivityText("Working...");
-	new ExtensionUiController(state).cancelAll();
-	const ordinary = await readUntil(reader, (text) => text.includes("Working..."));
-	assertIncludes(ordinary, 'class="prompt-status-message"');
-	assertNotIncludes(ordinary, 'id="messages"');
-	assertNotIncludes(ordinary, 'id="model-picker"');
-	assertNotIncludes(ordinary, 'id="session-sidebar-content"');
-	assertNotIncludes(ordinary, 'id="workspace-review-data"');
-
-	state.setModels([configuredModel], "fixture/fixture-model");
-	const full = await readUntil(reader, (text) => text.includes("fixture-model"));
-	assertNotIncludes(full, 'id="messages"');
-	assertIncludes(full, 'id="model-picker"');
-	assertIncludes(full, 'id="session-sidebar-content"');
-	assertNotIncludes(full, 'id="workspace-review-data"');
-});
-
 test("asynchronous state changes send one latest view instead of intermediate transcripts", async () => {
 	const state = stateWithMessages(1);
 	state.setSessionCatalog([
@@ -173,13 +151,6 @@ test("empty chat refreshes login, catalog loading, and recent sessions", async (
 	);
 	assertIncludes(initial, "messages-empty-login");
 
-	state.setActivityText("Working...");
-	const ordinary = await readUntil(
-		reader,
-		(text) =>
-			text.includes("Working...") && text.includes("event: datastar-patch-signals"),
-	);
-	assertNotIncludes(ordinary, 'id="messages"');
 	state.setModels([configuredModel], "fixture/fixture-model");
 	const authenticated = await readUntil(reader, (text) =>
 		text.includes("event: datastar-patch-signals"),

@@ -57,7 +57,7 @@ export const sessionSidebarRoutes = {
 				...currentSessionSidebar(context),
 				archive: !context.store.sessionSidebarArchive,
 			});
-			context.renderer.viewChanged();
+			context.renderer.requestCommit();
 			return datastarResponse();
 		},
 	},

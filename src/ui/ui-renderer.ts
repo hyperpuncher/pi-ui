@@ -60,7 +60,6 @@ export class UiRenderer implements AppStorePresentation {
 		workspaceSearch: { query: "", results: [] },
 	};
 	private readonly commits = new StreamingFrameScheduler<true>(() => this.flush());
-	private fullViewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
 	private transcriptPending = false;
@@ -146,13 +145,13 @@ export class UiRenderer implements AppStorePresentation {
 	setSessionSearch(query: string): void {
 		if (this.view.sessionQuery === query) return;
 		this.view.sessionQuery = query;
-		this.viewChanged();
+		this.requestCommit();
 	}
 
 	setSlashSearch(query: string): void {
 		if (this.view.slashQuery === query) return;
 		this.view.slashQuery = query;
-		this.viewChanged();
+		this.requestCommit();
 	}
 
 	async setWorkspaceSearch(query: string): Promise<void> {
@@ -161,13 +160,9 @@ export class UiRenderer implements AppStorePresentation {
 		const results = await searchWorkspaces(this.store.workspacePath, query);
 		if (this.view.workspaceSearch !== search) return;
 		search.results = results;
-		this.viewChanged();
-	}
-
-	viewChanged(): void {
-		this.fullViewPending = true;
 		this.requestCommit();
 	}
+
 	requestCommit(effect?: UiCommitEffect): void {
 		if (effect?.type === "render-transcript") this.transcriptPending = true;
 		else if (effect) this.pendingEffects.push(effect);
@@ -176,8 +171,6 @@ export class UiRenderer implements AppStorePresentation {
 	private flush(): void {
 		const effects = this.pendingEffects;
 		this.pendingEffects = [];
-		const fullView = this.fullViewPending;
-		this.fullViewPending = false;
 		const enhancementIds = [...this.pendingEnhancements];
 		this.pendingEnhancements.clear();
 		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
@@ -187,7 +180,7 @@ export class UiRenderer implements AppStorePresentation {
 			if (
 				this.transcriptPending ||
 				toolPresentationChanged ||
-				(fullView && state.messages.length === 0)
+				state.messages.length === 0
 			) {
 				this.hub.patchElement(
 					this.messages.renderTranscript(state),
@@ -197,22 +190,17 @@ export class UiRenderer implements AppStorePresentation {
 			}
 			const sidebarLayout = sessionSidebarLayoutKey(state);
 			const sidebarMoved = sidebarLayout !== this.sidebarLayout;
-			if (fullView || sidebarMoved) {
-				this.sidebarLayout = sidebarLayout;
-				this.hub.patchElement(
-					renderSessionSidebarContent(state),
-					"#session-sidebar-content",
-					{
-						useViewTransition: sidebarMoved,
-						viewTransitionSelector: "#session-sidebar-viewport",
-					},
-				);
-			}
+			this.sidebarLayout = sidebarLayout;
+			this.hub.patchElement(
+				renderSessionSidebarContent(state),
+				"#session-sidebar-content",
+				{
+					useViewTransition: sidebarMoved,
+					viewTransitionSelector: "#session-sidebar-viewport",
+				},
+			);
 			this.hub.patchView(
-				() =>
-					fullView
-						? this.renderView(state, this.view)
-						: this.renderAppElements(state),
+				() => this.renderView(state, this.view),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.effectScripts(effects),
 			);
