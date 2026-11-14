@@ -633,10 +633,10 @@ test("RuntimeController loads the full catalog once during activation", async ()
 	controller.activate();
 	assertEquals(loads, 1);
 	const loading = controller.listSessions();
-	assertEquals(store.snapshot().sessionCatalogLoading, true);
+	assertEquals(store.sessionCatalogLoading, true);
 	resolveLoad();
 	await loading;
-	assertEquals(store.snapshot().sessionCatalogLoading, false);
+	assertEquals(store.sessionCatalogLoading, false);
 	await controller.listSessions();
 	assertEquals(loads, 1);
 	await controller.dispose();

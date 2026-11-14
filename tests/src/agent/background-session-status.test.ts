@@ -66,7 +66,7 @@ test("session priority applies before pagination and search limits", () => {
 	state.setSessionCatalog([...recent, done, active]);
 	const expected = [done, active, ...recent.slice(0, 28)];
 	assertEquals(state.sessions, expected);
-	assertEquals(state.snapshot().sessions, expected);
+	assertEquals(state.sessions, expected);
 	assertEquals(state.searchSessions("workspace"), expected);
 });
 
@@ -82,7 +82,7 @@ test("date grouping cannot move ordinary sessions ahead of priority sessions", (
 		},
 		{ ...summary("/old", "Old"), modifiedAt: "2026-09-08T12:00:00Z" },
 	]);
-	const html = renderSessionSidebar(state.snapshot());
+	const html = renderSessionSidebar(state);
 	const titles = [
 		...html.matchAll(/aria-label="(Ordinary|Running|Completed|Old)"/g),
 	].map((match) => match[1]);

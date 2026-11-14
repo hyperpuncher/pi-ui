@@ -7,12 +7,16 @@ export const assetRoutes = {
 	[endpoints.root]: {
 		GET: (_request, context) =>
 			new Response(
-				renderPage(context.renderer.projectState(context.store.snapshot()), {
-					appVersion: context.appVersion,
-					sessionSidebarOpen: context.store.sessionSidebarOpen,
-					sessionSidebarWidth: context.store.sessionSidebarWidth,
-					themeLab: context.themeLab,
-				}),
+				renderPage(
+					context.store,
+					context.renderer.messages.renderTranscript(context.store),
+					{
+						appVersion: context.appVersion,
+						sessionSidebarOpen: context.store.sessionSidebarOpen,
+						sessionSidebarWidth: context.store.sessionSidebarWidth,
+						themeLab: context.themeLab,
+					},
+				),
 				{
 					headers: {
 						"cache-control": "no-store",

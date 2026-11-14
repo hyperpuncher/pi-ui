@@ -33,7 +33,6 @@ import { renderPromptQueue } from "#src/ui/prompt-box.tsx";
 import { renderModelPicker, renderThinkingPicker } from "#src/ui/prompt-pickers.tsx";
 import { renderPromptStart } from "#src/ui/prompt-start.tsx";
 import { renderPromptStatus } from "#src/ui/prompt-status.tsx";
-import type { AppRenderSnapshot } from "#src/ui/render-state.ts";
 import {
 	renderSessionSidebarContent,
 	sessionSidebarLayoutKey,
@@ -115,7 +114,7 @@ export class UiRenderer implements AppStorePresentation {
 							[],
 						);
 					}
-					const snapshot = this.store.snapshot();
+					const snapshot = this.store;
 					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
 					const elements =
 						this.messages.renderTranscript(snapshot) +
@@ -176,7 +175,7 @@ export class UiRenderer implements AppStorePresentation {
 		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
 		this.compactTools = this.messages.compactTools;
 		if (this.hub.clientCount > 0) {
-			const state = this.store.snapshot();
+			const state = this.store;
 			if (
 				this.transcriptPending ||
 				toolPresentationChanged ||
@@ -291,12 +290,6 @@ export class UiRenderer implements AppStorePresentation {
 		for (const message of messages.toReversed()) {
 			this.messages.enqueueEnhancement(message.id);
 		}
-	}
-	projectState(snapshot: AppStateSnapshot): AppRenderSnapshot {
-		return {
-			...snapshot,
-			messages: this.messages.projectMessages(snapshot.messages),
-		};
 	}
 	private renderAppElements(snapshot: AppStateSnapshot): string {
 		return (

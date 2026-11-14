@@ -162,10 +162,7 @@ test.concurrent(
 				await mutate();
 				await Bun.write(`${workspace}/existing.txt`, String(before));
 				await waitFor(() => store.workspaceTreeRevision > before);
-				assertEquals(
-					store.snapshot().workspaceTreeRevision,
-					store.workspaceTreeRevision,
-				);
+				assertEquals(store.workspaceTreeRevision, store.workspaceTreeRevision);
 			}
 			store.setWorkspacePath(`${workspace}/other`);
 			assertEquals(store.workspaceTreeRevision, 0);

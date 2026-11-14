@@ -169,6 +169,7 @@ export interface AppStorePresentation {
 	): void;
 }
 
+/** Read view of AppStore that renderers depend on. */
 export type AppStateSnapshot = Readonly<{
 	messages: readonly TranscriptMessage[];
 	models: readonly AppModel[];
@@ -364,67 +365,6 @@ export class AppStore {
 	}
 	get queuedFollowUpMessages(): readonly string[] {
 		return [...this.transcript.queuedFollowUpMessages];
-	}
-
-	/**
-	 * Live references, not copies. Consumers render synchronously from the
-	 * returned snapshot, and updates replace arrays and dialogs wholesale; the
-	 * one in-place mutation (updateMessage's patch) only lands between renders.
-	 */
-	snapshot(): AppStateSnapshot {
-		return Object.freeze({
-			messages: this.messages,
-			models: this.models,
-			modelsRevision: this.modelsRevision,
-			sessions: this.sessions,
-			sessionsHasMore: this.sessionsHasMore,
-			sessionCatalogLoading: this.sessionCatalogLoading,
-			treeEntries: this.treeEntries,
-			slashCommands: this.slashCommands,
-			authDialog: this.authDialog,
-			extensionDialog: this.extensionDialog,
-			extensionStatuses: this.extensionStatuses,
-			extensionWidgets: this.extensionWidgets,
-			extensionWorkingIndicator: this.extensionWorkingIndicator,
-			extensionWorkingMessage: this.extensionWorkingMessage,
-			extensionWorkingVisible: this.extensionWorkingVisible,
-			llamaDialog: this.llamaDialog,
-			currentModel: this.currentModel,
-			currentSessionPath: this.currentSessionPath,
-			previousSessionPath: this.previousSessionPath,
-			isTemporarySession: this.isTemporarySession,
-			thinkingLevel: this.thinkingLevel,
-			thinkingLevels: this.thinkingLevels,
-			thinkingHidden: this.thinkingHidden,
-			theme: this.theme,
-			keybindHints: this.keybindHints,
-			minimalMode: this.minimalMode,
-			toolOutputHidden: this.toolOutputHidden,
-			toolbarHidden: this.toolbarHidden,
-			sessionSidebarArchive: this.sessionSidebarArchive,
-			sessionSidebarArchiveAfterDays: this.sessionSidebarArchiveAfterDays,
-			usage: this.usage,
-			activityText: this.activityText,
-			queuedSteeringMessages: this.queuedSteeringMessages,
-			queuedFollowUpMessages: this.queuedFollowUpMessages,
-			workspacePath: this.workspacePath,
-			projectRoot: this.projectRoot,
-			workspaceFilesRevision: this.workspaceFilesRevision,
-			workspaceTreeRevision: this.workspaceTreeRevision,
-			workspaceReview: this.workspaceReview,
-			workspaceReviewPreferences: this.workspaceReviewPreferences,
-			recentWorkspaces: this.recentWorkspaces,
-			sessionTransition: this.sessionTransition,
-			debugUi: this.debugUi,
-			datastarInspector: this.datastarInspector,
-			documentTitle: this.documentTitle,
-			updateAvailable: this.updateAvailable,
-			hasOlderMessages: this.hasOlderMessages,
-			promptHistory: this.promptHistory,
-			promptEditorText: this.promptEditorText,
-			promptSessionKey: this.promptSessionKey,
-			emptyChatHint: this.emptyChatHint,
-		});
 	}
 
 	update<T>(mutator: () => T, options: AppStoreUpdateOptions = {}): T {

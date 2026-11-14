@@ -11,6 +11,7 @@ import {
 	workspaceReviewBase,
 } from "#src/server/routes/endpoints.ts";
 import { sessionSidebarWidthDefault } from "#src/session-sidebar-types.ts";
+import type { AppStateSnapshot } from "#src/state/app-store.ts";
 import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
 import { renderCodeThemeDialog } from "#src/ui/code-theme-dialog.tsx";
@@ -21,10 +22,8 @@ import { renderFontDialog } from "#src/ui/font-dialog.tsx";
 import { Icon } from "#src/ui/icon.tsx";
 import { ShortcutTooltip } from "#src/ui/keyboard.tsx";
 import { renderLlamaDialog } from "#src/ui/llama-dialog.tsx";
-import { renderMessages } from "#src/ui/messages.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "#src/ui/pickers.tsx";
 import { renderPromptBox } from "#src/ui/prompt-box.tsx";
-import type { AppRenderSnapshot } from "#src/ui/render-state.ts";
 import { renderSessionSidebar } from "#src/ui/session-sidebar.tsx";
 import {
 	previousSessionAction,
@@ -51,7 +50,8 @@ export type PageRenderOptions = {
 };
 
 export function renderPage(
-	state: AppRenderSnapshot,
+	state: AppStateSnapshot,
+	transcript: string,
 	{
 		appVersion = "development",
 		sessionSidebarOpen = true,
@@ -260,15 +260,7 @@ export function renderPage(
 								class="raised-surface chat-pane"
 								aria-label="Chat"
 							>
-								{renderMessages(
-									state.messages,
-									state.emptyChatHint,
-									state.hasOlderMessages,
-									state.sessions,
-									state.models.some((model) => model.configured),
-									state.sessionCatalogLoading,
-									state.minimalMode || state.toolOutputHidden,
-								)}
+								{transcript}
 								{renderSessionTransition(state)}
 								{renderPromptBox(state)}
 							</section>

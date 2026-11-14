@@ -255,7 +255,7 @@ test("tool display changes rerender only the active presentation", async () => {
 	assertNotIncludes(appended, "appended_output");
 	assertNotIncludes(appended, "tool-header");
 
-	const older = state.renderer.messages.renderTranscript(state.snapshot());
+	const older = state.renderer.messages.renderTranscript(state);
 	assertIncludes(older, "tool-title-compact");
 	assertNotIncludes(older, "updated_output");
 	assertNotIncludes(older, "tool-header");
@@ -383,7 +383,7 @@ test("loading older pages enqueues only newly revealed messages", async () => {
 	assertEqual(older.length, 30);
 	state.renderer.patchOlderMessages(older);
 
-	const immediatePage = state.renderer.messages.renderTranscript(state.snapshot());
+	const immediatePage = state.renderer.messages.renderTranscript(state);
 	assertIncludes(immediatePage, "<strong>message 0</strong>");
 	assertNotIncludes(immediatePage, "**message 0**");
 	await waitFor(() => renderCount === 60);
@@ -578,7 +578,7 @@ for (const message of [
 		]);
 		await waitFor(() => finish !== undefined);
 		assertEqual(projectedMessages(state)[0].presentationState, "enhancing");
-		const interim = state.renderer.messages.renderTranscript(state.snapshot());
+		const interim = state.renderer.messages.renderTranscript(state);
 		let text = "";
 		await new HTMLRewriter()
 			.on("main", {
@@ -593,7 +593,7 @@ for (const message of [
 		finish?.("<p>highlighting finished</p>");
 		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 		assertIncludes(
-			state.renderer.messages.renderTranscript(state.snapshot()),
+			state.renderer.messages.renderTranscript(state),
 			"highlighting finished",
 		);
 	});
@@ -680,7 +680,7 @@ test("enhancement errors retain the rendered Markdown fallback", async () => {
 	await waitFor(() => warn.mock.calls.length > 0);
 	assertEqual(projectedMessages(state)[0].presentationState, "plain");
 	assertIncludes(
-		state.renderer.messages.renderTranscript(state.snapshot()),
+		state.renderer.messages.renderTranscript(state),
 		"<p><strong>fallback</strong></p>",
 	);
 });
@@ -776,10 +776,7 @@ test("last-client disconnect discards in-flight rendering before reconnect", asy
 	gates[0].resolve("<p>stale rendering</p>");
 	await waitFor(() => gates.length === 2);
 	assertEqual(gates[1].text, "current content");
-	assertNotIncludes(
-		state.renderer.messages.renderTranscript(state.snapshot()),
-		"stale rendering",
-	);
+	assertNotIncludes(state.renderer.messages.renderTranscript(state), "stale rendering");
 	gates[1].resolve("<p>current rendering</p>");
 	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>current rendering</p>");
@@ -808,7 +805,7 @@ test("workspace switches stream prepared content and restore it on reconnect", a
 	const reconnect = await readStateOutput(state, (text) => text.includes("review-1"));
 	assertIncludes(reconnect, "prepared diff contents");
 	assertIncludes(output, '"branch":"main"');
-	const signals = projectBackendSignals(state.snapshot());
+	const signals = projectBackendSignals(state);
 	assertEqual(signals._workspaceReviewChangeCount, 1);
 	assertEqual(signals._workspaceReviewStatsKnown, false);
 	assertIncludes(output, 'id="workspace-review-data"');
@@ -975,7 +972,6 @@ test("initial page signals match live state after activity and session transitio
 	];
 	for (const mutate of cases) {
 		mutate();
-		const snapshot = state.snapshot();
 		let initialSignals: string | null = null;
 		await new HTMLRewriter()
 			.on("body", {
@@ -983,20 +979,20 @@ test("initial page signals match live state after activity and session transitio
 					initialSignals = element.getAttribute("data-signals");
 				},
 			})
-			.transform(new Response(renderPage(state.renderer.projectState(snapshot))))
+			.transform(new Response(renderPage(state, "")))
 			.text();
 		// HTMLRewriter returns the encoded attribute, not its DOM-decoded value.
 		assertEqual(
 			` data-signals="${initialSignals}"`,
 			attributesToString({
-				"data-signals": state.renderer.renderSignals(snapshot),
+				"data-signals": state.renderer.renderSignals(state),
 			}),
 		);
 	}
 });
 
 test("server-owned view signals are transport-private", () => {
-	const signals = projectBackendSignals(createState().snapshot());
+	const signals = projectBackendSignals(createState());
 	assertEqual(
 		Object.keys(signals).filter((name) => !name.startsWith("_")),
 		[],
@@ -1052,7 +1048,7 @@ function connect(state: TestStore): AbortController {
 }
 
 function projectedMessages(state: TestStore) {
-	return state.renderer.projectState(state.snapshot()).messages;
+	return state.renderer.messages.projectMessages(state.messages);
 }
 
 function markdownMessage(text: string): TranscriptMessageInput {

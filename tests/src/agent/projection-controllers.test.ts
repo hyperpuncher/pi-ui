@@ -559,11 +559,11 @@ for (const fails of [false, true]) {
 		const pending = Promise.withResolvers<PreparedSessionList>();
 		const refresh = catalog.refresh(() => pending.promise);
 		catalog.dispose();
-		const snapshot = state.snapshot();
+		const sessions = state.getSessionCatalog();
 		if (fails) pending.reject(new Error("late failure"));
 		else pending.resolve({ ok: true, sessions: [sessionInfo("/late", "Late")] });
 		await refresh;
-		assertEquals(state.snapshot(), snapshot);
+		assertEquals(state.getSessionCatalog(), sessions);
 	});
 }
 
@@ -583,11 +583,11 @@ for (const exists of [false, true]) {
 			}
 			const pending = catalog.refreshPath(path);
 			catalog.dispose();
-			const snapshot = state.snapshot();
+			const sessions = state.getSessionCatalog();
 			await pending;
 			await catalog.refreshPath(path);
 			await catalog.refresh(() => Promise.resolve({ ok: true, sessions: [] }));
-			assertEquals(state.snapshot(), snapshot);
+			assertEquals(state.getSessionCatalog(), sessions);
 		} finally {
 			catalog.dispose();
 			await rm(root, { recursive: true });

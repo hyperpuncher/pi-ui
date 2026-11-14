@@ -18,7 +18,7 @@ test("model picker shell loads rows on open instead of every view", () => {
 		],
 		undefined,
 	);
-	const html = renderModelPicker(store.snapshot());
+	const html = renderModelPicker(store);
 	assertStringIncludes(html, 'id="model-select-options"');
 	assertStringIncludes(html, "/models/list");
 	assertFalse(html.includes("model-option-"));

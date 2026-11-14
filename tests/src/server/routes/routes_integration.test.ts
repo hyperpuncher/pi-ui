@@ -248,15 +248,15 @@ test("older sessions expand backend-owned sidebar state", async () => {
 			modified: "Today",
 		})),
 	);
-	assertEquals(context.store.snapshot().sessions.length, 30);
+	assertEquals(context.store.sessions.length, 30);
 
 	const response = await createRouter(context).fetch(
 		new Request("http://localhost/sessions/more", { method: "POST" }),
 	);
 
 	assertEquals(response.status, 204);
-	assertEquals(context.store.snapshot().sessions.length, 51);
-	assertEquals(context.store.snapshot().sessionsHasMore, false);
+	assertEquals(context.store.sessions.length, 51);
+	assertEquals(context.store.sessionsHasMore, false);
 });
 
 test("session images serve full bytes and display-sized thumbnails", async () => {
