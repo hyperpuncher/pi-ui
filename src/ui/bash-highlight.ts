@@ -137,7 +137,7 @@ function encodeLiteral(value: string, quote: string, next = ""): string {
 		: encoded;
 }
 
-export function hasEmbeddedBash(command: string): boolean {
+function hasEmbeddedBash(command: string): boolean {
 	return /<<|(?:^|\s)(?:-[np]*[epc]\b|--(?:eval|print)\b|eval\b)|\bplaywright-cli\s+(?:-s=\S+\s+)?run-code\b/.test(
 		command,
 	);

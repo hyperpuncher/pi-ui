@@ -14,7 +14,7 @@ export const CODE_THEME_PREVIEW =
 	"// syntax preview\nconst greet = (name: string) => {\n  return `hello, ${name}!`;\n};";
 
 /** Every theme bundled with Highlights, sorted by display name. */
-export const CODE_THEMES: readonly CodeThemeOption[] = (
+const CODE_THEMES: readonly CodeThemeOption[] = (
 	await Promise.all(
 		Object.entries(themes).map(async ([name, load]) => {
 			const theme = (await load()).default;
