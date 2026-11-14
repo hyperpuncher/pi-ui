@@ -1,7 +1,6 @@
 import type { SessionTransitionState } from "#src/agent/session-transition-controller.ts";
 import { appCommandCatalog } from "#src/commands/catalog.ts";
 import { activeKeybind } from "#src/keybinds.ts";
-import { sessionPerformance } from "#src/perf/session-performance.ts";
 import {
 	sessionSidebarArchiveAfterDaysDefault,
 	sessionSidebarWidthDefault,
@@ -484,11 +483,8 @@ export class AppStore {
 		return this.transcript.snapshot();
 	}
 	restoreChat(snapshot: AppChatSnapshot): void {
-		const end = sessionPerformance.startSpan("transcriptInstall");
 		this.presentation?.transcriptReplacing();
 		this.transcript.restore(snapshot);
-		end();
-		sessionPerformance.markTranscriptProjected();
 		this.presentation?.transcriptReplaced(
 			[snapshot.activeThoughtId, snapshot.activeAssistantId],
 			this.transcript.messages.map((message) => message.id),
@@ -504,14 +500,11 @@ export class AppStore {
 		if (options.broadcast !== false) this.commit();
 	}
 	replaceMessages(messages: TranscriptMessageInput[]): void {
-		const end = sessionPerformance.startSpan("transcriptInstall");
 		this.presentation?.transcriptReplacing();
 		this.transcript.replaceMessages(
 			messages,
 			messages.length === 0 ? randomEmptyChatHint() : undefined,
 		);
-		end();
-		sessionPerformance.markTranscriptProjected();
 		this.presentation?.transcriptReplaced(
 			[],
 			this.transcript.messages.map((message) => message.id),

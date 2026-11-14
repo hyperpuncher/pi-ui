@@ -15,7 +15,6 @@ import {
 } from "#src/agent/runtime-controller.ts";
 import type { PreparedSessionList } from "#src/agent/session-catalog.ts";
 import type { SessionDoneNotification } from "#src/browser-notifications.ts";
-import { sessionPerformance } from "#src/perf/session-performance.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
@@ -291,23 +290,7 @@ test("resuming from a running session shows only the latest page", async () => {
 	}
 });
 
-test("session readiness delivers the target transcript and its performance marker", async () => {
-	const previous = {
-		PI_UI_PERF: process.env.PI_UI_PERF,
-		PI_UI_PERF_FILE: process.env.PI_UI_PERF_FILE,
-	};
-	const log = spyOn(console, "log").mockImplementation(() => {});
-	onTestFinished(() => {
-		log.mockRestore();
-		sessionPerformance.reset();
-		for (const [name, value] of Object.entries(previous)) {
-			if (value === undefined) delete process.env[name];
-			else process.env[name] = value;
-		}
-	});
-	process.env.PI_UI_PERF = "1";
-	process.env.PI_UI_PERF_FILE = "off";
-	sessionPerformance.reset();
+test("session resume streams the target transcript", async () => {
 	const state = new AppStore();
 	const source = fakeRuntime();
 	source.setStreaming(true);
@@ -330,10 +313,6 @@ test("session readiness delivers the target transcript and its performance marke
 		connection.abort();
 		const output = await response.text();
 		assertEquals(output.includes("target transcript"), true);
-		assertEquals(
-			output.includes("window.piUi.sessionPerformance.transcriptPatched("),
-			true,
-		);
 	} finally {
 		connection.abort();
 		await controller.dispose();

@@ -29,11 +29,6 @@ import {
 import { PromptDrafts } from "#static/app/prompt-drafts.js";
 import { createPromptHistory } from "#static/app/prompt-history.js";
 import { autofocusPrompt, setPromptValue } from "#static/app/prompt.js";
-import {
-	readTransitionState,
-	startSessionPerformanceMeasurement,
-	transcriptPatched,
-} from "#static/app/session-performance.js";
 import { bindTooltips } from "#static/app/tooltips.js";
 import { bindVimScroll } from "#static/app/vim-scroll.js";
 import { windowFocus } from "#static/app/window-focus.js";
@@ -71,11 +66,6 @@ window.piUi = {
 	},
 	promptHistory,
 	promptDrafts,
-	sessionPerformance: {
-		observe: readTransitionState,
-		start: startSessionPerformanceMeasurement,
-		transcriptPatched,
-	},
 	windowFocus,
 	workspaceReview: { applyOpen: () => {} },
 	shouldAbortOnEscape(event) {

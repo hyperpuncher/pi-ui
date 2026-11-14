@@ -21,7 +21,6 @@ export const endpoints = {
 	minimalMode: "/minimal-mode",
 	toolOutput: "/tool-output",
 	toolbar: "/toolbar",
-	sessionPerformanceClient: "/session-performance/client",
 	sessionSidebar: "/session-sidebar",
 	sessionSidebarArchive: "/session-sidebar/archive",
 	prompt: "/prompt",

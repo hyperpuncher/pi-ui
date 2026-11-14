@@ -64,11 +64,6 @@ interface PiUiNamespace {
 	promptDrafts: {
 		sync(key: string, text: string): string | null;
 	};
-	sessionPerformance: {
-		observe(status: string, generation: number): void;
-		transcriptPatched(generation: number, runId: string): void;
-		start(): void;
-	};
 	windowFocus: {
 		restore(): void;
 		suspend(): void;

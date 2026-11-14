@@ -1,4 +1,3 @@
-import { sessionPerformance } from "#src/perf/session-performance.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import {
 	searchWorkspaces,
@@ -183,18 +182,14 @@ export class UiRenderer implements AppStorePresentation {
 		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
 		this.compactTools = this.messages.compactTools;
 		if (this.hub.clientCount > 0) {
-			const state = sessionPerformance.measureSync("stateSnapshot", () =>
-				this.store.snapshot(),
-			);
+			const state = this.store.snapshot();
 			if (
 				this.transcriptPending ||
 				toolPresentationChanged ||
 				(fullView && state.messages.length === 0)
 			) {
 				this.hub.patchElement(
-					sessionPerformance.measureSync("transcriptRender", () =>
-						this.messages.renderTranscript(state),
-					),
+					this.messages.renderTranscript(state),
 					"#messages",
 					{ scripts: ["window.piUi.messageScroll.checkOlder()"] },
 				);
@@ -204,9 +199,7 @@ export class UiRenderer implements AppStorePresentation {
 			if (fullView || sidebarMoved) {
 				this.sidebarLayout = sidebarLayout;
 				this.hub.patchElement(
-					sessionPerformance.measureSync("sidebarRender", () =>
-						renderSessionSidebarContent(state),
-					),
+					renderSessionSidebarContent(state),
 					"#session-sidebar-content",
 					{
 						useViewTransition: sidebarMoved,
@@ -216,14 +209,10 @@ export class UiRenderer implements AppStorePresentation {
 			}
 			this.hub.patchView(
 				() =>
-					sessionPerformance.measureSync("viewRender", () =>
-						fullView
-							? this.renderView(state, this.view)
-							: this.renderAppElements(state),
-					),
-				sessionPerformance.measureSync("signalRender", () =>
-					this.renderSignals(state, this.effectSignalOverrides(effects)),
-				),
+					fullView
+						? this.renderView(state, this.view)
+						: this.renderAppElements(state),
+				this.renderSignals(state, this.effectSignalOverrides(effects)),
 				this.effectScripts(effects),
 			);
 		}

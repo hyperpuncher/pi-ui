@@ -10,7 +10,6 @@ import { fontRoutes } from "#src/server/routes/fonts.ts";
 import { llamaRoutes } from "#src/server/routes/llama.ts";
 import { modelRoutes } from "#src/server/routes/models.ts";
 import { promptRoutes } from "#src/server/routes/prompt.ts";
-import { sessionPerformanceRoutes } from "#src/server/routes/session-performance.ts";
 import { sessionSidebarRoutes } from "#src/server/routes/session-sidebar.ts";
 import { sessionRoutes } from "#src/server/routes/sessions.ts";
 import { streamRoutes } from "#src/server/routes/stream.ts";
@@ -28,7 +27,6 @@ export const appRoutes: RouteMap<RouteContext> = {
 	...fontRoutes,
 	...promptRoutes,
 	...sessionRoutes,
-	...sessionPerformanceRoutes,
 	...sessionSidebarRoutes,
 	...workspaceRoutes,
 	...workspaceReviewRoutes,

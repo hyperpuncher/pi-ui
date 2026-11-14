@@ -1,5 +1,4 @@
 import { sessionTransitionOverlayVisible } from "#src/agent/session-transition-controller.ts";
-import { sessionPerformance } from "#src/perf/session-performance.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "#src/state/app-store.ts";
 import { Icon } from "#src/ui/icon.tsx";
@@ -12,7 +11,6 @@ export function resumeSessionAction(
 ): string {
 	return `if ($_sessionTransitionStatus !== 'loading') {
 		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
-		window.piUi.sessionPerformance.start();
 		@post('${endpoints.sessionsResume}', {
 			payload: { sessionPath: ${JSON.stringify(path)} },
 			retry: 'never',
@@ -36,7 +34,6 @@ export function resumeSessionShortcutAction(
 export function previousSessionAction(): string {
 	return `if ($_sessionTransitionStatus !== 'loading') {
 		document.getElementById('session-dialog')?.close();
-		window.piUi.sessionPerformance.start();
 		@post('${endpoints.sessionsPrevious}', { payload: {}, retry: 'never' });
 	}`;
 }
@@ -54,11 +51,6 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"
 			aria-busy={transition.status === "loading" ? "true" : "false"}
-			data-session-performance-enabled={sessionPerformance.enabled}
-			data-effect={
-				sessionPerformance.enabled &&
-				"window.piUi.sessionPerformance.observe($_sessionTransitionStatus, $_sessionTransitionGeneration)"
-			}
 		>
 			{transition.status === "error" ? (
 				<div class="session-transition-error">

@@ -20,11 +20,6 @@ import {
 
 import { AuthController } from "#src/agent/auth-controller.ts";
 import { type AutoTitleConfig, generateAutoTitle } from "#src/agent/auto-title.ts";
-import {
-	BackgroundRuntimeOwnership,
-	ownsForegroundGeneration,
-	RuntimeOwnershipInvariantError,
-} from "#src/agent/background-runtime-ownership.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
 import { ExtensionUiController } from "#src/agent/extension-ui-controller.ts";
 import { LlamaController } from "#src/agent/llama-controller.ts";
@@ -79,7 +74,6 @@ import { TranscriptProjector } from "#src/agent/transcript-projector.ts";
 import { type TreeNavigationResult, TreeProjector } from "#src/agent/tree-projector.ts";
 import { UsageController } from "#src/agent/usage-controller.ts";
 import type { SessionDoneNotification } from "#src/browser-notifications.ts";
-import { sessionPerformance } from "#src/perf/session-performance.ts";
 import {
 	type AppSlashCommand,
 	AppStore,
@@ -211,8 +205,8 @@ export class RuntimeController {
 	private readonly prompts: PromptLifecycle;
 	private readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
-	private readonly backgroundSessions =
-		new BackgroundRuntimeOwnership<BackgroundSession>();
+	private readonly backgroundSessions = new Map<string, BackgroundSession>();
+	private nextGeneration = 1;
 	private readonly completedBackgroundPaths = new Set<string>();
 	private readonly catalog: SessionCatalog;
 	private readonly llama: LlamaController;
@@ -249,7 +243,7 @@ export class RuntimeController {
 			activationOptions.dependencies ?? runtimeControllerDependencies;
 		this.sessionDir = sessionDir;
 		this.extensionUi = new ExtensionUiController(state);
-		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
+		this.foregroundGeneration = this.nextGeneration++;
 		this.foregroundObservedRunning = runtime.session.isStreaming;
 		this.models = new ModelController(
 			() => this.runtime,
@@ -313,14 +307,10 @@ export class RuntimeController {
 			sessionManager,
 			sessionStartEvent,
 		}) => {
-			const services = await sessionPerformance.measure(
-				"runtimeServicesCreate",
-				() =>
-					createAgentSessionServices({
-						cwd,
-						resourceLoaderOptions: { extensionFactories },
-					}),
-			);
+			const services = await createAgentSessionServices({
+				cwd,
+				resourceLoaderOptions: { extensionFactories },
+			});
 			// pi-ui resizes images with Bun.Image because pi's Photon resizer is not
 			// bundled in compiled builds. Force pi's image auto-resize off for this
 			// manager (an override on the method, not the setting, so it survives
@@ -330,30 +320,24 @@ export class RuntimeController {
 				services.modelRuntime,
 				services.settingsManager.getGlobalSettings().httpProxy,
 			);
-			const { scopedModels } = await sessionPerformance.measure(
-				"scopedModelResolution",
-				() =>
-					withAgentHttpProxy(services.modelRuntime, () =>
-						resolveModelScopeWithDiagnostics(
-							services.settingsManager.getEnabledModels() ?? [],
-							services.modelRuntime,
-						),
-					),
+			const { scopedModels } = await withAgentHttpProxy(services.modelRuntime, () =>
+				resolveModelScopeWithDiagnostics(
+					services.settingsManager.getEnabledModels() ?? [],
+					services.modelRuntime,
+				),
 			);
 			const readIsOverridden = services.resourceLoader
 				.getExtensions()
 				.extensions.some((extension) => extension.tools.has("read"));
-			const session = await sessionPerformance.measure("runtimeSessionCreate", () =>
-				createAgentSessionFromServices({
-					services,
-					sessionManager,
-					sessionStartEvent,
-					scopedModels,
-					customTools: readIsOverridden
-						? undefined
-						: [createBunReadToolDefinition(cwd)],
-				}),
-			);
+			const session = await createAgentSessionFromServices({
+				services,
+				sessionManager,
+				sessionStartEvent,
+				scopedModels,
+				customTools: readIsOverridden
+					? undefined
+					: [createBunReadToolDefinition(cwd)],
+			});
 			return {
 				...session,
 				services,
@@ -754,31 +738,16 @@ export class RuntimeController {
 		if (sessionPath === this.runtime.session.sessionManager.getSessionFile()) {
 			return { status: "success" };
 		}
-		let transitionId: number | undefined;
-		const result = await this.transitionController.run(
+		return await this.transitionController.run(
 			sessionPath,
-			(generation) => {
-				transitionId = sessionPerformance.startSessionTransition(generation);
-				return sessionPerformance.runInTransition(transitionId, () =>
-					this.resumeSessionWithRecovery(sessionPath, transitionId),
-				);
-			},
+			() => this.resumeSessionWithRecovery(sessionPath),
 			{ overlay: false },
 		);
-		if (transitionId !== undefined) {
-			if (result.status === "success")
-				sessionPerformance.markSessionTransitionComplete(transitionId);
-			else sessionPerformance.cancelSessionTransition(transitionId);
-		}
-		return result;
 	}
 
-	private async resumeSessionWithRecovery(
-		sessionPath: string,
-		transitionId?: number,
-	): Promise<boolean> {
+	private async resumeSessionWithRecovery(sessionPath: string): Promise<boolean> {
 		try {
-			return await this.resumeSessionTransition(sessionPath, transitionId);
+			return await this.resumeSessionTransition(sessionPath);
 		} catch (error) {
 			if (!(error instanceof MissingSessionCwdError)) throw error;
 			const options = getMissingSessionCwdOptions(error.issue).filter(
@@ -794,16 +763,15 @@ export class RuntimeController {
 			if (!choice || this.disposal) return false;
 			const cwd = error.issue.fallbackCwd;
 			if (choice === "continue") {
-				return this.resumeSessionTransition(sessionPath, transitionId, cwd);
+				return this.resumeSessionTransition(sessionPath, cwd);
 			}
-			return this.forkAndResumeSession(sessionPath, cwd, transitionId);
+			return this.forkAndResumeSession(sessionPath, cwd);
 		}
 	}
 
 	private async forkAndResumeSession(
 		sessionPath: string,
 		cwd: string,
-		transitionId?: number,
 	): Promise<boolean> {
 		const path = this.dependencies
 			.forkSessionManager(sessionPath, cwd, this.sessionDir)
@@ -811,7 +779,7 @@ export class RuntimeController {
 		if (!path) return false;
 		let resumed = false;
 		try {
-			resumed = await this.resumeSessionTransition(path, transitionId);
+			resumed = await this.resumeSessionTransition(path);
 			return resumed;
 		} finally {
 			if (!resumed) await unlink(path);
@@ -820,59 +788,16 @@ export class RuntimeController {
 
 	private async resumeSessionTransition(
 		sessionPath: string,
-		transitionId?: number,
 		cwdOverride?: string,
 	): Promise<boolean> {
 		if (!sessionPath.trim()) return false;
-		const sourcePersisted = this.runtime.session.sessionManager.isPersisted();
-		sessionPerformance.recordOwnershipDiagnostics(
-			{
-				sourceGeneration: this.foregroundGeneration,
-				sourceSdkStreaming: this.runtime.session.isStreaming,
-				sourceObservedRunning: this.foregroundObservedRunning,
-				sourcePersisted,
-				sourceLocationBefore: "foreground",
-				ownedLiveRuntimeCount: this.ownedLiveRuntimeCount(),
-				duplicateKeyInvariantFailures:
-					this.backgroundSessions.invariantFailureCount,
-			},
-			transitionId,
-		);
 		const canonicalPath = resolvePath(sessionPath);
 		const background = this.backgroundSessions.get(canonicalPath);
-		sessionPerformance.recordOwnershipDiagnostics(
-			{
-				targetBackgroundLookup: background ? "hit" : "miss",
-				targetLocationBefore: background
-					? background.status === "running"
-						? "background-running"
-						: "background-completed"
-					: "disposed",
-			},
-			transitionId,
-		);
-		let resumed = true;
 		if (background) {
 			background.activating = true;
-			const action = this.currentRuntimeLeaveAction();
-			sessionPerformance.recordOwnershipDiagnostics(
-				{ leaveAction: action },
-				transitionId,
-			);
 			try {
-				await sessionPerformance.measure(
-					"backgroundActivation",
-					() => this.activateRuntime(background),
-					transitionId,
-				);
-				this.backgroundSessions.release(canonicalPath, background);
-				sessionPerformance.recordOwnershipDiagnostics(
-					{
-						sourceLocationAfter: this.leaveActionLocation(action),
-						targetLocationAfter: "foreground",
-					},
-					transitionId,
-				);
+				await this.activateRuntime(background);
+				this.backgroundSessions.delete(canonicalPath);
 			} catch (error) {
 				if (background.status === "completed")
 					this.releaseBackgroundSession(background);
@@ -880,84 +805,36 @@ export class RuntimeController {
 			} finally {
 				background.activating = false;
 			}
-		} else if (!this.isCurrentRuntimeActive() && sourcePersisted) {
-			sessionPerformance.recordOwnershipDiagnostics(
-				{ leaveAction: "dispose" },
-				transitionId,
-			);
-			const result = await sessionPerformance.measure(
-				"runtimeSwitchCreate",
-				() => this.runtime.switchSession(sessionPath, { cwdOverride }),
-				transitionId,
-			);
-			resumed = !result.cancelled;
-			if (resumed) {
-				sessionPerformance.recordSessionOpen(transitionId);
-				this.adoptRuntime(this.runtime);
-				sessionPerformance.recordOwnershipDiagnostics(
-					{
-						sourceLocationAfter: "disposed",
-						targetLocationAfter: "foreground",
-					},
-					transitionId,
-				);
-			}
-		} else {
-			// Parse the target before changing ownership of the outgoing runtime.
-			const manager = sessionPerformance.measureSync(
-				"sessionManagerOpen",
-				() =>
-					this.dependencies.openSessionManager(
-						sessionPath,
-						this.sessionDir,
-						cwdOverride,
-					),
-				transitionId,
-			);
-			this.dependencies.assertSessionCwdExists(manager, this.getWorkspacePath());
-			sessionPerformance.recordSessionOpen(transitionId);
-			const action = this.currentRuntimeLeaveAction();
-			sessionPerformance.recordOwnershipDiagnostics(
-				{ leaveAction: action },
-				transitionId,
-			);
-			await this.leaveCurrentRuntimeForReplacement(action);
-			const replacement = await sessionPerformance.measure(
-				"runtimeSwitchCreate",
-				() =>
-					this.dependencies.createRuntime(this.runtimeFactory, {
-						cwd: manager.getCwd(),
-						agentDir: this.dependencies.getAgentDir(),
-						sessionManager: manager,
-					}),
-				transitionId,
-			);
-			this.adoptRuntime(replacement);
-			await sessionPerformance.measure(
-				"runtimeRebind",
-				() => this.bindSession(),
-				transitionId,
-			);
-			// A new session must not inherit the outgoing session's history window.
-			this.state.resetChat({ broadcast: false });
-			this.loadCurrentSessionMessages();
-			sessionPerformance.recordOwnershipDiagnostics(
-				{
-					sourceLocationAfter: this.leaveActionLocation(action),
-					targetLocationAfter: "foreground",
-				},
-				transitionId,
-			);
+			return true;
 		}
-		sessionPerformance.recordOwnershipDiagnostics(
-			{
-				ownedLiveRuntimeCount: this.ownedLiveRuntimeCount(),
-				duplicateKeyInvariantFailures:
-					this.backgroundSessions.invariantFailureCount,
-			},
-			transitionId,
+		if (
+			!this.isCurrentRuntimeActive() &&
+			this.runtime.session.sessionManager.isPersisted()
+		) {
+			const result = await this.runtime.switchSession(sessionPath, { cwdOverride });
+			if (result.cancelled) return false;
+			this.adoptRuntime(this.runtime);
+			return true;
+		}
+		// Parse the target before changing ownership of the outgoing runtime.
+		const manager = this.dependencies.openSessionManager(
+			sessionPath,
+			this.sessionDir,
+			cwdOverride,
 		);
-		return resumed;
+		this.dependencies.assertSessionCwdExists(manager, this.getWorkspacePath());
+		await this.leaveCurrentRuntimeForReplacement();
+		const replacement = await this.dependencies.createRuntime(this.runtimeFactory, {
+			cwd: manager.getCwd(),
+			agentDir: this.dependencies.getAgentDir(),
+			sessionManager: manager,
+		});
+		this.adoptRuntime(replacement);
+		await this.bindSession();
+		// A new session must not inherit the outgoing session's history window.
+		this.state.resetChat({ broadcast: false });
+		this.loadCurrentSessionMessages();
+		return true;
 	}
 
 	openTree(): boolean {
@@ -1192,28 +1069,15 @@ export class RuntimeController {
 			: "discard";
 	}
 
-	private leaveActionLocation(
-		action: "background" | "discard" | "dispose" | "keep",
-	): "background-running" | "disposed" | "foreground" {
-		if (action === "background") return "background-running";
-		if (action === "keep") return "foreground";
-		return "disposed";
-	}
-
 	private adoptRuntime(
 		runtime: AgentSessionRuntime,
 		ownership?: { generation: number; observedRunning: boolean },
 	): void {
 		this.runtime = runtime;
-		this.foregroundGeneration =
-			ownership?.generation ?? this.backgroundSessions.allocateGeneration();
+		this.foregroundGeneration = ownership?.generation ?? this.nextGeneration++;
 		this.foregroundObservedRunning =
 			ownership?.observedRunning ?? runtime.session.isStreaming;
 		this.bindRuntimeCallbacks(runtime);
-	}
-
-	private ownedLiveRuntimeCount(): number {
-		return this.backgroundSessions.liveCount(this.isCurrentRuntimeActive());
 	}
 
 	private unsubscribeBackgroundSession(session: BackgroundSession): void {
@@ -1224,13 +1088,9 @@ export class RuntimeController {
 
 	private bindRuntimeCallbacks(runtime: AgentSessionRuntime): void {
 		const generation = this.foregroundGeneration;
+		// Also rejects callbacks retained across an in-place generation change.
 		const ownsForeground = () =>
-			ownsForegroundGeneration(
-				this.runtime,
-				this.foregroundGeneration,
-				runtime,
-				generation,
-			);
+			this.runtime === runtime && this.foregroundGeneration === generation;
 		runtime.setBeforeSessionInvalidate(() => {
 			// Delayed shutdown from an old generation must not detach its successor.
 			if (!ownsForeground()) return;
@@ -1239,13 +1099,10 @@ export class RuntimeController {
 		});
 		runtime.setRebindSession(async () => {
 			if (!ownsForeground()) return;
-			await sessionPerformance.measure("runtimeRebind", async () => {
-				if (!ownsForeground()) return;
-				await this.bindSessionExtensions();
-				if (!ownsForeground()) return;
-				this.bindSessionState();
-				this.loadCurrentSessionMessages();
-			});
+			await this.bindSessionExtensions();
+			if (!ownsForeground()) return;
+			this.bindSessionState();
+			this.loadCurrentSessionMessages();
 		});
 	}
 
@@ -1265,12 +1122,7 @@ export class RuntimeController {
 			await this.discardTemporaryRuntime();
 		} else {
 			this.unbindSession();
-			const end = sessionPerformance.startSpan("runtimeDispose");
-			try {
-				await this.runtime.dispose();
-			} finally {
-				end();
-			}
+			await this.runtime.dispose();
 		}
 	}
 
@@ -1296,13 +1148,13 @@ export class RuntimeController {
 		const sessionFile = this.runtime.session.sessionManager.getSessionFile();
 		if (!sessionFile) return;
 		if (this.backgroundSessions.has(sessionFile)) {
-			throw new RuntimeOwnershipInvariantError();
+			throw new Error("Background session already owned");
 		}
 		const snapshot = this.state.snapshotChat();
 		const backgroundGeneration = this.foregroundGeneration;
 		const backgroundObservedRunning = this.foregroundObservedRunning;
 		// Invalidate foreground callbacks before replacement creation can await.
-		this.foregroundGeneration = this.backgroundSessions.allocateGeneration();
+		this.foregroundGeneration = this.nextGeneration++;
 		this.foregroundObservedRunning = false;
 		this.unbindSession();
 		this.state.setQueuedMessages([], []);
@@ -1321,7 +1173,7 @@ export class RuntimeController {
 		backgroundSession.unsubscribe = this.runtime.session.subscribe((event) =>
 			this.handleBackgroundEvent(backgroundSession, event),
 		);
-		this.backgroundSessions.register(sessionFile, backgroundSession);
+		this.backgroundSessions.set(sessionFile, backgroundSession);
 		this.state.setCurrentSessionPath(undefined);
 		this.catalog.mergeCurrentStatuses();
 		void this.catalog.refreshPath(sessionFile);
@@ -1508,40 +1360,38 @@ export class RuntimeController {
 		const session = runtime.session;
 		// UI bindings belong to a session, not a foreground activation generation.
 		const isActive = () => runtime === this.runtime && session === runtime.session;
-		await sessionPerformance.measure("extensionBind", () =>
-			session.bindExtensions({
-				mode: "rpc",
-				uiContext: this.extensionUi.context(isActive),
-				onError: (error) => {
-					if (isActive()) {
-						this.state.appendMessage(
-							"notice",
-							`Extension ${error.extensionPath}: ${error.error}`,
-						);
+		await session.bindExtensions({
+			mode: "rpc",
+			uiContext: this.extensionUi.context(isActive),
+			onError: (error) => {
+				if (isActive()) {
+					this.state.appendMessage(
+						"notice",
+						`Extension ${error.extensionPath}: ${error.error}`,
+					);
+				}
+			},
+			commandContextActions: {
+				waitForIdle: () => session.waitForIdle(),
+				newSession: (options) => runtime.newSession(options),
+				fork: async (entryId, options) => {
+					const result = await runtime.fork(entryId, options);
+					return { cancelled: result.cancelled };
+				},
+				navigateTree: async (targetId, options) => {
+					const result = await session.navigateTree(targetId, options);
+					if (!result.cancelled && runtime === this.runtime) {
+						this.loadCurrentSessionMessages();
 					}
+					return { cancelled: result.cancelled };
 				},
-				commandContextActions: {
-					waitForIdle: () => session.waitForIdle(),
-					newSession: (options) => runtime.newSession(options),
-					fork: async (entryId, options) => {
-						const result = await runtime.fork(entryId, options);
-						return { cancelled: result.cancelled };
-					},
-					navigateTree: async (targetId, options) => {
-						const result = await session.navigateTree(targetId, options);
-						if (!result.cancelled && runtime === this.runtime) {
-							this.loadCurrentSessionMessages();
-						}
-						return { cancelled: result.cancelled };
-					},
-					switchSession: (sessionPath, options) =>
-						runtime.switchSession(sessionPath, options),
-					reload: async () => {
-						await this.reload();
-					},
+				switchSession: (sessionPath, options) =>
+					runtime.switchSession(sessionPath, options),
+				reload: async () => {
+					await this.reload();
 				},
-			}),
-		);
+			},
+		});
 	}
 
 	private async loadInitialCatalog(): Promise<void> {
@@ -1758,9 +1608,7 @@ export class RuntimeController {
 			this.state.resetChat();
 		}
 		this.projectedSessionId = sessionId;
-		sessionPerformance.measureSync("transcriptProjection", () =>
-			this.transcript.load(this.runtime, this.state),
-		);
+		this.transcript.load(this.runtime, this.state);
 		this.usage.sync();
 	}
 }

@@ -1,4 +1,3 @@
-import { sessionPerformance } from "#src/perf/session-performance.ts";
 import type { AppStateSnapshot, AppStore } from "#src/state/app-store.ts";
 import { EnhancementQueue } from "#src/state/enhancement-queue.ts";
 import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
@@ -421,19 +420,12 @@ export class MessageRenderService {
 	): Promise<string | undefined> {
 		if (kind === "title") return undefined;
 		if (kind === "markdown")
-			return await sessionPerformance.measure("markdownEnhancement", () =>
-				this.renderMarkdownEnhancement(text, { cacheKey: id }),
+			return await this.renderMarkdownEnhancement(text, { cacheKey: id });
+		if (kind === "diff")
+			return (
+				(await this.renderDiffEnhancement(text)) ??
+				(await renderCodeFinal(text, "diff", { chrome: false }))
 			);
-		const end = sessionPerformance.startSpan("toolEnhancement");
-		try {
-			if (kind === "diff")
-				return (
-					(await this.renderDiffEnhancement(text)) ??
-					(await renderCodeFinal(text, "diff", { chrome: false }))
-				);
-			return await this.renderCodeEnhancement(text, "bash");
-		} finally {
-			end();
-		}
+		return await this.renderCodeEnhancement(text, "bash");
 	}
 }

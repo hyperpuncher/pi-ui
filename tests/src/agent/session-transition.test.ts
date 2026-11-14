@@ -94,12 +94,8 @@ test("a picker shortcut is not also handled by the sidebar after closing the dia
 				"$_sessionTransitionStatus",
 				"post",
 				action.replaceAll("@post(", "post("),
-			)(
-				event,
-				{ getElementById: () => dialog },
-				{ piUi: { sessionPerformance: { start() {} } } },
-				"idle",
-				(url: string) => requests.push(url),
+			)(event, { getElementById: () => dialog }, {}, "idle", (url: string) =>
+				requests.push(url),
 			);
 		}
 		assertEquals(requests, ["/sessions/resume"]);
