@@ -23,7 +23,6 @@ concurrency:
 
 jobs:
     publish:
-        name: npm
         runs-on: ubuntu-slim
         steps:
             - uses: actions/checkout@v7
