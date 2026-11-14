@@ -1,0 +1,39 @@
+name: publish npm package
+
+on:
+    workflow_call:
+        inputs:
+            tag:
+                required: true
+                type: string
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Existing release tag to publish
+                required: true
+                type: string
+
+permissions:
+    contents: read
+    id-token: write
+
+concurrency:
+    group: npm
+    cancel-in-progress: false
+
+jobs:
+    publish:
+        name: npm
+        runs-on: ubuntu-slim
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.tag }}
+            - uses: oven-sh/setup-bun@v2
+            - name: install dependencies
+              run: bun ci
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: 26
+            - name: publish package
+              run: npm publish

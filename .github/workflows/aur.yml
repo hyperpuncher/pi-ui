@@ -1,0 +1,89 @@
+name: publish AUR packages
+
+on:
+    workflow_call:
+        inputs:
+            tag:
+                required: true
+                type: string
+        secrets:
+            AUR_KEY:
+                required: true
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Existing release tag to publish
+                required: true
+                type: string
+
+permissions:
+    contents: read
+
+concurrency:
+    group: aur
+    cancel-in-progress: false
+
+jobs:
+    publish:
+        name: aur
+        runs-on: ubuntu-26.04
+        container: archlinux:base-devel
+        env:
+            GH_TOKEN: ${{ github.token }}
+            RELEASE_TAG: ${{ inputs.tag }}
+        steps:
+            - name: install publishing tools
+              run: pacman -Syu --noconfirm --needed git github-cli openssh
+            - uses: actions/checkout@v7
+              with:
+                  ref: ${{ inputs.tag }}
+            - name: generate recipes
+              run: |
+                  gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+                      --jq '.assets[] | "\(.name)\t\(.digest)"' > "$RUNNER_TEMP/assets.tsv"
+                  asset() {
+                      awk -F'\t' -v name="$1" '$1 == name { sub(/^sha256:/, "", $2); print $2 }' "$RUNNER_TEMP/assets.tsv"
+                  }
+                  linux_x64=$(asset pi-ui-linux-x64.tar.zst)
+                  linux_arm64=$(asset pi-ui-linux-arm64.tar.zst)
+                  if [[ -z $linux_x64 || -z $linux_arm64 ]]; then
+                      echo "missing release asset digests" >&2
+                      exit 1
+                  fi
+                  V="${RELEASE_TAG#v}"
+                  LICENSE_SHA=$(sha256sum LICENSE | cut -d' ' -f1)
+                  useradd --create-home builder
+                  mkdir -p build/aur/pi-ui-bin build/aur/pi-ui-git
+                  chown -R builder:builder build/aur
+                  sed -e "s/{{VERSION}}/$V/g" \
+                      -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
+                      -e "s/{{SHA_LINUX_X64}}/$linux_x64/g" \
+                      -e "s/{{SHA_LINUX_ARM64}}/$linux_arm64/g" \
+                      packaging/aur/PKGBUILD.in > build/aur/pi-ui-bin/PKGBUILD
+                  cp packaging/aur/pi-ui-git/PKGBUILD build/aur/pi-ui-git/PKGBUILD
+                  for package in pi-ui-bin pi-ui-git; do
+                    runuser --user builder -- bash -c "cd build/aur/$package && makepkg --printsrcinfo > .SRCINFO"
+                  done
+            - name: publish packages
+              env:
+                  AUR_KEY: ${{ secrets.AUR_KEY }}
+              run: |
+                  umask 077
+                  test -n "$AUR_KEY"
+                  printf '%s\n' "$AUR_KEY" > "$RUNNER_TEMP/aur_key"
+                  trap 'shred -u "$RUNNER_TEMP/aur_key"' EXIT
+                  export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/aur_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$GITHUB_WORKSPACE/.github/aur_known_hosts"
+                  for package in pi-ui-bin pi-ui-git; do
+                    directory="$RUNNER_TEMP/$package"
+                    git -c init.defaultBranch=master clone --depth=1 --single-branch --no-tags "ssh://aur@aur.archlinux.org/$package.git" "$directory"
+                    cp "build/aur/$package/PKGBUILD" "build/aur/$package/.SRCINFO" LICENSE "$directory/"
+                    git -C "$directory" config user.name hyperpuncher
+                    git -C "$directory" config user.email hyperpuncher@users.noreply.github.com
+                    git -C "$directory" add PKGBUILD .SRCINFO LICENSE
+                    if git -C "$directory" diff --cached --quiet; then
+                      echo "$package is current"
+                      continue
+                    fi
+                    git -C "$directory" commit -m "upgpkg: $package ${RELEASE_TAG#v}"
+                    git -C "$directory" push origin HEAD:master
+                  done

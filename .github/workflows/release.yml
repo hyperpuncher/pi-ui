@@ -77,134 +77,15 @@ jobs:
             - run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file "${{ steps.notes.outputs.path }}"
 
     npm:
-        name: npm
         needs: [release]
-        runs-on: ubuntu-slim
-        permissions:
-            contents: read
-            id-token: write
-
-        steps:
-            - uses: actions/checkout@v7
-            - uses: oven-sh/setup-bun@v2
-            - name: install dependencies
-              run: bun ci
-            - uses: actions/setup-node@v7
-              with:
-                  node-version: 26
-            - name: publish package
-              run: npm publish
+        uses: ./.github/workflows/npm.yml
+        with:
+            tag: ${{ github.ref_name }}
 
     homebrew:
-        name: homebrew
         needs: [release]
-        runs-on: ubuntu-slim
-        permissions:
-            contents: read
-        env:
-            GH_TOKEN: ${{ github.token }}
-
-        steps:
-            - uses: actions/checkout@v7
-            - name: generate formula
-              run: |
-                  gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
-                      --jq '.assets[] | "\(.name)\t\(.digest)"' > "$RUNNER_TEMP/assets.tsv"
-                  asset() {
-                      awk -F'\t' -v name="$1" '$1 == name { sub(/^sha256:/, "", $2); print $2 }' "$RUNNER_TEMP/assets.tsv"
-                  }
-                  darwin_x64=$(asset pi-ui-darwin-x64.zip)
-                  darwin_arm64=$(asset pi-ui-darwin-arm64.zip)
-                  if [[ -z $darwin_x64 || -z $darwin_arm64 ]]; then
-                      echo "missing release asset digests" >&2
-                      exit 1
-                  fi
-                  V="${GITHUB_REF_NAME#v}"
-                  sed -e "s/{{VERSION}}/$V/g" \
-                      -e "s/{{SHA_DARWIN_X64}}/$darwin_x64/g" \
-                      -e "s/{{SHA_DARWIN_ARM64}}/$darwin_arm64/g" \
-                      packaging/homebrew/pi-ui.rb.in > "$RUNNER_TEMP/pi-ui.rb"
-            - name: publish formula
-              env:
-                  GH_TOKEN: ${{ secrets.GH_PAT }}
-              run: |
-                  test -n "$GH_TOKEN"
-                  gh auth setup-git --hostname github.com
-                  directory="$RUNNER_TEMP/homebrew-tap"
-                  git clone --depth=1 --single-branch --no-tags https://github.com/hyperpuncher/homebrew-tap.git "$directory"
-                  mkdir -p "$directory/Formula"
-                  cp "$RUNNER_TEMP/pi-ui.rb" "$directory/Formula/pi-ui.rb"
-                  rm -f "$directory/Formula/pi-ui-server.rb" "$directory/Casks/pi-ui.rb"
-                  test -f "$directory/formula_renames.json" || echo '{}' > "$directory/formula_renames.json"
-                  jq '. + {"pi-ui-server": "pi-ui"}' "$directory/formula_renames.json" > "$RUNNER_TEMP/formula_renames.json"
-                  mv "$RUNNER_TEMP/formula_renames.json" "$directory/formula_renames.json"
-                  git -C "$directory" config user.name github-actions
-                  git -C "$directory" config user.email github-actions@github.com
-                  git -C "$directory" add -A Formula Casks formula_renames.json
-                  if ! git -C "$directory" diff --cached --quiet; then
-                    git -C "$directory" commit -m "chore: update pi-ui for $GITHUB_REF_NAME"
-                    git -C "$directory" push
-                  fi
-
-    aur:
-        name: aur
-        needs: [release]
-        runs-on: ubuntu-26.04
-        container: archlinux:base-devel
-        permissions:
-            contents: read
-        env:
-            GH_TOKEN: ${{ github.token }}
-
-        steps:
-            - name: install publishing tools
-              run: pacman -Syu --noconfirm --needed git openssh github-cli
-            - uses: actions/checkout@v7
-            - name: generate recipe
-              run: |
-                  gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
-                      --jq '.assets[] | "\(.name)\t\(.digest)"' > "$RUNNER_TEMP/assets.tsv"
-                  asset() {
-                      awk -F'\t' -v name="$1" '$1 == name { sub(/^sha256:/, "", $2); print $2 }' "$RUNNER_TEMP/assets.tsv"
-                  }
-                  linux_x64=$(asset pi-ui-linux-x64.tar.zst)
-                  linux_arm64=$(asset pi-ui-linux-arm64.tar.zst)
-                  if [[ -z $linux_x64 || -z $linux_arm64 ]]; then
-                      echo "missing release asset digests" >&2
-                      exit 1
-                  fi
-                  V="${GITHUB_REF_NAME#v}"
-                  LICENSE_SHA=$(sha256sum LICENSE | cut -d' ' -f1)
-                  sed -e "s/{{VERSION}}/$V/g" \
-                      -e "s/{{SHA_LICENSE}}/$LICENSE_SHA/g" \
-                      -e "s/{{SHA_LINUX_X64}}/$linux_x64/g" \
-                      -e "s/{{SHA_LINUX_ARM64}}/$linux_arm64/g" \
-                      packaging/aur/PKGBUILD.in > "$RUNNER_TEMP/PKGBUILD"
-                  useradd --create-home builder
-                  install -D -o builder -g builder -m 644 "$RUNNER_TEMP/PKGBUILD" /home/builder/pi-ui-bin/PKGBUILD
-                  install -D -o builder -g builder -m 644 packaging/aur/pi-ui-git/PKGBUILD /home/builder/pi-ui-git/PKGBUILD
-                  runuser --user builder -- bash -c 'cd /home/builder/pi-ui-bin && makepkg --printsrcinfo > .SRCINFO'
-                  runuser --user builder -- bash -c 'cd /home/builder/pi-ui-git && makepkg --printsrcinfo > .SRCINFO'
-            - name: publish packages
-              env:
-                  AUR_KEY: ${{ secrets.AUR_KEY }}
-              run: |
-                  umask 077
-                  test -n "$AUR_KEY"
-                  printf '%s\n' "$AUR_KEY" > "$RUNNER_TEMP/aur_key"
-                  trap 'shred -u "$RUNNER_TEMP/aur_key"' EXIT
-                  export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/aur_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$GITHUB_WORKSPACE/.github/aur_known_hosts"
-                  for package in pi-ui-bin pi-ui-git; do
-                    directory="$RUNNER_TEMP/$package"
-                    git -c init.defaultBranch=master clone --depth=1 --single-branch --no-tags "ssh://aur@aur.archlinux.org/$package.git" "$directory"
-                    cp "/home/builder/$package/PKGBUILD" "/home/builder/$package/.SRCINFO" LICENSE "$directory/"
-                    git -C "$directory" config user.name hyperpuncher
-                    git -C "$directory" config user.email hyperpuncher@users.noreply.github.com
-                    git -C "$directory" add PKGBUILD .SRCINFO LICENSE
-                    if git -C "$directory" diff --cached --quiet; then
-                      echo "$package is current"
-                      continue
-                    fi
-                    git -C "$directory" commit -m "upgpkg: $package ${GITHUB_REF_NAME#v}"
-                    git -C "$directory" push origin HEAD:master
-                  done
+        uses: ./.github/workflows/homebrew.yml
+        with:
+            tag: ${{ github.ref_name }}
+        secrets:
+            GH_PAT: ${{ secrets.GH_PAT }}
