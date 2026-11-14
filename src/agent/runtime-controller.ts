@@ -684,18 +684,7 @@ export class RuntimeController {
 			sessionManager: this.dependencies.createSessionManager(cwd, this.sessionDir),
 		});
 		try {
-			await replacement.session.bindExtensions({
-				mode: "rpc",
-				uiContext: this.extensionUi.context(() => replacement === this.runtime),
-				onError: (error) => {
-					if (replacement === this.runtime) {
-						this.state.appendMessage(
-							"notice",
-							`Extension ${error.extensionPath}: ${error.error}`,
-						);
-					}
-				},
-			});
+			await this.bindSessionExtensions(replacement);
 		} catch (error) {
 			await replacement.dispose();
 			throw error;
@@ -1280,8 +1269,7 @@ export class RuntimeController {
 		});
 	}
 
-	private async bindSessionExtensions(): Promise<void> {
-		const runtime = this.runtime;
+	private async bindSessionExtensions(runtime = this.runtime): Promise<void> {
 		const session = runtime.session;
 		// UI bindings belong to a session, not a foreground activation generation.
 		const isActive = () => runtime === this.runtime && session === runtime.session;
