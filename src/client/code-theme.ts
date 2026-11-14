@@ -6,10 +6,8 @@ import {
 	type ThemedToken,
 } from "@pierre/diffs";
 
-import { CODE_THEME_PREVIEW, CODE_THEMES } from "#src/code-themes.ts";
 import { type CodeThemes, DEFAULT_CODE_THEMES, isCodeThemes } from "#src/pierre-theme.ts";
 
-const themeNames = CODE_THEMES.map((theme) => theme.name);
 let previewsPromise: Promise<void> | undefined;
 
 window.piUi.codeTheme = {
@@ -125,6 +123,8 @@ async function loadFontPreviews(theme: string): Promise<void> {
 
 async function loadPreviews(): Promise<void> {
 	setStatus("Loading theme previews…");
+	const cards = document.querySelectorAll<HTMLButtonElement>("[data-theme-name]");
+	const themeNames = [...cards].flatMap((card) => card.dataset.themeName ?? []);
 	try {
 		await preloadHighlighter({
 			langs: ["typescript"],
@@ -134,12 +134,12 @@ async function loadPreviews(): Promise<void> {
 		const highlighter = getHighlighterIfLoaded();
 		if (!highlighter) throw new Error("Highlighter unavailable");
 
-		const cards = document.querySelectorAll<HTMLButtonElement>("[data-theme-name]");
 		for (const [index, card] of cards.entries()) {
 			const name = card.dataset.themeName;
 			const preview = card.querySelector<HTMLElement>(".code-theme-preview");
-			if (!name || !preview) continue;
-			const result = highlighter.codeToTokens(CODE_THEME_PREVIEW, {
+			const code = preview?.textContent;
+			if (!name || !preview || !code) continue;
+			const result = highlighter.codeToTokens(code, {
 				lang: "typescript",
 				theme: name,
 			});
