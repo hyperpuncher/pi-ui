@@ -22,7 +22,7 @@ export const extensionUiRoutes = {
 	[endpoints.extensionUiResponse]: {
 		POST: async (request, context) => {
 			const signals = await readActionSignals(request);
-			requireHost(context).respondExtensionUi(
+			requireHost(context).extensionUi.respond(
 				requiredString(signals, "extensionRequestId"),
 				stringField(signals, "extensionResponse"),
 				booleanField(signals, "extensionCancelled", { optional: true }),

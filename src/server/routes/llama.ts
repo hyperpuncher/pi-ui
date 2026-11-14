@@ -7,14 +7,14 @@ import { endpoints } from "#src/server/routes/endpoints.ts";
 export const llamaRoutes = {
 	[endpoints.llamaOpen]: {
 		POST: (_request, context) => {
-			requireHost(context).openLlama();
+			requireHost(context).llama.open();
 			return datastarResponse();
 		},
 	},
 	[endpoints.llamaToggle]: {
 		POST: async (request, context) => {
 			const model = requiredString(await readActionSignals(request), "llamaModel");
-			if (!requireHost(context).toggleLlamaModel(model)) {
+			if (!requireHost(context).llama.toggle(model)) {
 				throw new RouteError(409, "llama.cpp model action could not be started.");
 			}
 			return datastarResponse();
@@ -22,7 +22,7 @@ export const llamaRoutes = {
 	},
 	[endpoints.llamaClose]: {
 		POST: (_request, context) => {
-			requireHost(context).closeLlama();
+			requireHost(context).llama.close();
 			return datastarResponse();
 		},
 	},

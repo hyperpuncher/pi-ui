@@ -675,32 +675,6 @@ test("extension UI tracks the browser editor for synchronous extension reads", a
 	assertEquals(context.store.promptEditorText, "current draft");
 });
 
-test("extension UI responses return to the active agent backend", async () => {
-	let response:
-		{ requestId: string; value: string | undefined; cancelled: boolean } | undefined;
-	const host = fakeHost({
-		respondExtensionUi: (requestId, value, cancelled) => {
-			response = { requestId, value, cancelled };
-			return true;
-		},
-	});
-	const router = createRouter(fakeContext({ host }));
-	const result = await router.fetch(
-		signalRequest("/extensions/ui/respond", {
-			extensionRequestId: "request-1",
-			extensionResponse: "selected",
-			extensionCancelled: false,
-		}),
-	);
-
-	assertEquals(result.status, 204);
-	assertEquals(response, {
-		requestId: "request-1",
-		value: "selected",
-		cancelled: false,
-	});
-});
-
 test("main stream requires a matching app version", async () => {
 	let streamCreated = false;
 	const context = fakeContext({
@@ -801,26 +775,6 @@ test("model rows load on demand through the list endpoint", async () => {
 	);
 	const filteredBody = await filtered.text();
 	assertStringExcludes(filteredBody, 'id="model-option-');
-});
-
-test("model catalog refresh delegates to the active host", async () => {
-	let refreshSignal: AbortSignal | undefined;
-	const router = createRouter(
-		fakeContext({
-			host: fakeHost({
-				refreshModels: (signal) => {
-					refreshSignal = signal;
-					return Promise.resolve();
-				},
-			}),
-		}),
-	);
-
-	const response = await router.fetch(
-		new Request("http://localhost/models/refresh", { method: "POST" }),
-	);
-	assertEquals(response.status, 204);
-	assertEquals(refreshSignal?.aborted, false);
 });
 
 test("file links resolve inside and outside paths to the editor without downloading", async () => {
@@ -1249,39 +1203,23 @@ function fakeHost(overrides: Partial<RuntimeController> = {}): RuntimeController
 	const stub: Partial<RuntimeController> = {
 		abort: async () => {},
 		abortBackgroundSession: async () => true,
-		closeAuth: () => {},
-		closeLlama: () => {},
-		cycleModel: async () => true,
-		cycleThinkingLevel: () => true,
 		deleteSession: async () => true,
 		dispose: async () => {},
 		forkSessionToWorkspace: async () => ({ status: "success" }),
 		getWorkspacePath: () => process.cwd(),
 		hasRunningSessionInWorktree: async () => false,
 		listSessions: async () => {},
-		logout: () => true,
 		navigateTree: async () => ({ status: "success", editorText: "" }),
 		newSession: async () => ({ status: "success" }),
 		newTemporarySession: async () => ({ status: "success" }),
-		openLogin: () => {},
-		openLogout: () => {},
-		openLlama: () => {},
 		openTree: () => true,
 		openWorkspace: async () => true,
 		prompt: async () => true,
-		refreshModels: async () => {},
 		removeQueuedMessage: async () => true,
 		renameSession: async () => true,
-		respondExtensionUi: () => true,
 		restoreQueuedMessages: () => "",
 		resumeSession: async () => ({ status: "success" }),
-		setModel: async () => true,
-		setThinkingLevel: async () => true,
-		startLogin: () => true,
 		toggleThinkingBlockVisibility: () => true,
-		submitAuthInput: () => true,
-		toggleLlamaModel: () => true,
-		toggleScopedModel: async () => true,
 		...overrides,
 	};
 	return Object.assign(Object.create(RuntimeController.prototype), stub);

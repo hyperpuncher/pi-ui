@@ -21,7 +21,7 @@ const maxModelOptions = 60;
 export const modelRoutes = {
 	[endpoints.modelsRefresh]: {
 		POST: async (request, context) => {
-			await requireHost(context).refreshModels(
+			await requireHost(context).models.refresh(
 				AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]),
 			);
 			return datastarResponse();
@@ -51,7 +51,7 @@ export const modelRoutes = {
 	[endpoints.model]: {
 		POST: async (request, context) => {
 			const model = requiredString(await readActionSignals(request), "model");
-			if (!(await requireHost(context).setModel(model))) {
+			if (!(await requireHost(context).models.set(model))) {
 				throw new RouteError(409, "Model could not be selected.");
 			}
 			return datastarResponse();
@@ -64,7 +64,7 @@ export const modelRoutes = {
 				"modelCycleDirection",
 				directions,
 			);
-			if (!(await requireHost(context).cycleModel(direction))) {
+			if (!(await requireHost(context).models.cycle(direction))) {
 				throw new RouteError(409, "Model could not be cycled.");
 			}
 			return datastarResponse();
@@ -73,7 +73,7 @@ export const modelRoutes = {
 	[endpoints.modelsScopeToggle]: {
 		POST: async (request, context) => {
 			const model = requiredString(await readActionSignals(request), "model");
-			if (!(await requireHost(context).toggleScopedModel(model))) {
+			if (!(await requireHost(context).models.toggleScoped(model))) {
 				throw new RouteError(409, "Model scope could not be changed.");
 			}
 			return datastarResponse();
@@ -85,7 +85,7 @@ export const modelRoutes = {
 				await readActionSignals(request),
 				"thinkingLevel",
 			);
-			if (!(await requireHost(context).setThinkingLevel(level))) {
+			if (!requireHost(context).models.setThinking(level)) {
 				throw new RouteError(409, "Thinking level could not be selected.");
 			}
 			return datastarResponse();
@@ -98,7 +98,7 @@ export const modelRoutes = {
 				"thinkingCycleDirection",
 				directions,
 			);
-			if (!requireHost(context).cycleThinkingLevel(direction)) {
+			if (!requireHost(context).models.cycleThinking(direction)) {
 				throw new RouteError(409, "Thinking level could not be cycled.");
 			}
 			return datastarResponse();

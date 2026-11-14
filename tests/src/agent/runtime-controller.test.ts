@@ -570,11 +570,11 @@ test("RuntimeController forces only the first model picker refresh within thirty
 	const now = Date.now();
 	setSystemTime(now);
 	try {
-		await controller.refreshModels();
+		await controller.models.refresh();
 		setSystemTime(now + 30 * 60 * 1000 - 1);
-		await controller.refreshModels();
+		await controller.models.refresh();
 		setSystemTime(now + 30 * 60 * 1000);
-		await controller.refreshModels();
+		await controller.models.refresh();
 		assertEquals(fake.modelRefreshForces, [true, false, true]);
 	} finally {
 		setSystemTime();
@@ -1153,7 +1153,7 @@ for (const [choice, status] of [
 		const option = dialog.options.find((label) =>
 			label.startsWith(choice === "continue" ? "Continue" : "Fork"),
 		);
-		controller.respondExtensionUi(dialog.id, option, choice === "cancel");
+		controller.extensionUi.respond(dialog.id, option, choice === "cancel");
 		assertEquals((await opening).status, status);
 		assertEquals(await Bun.file(path).text(), original);
 		assertEquals(state.extensionDialog, undefined);

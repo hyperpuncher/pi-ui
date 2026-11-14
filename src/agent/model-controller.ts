@@ -1,4 +1,3 @@
-import type { ModelsRefreshOptions } from "@earendil-works/pi-ai";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 
 import type { AppStore, AppThinkingLevel } from "#src/state/app-store.ts";
@@ -15,7 +14,11 @@ const thinkingLevels: ReadonlySet<string> = new Set([
 
 export type ScopedModelCandidate = { id: string; provider: string; name?: string };
 
+const forceRefreshIntervalMs = 30 * 60 * 1000;
+
 export class ModelController {
+	private lastForcedRefreshAt: number | undefined;
+
 	constructor(
 		private readonly getRuntime: () => AgentSessionRuntime,
 		private readonly state: AppStore,
@@ -98,9 +101,15 @@ export class ModelController {
 		this.state.setModels(models, current);
 	}
 
-	async refresh(options: ModelsRefreshOptions = {}): Promise<void> {
+	/** Forces a catalog fetch at most once per interval; other refreshes use the cache. */
+	async refresh(signal?: AbortSignal): Promise<void> {
+		const now = Date.now();
+		const force =
+			this.lastForcedRefreshAt === undefined ||
+			now - this.lastForcedRefreshAt >= forceRefreshIntervalMs;
+		if (force) this.lastForcedRefreshAt = now;
 		const runtime = this.getRuntime();
-		await runtime.services.modelRuntime.refresh(options);
+		await runtime.services.modelRuntime.refresh({ force, signal });
 		if (runtime === this.getRuntime()) this.sync();
 	}
 

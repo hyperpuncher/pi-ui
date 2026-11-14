@@ -12,13 +12,13 @@ import { endpoints } from "#src/server/routes/endpoints.ts";
 export const authRoutes = {
 	[endpoints.authOpenLogin]: {
 		POST: (_request, context) => {
-			requireHost(context).openLogin();
+			requireHost(context).auth.openLogin();
 			return datastarResponse();
 		},
 	},
 	[endpoints.authOpenLogout]: {
 		POST: (_request, context) => {
-			requireHost(context).openLogout();
+			requireHost(context).auth.openLogout();
 			return datastarResponse();
 		},
 	},
@@ -27,7 +27,7 @@ export const authRoutes = {
 			const signals = await readActionSignals(request);
 			const provider = requiredString(signals, "authProvider");
 			const type = enumField(signals, "authType", ["oauth", "api_key"] as const);
-			if (!requireHost(context).startLogin(provider, type)) {
+			if (!requireHost(context).auth.startLogin(provider, type)) {
 				throw new RouteError(409, "Login could not be started.");
 			}
 			return datastarResponse();
@@ -37,7 +37,7 @@ export const authRoutes = {
 		POST: async (request, context) => {
 			const input =
 				optionalString(await readActionSignals(request), "authInput") ?? "";
-			if (!requireHost(context).submitAuthInput(input)) {
+			if (!requireHost(context).auth.submitInput(input)) {
 				throw new RouteError(409, "Authentication input was not accepted.");
 			}
 			return datastarResponse();
@@ -49,7 +49,7 @@ export const authRoutes = {
 				await readActionSignals(request),
 				"authProvider",
 			);
-			if (!requireHost(context).logout(provider)) {
+			if (!requireHost(context).auth.logout(provider)) {
 				throw new RouteError(409, "Logout could not be started.");
 			}
 			return datastarResponse();
@@ -57,7 +57,7 @@ export const authRoutes = {
 	},
 	[endpoints.authClose]: {
 		POST: (_request, context) => {
-			requireHost(context).closeAuth();
+			requireHost(context).auth.close();
 			return datastarResponse();
 		},
 	},

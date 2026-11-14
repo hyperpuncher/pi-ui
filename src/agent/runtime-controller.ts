@@ -108,7 +108,6 @@ const extensionFactories = [
 	},
 	{ name: "mcp", factory: createMcpExtension(), builtin: true, replaceable: true },
 ];
-const modelCatalogForceIntervalMs = 30 * 60 * 1000;
 const systemSlashCommands = [
 	{
 		name: "login",
@@ -203,16 +202,16 @@ export class RuntimeController {
 	private unsubscribe: (() => void) | undefined;
 	private readonly tools = createSessionEventToolState();
 	private readonly prompts: PromptLifecycle;
-	private readonly auth: AuthController;
+	readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
 	private readonly backgroundSessions = new Map<string, BackgroundSession>();
 	private nextGeneration = 1;
 	private readonly completedBackgroundPaths = new Set<string>();
 	private readonly catalog: SessionCatalog;
-	private readonly llama: LlamaController;
-	private readonly models: ModelController;
+	readonly llama: LlamaController;
+	readonly models: ModelController;
 	private readonly usage: UsageController;
-	private readonly extensionUi: ExtensionUiController;
+	readonly extensionUi: ExtensionUiController;
 	private readonly transcript = new TranscriptProjector();
 	private projectedSessionId: string | undefined;
 	private readonly tree: TreeProjector;
@@ -222,7 +221,6 @@ export class RuntimeController {
 	private resetChatOnInvalidation = false;
 	private disposal: Promise<void> | undefined;
 	private initialCatalogLoad: Promise<void> | undefined;
-	private lastForcedModelRefreshAt: number | undefined;
 	private readonly dependencies: RuntimeControllerDependencies;
 	private readonly sessionDir: string | undefined;
 	private readonly autoTitlesInFlight = new Set<string>();
@@ -401,19 +399,19 @@ export class RuntimeController {
 			return true;
 		}
 		if (trimmed === "/login" || trimmed.startsWith("/login ")) {
-			this.openLogin(
+			this.auth.openLogin(
 				trimmed.startsWith("/login ") ? trimmed.slice(7).trim() : undefined,
 			);
 			return true;
 		}
 
 		if (trimmed === "/logout") {
-			this.openLogout();
+			this.auth.openLogout();
 			return true;
 		}
 
 		if (trimmed === "/llama") {
-			this.openLlama();
+			this.llama.open();
 			return true;
 		}
 
@@ -850,14 +848,6 @@ export class RuntimeController {
 		return await this.tree.navigate(entryId, options);
 	}
 
-	async setThinkingLevel(level: string): Promise<boolean> {
-		return this.models.setThinking(level);
-	}
-
-	cycleThinkingLevel(direction: "forward" | "backward" = "forward"): boolean {
-		return this.models.cycleThinking(direction);
-	}
-
 	toggleThinkingBlockVisibility(): boolean {
 		const settings = this.runtime.session.settingsManager;
 		if (!settings) return false;
@@ -953,71 +943,6 @@ export class RuntimeController {
 				this.state.setActivityText(undefined);
 			}
 		}
-	}
-
-	openLogin(providerRef?: string): void {
-		this.auth.openLogin(providerRef);
-	}
-
-	openLogout(): void {
-		this.auth.openLogout();
-	}
-
-	startLogin(providerId: string, authType: string): boolean {
-		return this.auth.startLogin(providerId, authType);
-	}
-
-	submitAuthInput(value: string): boolean {
-		return this.auth.submitInput(value);
-	}
-
-	logout(providerId: string): boolean {
-		return this.auth.logout(providerId);
-	}
-
-	closeAuth(): void {
-		this.auth.close();
-	}
-
-	openLlama(): void {
-		this.llama.open();
-	}
-
-	toggleLlamaModel(modelId: string): boolean {
-		return this.llama.toggle(modelId);
-	}
-
-	closeLlama(): void {
-		this.llama.close();
-	}
-
-	respondExtensionUi(
-		requestId: string,
-		response: string | undefined,
-		cancelled: boolean,
-	): boolean {
-		return this.extensionUi.respond(requestId, response, cancelled);
-	}
-
-	async refreshModels(signal?: AbortSignal): Promise<void> {
-		const now = Date.now();
-		const force =
-			this.lastForcedModelRefreshAt === undefined ||
-			now - this.lastForcedModelRefreshAt >= modelCatalogForceIntervalMs;
-		if (force) this.lastForcedModelRefreshAt = now;
-		await this.models.refresh({ force, signal });
-	}
-
-	async setModel(modelRef: string): Promise<boolean> {
-		return await this.models.set(modelRef);
-	}
-
-	async cycleModel(direction: "forward" | "backward" = "forward"): Promise<boolean> {
-		return await this.models.cycle(direction);
-	}
-
-	async toggleScopedModel(modelRef: string): Promise<boolean> {
-		return await this.models.toggleScoped(modelRef);
 	}
 
 	dispose(): Promise<void> {

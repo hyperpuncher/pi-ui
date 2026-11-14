@@ -219,5 +219,5 @@ async function waitForDialog(
 function respond(controller: RuntimeController, store: AppStore, value: string): void {
 	const id = store.extensionDialog?.id;
 	if (!id) throw new Error("extension dialog is not open");
-	assertEquals(controller.respondExtensionUi(id, value, false), true);
+	assertEquals(controller.extensionUi.respond(id, value, false), true);
 }
