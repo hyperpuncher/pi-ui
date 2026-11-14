@@ -9,7 +9,7 @@ import type {
 	AppStorePresentation,
 	UiCommitEffect,
 } from "#src/state/app-store.ts";
-import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts";
+import { FrameScheduler } from "#src/state/frame-scheduler.ts";
 import type { TranscriptMessage } from "#src/state/transcript-state.ts";
 import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
@@ -58,7 +58,7 @@ export class UiRenderer implements AppStorePresentation {
 		slashQuery: "",
 		workspaceSearch: { query: "", results: [] },
 	};
-	private readonly frames = new StreamingFrameScheduler<true>(() => this.flush());
+	private readonly frames = new FrameScheduler(() => this.flush());
 	private viewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private pendingEnhancements = new Set<string>();
@@ -81,8 +81,8 @@ export class UiRenderer implements AppStorePresentation {
 			(id) => this.pendingEnhancements.add(id),
 			options,
 			{
-				schedule: () => this.frames.schedule(true),
-				flush: () => this.frames.flush(true),
+				schedule: () => this.frames.schedule(),
+				flush: () => this.frames.flush(),
 			},
 		);
 		this.compactTools = this.messages.compactTools;
@@ -163,7 +163,7 @@ export class UiRenderer implements AppStorePresentation {
 		if (effect?.type === "render-transcript") this.transcriptPending = true;
 		else if (effect) this.pendingEffects.push(effect);
 		this.viewPending = true;
-		this.frames.schedule(true);
+		this.frames.schedule();
 	}
 	private flush(): void {
 		const effects = this.pendingEffects;
