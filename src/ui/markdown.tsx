@@ -2,20 +2,14 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
-import {
-	type DiffsStreamTokenizer,
-	getFiletypeFromFileName,
-	getHighlighterIfLoaded,
-	type ThemedToken,
-	tokensToHtml,
-} from "@pierre/diffs";
+import { getFiletypeFromFileName, getHighlighterIfLoaded } from "@pierre/diffs";
 import { isSupportedLanguage } from "@pierre/highlights";
 
 import { activeCodeThemes, codeThemeKey } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import { renderMermaid } from "#src/ui/mermaid.ts";
-import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
+import { BoundedCache } from "#src/ui/render-cache.ts";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { fileUriToPath } from "#static/file-uri.js";
 
@@ -50,18 +44,9 @@ const codeBlockCache = new BoundedCache<string, string>(
 	maxCodeBlockEntries,
 	stringCacheOptions,
 );
-const streamingCodeBlockStates = new Map<string, StreamingCodeBlockState>();
 const incompleteLinkPattern = /^\[([^[\]\n]+)\]\([^\n)]*$/;
 const codeBlockPattern =
 	/<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g;
-
-type StreamingCodeBlockState = {
-	language: string;
-	code: string;
-	tokenizer: DiffsStreamTokenizer;
-	stable: ThemedToken[];
-	unstable: ThemedToken[];
-};
 
 const markdownHtmlRewriter = new HTMLRewriter()
 	.on("a", {
@@ -176,10 +161,6 @@ export function renderMarkdownStreaming(
 
 export function releaseMarkdownStreamingState(cacheKey: string): void {
 	streamingCache.delete(cacheKey);
-	deleteStringKeysWithPrefix(
-		streamingCodeBlockStates,
-		`${codeThemeKey()}:${cacheKey}:`,
-	);
 }
 
 export async function renderMarkdownFinal(
@@ -312,13 +293,13 @@ function renderStreamingCodeBlocks(
 			}
 			const language = codeFenceLanguage(rawLanguage);
 			const code = source.replace(/\n`{1,2}[ \t]*$/, "");
-			return cacheKeyPrefix
-				? highlightStreamingCodeBlock(
-						code,
-						language,
-						`${cacheKeyPrefix}:${blockIndex}`,
-					)
-				: renderStreamingPlainCodeBlock(code, language);
+			return syncHtml(
+				<CodeBlock
+					pre={highlightCode(code, language)}
+					language={language}
+					source={code}
+				/>,
+			);
 		},
 	);
 }
@@ -359,86 +340,22 @@ function cachedCodeBlock(code: string, language: string): string {
 	const key = `${codeThemeKey()}\0${language}\0${code}`;
 	const cached = codeBlockCache.get(key);
 	if (cached) return cached;
-	const highlighted =
-		getHighlighterIfLoaded()?.codeToHtml(code, {
-			lang: language,
-			themes: activeCodeThemes,
-			defaultColor: "light-dark()",
-		}) ?? renderCodeTokensPre(code);
+	const highlighted = highlightCode(code, language);
 	codeBlockCache.set(key, highlighted);
 	return highlighted;
 }
 
-function highlightStreamingCodeBlock(
-	code: string,
-	language: string,
-	cacheKey: string,
-): string {
-	const highlighter = getHighlighterIfLoaded();
-	if (!highlighter) return renderStreamingPlainCodeBlock(code, language);
-
-	const themedCacheKey = `${codeThemeKey()}:${cacheKey}`;
-	let state = streamingCodeBlockStates.get(themedCacheKey);
-	if (!state || state.language !== language || !code.startsWith(state.code)) {
-		state?.tokenizer.dispose();
-		state = {
-			language,
-			code: "",
-			tokenizer: highlighter.createStreamTokenizer({
-				lang: language,
-				themes: activeCodeThemes,
-				defaultColor: "light-dark()",
-			}),
-			stable: [],
-			unstable: [],
-		};
-		streamingCodeBlockStates.set(themedCacheKey, state);
-	}
-
-	const chunk = code.slice(state.code.length);
-	if (chunk) {
-		const result = state.tokenizer.enqueue(chunk);
-		if (result instanceof Promise)
-			throw new Error("Highlights stream tokenizer must be synchronous");
-		state.stable.push(...result.stable);
-		state.unstable = result.unstable;
-		state.code = code;
-	}
-
-	return syncHtml(
-		<CodeBlock
-			pre={renderCodeTokensPre(code, [...state.stable, ...state.unstable])}
-			language={language}
-			source={code}
-		/>,
-	);
-}
-
-function renderCodeTokensPre(
-	code: string,
-	tokens: ThemedToken[] = [{ content: code, offset: 0 }],
-): string {
-	const lines: ThemedToken[][] = [[]];
-	// The stream returns flat tokens; Pierre's HTML renderer expects source lines.
-	for (const token of tokens) {
-		let offset = token.offset;
-		for (const [index, content] of token.content.split("\n").entries()) {
-			if (index > 0) lines.push([]);
-			if (content) lines[lines.length - 1]!.push({ ...token, content, offset });
-			offset += content.length + 1;
-		}
-	}
-	return tokensToHtml(
-		code,
-		{ tokens: lines, rootStyle: false },
-		{ lang: "text", themes: activeCodeThemes, defaultColor: "light-dark()" },
-		true,
-	);
-}
-
-function renderStreamingPlainCodeBlock(code: string, language: string): string {
-	return syncHtml(
-		<CodeBlock pre={renderCodeTokensPre(code)} language={language} source={code} />,
+function highlightCode(code: string, language: string): string {
+	return (
+		getHighlighterIfLoaded()?.codeToHtml(code, {
+			lang: language,
+			themes: activeCodeThemes,
+			defaultColor: "light-dark()",
+		}) ??
+		`<pre class="diffs" tabindex="0"><code>${code
+			.split("\n")
+			.map((line) => `<span class="line">${Bun.escapeHTML(line)}</span>`)
+			.join("\n")}</code></pre>`
 	);
 }
 
