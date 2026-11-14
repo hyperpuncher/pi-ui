@@ -15,8 +15,6 @@ import {
 function tool(overrides: Partial<AppMessage> = {}): AppMessage {
 	return {
 		id: "tool-1",
-		presentationState: "final",
-		presentationVersion: 1,
 		role: "tool",
 		state: "success",
 		text: "",
@@ -29,8 +27,6 @@ function tool(overrides: Partial<AppMessage> = {}): AppMessage {
 test("user messages render attached images without placeholder text", () => {
 	const html = renderMessage({
 		id: "user-image",
-		presentationState: "plain",
-		presentationVersion: 1,
 		role: "user",
 		text: "check this",
 		attachments: [
@@ -46,8 +42,6 @@ test("user messages render attached images without placeholder text", () => {
 	assertStringIncludes(
 		renderMessage({
 			id: "user-image-url",
-			presentationState: "plain",
-			presentationVersion: 1,
 			role: "user",
 			text: "",
 			attachments: [
@@ -62,8 +56,6 @@ test("user messages render attached images without placeholder text", () => {
 	);
 	const sized = renderMessage({
 		id: "user-image-sized",
-		presentationState: "plain",
-		presentationVersion: 1,
 		role: "user",
 		text: "",
 		attachments: [
@@ -109,17 +101,12 @@ test("tool messages render generated images only in expanded mode", () => {
 test("message projection replaces inline image data with stable URLs", () => {
 	const store = new AppStore();
 	let registrations = 0;
-	const renderer = new MessageRenderService(
-		store,
-		() => {},
-		() => {},
-		{
-			registerImage: () => {
-				registrations += 1;
-				return "/sessions/image?id=one";
-			},
+	const renderer = new MessageRenderService(store, () => {}, {
+		registerImage: () => {
+			registrations += 1;
+			return "/sessions/image?id=one";
 		},
-	);
+	});
 	// 1x1 png; projection probes the header to reserve the box.
 	const data =
 		"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -144,11 +131,7 @@ test("message projection replaces inline image data with stable URLs", () => {
 
 test("assistant messages summarize preceding tool activity", () => {
 	const store = new AppStore();
-	const renderer = new MessageRenderService(
-		store,
-		() => {},
-		() => {},
-	);
+	const renderer = new MessageRenderService(store, () => {});
 	store.transcript.replaceMessages([
 		{ role: "user", text: "fix it", timestamp: new Date(0) },
 		{ role: "thought", text: "planning", timestamp: new Date(1_000) },
@@ -166,8 +149,6 @@ test("assistant messages summarize preceding tool activity", () => {
 test("system messages make share URLs actionable and escape text", () => {
 	const html = renderMessage({
 		id: "share-1",
-		presentationState: "plain",
-		presentationVersion: 1,
 		role: "system",
 		text: "Share <ready>: https://pi.dev/session/#gist-id",
 		timestamp: new Date(0),
@@ -336,8 +317,6 @@ test("plain tool titles remain escaped", () => {
 test("older messages use one wrapper with a load spinner", () => {
 	const message: AppMessage = {
 		id: "user-1",
-		presentationState: "plain",
-		presentationVersion: 1,
 		role: "user",
 		text: "hello",
 		timestamp: new Date(0),
@@ -362,8 +341,6 @@ test("thought visibility does not wait for per-row signal effects", () => {
 		role: "thought",
 		text: "**reasoning**",
 		timestamp: new Date(0),
-		presentationState: "final",
-		presentationVersion: 1,
 	});
 	assertStringIncludes(html, 'id="message-thought-1"');
 	assertStringIncludes(html, 'class="thought-content"');

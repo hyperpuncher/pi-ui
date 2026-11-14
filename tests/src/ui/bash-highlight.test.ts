@@ -354,8 +354,6 @@ test("formats shell operators without touching embedded scripts or existing newl
 test("renders embedded scripts as escaped, themed text", async () => {
 	const html = renderMessage({
 		id: "heredoc",
-		presentationState: "final",
-		presentationVersion: 1,
 		role: "tool",
 		state: "success",
 		text: "",

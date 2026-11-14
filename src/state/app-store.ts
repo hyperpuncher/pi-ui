@@ -155,10 +155,9 @@ export type UiCommitEffect =
 
 export interface AppStorePresentation {
 	requestCommit(effect?: UiCommitEffect): void;
-	messageAppended(id: string): void;
+	messageAppended(): void;
 	messagesRemoved(ids: readonly string[]): void;
 	messageUpdated(id: string): void;
-	streamingMessageStarted(id: string): void;
 	streamingMessageChanged(): void;
 	sessionTransitionChanged(scrollToBottom: boolean): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
@@ -381,7 +380,7 @@ export class AppStore {
 		options: TranscriptMessageOptions = {},
 	): string {
 		const id = this.transcript.appendMessage(role, text, options);
-		this.presentation?.messageAppended(id);
+		this.presentation?.messageAppended();
 		return id;
 	}
 	getMessage(id: string): TranscriptMessage | undefined {
@@ -393,15 +392,15 @@ export class AppStore {
 		this.presentation?.messageUpdated(id);
 	}
 	appendThoughtDelta(delta: string): void {
-		const previousId = this.transcript.activeThoughtMessageId;
-		const id = this.transcript.appendThoughtDelta(delta);
-		if (!previousId) this.presentation?.streamingMessageStarted(id);
+		const started = !this.transcript.activeThoughtMessageId;
+		this.transcript.appendThoughtDelta(delta);
+		if (started) this.presentation?.messageAppended();
 		else this.presentation?.streamingMessageChanged();
 	}
 	appendAssistantDelta(delta: string): void {
-		const previousId = this.transcript.activeAssistantMessageId;
-		const id = this.transcript.appendAssistantDelta(delta);
-		if (!previousId) this.presentation?.streamingMessageStarted(id);
+		const started = !this.transcript.activeAssistantMessageId;
+		this.transcript.appendAssistantDelta(delta);
+		if (started) this.presentation?.messageAppended();
 		else this.presentation?.streamingMessageChanged();
 	}
 	finishAssistant(): void {

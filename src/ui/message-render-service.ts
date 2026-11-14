@@ -1,11 +1,10 @@
+import { codeThemeKey } from "#src/pierre-theme.ts";
 import type { AppStateSnapshot, AppStore } from "#src/state/app-store.ts";
-import { EnhancementQueue } from "#src/state/enhancement-queue.ts";
 import type {
 	TranscriptMessage,
 	TranscriptMessageAttachment,
 } from "#src/state/transcript-state.ts";
-import { hasEmbeddedBash } from "#src/ui/bash-highlight.ts";
-import { loadHighlighter, renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
+import { renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
 import {
 	releaseMarkdownStreamingState,
 	renderCodeFinal,
@@ -13,20 +12,11 @@ import {
 	renderMarkdownStreaming,
 } from "#src/ui/markdown.tsx";
 import { renderMessage, renderMessages } from "#src/ui/messages.tsx";
-import { deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
+import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
 import type { AppMessage } from "#src/ui/render-state.ts";
 import { probeImageDimensions } from "#src/utils/image-dimensions.ts";
 
-type MessagePresentation = Pick<
-	AppMessage,
-	"renderedHtml" | "presentationState" | "presentationVersion"
->;
-type EnhancementKind = "markdown" | "code" | "diff" | "title";
 export type MessageRenderServiceOptions = {
-	enhancementConcurrency?: number;
-	renderMarkdownFinal?: typeof renderMarkdownFinal;
-	renderCode?: (text: string, language: string) => Promise<string>;
-	renderDiff?: (text: string) => Promise<string | undefined>;
 	registerImage?: (image: { data: string; mimeType: string }) => string;
 	clearImages?: () => void;
 };
@@ -38,33 +28,26 @@ const markdownRoles = new Set<AppMessage["role"]>([
 	"summary",
 	"skill",
 ]);
-function rendersMarkdown(role: AppMessage["role"]): boolean {
-	return markdownRoles.has(role);
-}
-function enhancementKind(
-	message: Pick<AppMessage, "format" | "role" | "titleParts">,
-): EnhancementKind | undefined {
-	if (
-		rendersMarkdown(message.role) &&
-		message.role !== "skill" &&
-		message.role !== "compaction" &&
-		message.role !== "summary"
-	)
-		return "markdown";
-	if (message.role !== "tool") return undefined;
-	if (message.format === "diff") return "diff";
-	if (message.format === "code") return "code";
-	if (
-		message.titleParts?.some(
-			(part) =>
-				part.highlight === "javascript" ||
-				(part.highlight === "bash" && hasEmbeddedBash(part.text)),
-		)
-	)
-		return "title";
-}
-function unique(values: readonly (string | undefined)[]): string[] {
-	return [...new Set(values.filter((value): value is string => value !== undefined))];
+
+// Tool output repeats across restores; bound it like the Markdown cache.
+const toolOutputCache = new BoundedCache<string, string>(500, {
+	maxWeight: 16 * 1024 * 1024,
+	weight: (key, value) => 2 * (key.length + value.length),
+});
+
+function renderToolOutput(message: TranscriptMessage): string | undefined {
+	const { format, text } = message;
+	if ((format !== "diff" && format !== "code") || !text.trim()) return undefined;
+	if (format === "code" && message.state === "running") return undefined;
+	const key = `${codeThemeKey()}\0${format}\0${text}`;
+	const cached = toolOutputCache.get(key);
+	if (cached !== undefined) return cached;
+	const html =
+		format === "diff"
+			? (renderPierreDiff(text) ?? renderCodeFinal(text, "diff", { chrome: false }))
+			: renderPierreCode(text, "bash", { disableLineNumbers: true });
+	if (html !== undefined) toolOutputCache.set(key, html);
+	return html;
 }
 
 function formatActivityDuration(milliseconds: number): string {
@@ -75,42 +58,20 @@ function formatActivityDuration(milliseconds: number): string {
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
-/** Owns message presentation caches, frame scheduling, and bounded enhancement work. */
+/** Projects transcript messages to HTML and patches the ones changed since the last frame. */
 export class MessageRenderService {
-	private readonly presentation = new Map<string, MessagePresentation>();
 	private readonly imageUrls = new Map<
 		string,
 		{ data: string; url: string; width?: number; height?: number }
 	>();
-	private readonly queue: EnhancementQueue;
 	private readonly dirtyIds = new Set<string>();
-	private readonly renderMarkdownEnhancement: typeof renderMarkdownFinal;
-	private readonly renderCodeEnhancement: (
-		text: string,
-		language: string,
-	) => Promise<string>;
-	private readonly renderDiffEnhancement: (text: string) => Promise<string | undefined>;
-	private readonly registerImage: MessageRenderServiceOptions["registerImage"];
-	private readonly clearImages: MessageRenderServiceOptions["clearImages"];
 
 	constructor(
 		private readonly store: AppStore,
 		private readonly patchMessage: (html: string, selector: string) => void,
-		private readonly deferEnhancement: (id: string) => void,
-		options: MessageRenderServiceOptions = {},
+		private readonly options: MessageRenderServiceOptions = {},
 		private readonly frames = { schedule: () => {}, flush: () => {} },
-	) {
-		this.queue = new EnhancementQueue(options.enhancementConcurrency ?? 2);
-		this.renderMarkdownEnhancement =
-			options.renderMarkdownFinal ?? renderMarkdownFinal;
-		this.renderCodeEnhancement =
-			options.renderCode ??
-			((text, language) =>
-				renderPierreCode(text, language, { disableLineNumbers: true }));
-		this.renderDiffEnhancement = options.renderDiff ?? renderPierreDiff;
-		this.registerImage = options.registerImage;
-		this.clearImages = options.clearImages;
-	}
+	) {}
 
 	projectMessages(messages: readonly TranscriptMessage[]): AppMessage[] {
 		return messages.map((message) => this.project(message));
@@ -134,249 +95,101 @@ export class MessageRenderService {
 		if (!message) return undefined;
 		return renderMessage(this.project(message), this.compactTools);
 	}
-	messageAppended(id: string): void {
-		const message = this.store.transcript.getMessage(id);
-		if (!message) return;
-		this.presentation.set(id, {
-			renderedHtml:
-				rendersMarkdown(message.role) && message.text.trim()
-					? renderMarkdownStreaming(message.text, { cacheKey: id })
-					: undefined,
-			presentationState: rendersMarkdown(message.role) ? "streaming" : "plain",
-			presentationVersion: 0,
-		});
-		if (
-			message.role === "tool" &&
-			(message.state !== "running" || enhancementKind(message) === "title")
-		) {
-			this.enqueueEnhancement(id);
-		}
-	}
 	messageUpdated(id: string): void {
-		const message = this.store.transcript.getMessage(id);
-		if (!message) return;
 		releaseMarkdownStreamingState(id);
-		const value = this.ensure(id);
-		value.renderedHtml = undefined;
-		value.presentationState = "plain";
-		value.presentationVersion += 1;
-		this.scheduleMessages([id]);
-	}
-	codeThemeChanged(): void {
-		const streamingIds = new Set(this.streamingIds());
-		this.clearScheduledMessages();
-		this.queue.cancelAll();
-		for (const id of this.presentation.keys()) releaseMarkdownStreamingState(id);
-		this.presentation.clear();
-		for (const message of this.store.messages) {
-			this.messageAppended(message.id);
-			if (
-				enhancementKind(message) === "markdown" &&
-				!streamingIds.has(message.id)
-			) {
-				this.deferEnhancement(message.id);
-			}
-		}
-	}
-	streamingMessageStarted(id: string): void {
-		this.initializeStreaming(id);
+		this.dirtyIds.add(id);
+		this.frames.schedule();
 	}
 	streamingMessageChanged(): void {
-		const ids = this.streamingIds();
-		for (const id of ids) this.ensure(id).presentationVersion += 1;
-		this.scheduleMessages(ids);
+		for (const id of this.streamingIds()) this.dirtyIds.add(id);
+		this.frames.schedule();
 	}
-	assistantFinished(activeIds: { assistantId?: string; thoughtId?: string }): void {
-		const ids = unique([activeIds.thoughtId, activeIds.assistantId]);
-		this.flushMessages(ids);
-		for (const id of ids) this.deferEnhancement(id);
+	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
+		for (const id of [ids.thoughtId, ids.assistantId]) {
+			if (id === undefined) continue;
+			releaseMarkdownStreamingState(id);
+			this.dirtyIds.add(id);
+		}
+		this.frames.flush();
 	}
-	/** Drops all presentation state before the transcript changes wholesale. */
+	/** Drops message state before the transcript changes wholesale or the theme changes. */
 	reset(): void {
-		this.clearScheduledMessages();
-		this.queue.cancelAll();
+		this.dirtyIds.clear();
 		for (const message of this.store.transcript.allMessages)
 			releaseMarkdownStreamingState(message.id);
-		this.presentation.clear();
 		this.imageUrls.clear();
-		this.clearImages?.();
-	}
-	/** Restarts streaming and queues final rendering for the visible messages. */
-	restart(enhance: boolean): void {
-		for (const id of this.streamingIds()) this.initializeStreaming(id);
-		if (!enhance) return;
-		for (const message of this.store.messages.toReversed())
-			this.deferEnhancement(message.id);
+		this.options.clearImages?.();
 	}
 	dropMessages(ids: readonly string[]): void {
 		for (const id of ids) {
-			this.presentation.delete(id);
 			releaseMarkdownStreamingState(id);
 			deleteStringKeysWithPrefix(this.imageUrls, `${id}:`);
 		}
-	}
-	enqueueEnhancement(id: string): void {
-		if (!this.store.transcript.isMessageVisible(id)) return;
-		const message = this.store.transcript.getMessage(id);
-		const projected = message ? this.project(message) : undefined;
-		const kind = projected ? enhancementKind(projected) : undefined;
-		const value = message ? this.ensure(id) : undefined;
-		if (
-			!message ||
-			!kind ||
-			!value ||
-			(kind === "markdown" && this.streamingIds().includes(id)) ||
-			(kind !== "title" && !message.text.trim()) ||
-			value.presentationState === "enhancing" ||
-			value.presentationState === "final"
-		)
-			return;
-		const text = message.text;
-		const format = message.format;
-		const version = value.presentationVersion;
-		value.presentationState = "enhancing";
-		this.queue.enqueue({
-			priority: this.store.transcript.getMessageIndex(id) ?? 0,
-			run: async (signal) => {
-				await loadHighlighter();
-				if (signal.aborted) return;
-				// The message may have scrolled out of the visible window while
-				// queued. Rendering it anyway would repopulate the evicted cache.
-				if (!this.store.transcript.isMessageVisible(id)) return;
-				const html = await this.renderEnhancement(kind, text, id);
-				if (signal.aborted) return;
-				const current = this.store.transcript.getMessage(id);
-				if (
-					!current ||
-					current.text !== text ||
-					current.format !== format ||
-					!this.store.transcript.isMessageVisible(id)
-				)
-					return;
-				const currentValue = this.ensure(id);
-				if (currentValue.presentationVersion !== version) return;
-				const unchanged =
-					kind === "markdown" && currentValue.renderedHtml === html;
-				currentValue.renderedHtml = html;
-				currentValue.presentationState = "final";
-				releaseMarkdownStreamingState(id);
-				if (!unchanged) this.broadcast(current);
-			},
-			onCancel: () => releaseMarkdownStreamingState(id),
-			onError: (error) => {
-				if (!this.store.transcript.isMessageVisible(id)) return;
-				const current = this.store.transcript.getMessage(id);
-				const currentValue = this.ensure(id);
-				if (
-					current?.text === text &&
-					current.format === format &&
-					currentValue.presentationVersion === version
-				) {
-					currentValue.presentationState = "plain";
-					releaseMarkdownStreamingState(id);
-				}
-				console.warn(`Failed to enhance message ${id}`, error);
-			},
-		});
-	}
-	private streamingIds(): string[] {
-		return unique([
-			this.store.transcript.activeThoughtMessageId,
-			this.store.transcript.activeAssistantMessageId,
-		]);
 	}
 	/** Renders messages changed since the last frame. The renderer calls this once per frame. */
 	patchChangedMessages(transcriptPatched: boolean): void {
 		const ids = [...this.dirtyIds];
 		this.dirtyIds.clear();
-		for (const id of ids) this.patchScheduledMessage(id, !transcriptPatched);
-	}
-	private scheduleMessages(ids: readonly string[]): void {
-		for (const id of ids) this.dirtyIds.add(id);
-		this.frames.schedule();
-	}
-	private flushMessages(ids: readonly string[]): void {
-		for (const id of ids) this.dirtyIds.add(id);
-		this.frames.flush();
-	}
-	private clearScheduledMessages(): void {
-		this.dirtyIds.clear();
-	}
-	private initializeStreaming(id: string): void {
-		const message = this.store.transcript.getMessage(id);
-		if (!message) return;
-		this.presentation.set(id, {
-			renderedHtml: message.text.trim()
-				? renderMarkdownStreaming(message.text, { cacheKey: id })
-				: undefined,
-			presentationState: "streaming",
-			presentationVersion: 0,
-		});
-	}
-	private patchScheduledMessage(id: string, patch: boolean): void {
-		const message = this.store.transcript.getMessage(id);
-		if (!message) return;
-		if (rendersMarkdown(message.role) && message.text.trim()) {
-			const value = this.ensure(id);
-			value.renderedHtml = renderMarkdownStreaming(message.text, { cacheKey: id });
-			value.presentationState = "streaming";
+		if (transcriptPatched) return;
+		for (const id of ids) {
+			const html = this.renderMessageElement(id);
+			if (html !== undefined) this.patchMessage(html, `#message-${id}`);
 		}
-		if (patch) this.broadcast(message);
-		if (
-			message.role === "tool" &&
-			(message.state !== "running" || enhancementKind(message) === "title")
-		) {
-			this.enqueueEnhancement(id);
-		}
+	}
+	private streamingIds(): string[] {
+		const { activeThoughtMessageId, activeAssistantMessageId } =
+			this.store.transcript;
+		return [activeThoughtMessageId, activeAssistantMessageId].filter(
+			(id): id is string => id !== undefined,
+		);
+	}
+	private renderedHtml(message: TranscriptMessage): string | undefined {
+		if (!markdownRoles.has(message.role)) return renderToolOutput(message);
+		if (!message.text.trim()) return undefined;
+		return this.streamingIds().includes(message.id)
+			? renderMarkdownStreaming(message.text, { cacheKey: message.id })
+			: renderMarkdownFinal(message.text, { cacheKey: message.id });
 	}
 	private project(message: TranscriptMessage): AppMessage {
-		const presentation = this.ensure(message.id);
-		const activitySummary = this.activitySummary(message);
-		if (
-			rendersMarkdown(message.role) &&
-			message.text.trim() &&
-			presentation.renderedHtml === undefined
-		) {
-			// Static messages need Markdown structure immediately. Final syntax
-			// highlighting may remain queued, but plain source must never flash.
-			presentation.renderedHtml = renderMarkdownStreaming(message.text, {
-				cacheKey: message.id,
-			});
-		}
 		return {
 			...message,
-			activitySummary,
-			attachments: message.attachments?.map((attachment, index) => {
-				const image = attachment.image;
-				if (!image?.data || !this.registerImage) return attachment;
-				const key = `${message.id}:${index}`;
-				let registered = this.imageUrls.get(key);
-				if (!registered || registered.data !== image.data) {
-					// Probe the header sync: Bun.Image.metadata is async and this
-					// runs inside a sync projection.
-					registered = {
-						data: image.data,
-						url: this.registerImage({
-							data: image.data,
-							mimeType: image.mimeType,
-						}),
-						...probeImageDimensions(image.data),
-					};
-					this.imageUrls.set(key, registered);
-				}
-				const renderedImage: NonNullable<TranscriptMessageAttachment["image"]> = {
-					mimeType: image.mimeType,
-					url: registered.url,
-				};
-				// A box needs both sides; a lone side reserves nothing.
-				if (registered.width !== undefined && registered.height !== undefined) {
-					renderedImage.width = registered.width;
-					renderedImage.height = registered.height;
-				}
-				return { ...attachment, image: renderedImage };
-			}),
-			...presentation,
+			activitySummary: this.activitySummary(message),
+			attachments: message.attachments?.map((attachment, index) =>
+				this.projectAttachment(message.id, index, attachment),
+			),
+			renderedHtml: this.renderedHtml(message),
 		};
+	}
+	private projectAttachment(
+		id: string,
+		index: number,
+		attachment: TranscriptMessageAttachment,
+	): TranscriptMessageAttachment {
+		const image = attachment.image;
+		const registerImage = this.options.registerImage;
+		if (!image?.data || !registerImage) return attachment;
+		const key = `${id}:${index}`;
+		let registered = this.imageUrls.get(key);
+		if (!registered || registered.data !== image.data) {
+			// Probe the header sync: Bun.Image.metadata is async and this
+			// runs inside a sync projection.
+			registered = {
+				data: image.data,
+				url: registerImage({ data: image.data, mimeType: image.mimeType }),
+				...probeImageDimensions(image.data),
+			};
+			this.imageUrls.set(key, registered);
+		}
+		const renderedImage: NonNullable<TranscriptMessageAttachment["image"]> = {
+			mimeType: image.mimeType,
+			url: registered.url,
+		};
+		// A box needs both sides; a lone side reserves nothing.
+		if (registered.width !== undefined && registered.height !== undefined) {
+			renderedImage.width = registered.width;
+			renderedImage.height = registered.height;
+		}
+		return { ...attachment, image: renderedImage };
 	}
 	private activitySummary(message: TranscriptMessage): AppMessage["activitySummary"] {
 		if (message.role !== "assistant") return undefined;
@@ -399,34 +212,5 @@ export class MessageRenderService {
 					messages[activityStart]!.timestamp.getTime(),
 			),
 		};
-	}
-	private broadcast(message: TranscriptMessage): void {
-		this.patchMessage(
-			renderMessage(this.project(message), this.compactTools),
-			`#message-${message.id}`,
-		);
-	}
-	private ensure(id: string): MessagePresentation {
-		let value = this.presentation.get(id);
-		if (!value) {
-			value = { presentationState: "plain", presentationVersion: 0 };
-			this.presentation.set(id, value);
-		}
-		return value;
-	}
-	private async renderEnhancement(
-		kind: EnhancementKind,
-		text: string,
-		id: string,
-	): Promise<string | undefined> {
-		if (kind === "title") return undefined;
-		if (kind === "markdown")
-			return await this.renderMarkdownEnhancement(text, { cacheKey: id });
-		if (kind === "diff")
-			return (
-				(await this.renderDiffEnhancement(text)) ??
-				(await renderCodeFinal(text, "diff", { chrome: false }))
-			);
-		return await this.renderCodeEnhancement(text, "bash");
 	}
 }

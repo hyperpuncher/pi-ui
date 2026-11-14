@@ -4,6 +4,4 @@ import type { TranscriptMessage } from "#src/state/transcript-state.ts";
 export type AppMessage = TranscriptMessage & {
 	activitySummary?: { duration: string; stepCount: number };
 	renderedHtml?: string;
-	presentationState: "plain" | "streaming" | "enhancing" | "final";
-	presentationVersion: number;
 };

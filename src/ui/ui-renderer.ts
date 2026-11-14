@@ -61,7 +61,6 @@ export class UiRenderer implements AppStorePresentation {
 	private readonly frames = new FrameScheduler(() => this.flush());
 	private viewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
-	private pendingEnhancements = new Set<string>();
 	private transcriptPending = false;
 	private compactTools: boolean;
 	private sidebarLayout = "";
@@ -78,7 +77,6 @@ export class UiRenderer implements AppStorePresentation {
 				// The pending transcript includes the latest message presentation.
 				if (!this.transcriptPending) hub.patchElement(html, selector);
 			},
-			(id) => this.pendingEnhancements.add(id),
 			options,
 			{
 				schedule: () => this.frames.schedule(),
@@ -101,16 +99,12 @@ export class UiRenderer implements AppStorePresentation {
 		view.slashQuery = slashQuery;
 		view.workspaceSearch = { query: workspaceQuery, results: [] };
 		const disconnect = () => {
-			if (this.hub.clientCount === 0) {
-				this.pendingEnhancements.clear();
-				this.messages.reset();
-			}
+			if (this.hub.clientCount === 0) this.messages.reset();
 		};
 		try {
 			return this.hub.createStream(
 				signal,
 				() => {
-					if (this.hub.clientCount === 1) this.messages.restart(false);
 					const snapshot = this.store;
 					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
 					const elements =
@@ -121,14 +115,6 @@ export class UiRenderer implements AppStorePresentation {
 						queueMicrotask(() => {
 							void this.setWorkspaceSearch(workspaceQuery);
 						});
-					if (this.hub.clientCount === 1) {
-						// Send the readable initial view before starting final highlighting.
-						queueMicrotask(() => {
-							if (this.hub.clientCount === 0) return;
-							for (const message of snapshot.messages.toReversed())
-								this.messages.enqueueEnhancement(message.id);
-						});
-					}
 					return { elements, signals: this.renderSignals(snapshot) };
 				},
 				{ onDisconnect: disconnect },
@@ -168,8 +154,6 @@ export class UiRenderer implements AppStorePresentation {
 	private flush(): void {
 		const effects = this.pendingEffects;
 		this.pendingEffects = [];
-		const enhancementIds = [...this.pendingEnhancements];
-		this.pendingEnhancements.clear();
 		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
 		this.compactTools = this.messages.compactTools;
 		const viewPending = this.viewPending;
@@ -211,12 +195,9 @@ export class UiRenderer implements AppStorePresentation {
 			);
 		}
 		this.transcriptPending = false;
-		if (this.hub.clientCount > 0)
-			for (const id of enhancementIds) this.messages.enqueueEnhancement(id);
 	}
-	messageAppended(id: string): void {
+	messageAppended(): void {
 		if (this.hub.clientCount === 0) return;
-		this.messages.messageAppended(id);
 		this.requestCommit({ type: "render-transcript" });
 	}
 	messagesRemoved(ids: readonly string[]): void {
@@ -236,14 +217,7 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.messageUpdated(id);
 	}
 	codeThemeChanged(): void {
-		if (this.hub.clientCount > 0) this.messages.codeThemeChanged();
-		else this.messages.reset();
-		this.transcriptPending = true;
-		this.requestCommit();
-	}
-	streamingMessageStarted(id: string): void {
-		if (this.hub.clientCount === 0) return;
-		this.messages.streamingMessageStarted(id);
+		this.messages.reset();
 		this.requestCommit({ type: "render-transcript" });
 	}
 	streamingMessageChanged(): void {
@@ -267,7 +241,6 @@ export class UiRenderer implements AppStorePresentation {
 		this.transcriptPending = true;
 		this.messages.reset();
 		replace();
-		if (this.hub.clientCount > 0) this.messages.restart(true);
 	}
 	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
 		if (this.hub.clientCount === 0) return;
@@ -287,9 +260,6 @@ export class UiRenderer implements AppStorePresentation {
 				renderOlderMessagesTrigger(false),
 				"#older-messages-trigger",
 			);
-		}
-		for (const message of messages.toReversed()) {
-			this.messages.enqueueEnhancement(message.id);
 		}
 	}
 	private renderAppElements(snapshot: AppStateSnapshot): string {

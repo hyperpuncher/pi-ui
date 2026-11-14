@@ -11,8 +11,6 @@ import {
 } from "#src/state/transcript-state.ts";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
 import { loadHighlighter } from "#src/ui/diffs.ts";
-import { renderMarkdownFinal } from "#src/ui/markdown.tsx";
-import type { MessageRenderServiceOptions } from "#src/ui/message-render-service.ts";
 import { renderPage } from "#src/ui/page.tsx";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import {
@@ -31,81 +29,28 @@ const configuredModel = {
 	scoped: true,
 };
 
-test("restored messages are readable before final highlighting finishes", async () => {
-	const gates: Array<(html: string) => void> = [];
-	const render = () => new Promise<string>((resolve) => gates.push(resolve));
-	const state = createState({ renderMarkdownFinal: render, renderCode: render });
-	const controller = connection();
-	const reader = await openInitializedStateStream(state, controller.signal);
-	state.replaceMessages([
-		{
-			role: "assistant",
-			text: "**answer**",
-			timestamp,
-		},
-		{
-			role: "tool",
-			text: "tool output",
-			timestamp,
-			format: "code",
-		},
-	]);
-	const fallback = await readUntil(
-		reader,
-		(text) =>
-			text.includes("<strong>answer</strong>") && text.includes("message-tool"),
-	);
-	assertNotIncludes(fallback, "data-enhanced");
-	await waitFor(() => gates.length === 2);
-	gates.forEach((resolve, index) =>
-		resolve(`<div data-enhanced="${index}">safe</div>`),
-	);
-	await readUntil(
-		reader,
-		(text) =>
-			text.includes('data-enhanced="0"') && text.includes('data-enhanced="1"'),
-	);
-});
-
-test("cached Markdown restores do not send identical enhancement patches", async () => {
-	const text = "```ts\nconst cachedEnhancement = true;\n```";
-	await renderMarkdownFinal(text);
+test("restored messages render final Markdown in the transcript patch only", async () => {
+	await loadHighlighter();
 	const state = createState();
 	const reader = await openInitializedStateStream(state, connection().signal);
-	state.replaceMessages([markdownMessage(text)]);
+	state.replaceMessages([
+		markdownMessage("```ts\nconst restored = true;\n```"),
+		{
+			role: "tool",
+			text: "--- a/x.ts\n+++ b/x.ts\n@@ -1 +1 @@\n-old\n+new\n",
+			timestamp,
+			format: "diff",
+		},
+	]);
 	const transcript = await readUntil(reader, (output) =>
 		output.includes("data: selector #messages"),
 	);
-	assertIncludes(transcript, "cachedEnhancement");
-	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
-	state.setActivityText("after cached enhancement");
-	const tail = await readUntil(reader, (output) =>
-		output.includes("after cached enhancement"),
-	);
-	assertNotIncludes(transcript + tail, "data: selector #message-");
+	assertIncludes(transcript, "color:light-dark(");
+	assertIncludes(transcript, "pierre-diff");
+	state.setActivityText("after restore");
+	const tail = await readUntil(reader, (output) => output.includes("after restore"));
+	assertNotIncludes(tail, "data: selector #message");
 });
-
-test.each([
-	markdownMessage("lightweight source"),
-	{ role: "tool", text: "@@ -1 +1 @@\n-old\n+new", timestamp, format: "diff" },
-] satisfies TranscriptMessageInput[])(
-	"ordinary commits exclude finalized $role messages",
-	async (message) => {
-		const render = async () => "<p>finalized content</p>";
-		const state = createState({ renderMarkdownFinal: render, renderDiff: render });
-		const response = state.createStream(connection().signal);
-		state.replaceMessages([message]);
-		const { finalized, ordinary } = await collectFinalizedPatches(
-			state,
-			response,
-			"finalized content",
-		);
-		assertIncludes(finalized, "finalized content");
-		assertNotIncludes(ordinary, "finalized content");
-		assertNotIncludes(ordinary, message.text);
-		assertNotIncludes(ordinary, 'id="messages"');
-	},
-);
 
 test("asynchronous state changes send one latest view instead of intermediate transcripts", async () => {
 	const state = stateWithMessages(1);
@@ -267,26 +212,6 @@ test("tool display changes rerender only the active presentation", async () => {
 	assertNotIncludes(restored, "tool-title-compact");
 });
 
-test("fast tool highlighting never arrives before its transcript row", async () => {
-	await loadHighlighter();
-	const state = createState({
-		renderCode: async () => "<pre>final tool rendering</pre>",
-	});
-	const reader = await openInitializedStateStream(state, connection().signal);
-	state.appendMessage("tool", "tool source", { format: "code", state: "success" });
-	const output = await readUntil(
-		reader,
-		(text) =>
-			text.includes("data: selector #messages\n") &&
-			text.includes("final tool rendering"),
-	);
-	assertEqual(
-		output.indexOf("data: selector #messages\n") <
-			output.indexOf("final tool rendering"),
-		true,
-	);
-});
-
 test("parallel message updates all reach their final state", async () => {
 	const state = createState();
 	const controller = connection();
@@ -314,84 +239,6 @@ test("parallel message updates all reach their final state", async () => {
 
 	assertEqual(count(updates, "data: selector #message-"), 2);
 	assertEqual(count(updates, "tool-status-success"), 2);
-});
-
-test("loading older pages enqueues only newly revealed messages", async () => {
-	let renderCount = 0;
-	const state = createState({
-		renderMarkdownFinal: (text) => {
-			renderCount += 1;
-			return Promise.resolve(`<p>${text}</p>`);
-		},
-	});
-	connect(state);
-	state.replaceMessages(
-		Array.from({ length: 60 }, (_, index) => markdownMessage(`**message ${index}**`)),
-	);
-	await waitFor(() => renderCount === 30);
-	const older = state.loadOlderMessages();
-	assertEqual(older.length, 30);
-	state.renderer.patchOlderMessages(older);
-
-	const immediatePage = state.renderer.messages.renderTranscript(state);
-	assertIncludes(immediatePage, "<strong>message 0</strong>");
-	assertNotIncludes(immediatePage, "**message 0**");
-	await waitFor(() => renderCount === 60);
-	assertEqual(state.loadOlderMessages(), []);
-	await waitFor(() =>
-		projectedMessages(state).every(
-			({ presentationState }) => presentationState === "final",
-		),
-	);
-});
-
-test("theme changes highlight only loaded messages and invalidate older cached pages", async () => {
-	let theme = "before";
-	const rendered: string[] = [];
-	const state = createState({
-		renderMarkdownFinal: async (text) => {
-			rendered.push(text);
-			return `<p>${theme}: ${text}</p>`;
-		},
-	});
-	connect(state);
-	state.replaceMessages(
-		Array.from({ length: 100 }, (_, index) => markdownMessage(`message ${index}`)),
-	);
-	await waitFor(() => rendered.length === 30);
-	state.renderer.patchOlderMessages(state.loadOlderMessages());
-	await waitFor(() => rendered.length === 60);
-	await waitFor(() =>
-		projectedMessages(state).every(
-			({ presentationState }) => presentationState === "final",
-		),
-	);
-	state.showRecentMessages();
-	assertEqual(state.messages.length, 30);
-
-	theme = "after";
-	rendered.length = 0;
-	state.renderer.codeThemeChanged();
-	await waitFor(() =>
-		projectedMessages(state).every(
-			({ presentationState }) => presentationState === "final",
-		),
-	);
-	assertEqual(rendered.toSorted(), state.messages.map(({ text }) => text).toSorted());
-
-	state.renderer.patchOlderMessages(state.loadOlderMessages());
-	await waitFor(() =>
-		projectedMessages(state).every(
-			({ presentationState }) => presentationState === "final",
-		),
-	);
-	assertEqual(rendered.length, 60);
-	assertEqual(
-		projectedMessages(state).every(({ renderedHtml }) =>
-			renderedHtml?.includes("after:"),
-		),
-		true,
-	);
 });
 
 test("older history patches only the loaded page and the trigger", async () => {
@@ -426,25 +273,6 @@ test("older history patches only the loaded page and the trigger", async () => {
 	assertNotIncludes(trimmed, "data: selector #messages");
 });
 
-test("trimmed messages release their rendered presentations", async () => {
-	let renderCount = 0;
-	const state = createState({
-		renderMarkdownFinal: async (text) => {
-			renderCount += 1;
-			return `<p>${text}</p>`;
-		},
-	});
-	connect(state);
-	const firstId = state.appendMessage("assistant", "old answer");
-	state.finishAssistant();
-	for (let index = 0; index < 100; index += 1) state.appendMessage("user", "new");
-	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
-	assertEqual(renderCount, 1);
-	state.trimOldMessages(firstId, firstId);
-	state.renderer.patchOlderMessages(state.loadOlderMessages());
-	await waitFor(() => renderCount === 2);
-});
-
 test("repaging morphs the transcript and moves to the recent page", async () => {
 	const state = createState();
 	state.replaceMessages(
@@ -468,103 +296,12 @@ test("repaging morphs the transcript and moves to the recent page", async () => 
 	assertIncludes(output, "message 50");
 });
 
-test("replacement discards stale enhancement completion", async () => {
-	const { state, gates } = gatedEnhancementQueue();
-	connect(state);
-	state.replaceMessages([markdownMessage("session A")]);
-	await waitFor(() => gates.length >= 1);
-	state.replaceMessages([markdownMessage("session B")]);
-	gates[0].resolve("<p>stale A</p>");
-	await waitFor(() => gates.length >= 2);
-	gates[1].resolve("<p>final B</p>");
-	await waitFor(() =>
-		projectedMessages(state).every(
-			({ presentationState }) => presentationState === "final",
-		),
-	);
-
-	assertEqual(state.messages.length, 1);
-	assertEqual(state.messages[0].text, "session B");
-	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>final B</p>");
-	assertEqual(projectedMessages(state)[0].presentationState, "final");
-});
-
-test("cancelled enhancement cannot change an identical restored message", async () => {
-	const { state, gates } = gatedEnhancementQueue();
-	connect(state);
-	state.replaceMessages([markdownMessage("same content")]);
-	await waitFor(() => gates.length === 1);
-	state.restoreChat(state.snapshotChat());
-	gates[0].resolve("<p>stale output</p>");
-	await waitFor(() => gates.length === 2);
-	assertNotIncludes(projectedMessages(state)[0].renderedHtml ?? "", "stale output");
-
-	gates[1].resolve("<p>current output</p>");
-	await waitFor(
-		() => projectedMessages(state)[0].renderedHtml === "<p>current output</p>",
-	);
-});
-
-for (const message of [
-	{ role: "assistant" },
-	{ role: "thought" },
-	{ role: "tool", format: "code" },
-	{ role: "tool", format: "diff" },
-] as const) {
-	test(`oversized ${message.role === "tool" ? message.format : message.role} automatically finishes highlighting`, async () => {
-		let finish: ((html: string) => void) | undefined;
-		const render = () =>
-			new Promise<string>((resolve) => {
-				finish = resolve;
-			});
-		const state = createState({
-			renderMarkdownFinal: render,
-			renderCode: render,
-			renderDiff: render,
-		});
-		connect(state);
-		state.replaceMessages([
-			{ ...message, text: "large fallback ".repeat(3_000), timestamp },
-		]);
-		await waitFor(() => finish !== undefined);
-		assertEqual(projectedMessages(state)[0].presentationState, "enhancing");
-		const interim = state.renderer.messages.renderTranscript(state);
-		let text = "";
-		await new HTMLRewriter()
-			.on("main", {
-				text(chunk) {
-					text += chunk.text;
-				},
-			})
-			.transform(new Response(interim))
-			.text();
-		assertIncludes(text, "large fallback");
-		assertNotIncludes(interim, "Enhance formatting");
-		finish?.("<p>highlighting finished</p>");
-		await waitFor(() => projectedMessages(state)[0].presentationState === "final");
-		assertIncludes(
-			state.renderer.messages.renderTranscript(state),
-			"highlighting finished",
-		);
-	});
-}
-
-test("skill and compaction instructions render Markdown without enhancement work", async () => {
-	let renderCount = 0;
-	const state = createState({
-		renderMarkdownFinal: () => {
-			renderCount += 1;
-			return Promise.resolve("<p>enhanced</p>");
-		},
-	});
-	connect(state);
+test("skill and compaction instructions render Markdown", () => {
+	const state = createState();
 	state.replaceMessages([
 		{ role: "skill", text: "**Skill instructions**", timestamp },
 		{ role: "compaction", text: "**Compaction summary**", timestamp },
 	]);
-	await Bun.sleep(0);
-
-	assertEqual(renderCount, 0);
 	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
 	assertIncludes(projectedMessages(state)[1].renderedHtml ?? "", "<strong>");
 });
@@ -581,8 +318,8 @@ test("assistant completion immediately flushes newest streaming content", () => 
 	);
 });
 
-test("background activation resumes streaming and enhances completed messages", async () => {
-	let enhancementCount = 0;
+test("background activation resumes streaming and highlights completed messages", async () => {
+	await loadHighlighter();
 	const background = new TranscriptState({ keys: "N", description: "New" });
 	background.appendAssistantDelta("```ts\nconst partial = true");
 	background.appendMessage("tool", "still running", {
@@ -592,47 +329,21 @@ test("background activation resumes streaming and enhances completed messages", 
 	background.setActivityText("Working...");
 	background.setQueuedMessages(["steer"], ["follow"]);
 
-	const foreground = createState({
-		renderMarkdownFinal: (text) => {
-			enhancementCount += 1;
-			return Promise.resolve(`<p>${text}</p>`);
-		},
-		renderCode: (text) => {
-			enhancementCount += 1;
-			return Promise.resolve(`<pre>${text}</pre>`);
-		},
-	});
+	const foreground = createState();
 	connect(foreground);
 	foreground.restoreChat(background.snapshot());
-	await waitFor(() => enhancementCount === 1);
 
-	assertEqual(projectedMessages(foreground)[0].presentationState, "streaming");
 	assertIncludes(projectedMessages(foreground)[0].renderedHtml ?? "", "partial");
-	assertEqual(foreground.messages[1].state, "running");
+	assertEqual(projectedMessages(foreground)[1].renderedHtml, undefined);
 	assertEqual(foreground.activityText, "Working...");
 	assertEqual(foreground.queuedSteeringMessages, ["steer"]);
 	assertEqual(foreground.queuedFollowUpMessages, ["follow"]);
 
 	background.finishAssistant();
+	background.updateMessage(foreground.messages[1].id, { state: "success" });
 	foreground.restoreChat(background.snapshot());
-	await waitFor(() => projectedMessages(foreground)[0].presentationState === "final");
 	assertIncludes(projectedMessages(foreground)[0].renderedHtml ?? "", "partial");
-});
-
-test("enhancement errors retain the rendered Markdown fallback", async () => {
-	const warn = spyOn(console, "warn").mockImplementation(() => {});
-	onTestFinished(() => warn.mockRestore());
-	const state = createState({
-		renderMarkdownFinal: () => Promise.reject(new Error("render failed")),
-	});
-	connect(state);
-	state.replaceMessages([markdownMessage("**fallback**")]);
-	await waitFor(() => warn.mock.calls.length > 0);
-	assertEqual(projectedMessages(state)[0].presentationState, "plain");
-	assertIncludes(
-		state.renderer.messages.renderTranscript(state),
-		"<p><strong>fallback</strong></p>",
-	);
+	assertIncludes(projectedMessages(foreground)[1].renderedHtml ?? "", "pierre-code");
 });
 
 test("a thrown update still commits its completed mutations", async () => {
@@ -651,13 +362,8 @@ test("a thrown update still commits its completed mutations", async () => {
 	await readUntil(reader, (text) => text.includes("/tmp/committed-before-throw"));
 });
 
-test("message work waits for a client and continues while another tab remains", async () => {
-	const rendered: string[] = [];
-	const render = async (text: string) => {
-		rendered.push(text);
-		return renderMarkdownFinal(text);
-	};
-	const state = createState({ renderMarkdownFinal: render, renderCode: render });
+test("messages added while offline appear on reconnect", async () => {
+	const state = createState();
 	state.appendAssistantDelta("offline answer");
 	state.finishAssistant();
 	const toolId = state.appendMessage("tool", "running", {
@@ -665,71 +371,25 @@ test("message work waits for a client and continues while another tab remains", 
 		state: "running",
 	});
 	state.updateMessage(toolId, { text: "finished tool", state: "success" });
-	await Bun.sleep(0);
-	assertEqual(rendered, []);
-	assertEqual(
-		state.messages.map(({ text }) => text),
-		["offline answer", "finished tool"],
-	);
-
-	const first = connection();
-	const firstReader = responseReader(state.createStream(first.signal));
-	const initial = await readElementAndSignalPatches(firstReader);
-	assertIncludes(initial, "offline answer");
-	await waitFor(() => rendered.length === 2);
-	await Bun.sleep(0);
-	const second = connect(state);
-	first.abort();
-	state.appendAssistantDelta("one tab remains");
-	state.finishAssistant();
-	state.renderer.requestCommit();
-	await waitFor(() => rendered.includes("one tab remains"));
-	assertEqual(rendered.length, 3);
-
-	second.abort();
-	state.appendAssistantDelta("offline again");
-	state.finishAssistant();
-	await Bun.sleep(0);
-	assertEqual(rendered.length, 3);
-
 	state.setActivityText("disconnected");
-	const reconnect = responseReader(state.createStream(connection().signal));
-	const restored = await readElementAndSignalPatches(reconnect);
-	assertIncludes(restored, "offline again");
+	const restored = await readElementAndSignalPatches(
+		responseReader(state.createStream(connection().signal)),
+	);
+	assertIncludes(restored, "offline answer");
+	assertIncludes(restored, "pierre-code");
 	assertIncludes(restored, "disconnected");
-	await waitFor(() => projectedMessages(state).at(-1)?.presentationState === "final");
-	assertEqual(rendered.filter((text) => text === "offline again").length, 1);
 });
 
-test("reconnecting during a turn resumes streaming and final highlighting", async () => {
+test("reconnecting during a turn resumes streaming", () => {
 	const state = createState();
 	state.appendAssistantDelta("before **connection** ");
 	connect(state);
-	assertEqual(projectedMessages(state)[0].presentationState, "streaming");
 	state.appendAssistantDelta("and after");
 	state.finishAssistant();
-	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
 	assertIncludes(
 		projectedMessages(state)[0].renderedHtml ?? "",
 		"before <strong>connection</strong> and after",
 	);
-});
-
-test("last-client disconnect discards in-flight rendering before reconnect", async () => {
-	const { state, gates } = gatedEnhancementQueue();
-	const first = connect(state);
-	state.replaceMessages([markdownMessage("old content")]);
-	await waitFor(() => gates.length === 1);
-	first.abort();
-	state.updateMessage(state.messages[0].id, { text: "current content" });
-	connect(state);
-	gates[0].resolve("<p>stale rendering</p>");
-	await waitFor(() => gates.length === 2);
-	assertEqual(gates[1].text, "current content");
-	assertNotIncludes(state.renderer.messages.renderTranscript(state), "stale rendering");
-	gates[1].resolve("<p>current rendering</p>");
-	await waitFor(() => projectedMessages(state)[0].presentationState === "final");
-	assertEqual(projectedMessages(state)[0].renderedHtml, "<p>current rendering</p>");
 });
 
 test("workspace switches stream prepared content and restore it on reconnect", async () => {
@@ -951,9 +611,9 @@ type TestStore = AppStore & {
 	createStream(signal: AbortSignal): Response;
 };
 
-function createState(options: MessageRenderServiceOptions = {}): TestStore {
+function createState(): TestStore {
 	const store = new AppStore();
-	const renderer = new UiRenderer(store, new DatastarClientHub(), options);
+	const renderer = new UiRenderer(store, new DatastarClientHub());
 	return Object.assign(store, {
 		renderer,
 		createStream: (signal: AbortSignal) => renderer.createStream(signal),
@@ -970,16 +630,6 @@ function stateWithMessages(count: number): TestStore {
 		})),
 	);
 	return state;
-}
-
-function gatedEnhancementQueue() {
-	const gates: Array<{ text: string; resolve: (html: string) => void }> = [];
-	const state = createState({
-		enhancementConcurrency: 1,
-		renderMarkdownFinal: (text) =>
-			new Promise<string>((resolve) => gates.push({ text, resolve })),
-	});
-	return { state, gates };
 }
 
 function connection(): AbortController {

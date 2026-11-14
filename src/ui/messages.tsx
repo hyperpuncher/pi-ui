@@ -722,8 +722,6 @@ function renderNestedToolCalls(message: AppMessage) {
 					id: `${message.id}-${call.id}`,
 					role: "tool",
 					timestamp: message.timestamp,
-					presentationState: "plain",
-					presentationVersion: 0,
 					title: call.name,
 					titleParts: toolTitleParts(call.name, call.arguments ?? {}),
 					state:

@@ -163,20 +163,21 @@ export function releaseMarkdownStreamingState(cacheKey: string): void {
 	streamingCache.delete(cacheKey);
 }
 
-export async function renderMarkdownFinal(
+export function renderMarkdownFinal(
 	markdown: string,
 	options: { localImageBase?: string; cacheKey?: string } = {},
-): Promise<string> {
+): string {
 	const localImageBase = options.localImageBase ?? "";
 	const cacheKey = finalMarkdownCacheKey(markdown, options.cacheKey, localImageBase);
 	const cached = highlightedCache.get(cacheKey);
 	if (cached) return cached;
-	let html = await highlightCodeBlocksFinal(
+	let html = highlightCodeBlocksFinal(
 		compileMarkdown(markdown),
 		options.cacheKey ?? markdown,
 	);
 	if (localImageBase) html = rewriteRelativeImageSources(html, localImageBase);
-	highlightedCache.set(cacheKey, html);
+	// Do not keep plain code blocks that the highlighter can improve later.
+	if (getHighlighterIfLoaded()) highlightedCache.set(cacheKey, html);
 	return html;
 }
 
@@ -228,11 +229,11 @@ function hasUnbalancedEmphasis(html: string): boolean {
 	return stack.length > 0;
 }
 
-export async function renderCodeFinal(
+export function renderCodeFinal(
 	code: string,
 	language: string,
 	options: { chrome?: boolean } = {},
-): Promise<string> {
+): string {
 	return renderPlainCode(code, codeFenceLanguage(language), options);
 }
 
@@ -304,7 +305,7 @@ function renderStreamingCodeBlocks(
 	);
 }
 
-async function highlightCodeBlocksFinal(html: string, scope: string): Promise<string> {
+function highlightCodeBlocksFinal(html: string, scope: string): string {
 	const parts: string[] = [];
 	let offset = 0;
 	let index = 0;
@@ -341,7 +342,7 @@ function cachedCodeBlock(code: string, language: string): string {
 	const cached = codeBlockCache.get(key);
 	if (cached) return cached;
 	const highlighted = highlightCode(code, language);
-	codeBlockCache.set(key, highlighted);
+	if (getHighlighterIfLoaded()) codeBlockCache.set(key, highlighted);
 	return highlighted;
 }
 

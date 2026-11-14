@@ -55,9 +55,9 @@ let toolBytes = 0;
 for (const message of visible) {
 	if (!measureTools || message.role !== "tool") continue;
 	if (message.format === "diff")
-		toolBytes += (await renderPierreDiff(message.text))?.length ?? 0;
+		toolBytes += renderPierreDiff(message.text)?.length ?? 0;
 	else if (message.format === "code")
-		toolBytes += (await renderPierreCode(message.text, "bash")).length;
+		toolBytes += renderPierreCode(message.text, "bash")?.length ?? 0;
 	for (const part of message.titleParts ?? []) {
 		if (part.highlight === "bash") {
 			const result = highlightBash(part.text, { format: true });

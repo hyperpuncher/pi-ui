@@ -1,10 +1,17 @@
 import {
+	createStyleElement,
+	createThemeStyleElement,
+	DiffHunksRenderer,
 	DIFFS_TAG_NAME,
+	FileRenderer,
 	getHighlighterIfLoaded,
+	hastToHtml,
+	parsePatchFiles,
 	preloadHighlighter,
 	type SupportedLanguages,
+	SVGSpriteSheet,
+	wrapThemeCSS,
 } from "@pierre/diffs";
-import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
 
 import { activeCodeThemes } from "#src/pierre-theme.ts";
 
@@ -23,54 +30,73 @@ export async function loadHighlighter(): Promise<boolean> {
 	}
 }
 
-export async function renderPierreDiff(patch: string): Promise<string | undefined> {
-	const files = await preloadPatchFile({
-		patch,
-		options: {
+const sharedOptions = {
+	themeType: "system",
+	preferredHighlighter: "highlights",
+	disableFileHeader: true,
+	headerRenderMode: "default",
+	overflow: "wrap",
+} as const;
+
+type RenderResult = {
+	css: string;
+	themeStyles: string;
+	baseThemeType?: "light" | "dark";
+};
+
+/** Renders a patch synchronously, or returns undefined before the highlighter loads. */
+export function renderPierreDiff(patch: string): string | undefined {
+	const files = parsePatchFiles(patch).flatMap(({ files }) => files);
+	if (files.length === 0 || !getHighlighterIfLoaded()) return undefined;
+	let html = "";
+	for (const diff of files) {
+		const renderer = new DiffHunksRenderer({
+			...sharedOptions,
 			theme: activeCodeThemes,
-			themeType: "system",
-			preferredHighlighter: "highlights",
-			disableFileHeader: true,
 			diffStyle: "unified",
 			diffIndicators: "none",
-			overflow: "wrap",
 			hunkSeparators: "simple",
-			lineHoverHighlight: "both",
-		},
-	});
-
-	if (files.length === 0) return undefined;
-
-	return files
-		.map(({ prerenderedHTML }) => pierreHost("pierre-diff", prerenderedHTML))
-		.join("");
+		});
+		const result = renderer.renderDiff(diff);
+		if (!result) return undefined;
+		html += pierreHost("pierre-diff", result, renderer.renderFullAST(result));
+	}
+	return html;
 }
 
-export async function renderPierreCode(
+/** Renders code synchronously, or returns undefined before the highlighter loads. */
+export function renderPierreCode(
 	code: string,
 	language: string,
 	options: { disableLineNumbers?: boolean } = {},
-): Promise<string> {
-	const file = await preloadFile({
-		file: {
-			name: language === "text" ? "code" : `code.${language}`,
-			contents: code,
-			// SAFETY: callers normalize the language through Pierre before rendering.
-			lang: language as SupportedLanguages,
-		},
-		options: {
-			theme: activeCodeThemes,
-			themeType: "system",
-			preferredHighlighter: "highlights",
-			disableFileHeader: true,
-			disableLineNumbers: options.disableLineNumbers,
-			overflow: "wrap",
-		},
+): string | undefined {
+	if (!getHighlighterIfLoaded()) return undefined;
+	const renderer = new FileRenderer({
+		...sharedOptions,
+		theme: activeCodeThemes,
+		disableLineNumbers: options.disableLineNumbers,
 	});
-
-	return pierreHost("pierre-code", file.prerenderedHTML);
+	const result = renderer.renderFile({
+		name: language === "text" ? "code" : `code.${language}`,
+		contents: code,
+		// SAFETY: callers normalize the language through Pierre before rendering.
+		lang: language as SupportedLanguages,
+	});
+	return result && pierreHost("pierre-code", result, renderer.renderFullAST(result));
 }
 
-function pierreHost(className: string, prerenderedHTML: string): string {
-	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-ignore-morph data-init="window.piUi.messageScroll.hydratePierreDiff(el)"><template shadowrootmode="open">${prerenderedHTML}</template></${DIFFS_TAG_NAME}>`;
+function pierreHost(
+	className: string,
+	result: RenderResult,
+	code: ReturnType<FileRenderer["renderFullAST"]>,
+): string {
+	code.properties["data-dehydrated"] = "";
+	const html = hastToHtml([
+		createStyleElement(result.css, true),
+		createThemeStyleElement(
+			wrapThemeCSS(result.themeStyles, result.baseThemeType ?? "system"),
+		),
+		code,
+	]);
+	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-ignore-morph data-init="window.piUi.messageScroll.hydratePierreDiff(el)"><template shadowrootmode="open">${SVGSpriteSheet}${html}</template></${DIFFS_TAG_NAME}>`;
 }

@@ -30,8 +30,6 @@ async function verifyColdHighlighter(): Promise<void> {
 		state: "success",
 		text: "",
 		timestamp: new Date(0),
-		presentationState: "final",
-		presentationVersion: 1,
 		titleParts: [{ highlight: "bash", text: `echo ${"x".repeat(100)}; echo done` }],
 	};
 	const plainHtml = renderMessage(plain);
@@ -58,20 +56,10 @@ async function verifyColdHighlighter(): Promise<void> {
 				titleParts: [{ highlight: "bash", mono: true, text: command }],
 			},
 		]);
-		const patch = Promise.withResolvers<string>();
-		const renderer = new MessageRenderService(
-			store,
-			(html) => patch.resolve(html),
-			() => {},
-		);
-		const id = store.messages[0]!.id;
-		const initial = renderer.renderMessageElement(id);
-		assert(initial?.includes("output &lt;ready&gt;"));
-		if (state === "running") renderer.messageAppended(id);
-		else renderer.enqueueEnhancement(id);
-		const enhanced = await patch.promise;
-		assert(enhanced.includes("&lt;ready&gt;"));
-		assert(enhanced.includes("color:light-dark("));
+		const renderer = new MessageRenderService(store, () => {});
+		const html = renderer.renderMessageElement(store.messages[0]!.id);
+		assert(html?.includes("output &lt;ready&gt;"));
+		assert(html?.includes("color:light-dark("));
 	}
 
 	const pythonBefore = pythonTokenizations;
