@@ -36,6 +36,7 @@ import {
 } from "#src/server/workspace-files.ts";
 import { findGitRoot } from "#src/server/workspace-review.ts";
 import { browseWorkspaceDirectories } from "#src/server/workspace-search.ts";
+import { clientScripts } from "#src/ui/client-scripts.ts";
 import { renderMarkdownFinal } from "#src/ui/markdown.tsx";
 import {
 	renderWorkspaceBrowserContent,
@@ -409,7 +410,7 @@ async function worktreeDialogResponse(
 
 function closeWorktreeDialog(): Response {
 	return datastarResponse([
-		{ type: "effect", effect: { type: "close-worktree-picker" } },
+		{ type: "script", script: clientScripts.closeWorktreePicker },
 	]);
 }
 

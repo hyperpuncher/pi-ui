@@ -8,6 +8,7 @@ import { datastarResponse } from "#src/server/datastar.ts";
 import { RouteError, type RouteMap } from "#src/server/route.ts";
 import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
+import { clientScripts } from "#src/ui/client-scripts.ts";
 
 export const treeRoutes = {
 	[endpoints.treeOpen]: {
@@ -35,7 +36,7 @@ export const treeRoutes = {
 			if (result.status === "cancelled") return datastarResponse([]);
 			return datastarResponse([
 				{ type: "signals", signals: { prompt: result.editorText ?? "" } },
-				{ type: "effect", effect: { type: "focus-prompt" } },
+				{ type: "script", script: clientScripts.focusPrompt },
 			]);
 		},
 	},

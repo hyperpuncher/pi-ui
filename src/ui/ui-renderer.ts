@@ -13,6 +13,7 @@ import { StreamingFrameScheduler } from "#src/state/streaming-frame-scheduler.ts
 import type { TranscriptMessage } from "#src/state/transcript-state.ts";
 import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
+import { clientScripts } from "#src/ui/client-scripts.ts";
 import { renderDebugOverlay } from "#src/ui/debug.tsx";
 import { renderExtensionDialog } from "#src/ui/extension-dialog.tsx";
 import { renderExtensionWidgets } from "#src/ui/extension-widgets.tsx";
@@ -191,7 +192,7 @@ export class UiRenderer implements AppStorePresentation {
 				this.hub.patchElement(
 					this.messages.renderTranscript(state),
 					"#messages",
-					{ scripts: ["window.piUi.messageScroll.checkOlder()"] },
+					{ scripts: [clientScripts.checkOlderMessages] },
 				);
 			}
 			const sidebarLayout = sessionSidebarLayoutKey(state);
@@ -258,7 +259,9 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	sessionTransitionChanged(scrollToBottom: boolean): void {
 		this.requestCommit(
-			scrollToBottom ? { type: "scroll-transcript-bottom" } : undefined,
+			scrollToBottom
+				? { type: "script", script: clientScripts.scrollTranscriptBottom }
+				: undefined,
 		);
 		// Loading, readiness, and errors are lifecycle boundaries, not progress ticks.
 		this.commits.flush();
@@ -281,7 +284,7 @@ export class UiRenderer implements AppStorePresentation {
 	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
 		if (this.hub.clientCount === 0) return;
 		if (messages.length > 0) {
-			this.hub.executeScript("window.piUi.messageScroll.beforeOlder()");
+			this.hub.executeScript(clientScripts.beforeOlderMessages);
 			this.hub.patchElement(
 				messages.map(({ id }) => this.messages.renderMessageElement(id)).join(""),
 				"#older-messages-trigger",
@@ -392,15 +395,8 @@ export class UiRenderer implements AppStorePresentation {
 	}
 	private effectScripts(effects: readonly UiCommitEffect[]): string[] {
 		const scripts = new Set<string>();
-		for (const effect of effects) {
-			if (effect.type === "scroll-transcript-bottom")
-				scripts.add("window.piUi.messageScroll.scrollBottom()");
-			if (effect.type === "open-tree-dialog") {
-				scripts.add(
-					"{ const dialog = document.getElementById('tree-dialog'); if (dialog && !dialog.open) dialog.showModal(); }",
-				);
-			}
-		}
+		for (const effect of effects)
+			if (effect.type === "script") scripts.add(effect.script);
 		return [...scripts];
 	}
 }

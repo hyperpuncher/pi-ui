@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 
-import { datastarResponse, datastarStream } from "#src/server/datastar.ts";
+import { datastarResponse, datastarStream, patchElements } from "#src/server/datastar.ts";
 import {
 	assertEquals,
 	assertStringExcludes,
@@ -9,7 +9,7 @@ import {
 
 test("element patches normalize carriage returns into valid SSE data lines", async () => {
 	const response = datastarStream((stream) => {
-		stream.patchElements('<div id="output">first\rsecond\r\nthird</div>');
+		patchElements(stream, '<div id="output">first\rsecond\r\nthird</div>');
 	});
 	const body = await response.text();
 
@@ -24,7 +24,7 @@ test("Datastar response preserves ordered events and response metadata", async (
 		[
 			{ type: "elements", elements: '<div id="output">ready</div>' },
 			{ type: "signals", signals: { prompt: "done" } },
-			{ type: "effect", effect: { type: "focus-prompt" } },
+			{ type: "script", script: "window.piUi.prompt.autofocus()" },
 		],
 		{ status: 202 },
 	);

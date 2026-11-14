@@ -1,15 +1,15 @@
-import { type DatastarStream, datastarStream } from "#src/server/datastar.ts";
-
-export type DatastarClient = Pick<
-	DatastarStream,
-	"patchElements" | "patchSignals" | "executeScript" | "close"
->;
+import {
+	type DatastarStream,
+	datastarStream,
+	patchElements,
+	type PatchElementsOptions,
+} from "#src/server/datastar.ts";
 
 /** Owns the persistent read connections, not application or rendering state. */
 export class DatastarClientHub {
 	private readonly clients = new Map<
 		string,
-		{ stream: DatastarClient; disconnect: () => void }
+		{ stream: DatastarStream; disconnect: () => void }
 	>();
 
 	constructor(private readonly streamFactory = datastarStream) {}
@@ -65,13 +65,11 @@ export class DatastarClientHub {
 	patchElement(
 		elements: string,
 		selector: string,
-		options: Parameters<DatastarStream["patchElements"]>[1] & {
-			scripts?: readonly string[];
-		} = {},
+		options: PatchElementsOptions & { scripts?: readonly string[] } = {},
 	): void {
 		const { scripts = [], ...patchOptions } = options;
 		this.broadcast((client) => {
-			client.patchElements(elements, { ...patchOptions, selector });
+			patchElements(client, elements, { ...patchOptions, selector });
 			for (const script of scripts) client.executeScript(script);
 		});
 	}
@@ -87,7 +85,7 @@ export class DatastarClientHub {
 		}
 	}
 
-	private broadcast(send: (client: DatastarClient) => void): void {
+	private broadcast(send: (client: DatastarStream) => void): void {
 		for (const { stream, disconnect } of this.clients.values()) {
 			try {
 				send(stream);
@@ -98,12 +96,12 @@ export class DatastarClientHub {
 	}
 
 	private patchClient(
-		client: DatastarClient,
+		client: DatastarStream,
 		elements: string,
 		signals: string,
 		scripts: readonly string[],
 	): void {
-		if (elements) client.patchElements(elements);
+		if (elements) patchElements(client, elements);
 		if (signals && signals !== "{}") client.patchSignals(signals);
 		if (scripts.length > 0) client.executeScript(scripts.join(";"));
 	}

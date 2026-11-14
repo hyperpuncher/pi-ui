@@ -17,6 +17,7 @@ import { RouteError, type RouteMap } from "#src/server/route.ts";
 import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import type { StoredSessionImage } from "#src/server/session-image-store.ts";
+import { clientScripts } from "#src/ui/client-scripts.ts";
 import { BoundedCache } from "#src/ui/render-cache.ts";
 import { expandHomePath } from "#src/utils/workspace.ts";
 
@@ -124,7 +125,7 @@ export const sessionRoutes = {
 					type: "signals",
 					signals: { sessionDeletePath: "", sessionDeleteTitle: "" },
 				},
-				{ type: "effect", effect: { type: "focus-session-picker" } },
+				{ type: "script", script: clientScripts.focusSessionPicker },
 			]);
 		},
 	},

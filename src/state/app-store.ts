@@ -12,6 +12,7 @@ import {
 	type TranscriptSnapshot,
 	TranscriptState,
 } from "#src/state/transcript-state.ts";
+import { clientScripts } from "#src/ui/client-scripts.ts";
 import type { AvailableUpdate } from "#src/update-check.ts";
 import { formatMessageCount, uniqueStrings } from "#src/utils/format.ts";
 import { formatShortcut } from "#src/utils/keyboard.ts";
@@ -148,8 +149,7 @@ export type AppUsage = {
 export type AppKeybindHint = { keys: string; description: string };
 
 export type UiCommitEffect =
-	| { type: "open-tree-dialog" }
-	| { type: "scroll-transcript-bottom" }
+	| { type: "script"; script: string }
 	| { type: "render-transcript" }
 	| { type: "signal-overrides"; values: JsonObject };
 
@@ -518,7 +518,7 @@ export class AppStore {
 			[],
 			this.transcript.messages.map((message) => message.id),
 		);
-		this.commit({ type: "scroll-transcript-bottom" });
+		this.commit({ type: "script", script: clientScripts.scrollTranscriptBottom });
 	}
 	loadOlderMessages(): readonly TranscriptMessage[] {
 		return this.transcript.loadOlderMessages();
@@ -673,7 +673,7 @@ export class AppStore {
 	}
 	openTreeDialog(): void {
 		this.commitView();
-		this.commit({ type: "open-tree-dialog" });
+		this.commit({ type: "script", script: clientScripts.openTreeDialog });
 	}
 	setUsage(value: AppUsage): void {
 		this.usage = value;

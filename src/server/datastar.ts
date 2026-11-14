@@ -1,52 +1,38 @@
 import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
 import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web";
 
-export class DatastarStream {
-	constructor(private readonly stream: ds) {}
+export type DatastarStream = Pick<
+	ds,
+	"patchElements" | "patchSignals" | "executeScript" | "close"
+>;
 
-	patchElements(
-		elements: string,
-		// The SDK serializes this documented option but does not yet declare it.
-		options?: Parameters<ds["patchElements"]>[1] & {
-			viewTransitionSelector?: string;
-		},
-	) {
-		return this.stream.patchElements(normalizeSseData(elements), options);
-	}
+// The SDK serializes viewTransitionSelector but does not yet declare it.
+export type PatchElementsOptions = Parameters<ds["patchElements"]>[1] & {
+	viewTransitionSelector?: string;
+};
 
-	patchSignals(...args: Parameters<ds["patchSignals"]>) {
-		return this.stream.patchSignals(...args);
-	}
-
-	executeScript(...args: Parameters<ds["executeScript"]>) {
-		return this.stream.executeScript(...args);
-	}
-
-	close(): void {
-		this.stream.close();
-	}
+/** SSE data lines split on CR as well as LF, so normalize line endings first. */
+export function patchElements(
+	stream: DatastarStream,
+	elements: string,
+	options?: PatchElementsOptions,
+): void {
+	stream.patchElements(
+		elements.replaceAll("\r\n", "\n").replaceAll("\r", "\n"),
+		options,
+	);
 }
 
-export type ClientEffect =
-	| { type: "focus-prompt" }
-	| { type: "focus-session-picker" }
-	| { type: "close-worktree-picker" }
-	| { type: "workspace-review-submitted" };
-
 export type DatastarEvent =
-	| {
-			type: "elements";
-			elements: string;
-			options?: Parameters<DatastarStream["patchElements"]>[1];
-	  }
+	| { type: "elements"; elements: string; options?: PatchElementsOptions }
 	| { type: "signals"; signals: Record<string, Jsonifiable> }
-	| { type: "effect"; effect: ClientEffect };
+	| { type: "script"; script: string };
 
 export function datastarStream(
 	onStart: (stream: DatastarStream) => Promise<void> | void,
 	options?: Parameters<typeof ds.stream>[1],
 ) {
-	return ds.stream((stream) => onStart(new DatastarStream(stream)), options);
+	return ds.stream(onStart, options);
 }
 
 /**
@@ -66,11 +52,11 @@ export function datastarResponse(
 		(stream) => {
 			for (const event of events) {
 				if (event.type === "elements") {
-					stream.patchElements(event.elements, event.options);
+					patchElements(stream, event.elements, event.options);
 				} else if (event.type === "signals") {
 					stream.patchSignals(JSON.stringify(event.signals));
 				} else {
-					stream.executeScript(clientEffectScript(event.effect));
+					stream.executeScript(event.script);
 				}
 			}
 		},
@@ -89,21 +75,4 @@ export function errorResponse(status: number, message: string): Response {
 
 export function signalsResponse(signals: Record<string, Jsonifiable>): Response {
 	return datastarResponse([{ type: "signals", signals }]);
-}
-
-function clientEffectScript(effect: ClientEffect): string {
-	switch (effect.type) {
-		case "focus-prompt":
-			return "window.piUi.prompt.autofocus()";
-		case "focus-session-picker":
-			return "document.getElementById('session-input')?.focus()";
-		case "close-worktree-picker":
-			return "document.getElementById('worktree-dialog')?.close()";
-		case "workspace-review-submitted":
-			return "window.dispatchEvent(new CustomEvent('pi-ui-workspace-review-submitted'))";
-	}
-}
-
-function normalizeSseData(value: string): string {
-	return value.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
 }

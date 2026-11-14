@@ -1,0 +1,13 @@
+/** Imperative browser steps that the server sends after a patch. */
+export const clientScripts = {
+	focusPrompt: "window.piUi.prompt.autofocus()",
+	focusSessionPicker: "document.getElementById('session-input')?.focus()",
+	closeWorktreePicker: "document.getElementById('worktree-dialog')?.close()",
+	workspaceReviewSubmitted:
+		"window.dispatchEvent(new CustomEvent('pi-ui-workspace-review-submitted'))",
+	scrollTranscriptBottom: "window.piUi.messageScroll.scrollBottom()",
+	openTreeDialog:
+		"{ const dialog = document.getElementById('tree-dialog'); if (dialog && !dialog.open) dialog.showModal(); }",
+	checkOlderMessages: "window.piUi.messageScroll.checkOlder()",
+	beforeOlderMessages: "window.piUi.messageScroll.beforeOlder()",
+} as const;

@@ -11,6 +11,7 @@ import {
 	readWorkspaceHistory,
 	WorkspaceReviewError,
 } from "#src/server/workspace-review.ts";
+import { clientScripts } from "#src/ui/client-scripts.ts";
 import { isRecord, isString } from "#src/utils/type-guards.ts";
 import {
 	formatWorkspaceReviewPrompt,
@@ -57,7 +58,7 @@ export const workspaceReviewRoutes = {
 				throw new RouteError(409, "Review comments were not accepted.");
 			}
 			return datastarResponse([
-				{ type: "effect", effect: { type: "workspace-review-submitted" } },
+				{ type: "script", script: clientScripts.workspaceReviewSubmitted },
 			]);
 		},
 	},

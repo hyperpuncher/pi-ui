@@ -1,10 +1,7 @@
 import { test } from "bun:test";
 
-import {
-	type DatastarClient,
-	DatastarClientHub,
-} from "#src/server/datastar-client-hub.ts";
-import { DatastarStream } from "#src/server/datastar.ts";
+import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
+import type { DatastarStream } from "#src/server/datastar.ts";
 import {
 	assertEquals,
 	assertStringExcludes,
@@ -94,7 +91,7 @@ test("hub runs disconnect lifecycle once across overlapping close signals", () =
 test("hub removes a client after a failed send", () => {
 	let closed = false;
 	let disconnects = 0;
-	const client: DatastarClient = {
+	const stream: DatastarStream = {
 		patchElements: () => {
 			throw new Error("disconnected");
 		},
@@ -104,7 +101,6 @@ test("hub removes a client after a failed send", () => {
 			closed = true;
 		},
 	};
-	const stream = Object.assign(Object.create(DatastarStream.prototype), client);
 	const factory: ConstructorParameters<typeof DatastarClientHub>[0] = (start) => {
 		start(stream);
 		return new Response();
