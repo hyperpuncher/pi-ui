@@ -13,7 +13,6 @@ import { isSupportedLanguage } from "@pierre/highlights";
 
 import { activeCodeThemes, codeThemeKey } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
-import { isPierreLanguageLoaded, loadPierreLanguage } from "#src/ui/diffs.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import { renderMermaid } from "#src/ui/mermaid.ts";
 import { BoundedCache, deleteStringKeysWithPrefix } from "#src/ui/render-cache.ts";
@@ -253,7 +252,7 @@ export async function renderCodeFinal(
 	language: string,
 	options: { chrome?: boolean } = {},
 ): Promise<string> {
-	return renderPlainCode(code, await codeFenceLanguageFinal(language), options);
+	return renderPlainCode(code, codeFenceLanguage(language), options);
 }
 
 function pendingMermaidBlock(markdown: string): PendingMermaidBlock | undefined {
@@ -341,7 +340,7 @@ async function highlightCodeBlocksFinal(html: string, scope: string): Promise<st
 				continue;
 			}
 		}
-		const language = await codeFenceLanguageFinal(rawLanguage);
+		const language = codeFenceLanguage(rawLanguage);
 		parts.push(
 			syncHtml(
 				<CodeBlock
@@ -376,10 +375,7 @@ function highlightStreamingCodeBlock(
 	cacheKey: string,
 ): string {
 	const highlighter = getHighlighterIfLoaded();
-	if (!highlighter || !isPierreLanguageLoaded(language)) {
-		if (language !== "text") void loadPierreLanguage(language);
-		return renderStreamingPlainCodeBlock(code, language);
-	}
+	if (!highlighter) return renderStreamingPlainCodeBlock(code, language);
 
 	const themedCacheKey = `${codeThemeKey()}:${cacheKey}`;
 	let state = streamingCodeBlockStates.get(themedCacheKey);
@@ -492,16 +488,9 @@ const codeLanguageAliases = new Map([
 	["yml", "yaml"],
 ]);
 
-async function codeFenceLanguageFinal(language: string | undefined): Promise<string> {
-	const canonical = canonicalCodeLanguage(language);
-	return (await loadPierreLanguage(canonical)) ? canonical : "text";
-}
-
 function codeFenceLanguage(language: string | undefined): string {
 	const canonical = canonicalCodeLanguage(language);
-	if (isPierreLanguageLoaded(canonical)) return canonical;
-	if (canonical !== "text") void loadPierreLanguage(canonical);
-	return "text";
+	return isSupportedLanguage(canonical) ? canonical : "text";
 }
 
 function canonicalCodeLanguage(language: string | undefined): string {

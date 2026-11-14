@@ -5,28 +5,22 @@ import {
 	type SupportedLanguages,
 } from "@pierre/diffs";
 import { preloadFile, preloadPatchFile } from "@pierre/diffs/ssr";
-import { isSupportedLanguage } from "@pierre/highlights";
 
 import { activeCodeThemes } from "#src/pierre-theme.ts";
 
-export async function loadPierreLanguage(language: string): Promise<boolean> {
-	if (isPierreLanguageLoaded(language)) return true;
-	if (!isSupportedLanguage(language)) return false;
+/** Loads the Highlights backend with the active themes. It bundles every language. */
+export async function loadHighlighter(): Promise<boolean> {
+	if (getHighlighterIfLoaded()) return true;
 	try {
 		await preloadHighlighter({
 			themes: [activeCodeThemes.dark, activeCodeThemes.light],
 			langs: [],
 			preferredHighlighter: "highlights",
 		});
+		return true;
 	} catch {
 		return false;
 	}
-	return isPierreLanguageLoaded(language);
-}
-
-export function isPierreLanguageLoaded(language: string): boolean {
-	if (!isSupportedLanguage(language)) return false;
-	return getHighlighterIfLoaded()?.hasLoadedLanguages([language]) ?? false;
 }
 
 export async function renderPierreDiff(patch: string): Promise<string | undefined> {

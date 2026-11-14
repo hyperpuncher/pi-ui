@@ -10,7 +10,7 @@ import {
 	TranscriptState,
 } from "#src/state/transcript-state.ts";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
-import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { loadHighlighter } from "#src/ui/diffs.ts";
 import { renderMarkdownFinal } from "#src/ui/markdown.tsx";
 import type { MessageRenderServiceOptions } from "#src/ui/message-render-service.ts";
 import { renderPage } from "#src/ui/page.tsx";
@@ -268,7 +268,7 @@ test("tool display changes rerender only the active presentation", async () => {
 });
 
 test("fast tool highlighting never arrives before its transcript row", async () => {
-	await loadPierreLanguage("bash");
+	await loadHighlighter();
 	const state = createState({
 		renderCode: async () => "<pre>final tool rendering</pre>",
 	});

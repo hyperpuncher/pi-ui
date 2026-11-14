@@ -2,7 +2,7 @@ import { test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { loadHighlighter } from "#src/ui/diffs.ts";
 import {
 	releaseMarkdownStreamingState,
 	renderMarkdownFinal,
@@ -268,7 +268,7 @@ test.each([
 ])(
 	"streaming and completed %s code preserve the same source lines",
 	async (language, source) => {
-		await loadPierreLanguage(language);
+		await loadHighlighter();
 		const markdown = `\`\`\`${language}\n${source}\n\`\`\``;
 		const cacheKey = `source-lines-${language}`;
 		renderMarkdownStreaming(`\`\`\`${language}\n${source[0]}`, { cacheKey });

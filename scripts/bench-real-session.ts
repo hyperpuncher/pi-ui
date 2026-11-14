@@ -5,7 +5,7 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 
 import { TranscriptProjector } from "#src/agent/transcript-projector.ts";
 import { highlightBash, highlightCodemode } from "#src/ui/bash-highlight.ts";
-import { loadPierreLanguage, renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
+import { loadHighlighter, renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
 import { renderMarkdownFinal, renderMarkdownStreaming } from "#src/ui/markdown.tsx";
 
 const sessionPath = process.argv[2];
@@ -27,7 +27,7 @@ const projector = new TranscriptProjector();
 const pending = new Map();
 const messages = entries.flatMap((entry) => projector.entry(entry, pending));
 const projected = performance.now();
-await loadPierreLanguage("bash");
+await loadHighlighter();
 const preloaded = performance.now();
 
 const visible = visibleCount > 0 ? messages.slice(-visibleCount) : messages;

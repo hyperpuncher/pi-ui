@@ -5,19 +5,14 @@ import { getHighlighterIfLoaded } from "@pierre/diffs";
 import { activeCodeThemes, setCodeThemes } from "#src/pierre-theme.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { highlightBash } from "#src/ui/bash-highlight.ts";
-import { isPierreLanguageLoaded, loadPierreLanguage } from "#src/ui/diffs.ts";
+import { loadHighlighter } from "#src/ui/diffs.ts";
 import { MessageRenderService } from "#src/ui/message-render-service.ts";
 import { renderMessage } from "#src/ui/messages.tsx";
 import type { AppMessage } from "#src/ui/render-state.ts";
 
 // Run in a child process so this highlighter is cold even under plain `bun test`.
 async function verifyColdHighlighter(): Promise<void> {
-	await loadPierreLanguage("bash");
-	assert(isPierreLanguageLoaded("bash"));
-	assert(
-		isPierreLanguageLoaded("python"),
-		"Highlights bundles every supported language",
-	);
+	assert(await loadHighlighter());
 
 	let shellTokenizations = 0;
 	let pythonTokenizations = 0;
@@ -45,13 +40,8 @@ async function verifyColdHighlighter(): Promise<void> {
 		1,
 		"formatting and highlighting should share one shell pass",
 	);
-	await loadPierreLanguage("json");
 	assert.equal(renderMessage(plain), plainHtml);
-	assert.equal(
-		shellTokenizations,
-		1,
-		"an unrelated language must not invalidate cached commands",
-	);
+	assert.equal(shellTokenizations, 1, "a repeated render reuses cached tokens");
 
 	for (const [state, command] of [
 		["running", "python -c 'print(42)'"],

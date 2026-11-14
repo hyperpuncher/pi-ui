@@ -5,7 +5,7 @@ import type {
 	TranscriptMessageAttachment,
 } from "#src/state/transcript-state.ts";
 import { hasEmbeddedBash } from "#src/ui/bash-highlight.ts";
-import { loadPierreLanguage, renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
+import { loadHighlighter, renderPierreCode, renderPierreDiff } from "#src/ui/diffs.ts";
 import {
 	releaseMarkdownStreamingState,
 	renderCodeFinal,
@@ -238,7 +238,7 @@ export class MessageRenderService {
 		this.queue.enqueue({
 			priority: this.store.transcript.getMessageIndex(id) ?? 0,
 			run: async (signal) => {
-				await loadPierreLanguage("bash");
+				await loadHighlighter();
 				if (signal.aborted) return;
 				// The message may have scrolled out of the visible window while
 				// queued. Rendering it anyway would repopulate the evicted cache.

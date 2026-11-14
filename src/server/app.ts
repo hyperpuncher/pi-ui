@@ -27,7 +27,7 @@ import {
 	sessionSidebarWidthDefault,
 } from "#src/session-sidebar-types.ts";
 import { AppStore } from "#src/state/app-store.ts";
-import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { loadHighlighter } from "#src/ui/diffs.ts";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import { checkForUpdate } from "#src/update-check.ts";
 import { expandHomePath } from "#src/utils/workspace.ts";
@@ -47,7 +47,7 @@ export async function createApp() {
 	const sessionSidebar = normalizeSessionSidebarPreferences(appConfig.sessionSidebar);
 	setCodeThemes(codeTheme);
 	setActiveFonts(fonts);
-	const preloadToolHighlighterPromise = loadPierreLanguage("bash");
+	const preloadToolHighlighterPromise = loadHighlighter();
 	const store = new AppStore();
 	store.theme =
 		appConfig.theme === "light" || appConfig.theme === "dark"

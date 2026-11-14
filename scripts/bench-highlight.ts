@@ -6,7 +6,7 @@ import { getHighlighterIfLoaded } from "@pierre/diffs";
 import { TranscriptProjector } from "#src/agent/transcript-projector.ts";
 import { activeCodeThemes } from "#src/pierre-theme.ts";
 import { highlightBash, highlightCodemode } from "#src/ui/bash-highlight.ts";
-import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { loadHighlighter } from "#src/ui/diffs.ts";
 import { scanShell } from "#src/ui/shell-scanner.ts";
 
 const sessionPath = process.argv[2];
@@ -29,7 +29,7 @@ const parts = manager
 const bash = parts.filter((part) => part.highlight === "bash");
 const code = parts.filter((part) => part.highlight === "javascript");
 
-await loadPierreLanguage("bash");
+await loadHighlighter();
 const highlighter = getHighlighterIfLoaded()!;
 const highlightRaw = (text: string, lang: string) =>
 	highlighter.codeToTokens(text, { lang, themes: activeCodeThemes });

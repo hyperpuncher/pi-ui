@@ -8,11 +8,11 @@ import {
 	highlightBash,
 	highlightCodemode,
 } from "#src/ui/bash-highlight.ts";
-import { loadPierreLanguage } from "#src/ui/diffs.ts";
+import { loadHighlighter } from "#src/ui/diffs.ts";
 import { renderMessage } from "#src/ui/messages.tsx";
 
 beforeAll(async () => {
-	expect(await loadPierreLanguage("bash")).toBe(true);
+	expect(await loadHighlighter()).toBe(true);
 });
 
 function styles(tokens: ThemedToken[][]) {
@@ -221,7 +221,7 @@ test.each([
 ])(
 	"uses parsed %s arguments to highlight code without changing source",
 	async (name, args, quote, language) => {
-		await loadPierreLanguage(language);
+		await loadHighlighter();
 		const snippets = codeSnippets({
 			calls: [{ id: "child", name, arguments: args, status: "ok" }],
 			complete: true,
@@ -260,7 +260,7 @@ test.each([
 );
 
 test("highlights large saved file payloads without losing escapes or blank lines", async () => {
-	await loadPierreLanguage("typescript");
+	await loadHighlighter();
 	const value = "const n = 42;\n\n".repeat(700);
 	const nested = {
 		calls: [
