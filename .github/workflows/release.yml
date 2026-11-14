@@ -76,14 +76,29 @@ jobs:
               id: notes
             - run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file "${{ steps.notes.outputs.path }}"
 
+    aur:
+        needs: [release]
+        permissions:
+            contents: read
+        uses: ./.github/workflows/aur.yml
+        with:
+            tag: ${{ github.ref_name }}
+        secrets:
+            AUR_KEY: ${{ secrets.AUR_KEY }}
+
     npm:
         needs: [release]
+        permissions:
+            contents: read
+            id-token: write
         uses: ./.github/workflows/npm.yml
         with:
             tag: ${{ github.ref_name }}
 
     homebrew:
         needs: [release]
+        permissions:
+            contents: read
         uses: ./.github/workflows/homebrew.yml
         with:
             tag: ${{ github.ref_name }}
