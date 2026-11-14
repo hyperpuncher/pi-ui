@@ -4,12 +4,13 @@ import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { getToolPath } from "#pi/utils/tools-manager.js";
+import { RuntimeController } from "#src/agent/runtime-controller.ts";
 import { notifySessionDone } from "#src/browser-notifications.ts";
 import { compressResponse } from "#src/server/compression.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
 import { executeRoute } from "#src/server/route.ts";
 import { appRoutes } from "#src/server/routes.ts";
-import type { RouteContext, RuntimeResource } from "#src/server/routes/context.ts";
+import type { RouteContext } from "#src/server/routes/context.ts";
 import {
 	endpoints,
 	filePreviewUrl,
@@ -605,13 +606,13 @@ test("multipart prompts resize valid image attachments before passing them to pi
 	let submitted:
 		| {
 				text: string;
-				options: NonNullable<Parameters<RuntimeResource["prompt"]>[1]>;
+				options: NonNullable<Parameters<RuntimeController["prompt"]>[1]>;
 		  }
 		| undefined;
 	const host = fakeHost({
 		prompt: async (
 			text: string,
-			options: NonNullable<Parameters<RuntimeResource["prompt"]>[1]>,
+			options: NonNullable<Parameters<RuntimeController["prompt"]>[1]>,
 		) => {
 			submitted = { text, options };
 			return true;
@@ -1216,7 +1217,7 @@ function uiRendererStub<Stub extends Partial<UiRenderer>>(stub: Stub): UiRendere
 
 function fakeContext(
 	overrides: {
-		host?: RuntimeResource;
+		host?: RuntimeController;
 		renderer?: UiRenderer;
 		themeLab?: boolean;
 		transferredFiles?: RouteContext["transferredFiles"];
@@ -1244,8 +1245,8 @@ function fakeContext(
 	};
 }
 
-function fakeHost(overrides: Partial<RuntimeResource> = {}): RuntimeResource {
-	return {
+function fakeHost(overrides: Partial<RuntimeController> = {}): RuntimeController {
+	const stub: Partial<RuntimeController> = {
 		abort: async () => {},
 		abortBackgroundSession: async () => true,
 		closeAuth: () => {},
@@ -1283,6 +1284,7 @@ function fakeHost(overrides: Partial<RuntimeResource> = {}): RuntimeResource {
 		toggleScopedModel: async () => true,
 		...overrides,
 	};
+	return Object.assign(Object.create(RuntimeController.prototype), stub);
 }
 
 function fileOpenRequest(uri: string): Request {

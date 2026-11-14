@@ -6,49 +6,9 @@ import type { TransferredFileStore } from "#src/server/transferred-files.ts";
 import type { AppStore } from "#src/state/app-store.ts";
 import type { UiRenderer } from "#src/ui/ui-renderer.ts";
 
-export type RouteRuntime = Pick<
-	RuntimeController,
-	| "abort"
-	| "abortBackgroundSession"
-	| "closeAuth"
-	| "closeLlama"
-	| "cycleModel"
-	| "cycleThinkingLevel"
-	| "deleteSession"
-	| "forkSessionToWorkspace"
-	| "getWorkspacePath"
-	| "hasRunningSessionInWorktree"
-	| "listSessions"
-	| "logout"
-	| "navigateTree"
-	| "newSession"
-	| "newTemporarySession"
-	| "openLogin"
-	| "openLogout"
-	| "openLlama"
-	| "openTree"
-	| "prompt"
-	| "refreshModels"
-	| "removeQueuedMessage"
-	| "renameSession"
-	| "respondExtensionUi"
-	| "restoreQueuedMessages"
-	| "resumeSession"
-	| "setModel"
-	| "setThinkingLevel"
-	| "startLogin"
-	| "submitAuthInput"
-	| "toggleLlamaModel"
-	| "toggleScopedModel"
-	| "toggleThinkingBlockVisibility"
->;
-
-export type RuntimeResource = RouteRuntime &
-	Pick<RuntimeController, "dispose" | "openWorkspace">;
-
 export interface RouteResources {
 	fdPath?: string;
-	host: RuntimeResource | undefined;
+	host: RuntimeController | undefined;
 	sessionImages: SessionImageStore;
 }
 
@@ -65,7 +25,7 @@ export interface RouteContext {
 	serveStatic(request: Request): Promise<Response>;
 }
 
-export function requireHost(context: RouteContext): RouteRuntime {
+export function requireHost(context: RouteContext): RuntimeController {
 	if (!context.resources.host) {
 		throw new RouteError(503, "Session runtime unavailable.");
 	}
