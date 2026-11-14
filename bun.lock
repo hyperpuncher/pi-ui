@@ -15,7 +15,6 @@
         "@pierre/diffs": "^1.6.4",
         "@pierre/highlights": "0.5.1",
         "@pierre/trees": "^1.0.0",
-        "@starfederation/datastar-sdk": "^1.0.0",
         "@types/bun": "^1.4.4",
         "open-props": "^1.7.23",
         "oxlint": "1.93.0",
@@ -211,8 +210,6 @@
     "@smithy/types": ["@smithy/types@4.18.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-CgB6HHWer/vrKps24ulRIbpcpb7K4xAU7SkZ7YHzBPlwHsvsrCJFEXK421s+cJzX+ZrqtA/TuU5w1HzI7k9N8A=="],
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
-
-    "@starfederation/datastar-sdk": ["@starfederation/datastar-sdk@1.0.0", "", {}, "sha512-VT1co9LeRLJ3wynffvkxXLJaCh4PHt1YUhH3zCQYhjTuaeWjozNjQQrg+BUbkDMO58mSgeQp9pgOXRWciy0y6g=="],
 
     "@types/bun": ["@types/bun@1.4.4", "", { "dependencies": { "bun-types": "1.4.4" } }, "sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ=="],
 

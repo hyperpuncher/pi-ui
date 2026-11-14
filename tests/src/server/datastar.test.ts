@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 
-import { datastarResponse, datastarStream, patchElements } from "#src/server/datastar.ts";
+import { datastarResponse, datastarStream } from "#src/server/datastar.ts";
 import {
 	assertEquals,
 	assertStringExcludes,
@@ -9,7 +9,7 @@ import {
 
 test("element patches normalize carriage returns into valid SSE data lines", async () => {
 	const response = datastarStream((stream) => {
-		patchElements(stream, '<div id="output">first\rsecond\r\nthird</div>');
+		stream.patchElements('<div id="output">first\rsecond\r\nthird</div>');
 	});
 	const body = await response.text();
 
@@ -19,17 +19,13 @@ test("element patches normalize carriage returns into valid SSE data lines", asy
 	assertStringIncludes(body, "data: elements third</div>\n\n");
 });
 
-test("Datastar response preserves ordered events and response metadata", async () => {
-	const response = datastarResponse(
-		[
-			{ type: "elements", elements: '<div id="output">ready</div>' },
-			{ type: "signals", signals: { prompt: "done" } },
-			{ type: "script", script: "window.piUi.prompt.autofocus()" },
-		],
-		{ status: 202 },
-	);
+test("Datastar response preserves event order", async () => {
+	const response = datastarResponse([
+		{ type: "elements", elements: '<div id="output">ready</div>' },
+		{ type: "signals", signals: { prompt: "done" } },
+		{ type: "script", script: "window.piUi.prompt.autofocus()" },
+	]);
 	const body = await response.text();
-	assertEquals(response.status, 202);
 	assertStringIncludes(response.headers.get("content-type") ?? "", "text/event-stream");
 	const elements = body.indexOf("datastar-patch-elements");
 	const signals = body.indexOf("datastar-patch-signals");

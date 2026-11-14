@@ -1,7 +1,11 @@
-import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
-import { ServerSentEventGenerator as ds } from "@starfederation/datastar-sdk/web";
-
-import { isBoolean, isNumber, isRecord, isString } from "#src/utils/type-guards.ts";
+import {
+	isBoolean,
+	isJsonObject,
+	isNumber,
+	isString,
+	type JsonObject,
+	type JsonValue,
+} from "#src/utils/type-guards.ts";
 
 export class ActionInputError extends Error {
 	readonly status = 400;
@@ -12,14 +16,20 @@ export class ActionInputError extends Error {
 	}
 }
 
-export type ActionSignals = Readonly<Record<string, Jsonifiable>>;
+export type ActionSignals = Readonly<JsonObject>;
 
+/** Datastar sends signals as a JSON body, or as the `datastar` query parameter for GET. */
 export async function readActionSignals(request: Request): Promise<ActionSignals> {
-	const result = await ds.readSignals(request);
-	if (!result.success || !isRecord(result.signals)) {
-		throw new ActionInputError("Malformed Datastar signals.");
+	try {
+		const signals: JsonValue =
+			request.method === "GET"
+				? JSON.parse(new URL(request.url).searchParams.get("datastar") ?? "")
+				: await request.json();
+		if (isJsonObject(signals)) return signals;
+	} catch {
+		// Fall through to the input error.
 	}
-	return result.signals;
+	throw new ActionInputError("Malformed Datastar signals.");
 }
 
 export function stringField(signals: ActionSignals, field: string): string {

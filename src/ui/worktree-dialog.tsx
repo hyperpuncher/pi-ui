@@ -24,7 +24,7 @@ export function renderWorktreeDialog(): string {
 }
 
 /** Local branches that are not checked out in any worktree, this one included. */
-export function worktreeSwitchableBranches(branches: readonly GitBranch[]): GitBranch[] {
+function worktreeSwitchableBranches(branches: readonly GitBranch[]): GitBranch[] {
 	return branches.filter(
 		(branch) => branch.ref.startsWith("refs/heads/") && !branch.worktreePath,
 	);

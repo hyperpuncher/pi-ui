@@ -1,7 +1,6 @@
 import {
 	type DatastarStream,
 	datastarStream,
-	patchElements,
 	type PatchElementsOptions,
 } from "#src/server/datastar.ts";
 
@@ -69,7 +68,7 @@ export class DatastarClientHub {
 	): void {
 		const { scripts = [], ...patchOptions } = options;
 		this.broadcast((client) => {
-			patchElements(client, elements, { ...patchOptions, selector });
+			client.patchElements(elements, { ...patchOptions, selector });
 			for (const script of scripts) client.executeScript(script);
 		});
 	}
@@ -101,7 +100,7 @@ export class DatastarClientHub {
 		signals: string,
 		scripts: readonly string[],
 	): void {
-		if (elements) patchElements(client, elements);
+		if (elements) client.patchElements(elements);
 		if (signals && signals !== "{}") client.patchSignals(signals);
 		if (scripts.length > 0) client.executeScript(scripts.join(";"));
 	}

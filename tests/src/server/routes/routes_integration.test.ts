@@ -3,8 +3,6 @@ import { mkdir, rm } from "node:fs/promises";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { Jsonifiable } from "@starfederation/datastar-sdk/types";
-
 import { getToolPath } from "#pi/utils/tools-manager.js";
 import { notifySessionDone } from "#src/browser-notifications.ts";
 import { compressResponse } from "#src/server/compression.ts";
@@ -22,6 +20,7 @@ import { SessionImageStore } from "#src/server/session-image-store.ts";
 import { AppStore } from "#src/state/app-store.ts";
 import { UiRenderer } from "#src/ui/ui-renderer.ts";
 import { outputCommand } from "#src/utils/command.ts";
+import type { JsonObject } from "#src/utils/type-guards.ts";
 import {
 	assertEquals,
 	assertStringExcludes,
@@ -1302,12 +1301,12 @@ function treeNavigateRequest(entryId: string): Request {
 	});
 }
 
-function signalGet(path: string, signals: Record<string, Jsonifiable>): Request {
+function signalGet(path: string, signals: JsonObject): Request {
 	const datastar = encodeURIComponent(JSON.stringify(signals));
 	return new Request(`http://localhost${path}?datastar=${datastar}`);
 }
 
-function signalRequest(path: string, signals: Record<string, Jsonifiable>): Request {
+function signalRequest(path: string, signals: JsonObject): Request {
 	return new Request(`http://localhost${path}`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },

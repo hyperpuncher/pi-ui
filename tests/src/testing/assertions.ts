@@ -37,10 +37,6 @@ export function assertNotEquals<T>(actual: T, expected: T, message?: string): vo
 	strictAssert.notDeepStrictEqual(actual, expected, message ?? "");
 }
 
-export function assertNotMatch(actual: string, expected: RegExp, message?: string): void {
-	strictAssert.doesNotMatch(actual, expected, message ?? "");
-}
-
 export async function assertRejects(
 	operation: () => Promise<unknown>,
 	ErrorClass?: new (...args: never[]) => Error,
