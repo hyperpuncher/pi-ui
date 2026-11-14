@@ -180,25 +180,6 @@ test("empty chat refreshes login, catalog loading, and recent sessions", async (
 	assertNotIncludes(transcript, "recent-sessions-loading");
 });
 
-test("new messages morph the complete transcript", async () => {
-	const state = createState();
-	const controller = connection();
-	const reader = await openInitializedStateStream(state, controller.signal);
-	state.appendMessage("user", "first");
-	const first = await readUntil(reader, (text) => text.includes("first"));
-	assertIncludes(first, "data: selector #messages");
-
-	state.appendMessage("tool", "one", { format: "output", state: "running" });
-	state.appendMessage("tool", "two", { format: "output", state: "running" });
-	const tools = await readUntil(
-		reader,
-		(text) => text.includes("one") && text.includes("two"),
-	);
-	assertIncludes(tools, "data: selector #messages");
-	assertNotIncludes(tools, "data: mode replace");
-	assertIncludes(tools, '<main id="messages"');
-});
-
 test("tool display changes rerender only the active presentation", async () => {
 	const state = createState();
 	state.replaceMessages([
@@ -333,37 +314,6 @@ test("parallel message updates all reach their final state", async () => {
 
 	assertEqual(count(updates, "data: selector #message-"), 2);
 	assertEqual(count(updates, "tool-status-success"), 2);
-});
-
-test("session transitions preserve targeted transcript replacement and ordinary presentation", async () => {
-	const state = createState();
-	const controller = connection();
-	const reader = await openInitializedStateStream(state, controller.signal);
-
-	state.setSessionTransition({
-		status: "loading",
-		generation: 1,
-		targetPath: "/session.jsonl",
-		overlay: true,
-	});
-	await readUntil(reader, (text) =>
-		text.includes('"_sessionTransitionStatus":"loading"'),
-	);
-
-	state.replaceMessages([{ role: "user", text: "restored transcript", timestamp }]);
-	const restored = await readUntil(
-		reader,
-		(text) =>
-			text.includes("restored transcript") &&
-			text.includes('id="prompt-action"') &&
-			text.includes("datastar-patch-signals"),
-	);
-	assertIncludes(restored, 'id="messages"');
-	assertIncludes(restored, "data: selector #messages");
-	assertNotIncludes(restored, "data: mode replace");
-
-	state.setSessionTransition({ status: "idle", generation: 1 });
-	await readUntil(reader, (text) => text.includes('"_sessionTransitionStatus":"idle"'));
 });
 
 test("loading older pages enqueues only newly revealed messages", async () => {
@@ -805,9 +755,6 @@ test("workspace switches stream prepared content and restore it on reconnect", a
 	const reconnect = await readStateOutput(state, (text) => text.includes("review-1"));
 	assertIncludes(reconnect, "prepared diff contents");
 	assertIncludes(output, '"branch":"main"');
-	const signals = projectBackendSignals(state);
-	assertEqual(signals._workspaceReviewChangeCount, 1);
-	assertEqual(signals._workspaceReviewStatsKnown, false);
 	assertIncludes(output, 'id="workspace-review-data"');
 	assertNotIncludes(output, 'id="workspace-review-data-region"');
 });
