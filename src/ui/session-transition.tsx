@@ -47,7 +47,6 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 			id="session-transition"
 			class="session-transition"
 			style={visible ? undefined : "display: none"}
-			data-show="$_sessionTransitionVisible"
 			role={transition.status === "error" ? "alert" : "status"}
 			aria-live="polite"
 			aria-busy={transition.status === "loading" ? "true" : "false"}

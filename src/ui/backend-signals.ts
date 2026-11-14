@@ -1,4 +1,3 @@
-import { sessionTransitionOverlayVisible } from "#src/agent/session-transition-controller.ts";
 import { getActiveFonts } from "#src/fonts.ts";
 import { activeCodeThemes } from "#src/pierre-theme.ts";
 import type { AppStateSnapshot } from "#src/state/app-store.ts";
@@ -19,9 +18,7 @@ export type BackendSignals = {
 	_toolOutputHidden: boolean;
 	_toolbarHidden: boolean;
 	_temporarySession: boolean;
-	_sessionTransitionGeneration: number;
 	_sessionTransitionStatus: AppStateSnapshot["sessionTransition"]["status"];
-	_sessionTransitionVisible: boolean;
 	_workspaceReviewAdditions: number;
 	_workspaceReviewBranch: string;
 	_workspaceReviewDeletions: number;
@@ -49,11 +46,7 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 		_toolOutputHidden: state.toolOutputHidden,
 		_toolbarHidden: state.toolbarHidden,
 		_temporarySession: state.isTemporarySession,
-		_sessionTransitionGeneration: state.sessionTransition.generation,
 		_sessionTransitionStatus: state.sessionTransition.status,
-		_sessionTransitionVisible: sessionTransitionOverlayVisible(
-			state.sessionTransition,
-		),
 		_workspaceReviewAdditions: stats.additions,
 		_workspaceReviewBranch: state.workspaceReview.branch ?? "",
 		_workspaceReviewDeletions: stats.deletions,
