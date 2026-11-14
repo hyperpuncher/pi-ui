@@ -19,6 +19,10 @@ const sessionStats = {
 
 type UsageSession = {
 	model?: { provider?: string; id?: string };
+	messages?: readonly {
+		role: string;
+		diagnostics?: readonly { type: string; details?: unknown }[];
+	}[];
 	getSessionStats: () => {
 		cost: number;
 		tokens: {
@@ -188,6 +192,44 @@ test("shows OpenCode Go usage and retains it after an unavailable refresh", asyn
 	await flush();
 	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 88);
 	assertEquals(rendered()?.limits?.status, "stale (refresh unavailable)");
+	controller.dispose();
+});
+
+test("shows Claude limits from the session rate-limit diagnostic", () => {
+	const resetAt = Math.floor((Date.now() + 90 * 60_000) / 1_000);
+	const model = { provider: "claude-code", id: "claude-haiku-5-5" };
+	const messages = [
+		{
+			role: "assistant",
+			diagnostics: [
+				{
+					type: "claude-code.rate-limit",
+					details: {
+						status: "allowed",
+						isUsingOverage: false,
+						unifiedWindows: {
+							five_hour: { utilization: 0.42, resetsAt: resetAt },
+						},
+					},
+				},
+			],
+		},
+	];
+	const { controller, rendered } = usageHarness({
+		model,
+		messages,
+		...sessionStats,
+	});
+
+	controller.sync();
+	assertEquals(rendered()?.limits?.label, "Claude limits");
+	assertEquals(
+		rendered()?.limits?.windows.map((window) => [
+			window.label,
+			window.remainingPercent,
+		]),
+		[["5 hours", 58]],
+	);
 	controller.dispose();
 });
 

@@ -1,5 +1,6 @@
 import type { AgentSessionRuntime, SessionStats } from "@earendil-works/pi-coding-agent";
 
+import { claudeUsageFromMessages, showsClaudeUsage } from "#src/agent/claude-usage.ts";
 import {
 	type CodexUsage,
 	describeCodexUsage,
@@ -49,6 +50,9 @@ export class UsageController {
 		const session = this.getRuntime().session;
 		const showCodexUsage = showsCodexUsage(session.model);
 		const showOpenCodeGoUsage = isOpenCodeGo(session.model);
+		const claudeUsage = showsClaudeUsage(session.model)
+			? claudeUsageFromMessages(session.messages)
+			: undefined;
 		const stats = session.getSessionStats();
 		this.state.setUsage(
 			formatStats(stats, {
@@ -69,7 +73,13 @@ export class UsageController {
 									? describeOpenCodeGoUsage(this.opencodeGoUsage)
 									: undefined,
 							)
-						: undefined,
+						: claudeUsage
+							? usageLimits(
+									"Claude limits",
+									claudeUsage.status ?? "",
+									claudeUsage.windows,
+								)
+							: undefined,
 			}),
 		);
 	}
