@@ -1,4 +1,9 @@
-import { markUnpinned, scrollBottom } from "#static/app/message-scroll.js";
+import {
+	markUnpinned,
+	scrollBottom,
+	scrollNextUser,
+	scrollPreviousUser,
+} from "#static/app/message-scroll.js";
 
 const stepPx = 100;
 const stepDurationMs = 120;
@@ -39,6 +44,11 @@ export function bindVimScroll() {
 		} else if (event.code === "KeyG" && event.shiftKey) {
 			event.preventDefault();
 			scrollTo("bottom");
+		} else if (event.key === "[" || event.key === "]") {
+			event.preventDefault();
+			stopLineScroll();
+			if (event.key === "[") scrollPreviousUser();
+			else scrollNextUser();
 		} else if (event.code === "KeyJ" || event.code === "KeyK") {
 			event.preventDefault();
 			scrollBy(event.code === "KeyJ" ? stepPx : -stepPx);
@@ -75,11 +85,15 @@ function scrollBy(amount) {
 	markUnpinned();
 }
 
-function scrollTo(position) {
+function stopLineScroll() {
 	if (animation) cancelAnimationFrame(animation);
 	animation = undefined;
 	direction = 0;
 	keyHeld = false;
+}
+
+function scrollTo(position) {
+	stopLineScroll();
 	if (position === "bottom") {
 		scrollBottom();
 		return;

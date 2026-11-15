@@ -2,7 +2,7 @@ const liveEdgeThresholdPx = 8;
 const promptSpacerClearancePx = 48;
 const scrollControlThresholdPx = 48;
 // Space left above a user message after a jump to it.
-const previousUserOffsetPx = 16;
+const userRowOffsetPx = 16;
 const followTimeConstantMs = 60;
 const state = {
 	middleScrolling: false,
@@ -378,13 +378,22 @@ function updateScrollControl() {
 	);
 }
 
+function userRows(messages) {
+	return messages.querySelectorAll("#message-list > .message-user").values().toArray();
+}
+
 // The nearest user message whose top is above the viewport.
 function previousUserRow(messages) {
 	const top = messages.getBoundingClientRect().top;
-	const rows = messages.querySelectorAll("#message-list > .message-user");
-	for (let index = rows.length - 1; index >= 0; index--)
-		if (rows[index].getBoundingClientRect().top < top) return rows[index];
-	return undefined;
+	return userRows(messages).findLast((row) => row.getBoundingClientRect().top < top);
+}
+
+function scrollToUserRow(messages, row) {
+	markUnpinned();
+	messages.scrollTop +=
+		row.getBoundingClientRect().top -
+		messages.getBoundingClientRect().top -
+		userRowOffsetPx;
 }
 
 function hasOlderPage() {
@@ -397,21 +406,26 @@ function hasOlderPage() {
 export function scrollPreviousUser() {
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
-	markUnpinned();
 	const row = previousUserRow(messages);
-	if (!row) {
+	if (row) {
+		scrollToUserRow(messages, row);
+	} else if (hasOlderPage()) {
 		// Load older pages until one has a user message; restorePosition retries.
-		if (!hasOlderPage()) return;
 		previousUserPending = true;
 		document
 			.getElementById("older-messages-trigger")
 			.dispatchEvent(new CustomEvent("pi-ui-older"));
-		return;
 	}
-	messages.scrollTop +=
-		row.getBoundingClientRect().top -
-		messages.getBoundingClientRect().top -
-		previousUserOffsetPx;
+}
+
+// Jumps to the next user message below the one at the top, or to the latest message.
+export function scrollNextUser() {
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	const top = messages.getBoundingClientRect().top + userRowOffsetPx + 1;
+	const row = userRows(messages).find((row) => row.getBoundingClientRect().top > top);
+	if (row) scrollToUserRow(messages, row);
+	else scrollBottom();
 }
 
 export function hydratePierreDiff(host) {

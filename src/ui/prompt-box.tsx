@@ -223,6 +223,7 @@ function renderScrollControls() {
 				data-preserve-attr="hidden"
 				data-on:click="window.piUi.messageScroll.scrollPreviousUser()"
 				aria-label="Jump to previous user message"
+				aria-keyshortcuts="["
 				hidden
 			>
 				<Icon name="arrow-up" />
