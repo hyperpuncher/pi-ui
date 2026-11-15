@@ -97,8 +97,14 @@
 		background: var(--surface-code);
 	}
 
+	/* Line heights in whole 2px steps keep text on whole device pixels at
+	   1x, 1.5x and 2x, so layout changes above it do not shift it by a fraction. */
+	.markdown-content,
+	.markdown-content :where(p, li, th, td, blockquote) {
+		line-height: round(1.7em, 2px);
+	}
+
 	.markdown-content {
-		line-height: 1.7;
 		overflow-wrap: anywhere;
 	}
 
@@ -118,7 +124,7 @@
 	.markdown-content :where(h1, h2, h3, h4, h5, h6) {
 		margin-block: 1.4em 0.45em;
 		font-weight: 600;
-		line-height: 1.2;
+		line-height: round(1.2em, 2px);
 	}
 
 	.markdown-content h1 {

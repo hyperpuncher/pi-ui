@@ -192,7 +192,7 @@
 		overflow: auto;
 		border-radius: var(--radius-md);
 		font-size: var(--text-base);
-		line-height: 1.625;
+		line-height: round(1.625em, 2px);
 	}
 	.tool-pending-output {
 		padding-inline: 0.5rem 0.75rem;
@@ -225,9 +225,10 @@
 		margin-block-start: 0.75rem;
 	}
 	.tool-plain-output {
-		/* Bottom-align the single text block without measuring each DOM update. */
+		/* Bottom-align the single text block without measuring each DOM update.
+		   Five lines plus the border, rounded to whole device pixels. */
 		display: flex;
-		max-height: calc(5lh + 1px);
+		max-height: round(up, 5lh + 1px, 2px);
 		flex-direction: column-reverse;
 		overflow: auto;
 		line-height: 1.375rem;
@@ -418,7 +419,7 @@
 	.thinking-placeholder {
 		display: none;
 		font-weight: 600;
-		line-height: 1.7;
+		line-height: round(1.7em, 2px);
 	}
 	.minimal-activity {
 		display: none;
@@ -684,24 +685,18 @@
 	[data-minimal-mode] .minimal-activity {
 		display: flex;
 	}
-	[data-minimal-mode] {
-		--message-gap: var(--message-tool-narrative-gap);
-	}
 
 	[data-minimal-mode] #message-list > .message-tool::before,
 	[data-minimal-mode] #message-list > .message-tool::after {
 		display: none;
 	}
 
-	/* Keep gaps stable even when intervening activity rows are hidden.
-	   The last row has no gap, so the toggle does not move it. */
-	[data-minimal-mode] #message-list > .message:has(+ .message) {
-		margin-bottom: var(--message-gap);
-	}
-
-	/* Keep full turn separation when activity rows are hidden. */
-	[data-minimal-mode] #message-list > .message-user {
-		padding-block: 0.75rem;
+	/* A hidden activity row has no margin. Keep the full turn gap before the user. */
+	[data-minimal-mode]
+		#message-list
+		> :is(.message-thought, .message-tool)
+		+ .message-user {
+		margin-top: calc(var(--message-gap) - var(--message-tool-narrative-gap));
 	}
 
 	/* The active block keeps running until its final assistant message arrives. */
