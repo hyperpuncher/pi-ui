@@ -1,5 +1,7 @@
 import { chmod, mkdir, rm } from "node:fs/promises";
 
+import { serverExternals } from "./build-externals.ts";
+
 const outputRoot = "dist/npm";
 const executable = `${outputRoot}/server-main.js`;
 
@@ -11,9 +13,7 @@ const result = await Bun.build({
 	target: "bun",
 	format: "esm",
 	packages: "bundle",
-	// pi-ui replaces pi's Photon image processing with Bun.Image.
-	// Pi falls back to eager languages when its terminal-only catalog is absent.
-	external: ["@silvia-odwyer/photon-node", "highlight.js/lib/index.js"],
+	external: serverExternals,
 	minify: true,
 	// Let runtime-loaded pi extensions import the core modules embedded above.
 	define: { PI_BUNDLED_NODE: "true" },

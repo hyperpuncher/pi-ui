@@ -23,7 +23,7 @@ jobs:
                     - name: darwin-arm64
                       os: macos-26
                     - name: windows-x64
-                      os: windows-latest
+                      os: windows-2025
 
         steps:
             - uses: actions/checkout@v7

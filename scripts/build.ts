@@ -1,5 +1,7 @@
 import { mkdir } from "node:fs/promises";
 
+import { serverExternals } from "./build-externals.ts";
+
 await mkdir("dist", { recursive: true });
 const result = await Bun.build({
 	entrypoints: ["src/server-main.ts", "src/extensions/codemode/worker.ts"],
@@ -8,8 +10,7 @@ const result = await Bun.build({
 		assets: ["./static"],
 		outfile: "./dist/pi-ui",
 	},
-	// Pi falls back to eager languages when its terminal-only catalog is absent.
-	external: ["@silvia-odwyer/photon-node", "highlight.js/lib/index.js"],
+	external: serverExternals,
 	format: "esm",
 	minify: true,
 	bytecode: true,
