@@ -92,6 +92,11 @@ test("transcript replacement preserves the loaded history window", () => {
 	assertEquals(state.messages.length, 61);
 	assertEquals(state.hasOlderMessages, true);
 	assertEquals(state.loadOlderMessages()[0].text, "message 40");
+
+	// Compaction or tree navigation can shorten the transcript below the hidden count.
+	state.replaceMessages(messages(12));
+	assertEquals(state.messages.length, 12);
+	assertEquals(state.hasOlderMessages, false);
 });
 
 test("transcript paging and reset have no presentation state", () => {

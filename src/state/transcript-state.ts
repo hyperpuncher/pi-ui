@@ -244,10 +244,15 @@ export class TranscriptState {
 			return { ...message, id: `m-${this.messageSeq}` };
 		});
 		this.rebuildMessageIndex();
+		const recentStart = Math.max(
+			0,
+			this.transcriptMessages.length - initialVisibleMessageCount,
+		);
+		// Keep the loaded window, but a shorter transcript must still show its recent page.
 		this.visibleMessageStart =
 			previousLength === 0
-				? Math.max(0, this.transcriptMessages.length - initialVisibleMessageCount)
-				: Math.min(previousHiddenCount, this.transcriptMessages.length);
+				? recentStart
+				: Math.min(previousHiddenCount, recentStart);
 	}
 
 	showRecentMessages(): boolean {
