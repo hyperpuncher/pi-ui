@@ -31,8 +31,11 @@
 	#messages.messages-empty {
 		padding-block: 2rem 8rem;
 	}
+
+	/* Instant feedback on click. Only the dim fades; the new transcript appears at once. */
 	#messages.messages-loading {
 		opacity: 0.5;
+		transition: opacity 100ms var(--ease-out);
 	}
 	#messages.messages-loading .recent-session:disabled {
 		opacity: 1;

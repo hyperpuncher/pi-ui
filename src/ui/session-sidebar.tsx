@@ -363,6 +363,7 @@ function renderSessionSidebarRow(
 				aria-current={current ? "true" : undefined}
 				aria-label={session.title}
 				data-on:click={resumeSessionAction(session.path)}
+				data-indicator:_session-switching
 				data-on:keydown__window={
 					shortcut
 						? resumeSessionShortcutAction(session.path, index)

@@ -57,8 +57,8 @@ export function renderMessages(
 		<main
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
-			data-class:messages-loading="$_sessionTransitionStatus === 'loading'"
-			data-attr:aria-busy="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
+			data-class:messages-loading="$_sessionSwitching || $_sessionTransitionStatus === 'loading'"
+			data-attr:aria-busy="$_sessionSwitching || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
@@ -195,6 +195,7 @@ function renderRecentSession(session: AppSessionSummary, index: number) {
 			class="recent-session"
 			data-attr:disabled="$_sessionTransitionStatus === 'loading'"
 			data-on:click={resumeSessionAction(session.path)}
+			data-indicator:_session-switching
 		>
 			<span class="recent-session-main">
 				<span class="recent-session-title" safe>

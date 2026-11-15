@@ -540,6 +540,7 @@ function renderSessionRow(
 			data-preserve-attr="class"
 			data-keep-command-open
 			data-on:click={resumeSessionAction(session.path, { closeDialog: true })}
+			data-indicator:_session-switching
 			data-on:keydown__window={
 				shortcut
 					? resumeSessionShortcutAction(session.path, index, { inDialog: true })
