@@ -61,13 +61,9 @@ jobs:
                   git clone --depth=1 --single-branch --no-tags https://github.com/hyperpuncher/homebrew-tap.git "$directory"
                   mkdir -p "$directory/Formula"
                   cp "$RUNNER_TEMP/pi-ui.rb" "$directory/Formula/pi-ui.rb"
-                  rm -f "$directory/Formula/pi-ui-server.rb" "$directory/Casks/pi-ui.rb"
-                  test -f "$directory/formula_renames.json" || echo '{}' > "$directory/formula_renames.json"
-                  jq '. + {"pi-ui-server": "pi-ui"}' "$directory/formula_renames.json" > "$RUNNER_TEMP/formula_renames.json"
-                  mv "$RUNNER_TEMP/formula_renames.json" "$directory/formula_renames.json"
                   git -C "$directory" config user.name github-actions
                   git -C "$directory" config user.email github-actions@github.com
-                  git -C "$directory" add -A Formula Casks formula_renames.json
+                  git -C "$directory" add Formula
                   if ! git -C "$directory" diff --cached --quiet; then
                     git -C "$directory" commit -m "chore: update pi-ui for $RELEASE_TAG"
                     git -C "$directory" push

@@ -7,9 +7,7 @@ import { isNotFound } from "#src/utils/fs-errors.ts";
 import { operatingSystem } from "#src/utils/platform.ts";
 
 const serviceName = "pi-ui";
-const legacyServiceName = "pi-ui-server";
 const launchAgentLabel = "dev.pi.ui";
-const legacyLaunchAgentLabel = "dev.pi.ui.server";
 const windowsRunKey = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
 export type ServerAutostartPlatform = "linux" | "darwin" | "windows";
@@ -78,13 +76,11 @@ export async function disableServerAutostart(
 ): Promise<void> {
 	switch (config.platform) {
 		case "linux":
-			await disableSystemdService(config, serviceName);
-			await disableSystemdService(config, legacyServiceName);
+			await disableSystemdService(config);
 			await command("systemctl", ["--user", "daemon-reload"]);
 			break;
 		case "darwin":
-			await disableLaunchAgent(config, launchAgentLabel);
-			await disableLaunchAgent(config, legacyLaunchAgentLabel);
+			await disableLaunchAgent(config);
 			break;
 		case "windows":
 			await disableWindowsAutostart(config);
@@ -148,42 +144,36 @@ export function windowsRunCommand(config: ServerAutostartConfig): string {
 }
 
 async function enableSystemdService(config: ServerAutostartConfig): Promise<void> {
-	await disableSystemdService(config, legacyServiceName);
-	const path = systemdServicePath(config, serviceName);
+	const path = systemdServicePath(config);
 	await writeConfig(path, systemdService(config));
 	await command("systemctl", ["--user", "daemon-reload"]);
 	await command("systemctl", ["--user", "reenable", `${serviceName}.service`]);
 	await command("systemctl", ["--user", "restart", `${serviceName}.service`]);
 }
 
-async function disableSystemdService(
-	config: ServerAutostartConfig,
-	name: string,
-): Promise<void> {
-	await command("systemctl", ["--user", "disable", "--now", `${name}.service`], true);
-	await removeIfPresent(systemdServicePath(config, name));
+async function disableSystemdService(config: ServerAutostartConfig): Promise<void> {
+	await command(
+		"systemctl",
+		["--user", "disable", "--now", `${serviceName}.service`],
+		true,
+	);
+	await removeIfPresent(systemdServicePath(config));
 }
 
 async function enableLaunchAgent(config: ServerAutostartConfig): Promise<void> {
-	await disableLaunchAgent(config, legacyLaunchAgentLabel);
-	const path = launchAgentPath(config, launchAgentLabel);
+	const path = launchAgentPath(config);
 	await writeConfig(path, launchAgent(config));
 	await command("launchctl", ["bootout", launchDomain(config), path], true);
 	await command("launchctl", ["bootstrap", launchDomain(config), path]);
 }
 
-async function disableLaunchAgent(
-	config: ServerAutostartConfig,
-	label: string,
-): Promise<void> {
-	const path = launchAgentPath(config, label);
+async function disableLaunchAgent(config: ServerAutostartConfig): Promise<void> {
+	const path = launchAgentPath(config);
 	await command("launchctl", ["bootout", launchDomain(config), path], true);
 	await removeIfPresent(path);
 }
 
 async function enableWindowsAutostart(config: ServerAutostartConfig): Promise<void> {
-	await removeWindowsAutostart(legacyServiceName);
-	await stopLegacyWindowsServer();
 	await stopWindowsServer(config);
 	await command("reg.exe", [
 		"ADD",
@@ -207,20 +197,8 @@ async function enableWindowsAutostart(config: ServerAutostartConfig): Promise<vo
 }
 
 async function disableWindowsAutostart(config: ServerAutostartConfig): Promise<void> {
-	await removeWindowsAutostart(serviceName);
-	await removeWindowsAutostart(legacyServiceName);
-	await stopLegacyWindowsServer();
+	await command("reg.exe", ["DELETE", windowsRunKey, "/V", serviceName, "/F"], true);
 	await stopWindowsServer(config);
-}
-
-async function removeWindowsAutostart(name: string): Promise<void> {
-	await command("reg.exe", ["DELETE", windowsRunKey, "/V", name, "/F"], true);
-	await command("schtasks.exe", ["/End", "/TN", name], true);
-	await command("schtasks.exe", ["/Delete", "/TN", name, "/F"], true);
-}
-
-async function stopLegacyWindowsServer(): Promise<void> {
-	await command("taskkill.exe", ["/F", "/IM", `${legacyServiceName}.exe`], true);
 }
 
 async function stopWindowsServer(config: ServerAutostartConfig): Promise<void> {
@@ -258,12 +236,12 @@ function serverCommand(config: ServerAutostartConfig): string[] {
 	return [config.executable, ...(config.args ?? [])];
 }
 
-function systemdServicePath(config: ServerAutostartConfig, name: string): string {
-	return `${config.home}/.config/systemd/user/${name}.service`;
+function systemdServicePath(config: ServerAutostartConfig): string {
+	return `${config.home}/.config/systemd/user/${serviceName}.service`;
 }
 
-function launchAgentPath(config: ServerAutostartConfig, label: string): string {
-	return `${config.home}/Library/LaunchAgents/${label}.plist`;
+function launchAgentPath(config: ServerAutostartConfig): string {
+	return `${config.home}/Library/LaunchAgents/${launchAgentLabel}.plist`;
 }
 
 function launchDomain(config: ServerAutostartConfig): string {

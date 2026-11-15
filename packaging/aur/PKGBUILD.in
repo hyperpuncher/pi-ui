@@ -9,8 +9,8 @@ url="https://github.com/hyperpuncher/pi-ui"
 license=('MIT')
 depends=('glibc' 'libgcc')
 options=('!strip')
-provides=("pi-ui=$pkgver" "pi-ui-server=$pkgver")
-conflicts=('pi-ui' 'pi-ui-server' 'pi-ui-server-bin')
+provides=("pi-ui=$pkgver")
+conflicts=('pi-ui')
 
 source=("LICENSE")
 sha256sums=('{{SHA_LICENSE}}')

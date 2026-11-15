@@ -10,18 +10,6 @@ case "$(uname -s)" in
 			echo "Homebrew is required on macOS: https://brew.sh" >&2
 			exit 1
 		fi
-		migrate_formula=false
-		if brew list --formula pi-ui-server >/dev/null 2>&1; then
-			migrate_formula=true
-			brew services stop pi-ui-server || true
-			brew update
-		fi
-		if brew list --cask pi-ui >/dev/null 2>&1; then
-			brew uninstall --cask pi-ui
-		fi
-		if "$migrate_formula"; then
-			brew migrate pi-ui
-		fi
 		if brew list --formula pi-ui >/dev/null 2>&1; then
 			brew upgrade hyperpuncher/tap/pi-ui
 		else
@@ -66,7 +54,6 @@ esac
 mkdir -p "$install_directory"
 asset="pi-ui-linux-$architecture.tar.zst"
 target="$install_directory/pi-ui"
-legacy_target="$install_directory/pi-ui-server"
 url="https://github.com/$repository/releases/latest/download/$asset"
 archive=$(mktemp "${TMPDIR:-/tmp}/pi-ui.XXXXXX.tar.zst")
 temporary=$(mktemp "$install_directory/.pi-ui-install.XXXXXX")
@@ -86,5 +73,4 @@ case ":$PATH:" in
 esac
 
 "$target" service install
-rm -f "$legacy_target"
 echo "Open http://127.0.0.1:31415 in your browser."
