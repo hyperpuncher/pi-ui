@@ -34,7 +34,12 @@ function followBottom(messages, target) {
 	followTarget = target;
 	if (followFrame !== undefined || document.hidden) return;
 	reducedMotion ??= window.matchMedia("(prefers-reduced-motion: reduce)");
-	if (reducedMotion.matches) {
+	// A layout change such as a display mode toggle moves the bottom by more than
+	// a viewport. Animating that would scroll through unrelated content.
+	if (
+		reducedMotion.matches ||
+		Math.abs(target - messages.scrollTop) > messages.clientHeight
+	) {
 		messages.scrollTop = target;
 		state.scrollTop = messages.scrollTop;
 		return;
