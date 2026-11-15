@@ -10,7 +10,6 @@ import {
 	type AppStateSnapshot,
 	sessionStatus,
 } from "#src/state/app-store.ts";
-import { DateTime } from "#src/ui/date-time.tsx";
 import { Icon } from "#src/ui/icon.tsx";
 import { ShortcutKbd } from "#src/ui/keyboard.tsx";
 import { loaderIcon } from "#src/ui/prompt-status.tsx";
@@ -258,7 +257,7 @@ function renderSessionDateGroup(group: SessionDateGroup, state: SessionSidebarSt
 				</li>
 			)}
 			{group.sessions.map(({ session, index }) =>
-				renderSessionSidebarRow(session, index, state, group.showRowDate),
+				renderSessionSidebarRow(session, index, state),
 			)}
 		</>
 	);
@@ -290,7 +289,6 @@ export function renderSessionPageTrigger(id: string) {
 type SessionDateGroup = {
 	key: string;
 	label: string | undefined;
-	showRowDate: boolean;
 	archived: boolean;
 	sessions: Array<{ session: AppSessionSummary; index: number }>;
 };
@@ -318,8 +316,6 @@ function groupSessionsByDate(
 				archived:
 					!status &&
 					(difference === undefined || difference >= archiveAfterDays),
-				showRowDate:
-					Boolean(status) || difference === 0 || difference === undefined,
 				sessions: [],
 			};
 			groups.set(key, group);
@@ -354,7 +350,6 @@ function renderSessionSidebarRow(
 	session: AppSessionSummary,
 	index: number,
 	state: SessionSidebarState,
-	showDate: boolean,
 ): string {
 	const current = session.path === state.currentSessionPath;
 	const status = sessionStatus(session, state);
@@ -397,12 +392,6 @@ function renderSessionSidebarRow(
 						<span class="session-row-title session-sidebar-title" safe>
 							{session.title}
 						</span>
-					)}
-					{showDate && (
-						<DateTime
-							dateTime={session.modifiedAt}
-							label={session.modified}
-						/>
 					)}
 				</span>
 				<span class="session-row-meta">

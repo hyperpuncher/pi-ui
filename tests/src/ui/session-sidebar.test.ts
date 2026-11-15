@@ -26,7 +26,7 @@ test("session sidebar keeps loading visible beneath partial results", () => {
 	assertStringIncludes(html, 'aria-label="Loading"');
 });
 
-test("session sidebar puts all older dates in one disclosure while preserving times and shortcuts", () => {
+test("session sidebar puts all older dates in one disclosure while preserving shortcuts", () => {
 	const now = new Date();
 	const today = new Date(now);
 	today.setHours(12, 0, 0, 0);
@@ -76,9 +76,7 @@ test("session sidebar puts all older dates in one disclosure while preserving ti
 	assertStringIncludes(html, '<ul id="session-sidebar-archive-list">');
 	assertFalse(html.includes("session-sidebar-group-"));
 	assertFalse(html.includes(">Earlier</span>"));
-	assertStringIncludes(html, ">12:00</time>");
-	assertFalse(html.includes(">yesterday</time>"));
-	assertFalse(html.includes(">Aug 1</time>"));
+	assertFalse(html.includes("<time"));
 	assertStringIncludes(html, "Earlier session");
 	assertEquals(html.match(/<details\b/g)?.length, 1);
 	const archive = html.match(/<details[^>]*>(.*?)<\/details>/s)?.[1] ?? "";
