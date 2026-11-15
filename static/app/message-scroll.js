@@ -48,6 +48,7 @@ function followBottom(messages, target) {
 	) {
 		messages.scrollTop = target;
 		state.scrollTop = messages.scrollTop;
+		trimOldMessages();
 		return;
 	}
 	let previousTime = performance.now();
@@ -297,9 +298,9 @@ export function scrollBottom() {
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
 	setFollowMode(messages, true);
-	messages.scrollTop = messages.scrollHeight;
+	// The follow animates up to one viewport and jumps over longer distances.
+	followBottom(messages, bottomOffset(messages));
 	updateScrollControl();
-	trimOldMessages();
 }
 
 export function markUnpinned() {
