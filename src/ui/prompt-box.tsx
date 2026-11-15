@@ -37,7 +37,7 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 			data-on:pi-ui-prompt-submit-finished="$_promptSubmitting = false"
 		>
 			<div class="prompt-popovers">
-				{renderLatestButton()}
+				{renderScrollControls()}
 				{renderSlashPicker(state)}
 				<div
 					id="prompt-file-popover"
@@ -202,24 +202,46 @@ export function renderPromptQueue(state: AppStateSnapshot): string {
 	);
 }
 
-function renderLatestButton() {
+function renderScrollControls() {
 	return (
-		<button
-			id="messages-latest"
-			type="button"
-			class="btn messages-latest"
-			data-variant="outline"
-			data-size="icon"
+		<div
+			class="messages-scroll-controls"
 			data-signals:_latest-visible__ifmissing="false"
-			data-on:pi-ui-latest-changed__document="$_latestVisible = evt.detail"
-			data-attr:hidden="!$_latestVisible"
-			data-preserve-attr="hidden"
-			data-on:click="window.piUi.messageScroll.scrollBottom('smooth')"
-			aria-label="Jump to latest message"
-			hidden
+			data-signals:_previous-user-visible__ifmissing="false"
+			data-on:pi-ui-scroll-controls-changed__document="
+				$_latestVisible = evt.detail.latest;
+				$_previousUserVisible = evt.detail.previous
+			"
 		>
-			<Icon name="arrow-down" />
-		</button>
+			<button
+				id="messages-previous-user"
+				type="button"
+				class="btn messages-scroll-button"
+				data-variant="outline"
+				data-size="icon"
+				data-attr:hidden="!$_previousUserVisible"
+				data-preserve-attr="hidden"
+				data-on:click="window.piUi.messageScroll.scrollPreviousUser()"
+				aria-label="Jump to previous user message"
+				hidden
+			>
+				<Icon name="arrow-up" />
+			</button>
+			<button
+				id="messages-latest"
+				type="button"
+				class="btn messages-scroll-button"
+				data-variant="outline"
+				data-size="icon"
+				data-attr:hidden="!$_latestVisible"
+				data-preserve-attr="hidden"
+				data-on:click="window.piUi.messageScroll.scrollBottom()"
+				aria-label="Jump to latest message"
+				hidden
+			>
+				<Icon name="arrow-down" />
+			</button>
+		</div>
 	);
 }
 

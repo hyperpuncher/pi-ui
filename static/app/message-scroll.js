@@ -1,6 +1,8 @@
 const liveEdgeThresholdPx = 8;
 const promptSpacerClearancePx = 48;
 const scrollControlThresholdPx = 48;
+// Space left above a user message after a jump to it.
+const previousUserOffsetPx = 16;
 const followTimeConstantMs = 60;
 const state = {
 	middleScrolling: false,
@@ -13,11 +15,12 @@ let observedPrompt;
 let messageResizeObserver;
 let pointerStart;
 let heldRow;
+// A previous-user jump waits for an older page when no user message is loaded above.
+let previousUserPending = false;
 let followFrame;
 let followTarget = 0;
 let olderCheckTimer;
 let reducedMotion;
-let latestVisible = false;
 
 function cancelFollow() {
 	if (followFrame !== undefined) cancelAnimationFrame(followFrame);
@@ -100,6 +103,10 @@ export function restorePosition() {
 		state.scrollTop = messages.scrollTop;
 		setFollowMode(messages, state.pinnedToBottom);
 		checkOlder();
+		if (previousUserPending) {
+			previousUserPending = false;
+			scrollPreviousUser();
+		}
 	});
 }
 
@@ -279,7 +286,7 @@ export function shouldRearmAfterScroll(previousTop, scrollTop, distance) {
 	return scrollTop > previousTop && distance <= liveEdgeThresholdPx;
 }
 
-export function scrollBottom(behavior = "auto") {
+export function scrollBottom() {
 	cancelFollow();
 	state.middleScrolling = false;
 	state.pinnedToBottom = true;
@@ -287,11 +294,7 @@ export function scrollBottom(behavior = "auto") {
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
 	setFollowMode(messages, true);
-	reducedMotion ??= window.matchMedia("(prefers-reduced-motion: reduce)");
-	messages.scrollTo({
-		top: messages.scrollHeight,
-		behavior: reducedMotion.matches ? "instant" : behavior,
-	});
+	messages.scrollTop = messages.scrollHeight;
 	updateScrollControl();
 	trimOldMessages();
 }
@@ -361,13 +364,54 @@ function updatePromptSpacer() {
 function updateScrollControl() {
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
-	const active =
+	const latest =
 		!state.pinnedToBottom &&
 		messages.scrollHeight - messages.scrollTop - messages.clientHeight >=
 			scrollControlThresholdPx;
-	if (active === latestVisible) return;
-	latestVisible = active;
-	document.dispatchEvent(new CustomEvent("pi-ui-latest-changed", { detail: active }));
+	const previous = previousUserRow(messages) !== undefined || hasOlderPage();
+	// Always dispatch: the first update can run before Datastar binds the listener.
+	// Signals ignore unchanged values.
+	document.dispatchEvent(
+		new CustomEvent("pi-ui-scroll-controls-changed", {
+			detail: { latest, previous },
+		}),
+	);
+}
+
+// The nearest user message whose top is above the viewport.
+function previousUserRow(messages) {
+	const top = messages.getBoundingClientRect().top;
+	const rows = messages.querySelectorAll("#message-list > .message-user");
+	for (let index = rows.length - 1; index >= 0; index--)
+		if (rows[index].getBoundingClientRect().top < top) return rows[index];
+	return undefined;
+}
+
+function hasOlderPage() {
+	return (
+		document.getElementById("older-messages-trigger")?.hasAttribute("data-active") ??
+		false
+	);
+}
+
+export function scrollPreviousUser() {
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	markUnpinned();
+	const row = previousUserRow(messages);
+	if (!row) {
+		// Load older pages until one has a user message; restorePosition retries.
+		if (!hasOlderPage()) return;
+		previousUserPending = true;
+		document
+			.getElementById("older-messages-trigger")
+			.dispatchEvent(new CustomEvent("pi-ui-older"));
+		return;
+	}
+	messages.scrollTop +=
+		row.getBoundingClientRect().top -
+		messages.getBoundingClientRect().top -
+		previousUserOffsetPx;
 }
 
 export function hydratePierreDiff(host) {

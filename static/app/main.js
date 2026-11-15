@@ -16,6 +16,7 @@ import {
 	hydratePierreDiff,
 	restorePosition,
 	scrollBottom,
+	scrollPreviousUser,
 } from "#static/app/message-scroll.js";
 import { requestPermission, show } from "#static/app/notifications.js";
 import {
@@ -50,6 +51,7 @@ window.piUi = {
 		hydratePierreDiff,
 		restorePosition,
 		scrollBottom,
+		scrollPreviousUser,
 	},
 	notifications: { requestPermission, show },
 	pickers: {

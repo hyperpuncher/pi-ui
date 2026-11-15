@@ -249,17 +249,51 @@
 		color: var(--text);
 	}
 
-	.messages-latest {
+	.messages-scroll-controls {
 		z-index: 20;
+		display: flex;
+		gap: 0.5rem;
 		margin-block-end: 1rem;
-		border-color: oklch(from var(--text) l c h / 10%);
-		border-radius: 999px;
-		background: oklch(from var(--surface-base) l c h / 60%);
-		backdrop-filter: blur(2px);
-		pointer-events: auto;
 	}
-	.messages-latest:not(:disabled):hover {
-		background: oklch(from var(--surface-base) l c h / 80%);
+
+	/* The circle is a pseudo-element, so the press scales it and keeps the icon sharp. */
+	.messages-scroll-button {
+		position: relative;
+		isolation: isolate;
+		border: 0;
+		border-radius: 999px;
+		background: none;
+		pointer-events: auto;
+
+		&::before {
+			position: absolute;
+			z-index: -1;
+			inset: 0;
+			border: 1px solid oklch(from var(--text) l c h / 10%);
+			border-radius: inherit;
+			background: oklch(from var(--surface-base) l c h / 60%);
+			backdrop-filter: blur(2px);
+			content: "";
+			transition:
+				background-color 130ms ease,
+				scale 70ms var(--ease-out);
+		}
+
+		&:not(:disabled):hover {
+			background: none;
+		}
+
+		&:not(:disabled):hover::before {
+			background: oklch(from var(--surface-base) l c h / 80%);
+		}
+
+		&:not(:disabled):active {
+			scale: none;
+		}
+
+		&:not(:disabled):active::before {
+			scale: 0.94;
+		}
 	}
 
 	.file-transfer-error {

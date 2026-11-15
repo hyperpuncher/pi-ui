@@ -43,7 +43,8 @@ interface PiUiNamespace {
 		bindResize(): void;
 		checkOlder(): void;
 		hydratePierreDiff(element: HTMLElement): void;
-		scrollBottom(behavior?: "auto" | "smooth"): void;
+		scrollBottom(): void;
+		scrollPreviousUser(): void;
 	};
 	pickers: {
 		close(): void;
