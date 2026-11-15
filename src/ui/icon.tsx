@@ -7,7 +7,7 @@ type IconProps = {
 	children?: JSX.Element;
 	class?: string;
 	label?: string;
-	role?: "img" | "status";
+	role?: "img";
 };
 
 export function Icon(props: IconProps) {

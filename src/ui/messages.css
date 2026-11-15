@@ -593,32 +593,18 @@
 		translate: -50% -50%;
 	}
 
-	.tool-status-ball {
-		width: 0.5rem;
-		height: 0.5rem;
-		border-radius: 999px;
-		background-color: currentColor;
-		background-image: radial-gradient(
-			circle at 35% 30%,
-			oklch(100% 0 none / 50%),
-			transparent
-		);
-		box-shadow: 0 2px 3px -1px currentColor;
-	}
-
-	.tool-status-success {
-		color: var(--status-success);
-	}
-
-	.tool-status-error {
-		color: var(--status-error);
+	/* A pane-colored halo stops the timeline rail about 2px short of the ring. */
+	.tool-state-dot .status-icon-halo {
+		fill: var(--surface-pane);
+		stroke: var(--surface-pane);
+		stroke-width: 7;
 	}
 
 	:is(#message-list, .nested-tool-calls) > .message-tool:has(+ .message-tool)::after,
 	:is(#message-list, .nested-tool-calls) > .message-tool + .message-tool::before {
 		position: absolute;
 		left: var(--timeline-rail-x);
-		width: 3px;
+		width: 2px;
 		background: var(--surface-muted);
 		content: "" / "";
 		translate: -50% 0;
@@ -703,24 +689,13 @@
 	[data-minimal-mode]
 		#message-list
 		> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
-		.tool-status-active {
-		opacity: 1;
-	}
+		.status-icon {
+		--status-tone: var(--text-muted);
+		--status-arc: 28 100;
+		--status-spin: running;
 
-	[data-minimal-mode]
-		#message-list
-		> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
-		.tool-status-result {
-		opacity: 0;
-	}
-
-	@media (prefers-reduced-motion: no-preference) {
-		[data-minimal-mode]
-			#message-list
-			> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
-			.tool-status-pulse {
-			opacity: 1;
-			animation: ping 1s var(--ease-out) infinite;
+		.status-icon-mark {
+			opacity: 0;
 		}
 	}
 

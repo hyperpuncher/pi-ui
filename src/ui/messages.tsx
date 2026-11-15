@@ -22,7 +22,7 @@ import { BoundedCache } from "#src/ui/render-cache.ts";
 import type { AppMessage } from "#src/ui/render-state.ts";
 import { SessionSubtitle } from "#src/ui/session-summary.tsx";
 import { resumeSessionAction } from "#src/ui/session-transition.tsx";
-import { StatusDot } from "#src/ui/status-dot.tsx";
+import { loaderIcon, StatusIcon } from "#src/ui/status-icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import {
 	attachmentFileExtension,
@@ -87,12 +87,7 @@ export function renderMessages(
 						data-show="$_historyLoading"
 						style="display: none"
 					>
-						<Icon
-							name="loader"
-							label="Loading older messages"
-							role="status"
-							class="icon-spin"
-						/>
+						{loaderIcon("Loading older messages")}
 					</div>
 					{renderOlderMessagesTrigger(hasOlderMessages)}
 					{messages.length === 0
@@ -175,7 +170,7 @@ function renderEmptyMessages(
 									role="status"
 									aria-label="Loading recent sessions"
 								>
-									<Icon name="loader" class="icon-spin" />
+									{loaderIcon()}
 								</div>
 							) : (
 								<div class="recent-sessions-list">
@@ -549,7 +544,7 @@ function renderNarrativeMessage(message: AppMessage): string {
 			>
 				<p class="thinking-placeholder">Thinking...</p>
 				<div class="tool-timeline-item minimal-activity">
-					<StatusDot class="tool-state-dot" state="running" label="Thinking" />
+					<StatusIcon class="tool-state-dot" state="running" label="Thinking" />
 					<p class="minimal-activity-label">thinking...</p>
 				</div>
 				<div class="thought-content">
@@ -565,7 +560,11 @@ function renderNarrativeMessage(message: AppMessage): string {
 		>
 			{message.activitySummary && (
 				<div class="activity-summary tool-timeline-item minimal-activity">
-					<StatusDot class="tool-state-dot" state="success" label="Completed" />
+					<StatusIcon
+						class="tool-state-dot"
+						state="success"
+						label="Completed"
+					/>
 					<p class="minimal-activity-label">
 						completed {message.activitySummary.stepCount}{" "}
 						{message.activitySummary.stepCount === 1 ? "step" : "steps"} in{" "}
@@ -591,11 +590,7 @@ function renderSystemMessage(message: AppMessage): string {
 			id={`message-${message.id}`}
 			role={hasStatus ? "status" : undefined}
 		>
-			{hasStatus && (
-				<span class="tool-state-dot status-dot" aria-hidden="true">
-					<span class="tool-status-ball warning-foreground" />
-				</span>
-			)}
+			{hasStatus && <StatusIcon class="tool-state-dot" state="warning" />}
 			<p class={["message-system-text", hasStatus && "tool-header"]}>
 				<span class={hasStatus ? "tool-title" : undefined}>
 					{hasStatus && <span class="sr-only">Warning: </span>}
@@ -625,9 +620,7 @@ function renderErrorMessage(message: AppMessage): string {
 		>
 			<details class="context-details" data-preserve-attr="open">
 				<summary class="context-summary">
-					<span class="tool-state-dot status-dot" aria-hidden="true">
-						<span class="tool-status-ball tool-status-error" />
-					</span>
+					<StatusIcon class="tool-state-dot" state="error" />
 					<span class="context-title">
 						error
 						<span class="context-meta" safe>
@@ -665,9 +658,7 @@ function renderContextMessage(message: AppMessage): string {
 		>
 			<details class="context-details" data-preserve-attr="open">
 				<summary class="context-summary">
-					<span class="tool-state-dot status-dot" aria-hidden="true">
-						<span class="tool-status-ball tool-status-success" />
-					</span>
+					<StatusIcon class="tool-state-dot" state="success" />
 					<span class="context-title">
 						<span safe>{label}</span>
 						{message.meta && (
@@ -786,7 +777,11 @@ function renderToolMessage(message: AppMessage, compactTools = false): string {
 			class="message message-tool tool-timeline-item"
 			id={`message-${message.id}`}
 		>
-			<StatusDot class="tool-state-dot" state={status.state} label={status.label} />
+			<StatusIcon
+				class="tool-state-dot"
+				state={status.state}
+				label={status.label}
+			/>
 			{compactTools ? (
 				<p class="tool-title-compact">
 					<span class="tool-title-compact-content">{title}</span>

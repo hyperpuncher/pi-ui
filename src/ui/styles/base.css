@@ -16,14 +16,6 @@
 		}
 	}
 
-	@keyframes ping {
-		90%,
-		100% {
-			transform: scale(2);
-			opacity: 0;
-		}
-	}
-
 	*,
 	*::before,
 	*::after {
@@ -114,11 +106,6 @@
 		clip-path: inset(50%);
 		white-space: nowrap;
 		border: 0;
-	}
-
-	.icon-spin {
-		animation: spin 1s linear infinite;
-		--animation-reduced: spin 20s linear infinite;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

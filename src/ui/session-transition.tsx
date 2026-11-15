@@ -1,7 +1,7 @@
 import { sessionTransitionOverlayVisible } from "#src/agent/session-transition-controller.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import type { AppStateSnapshot } from "#src/state/app-store.ts";
-import { Icon } from "#src/ui/icon.tsx";
+import { loaderIcon } from "#src/ui/status-icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { primaryModifierExpression } from "#src/utils/keyboard.ts";
 
@@ -62,7 +62,7 @@ export function renderSessionTransition(state: AppStateSnapshot): string {
 				</div>
 			) : (
 				<div class="session-transition-loading">
-					<Icon name="loader" class="icon-spin" />
+					{loaderIcon()}
 					<span class="sr-only" safe>
 						{targetPath}
 					</span>

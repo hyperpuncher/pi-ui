@@ -1,0 +1,78 @@
+@layer components {
+	/* Zero specificity, so loading containers can size the spinner. */
+	:where(.status-icon) {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+	.status-icon {
+		--status-tone: var(--text-muted);
+		--status-arc: 100 0;
+		--status-spin: paused;
+
+		flex-shrink: 0;
+		overflow: visible;
+		fill: none;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+
+		/* Matches Lucide icons: 2/24 of a 14px icon is about 1.17px. */
+		stroke-width: 1.55;
+	}
+	.status-icon[data-state="running"] {
+		--status-arc: 28 100;
+		--status-spin: running;
+	}
+	.status-icon[data-state="success"] {
+		--status-tone: var(--status-success);
+	}
+	.status-icon[data-state="error"] {
+		--status-tone: var(--status-error);
+	}
+	.status-icon[data-state="warning"] {
+		--status-tone: var(--status-warning);
+	}
+
+	.status-icon-halo {
+		stroke: none;
+	}
+
+	.status-icon-track {
+		stroke: oklch(from var(--text-muted) l c h / 25%);
+	}
+
+	/* The spin pauses instead of stopping, so the arc closes where it is.
+	   Reduced motion slows the spin, so work still reads as active. */
+	.status-icon-arc {
+		--animation-reduced: spin 6s linear infinite var(--status-spin);
+
+		transform-box: fill-box;
+		transform-origin: center;
+		stroke: var(--status-tone);
+		stroke-dasharray: var(--status-arc);
+		animation: spin 800ms linear infinite var(--status-spin);
+		transition:
+			stroke-dasharray 320ms var(--ease-out),
+			stroke 200ms ease;
+	}
+
+	.status-icon-mark {
+		stroke: var(--status-tone);
+		stroke-dasharray: 100;
+		stroke-dashoffset: 100;
+		opacity: 0;
+		transition:
+			stroke-dashoffset 240ms var(--ease-out),
+			opacity 160ms ease-out;
+	}
+	.status-icon-dot {
+		fill: var(--status-tone);
+		stroke: none;
+	}
+	.status-icon[data-state="success"] .status-icon-success,
+	.status-icon[data-state="error"] .status-icon-error,
+	.status-icon[data-state="warning"] .status-icon-warning {
+		stroke-dashoffset: 0;
+		opacity: 1;
+		transition-delay: 200ms;
+	}
+}

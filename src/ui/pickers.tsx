@@ -24,7 +24,7 @@ import {
 	resumeSessionAction,
 	resumeSessionShortcutAction,
 } from "#src/ui/session-transition.tsx";
-import { StatusDot } from "#src/ui/status-dot.tsx";
+import { StatusIcon } from "#src/ui/status-icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { uniqueStrings } from "#src/utils/format.ts";
 import { formatHomePath, workspaceDisplayName } from "#src/utils/workspace.ts";
@@ -554,7 +554,7 @@ function renderSessionRow(
 					]}
 					aria-hidden={displayStatus ? undefined : "true"}
 				>
-					<StatusDot
+					<StatusIcon
 						state={displayStatus === "running" ? "running" : "success"}
 						label={
 							displayStatus

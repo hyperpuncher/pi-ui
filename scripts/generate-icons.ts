@@ -15,7 +15,6 @@ const names = [
 	"folder",
 	"folder-open",
 	"git-branch",
-	"loader",
 	"message-circle-dashed",
 	"message-circle-plus",
 	"monitor",

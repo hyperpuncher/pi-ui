@@ -11,9 +11,9 @@ test("named icons render their SVG instead of escaped markup", () => {
 });
 
 test("labeled and custom icons retain their accessibility and shape", () => {
-	const labeled = syncHtml(<Icon name="loader" label="Loading" role="status" />);
-	assertStringIncludes(labeled, 'aria-label="Loading"');
-	assertStringIncludes(labeled, 'role="status"');
+	const labeled = syncHtml(<Icon name="search" label="Search" />);
+	assertStringIncludes(labeled, 'aria-label="Search"');
+	assertStringIncludes(labeled, 'role="img"');
 	const custom = syncHtml(
 		<Icon>
 			<circle cx="12" cy="12" r="4" />

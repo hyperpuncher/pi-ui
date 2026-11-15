@@ -1,5 +1,5 @@
 import type { AppStateSnapshot, AppUsage, AppUsageLimits } from "#src/state/app-store.ts";
-import { Icon } from "#src/ui/icon.tsx";
+import { loaderIcon } from "#src/ui/status-icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { clamp } from "#src/utils/clamp.ts";
 import { formatTokens } from "#src/utils/format.ts";
@@ -208,8 +208,4 @@ function usageRing(percent: number, className: string): string {
 
 function usageColor(percent: number): string {
 	return percent > 90 ? "usage-ring-danger" : "usage-ring-normal";
-}
-
-export function loaderIcon() {
-	return <Icon name="loader" label="Loading" role="status" class="icon-spin" />;
 }

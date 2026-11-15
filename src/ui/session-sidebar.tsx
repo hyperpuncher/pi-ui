@@ -12,7 +12,6 @@ import {
 } from "#src/state/app-store.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import { ShortcutKbd } from "#src/ui/keyboard.tsx";
-import { loaderIcon } from "#src/ui/prompt-status.tsx";
 import { SessionRenameTitle } from "#src/ui/session-rename.tsx";
 import { SessionRowAction } from "#src/ui/session-row-action.tsx";
 import { sessionStatusLabel } from "#src/ui/session-status.ts";
@@ -21,7 +20,7 @@ import {
 	resumeSessionAction,
 	resumeSessionShortcutAction,
 } from "#src/ui/session-transition.tsx";
-import { StatusDot } from "#src/ui/status-dot.tsx";
+import { loaderIcon, StatusIcon } from "#src/ui/status-icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { calendarDayDifference, formatCalendarDay } from "#src/utils/date-time-format.ts";
 import { systemTimeLocale } from "#src/utils/locale.ts";
@@ -275,11 +274,7 @@ export function renderSessionPageTrigger(id: string) {
 			data-indicator:_session-page-loading
 			data-on-intersect__once={`@post('${endpoints.sessionsMore}', { payload: {} })`}
 		>
-			<span
-				data-show="$_sessionPageLoading"
-				style="display: none"
-				aria-live="polite"
-			>
+			<span data-show="$_sessionPageLoading" style="display: none">
 				{loaderIcon()}
 			</span>
 		</div>
@@ -381,7 +376,7 @@ function renderSessionSidebarRow(
 						]}
 						aria-hidden={status ? undefined : "true"}
 					>
-						<StatusDot
+						<StatusIcon
 							state={status === "running" ? "running" : "success"}
 							label={status ? sessionStatusLabel(status, current) : ""}
 						/>

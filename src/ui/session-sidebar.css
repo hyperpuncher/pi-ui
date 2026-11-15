@@ -35,18 +35,11 @@
 		opacity: 0;
 	}
 
-	.status-dot {
-		display: inline-grid;
-		width: 0.5rem;
-		height: 0.5rem;
-		flex-shrink: 0;
-	}
 	.session-status-transition {
 		display: grid;
-		width: 0.6875rem;
+		width: 0.75rem;
 		flex-shrink: 0;
-		place-items: center end;
-		transform-origin: calc(100% - 0.25rem) center;
+		place-items: center;
 		scale: 1;
 		transition:
 			opacity 120ms ease-out,
@@ -64,7 +57,7 @@
 	}
 	.session-status-empty
 		+ :is(.session-sidebar-title, .session-menu-title, .session-rename) {
-		margin-inline-start: calc(-0.6875rem - 0.5rem);
+		margin-inline-start: calc(-0.75rem - 0.5rem);
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.session-status-transition,
@@ -72,24 +65,6 @@
 			+ :is(.session-sidebar-title, .session-menu-title, .session-rename) {
 			transition: none;
 		}
-	}
-	.status-dot > * {
-		grid-area: 1 / 1;
-	}
-	.status-dot-layer {
-		transition: opacity 120ms var(--ease-out);
-	}
-	.status-dot-running {
-		color: var(--text-muted);
-	}
-	.status-visible {
-		opacity: 1;
-	}
-	.status-hidden {
-		opacity: 0;
-	}
-	.status-pulse {
-		animation: ping 1s var(--ease-out) infinite;
 	}
 
 	.session-subtitle-content {

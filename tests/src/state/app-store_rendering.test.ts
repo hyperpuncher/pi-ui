@@ -238,7 +238,7 @@ test("parallel message updates all reach their final state", async () => {
 	);
 
 	assertEqual(count(updates, "data: selector #message-"), 2);
-	assertEqual(count(updates, "tool-status-success"), 2);
+	assertEqual(count(updates, 'data-state="success"'), 2);
 });
 
 test("older history patches only the loaded page and the trigger", async () => {

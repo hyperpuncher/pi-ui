@@ -19,6 +19,7 @@
 @import "./markdown.css";
 @import "./mermaid.css";
 @import "./diffs.css";
+@import "./status-icon.css";
 @import "./messages.css";
 @import "./session-sidebar.css";
 @import "./prompt-box.css";
