@@ -1,3 +1,29 @@
+// Intl formatters are slow to build, so each locale and format is built once.
+const formatters = new Map<string, Intl.DateTimeFormat | Intl.RelativeTimeFormat>();
+
+function dateFormatter(
+	locale: string | undefined,
+	options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+	const key = `d${locale ?? ""}${JSON.stringify(options)}`;
+	let formatter = formatters.get(key);
+	if (!(formatter instanceof Intl.DateTimeFormat)) {
+		formatter = new Intl.DateTimeFormat(locale, options);
+		formatters.set(key, formatter);
+	}
+	return formatter;
+}
+
+function relativeFormatter(locale: string | undefined): Intl.RelativeTimeFormat {
+	const key = `r${locale ?? ""}`;
+	let formatter = formatters.get(key);
+	if (!(formatter instanceof Intl.RelativeTimeFormat)) {
+		formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+		formatters.set(key, formatter);
+	}
+	return formatter;
+}
+
 export function formatAdaptiveDateTime(
 	date: Date,
 	now = new Date(),
@@ -5,14 +31,9 @@ export function formatAdaptiveDateTime(
 ): string {
 	const dayDifference = calendarDayDifference(date, now);
 	if (dayDifference === 0) {
-		return date.toLocaleTimeString(locale, {
-			hour: "2-digit",
-			minute: "2-digit",
-		});
+		return dateFormatter(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
 	}
-	if (dayDifference === 1) {
-		return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-1, "day");
-	}
+	if (dayDifference === 1) return relativeFormatter(locale).format(-1, "day");
 	return formatCalendarDay(date, now, locale);
 }
 
@@ -20,20 +41,20 @@ export function formatAdaptiveDateTime(
 export function formatCalendarDay(date: Date, now = new Date(), locale?: string): string {
 	const dayDifference = calendarDayDifference(date, now);
 	if (dayDifference > 1 && dayDifference < 7) {
-		return date.toLocaleDateString(locale, { weekday: "long" });
+		return dateFormatter(locale, { weekday: "long" }).format(date);
 	}
-	return date.toLocaleDateString(locale, {
-		month: "short",
-		day: "numeric",
-		year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
-	});
+	return dateFormatter(
+		locale,
+		date.getFullYear() === now.getFullYear()
+			? { month: "short", day: "numeric" }
+			: { month: "short", day: "numeric", year: "numeric" },
+	).format(date);
 }
 
 export function formatExpandedDateTime(date: Date, locale?: string): string {
-	return new Intl.DateTimeFormat(locale, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(date);
+	return dateFormatter(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+		date,
+	);
 }
 
 export function calendarDayDifference(date: Date, now: Date): number {
