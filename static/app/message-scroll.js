@@ -12,7 +12,7 @@ let observedMessageStack;
 let observedPrompt;
 let messageResizeObserver;
 let pointerStart;
-let olderAnchor;
+let heldRow;
 let followFrame;
 let followTarget = 0;
 let olderCheckTimer;
@@ -64,35 +64,43 @@ function followBottom(messages, target) {
 	followFrame = requestAnimationFrame(step);
 }
 
-// Capture immediately before the DOM patch, not when the request starts:
-// the reader can keep scrolling while the network request is in flight.
-export function beforeOlder() {
+// Older pages and display modes resize rows around the reader, and changed row
+// margins suppress native scroll anchoring. The server calls holdPosition before
+// the patch and restorePosition after it. Hold the latest user or assistant text
+// that starts above the viewport bottom: display modes never hide it, but they
+// can change the summary and padding around it inside the row.
+export function holdPosition() {
 	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement)) return;
-	markUnpinned();
+	// A pinned view keeps the bottom. Keep the first hold until it is restored.
+	if (!(messages instanceof HTMLElement) || state.pinnedToBottom || heldRow) return;
 	messages.style.overflowAnchor = "none";
-	const viewportTop = messages.getBoundingClientRect().top;
-	const row = [...messages.querySelectorAll("#message-list > .message[id]")].find(
-		(element) => {
-			const rect = element.getBoundingClientRect();
-			return rect.height > 0 && rect.bottom > viewportTop;
-		},
-	);
-	olderAnchor = row && { messages, row, top: row.getBoundingClientRect().top };
+	const bottom = messages.getBoundingClientRect().bottom;
+	const row = [
+		...messages.querySelectorAll(
+			"#message-list > .message-user > .message-user-text, #message-list > .message-assistant > .markdown-content",
+		),
+	].findLast((element) => element.getBoundingClientRect().top < bottom);
+	heldRow = row && { row, top: row.getBoundingClientRect().top };
 }
 
-export function afterOlder() {
-	const saved = olderAnchor;
-	olderAnchor = undefined;
-	const messages = document.getElementById("messages");
-	if (!(messages instanceof HTMLElement)) return;
-	if (saved?.messages === messages && messages.contains(saved.row)) {
-		messages.scrollTop += saved.row.getBoundingClientRect().top - saved.top;
+// Restore in the next frame: diffs hydrate after the patch, but before paint.
+export function restorePosition() {
+	requestAnimationFrame(() => {
+		const saved = heldRow;
+		heldRow = undefined;
+		const messages = document.getElementById("messages");
+		if (!(messages instanceof HTMLElement)) return;
+		if (state.pinnedToBottom) {
+			cancelFollow();
+			messages.scrollTop = bottomOffset(messages);
+		} else if (saved && messages.contains(saved.row)) {
+			messages.scrollTop += saved.row.getBoundingClientRect().top - saved.top;
+		}
 		// A programmatic restore is not downward reader input.
 		state.scrollTop = messages.scrollTop;
-	}
-	setFollowMode(messages, state.pinnedToBottom);
-	checkOlder();
+		setFollowMode(messages, state.pinnedToBottom);
+		checkOlder();
+	});
 }
 
 // Follow mode drives scrollTop itself; native anchoring would fight it, so
@@ -117,7 +125,7 @@ export function checkOlder() {
 }
 
 function trimOldMessages() {
-	if (!state.pinnedToBottom || olderAnchor) return;
+	if (!state.pinnedToBottom || heldRow) return;
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
 	const rows = [...messages.querySelectorAll("#message-list > .message[id]")];

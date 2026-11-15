@@ -9,5 +9,6 @@ export const clientScripts = {
 	openTreeDialog:
 		"{ const dialog = document.getElementById('tree-dialog'); if (dialog && !dialog.open) dialog.showModal(); }",
 	checkOlderMessages: "window.piUi.messageScroll.checkOlder()",
-	beforeOlderMessages: "window.piUi.messageScroll.beforeOlder()",
+	holdTranscriptPosition: "window.piUi.messageScroll.holdPosition()",
+	restoreTranscriptPosition: "window.piUi.messageScroll.restorePosition()",
 } as const;

@@ -38,8 +38,8 @@ interface PiUiNamespace {
 		resetDrag(): void;
 	};
 	messageScroll: {
-		beforeOlder(): void;
-		afterOlder(): void;
+		holdPosition(): void;
+		restorePosition(): void;
 		bindResize(): void;
 		checkOlder(): void;
 		hydratePierreDiff(element: HTMLElement): void;

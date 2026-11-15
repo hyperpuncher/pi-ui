@@ -9,12 +9,12 @@ import { bindDebugFrames } from "#static/app/debug-frames.js";
 import { bindFileLinks } from "#static/app/file-links.js";
 import * as fileTransfer from "#static/app/file-transfer.js";
 import {
-	afterOlder,
-	beforeOlder,
 	bindMessageResize,
 	bindMessageScroll,
 	checkOlder,
+	holdPosition,
 	hydratePierreDiff,
+	restorePosition,
 	scrollBottom,
 } from "#static/app/message-scroll.js";
 import { requestPermission, show } from "#static/app/notifications.js";
@@ -44,11 +44,11 @@ window.piUi = {
 	fonts: { apply() {} },
 	fileTransfer,
 	messageScroll: {
-		afterOlder,
-		beforeOlder,
 		bindResize: bindMessageResize,
 		checkOlder,
+		holdPosition,
 		hydratePierreDiff,
+		restorePosition,
 		scrollBottom,
 	},
 	notifications: { requestPermission, show },

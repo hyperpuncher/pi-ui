@@ -158,6 +158,14 @@ export class UiRenderer implements AppStorePresentation {
 		this.compactTools = this.messages.compactTools;
 		const viewPending = this.viewPending;
 		this.viewPending = false;
+		// The view patch updates the mode attributes, so restore after it.
+		if (toolPresentationChanged) {
+			this.hub.executeScript(clientScripts.holdTranscriptPosition);
+			effects.push({
+				type: "script",
+				script: clientScripts.restoreTranscriptPosition,
+			});
+		}
 		if (this.hub.clientCount > 0) {
 			const state = this.store;
 			const transcript =
@@ -245,13 +253,13 @@ export class UiRenderer implements AppStorePresentation {
 	patchOlderMessages(messages: readonly TranscriptMessage[]): void {
 		if (this.hub.clientCount === 0) return;
 		if (messages.length > 0) {
-			this.hub.executeScript(clientScripts.beforeOlderMessages);
+			this.hub.executeScript(clientScripts.holdTranscriptPosition);
 			this.hub.patchElement(
 				messages.map(({ id }) => this.messages.renderMessageElement(id)).join(""),
 				"#older-messages-trigger",
 				{
 					mode: "after",
-					scripts: ["window.piUi.messageScroll.afterOlder()"],
+					scripts: [clientScripts.restoreTranscriptPosition],
 				},
 			);
 		}

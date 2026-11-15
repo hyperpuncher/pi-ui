@@ -248,10 +248,10 @@ test("older history patches only the loaded page and the trigger", async () => {
 	const older = state.loadOlderMessages();
 	assertEqual(older.length, 30);
 	state.renderer.patchOlderMessages(older);
-	const output = await readUntil(reader, (text) => text.includes("afterOlder()"));
-	assertEqual(output.indexOf("beforeOlder()") >= 0, true);
-	assertEqual(output.indexOf("beforeOlder()") < output.indexOf("message 70"), true);
-	assertEqual(output.indexOf("message 70") < output.indexOf("afterOlder()"), true);
+	const output = await readUntil(reader, (text) => text.includes("restorePosition()"));
+	assertEqual(output.indexOf("holdPosition()") >= 0, true);
+	assertEqual(output.indexOf("holdPosition()") < output.indexOf("message 70"), true);
+	assertEqual(output.indexOf("message 70") < output.indexOf("restorePosition()"), true);
 	assertIncludes(output, "data: selector #older-messages-trigger");
 	assertIncludes(output, "data: mode after");
 	assertIncludes(output, "message 70");
