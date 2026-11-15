@@ -249,21 +249,46 @@
 		color: var(--text);
 	}
 
+	/* Both buttons share one cell. Inert buttons shrink into the center, so a
+	   second button grows out of the first and splits away from it. */
 	.messages-scroll-controls {
 		z-index: 20;
-		display: flex;
-		gap: 0.5rem;
+		display: grid;
 		margin-block-end: 1rem;
+	}
+	.messages-scroll-controls:not(:has(> [inert])) {
+		> #messages-previous-user {
+			translate: -1.125rem 0;
+		}
+
+		> #messages-latest {
+			translate: 1.125rem 0;
+		}
 	}
 
 	/* The circle is a pseudo-element, so the press scales it and keeps the icon sharp. */
 	.messages-scroll-button {
 		position: relative;
 		isolation: isolate;
+		grid-area: 1 / 1;
 		border: 0;
 		border-radius: 999px;
 		background: none;
 		pointer-events: auto;
+		transition:
+			translate 250ms var(--ease-out-back),
+			scale 250ms var(--ease-out-back),
+			opacity 150ms var(--ease-out);
+
+		&[inert] {
+			opacity: 0;
+			scale: 0.9;
+		}
+
+		/* Reduced motion keeps the fade and drops the movement. */
+		@media (prefers-reduced-motion: reduce) {
+			transition-property: opacity;
+		}
 
 		&::before {
 			position: absolute;
