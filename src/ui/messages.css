@@ -693,8 +693,9 @@
 		display: none;
 	}
 
-	/* Keep gaps stable even when intervening activity rows are hidden. */
-	[data-minimal-mode] #message-list > .message {
+	/* Keep gaps stable even when intervening activity rows are hidden.
+	   The last row has no gap, so the toggle does not move it. */
+	[data-minimal-mode] #message-list > .message:has(+ .message) {
 		margin-bottom: var(--message-gap);
 	}
 
