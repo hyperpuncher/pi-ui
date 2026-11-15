@@ -57,15 +57,14 @@
 		scale: 0.75;
 	}
 
-	/* Keep layout fixed. Only the title moves into the unused status slot. */
+	/* Without a status, the title takes the status slot and its gap. */
 	.session-status-transition
 		+ :is(.session-sidebar-title, .session-menu-title, .session-rename) {
-		translate: 0;
-		transition: translate 120ms ease-out;
+		transition: margin-inline-start 120ms ease-out;
 	}
 	.session-status-empty
 		+ :is(.session-sidebar-title, .session-menu-title, .session-rename) {
-		translate: calc(-0.6875rem - 0.5rem) 0;
+		margin-inline-start: calc(-0.6875rem - 0.5rem);
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.session-status-transition,
