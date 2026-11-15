@@ -59,6 +59,7 @@ jobs:
         needs: [build]
         runs-on: ubuntu-slim
         permissions:
+            actions: write
             contents: write
         env:
             GH_TOKEN: ${{ github.token }}
@@ -75,6 +76,8 @@ jobs:
             - uses: hyperpuncher/release-notes@v1
               id: notes
             - run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file "${{ steps.notes.outputs.path }}"
+            # npm trusts only npm.yml, so npm.yml must start its own run.
+            - run: gh workflow run npm.yml --ref "$GITHUB_REF_NAME" -f tag="$GITHUB_REF_NAME"
 
     aur:
         needs: [release]
@@ -85,15 +88,6 @@ jobs:
             tag: ${{ github.ref_name }}
         secrets:
             AUR_KEY: ${{ secrets.AUR_KEY }}
-
-    npm:
-        needs: [release]
-        permissions:
-            contents: read
-            id-token: write
-        uses: ./.github/workflows/npm.yml
-        with:
-            tag: ${{ github.ref_name }}
 
     homebrew:
         needs: [release]

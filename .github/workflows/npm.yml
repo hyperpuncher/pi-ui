@@ -1,11 +1,7 @@
 name: publish npm package
 
 on:
-    workflow_call:
-        inputs:
-            tag:
-                required: true
-                type: string
+    # The release workflow dispatches this run: npm trusts only this file.
     workflow_dispatch:
         inputs:
             tag:
