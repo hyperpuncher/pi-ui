@@ -158,6 +158,20 @@ test("system messages make share URLs actionable and escape text", () => {
 	assertStringIncludes(html, 'target="_blank"');
 });
 
+test("notices show their level, and pi-ui notices default to warning", () => {
+	const notice = (level?: AppMessage["level"]) =>
+		renderMessage({
+			id: "n",
+			role: "notice",
+			text: "65.0 tps",
+			level,
+			timestamp: new Date(0),
+		});
+	assertStringIncludes(notice("info"), 'data-state="info"');
+	assertStringIncludes(notice("error"), 'data-state="error"');
+	assertStringIncludes(notice(), 'data-state="warning"');
+});
+
 test("bodyless tools show only their title", () => {
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "Read file");

@@ -47,10 +47,7 @@ export class ExtensionUiController {
 				this.input(isActive, title, placeholder, dialogOptions),
 			notify: (message, type = "info") => {
 				if (!isActive()) return;
-				this.store.appendMessage(
-					"notice",
-					type === "info" ? message : `${type}: ${message}`,
-				);
+				this.store.appendMessage("notice", message, { level: type });
 			},
 			onTerminalInput: () => unsupported("raw terminal input"),
 			setStatus: (key, text) => {

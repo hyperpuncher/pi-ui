@@ -577,9 +577,12 @@ function renderNarrativeMessage(message: AppMessage): string {
 	);
 }
 
+const noticeLabels = { info: "Info: ", warning: "Warning: ", error: "Error: " };
+
 function renderSystemMessage(message: AppMessage): string {
 	if (message.state === "error") return renderErrorMessage(message);
 	const hasStatus = message.role === "notice";
+	const level = message.level ?? "warning";
 	return syncHtml(
 		<article
 			class={[
@@ -590,10 +593,10 @@ function renderSystemMessage(message: AppMessage): string {
 			id={`message-${message.id}`}
 			role={hasStatus ? "status" : undefined}
 		>
-			{hasStatus && <StatusIcon class="tool-state-dot" state="warning" />}
+			{hasStatus && <StatusIcon class="tool-state-dot" state={level} />}
 			<p class={["message-system-text", hasStatus && "tool-header"]}>
 				<span class={hasStatus ? "tool-title" : undefined}>
-					{hasStatus && <span class="sr-only">Warning: </span>}
+					{hasStatus && <span class="sr-only">{noticeLabels[level]}</span>}
 					{message.title ? (
 						<>
 							<span safe>{message.title}</span>

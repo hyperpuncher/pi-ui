@@ -887,6 +887,7 @@ export class RuntimeController {
 				this.state.appendMessage(
 					"notice",
 					`Reload failed: ${errorMessage(error)}`,
+					{ level: "error" },
 				);
 			}
 			return false;
@@ -917,6 +918,7 @@ export class RuntimeController {
 				this.state.appendMessage(
 					"notice",
 					`Failed to share session: ${errorMessage(error)}`,
+					{ level: "error" },
 				);
 			}
 		} finally {
@@ -1274,6 +1276,7 @@ export class RuntimeController {
 					this.state.appendMessage(
 						"notice",
 						`Extension ${error.extensionPath}: ${error.error}`,
+						{ level: "error" },
 					);
 				}
 			},

@@ -70,7 +70,8 @@
 	}
 	.status-icon[data-state="success"] .status-icon-success,
 	.status-icon[data-state="error"] .status-icon-error,
-	.status-icon[data-state="warning"] .status-icon-warning {
+	.status-icon[data-state="warning"] .status-icon-warning,
+	.status-icon[data-state="info"] .status-icon-info {
 		stroke-dashoffset: 0;
 		opacity: 1;
 		transition-delay: 200ms;

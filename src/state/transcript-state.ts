@@ -42,12 +42,21 @@ export type TranscriptMessage = {
 	titleParts?: TranscriptMessageTitlePart[];
 	meta?: string;
 	state?: "running" | "success" | "error";
+	// Notice severity. Notices without a level are pi-ui warnings.
+	level?: "info" | "warning" | "error";
 	format?: "pre" | "diff" | "code" | "output";
 };
 
 export type TranscriptMessageOptions = Pick<
 	TranscriptMessage,
-	"title" | "titleParts" | "meta" | "state" | "format" | "attachments" | "nestedCalls"
+	| "title"
+	| "titleParts"
+	| "meta"
+	| "state"
+	| "level"
+	| "format"
+	| "attachments"
+	| "nestedCalls"
 >;
 
 export type TranscriptMessageInput = Omit<TranscriptMessage, "id">;

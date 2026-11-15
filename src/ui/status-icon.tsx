@@ -1,6 +1,6 @@
 import { syncHtml } from "#src/ui/sync-html.ts";
 
-export type StatusIconState = "running" | "success" | "error" | "warning";
+export type StatusIconState = "running" | "success" | "error" | "warning" | "info";
 
 // Every mark is always present, so a state change morphs one attribute and
 // CSS can animate the arc closing and the mark drawing in.
@@ -41,6 +41,17 @@ export function StatusIcon(props: {
 				class="status-icon-mark status-icon-dot status-icon-warning"
 				cx="8"
 				cy="10.9"
+				r="1"
+			/>
+			<path
+				class="status-icon-mark status-icon-info"
+				d="M8 7.5v3.75"
+				pathLength="100"
+			/>
+			<circle
+				class="status-icon-mark status-icon-dot status-icon-info"
+				cx="8"
+				cy="5.1"
 				r="1"
 			/>
 		</svg>,
