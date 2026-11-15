@@ -4,6 +4,9 @@ const scrollControlThresholdPx = 48;
 // Space left above a user message after a jump to it.
 const userRowOffsetPx = 16;
 const followTimeConstantMs = 60;
+// A busy main thread delays frames. Count at most one 30 fps frame per step,
+// so a stall slows the follow down instead of turning it into a jump.
+const maxFollowFrameMs = 1000 / 30;
 const state = {
 	middleScrolling: false,
 	pinnedToBottom: true,
@@ -53,8 +56,8 @@ function followBottom(messages, target) {
 	const step = (time) => {
 		followFrame = undefined;
 		if (!state.pinnedToBottom || document.hidden || !messages.isConnected) return;
-		const amount =
-			1 - Math.exp(-Math.max(0, time - previousTime) / followTimeConstantMs);
+		const elapsed = Math.min(maxFollowFrameMs, Math.max(0, time - previousTime));
+		const amount = 1 - Math.exp(-elapsed / followTimeConstantMs);
 		position += (followTarget - position) * amount;
 		if (reducedMotion.matches || followTarget - position <= 1)
 			position = followTarget;
