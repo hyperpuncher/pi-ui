@@ -74,6 +74,10 @@
 		opacity: 0.55;
 	}
 
+	[aria-busy="true"] {
+		cursor: progress;
+	}
+
 	:where(img, svg) {
 		display: block;
 		max-width: 100%;

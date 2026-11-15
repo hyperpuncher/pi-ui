@@ -122,6 +122,7 @@ export function renderWorkspaceDialogMenu(
 		<div
 			role="listbox"
 			id="workspace-menu"
+			data-attr:aria-busy="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			class="command-menu"
 			aria-orientation="vertical"
 		>
@@ -414,7 +415,6 @@ function renderWorkspaceRow(workspacePath: string, current: boolean): string {
 			data-preserve-attr="class"
 			tabindex="-1"
 			aria-selected={current ? "true" : "false"}
-			data-attr:aria-disabled="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			data-on:click={openWorkspaceAction(JSON.stringify(workspacePath))}
 		>
 			<span
@@ -472,6 +472,7 @@ export function renderSessionPicker(state: AppStateSnapshot): string {
 			<div
 				role="listbox"
 				id="session-menu"
+				data-attr:aria-busy="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 				class="session-menu"
 				aria-orientation="vertical"
 				data-signals:background-session-path__ifmissing="''"
@@ -538,7 +539,6 @@ function renderSessionRow(
 			aria-selected={current ? "true" : "false"}
 			data-preserve-attr="class"
 			data-keep-command-open
-			data-attr:aria-disabled="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			data-on:click={resumeSessionAction(session.path, { closeDialog: true })}
 			data-on:keydown__window={
 				shortcut

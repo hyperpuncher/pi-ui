@@ -99,7 +99,7 @@ export function renderSessionSidebar(
 				data-on:click={`
 					if (!el.matches(':modal')) return;
 					const row = evt.target.closest('.session-sidebar-row-button');
-					if (row && row.getAttribute('aria-disabled') !== 'true') el.close();
+					if (row && $_sessionTransitionStatus !== 'loading') el.close();
 					if (!('closedBy' in HTMLDialogElement.prototype) && evt.target === el) el.close();
 				`}
 				data-signals:_session-sidebar-width__ifmissing={String(width)}
@@ -174,7 +174,10 @@ export function renderSessionSidebar(
 								<ShortcutKbd shortcut={activeKeybind("focus-sessions")} />
 							</div>
 						</header>
-						<section id="session-sidebar-viewport">
+						<section
+							id="session-sidebar-viewport"
+							data-attr:aria-busy="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
+						>
 							<div
 								role="group"
 								class="session-sidebar-group"
@@ -359,7 +362,6 @@ function renderSessionSidebarRow(
 				data-active={current ? "true" : undefined}
 				aria-current={current ? "true" : undefined}
 				aria-label={session.title}
-				data-attr:aria-disabled="$_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 				data-on:click={resumeSessionAction(session.path)}
 				data-on:keydown__window={
 					shortcut
