@@ -212,22 +212,18 @@
 			--overflow-fade-top: 0px;
 			--overflow-fade-bottom: 0px;
 
-			mask-image:
-				linear-gradient(
-					to right,
-					transparent,
-					oklch(0% 0 none) var(--overflow-fade-left),
-					oklch(0% 0 none) calc(100% - var(--overflow-fade-right)),
-					transparent
-				),
-				linear-gradient(
-					to bottom,
-					transparent,
-					oklch(0% 0 none) var(--overflow-fade-top),
-					oklch(0% 0 none) calc(100% - var(--overflow-fade-bottom)),
-					transparent
-				);
-			mask-composite: intersect;
+			/* An opaque layer minus the fade bands. Unlike a plain gradient mask,
+			   it is not clipped to the border box, so the focus ring stays visible. */
+			mask:
+				linear-gradient(oklch(0% 0 none), oklch(0% 0 none)) no-clip subtract,
+				linear-gradient(to right, oklch(0% 0 none), transparent) left /
+					var(--overflow-fade-left) 100% no-repeat no-clip,
+				linear-gradient(to left, oklch(0% 0 none), transparent) right /
+					var(--overflow-fade-right) 100% no-repeat no-clip,
+				linear-gradient(to bottom, oklch(0% 0 none), transparent) top / 100%
+					var(--overflow-fade-top) no-repeat no-clip,
+				linear-gradient(to top, oklch(0% 0 none), transparent) bottom / 100%
+					var(--overflow-fade-bottom) no-repeat no-clip;
 
 			/* Keep the real scroll range in the first pass. This avoids a finished
 			   fill effect sticking around when a resize removes the overflow. */
