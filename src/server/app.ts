@@ -33,6 +33,8 @@ import { checkForUpdate } from "#src/update-check.ts";
 import { expandHomePath } from "#src/utils/workspace.ts";
 import { normalizeWorkspaceReviewPreferences } from "#src/workspace-review-types.ts";
 
+const updateCheckIntervalMs = 6 * 60 * 60 * 1000;
+
 export async function createApp() {
 	const fdReady = ensureTool("fd", ({ message }) => console.error(message));
 	const staticAssets = await createStaticAssetServer(staticRoot);
@@ -62,10 +64,15 @@ export async function createApp() {
 	store.sessionSidebarArchive = sessionSidebar.archive !== false;
 	store.sessionSidebarArchiveAfterDays =
 		sessionSidebar.archiveAfterDays ?? sessionSidebarArchiveAfterDaysDefault;
+	let updateTimer: ReturnType<typeof setInterval> | undefined;
 	if (appConfig.updateCheck !== false && process.env.PI_UI_NO_UPDATE_CHECK !== "1") {
-		void checkForUpdate().then((update) => {
-			if (update) store.setUpdateAvailable(update);
-		});
+		const checkUpdate = () =>
+			void checkForUpdate().then((update) => {
+				if (update) store.setUpdateAvailable(update);
+			});
+		checkUpdate();
+		// A background service can run for weeks.
+		updateTimer = setInterval(checkUpdate, updateCheckIntervalMs).unref();
 	}
 	store.setWorkspaceReviewPreferences(workspaceReviewPreferences);
 	const sessionImages = new SessionImageStore();
@@ -113,6 +120,7 @@ export async function createApp() {
 		context,
 		dispose: () => {
 			disposal ??= (async () => {
+				clearInterval(updateTimer);
 				workspaceReview.dispose();
 				await Promise.allSettled([
 					transferredFiles.dispose(),
