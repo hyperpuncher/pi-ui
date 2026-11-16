@@ -9,16 +9,16 @@
         "@earendil-works/pi-coding-agent": "^1.5.2",
         "@earendil-works/pi-schema": "^1.5.2",
         "@earendil-works/pi-tui": "^1.5.2",
-        "@iconify-json/lucide": "^1.2.153",
-        "@kitajs/html": "5.0.0-next.1",
-        "@oxlint/plugins": "1.93.0",
+        "@iconify-json/lucide": "^1.2.155",
+        "@kitajs/html": "^5.0.0-next.4",
+        "@oxlint/plugins": "^1.93.0",
         "@pierre/diffs": "^1.6.4",
-        "@pierre/highlights": "0.5.1",
+        "@pierre/highlights": "^0.5.1",
         "@pierre/trees": "^1.0.0",
         "@types/bun": "^1.4.4",
         "open-props": "^1.7.23",
-        "oxlint": "1.93.0",
-        "pele": "1.13.0",
+        "oxlint": "^1.93.0",
+        "pele": "^1.13.0",
         "stylelint": "^18.0.0",
         "stylelint-config-standard": "^41.0.0",
       },
@@ -102,13 +102,13 @@
 
     "@google/genai": ["@google/genai@2.21.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "p-retry": "^4.6.2", "protobufjs": "^7.5.4", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.25.2" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-+PDtco2/Z0ONdzCGekCoCT+O1VJS9xJQNN4XzQpXG/t3El/SWWMkCWlFRO1KmivOHPa4Q0VjUYu1HBKCZ/v33Q=="],
 
-    "@iconify-json/lucide": ["@iconify-json/lucide@1.2.153", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-fvb2SSbCxsj6CPUl2adKGWavwV90GvCd8zT/SnW0kd4Eg/Jc/ISQPbYuFjPFOiK7ohOgDWUMGeTIzxMDDMEoHQ=="],
+    "@iconify-json/lucide": ["@iconify-json/lucide@1.2.155", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-pntdVKUFkr/NA+R5wVvRlpRFCr+wY8xKU1wFjywvOr5taNq8Y6MTfHTZ6v7P5M0pe3LQYUO2rYzKCgIfAhdcDA=="],
 
     "@iconify/types": ["@iconify/types@2.0.0", "", {}, "sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg=="],
 
     "@isaacs/nonrecursive-glob-match": ["@isaacs/nonrecursive-glob-match@1.0.3", "", {}, "sha512-SI7kyKHq4XXDRozw+r9GlRZkia1ZkFrpLW98r2IC2Bpr8YkFGE3fvjzmxCG0x78A++69HmDNrDvSMYBZmHGpKA=="],
 
-    "@kitajs/html": ["@kitajs/html@5.0.0-next.1", "", { "dependencies": { "csstype": "3.2.3" } }, "sha512-jqE8KT1lPseRUGSpvd+pURp3JMYZSbqD5bJSn2T3sG5dNNFJ/OpaIc8npp7pA1mhYt35Gu4r7zju80uEjLCC5g=="],
+    "@kitajs/html": ["@kitajs/html@5.0.0-next.4", "", { "dependencies": { "csstype": "3.2.3" } }, "sha512-SqrhxAUsQK+JPTpNWEN3/06uVbVaftj9Pwm++AfUfhzZHS41G4xro5rDQhNgXAq0aFUqcpUpGRhmsR9TAZVrNg=="],
 
     "@oxlint/binding-android-arm-eabi": ["@oxlint/binding-android-arm-eabi@1.93.0", "", { "os": "android", "cpu": "arm" }, "sha512-KKw70pbD5Pvq3G2lJ+WQ71XPMjCmg37rkSe2+mDqCRP3PoTSdDMuEi4UOnE8JBtyNM7bek61EC2s0Jt7S7u+Sg=="],
 

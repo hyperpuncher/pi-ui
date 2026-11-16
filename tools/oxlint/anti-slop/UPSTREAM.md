@@ -57,7 +57,7 @@ formatting was normalized.
 
 ## Dependencies
 
-- `oxlint` and `@oxlint/plugins` are both pinned to `1.82.0`; they move together.
+- `oxlint` and `@oxlint/plugins` move together: update them in one `bun update oxlint @oxlint/plugins`.
 - `@oxlint/plugins` does not export a `RuleTester`, so focused rule tests use the real
   Oxlint CLI against representative accepted and rejected sources.
 
