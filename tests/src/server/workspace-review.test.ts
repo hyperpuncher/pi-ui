@@ -82,13 +82,14 @@ test("reused metadata preserves content updates and retries an unborn history", 
 test("porcelain status parsing keeps rename destinations and status precedence", () => {
 	assertEquals(
 		parsePorcelainStatus(
-			"R  src/new.ts\0src/old.ts\0?? notes.txt\0 D deleted.ts\0AM added.ts\0",
+			"R  src/new.ts\0src/old.ts\0?? notes.txt\0 D deleted.ts\0AM added.ts\0D  readded.ts\0?? readded.ts\0",
 		),
 		[
 			{ additions: 0, deletions: 0, path: "src/new.ts", status: "renamed" },
 			{ additions: 0, deletions: 0, path: "notes.txt", status: "untracked" },
 			{ additions: 0, deletions: 0, path: "deleted.ts", status: "deleted" },
 			{ additions: 0, deletions: 0, path: "added.ts", status: "added" },
+			{ additions: 0, deletions: 0, path: "readded.ts", status: "deleted" },
 		],
 	);
 });

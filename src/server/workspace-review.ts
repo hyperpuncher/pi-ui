@@ -452,12 +452,19 @@ export function parseCommitLog(
 }
 
 export function parsePorcelainStatus(output: string): WorkspaceFileChange[] {
-	return parsePorcelainEntries(output).map(({ code, path }) => ({
-		additions: 0,
-		deletions: 0,
-		path,
-		status: statusFromCode(code),
-	}));
+	// A path deleted from the index and recreated in the worktree is listed
+	// twice; the file tree needs one row per path, so the staged entry wins.
+	const changes = new Map<string, WorkspaceFileChange>();
+	for (const { code, path } of parsePorcelainEntries(output)) {
+		if (!changes.has(path))
+			changes.set(path, {
+				additions: 0,
+				deletions: 0,
+				path,
+				status: statusFromCode(code),
+			});
+	}
+	return [...changes.values()];
 }
 
 function parsePorcelainCount(output: string): number {
