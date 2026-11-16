@@ -16,6 +16,9 @@ import { errorMessage } from "#src/utils/errors.ts";
 import type { WorkspaceReviewSnapshot } from "#src/workspace-review-types.ts";
 
 const debounceMs = 200;
+// Recursive watches block the event loop for up to a few hundred ms on large trees.
+// Starting them after the switch's frame keeps quick session jumps fast.
+const watchDelayMs = 500;
 
 /** Watches the active workspace and publishes file and Git changes through AppStore. */
 export class WorkspaceReviewController {
@@ -102,6 +105,8 @@ export class WorkspaceReviewController {
 			}),
 		]);
 		if (!active()) return;
+		await Bun.sleep(watchDelayMs);
+		if (!active()) return;
 		const gitPaths = await findGitWatchPaths(path);
 		if (!active()) return;
 		// The initial read ran before the watchers could observe metadata changes.
@@ -173,6 +178,8 @@ export class WorkspaceReviewController {
 				(event, filename) => changed(watchPath, event, filename),
 			),
 		);
+		// Catches Git changes made before the watchers started.
+		await refresh();
 	}
 
 	private stopWatcher(): void {
