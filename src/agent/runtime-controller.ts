@@ -13,6 +13,7 @@ import {
 	createMcpExtension,
 	createToolSearchExtension,
 	getAgentDir,
+	type ModelRuntime,
 	resolveModelScopeWithDiagnostics,
 	SessionManager,
 	type SessionStartEvent,
@@ -81,7 +82,7 @@ import {
 } from "#src/state/app-store.ts";
 import { TranscriptState } from "#src/state/transcript-state.ts";
 import { errorMessage } from "#src/utils/errors.ts";
-import { configureAgentHttpProxy, withAgentHttpProxy } from "#src/utils/http-proxy.ts";
+import { configureAgentHttpProxy } from "#src/utils/http-proxy.ts";
 import { moveToTrash } from "#src/utils/trash.ts";
 import {
 	defaultWorkspacePath,
@@ -318,11 +319,14 @@ export class RuntimeController {
 				services.modelRuntime,
 				services.settingsManager.getGlobalSettings().httpProxy,
 			);
-			const { scopedModels } = await withAgentHttpProxy(services.modelRuntime, () =>
-				resolveModelScopeWithDiagnostics(
-					services.settingsManager.getEnabledModels() ?? [],
-					services.modelRuntime,
-				),
+			// createAgentSessionServices already refreshed availability. Read that
+			// snapshot instead of letting getAvailable() check every provider again.
+			const snapshotRuntime: ModelRuntime = Object.create(services.modelRuntime);
+			snapshotRuntime.getAvailable = async () =>
+				services.modelRuntime.getAvailableSnapshot();
+			const { scopedModels } = await resolveModelScopeWithDiagnostics(
+				services.settingsManager.getEnabledModels() ?? [],
+				snapshotRuntime,
 			);
 			const readIsOverridden = services.resourceLoader
 				.getExtensions()
