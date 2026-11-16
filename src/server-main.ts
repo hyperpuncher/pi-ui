@@ -46,7 +46,10 @@ async function main(): Promise<void> {
 			const stop = async () => {
 				if (stopping) return;
 				stopping = true;
-				await server.stop();
+				// Event streams never finish, so a graceful stop would wait forever
+				// and keep open pages on this process. Closing them makes pages
+				// reconnect to the next server.
+				await server.stop(true);
 				await disposeApp();
 			};
 			process.once("SIGINT", () => void stop());
