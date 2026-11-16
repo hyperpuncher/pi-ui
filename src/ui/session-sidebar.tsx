@@ -194,20 +194,27 @@ export function renderSessionSidebar(
 	);
 }
 
-/** Only row order and grouping can change the sidebar layout. */
-export function sessionSidebarLayoutKey(state: SessionSidebarState): string {
-	return JSON.stringify(
-		groupSessionsByDate(state).map((group) => [
-			group.key,
-			Boolean(group.label),
-			state.sessionSidebarArchive && group.archived,
-			group.sessions.map(({ session }) => session.path),
-		]),
-	);
+/** The sidebar HTML, and a key that changes only when row order or grouping does. */
+export function sessionSidebarContent(state: SessionSidebarState) {
+	const groups = groupSessionsByDate(state);
+	return {
+		html: renderGroups(state, groups),
+		layout: JSON.stringify(
+			groups.map((group) => [
+				group.key,
+				Boolean(group.label),
+				state.sessionSidebarArchive && group.archived,
+				group.sessions.map(({ session }) => session.path),
+			]),
+		),
+	};
 }
 
 export function renderSessionSidebarContent(state: SessionSidebarState): string {
-	const groups = groupSessionsByDate(state);
+	return renderGroups(state, groupSessionsByDate(state));
+}
+
+function renderGroups(state: SessionSidebarState, groups: SessionDateGroup[]): string {
 	const archiveGroups = state.sessionSidebarArchive
 		? groups.filter((group) => group.archived)
 		: [];

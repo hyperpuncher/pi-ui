@@ -37,10 +37,7 @@ import { renderPromptQueue } from "#src/ui/prompt-box.tsx";
 import { renderModelPicker, renderThinkingPicker } from "#src/ui/prompt-pickers.tsx";
 import { renderPromptStart } from "#src/ui/prompt-start.tsx";
 import { renderPromptStatus } from "#src/ui/prompt-status.tsx";
-import {
-	renderSessionSidebarContent,
-	sessionSidebarLayoutKey,
-} from "#src/ui/session-sidebar.tsx";
+import { sessionSidebarContent } from "#src/ui/session-sidebar.tsx";
 import { renderSessionTransition } from "#src/ui/session-transition.tsx";
 import { renderToolbar } from "#src/ui/toolbar.tsx";
 import { renderTreePicker } from "#src/ui/tree-picker.tsx";
@@ -69,7 +66,7 @@ export class UiRenderer implements AppStorePresentation {
 	private transcriptRestored = false;
 	private transcriptSessionKey: string;
 	private compactTools: boolean;
-	private sidebarLayout = "";
+	private sidebar = { html: "", layout: "" };
 	private workspaceReviewKey = "";
 
 	constructor(
@@ -113,12 +110,12 @@ export class UiRenderer implements AppStorePresentation {
 				signal,
 				() => {
 					const snapshot = this.store;
-					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
+					this.sidebar = sessionSidebarContent(snapshot);
 					this.transcriptSessionKey = snapshot.promptSessionKey;
 					const elements =
 						this.messages.renderTranscript(snapshot) +
 						this.renderView(snapshot, view, true) +
-						renderSessionSidebarContent(snapshot);
+						this.sidebar.html;
 					if (workspaceQuery.trim())
 						queueMicrotask(() => {
 							void this.setWorkspaceSearch(workspaceQuery);
@@ -206,17 +203,15 @@ export class UiRenderer implements AppStorePresentation {
 		}
 		if (this.hub.clientCount > 0 && viewPending) {
 			const state = this.store;
-			const sidebarLayout = sessionSidebarLayoutKey(state);
-			const sidebarMoved = sidebarLayout !== this.sidebarLayout;
-			this.sidebarLayout = sidebarLayout;
-			this.hub.patchElement(
-				renderSessionSidebarContent(state),
-				"#session-sidebar-content",
-				{
-					useViewTransition: sidebarMoved,
+			// Most commits leave the sidebar as it was; a morph would still parse it all.
+			const sidebar = sessionSidebarContent(state);
+			if (sidebar.html !== this.sidebar.html) {
+				this.hub.patchElement(sidebar.html, "#session-sidebar-content", {
+					useViewTransition: sidebar.layout !== this.sidebar.layout,
 					viewTransitionSelector: "#session-sidebar-viewport",
-				},
-			);
+				});
+				this.sidebar = sidebar;
+			}
 			this.hub.patchView(
 				() => this.renderView(state, this.view),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
