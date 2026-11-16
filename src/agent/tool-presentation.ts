@@ -46,6 +46,24 @@ export function toolTitleParts(
 			{ text: record.code, mono: true, highlight: "javascript" },
 		];
 	}
+	const mcpTool = mcpToolLabel(toolName);
+	if (mcpTool) {
+		const lines = argumentLines(args);
+		return [
+			{ text: "mcp" },
+			{ text: mcpTool, tone: "accent", mono: true },
+			...(lines.length
+				? [
+						{
+							text: lines.join("\n"),
+							mono: true,
+							highlight: "yaml",
+							inline: lines.length === 1 && !lines[0]?.includes("\n"),
+						} as const,
+					]
+				: []),
+		];
+	}
 	const target = toolTarget(toolName, args);
 	const range = toolRange(args);
 	return [
@@ -66,6 +84,8 @@ export function toolTitle(
 		return `$ ${stringValue(record.command) || "..."}${timeout}`;
 	}
 
+	const mcpTool = mcpToolLabel(toolName);
+	if (mcpTool) return `mcp ${mcpTool}`;
 	const verb = toolName;
 	const target = toolTarget(toolName, args);
 	return target ? `${verb} ${target}${toolRange(args)}` : verb;
@@ -172,6 +192,29 @@ export function formatToolResult<Result>(
 
 function isCodeTool(toolName: string): boolean {
 	return toolName === "codemode" || toolName.endsWith("browser_run_code");
+}
+
+/** Pi names MCP tools `mcp__<server>__<tool>` and labels them `<server>/<tool>`. */
+function mcpToolLabel(toolName: string): string | undefined {
+	const match = /^mcp__(.+?)__(.+)$/.exec(toolName);
+	return match ? `${match[1]}/${match[2]}` : undefined;
+}
+
+/** One YAML `key: value` entry per argument, like pi's expanded view with highlighting. */
+function argumentLines(args: JsonValue): string[] {
+	if (args === null) return [];
+	const record = asRecord(args);
+	const entries = record ? Object.entries(record) : [["args", args] as const];
+	return entries.map(([key, value]) =>
+		// Multi-line text, such as code, keeps its lines as a block scalar.
+		isString(value) && value.trimEnd().includes("\n")
+			? `${Bun.YAML.stringify(key)}: |\n${value
+					.trimEnd()
+					.split("\n")
+					.map((line) => `  ${line}`)
+					.join("\n")}`
+			: Bun.YAML.stringify({ [key]: value }, null, 2),
+	);
 }
 
 function shouldHideBashOutput(args: JsonValue | undefined): boolean {

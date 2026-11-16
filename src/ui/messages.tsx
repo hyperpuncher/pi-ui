@@ -11,6 +11,7 @@ import type { TranscriptMessageTitlePart } from "#src/state/transcript-state.ts"
 import {
 	type CodeSnippet,
 	codeSnippets,
+	highlightArguments,
 	highlightBash,
 	highlightCodemode,
 } from "#src/ui/bash-highlight.ts";
@@ -346,7 +347,9 @@ function renderInlineCode(
 		const result =
 			language === "bash"
 				? highlightBash(command, { format: true })
-				: highlightCodemode(command, snippets);
+				: language === "yaml"
+					? highlightArguments(command)
+					: highlightCodemode(command, snippets);
 		if (!result) return Bun.escapeHTML(command) + suffix;
 		const { tokens } = result;
 		const highlighted = tokens
@@ -418,6 +421,7 @@ function toolTitlePartClass(part: TranscriptMessageTitlePart, index: number): st
 	if (index === 0 && !part.mono) classes.push("tool-title-gap");
 	if (part.mono) classes.push("tool-title-mono");
 	if (part.highlight) classes.push(`tool-title-${part.highlight}`);
+	if (part.inline) classes.push("tool-title-inline");
 	if (part.tone === "accent") classes.push("tool-title-accent");
 	if (part.tone === "warning") classes.push("warning-foreground");
 	if (part.tone === "muted") classes.push("tool-title-muted");

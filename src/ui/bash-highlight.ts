@@ -241,6 +241,30 @@ export function highlightCodemode(code: string, snippets: CodeSnippet[] = []) {
 	return highlightScripts(code, tokenLines(code, base, []), scripts);
 }
 
+/** Tool arguments as YAML, with code in block scalars highlighted by the field's usual language. */
+export function highlightArguments(yaml: string) {
+	const highlighter = getHighlighterIfLoaded();
+	if (!highlighter) return undefined;
+	const tokens = highlighter.codeToTokens(yaml, {
+		lang: "yaml",
+		themes: activeCodeThemes,
+		defaultColor: "light-dark()",
+	}).tokens;
+	const scripts: Script[] = [];
+	for (const match of yaml.matchAll(
+		/^(code|script|function|command): \|\n((?: {2}.*(?:\n|$))+)/gm,
+	)) {
+		const body = match[2]!.replace(/\n$/, "");
+		const start = match.index + match[0].length - match[2]!.length;
+		scripts.push({
+			start,
+			end: start + body.length,
+			language: match[1] === "command" ? "bash" : "javascript",
+		});
+	}
+	return highlightScripts(yaml, tokens, scripts);
+}
+
 function stringEnd(code: string, start: number, quote: string): number {
 	let end = code.indexOf(quote, start);
 	while (end >= 0) {

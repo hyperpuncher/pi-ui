@@ -15,7 +15,9 @@ export type TranscriptMessageTitlePart = {
 	text: string;
 	tone?: "default" | "accent" | "warning" | "muted";
 	mono?: boolean;
-	highlight?: "bash" | "javascript";
+	highlight?: "bash" | "javascript" | "yaml";
+	/** Keeps highlighted code on the title line instead of below it. */
+	inline?: boolean;
 };
 
 export type TranscriptMessageAttachment = {

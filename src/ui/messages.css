@@ -262,7 +262,8 @@
 		font-family: var(--font-mono);
 	}
 	.tool-title-bash,
-	.tool-title-javascript {
+	.tool-title-javascript,
+	.tool-title-yaml {
 		overflow-wrap: anywhere;
 		tab-size: 4;
 		white-space: pre-wrap;
@@ -499,9 +500,14 @@
 		gap: 0.5rem;
 		font: var(--text-base)/1.125rem var(--font-mono);
 	}
-	.tool-title-javascript {
+	.tool-title-javascript,
+	.tool-title-yaml {
 		display: block;
 		margin-block: 0.5rem 0;
+	}
+	.tool-title-inline {
+		display: inline;
+		margin: 0 0 0 1ch;
 	}
 	.nested-tool-calls {
 		--message-tool-gap: 0.5rem;
