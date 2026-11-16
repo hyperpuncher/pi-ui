@@ -55,7 +55,7 @@ export function upgradeCommand(
 	executable: string = process.execPath,
 	entry: string = process.argv[1] ?? "",
 	archLinux: boolean = existsSync("/etc/arch-release"),
-	restart: string | undefined = serviceRestartCommand(),
+	restart: string = serviceRestartCommand(),
 ): string {
 	// The quick installers restart the service themselves.
 	if (platform === "win32") return "irm https://pi-ui.app/install.ps1 | iex";
@@ -69,7 +69,7 @@ export function upgradeCommand(
 }
 
 /** Package managers replace the binary but leave the old server running. */
-function serviceRestartCommand(): string | undefined {
+function serviceRestartCommand(): string {
 	const launchdJob = process.env.XPC_SERVICE_NAME;
 	let cgroup = "";
 	try {
@@ -85,7 +85,7 @@ function serviceRestartCommand(): string | undefined {
 		return "brew services restart pi-ui";
 	if (launchdJob === "dev.pi.ui" || cgroup.includes("/pi-ui.service"))
 		return "pi-ui service install";
-	return undefined;
+	return "";
 }
 
 function isHomebrewPath(path: string): boolean {

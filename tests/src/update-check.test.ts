@@ -67,7 +67,7 @@ test("upgrade commands follow the installation channel", () => {
 		"paru -S pi-ui-bin && pi-ui service install",
 	);
 	assertEquals(
-		upgradeCommand("linux", "/usr/bin/pi-ui", "", true, undefined),
+		upgradeCommand("linux", "/usr/bin/pi-ui", "", true, ""),
 		"paru -S pi-ui-bin",
 	);
 	assertEquals(
@@ -76,7 +76,7 @@ test("upgrade commands follow the installation channel", () => {
 			"/usr/bin/node",
 			"/usr/lib/node_modules/pi-ui/dist/npm/server-main.js",
 			false,
-			undefined,
+			"",
 		),
 		"bun i -g @hyperpuncher/pi-ui",
 	);
