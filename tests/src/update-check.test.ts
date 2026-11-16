@@ -53,11 +53,21 @@ test("upgrade commands follow the installation channel", () => {
 		"irm https://pi-ui.app/install.ps1 | iex",
 	);
 	assertEquals(
-		upgradeCommand("darwin", "/opt/homebrew/Cellar/pi-ui/0.44.0/bin/pi-ui"),
-		"brew upgrade hyperpuncher/tap/pi-ui",
+		upgradeCommand(
+			"darwin",
+			"/opt/homebrew/Cellar/pi-ui/0.44.0/bin/pi-ui",
+			"",
+			false,
+			"brew services restart pi-ui",
+		),
+		"brew upgrade hyperpuncher/tap/pi-ui && brew services restart pi-ui",
 	);
 	assertEquals(
-		upgradeCommand("linux", "/usr/bin/pi-ui", "", true),
+		upgradeCommand("linux", "/usr/bin/pi-ui", "", true, "pi-ui service install"),
+		"paru -S pi-ui-bin && pi-ui service install",
+	);
+	assertEquals(
+		upgradeCommand("linux", "/usr/bin/pi-ui", "", true, undefined),
 		"paru -S pi-ui-bin",
 	);
 	assertEquals(
@@ -66,11 +76,18 @@ test("upgrade commands follow the installation channel", () => {
 			"/usr/bin/node",
 			"/usr/lib/node_modules/pi-ui/dist/npm/server-main.js",
 			false,
+			undefined,
 		),
 		"bun i -g @hyperpuncher/pi-ui",
 	);
 	assertEquals(
-		upgradeCommand("linux", "/home/user/.local/bin/pi-ui", "", false),
+		upgradeCommand(
+			"linux",
+			"/home/user/.local/bin/pi-ui",
+			"",
+			false,
+			"pi-ui service install",
+		),
 		"curl -fsSL https://pi-ui.app/install | sh",
 	);
 });

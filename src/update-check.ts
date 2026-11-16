@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { comparePackageVersions } from "#pi/utils/version-check.js";
 import { asRecord, isString } from "#src/utils/type-guards.ts";
@@ -49,19 +49,43 @@ async function fetchLatestVersion(fetcher: UpdateFetcher): Promise<string | unde
 	}
 }
 
-/** Pick the command that upgrades the current installation channel. */
+/** Pick the command that upgrades the current installation channel and restarts its service. */
 export function upgradeCommand(
 	platform: string = process.platform,
 	executable: string = process.execPath,
 	entry: string = process.argv[1] ?? "",
 	archLinux: boolean = existsSync("/etc/arch-release"),
+	restart: string | undefined = serviceRestartCommand(),
 ): string {
+	// The quick installers restart the service themselves.
 	if (platform === "win32") return "irm https://pi-ui.app/install.ps1 | iex";
-	if (isHomebrewPath(executable)) return "brew upgrade hyperpuncher/tap/pi-ui";
-	if (isPackageManagerPath(executable) || isPackageManagerPath(entry))
-		return "bun i -g @hyperpuncher/pi-ui";
-	if (platform === "linux" && archLinux) return "paru -S pi-ui-bin";
-	return "curl -fsSL https://pi-ui.app/install | sh";
+	let upgrade = "curl -fsSL https://pi-ui.app/install | sh";
+	if (isHomebrewPath(executable)) upgrade = "brew upgrade hyperpuncher/tap/pi-ui";
+	else if (isPackageManagerPath(executable) || isPackageManagerPath(entry))
+		upgrade = "bun i -g @hyperpuncher/pi-ui";
+	else if (platform === "linux" && archLinux) upgrade = "paru -S pi-ui-bin";
+	else return upgrade;
+	return restart ? `${upgrade} && ${restart}` : upgrade;
+}
+
+/** Package managers replace the binary but leave the old server running. */
+function serviceRestartCommand(): string | undefined {
+	const launchdJob = process.env.XPC_SERVICE_NAME;
+	let cgroup = "";
+	try {
+		cgroup = readFileSync("/proc/self/cgroup", "utf8");
+	} catch {
+		// Only Linux has cgroups.
+	}
+	if (
+		launchdJob === "homebrew.mxcl.pi-ui" ||
+		launchdJob === "sh.brew.pi-ui" ||
+		cgroup.includes("/homebrew.pi-ui.service")
+	)
+		return "brew services restart pi-ui";
+	if (launchdJob === "dev.pi.ui" || cgroup.includes("/pi-ui.service"))
+		return "pi-ui service install";
+	return undefined;
 }
 
 function isHomebrewPath(path: string): boolean {
