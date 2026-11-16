@@ -29,8 +29,8 @@ import {
 } from "#src/agent/extension-ui-controller.ts";
 import { LlamaController } from "#src/agent/llama-controller.ts";
 import { llamaProviderExtension } from "#src/agent/llama-provider-extension.ts";
-import { mermaidExtension } from "#src/agent/mermaid-extension.ts";
 import { ModelController } from "#src/agent/model-controller.ts";
+import { promptExtension } from "#src/agent/prompt-extension.ts";
 import "#src/agent/codemode-assets.ts";
 import {
 	assertSessionCwdExists,
@@ -99,7 +99,7 @@ import type { WorkspaceReviewSnapshot } from "#src/workspace-review-types.ts";
 
 const extensionFactories = [
 	llamaProviderExtension,
-	mermaidExtension,
+	promptExtension,
 	{
 		name: "codemode",
 		factory: createCodemodeExtension(),
