@@ -57,6 +57,8 @@ test.each([
 	["git apply <<'PATCH'", "diff", "--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new"],
 	["python - <<'SQL'", "python", "print(42)"],
 	["python - <<'PY'", "python", "print(42)\nPY extra\nprint(43)"],
+	// An odd number of quotes in the body must not hide the closing marker.
+	["cat > /tmp/edit.ts <<'EOF'", "typescript", "// don't stop here\nconst n = 42;"],
 ])("highlights %s as %s", async (header, language, body) => {
 	const marker = header.match(/<<\s*'?(\w+)/)![1]!;
 	const command = `${header}\n${body}\n${marker}\necho done`;

@@ -57,6 +57,7 @@ const segmentOperators = new Set([";;&", "&&", "||", "|&", ";;", ";&", "|", ";",
 // fallow-ignore-next-line complexity
 export function scanShell(source: string): ShellScan {
 	const lines: ShellLine[] = [];
+	const heredocs: Array<ShellHeredoc & { next: number }> = [];
 	let line = newLine(0);
 	let offset = 0;
 	let redirect: string | undefined;
@@ -67,10 +68,13 @@ export function scanShell(source: string): ShellScan {
 				char === "\r" && source[offset + 1] === "\n" ? offset + 2 : offset + 1;
 			line.end = offset;
 			line.newlineEnd = end;
+			// A heredoc body is not shell code, so its quotes must not hide the marker.
+			const heredoc = readHeredoc(source, line, lines.length);
 			lines.push(line);
-			line = newLine(end);
+			if (heredoc) heredocs.push(heredoc);
+			offset = heredoc?.next ?? end;
+			line = newLine(offset);
 			redirect = undefined;
-			offset = end;
 			continue;
 		}
 		if (/\s/.test(char)) {
@@ -104,7 +108,6 @@ export function scanShell(source: string): ShellScan {
 	line.end = source.length;
 	line.newlineEnd = source.length;
 	lines.push(line);
-	const heredocs = findHeredocs(source, lines);
 	return {
 		lines,
 		heredocs,
@@ -166,52 +169,43 @@ function operatorAt(source: string, offset: number): string | undefined {
 	return undefined;
 }
 
-function findHeredocs(source: string, lines: ShellLine[]): ShellHeredoc[] {
-	const heredocs: ShellHeredoc[] = [];
-	for (const [lineIndex, line] of lines.entries()) {
-		const operators = line.operators.filter(
-			(operator) => operator.value === "<<" || operator.value === "<<-",
-		);
-		// Multiple queued heredocs are not supported.
-		if (operators.length !== 1) continue;
-		const operator = operators[0]!;
-		const marker = line.words.find((word) => word.start > operator.start);
-		if (!marker || line.end >= source.length) continue;
-		const bodyStart = line.newlineEnd;
-		const bodyEnd = heredocEnd(
-			source,
-			lines,
-			lineIndex + 1,
-			marker.value,
-			operator.value === "<<-",
-		);
-		if (bodyEnd === undefined || bodyEnd <= bodyStart) continue;
-		heredocs.push({
-			start: bodyStart,
-			end: bodyEnd,
-			marker: marker.value,
-			lineIndex,
-			operatorStart: operator.start,
-		});
-	}
-	return heredocs;
-}
-
-function heredocEnd(
+/** The body after a line with one `<<` operator, up to the marker line that ends it. */
+function readHeredoc(
 	source: string,
-	lines: ShellLine[],
-	startIndex: number,
-	marker: string,
-	indent: boolean,
-): number | undefined {
-	for (let index = startIndex; index < lines.length; index++) {
-		const line = lines[index]!;
-		const text = source.slice(line.start, line.end);
-		if ((indent ? text.replace(/^\t+/, "") : text) !== marker) continue;
-		let end = line.start;
-		if (source[end - 1] === "\n") end -= 1;
-		if (source[end - 1] === "\r") end -= 1;
-		return end;
+	line: ShellLine,
+	lineIndex: number,
+): (ShellHeredoc & { next: number }) | undefined {
+	const operators = line.operators.filter(
+		(operator) => operator.value === "<<" || operator.value === "<<-",
+	);
+	// Multiple queued heredocs are not supported.
+	if (operators.length !== 1) return undefined;
+	const operator = operators[0]!;
+	const marker = line.words.find((word) => word.start > operator.start);
+	if (!marker) return undefined;
+	const bodyStart = line.newlineEnd;
+	for (let start = bodyStart; start < source.length;) {
+		const newline = source.indexOf("\n", start);
+		const lineEnd = newline < 0 ? source.length : newline;
+		const text = source.slice(start, lineEnd).replace(/\r$/, "");
+		if (
+			(operator.value === "<<-" ? text.replace(/^\t+/, "") : text) === marker.value
+		) {
+			const bodyEnd = Math.max(
+				bodyStart,
+				start - (source[start - 2] === "\r" ? 2 : 1),
+			);
+			if (bodyEnd <= bodyStart) return undefined;
+			return {
+				start: bodyStart,
+				end: bodyEnd,
+				marker: marker.value,
+				lineIndex,
+				operatorStart: operator.start,
+				next: newline < 0 ? source.length : newline + 1,
+			};
+		}
+		start = lineEnd + 1;
 	}
 	return undefined;
 }
