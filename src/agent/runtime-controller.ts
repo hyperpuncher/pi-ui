@@ -23,7 +23,10 @@ import {
 import { AuthController } from "#src/agent/auth-controller.ts";
 import { type AutoTitleConfig, generateAutoTitle } from "#src/agent/auto-title.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
-import { ExtensionUiController } from "#src/agent/extension-ui-controller.ts";
+import {
+	ExtensionUiController,
+	type ExtensionUiSnapshot,
+} from "#src/agent/extension-ui-controller.ts";
 import { LlamaController } from "#src/agent/llama-controller.ts";
 import { llamaProviderExtension } from "#src/agent/llama-provider-extension.ts";
 import { mermaidExtension } from "#src/agent/mermaid-extension.ts";
@@ -168,6 +171,7 @@ const sessionPoolIdleMs = 15 * 60 * 1000;
 type PooledSession = {
 	runtime: AgentSessionRuntime;
 	transcript: AppChatSnapshot;
+	extensionUi: ExtensionUiSnapshot;
 	size: number;
 	mtimeMs: number;
 	enabledModels: string;
@@ -1104,12 +1108,15 @@ export class RuntimeController {
 		// A session without messages has no file yet and is cheap to recreate.
 		const file = path ? statSync(path, { throwIfNoEntry: false }) : undefined;
 		if (!path || !file) return false;
+		// Unbinding clears the extension UI, so save it first.
+		const extensionUi = this.extensionUi.snapshot();
 		this.foregroundGeneration = this.nextGeneration++;
 		this.unbindSession();
 		this.pooledSessions.set(path, {
 			runtime,
 			// Keeps loaded older pages and message ids for the return.
 			transcript: this.state.snapshotChat(),
+			extensionUi,
 			size: file.size,
 			mtimeMs: file.mtimeMs,
 			enabledModels: JSON.stringify(
@@ -1156,6 +1163,7 @@ export class RuntimeController {
 	private async activatePooledRuntime({
 		runtime,
 		transcript,
+		extensionUi,
 	}: PooledSession): Promise<void> {
 		const cwd = runtime.session.sessionManager.getCwd();
 		try {
@@ -1174,6 +1182,7 @@ export class RuntimeController {
 		this.adoptRuntime(runtime);
 		this.bindSessionState();
 		this.projectedSessionId = runtime.session.sessionManager.getSessionId();
+		this.extensionUi.restore(extensionUi);
 		this.state.restoreChat(transcript);
 	}
 

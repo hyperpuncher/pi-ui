@@ -25,6 +25,16 @@ type PendingDialog = {
 	timer?: ReturnType<typeof setTimeout>;
 };
 
+/** Extension UI that a session set and that outlives a switch away from it. */
+export type ExtensionUiSnapshot = {
+	statuses: [string, string][];
+	widgets: [string, AppExtensionWidget][];
+	workingIndicator: string | undefined;
+	workingMessage: string | undefined;
+	workingVisible: boolean;
+	title: string;
+};
+
 /** Bridges pi extension UI requests to backend-owned web state. */
 export class ExtensionUiController {
 	readonly #queue: PendingDialog[] = [];
@@ -54,12 +64,7 @@ export class ExtensionUiController {
 				if (!isActive()) return;
 				if (text === undefined) this.#statuses.delete(key);
 				else this.#statuses.set(key, text);
-				this.store.setExtensionStatuses(
-					this.#statuses
-						.entries()
-						.map(([key, text]) => ({ key, text }))
-						.toArray(),
-				);
+				this.syncStatuses();
 			},
 			setWorkingMessage: (message) => {
 				if (!isActive()) return;
@@ -140,6 +145,30 @@ export class ExtensionUiController {
 		active.respond(value, cancelled);
 		this.showNext();
 		return true;
+	}
+
+	snapshot(): ExtensionUiSnapshot {
+		return {
+			statuses: [...this.#statuses],
+			widgets: [...this.#widgets],
+			workingIndicator: this.#workingIndicator,
+			workingMessage: this.#workingMessage,
+			workingVisible: this.#workingVisible,
+			title: this.store.documentTitle,
+		};
+	}
+
+	/** Restores a pooled session's UI; its extensions do not start again. */
+	restore(snapshot: ExtensionUiSnapshot): void {
+		for (const [key, text] of snapshot.statuses) this.#statuses.set(key, text);
+		for (const [key, widget] of snapshot.widgets) this.#widgets.set(key, widget);
+		this.#workingIndicator = snapshot.workingIndicator;
+		this.#workingMessage = snapshot.workingMessage;
+		this.#workingVisible = snapshot.workingVisible;
+		this.syncStatuses();
+		this.store.setExtensionWidgets(this.#widgets.values().toArray());
+		this.syncWorking();
+		this.store.setDocumentTitle(snapshot.title);
 	}
 
 	cancelAll(): void {
@@ -314,6 +343,15 @@ export class ExtensionUiController {
 
 	private setEditorText(text: string): void {
 		this.store.setPromptEditorText(text);
+	}
+
+	private syncStatuses(): void {
+		this.store.setExtensionStatuses(
+			this.#statuses
+				.entries()
+				.map(([key, text]) => ({ key, text }))
+				.toArray(),
+		);
 	}
 
 	private syncWorking(): void {

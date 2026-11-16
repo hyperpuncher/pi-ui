@@ -1730,3 +1730,36 @@ test("RuntimeController reuses an idle session until its file changes", async ()
 		await unlink(second);
 	}
 });
+
+test("RuntimeController restores extension UI when a pooled session returns", async () => {
+	const first = await makeTempFile({ suffix: ".jsonl" });
+	const second = await makeTempFile({ suffix: ".jsonl" });
+	await Bun.write(first, "{}\n");
+	await Bun.write(second, "{}\n");
+	const cwd = tmpdir();
+	const a = fakeRuntime(first, true, cwd);
+	const b = fakeRuntime(second, true, cwd);
+	const state = new AppStore();
+	const controller = await activate(state, [a, b], cwd);
+	try {
+		const ui = a.extensionBindings[0]?.uiContext;
+		ui?.setStatus("fast", "⚡");
+		ui?.setWidget("plan", ["step 1"]);
+		ui?.setTitle("pi-ui: first");
+
+		assertEquals((await controller.resumeSession(second)).status, "success");
+		assertEquals(state.extensionStatuses, []);
+		assertEquals((await controller.resumeSession(first)).status, "success");
+
+		assertEquals(state.extensionStatuses, [{ key: "fast", text: "⚡" }]);
+		assertEquals(
+			state.extensionWidgets.map((widget) => widget.lines),
+			[["step 1"]],
+		);
+		assertEquals(state.documentTitle, "pi-ui: first");
+	} finally {
+		await controller.dispose();
+		await unlink(first);
+		await unlink(second);
+	}
+});
