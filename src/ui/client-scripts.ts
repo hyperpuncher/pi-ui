@@ -12,3 +12,12 @@ export const clientScripts = {
 	holdTranscriptPosition: "window.piUi.messageScroll.holdPosition()",
 	restoreTranscriptPosition: "window.piUi.messageScroll.restorePosition()",
 } as const;
+
+/** The browser keeps the reading position of each session it leaves. */
+export function leaveTranscriptSession(key: string): string {
+	return `window.piUi.messageScroll.leaveSession(${JSON.stringify(key)})`;
+}
+
+export function enterTranscriptSession(key: string, restored: boolean): string {
+	return `window.piUi.messageScroll.enterSession(${JSON.stringify(key)}, ${restored})`;
+}

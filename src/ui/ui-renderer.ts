@@ -13,7 +13,11 @@ import { FrameScheduler } from "#src/state/frame-scheduler.ts";
 import type { TranscriptMessage } from "#src/state/transcript-state.ts";
 import { renderAuthDialog } from "#src/ui/auth-dialog.tsx";
 import { projectBackendSignals } from "#src/ui/backend-signals.ts";
-import { clientScripts } from "#src/ui/client-scripts.ts";
+import {
+	clientScripts,
+	enterTranscriptSession,
+	leaveTranscriptSession,
+} from "#src/ui/client-scripts.ts";
 import { renderDebugOverlay } from "#src/ui/debug.tsx";
 import { renderExtensionDialog } from "#src/ui/extension-dialog.tsx";
 import { renderExtensionWidgets } from "#src/ui/extension-widgets.tsx";
@@ -62,6 +66,8 @@ export class UiRenderer implements AppStorePresentation {
 	private viewPending = false;
 	private pendingEffects: UiCommitEffect[] = [];
 	private transcriptPending = false;
+	private transcriptRestored = false;
+	private transcriptSessionKey: string;
 	private compactTools: boolean;
 	private sidebarLayout = "";
 	private workspaceReviewKey = "";
@@ -84,6 +90,7 @@ export class UiRenderer implements AppStorePresentation {
 			},
 		);
 		this.compactTools = this.messages.compactTools;
+		this.transcriptSessionKey = store.promptSessionKey;
 		store.attachPresentation(this);
 	}
 
@@ -107,6 +114,7 @@ export class UiRenderer implements AppStorePresentation {
 				() => {
 					const snapshot = this.store;
 					this.sidebarLayout = sessionSidebarLayoutKey(snapshot);
+					this.transcriptSessionKey = snapshot.promptSessionKey;
 					const elements =
 						this.messages.renderTranscript(snapshot) +
 						this.renderView(snapshot, view, true) +
@@ -175,10 +183,23 @@ export class UiRenderer implements AppStorePresentation {
 			// A transcript patch already contains every changed message.
 			this.messages.patchChangedMessages(transcript);
 			if (transcript) {
+				const scripts: string[] = [clientScripts.checkOlderMessages];
+				const sessionKey = state.promptSessionKey;
+				if (sessionKey !== this.transcriptSessionKey) {
+					this.hub.executeScript(
+						leaveTranscriptSession(this.transcriptSessionKey),
+					);
+					scripts.unshift(
+						enterTranscriptSession(sessionKey, this.transcriptRestored),
+					);
+					this.transcriptSessionKey = sessionKey;
+				}
 				this.hub.patchElement(
 					this.messages.renderTranscript(state),
 					"#messages",
-					{ scripts: [clientScripts.checkOlderMessages] },
+					{
+						scripts,
+					},
 				);
 			}
 			this.transcriptPending = false;
@@ -232,12 +253,8 @@ export class UiRenderer implements AppStorePresentation {
 		if (this.hub.clientCount === 0) return;
 		this.messages.streamingMessageChanged();
 	}
-	sessionTransitionChanged(scrollToBottom: boolean): void {
-		this.requestCommit(
-			scrollToBottom
-				? { type: "script", script: clientScripts.scrollTranscriptBottom }
-				: undefined,
-		);
+	sessionTransitionChanged(): void {
+		this.requestCommit();
 		// Loading, readiness, and errors are lifecycle boundaries, not progress ticks.
 		this.frames.flush();
 	}
@@ -245,8 +262,9 @@ export class UiRenderer implements AppStorePresentation {
 		if (this.hub.clientCount === 0) return;
 		this.messages.assistantFinished(ids);
 	}
-	transcriptReplaced(replace: () => void): void {
+	transcriptReplaced(replace: () => void, restored: boolean): void {
 		this.transcriptPending = true;
+		this.transcriptRestored = restored;
 		this.messages.reset();
 		replace();
 	}

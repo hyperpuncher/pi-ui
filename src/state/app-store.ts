@@ -159,10 +159,10 @@ export interface AppStorePresentation {
 	messagesRemoved(ids: readonly string[]): void;
 	messageUpdated(id: string): void;
 	streamingMessageChanged(): void;
-	sessionTransitionChanged(scrollToBottom: boolean): void;
+	sessionTransitionChanged(): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
 	/** Discards message presentation, runs the replacement, and restarts rendering. */
-	transcriptReplaced(replace: () => void): void;
+	transcriptReplaced(replace: () => void, restored: boolean): void;
 }
 
 /** Read view of AppStore that renderers depend on. */
@@ -410,12 +410,13 @@ export class AppStore {
 	snapshotChat(): AppChatSnapshot {
 		return this.transcript.snapshot();
 	}
-	private replaceTranscript(replace: () => void): void {
-		if (this.presentation) this.presentation.transcriptReplaced(replace);
+	/** A restored transcript keeps its message ids, so the reader can return to a saved row. */
+	private replaceTranscript(replace: () => void, restored = false): void {
+		if (this.presentation) this.presentation.transcriptReplaced(replace, restored);
 		else replace();
 	}
 	restoreChat(snapshot: AppChatSnapshot): void {
-		this.replaceTranscript(() => this.transcript.restore(snapshot));
+		this.replaceTranscript(() => this.transcript.restore(snapshot), true);
 		this.commit();
 	}
 	resetChat(options: { preserveEmptyHint?: boolean; broadcast?: boolean } = {}): void {
@@ -666,9 +667,7 @@ export class AppStore {
 		this.commit();
 	}
 	setSessionTransition(value: SessionTransitionState): void {
-		const loaded =
-			this.sessionTransition.status === "loading" && value.status === "idle";
 		this.sessionTransition = value;
-		this.presentation?.sessionTransitionChanged(loaded);
+		this.presentation?.sessionTransitionChanged();
 	}
 }

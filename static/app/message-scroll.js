@@ -24,6 +24,8 @@ let followFrame;
 let followTarget = 0;
 let olderCheckTimer;
 let reducedMotion;
+// Reading positions of the sessions this page left, by session key.
+const sessionPositions = new Map();
 
 function cancelFollow() {
 	if (followFrame !== undefined) cancelAnimationFrame(followFrame);
@@ -280,6 +282,48 @@ export function bindMessageScroll() {
 
 	bindMessageResize();
 	scrollBottom();
+}
+
+// Runs before the next session's transcript replaces this one.
+export function leaveSession(key) {
+	const messages = document.getElementById("messages");
+	sessionPositions.delete(key);
+	if (state.pinnedToBottom || !(messages instanceof HTMLElement)) return;
+	const top = messages.getBoundingClientRect().top;
+	const row = messages
+		.querySelectorAll("#message-list > .message[id]")
+		.values()
+		.find((row) => row.getBoundingClientRect().bottom > top);
+	if (row)
+		sessionPositions.set(key, {
+			id: row.id,
+			offset: row.getBoundingClientRect().top - top,
+		});
+}
+
+// Runs after the patch. Only a restored transcript keeps the saved message ids;
+// otherwise the session opens at its latest message. Neither case animates.
+export function enterSession(key, restored) {
+	const saved = sessionPositions.get(key);
+	sessionPositions.delete(key);
+	const messages = document.getElementById("messages");
+	if (!(messages instanceof HTMLElement)) return;
+	cancelFollow();
+	heldRow = undefined;
+	previousUserPending = false;
+	state.middleScrolling = false;
+	state.pointerScrolling = false;
+	const row = restored && saved ? document.getElementById(saved.id) : null;
+	state.pinnedToBottom = !(row && messages.contains(row));
+	setFollowMode(messages, state.pinnedToBottom);
+	if (state.pinnedToBottom) messages.scrollTop = bottomOffset(messages);
+	else
+		messages.scrollTop +=
+			row.getBoundingClientRect().top -
+			messages.getBoundingClientRect().top -
+			saved.offset;
+	state.scrollTop = messages.scrollTop;
+	updateScrollControl();
 }
 
 export function hasPointerDragIntent(startX, startY, currentX, currentY) {

@@ -179,12 +179,16 @@ test("session picker command state morphs on the app stream", async () => {
 	}
 });
 
-test("completed session transition scrolls the transcript to bottom", async () => {
+test("a session change saves the old reading position and enters the new one", async () => {
 	const { state, controller, read } = openTransitionStream();
 	try {
-		state.setSessionTransition({ status: "idle", generation: 1 });
+		state.setPromptSessionKey("/sessions/two.jsonl");
+		state.restoreChat(state.snapshotChat());
 
-		await read((text) => text.includes("messageScroll.scrollBottom()"));
+		const output = await read((text) => text.includes("enterSession("));
+		const leave = output.indexOf('leaveSession("")');
+		const enter = output.indexOf('enterSession("/sessions/two.jsonl", true)');
+		assertEquals(leave >= 0 && leave < enter, true);
 	} finally {
 		controller.abort();
 	}

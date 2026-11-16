@@ -77,6 +77,7 @@ import { type TreeNavigationResult, TreeProjector } from "#src/agent/tree-projec
 import { UsageController } from "#src/agent/usage-controller.ts";
 import type { SessionDoneNotification } from "#src/browser-notifications.ts";
 import {
+	type AppChatSnapshot,
 	type AppSlashCommand,
 	AppStore,
 	type BackgroundSessionStatus,
@@ -166,6 +167,7 @@ const sessionPoolIdleMs = 15 * 60 * 1000;
 
 type PooledSession = {
 	runtime: AgentSessionRuntime;
+	transcript: AppChatSnapshot;
 	size: number;
 	mtimeMs: number;
 	enabledModels: string;
@@ -1106,6 +1108,8 @@ export class RuntimeController {
 		this.unbindSession();
 		this.pooledSessions.set(path, {
 			runtime,
+			// Keeps loaded older pages and message ids for the return.
+			transcript: this.state.snapshotChat(),
 			size: file.size,
 			mtimeMs: file.mtimeMs,
 			enabledModels: JSON.stringify(
@@ -1128,9 +1132,7 @@ export class RuntimeController {
 	}
 
 	/** Returns the pooled runtime when nothing changed it since the user left it. */
-	private async takePooledSession(
-		path: string,
-	): Promise<AgentSessionRuntime | undefined> {
+	private async takePooledSession(path: string): Promise<PooledSession | undefined> {
 		const pooled = this.pooledSessions.get(path);
 		if (!pooled) return;
 		this.pooledSessions.delete(path);
@@ -1146,12 +1148,15 @@ export class RuntimeController {
 			// Settings are files other sessions may have written meanwhile.
 			await settings.reload();
 			if (JSON.stringify(settings.getEnabledModels()) === pooled.enabledModels)
-				return runtime;
+				return pooled;
 		}
 		this.disposePooledRuntime(runtime);
 	}
 
-	private async activatePooledRuntime(runtime: AgentSessionRuntime): Promise<void> {
+	private async activatePooledRuntime({
+		runtime,
+		transcript,
+	}: PooledSession): Promise<void> {
 		const cwd = runtime.session.sessionManager.getCwd();
 		try {
 			const [workspace] = await Promise.all([
@@ -1168,8 +1173,8 @@ export class RuntimeController {
 		// Extensions stay bound from the first activation; their UI context follows this.runtime.
 		this.adoptRuntime(runtime);
 		this.bindSessionState();
-		this.state.resetChat({ broadcast: false });
-		this.loadCurrentSessionMessages();
+		this.projectedSessionId = runtime.session.sessionManager.getSessionId();
+		this.state.restoreChat(transcript);
 	}
 
 	private evictPooledSession(path: string): void {
