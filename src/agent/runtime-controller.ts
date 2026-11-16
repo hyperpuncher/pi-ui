@@ -1,4 +1,5 @@
-import { realpath, unlink } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
+import { realpath, stat, unlink } from "node:fs/promises";
 import { sep } from "node:path";
 
 import {
@@ -152,6 +153,24 @@ const systemSlashCommandNames = new Set(
 	systemSlashCommands.map((command) => command.name),
 );
 
+/**
+ * Idle sessions stay open after the user leaves them, so a switch back skips
+ * extension, MCP, and model startup. A loaded session takes about three times
+ * its file size in memory (measured on 30–210 MB sessions).
+ */
+const sessionPoolSize = 10;
+const sessionPoolMemoryBytes = 2 * 1024 ** 3;
+const sessionMemoryPerFileByte = 3;
+const sessionPoolIdleMs = 15 * 60 * 1000;
+
+type PooledSession = {
+	runtime: AgentSessionRuntime;
+	size: number;
+	mtimeMs: number;
+	enabledModels: string;
+	timer: ReturnType<typeof setTimeout>;
+};
+
 type BackgroundSession = {
 	runtime: AgentSessionRuntime;
 	state: TranscriptState;
@@ -206,6 +225,8 @@ export class RuntimeController {
 	readonly auth: AuthController;
 	private readonly transitionController: SessionTransitionController;
 	private readonly backgroundSessions = new Map<string, BackgroundSession>();
+	/** Least recently left first. */
+	private readonly pooledSessions = new Map<string, PooledSession>();
 	private nextGeneration = 1;
 	private readonly completedBackgroundPaths = new Set<string>();
 	private readonly catalog: SessionCatalog;
@@ -252,7 +273,10 @@ export class RuntimeController {
 		this.llama = new LlamaController(
 			() => this.runtime,
 			state,
-			() => this.models.sync(),
+			() => {
+				this.models.sync();
+				this.clearSessionPool();
+			},
 		);
 		this.usage = new UsageController(() => this.runtime, state);
 		this.tree = new TreeProjector(
@@ -275,7 +299,10 @@ export class RuntimeController {
 		this.auth = new AuthController(
 			() => this.runtime,
 			state,
-			() => this.models.sync(),
+			() => {
+				this.models.sync();
+				this.clearSessionPool();
+			},
 		);
 		this.transitionController =
 			activationOptions.transitionController ??
@@ -594,7 +621,10 @@ export class RuntimeController {
 			} else {
 				const background = this.backgroundSessions.get(target);
 				if (background) background.runtime.session.setSessionName(nextName);
-				else manager.appendSessionInfo(nextName);
+				else {
+					this.evictPooledSession(target);
+					manager.appendSessionInfo(nextName);
+				}
 			}
 			await this.catalog.refreshPath(target);
 			return true;
@@ -638,6 +668,7 @@ export class RuntimeController {
 				);
 				if (replacement.status !== "success") return false;
 			}
+			this.evictPooledSession(targetSessionFile);
 			await this.dependencies.moveToTrash(targetSessionFile);
 			if (this.state.previousSessionPath === targetSessionFile) {
 				this.state.setPreviousSessionPath(undefined);
@@ -696,7 +727,7 @@ export class RuntimeController {
 		try {
 			await this.leaveCurrentRuntimeForReplacement(action);
 		} catch (error) {
-			if (action !== "dispose") throw error;
+			if (action !== "dispose" && action !== "pool") throw error;
 			console.error("Failed to dispose previous workspace runtime", error);
 		}
 
@@ -796,13 +827,13 @@ export class RuntimeController {
 			}
 			return true;
 		}
-		if (
-			!this.isCurrentRuntimeActive() &&
-			this.runtime.session.sessionManager.isPersisted()
-		) {
-			const result = await this.runtime.switchSession(sessionPath, { cwdOverride });
-			if (result.cancelled) return false;
-			this.adoptRuntime(this.runtime);
+		if (!this.isCurrentRuntimeActive() && (await this.switchCancelled(canonicalPath)))
+			return false;
+		const pooled = cwdOverride
+			? undefined
+			: await this.takePooledSession(canonicalPath);
+		if (pooled) {
+			await this.activatePooledRuntime(pooled);
 			return true;
 		}
 		// Parse the target before changing ownership of the outgoing runtime.
@@ -812,8 +843,15 @@ export class RuntimeController {
 			cwdOverride,
 		);
 		this.dependencies.assertSessionCwdExists(manager, this.getWorkspacePath());
+		const previousSessionFile = this.runtime.session.sessionManager.getSessionFile();
 		await this.leaveCurrentRuntimeForReplacement();
-		this.adoptRuntime(await this.createRuntime(manager));
+		this.adoptRuntime(
+			await this.createRuntime(manager, {
+				type: "session_start",
+				reason: "resume",
+				previousSessionFile,
+			}),
+		);
 		await this.bindSession();
 		// A new session must not inherit the outgoing session's history window.
 		this.state.resetChat({ broadcast: false });
@@ -953,6 +991,11 @@ export class RuntimeController {
 		}
 		this.backgroundSessions.clear();
 		this.completedBackgroundPaths.clear();
+		for (const pooled of this.pooledSessions.values()) {
+			clearTimeout(pooled.timer);
+			runtimes.push(pooled.runtime);
+		}
+		this.pooledSessions.clear();
 		this.prompts.dispose();
 
 		const results = await Promise.allSettled(
@@ -975,8 +1018,9 @@ export class RuntimeController {
 		);
 	}
 
-	private currentRuntimeLeaveAction(): "background" | "discard" | "dispose" {
-		if (!this.isCurrentRuntimeActive()) return "dispose";
+	private currentRuntimeLeaveAction(): "background" | "discard" | "dispose" | "pool" {
+		if (!this.isCurrentRuntimeActive())
+			return this.runtime.session.sessionManager.isPersisted() ? "pool" : "dispose";
 		return this.runtime.session.sessionManager.isPersisted()
 			? "background"
 			: "discard";
@@ -1033,10 +1077,125 @@ export class RuntimeController {
 			this.backgroundCurrentRuntime();
 		} else if (action === "discard") {
 			await this.discardTemporaryRuntime();
-		} else {
+		} else if (action !== "pool" || !this.poolCurrentRuntime()) {
 			this.unbindSession();
 			await this.runtime.dispose();
 		}
+	}
+
+	/** Mirrors AgentSessionRuntime.switchSession, which pi-ui bypasses to keep the outgoing runtime. */
+	private async switchCancelled(targetSessionFile: string): Promise<boolean> {
+		const runner = this.runtime.session.extensionRunner;
+		if (!runner.hasHandlers("session_before_switch")) return false;
+		const result = await runner.emit({
+			type: "session_before_switch",
+			reason: "resume",
+			targetSessionFile,
+		});
+		return result?.cancel === true;
+	}
+
+	private poolCurrentRuntime(): boolean {
+		const runtime = this.runtime;
+		const path = runtime.session.sessionManager.getSessionFile();
+		// A session without messages has no file yet and is cheap to recreate.
+		const file = path ? statSync(path, { throwIfNoEntry: false }) : undefined;
+		if (
+			!path ||
+			!file ||
+			file.size * sessionMemoryPerFileByte > sessionPoolMemoryBytes
+		)
+			return false;
+		this.foregroundGeneration = this.nextGeneration++;
+		this.unbindSession();
+		this.pooledSessions.set(path, {
+			runtime,
+			size: file.size,
+			mtimeMs: file.mtimeMs,
+			enabledModels: JSON.stringify(
+				runtime.services.settingsManager.getEnabledModels(),
+			),
+			timer: setTimeout(
+				() => this.evictPooledSession(path),
+				sessionPoolIdleMs,
+			).unref(),
+		});
+		let bytes = 0;
+		for (const pooled of this.pooledSessions.values())
+			bytes += pooled.size * sessionMemoryPerFileByte;
+		for (const [oldest, pooled] of [...this.pooledSessions]) {
+			if (
+				this.pooledSessions.size <= sessionPoolSize &&
+				bytes <= sessionPoolMemoryBytes
+			)
+				break;
+			bytes -= pooled.size * sessionMemoryPerFileByte;
+			this.evictPooledSession(oldest);
+		}
+		return true;
+	}
+
+	/** Returns the pooled runtime when nothing changed it since the user left it. */
+	private async takePooledSession(
+		path: string,
+	): Promise<AgentSessionRuntime | undefined> {
+		const pooled = this.pooledSessions.get(path);
+		if (!pooled) return;
+		this.pooledSessions.delete(path);
+		clearTimeout(pooled.timer);
+		const { runtime } = pooled;
+		const settings = runtime.services.settingsManager;
+		const file = await stat(path).catch(() => undefined);
+		if (
+			file?.size === pooled.size &&
+			file.mtimeMs === pooled.mtimeMs &&
+			existsSync(runtime.session.sessionManager.getCwd())
+		) {
+			// Settings are files other sessions may have written meanwhile.
+			await settings.reload();
+			if (JSON.stringify(settings.getEnabledModels()) === pooled.enabledModels)
+				return runtime;
+		}
+		this.disposePooledRuntime(runtime);
+	}
+
+	private async activatePooledRuntime(runtime: AgentSessionRuntime): Promise<void> {
+		const cwd = runtime.session.sessionManager.getCwd();
+		try {
+			const [workspace] = await Promise.all([
+				cwd !== this.state.workspacePath
+					? this.state.prepareWorkspace?.(cwd)
+					: undefined,
+				this.leaveCurrentRuntimeForReplacement(),
+			]);
+			if (workspace) this.preparedWorkspaces.set(runtime.session, workspace);
+		} catch (error) {
+			this.disposePooledRuntime(runtime);
+			throw error;
+		}
+		// Extensions stay bound from the first activation; their UI context follows this.runtime.
+		this.adoptRuntime(runtime);
+		this.bindSessionState();
+		this.state.resetChat({ broadcast: false });
+		this.loadCurrentSessionMessages();
+	}
+
+	private evictPooledSession(path: string): void {
+		const pooled = this.pooledSessions.get(path);
+		if (!pooled) return;
+		this.pooledSessions.delete(path);
+		clearTimeout(pooled.timer);
+		this.disposePooledRuntime(pooled.runtime);
+	}
+
+	private clearSessionPool(): void {
+		for (const path of [...this.pooledSessions.keys()]) this.evictPooledSession(path);
+	}
+
+	private disposePooledRuntime(runtime: AgentSessionRuntime): void {
+		void Promise.try(() => runtime.dispose()).catch((error: ErrorOptions["cause"]) =>
+			console.error("Failed to dispose pooled runtime", error),
+		);
 	}
 
 	private async discardTemporaryRuntime(): Promise<void> {

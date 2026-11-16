@@ -1,5 +1,6 @@
 import { onTestFinished, setSystemTime, spyOn, test } from "bun:test";
 import { mkdir, rm, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
@@ -53,6 +54,7 @@ type RuntimeFake = {
 	setCompacting(value: boolean): void;
 	setStreaming(value: boolean): void;
 	setCompact(value: () => Promise<void>): void;
+	beforeSwitch?: () => { cancel?: boolean } | undefined;
 };
 
 function manager(
@@ -138,7 +140,12 @@ function fakeRuntime(
 		scopedModels: [],
 		modelRuntime,
 		promptTemplates: [],
-		extensionRunner: { getRegisteredCommands: () => [] },
+		extensionRunner: {
+			getRegisteredCommands: () => [],
+			hasHandlers: (type: string) =>
+				type === "session_before_switch" && fake.beforeSwitch !== undefined,
+			emit: async () => fake.beforeSwitch?.(),
+		},
 		resourceLoader: { getSkills: () => ({ skills: [] }) },
 		thinkingLevel: "off",
 		getAvailableThinkingLevels: () => ["off"],
@@ -218,7 +225,13 @@ function fakeRuntime(
 			if (fake.disposeError) throw fake.disposeError;
 			return fake.disposeResult;
 		},
-		services: { modelRuntime },
+		services: {
+			modelRuntime,
+			settingsManager: {
+				getEnabledModels: () => undefined,
+				reload: () => Promise.resolve(),
+			},
+		},
 	});
 	return fake;
 }
@@ -322,7 +335,7 @@ test("session resume streams the target transcript", async () => {
 test("cancelled resume keeps the current session and chat", async () => {
 	const state = new AppStore();
 	const source = fakeRuntime();
-	source.runtime.switchSession = async () => ({ cancelled: true });
+	source.beforeSwitch = () => ({ cancel: true });
 	const controller = await activate(state, [source]);
 	state.appendMessage("user", "source content");
 	const path = state.currentSessionPath;
@@ -1685,4 +1698,35 @@ test("RuntimeController disposes a prepared runtime when extension binding fails
 	);
 	assertEquals(fake.disposeCount, 1);
 	assertEquals(fake.events.length, 0);
+});
+
+test("RuntimeController reuses an idle session until its file changes", async () => {
+	const first = await makeTempFile({ suffix: ".jsonl" });
+	const second = await makeTempFile({ suffix: ".jsonl" });
+	await Bun.write(first, "{}\n");
+	await Bun.write(second, "{}\n");
+	const cwd = tmpdir();
+	const a = fakeRuntime(first, true, cwd);
+	const b = fakeRuntime(second, true, cwd);
+	const reopenedA = fakeRuntime(first, true, cwd);
+	const state = new AppStore();
+	const controller = await activate(state, [a, b, reopenedA], cwd);
+	try {
+		assertEquals((await controller.resumeSession(second)).status, "success");
+		assertEquals((await controller.resumeSession(first)).status, "success");
+		assertEquals(a.disposeCount, 0);
+		assertEquals(state.currentSessionPath, first);
+
+		assertEquals((await controller.resumeSession(second)).status, "success");
+		// The pi CLI appended to the pooled session meanwhile.
+		await Bun.write(first, "{}\n{}\n");
+		assertEquals((await controller.resumeSession(first)).status, "success");
+		await Bun.sleep(0);
+		assertEquals(a.disposeCount, 1);
+		assertEquals(reopenedA.calls.includes("create"), true);
+	} finally {
+		await controller.dispose();
+		await unlink(first);
+		await unlink(second);
+	}
 });
