@@ -155,12 +155,13 @@ const systemSlashCommandNames = new Set(
 
 /**
  * Idle sessions stay open after the user leaves them, so a switch back skips
- * extension, MCP, and model startup. A loaded session takes about three times
- * its file size in memory (measured on 30–210 MB sessions).
+ * extension, MCP, and model startup. Pooling a session closes the oldest one
+ * when the pool is full or the server is over its memory cap. The process total
+ * is the only real measure: one session cannot be measured apart from the
+ * others. Bun returns a closed session's memory within about a second.
  */
 const sessionPoolSize = 10;
 const sessionPoolMemoryBytes = 2 * 1024 ** 3;
-const sessionMemoryPerFileByte = 3;
 const sessionPoolIdleMs = 15 * 60 * 1000;
 
 type PooledSession = {
@@ -1100,12 +1101,7 @@ export class RuntimeController {
 		const path = runtime.session.sessionManager.getSessionFile();
 		// A session without messages has no file yet and is cheap to recreate.
 		const file = path ? statSync(path, { throwIfNoEntry: false }) : undefined;
-		if (
-			!path ||
-			!file ||
-			file.size * sessionMemoryPerFileByte > sessionPoolMemoryBytes
-		)
-			return false;
+		if (!path || !file) return false;
 		this.foregroundGeneration = this.nextGeneration++;
 		this.unbindSession();
 		this.pooledSessions.set(path, {
@@ -1120,18 +1116,14 @@ export class RuntimeController {
 				sessionPoolIdleMs,
 			).unref(),
 		});
-		let bytes = 0;
-		for (const pooled of this.pooledSessions.values())
-			bytes += pooled.size * sessionMemoryPerFileByte;
-		for (const [oldest, pooled] of [...this.pooledSessions]) {
-			if (
-				this.pooledSessions.size <= sessionPoolSize &&
-				bytes <= sessionPoolMemoryBytes
-			)
-				break;
-			bytes -= pooled.size * sessionMemoryPerFileByte;
+		// One session per switch: freed memory shows only after collection.
+		const [oldest] = this.pooledSessions.keys();
+		if (
+			oldest &&
+			(this.pooledSessions.size > sessionPoolSize ||
+				process.memoryUsage.rss() > sessionPoolMemoryBytes)
+		)
 			this.evictPooledSession(oldest);
-		}
 		return true;
 	}
 
@@ -1189,7 +1181,7 @@ export class RuntimeController {
 	}
 
 	private clearSessionPool(): void {
-		for (const path of [...this.pooledSessions.keys()]) this.evictPooledSession(path);
+		for (const path of this.pooledSessions.keys()) this.evictPooledSession(path);
 	}
 
 	private disposePooledRuntime(runtime: AgentSessionRuntime): void {
