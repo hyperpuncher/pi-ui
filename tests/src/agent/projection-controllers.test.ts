@@ -412,14 +412,13 @@ test("tree navigation rejects overlap and can cancel summarization", async () =>
 	});
 	const activities: Array<string | undefined> = [];
 	const projector = new TreeProjector(() => runtime, {
-		setTreeEntries: () => {},
 		setActivityText: (activity) => activities.push(activity),
 	});
 
 	const first = projector.navigate("one", { summarize: true });
 	assertEquals(activities, ["Summarizing branch..."]);
 	assertEquals(await projector.navigate("two"), { status: "busy" });
-	projector.open();
+	projector.entries();
 	assertEquals(await first, { status: "cancelled" });
 	assertEquals(activities, ["Summarizing branch...", undefined]);
 	assertEquals({ navigateCount, abortCount }, { navigateCount: 1, abortCount: 1 });
@@ -448,10 +447,9 @@ test("stale tree navigation cannot mutate a reused session generation", async ()
 	const runtime = agentSessionRuntimeStub({ session });
 	let generation = 1;
 	let navigated = 0;
-	let treeLoads = 0;
 	const projector = new TreeProjector(
 		() => runtime,
-		{ setTreeEntries: () => (treeLoads += 1) },
+		{},
 		() => (navigated += 1),
 		() => generation,
 	);
@@ -464,7 +462,7 @@ test("stale tree navigation cannot mutate a reused session generation", async ()
 	});
 	finishOld({ cancelled: false, editorText: "stale" });
 	assertEquals(await old, { status: "cancelled" });
-	assertEquals({ navigated, treeLoads }, { navigated: 1, treeLoads: 1 });
+	assertEquals(navigated, 1);
 });
 
 test("tree navigation reports successful empty editor text explicitly", async () => {
@@ -481,7 +479,7 @@ test("tree navigation reports successful empty editor text explicitly", async ()
 	});
 	const projector = new TreeProjector(
 		() => runtime,
-		{ setTreeEntries: () => {} },
+		{},
 		() => (navigated += 1),
 	);
 

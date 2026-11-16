@@ -83,6 +83,7 @@ import {
 	type AppChatSnapshot,
 	type AppSlashCommand,
 	AppStore,
+	type AppTreeEntry,
 	type BackgroundSessionStatus,
 } from "#src/state/app-store.ts";
 import { TranscriptState } from "#src/state/transcript-state.ts";
@@ -867,9 +868,12 @@ export class RuntimeController {
 	}
 
 	openTree(): boolean {
-		this.tree.open();
 		this.state.openTreeDialog();
 		return true;
+	}
+
+	treeEntries(): AppTreeEntry[] {
+		return this.tree.entries();
 	}
 
 	async navigateTree(

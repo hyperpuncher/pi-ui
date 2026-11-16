@@ -173,7 +173,6 @@ export type AppStateSnapshot = Readonly<{
 	sessions: readonly AppSessionSummary[];
 	sessionsHasMore: boolean;
 	sessionCatalogLoading: boolean;
-	treeEntries: readonly AppTreeEntry[];
 	slashCommands: readonly AppSlashCommand[];
 	authDialog: AppAuthDialog | undefined;
 	extensionDialog: AppExtensionDialog | undefined;
@@ -264,7 +263,6 @@ export class AppStore {
 	sessionCatalogLoading = true;
 	private sessionCatalog: AppSessionSummary[] = [];
 	private sessionLimit = sessionSidebarPageSize;
-	treeEntries: AppTreeEntry[] = [];
 	slashCommands: AppSlashCommand[] = [];
 	authDialog: AppAuthDialog | undefined;
 	extensionDialog: AppExtensionDialog | undefined;
@@ -589,10 +587,6 @@ export class AppStore {
 	}
 	setLlamaDialog(dialog: AppLlamaDialog | undefined): void {
 		this.llamaDialog = dialog;
-		this.commit();
-	}
-	setTreeEntries(entries: AppTreeEntry[]): void {
-		this.treeEntries = entries;
 		this.commit();
 	}
 	openTreeDialog(): void {

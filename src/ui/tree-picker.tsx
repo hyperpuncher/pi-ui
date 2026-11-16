@@ -1,5 +1,5 @@
 import { endpoints } from "#src/server/routes/endpoints.ts";
-import type { AppStateSnapshot, AppTreeEntry } from "#src/state/app-store.ts";
+import type { AppTreeEntry } from "#src/state/app-store.ts";
 import { DateTime } from "#src/ui/date-time.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 
@@ -11,7 +11,8 @@ const treeLabelClasses = {
 	other: "tree-kind-other",
 } satisfies Record<AppTreeEntry["kind"], string>;
 
-export function renderTreePicker(state: AppStateSnapshot): string {
+/** The tree rows exist only while the dialog is open; a long session has thousands. */
+export function renderTreePicker(entries: readonly AppTreeEntry[] = []): string {
 	return syncHtml(
 		<div id="tree-picker">
 			<div role="menu" id="tree-menu" class="tree-menu" aria-orientation="vertical">
@@ -23,7 +24,7 @@ export function renderTreePicker(state: AppStateSnapshot): string {
 					<span role="heading" id="tree-menu-heading" class="sr-only">
 						Session entries
 					</span>
-					{state.treeEntries.map(renderTreeRow)}
+					{entries.map(renderTreeRow)}
 				</div>
 				<SummaryChoice />
 			</div>

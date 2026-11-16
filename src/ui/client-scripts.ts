@@ -6,7 +6,10 @@ export const clientScripts = {
 	workspaceReviewSubmitted:
 		"window.dispatchEvent(new CustomEvent('pi-ui-workspace-review-submitted'))",
 	scrollTranscriptBottom: "window.piUi.messageScroll.scrollBottom()",
+	/** Asks the tree dialog to load its rows, which then opens it. */
 	openTreeDialog:
+		"document.getElementById('tree-dialog')?.dispatchEvent(new Event('pi-ui-tree-open'))",
+	showTreeDialog:
 		"{ const dialog = document.getElementById('tree-dialog'); if (dialog && !dialog.open) dialog.showModal(); }",
 	checkOlderMessages: "window.piUi.messageScroll.checkOlder()",
 	holdTranscriptPosition: "window.piUi.messageScroll.holdPosition()",

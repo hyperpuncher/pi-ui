@@ -403,7 +403,9 @@ export function renderPage(
 						class="command-dialog command-tree"
 						aria-label="Session tree"
 						data-on:beforetoggle="if (evt.newState === 'open') $treeSelectedId = '';"
+						data-on:pi-ui-tree-open={`@post('${endpoints.treeOpen}', { payload: {}, retry: 'never' })`}
 						data-on:toggle={`${resetCommandDialogOnOpen}
+						if (evt.newState === 'closed') document.getElementById('tree-picker').replaceChildren();
 						if (evt.newState === 'open') {
 						const active = el.querySelector('[data-active-tree-row]');
 						if (active) {
@@ -452,7 +454,7 @@ export function renderPage(
 									"
 								/>
 							</search>
-							{renderTreePicker(state)}
+							{renderTreePicker()}
 						</div>
 					</dialog>
 

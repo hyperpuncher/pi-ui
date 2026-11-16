@@ -8,8 +8,7 @@ import type { AppStore, AppTreeEntry } from "#src/state/app-store.ts";
 import { formatDateTime } from "#src/utils/locale.ts";
 import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-guards.ts";
 
-type TreeState = Pick<AppStore, "setTreeEntries"> &
-	Partial<Pick<AppStore, "setActivityText">>;
+type TreeState = Partial<Pick<AppStore, "setActivityText">>;
 type TreeOwnerToken = PropertyKey | object;
 
 export type TreeNavigationResult =
@@ -30,19 +29,14 @@ export class TreeProjector {
 		private readonly getOwnerToken: () => TreeOwnerToken = () => getRuntime().session,
 	) {}
 
-	open(): void {
+	/** Rows of the current session tree, built only while the tree dialog opens. */
+	entries(): AppTreeEntry[] {
 		this.cancelNavigation();
-		this.load();
-	}
-
-	load(): void {
 		const manager = this.getRuntime().session.sessionManager;
-		this.state.setTreeEntries(
-			flattenTree(
-				manager.getTree(),
-				manager.getLeafId(),
-				new Set(manager.getBranch().map((entry) => entry.id)),
-			),
+		return flattenTree(
+			manager.getTree(),
+			manager.getLeafId(),
+			new Set(manager.getBranch().map((entry) => entry.id)),
 		);
 	}
 	async navigate(
@@ -65,7 +59,6 @@ export class TreeProjector {
 				return { status: "cancelled" };
 			}
 			this.onNavigated();
-			this.load();
 			return { status: "success", editorText: result.editorText };
 		} finally {
 			if (this.navigations.get(ownerToken) === navigation) {

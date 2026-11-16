@@ -9,13 +9,18 @@ import { RouteError, type RouteMap } from "#src/server/route.ts";
 import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import { clientScripts } from "#src/ui/client-scripts.ts";
+import { renderTreePicker } from "#src/ui/tree-picker.tsx";
 
 export const treeRoutes = {
 	[endpoints.treeOpen]: {
-		POST: (_request, context) => {
-			requireHost(context).openTree();
-			return datastarResponse();
-		},
+		POST: (_request, context) =>
+			datastarResponse([
+				{
+					type: "elements",
+					elements: renderTreePicker(requireHost(context).treeEntries()),
+				},
+				{ type: "script", script: clientScripts.showTreeDialog },
+			]),
 	},
 	[endpoints.treeNavigate]: {
 		POST: async (request, context) => {

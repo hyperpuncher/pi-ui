@@ -34,7 +34,7 @@ export function authDialogAction(mode: "login" | "logout"): string {
 }
 
 function openTreeAction(): string {
-	return `@post('${endpoints.treeOpen}', { payload: {} })`;
+	return `@post('${endpoints.treeOpen}', { payload: {}, retry: 'never' })`;
 }
 
 function openWorkspaceDialogAction(
