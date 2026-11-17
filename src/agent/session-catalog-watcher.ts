@@ -1,8 +1,6 @@
 import { watch } from "node:fs";
 import { join } from "node:path";
 
-const sessionExtension = ".jsonl";
-
 export type SessionCatalogWatch = (
 	sessionDir: string,
 	onChange: (path: string) => void,
@@ -11,9 +9,7 @@ export type SessionCatalogWatch = (
 export const watchSessionCatalog: SessionCatalogWatch = (sessionDir, onChange) => {
 	try {
 		const watcher = watch(sessionDir, { recursive: true }, (_event, fileName) => {
-			if (!fileName) return;
-			const path = join(sessionDir, fileName.toString());
-			if (path.endsWith(sessionExtension)) onChange(path);
+			if (fileName) onChange(join(sessionDir, fileName.toString()));
 		});
 		watcher.on("error", (error) => {
 			console.warn("Session catalogue watcher stopped", error);

@@ -82,9 +82,17 @@ export class SessionCatalog {
 
 	activate(): void {
 		if (this.disposed || this.stopWatch || !this.lifecycle?.watch) return;
-		this.stopWatch = this.lifecycle.watch(this.lifecycle.sessionDir, (path) =>
-			this.scheduleFileRefresh(path),
-		);
+		this.stopWatch = this.lifecycle.watch(this.lifecycle.sessionDir, (path) => {
+			if (path.endsWith(".jsonl")) {
+				this.scheduleFileRefresh(path);
+				return;
+			}
+			// Moving or deleting a folder reports only the folder, not its sessions.
+			for (const session of this.state.getSessionCatalog()) {
+				if (session.path.startsWith(`${path}/`))
+					this.scheduleFileRefresh(session.path);
+			}
+		});
 	}
 
 	dispose(): void {

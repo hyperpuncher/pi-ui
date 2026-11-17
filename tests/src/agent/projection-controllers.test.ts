@@ -630,6 +630,40 @@ test("immediate session refresh cancels a queued file refresh for a provisional 
 	}
 });
 
+test("removing a session folder removes its sessions", async () => {
+	const root = await makeTempDir({ prefix: "pi-ui-catalog-folder-" });
+	const folder = `${root}/--workspace--`;
+	const state = new AppStore();
+	let changed = (_path: string) => {};
+	const catalog = new SessionCatalog(state, {
+		sessionDir: root,
+		watch: (_sessionDir, onChange) => {
+			changed = onChange;
+			return () => {};
+		},
+	});
+	catalog.applyPrepared({
+		ok: true,
+		sessions: [
+			sessionInfo(`${folder}/a.jsonl`, "A"),
+			sessionInfo(`${folder}/b.jsonl`, "B"),
+			sessionInfo(`${root}/--other--/c.jsonl`, "C"),
+		],
+	});
+	catalog.activate();
+	try {
+		changed(folder);
+		await Bun.sleep(450);
+		assertEquals(
+			state.sessions.map((session) => session.path),
+			[`${root}/--other--/c.jsonl`],
+		);
+	} finally {
+		catalog.dispose();
+		await rm(root, { recursive: true });
+	}
+});
+
 function sessionInfo(
 	path: string,
 	name: string,
