@@ -1,17 +1,15 @@
 import type { AgentSessionRuntime, SessionStats } from "@earendil-works/pi-coding-agent";
 
-import { claudeUsageFromMessages, showsClaudeUsage } from "#src/agent/claude-usage.ts";
 import {
-	type CodexUsage,
 	describeCodexUsage,
 	fetchCodexUsage,
 	showsCodexUsage,
 } from "#src/agent/codex-usage.ts";
+import { limitsFromMessages } from "#src/agent/limit-diagnostics.ts";
 import {
 	describeOpenCodeGoUsage,
 	fetchOpenCodeGoUsage,
 	isOpenCodeGo,
-	type OpenCodeGoUsage,
 } from "#src/agent/opencode-go-usage.ts";
 import { providerUsageTtlMs } from "#src/agent/provider-usage.ts";
 import { UsageRequestTracker } from "#src/agent/usage-request.ts";
@@ -23,63 +21,64 @@ import type {
 } from "#src/state/app-store.ts";
 import { formatTokens } from "#src/utils/format.ts";
 
-type LimitProvider = "codex" | "opencode-go";
 type UsageState = Pick<AppStore, "setUsage">;
-type LimitUsageResult =
-	| { provider: "codex"; usage: CodexUsage | undefined }
-	| { provider: "opencode-go"; usage: OpenCodeGoUsage | undefined };
+type Session = AgentSessionRuntime["session"];
+type DescribeWindows = () => readonly AppUsageLimitWindow[];
+
+type LimitSource = {
+	id: string;
+	label: string;
+	matches(model: Session["model"]): boolean;
+	load(session: Session): Promise<DescribeWindows | undefined>;
+	status?: string;
+	describe?: DescribeWindows;
+	fetchedAt?: number;
+};
 
 export class UsageController {
-	private codexStatus = "";
-	private codexUsage: CodexUsage | undefined;
-	private codexFetchedAt = 0;
-	private opencodeGoStatus = "";
-	private opencodeGoUsage: OpenCodeGoUsage | undefined;
-	private opencodeGoFetchedAt = 0;
+	private readonly sources: readonly LimitSource[] = [
+		{
+			id: "codex",
+			label: "Codex limits",
+			matches: showsCodexUsage,
+			load: async (session) => {
+				const usage = await this.loadCodex(session);
+				return usage && (() => describeCodexUsage(usage));
+			},
+		},
+		{
+			id: "opencode-go",
+			label: "OpenCode Go usage",
+			matches: isOpenCodeGo,
+			load: async (session) => {
+				const usage = await this.loadOpenCodeGo(session);
+				return usage && (() => describeOpenCodeGoUsage(usage));
+			},
+		},
+	];
 	private readonly requests = new UsageRequestTracker();
 	private timer: ReturnType<typeof setTimeout> | undefined;
 
 	constructor(
 		private readonly getRuntime: () => AgentSessionRuntime,
 		private readonly state: UsageState,
-		private readonly fetchCodex = fetchCodexUsage,
-		private readonly fetchOpenCodeGo = fetchOpenCodeGoUsage,
+		private readonly loadCodex = fetchCodexUsage,
+		private readonly loadOpenCodeGo = fetchOpenCodeGoUsage,
 	) {}
 
 	sync(): void {
 		const session = this.getRuntime().session;
-		const showCodexUsage = showsCodexUsage(session.model);
-		const showOpenCodeGoUsage = isOpenCodeGo(session.model);
-		const claudeUsage = showsClaudeUsage(session.model)
-			? claudeUsageFromMessages(session.messages)
-			: undefined;
+		const source = this.sources.find((item) => item.matches(session.model));
+		const provider = session.model?.provider;
 		const stats = session.getSessionStats();
 		this.state.setUsage(
 			formatStats(stats, {
 				cacheHitPercent: cumulativeCacheHitPercent(stats),
-				limits: showCodexUsage
-					? usageLimits(
-							"Codex limits",
-							this.codexStatus,
-							this.codexUsage
-								? describeCodexUsage(this.codexUsage)
-								: undefined,
-						)
-					: showOpenCodeGoUsage
-						? usageLimits(
-								"OpenCode Go usage",
-								this.opencodeGoStatus,
-								this.opencodeGoUsage
-									? describeOpenCodeGoUsage(this.opencodeGoUsage)
-									: undefined,
-							)
-						: claudeUsage
-							? usageLimits(
-									"Claude limits",
-									claudeUsage.status ?? "",
-									claudeUsage.windows,
-								)
-							: undefined,
+				limits: source
+					? polledLimits(source)
+					: provider
+						? limitsFromMessages(session.messages, provider)
+						: undefined,
 			}),
 		);
 	}
@@ -91,26 +90,31 @@ export class UsageController {
 	refresh(force = false): void {
 		const runtime = this.getRuntime();
 		const session = runtime.session;
-		const provider = limitProvider(session.model);
-		if (!provider) {
+		const source = this.sources.find((item) => item.matches(session.model));
+		if (!source) {
 			this.suspend();
 			this.sync();
 			return;
 		}
 		if (
 			this.requests.loading ||
-			(!force && Date.now() - this.fetchedAt(provider) < providerUsageTtlMs)
+			(!force &&
+				source.fetchedAt !== undefined &&
+				Date.now() - source.fetchedAt < providerUsageTtlMs)
 		)
 			return;
 		const request = this.requests.begin(runtime, session, session.model);
-		if (!this.hasUsageState(provider)) {
-			this.setUsageStatus(provider, "loading");
+		if (source.fetchedAt === undefined && !source.status) {
+			source.status = "loading";
 			this.sync();
 		}
-		void this.fetchProviderUsage(provider, session)
-			.then((result) => {
+		void source
+			.load(session)
+			.then((describe) => {
 				if (!this.owns(request)) return;
-				this.setUsageResult(result, result.usage ? "" : "unavailable");
+				source.status = describe ? undefined : "unavailable";
+				if (describe) source.describe = describe;
+				source.fetchedAt = Date.now();
 				this.sync();
 			})
 			.catch((error: ErrorOptions["cause"]) => {
@@ -119,19 +123,20 @@ export class UsageController {
 					error instanceof DOMException &&
 					(error.name === "AbortError" || error.name === "TimeoutError")
 				)
-					console.warn(`${provider} usage request timed out`);
-				else console.warn(`Failed to fetch ${provider} usage`, error);
-				this.setUsageResult({ provider, usage: undefined }, "unavailable");
+					console.warn(`${source.id} usage request timed out`);
+				else console.warn(`Failed to fetch ${source.id} usage`, error);
+				source.status = "unavailable";
+				source.fetchedAt = Date.now();
 				this.sync();
 			})
 			.finally(() => {
-				const current = this.getRuntime();
+				const released = this.getRuntime();
 				if (
 					!this.requests.release(
 						request,
-						current,
-						current.session,
-						current.session.model,
+						released,
+						released.session,
+						released.session.model,
 					)
 				)
 					return;
@@ -141,42 +146,6 @@ export class UsageController {
 
 	dispose(): void {
 		this.suspend();
-	}
-
-	private fetchProviderUsage(
-		provider: LimitProvider,
-		session: AgentSessionRuntime["session"],
-	): Promise<LimitUsageResult> {
-		return provider === "codex"
-			? this.fetchCodex(session).then((usage) => ({ provider, usage }))
-			: this.fetchOpenCodeGo(session).then((usage) => ({ provider, usage }));
-	}
-
-	private hasUsageState(provider: LimitProvider): boolean {
-		return provider === "codex"
-			? this.codexFetchedAt > 0 || !!this.codexStatus
-			: this.opencodeGoFetchedAt > 0 || !!this.opencodeGoStatus;
-	}
-
-	private fetchedAt(provider: LimitProvider): number {
-		return provider === "codex" ? this.codexFetchedAt : this.opencodeGoFetchedAt;
-	}
-
-	private setUsageStatus(provider: LimitProvider, status: string): void {
-		if (provider === "codex") this.codexStatus = status;
-		else this.opencodeGoStatus = status;
-	}
-
-	private setUsageResult(result: LimitUsageResult, status: string): void {
-		if (result.provider === "codex") {
-			this.codexStatus = status;
-			this.codexUsage = result.usage ?? this.codexUsage;
-			this.codexFetchedAt = Date.now();
-			return;
-		}
-		this.opencodeGoStatus = status;
-		this.opencodeGoUsage = result.usage ?? this.opencodeGoUsage;
-		this.opencodeGoFetchedAt = Date.now();
 	}
 
 	private owns(request: ReturnType<UsageRequestTracker["begin"]>): boolean {
@@ -237,28 +206,17 @@ export function cumulativeCacheHitPercent(
 	return promptTokens > 0 ? (cacheRead / promptTokens) * 100 : undefined;
 }
 
-function usageLimits(
-	label: string,
-	status: string,
-	windows: readonly AppUsageLimitWindow[] | undefined,
-): AppUsageLimits | undefined {
-	if (!status && !windows?.length) return undefined;
+function polledLimits(source: LimitSource): AppUsageLimits | undefined {
+	const windows = source.describe?.() ?? [];
+	if (!source.status && !windows.length) return undefined;
 	return {
-		label,
+		label: source.label,
 		status:
-			status && windows?.length
+			source.status && windows.length
 				? "stale (refresh unavailable)"
-				: status || undefined,
-		windows: windows ?? [],
+				: source.status,
+		windows,
 	};
-}
-
-function limitProvider(
-	model: { provider?: string } | undefined,
-): LimitProvider | undefined {
-	if (showsCodexUsage(model)) return "codex";
-	if (isOpenCodeGo(model)) return "opencode-go";
-	return undefined;
 }
 
 function formatCost(cost: number): string {

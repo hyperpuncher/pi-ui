@@ -1,7 +1,8 @@
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 
 import { fetchProviderUsagePayload } from "#src/agent/provider-usage.ts";
-import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
+import { describeLimitWindow } from "#src/agent/usage-format.ts";
+import type { AppUsageLimitWindow } from "#src/state/app-store.ts";
 import {
 	isJsonObject,
 	isNumber,
@@ -22,13 +23,6 @@ export type CodexUsage = {
 	secondary?: CodexWindow;
 };
 
-export type CodexUsageWindowDescription = {
-	label: string;
-	usedPercent: number;
-	remainingPercent: number;
-	resetText: string;
-};
-
 export function showsCodexUsage(model: { provider?: string } | undefined): boolean {
 	return model?.provider === codexProviderId || model?.provider === "openai";
 }
@@ -44,8 +38,8 @@ export async function fetchCodexUsage(
 	return payload === undefined ? undefined : parseCodexUsage(payload);
 }
 
-export function describeCodexUsage(usage: CodexUsage): CodexUsageWindowDescription[] {
-	const windows: CodexUsageWindowDescription[] = [];
+export function describeCodexUsage(usage: CodexUsage): AppUsageLimitWindow[] {
+	const windows: AppUsageLimitWindow[] = [];
 	if (usage.primary) windows.push(describeCodexWindow(usage.primary, "5 hours"));
 	if (usage.secondary) windows.push(describeCodexWindow(usage.secondary, "Weekly"));
 	return windows;
@@ -54,24 +48,18 @@ export function describeCodexUsage(usage: CodexUsage): CodexUsageWindowDescripti
 function describeCodexWindow(
 	window: CodexWindow,
 	fallbackLabel: string,
-): CodexUsageWindowDescription {
-	return {
-		label: formatWindowLabel(window.windowSeconds) ?? fallbackLabel,
-		usedPercent: window.usedPercent,
-		remainingPercent: remainingPercent(window.usedPercent),
-		resetText: formatRemainingTime(
-			window.resetsAt === undefined ? undefined : window.resetsAt * 1000,
-		),
-	};
+): AppUsageLimitWindow {
+	return describeLimitWindow(
+		formatWindowLabel(window.windowSeconds) ?? fallbackLabel,
+		window.usedPercent,
+		window.resetsAt === undefined ? undefined : window.resetsAt * 1000,
+	);
 }
 
 export function parseCodexUsage(payload: JsonValue): CodexUsage | undefined {
-	if (!isJsonObject(payload)) return undefined;
-	const rateLimit = payload.rate_limit;
-	if (!isJsonObject(rateLimit)) return undefined;
-
-	const primary = parseCodexWindow(rateLimit.primary_window);
-	const secondary = parseCodexWindow(rateLimit.secondary_window);
+	if (!isJsonObject(payload) || !isJsonObject(payload.rate_limit)) return undefined;
+	const primary = parseCodexWindow(payload.rate_limit.primary_window);
+	const secondary = parseCodexWindow(payload.rate_limit.secondary_window);
 	return primary || secondary ? { primary, secondary } : undefined;
 }
 

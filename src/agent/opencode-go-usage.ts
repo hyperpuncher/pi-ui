@@ -10,7 +10,8 @@ import {
 } from "@earendil-works/pi-schema";
 
 import { fetchProviderUsagePayload } from "#src/agent/provider-usage.ts";
-import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
+import { describeLimitWindow } from "#src/agent/usage-format.ts";
+import type { AppUsageLimitWindow } from "#src/state/app-store.ts";
 import { isString, type JsonValue } from "#src/utils/type-guards.ts";
 
 const opencodeGoProviderId = "opencode-go";
@@ -49,13 +50,6 @@ export type OpenCodeGoUsage = {
 	monthly?: OpenCodeGoWindow;
 };
 
-export type OpenCodeGoUsageWindowDescription = {
-	label: string;
-	usedPercent: number;
-	remainingPercent: number;
-	resetText: string;
-};
-
 export function isOpenCodeGo(model: { provider?: string } | undefined): boolean {
 	return model?.provider === opencodeGoProviderId;
 }
@@ -77,10 +71,8 @@ export function parseOpenCodeGoUsage(payload: JsonValue): OpenCodeGoUsage | unde
 	return parsed.rolling || parsed.weekly || parsed.monthly ? parsed : undefined;
 }
 
-export function describeOpenCodeGoUsage(
-	usage: OpenCodeGoUsage,
-): OpenCodeGoUsageWindowDescription[] {
-	const windows: OpenCodeGoUsageWindowDescription[] = [];
+export function describeOpenCodeGoUsage(usage: OpenCodeGoUsage): AppUsageLimitWindow[] {
+	const windows: AppUsageLimitWindow[] = [];
 	if (usage.rolling) windows.push(describeWindow(usage.rolling, "5 hours"));
 	if (usage.weekly) windows.push(describeWindow(usage.weekly, "Weekly"));
 	if (usage.monthly) windows.push(describeWindow(usage.monthly, "Monthly"));
@@ -91,26 +83,18 @@ function parseWindow(window: UsageWindowInput | undefined): OpenCodeGoWindow | u
 	if (!window) return undefined;
 	const usedPercent = Number(window.percent);
 	if (!Number.isFinite(usedPercent)) return undefined;
-	return { usedPercent, resetsAt: timestamp(window.resetsAt) };
+	return { usedPercent, resetsAt: parseTimestamp(window.resetsAt) };
 }
 
-function describeWindow(
-	window: OpenCodeGoWindow,
-	label: string,
-): OpenCodeGoUsageWindowDescription {
-	return {
-		label,
-		usedPercent: window.usedPercent,
-		remainingPercent: remainingPercent(window.usedPercent),
-		resetText: formatRemainingTime(window.resetsAt),
-	};
-}
-
-function timestamp(value: UsageWindowInput["resetsAt"]): number | undefined {
+function parseTimestamp(value: UsageWindowInput["resetsAt"]): number | undefined {
 	if (value === undefined) return undefined;
 	if (isString(value)) {
 		const parsed = Date.parse(value);
 		return Number.isFinite(parsed) ? parsed : undefined;
 	}
 	return value < 10_000_000_000 ? value * 1000 : value;
+}
+
+function describeWindow(window: OpenCodeGoWindow, label: string): AppUsageLimitWindow {
+	return describeLimitWindow(label, window.usedPercent, window.resetsAt);
 }

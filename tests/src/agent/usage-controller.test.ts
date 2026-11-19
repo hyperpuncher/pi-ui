@@ -64,12 +64,16 @@ function usageHarness(
 test("keeps cached Codex usage through failed refreshes and model switches", async () => {
 	let failure: "empty" | "timeout" | undefined;
 	let usedPercent = 22;
+	let now = Date.now();
+	const resetsAt = now / 1_000 + 90 * 60;
+	const clock = spyOn(Date, "now").mockImplementation(() => now);
 	const codexModel = { provider: "openai-codex", id: "gpt-5" };
 	let model = codexModel;
 	const session = {
 		get model() {
 			return model;
 		},
+		messages: [],
 		...sessionStats,
 	};
 	const warning = spyOn(console, "warn").mockImplementation(() => {});
@@ -78,10 +82,11 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 			if (failure === "timeout")
 				throw new DOMException("The operation was aborted.", "AbortError");
 			if (failure === "empty") return undefined;
-			return { primary: { usedPercent, windowSeconds: 604_800 } };
+			return { primary: { usedPercent, windowSeconds: 604_800, resetsAt } };
 		},
 	});
 	onTestFinished(() => {
+		clock.mockRestore();
 		warning.mockRestore();
 		controller.dispose();
 	});
@@ -96,16 +101,18 @@ test("keeps cached Codex usage through failed refreshes and model switches", asy
 				label: "Weekly",
 				usedPercent: 22,
 				remainingPercent: 78,
-				resetText: "?",
+				resetText: "1.5h",
 			},
 		],
 	});
 
+	now += 60 * 60_000;
 	for (const outcome of ["timeout", "empty"] as const) {
 		failure = outcome;
 		controller.refresh(true);
 		await flush();
 		assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 78);
+		assertEquals(rendered()?.limits?.windows[0]?.resetText, "30m");
 		assertEquals(rendered()?.limits?.status, "stale (refresh unavailable)");
 	}
 	assertEquals(
@@ -230,6 +237,43 @@ test("shows Claude limits from the session rate-limit diagnostic", () => {
 		]),
 		[["5 hours", 58]],
 	);
+	controller.dispose();
+});
+
+test("shows limits from an extension without registering its provider", () => {
+	const { controller, rendered } = usageHarness({
+		model: { provider: "custom", id: "example" },
+		messages: [
+			{
+				role: "assistant",
+				diagnostics: [
+					{
+						type: "custom.rate-limit",
+						details: {
+							label: "Custom quota",
+							status: "rate limited",
+							unifiedWindows: { model_quota: { utilization: 1 } },
+						},
+					},
+				],
+			},
+		],
+		...sessionStats,
+	});
+
+	controller.refresh();
+	assertEquals(rendered()?.limits, {
+		label: "Custom quota",
+		status: "rate limited",
+		windows: [
+			{
+				label: "model quota",
+				usedPercent: 100,
+				remainingPercent: 0,
+				resetText: "?",
+			},
+		],
+	});
 	controller.dispose();
 });
 

@@ -1,5 +1,5 @@
-import { formatRemainingTime, remainingPercent } from "#src/agent/usage-format.ts";
-import type { AppUsageLimitWindow } from "#src/state/app-store.ts";
+import { describeLimitWindow } from "#src/agent/usage-format.ts";
+import type { AppUsageLimits, AppUsageLimitWindow } from "#src/state/app-store.ts";
 import {
 	isJsonObject,
 	isNumber,
@@ -8,10 +8,7 @@ import {
 	type JsonValue,
 } from "#src/utils/type-guards.ts";
 
-const claudeProviderId = "claude-code";
-const rateLimitDiagnosticType = "claude-code.rate-limit";
-
-export type ClaudeUsage = {
+export type MessageLimits = {
 	status?: string;
 	windows: AppUsageLimitWindow[];
 };
@@ -21,28 +18,40 @@ type MessageWithDiagnostics = {
 	diagnostics?: readonly { type: string; details?: JsonValue }[];
 };
 
-export function showsClaudeUsage(model: { provider?: string } | undefined): boolean {
-	return model?.provider === claudeProviderId;
-}
-
-/** Read the newest rate-limit diagnostic the claude-code extension attached to a message. */
-export function claudeUsageFromMessages(
+/**
+ * Reads the newest `<provider>.rate-limit` diagnostic an extension attached to a message,
+ * so limits cost no extra request and survive a reload through the session transcript.
+ */
+export function limitsFromMessages(
 	messages: readonly MessageWithDiagnostics[],
-): ClaudeUsage | undefined {
+	providerId: string,
+): AppUsageLimits | undefined {
+	const diagnosticType = `${providerId}.rate-limit`;
 	for (let index = messages.length - 1; index >= 0; index--) {
 		const message = messages[index];
 		if (message?.role !== "assistant") continue;
 		const diagnostic = message.diagnostics?.findLast(
-			(item) => item.type === rateLimitDiagnosticType,
+			(item) => item.type === diagnosticType,
 		);
-		if (diagnostic) return parseClaudeUsage(diagnostic.details);
+		if (!diagnostic) continue;
+		const details = diagnostic.details;
+		if (!isJsonObject(details)) return undefined;
+		const limits = parseLimitWindows(details);
+		if (!limits) return undefined;
+		const label = isString(details.label) ? details.label.trim() : "";
+		return {
+			...limits,
+			label:
+				label ||
+				(providerId === "claude-code" ? "Claude limits" : `${providerId} limits`),
+		};
 	}
 	return undefined;
 }
 
-export function parseClaudeUsage(
+export function parseLimitWindows(
 	details: JsonValue | undefined,
-): ClaudeUsage | undefined {
+): MessageLimits | undefined {
 	if (!isJsonObject(details) || !isJsonObject(details.unifiedWindows)) {
 		return undefined;
 	}
@@ -62,15 +71,7 @@ export function parseClaudeUsage(
 					? value.utilization * 100
 					: value.utilization;
 			return [
-				{
-					order,
-					window: {
-						label,
-						usedPercent,
-						remainingPercent: remainingPercent(usedPercent),
-						resetText: formatRemainingTime(resetsAtMs),
-					},
-				},
+				{ order, window: describeLimitWindow(label, usedPercent, resetsAtMs) },
 			];
 		})
 		.sort((left, right) => left.order - right.order)
@@ -93,7 +94,9 @@ function windowInfo(name: string) {
 			return { label: "Weekly", order: 1 };
 		case "seven_day_overage_included":
 			return { label: "Weekly (extra usage)", order: 2 };
+		case "thirty_day":
+			return { label: "Monthly", order: 3 };
 		default:
-			return { label: name.replaceAll("_", " "), order: 3 };
+			return { label: name.replaceAll("_", " "), order: 4 };
 	}
 }

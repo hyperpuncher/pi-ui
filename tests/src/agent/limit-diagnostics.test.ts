@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 
-import { claudeUsageFromMessages, parseClaudeUsage } from "#src/agent/claude-usage.ts";
+import { limitsFromMessages, parseLimitWindows } from "#src/agent/limit-diagnostics.ts";
 import type { JsonObject } from "#src/utils/type-guards.ts";
 import { assertEquals } from "#testing/assertions";
 
@@ -20,7 +20,7 @@ function details(): JsonObject {
 }
 
 test("maps Claude rate-limit windows in order with remaining percent", () => {
-	assertEquals(parseClaudeUsage(details()), {
+	assertEquals(parseLimitWindows(details()), {
 		status: undefined,
 		windows: [
 			{
@@ -41,7 +41,7 @@ test("maps Claude rate-limit windows in order with remaining percent", () => {
 
 test("reports extra usage and treats an expired window as reset", () => {
 	assertEquals(
-		parseClaudeUsage({
+		parseLimitWindows({
 			isUsingOverage: true,
 			unifiedWindows: {
 				five_hour: { utilization: 0.7, resetsAt: resetsInMinutes(-5) },
@@ -62,19 +62,53 @@ test("reports extra usage and treats an expired window as reset", () => {
 });
 
 test("reads the newest diagnostic on an assistant message", () => {
-	const usage = claudeUsageFromMessages([
-		{ role: "user" },
-		{
-			role: "assistant",
-			diagnostics: [
-				{ type: "claude-code.turn-relay", details: {} },
-				{ type: "claude-code.rate-limit", details: details() },
-			],
-		},
-		{ role: "assistant" },
-	]);
+	const usage = limitsFromMessages(
+		[
+			{ role: "user" },
+			{
+				role: "assistant",
+				diagnostics: [
+					{ type: "claude-code.turn-relay", details: {} },
+					{ type: "claude-code.rate-limit", details: details() },
+				],
+			},
+			{ role: "assistant" },
+		],
+		"claude-code",
+	);
 	assertEquals(
 		usage?.windows.map((window) => window.label),
 		["5 hours", "Weekly"],
+	);
+});
+
+test("reads a diagnostic from a second provider with the same shape", () => {
+	const usage = limitsFromMessages(
+		[
+			{
+				role: "assistant",
+				diagnostics: [{ type: "antigravity.rate-limit", details: details() }],
+			},
+		],
+		"antigravity",
+	);
+	assertEquals(
+		usage?.windows.map((window) => window.label),
+		["5 hours", "Weekly"],
+	);
+});
+
+test("ignores diagnostics from other providers", () => {
+	assertEquals(
+		limitsFromMessages(
+			[
+				{
+					role: "assistant",
+					diagnostics: [{ type: "claude-code.rate-limit", details: details() }],
+				},
+			],
+			"antigravity",
+		),
+		undefined,
 	);
 });
