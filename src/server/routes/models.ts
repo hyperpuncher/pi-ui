@@ -6,6 +6,7 @@ import {
 	readActionSignals,
 	requiredString,
 } from "#src/server/action-input.ts";
+import { updateAppConfig } from "#src/server/app-config.ts";
 import { datastarResponse } from "#src/server/datastar.ts";
 import { RouteError, type RouteMap } from "#src/server/route.ts";
 import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
@@ -105,12 +106,22 @@ export const modelRoutes = {
 		},
 	},
 	[endpoints.thinkingVisibilityToggle]: {
-		POST: (_request, context) => {
-			if (!requireHost(context).toggleThinkingBlockVisibility()) {
+		POST: async (_request, context) => {
+			const host = requireHost(context);
+			const exitMinimal = context.store.minimalMode;
+			if (!host.toggleThinkingBlockVisibility(exitMinimal ? false : undefined)) {
 				throw new RouteError(
 					409,
 					"Thinking block visibility could not be toggled.",
 				);
+			}
+			if (exitMinimal) {
+				await updateAppConfig((config) => {
+					config.minimalMode = false;
+				});
+				context.store.update(() => {
+					context.store.minimalMode = false;
+				});
 			}
 			return datastarResponse();
 		},

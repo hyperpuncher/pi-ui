@@ -65,6 +65,8 @@ export class UiRenderer implements AppStorePresentation {
 	private transcriptRestored = false;
 	private transcriptSessionKey: string;
 	private compactTools: boolean;
+	private thinkingHidden: boolean;
+	private minimalMode: boolean;
 	private sidebar = { html: "", layout: "" };
 	private workspaceReviewKey = "";
 
@@ -86,6 +88,8 @@ export class UiRenderer implements AppStorePresentation {
 			},
 		);
 		this.compactTools = this.messages.compactTools;
+		this.thinkingHidden = store.thinkingHidden;
+		this.minimalMode = store.minimalMode;
 		this.transcriptSessionKey = store.promptSessionKey;
 		store.attachPresentation(this);
 	}
@@ -155,15 +159,26 @@ export class UiRenderer implements AppStorePresentation {
 		this.viewPending = true;
 		this.frames.schedule();
 	}
+	toggleMessageExpand(id: string): void {
+		if (this.hub.clientCount === 0) return;
+		this.messages.toggleMessageExpand(id);
+	}
 	private flush(): void {
 		const effects = this.pendingEffects;
 		this.pendingEffects = [];
-		const toolPresentationChanged = this.compactTools !== this.messages.compactTools;
+		const toolPresentationChanged =
+			this.compactTools !== this.messages.compactTools ||
+			this.minimalMode !== this.store.minimalMode;
+		const displayPresentationChanged =
+			toolPresentationChanged || this.thinkingHidden !== this.store.thinkingHidden;
+		if (toolPresentationChanged) this.messages.clearExpansions();
 		this.compactTools = this.messages.compactTools;
+		this.thinkingHidden = this.store.thinkingHidden;
+		this.minimalMode = this.store.minimalMode;
 		const viewPending = this.viewPending;
 		this.viewPending = false;
 		// The view patch updates the mode attributes, so restore after it.
-		if (toolPresentationChanged) {
+		if (displayPresentationChanged) {
 			this.hub.executeScript(clientScripts.holdTranscriptPosition);
 			effects.push({
 				type: "script",
@@ -174,7 +189,7 @@ export class UiRenderer implements AppStorePresentation {
 			const state = this.store;
 			const transcript =
 				this.transcriptPending ||
-				toolPresentationChanged ||
+				displayPresentationChanged ||
 				(viewPending && state.messages.length === 0);
 			// A transcript patch already contains every changed message.
 			this.messages.patchChangedMessages(transcript);

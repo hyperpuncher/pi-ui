@@ -1165,6 +1165,61 @@ test("HTML previews render outside the workspace with relative assets", async ()
 	}
 });
 
+test("display toggles exit minimal mode and message expansion toggles one row", async () => {
+	const configDir = await makeTempDir({ prefix: "pi-ui-config-" });
+	const previousXdg = process.env.XDG_CONFIG_HOME;
+	const previousAppData = process.env.APPDATA;
+	process.env.XDG_CONFIG_HOME = configDir;
+	process.env.APPDATA = configDir;
+	try {
+		const toggledVisibilityArgs: Array<boolean | undefined> = [];
+		const toggledMessageIds: string[] = [];
+		const context = fakeContext({
+			renderer: uiRendererStub({
+				toggleMessageExpand: (id: string) => {
+					toggledMessageIds.push(id);
+				},
+			}),
+			host: fakeHost({
+				toggleThinkingBlockVisibility: (hidden?: boolean) => {
+					toggledVisibilityArgs.push(hidden);
+					return true;
+				},
+			}),
+		});
+		const router = createRouter(context);
+
+		context.store.minimalMode = true;
+		context.store.toolOutputHidden = true;
+		const toolResponse = await router.fetch(
+			signalRequest(endpoints.toolOutput, { toolOutputHidden: false }),
+		);
+		assertEquals(toolResponse.status, 204);
+		assertEquals(context.store.minimalMode, false);
+		assertEquals(context.store.toolOutputHidden, false);
+
+		context.store.minimalMode = true;
+		const thinkingResponse = await router.fetch(
+			signalRequest(endpoints.thinkingVisibilityToggle, {}),
+		);
+		assertEquals(thinkingResponse.status, 204);
+		assertEquals(context.store.minimalMode, false);
+		assertEquals(toggledVisibilityArgs, [false]);
+
+		const expandResponse = await router.fetch(
+			signalRequest(endpoints.messagesToggleExpand, { messageId: "m-42" }),
+		);
+		assertEquals(expandResponse.status, 204);
+		assertEquals(toggledMessageIds, ["m-42"]);
+	} finally {
+		if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+		else process.env.XDG_CONFIG_HOME = previousXdg;
+		if (previousAppData === undefined) delete process.env.APPDATA;
+		else process.env.APPDATA = previousAppData;
+		await rm(configDir, { recursive: true });
+	}
+});
+
 function serveRouter(context: RouteContext) {
 	const router = createRouter(context);
 	return Bun.serve({

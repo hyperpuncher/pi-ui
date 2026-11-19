@@ -31,6 +31,7 @@ export const endpoints = {
 	abort: "/abort",
 	messagesOlder: "/messages/older",
 	messagesTrim: "/messages/trim",
+	messagesToggleExpand: "/messages/toggle-expand",
 	sessionsNew: "/sessions/new",
 	sessionsNewTemporary: "/sessions/new-temporary",
 	sessionsSearch: "/sessions/search",

@@ -280,7 +280,9 @@
 	}
 
 	/* Keep tab sizes stable, but center labels when their hints are hidden. */
-	body:not([data-keybind-hints]) .workspace-mode-button .shortcut,
+	:is(body:not([data-keybind-hints]), body[data-minimal-mode])
+		.workspace-mode-button
+		.shortcut,
 	#workspace-files-sidebar:has(.review-sidebar-panel:focus-within)
 		.workspace-mode-button[data-workspace-mode="files"]
 		.shortcut,

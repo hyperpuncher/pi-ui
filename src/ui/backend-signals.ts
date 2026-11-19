@@ -5,6 +5,7 @@ import { workspaceChangeStats } from "#src/workspace-review-types.ts";
 
 export type BackendSignals = {
 	_modelsRevision: number;
+	_agentActive: boolean;
 	_codeThemeDark: string;
 	_codeThemeLight: string;
 	_fontMono: string;
@@ -33,6 +34,7 @@ export function projectBackendSignals(state: AppStateSnapshot): BackendSignals {
 	const stats = workspaceChangeStats(state.workspaceReview.changes);
 	return {
 		_modelsRevision: state.modelsRevision,
+		_agentActive: Boolean(state.activityText),
 		_codeThemeDark: codeThemes.dark,
 		_codeThemeLight: codeThemes.light,
 		_fontMono: fonts.mono,

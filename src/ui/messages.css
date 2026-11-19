@@ -448,23 +448,63 @@
 		font-size: var(--text-base);
 		font-style: italic;
 	}
-	.thinking-placeholder {
-		display: none;
-		font-weight: 600;
-		line-height: round(1.7em, 2px);
+	.thought-details {
+		font-style: normal;
+	}
+	.thought-summary-title {
+		display: flex;
+		min-width: 0;
+		align-items: baseline;
+		overflow: hidden;
+		color: var(--text-muted);
+	}
+	.thought-preview {
+		min-width: 0;
+		overflow: hidden;
+		opacity: 0.75;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.thought-details-content {
+		margin-block-start: 0.5rem;
+		font-style: italic;
 	}
 	.minimal-activity {
 		display: none;
 		position: relative;
 		width: 100%;
+		align-items: center;
+		gap: 0.5rem;
 		font-style: normal;
+		text-align: start;
+	}
+	button.minimal-activity {
+		cursor: pointer;
+	}
+	:is(button.minimal-activity, .tool-compact-toggle, .tool-collapse-button):hover
+		:is(.minimal-activity-label, .context-chevron),
+	.tool-compact-toggle:hover {
+		color: var(--text);
+	}
+	button.minimal-activity:focus-visible,
+	.tool-compact-toggle:focus-visible,
+	.tool-collapse-button:focus-visible {
+		border-radius: var(--radius-sm);
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
 	}
 	.minimal-activity-label {
+		min-width: 0;
+		flex: 1;
 		overflow: hidden;
 		color: var(--text-muted);
 		font: 500 var(--text-base)/1.125rem var(--font-mono);
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	.minimal-step-prefix {
+		color: color-mix(in oklch, var(--text-muted) 80%, var(--surface-base));
+		font-weight: 400;
 	}
 	.message-system-row {
 		max-width: 48rem;
@@ -512,7 +552,8 @@
 		rotate: 180deg;
 		transition: rotate 150ms var(--ease-out);
 	}
-	.context-details[open] .context-chevron > svg {
+	.context-details[open] .context-chevron > svg,
+	[aria-expanded="true"] > .context-chevron > svg {
 		rotate: 90deg;
 	}
 	.context-output {
@@ -564,15 +605,41 @@
 	}
 	.tool-title-compact {
 		display: flex;
+		width: 100%;
 		min-width: 0;
+		align-items: center;
 		overflow: hidden;
 		gap: 0.5rem;
 		color: var(--text-muted);
 		font: 500 var(--text-base)/1.125rem var(--font-mono);
+		text-align: start;
+	}
+	.tool-compact-toggle {
+		cursor: pointer;
+	}
+	:is(.tool-compact-toggle, .tool-collapse-button) :is(.tool-meta, .context-chevron) {
+		margin-inline-start: 0;
+	}
+	.tool-compact-meta {
+		flex-shrink: 0;
+		color: color-mix(in oklch, var(--text-muted) 80%, var(--surface-base));
+		font-size: var(--text-xs);
+		font-variant-numeric: tabular-nums;
+		font-weight: 400;
+		white-space: nowrap;
+	}
+	.tool-collapse-button {
+		display: inline-flex;
+		height: 1.125rem;
+		flex-shrink: 0;
+		align-items: center;
+		cursor: pointer;
+		color: var(--text-muted);
 	}
 	.tool-title-compact-content {
 		display: block;
 		min-width: 0;
+		flex: 1;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -657,6 +724,10 @@
 		height: calc(var(--message-tool-gap) + 0.5625rem);
 	}
 
+	#messages[data-compact-tools] {
+		--message-tool-gap: 0.5rem;
+	}
+
 	.activity-summary {
 		margin-bottom: var(--message-tool-narrative-gap);
 	}
@@ -699,31 +770,25 @@
 }
 
 @layer utilities {
-	[data-thinking-hidden]:not([data-minimal-mode]) .thinking-placeholder {
-		display: block;
-	}
-	:is([data-thinking-hidden], [data-minimal-mode]) .thought-content {
-		display: none;
-	}
 	[data-minimal-mode] .minimal-activity {
 		display: flex;
 	}
 
-	[data-minimal-mode] #message-list > .message-tool::before,
-	[data-minimal-mode] #message-list > .message-tool::after {
+	[data-minimal-mode] #message-list > .message-tool:not(.minimal-turn-expanded)::before,
+	[data-minimal-mode] #message-list > .message-tool:not(.minimal-turn-expanded)::after {
 		display: none;
 	}
 
 	/* A hidden activity row has no margin. Keep the full turn gap before the user. */
 	[data-minimal-mode]
 		#message-list
-		> :is(.message-thought, .message-tool)
+		> :is(.message-thought, .message-tool):not(.minimal-turn-expanded)
 		+ .message-user {
 		margin-top: calc(var(--message-gap) - var(--message-tool-narrative-gap));
 	}
 
-	/* The active block keeps running until its final assistant message arrives. */
-	[data-minimal-mode]
+	/* The active block keeps running while the agent is active until its assistant reply arrives. */
+	[data-minimal-mode][data-agent-active]
 		#message-list
 		> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
 		.status-icon {
@@ -736,10 +801,12 @@
 		}
 	}
 
-	/* Show only the latest live activity row. */
+	/* Show only the latest live activity row, plus any turn the user explicitly expanded. */
 	[data-minimal-mode]
 		#message-list
-		> :is(.message-thought, .message-tool):has(~ .message) {
+		> :is(.message-thought, .message-tool):not(.minimal-turn-expanded):has(
+			~ .message
+		) {
 		display: none;
 	}
 }

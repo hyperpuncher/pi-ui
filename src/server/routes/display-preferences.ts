@@ -18,11 +18,15 @@ export const displayPreferenceRoutes = Object.fromEntries(
 		{
 			POST: async (request: Request, context: RouteContext) => {
 				const value = booleanField(await readActionSignals(request), signal);
+				const exitMinimal =
+					signal === "toolOutputHidden" && context.store.minimalMode;
 				await updateAppConfig((config) => {
 					config[signal] = value;
+					if (exitMinimal) config.minimalMode = false;
 				});
 				context.store.update(() => {
 					context.store[signal] = value;
+					if (exitMinimal) context.store.minimalMode = false;
 				});
 				return datastarResponse();
 			},

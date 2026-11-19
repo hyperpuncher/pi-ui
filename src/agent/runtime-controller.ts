@@ -886,12 +886,12 @@ export class RuntimeController {
 		return await this.tree.navigate(entryId, options);
 	}
 
-	toggleThinkingBlockVisibility(): boolean {
+	toggleThinkingBlockVisibility(hidden?: boolean): boolean {
 		const settings = this.runtime.session.settingsManager;
 		if (!settings) return false;
-		const hidden = !settings.getHideThinkingBlock();
-		settings.setHideThinkingBlock(hidden);
-		this.state.setThinkingHidden(hidden);
+		const nextHidden = hidden ?? !settings.getHideThinkingBlock();
+		settings.setHideThinkingBlock(nextHidden);
+		this.state.setThinkingHidden(nextHidden);
 		return true;
 	}
 

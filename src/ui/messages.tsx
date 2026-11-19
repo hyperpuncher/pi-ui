@@ -45,6 +45,11 @@ function displayImageSize(width?: number, height?: number) {
 	return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
+export type MessageRenderOptions = {
+	thinkingHidden?: boolean;
+	minimalMode?: boolean;
+};
+
 export function renderMessages(
 	messages: readonly AppMessage[],
 	emptyHint: AppKeybindHint,
@@ -53,11 +58,13 @@ export function renderMessages(
 	authenticated = true,
 	sessionCatalogLoading = false,
 	compactTools = false,
+	options: MessageRenderOptions = {},
 ): string {
 	return syncHtml(
 		<main
 			id="messages"
 			class={messages.length === 0 ? "messages-empty" : undefined}
+			data-compact-tools={compactTools || undefined}
 			data-class:messages-loading="$_sessionSwitching || $_sessionTransitionStatus === 'loading'"
 			data-attr:aria-busy="$_sessionSwitching || $_sessionTransitionStatus === 'loading' ? 'true' : 'false'"
 			aria-live="polite"
@@ -98,7 +105,9 @@ export function renderMessages(
 								authenticated,
 								sessionCatalogLoading,
 							)
-						: messages.map((message) => renderMessage(message, compactTools))}
+						: messages.map((message) =>
+								renderMessage(message, compactTools, options),
+							)}
 				</div>
 
 				{messages.length > 0 && (
@@ -451,10 +460,14 @@ function renderPlainTextLinks(text: string): string {
 	);
 }
 
-export function renderMessage(message: AppMessage, compactTools = false): string {
+export function renderMessage(
+	message: AppMessage,
+	compactTools = false,
+	options: MessageRenderOptions = {},
+): string {
 	if (message.role === "user") return renderUserMessage(message);
 	if (message.role === "assistant" || message.role === "thought") {
-		return renderNarrativeMessage(message);
+		return renderNarrativeMessage(message, options);
 	}
 	if (message.role === "system" || message.role === "notice") {
 		return renderSystemMessage(message);
@@ -468,7 +481,7 @@ export function renderMessage(message: AppMessage, compactTools = false): string
 	}
 	if (message.page && message.pageUrl)
 		return renderPageMessage(message, message.pageUrl);
-	return renderToolMessage(message, compactTools);
+	return renderToolMessage(message, compactTools, options);
 }
 
 function renderImageAttachments(
@@ -541,43 +554,152 @@ function renderUserMessage(message: AppMessage): string {
 	);
 }
 
-function renderNarrativeMessage(message: AppMessage): string {
-	const content = message.renderedHtml ?? renderMarkdownStreaming(message.text);
+function toggleMessageExpandAction(id: string): string {
+	return `@post('${endpoints.messagesToggleExpand}', { payload: { messageId: ${JSON.stringify(id)} }, retry: 'never' })`;
+}
+
+function thoughtPreview(text: string): string | undefined {
+	for (let start = 0; start < text.length;) {
+		const end = text.indexOf("\n", start);
+		const lineEnd = end === -1 ? text.length : end;
+		const line = text
+			.slice(start, lineEnd)
+			.trim()
+			.replace(/^[#>*\-`\s]+/, "")
+			.replace(/\s+/g, " ")
+			.trim();
+		if (line) {
+			const clipped = line.match(/^[\s\S]{0,80}/u)?.[0] ?? "";
+			return clipped === line ? line : `${clipped}…`;
+		}
+		start = lineEnd + 1;
+	}
+	return undefined;
+}
+
+function formatActivitySummaryLabel(
+	summary: NonNullable<AppMessage["activitySummary"]>,
+): string {
+	if (summary.stepCount > 0) {
+		return `completed ${summary.stepCount} ${summary.stepCount === 1 ? "step" : "steps"} in ${summary.duration}`;
+	}
+	return summary.duration ? `thought for ${summary.duration}` : "thought";
+}
+
+function renderNarrativeMessage(
+	message: AppMessage,
+	options: MessageRenderOptions = {},
+): string {
 	if (message.role === "thought") {
+		const isMinimalRow = Boolean(options.minimalMode) && !message.minimalExpanded;
+		if (isMinimalRow) {
+			return syncHtml(
+				<article
+					class="message message-narrative message-thought thought-foreground"
+					id={`message-${message.id}`}
+				>
+					<div class="tool-timeline-item minimal-activity">
+						<StatusIcon
+							class="tool-state-dot"
+							state={message.streaming ? "running" : "success"}
+							label={message.streaming ? "Thinking" : "Thought"}
+						/>
+						<p class="minimal-activity-label">
+							{message.activityStep && message.activityStep > 0
+								? `step ${message.activityStep + 1} · `
+								: ""}
+							{message.streaming ? "thinking..." : "thought"}
+						</p>
+					</div>
+				</article>,
+			);
+		}
+		const content = message.renderedHtml ?? renderMarkdownStreaming(message.text);
+		const isCollapsible =
+			Boolean(options.thinkingHidden) ||
+			(Boolean(options.minimalMode) && Boolean(message.minimalExpanded));
+		if (isCollapsible) {
+			const preview = thoughtPreview(message.text);
+			return syncHtml(
+				<article
+					class={[
+						"message message-narrative message-thought message-context tool-timeline-item thought-foreground",
+						message.minimalExpanded && "minimal-turn-expanded",
+					]}
+					id={`message-${message.id}`}
+				>
+					<details
+						class="context-details thought-details"
+						data-preserve-attr="open"
+					>
+						<summary class="context-summary thought-summary">
+							<StatusIcon
+								class="tool-state-dot"
+								state={message.streaming ? "running" : "success"}
+								label={message.streaming ? "Thinking" : "Thought"}
+							/>
+							<span class="context-title thought-summary-title">
+								<span>
+									{message.streaming ? "thinking..." : "thought"}
+								</span>
+								{message.thoughtDuration && (
+									<span class="context-meta" safe>
+										{message.thoughtDuration}
+									</span>
+								)}
+								{preview && (
+									<span class="context-meta thought-preview" safe>
+										{preview}
+									</span>
+								)}
+							</span>
+							<span class="context-chevron">
+								<Icon name="chevron-right" />
+							</span>
+						</summary>
+						<div class="thought-details-content">
+							<div class="markdown-content">{content}</div>
+						</div>
+					</details>
+				</article>,
+			);
+		}
 		return syncHtml(
 			<article
 				class="message message-narrative message-thought thought-foreground"
 				id={`message-${message.id}`}
 			>
-				<p class="thinking-placeholder">Thinking...</p>
-				<div class="tool-timeline-item minimal-activity">
-					<StatusIcon class="tool-state-dot" state="running" label="Thinking" />
-					<p class="minimal-activity-label">thinking...</p>
-				</div>
 				<div class="thought-content">
 					<div class="markdown-content">{content}</div>
 				</div>
 			</article>,
 		);
 	}
+	const content = message.renderedHtml ?? renderMarkdownStreaming(message.text);
 	return syncHtml(
 		<article
 			class="message message-narrative message-assistant"
 			id={`message-${message.id}`}
 		>
 			{message.activitySummary && (
-				<div class="activity-summary tool-timeline-item minimal-activity">
+				<button
+					type="button"
+					class="activity-summary tool-timeline-item minimal-activity"
+					aria-expanded={message.activitySummary.expanded ? "true" : "false"}
+					data-on:click={toggleMessageExpandAction(message.id)}
+				>
 					<StatusIcon
 						class="tool-state-dot"
 						state="success"
 						label="Completed"
 					/>
-					<p class="minimal-activity-label">
-						completed {message.activitySummary.stepCount}{" "}
-						{message.activitySummary.stepCount === 1 ? "step" : "steps"} in{" "}
-						{message.activitySummary.duration}
-					</p>
-				</div>
+					<span class="minimal-activity-label">
+						{formatActivitySummaryLabel(message.activitySummary)}
+					</span>
+					<span class="context-chevron">
+						<Icon name="chevron-right" />
+					</span>
+				</button>
 			)}
 			<div class="markdown-content">{content}</div>
 		</article>,
@@ -775,27 +897,44 @@ function renderNestedToolCalls(message: AppMessage) {
 }
 
 // Compact rows show one line, not a clipped copy of the full syntax tree.
-function compactToolTitlePart(
-	part: TranscriptMessageTitlePart,
-): TranscriptMessageTitlePart {
+function compactToolTitlePart(part: TranscriptMessageTitlePart) {
 	const source = part.highlight ? part.text.trim() : part.text;
 	const firstLine = source.split(/[\r\n\u2028\u2029]/, 1)[0] ?? "";
 	const preview = firstLine.match(/^[\s\S]{0,256}/u)?.[0] ?? "";
-	return { ...part, text: preview + (preview === source ? "" : "…") };
+	const truncated = preview !== source;
+	return {
+		part: { ...part, text: preview + (truncated ? "…" : "") },
+		truncated,
+	};
 }
 
-function renderToolMessage(message: AppMessage, compactTools = false): string {
+function renderToolMessage(
+	message: AppMessage,
+	compactTools = false,
+	options: MessageRenderOptions = {},
+): string {
 	const status = toolMessageStatus(message);
-	const parts = compactTools
+	const showCompact = compactTools && !message.toolExpanded;
+	const canCollapse = compactTools && Boolean(message.toolExpanded);
+	const compactedParts = showCompact
 		? message.titleParts?.map(compactToolTitlePart)
+		: undefined;
+	const parts = compactedParts
+		? compactedParts.map((entry) => entry.part)
 		: message.titleParts;
-	const code = compactTools
+	const fallbackTitle = message.title ?? "Tool";
+	const compactedFallback = showCompact
+		? compactToolTitlePart({ text: fallbackTitle })
+		: undefined;
+	const titleTruncated = compactedParts
+		? compactedParts.some((entry) => entry.truncated)
+		: Boolean(compactedFallback?.truncated);
+	const code = showCompact
 		? undefined
 		: parts?.find((part) => part.highlight === "javascript");
 	const snippets = code ? codeSnippets(message.nestedCalls, code.text.length) : [];
-	const fallbackTitle = message.title ?? "Tool";
 	const title = renderToolTitle(
-		compactTools ? compactToolTitlePart({ text: fallbackTitle }).text : fallbackTitle,
+		compactedFallback ? compactedFallback.part.text : fallbackTitle,
 		parts,
 		snippets,
 	);
@@ -804,9 +943,27 @@ function renderToolMessage(message: AppMessage, compactTools = false): string {
 			{message.meta ?? ""}
 		</span>
 	);
+	const isExpandable =
+		showCompact &&
+		(Boolean(message.text.trim()) ||
+			Boolean(message.nestedCalls?.calls.length) ||
+			Boolean(message.attachments?.some((attachment) => attachment.image)) ||
+			titleTruncated);
+	const stepPrefix =
+		showCompact &&
+		options.minimalMode &&
+		!message.minimalExpanded &&
+		message.activityStep ? (
+			<span class="minimal-step-prefix">step {message.activityStep} · </span>
+		) : (
+			""
+		);
 	return syncHtml(
 		<article
-			class="message message-tool tool-timeline-item"
+			class={[
+				"message message-tool tool-timeline-item",
+				message.minimalExpanded && "minimal-turn-expanded",
+			]}
 			id={`message-${message.id}`}
 		>
 			<StatusIcon
@@ -814,16 +971,55 @@ function renderToolMessage(message: AppMessage, compactTools = false): string {
 				state={status.state}
 				label={status.label}
 			/>
-			{compactTools ? (
-				<p class="tool-title-compact">
-					<span class="tool-title-compact-content">{title}</span>
-					{meta}
-				</p>
+			{showCompact ? (
+				isExpandable ? (
+					<button
+						type="button"
+						class="tool-title-compact tool-compact-toggle"
+						aria-expanded="false"
+						data-on:click={toggleMessageExpandAction(message.id)}
+					>
+						<span class="tool-title-compact-content">
+							{stepPrefix}
+							{title}
+						</span>
+						{message.compactMeta && (
+							<span class="tool-compact-meta" safe>
+								{message.compactMeta}
+							</span>
+						)}
+						{meta}
+						<span class="context-chevron">
+							<Icon name="chevron-right" />
+						</span>
+					</button>
+				) : (
+					<p class="tool-title-compact">
+						<span class="tool-title-compact-content">
+							{stepPrefix}
+							{title}
+						</span>
+						{meta}
+					</p>
+				)
 			) : (
 				<>
 					<header class="tool-header">
 						<span class="tool-title">{title}</span>
 						{meta}
+						{canCollapse && (
+							<button
+								type="button"
+								class="tool-collapse-button"
+								aria-expanded="true"
+								aria-label="Collapse tool output"
+								data-on:click={toggleMessageExpandAction(message.id)}
+							>
+								<span class="context-chevron">
+									<Icon name="chevron-right" />
+								</span>
+							</button>
+						)}
 					</header>
 					<div>
 						{renderNestedToolCalls(message)}

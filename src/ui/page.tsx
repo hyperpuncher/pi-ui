@@ -122,7 +122,7 @@ export function renderPage(
 					spellcheck="false"
 					data-keybind-hints={state.keybindHints}
 					data-minimal-mode={state.minimalMode}
-					data-thinking-hidden={state.thinkingHidden}
+					data-agent-active={Boolean(state.activityText)}
 					data-files-import-endpoint={endpoints.filesImport}
 					data-files-open-endpoint={endpoints.filesOpen}
 					data-workspace-files-endpoint={workspaceFilesBase}
@@ -142,7 +142,7 @@ export function renderPage(
 					data-signals={initialSignals}
 					data-attr:data-keybind-hints="$_keybindHints"
 					data-attr:data-minimal-mode="$_minimalMode"
-					data-attr:data-thinking-hidden="$_thinkingHidden"
+					data-attr:data-agent-active="$_agentActive"
 					data-attr:data-toolbar-hidden="$_toolbarHidden"
 					data-effect={`
 						window.piUiTheme.setMode($_theme);

@@ -141,7 +141,12 @@ test("assistant messages summarize preceding tool activity", () => {
 		{ role: "assistant", text: "done", timestamp: new Date(65_000) },
 	]);
 	const assistant = renderer.projectMessages(store.transcript.messages).at(-1)!;
-	assertEquals(assistant.activitySummary, { duration: "1m 4s", stepCount: 2 });
+	assertEquals(assistant.activitySummary, {
+		duration: "1m 4s",
+		stepCount: 2,
+		thoughtCount: 2,
+		expanded: false,
+	});
 	const html = renderMessage(assistant);
 	assertStringIncludes(html, "completed 2 steps in 1m 4s");
 });
@@ -382,4 +387,112 @@ test("partial recent sessions stay visible during full catalog loading", () => {
 	);
 	assertStringIncludes(loading, "Recent session");
 	assertStringExcludes(loading, 'aria-label="Loading recent sessions"');
+});
+
+test("collapsed thinking renders expandable details with active and completed states", () => {
+	const store = new AppStore();
+	store.thinkingHidden = true;
+	const renderer = new MessageRenderService(store, () => {});
+	const thoughtId = store.transcript.appendMessage(
+		"thought",
+		"# Inspecting layout\nChecking margins",
+	);
+	const streaming = renderer.renderMessageElement(thoughtId)!;
+	assertStringIncludes(streaming, "thought-details");
+	assertStringIncludes(streaming, 'data-state="running"');
+	assertStringIncludes(streaming, "thinking...");
+	assertStringIncludes(streaming, "Inspecting layout");
+
+	store.transcript.finishAssistant();
+	const finished = renderer.renderMessageElement(thoughtId)!;
+	assertStringIncludes(finished, 'data-state="success"');
+	assertStringIncludes(finished, "<span>thought</span>");
+});
+
+test("compact tool output shows summary badges, auto-expands errors, and toggles one tool", () => {
+	const store = new AppStore();
+	store.toolOutputHidden = true;
+	const patched: string[] = [];
+	const renderer = new MessageRenderService(
+		store,
+		(_html, selector) => {
+			patched.push(selector);
+		},
+		{},
+		{ schedule: () => {}, flush: () => renderer.patchChangedMessages(false) },
+	);
+	store.transcript.replaceMessages([
+		{
+			role: "tool",
+			title: "edit app.ts",
+			timestamp: new Date(0),
+			text: "--- a/app.ts\n+++ b/app.ts\n-old\n+new\n+more",
+			format: "diff",
+			state: "success",
+		},
+		{
+			role: "tool",
+			title: "bash",
+			timestamp: new Date(1_000),
+			text: "command failed\nexit code 1",
+			format: "output",
+			state: "error",
+		},
+	]);
+	const [editMsg, errorMsg] = store.transcript.messages;
+	const compactEdit = renderer.renderMessageElement(editMsg!.id)!;
+	assertStringIncludes(compactEdit, "tool-compact-toggle");
+	assertStringIncludes(compactEdit, "+2 -1");
+	assertStringExcludes(compactEdit, "tool-header");
+
+	const expandedError = renderer.renderMessageElement(errorMsg!.id)!;
+	assertStringIncludes(expandedError, "tool-header");
+	assertStringIncludes(expandedError, "command failed");
+	assertStringIncludes(expandedError, "tool-collapse-button");
+
+	renderer.toggleMessageExpand(editMsg!.id);
+	assertEquals(patched, [`#message-${editMsg!.id}`]);
+	const expandedEdit = renderer.renderMessageElement(editMsg!.id)!;
+	assertStringIncludes(expandedEdit, "tool-header");
+	assertStringIncludes(expandedEdit, "tool-collapse-button");
+
+	renderer.toggleMessageExpand(errorMsg!.id);
+	const collapsedError = renderer.renderMessageElement(errorMsg!.id)!;
+	assertStringIncludes(collapsedError, "tool-compact-toggle");
+	assertStringIncludes(collapsedError, "2 lines");
+});
+
+test("minimal mode summarizes thinking-only turns, skips hidden thought markdown, and expands turns", () => {
+	const store = new AppStore();
+	store.minimalMode = true;
+	const patched: string[] = [];
+	const renderer = new MessageRenderService(
+		store,
+		(_html, selector) => {
+			patched.push(selector);
+		},
+		{},
+		{ schedule: () => {}, flush: () => renderer.patchChangedMessages(false) },
+	);
+	store.transcript.replaceMessages([
+		{ role: "user", text: "explain", timestamp: new Date(0) },
+		{ role: "thought", text: "**secret reasoning**", timestamp: new Date(1_000) },
+		{ role: "assistant", text: "answer", timestamp: new Date(5_000) },
+	]);
+	const [, thought, assistant] = store.transcript.messages;
+	const hiddenThought = renderer.renderMessageElement(thought!.id)!;
+	assertStringExcludes(hiddenThought, "secret reasoning");
+	assertStringIncludes(hiddenThought, "minimal-activity");
+
+	const summaryHtml = renderer.renderMessageElement(assistant!.id)!;
+	assertStringIncludes(summaryHtml, "thought for 4s");
+	assertStringIncludes(summaryHtml, 'aria-expanded="false"');
+
+	renderer.toggleMessageExpand(assistant!.id);
+	assertEquals(patched, [`#message-${assistant!.id}`, `#message-${thought!.id}`]);
+	const expandedSummary = renderer.renderMessageElement(assistant!.id)!;
+	assertStringIncludes(expandedSummary, 'aria-expanded="true"');
+	const expandedThought = renderer.renderMessageElement(thought!.id)!;
+	assertStringIncludes(expandedThought, "minimal-turn-expanded");
+	assertStringIncludes(expandedThought, "<strong>secret reasoning</strong>");
 });

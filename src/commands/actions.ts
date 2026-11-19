@@ -57,7 +57,7 @@ export function toggleMinimalModeAction(): string {
 }
 
 export function toggleToolOutputAction(): string {
-	return `@post('${endpoints.toolOutput}', { payload: { toolOutputHidden: !$_toolOutputHidden } })`;
+	return `@post('${endpoints.toolOutput}', { payload: { toolOutputHidden: $_minimalMode ? false : !$_toolOutputHidden } })`;
 }
 
 function toggleToolbarAction(): string {

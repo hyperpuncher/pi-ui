@@ -102,6 +102,16 @@ export const promptRoutes = {
 			return datastarResponse();
 		},
 	},
+	[endpoints.messagesToggleExpand]: {
+		POST: async (request, context) => {
+			const messageId = requiredString(
+				await readActionSignals(request),
+				"messageId",
+			);
+			context.renderer.toggleMessageExpand(messageId);
+			return datastarResponse();
+		},
+	},
 } satisfies RouteMap<RouteContext>;
 
 async function readPrompt(
