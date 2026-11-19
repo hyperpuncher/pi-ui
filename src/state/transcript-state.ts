@@ -47,10 +47,13 @@ export type TranscriptMessage = {
 	// Notice severity. Notices without a level are pi-ui warnings.
 	level?: "info" | "warning" | "error";
 	format?: "pre" | "diff" | "code" | "output";
+	/** An HTML page the agent rendered with render_html. */
+	page?: { title: string; html: string };
 };
 
 export type TranscriptMessageOptions = Pick<
 	TranscriptMessage,
+	| "page"
 	| "title"
 	| "titleParts"
 	| "meta"

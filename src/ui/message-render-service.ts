@@ -18,7 +18,8 @@ import { probeImageDimensions } from "#src/utils/image-dimensions.ts";
 
 export type MessageRenderServiceOptions = {
 	registerImage?: (image: { data: string; mimeType: string }) => string;
-	clearImages?: () => void;
+	registerPage?: (html: string) => string;
+	clearSessionAssets?: () => void;
 };
 
 const markdownRoles = new Set<AppMessage["role"]>([
@@ -118,7 +119,7 @@ export class MessageRenderService {
 		for (const message of this.store.transcript.allMessages)
 			releaseMarkdownStreamingState(message.id);
 		this.imageUrls.clear();
-		this.options.clearImages?.();
+		this.options.clearSessionAssets?.();
 	}
 	dropMessages(ids: readonly string[]): void {
 		for (const id of ids) {
@@ -158,6 +159,7 @@ export class MessageRenderService {
 				this.projectAttachment(message.id, index, attachment),
 			),
 			renderedHtml: this.renderedHtml(message),
+			pageUrl: message.page && this.options.registerPage?.(message.page.html),
 		};
 	}
 	private projectAttachment(

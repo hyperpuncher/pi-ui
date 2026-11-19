@@ -1,6 +1,8 @@
 import { stripAnsi } from "#pi/utils/ansi.js";
 import { contentToText, summarizeValue } from "#src/agent/content-text.ts";
+import { htmlToolName } from "#src/agent/html-extension.ts";
 import type {
+	TranscriptMessage,
 	TranscriptMessageAttachment,
 	TranscriptMessageTitlePart,
 } from "#src/state/transcript-state.ts";
@@ -40,6 +42,13 @@ export function toolTitleParts(
 		];
 	}
 
+	if (toolName === htmlToolName) {
+		const title = stringValue(record?.title);
+		return [
+			{ text: "html" },
+			...(title ? [{ text: title, tone: "accent" } as const] : []),
+		];
+	}
 	if (isCodeTool(toolName) && isString(record?.code)) {
 		return [
 			{ text: toolName },
@@ -86,6 +95,7 @@ export function toolTitle(
 
 	const mcpTool = mcpToolLabel(toolName);
 	if (mcpTool) return `mcp ${mcpTool}`;
+	if (toolName === htmlToolName) return `html ${stringValue(record?.title)}`.trimEnd();
 	const verb = toolName;
 	const target = toolTarget(toolName, args);
 	return target ? `${verb} ${target}${toolRange(args)}` : verb;
@@ -171,7 +181,7 @@ export function formatToolResult<Result>(
 	if (/^\(no output\)$/i.test(text.trim())) {
 		return { text: "", format: "pre" };
 	}
-	if (toolName === "read") {
+	if (toolName === "read" || toolName === htmlToolName) {
 		return { text: "", format: "pre" };
 	}
 	if (toolName === "bash") {
@@ -188,6 +198,18 @@ export function formatToolResult<Result>(
 		return { text: compactToolOutput(text), format: "output" };
 	}
 	return { text, format: "output" };
+}
+
+/** The page a successful render_html call shows. */
+export function toolPage(
+	toolName: string,
+	args: JsonValue | undefined,
+	isError: boolean,
+): TranscriptMessage["page"] {
+	if (toolName !== htmlToolName || isError) return undefined;
+	const record = asRecord(args);
+	const html = stringValue(record?.html);
+	return html ? { title: stringValue(record?.title) || "HTML", html } : undefined;
 }
 
 function isCodeTool(toolName: string): boolean {

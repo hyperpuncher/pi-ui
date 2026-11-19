@@ -466,6 +466,8 @@ export function renderMessage(message: AppMessage, compactTools = false): string
 	) {
 		return renderContextMessage(message);
 	}
+	if (message.page && message.pageUrl)
+		return renderPageMessage(message, message.pageUrl);
 	return renderToolMessage(message, compactTools);
 }
 
@@ -688,6 +690,28 @@ function renderContextMessage(message: AppMessage): string {
 					</div>
 				</div>
 			</details>
+		</article>,
+	);
+}
+
+/** A finished render_html call shows only its page, like any other reply content. */
+function renderPageMessage(message: AppMessage, pageUrl: string): string {
+	return syncHtml(
+		<article
+			class="message message-narrative message-page"
+			id={`message-${message.id}`}
+		>
+			<iframe
+				id={`page-${message.id}`}
+				class="html-page"
+				src={pageUrl}
+				title={message.page?.title ?? "HTML"}
+				sandbox="allow-scripts allow-forms"
+				allow="fullscreen"
+				referrerpolicy="no-referrer"
+				loading="lazy"
+				data-ignore-morph
+			></iframe>
 		</article>,
 	);
 }

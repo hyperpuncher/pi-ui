@@ -15,6 +15,7 @@ import { parseKeybindOverrides, setActiveKeybinds } from "#src/keybinds.ts";
 import { setCodeThemes } from "#src/pierre-theme.ts";
 import { ensureAppConfig } from "#src/server/app-config.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
+import { HtmlPageStore } from "#src/server/html-page-store.ts";
 import type { RouteContext, RouteResources } from "#src/server/routes/context.ts";
 import { SessionImageStore } from "#src/server/session-image-store.ts";
 import { createStaticAssetServer } from "#src/server/static-assets.ts";
@@ -76,13 +77,18 @@ export async function createApp() {
 	}
 	store.setWorkspaceReviewPreferences(workspaceReviewPreferences);
 	const sessionImages = new SessionImageStore();
+	const htmlPages = new HtmlPageStore();
 	const clientHub = new DatastarClientHub();
 	const notificationClients = new DatastarClientHub();
 	const onSessionDone = (details: SessionDoneNotification) =>
 		notifySessionDone(notificationClients, details);
 	const renderer = new UiRenderer(store, clientHub, {
 		registerImage: (image) => sessionImages.register(image),
-		clearImages: () => sessionImages.clear(),
+		registerPage: (html) => htmlPages.register(html),
+		clearSessionAssets: () => {
+			sessionImages.clear();
+			htmlPages.clear();
+		},
 	});
 	const transitions = new SessionTransitionController((transition) =>
 		store.setSessionTransition(transition),
@@ -101,7 +107,7 @@ export async function createApp() {
 	}
 	workspaceReview.open(store.workspacePath);
 	const fdPath = await fdReady;
-	const resources: RouteResources = { host, sessionImages, fdPath };
+	const resources: RouteResources = { host, sessionImages, htmlPages, fdPath };
 	const transferredFiles = await TransferredFileStore.create();
 	const context: RouteContext = {
 		store,

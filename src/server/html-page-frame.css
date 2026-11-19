@@ -1,0 +1,170 @@
+/* Layered so any unlayered CSS in the agent's page overrides defaults cleanly. */
+@layer pi-ui-base {
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+		min-inline-size: 0;
+	}
+	html {
+		padding: 4px;
+		overflow-x: clip;
+		color: var(--text, CanvasText);
+		font: 14px/1.5 var(--font-sans, system-ui, sans-serif);
+	}
+	body {
+		margin: 0;
+	}
+	img,
+	svg,
+	canvas,
+	video {
+		max-inline-size: 100%;
+	}
+	:root {
+		accent-color: var(--action-primary, Highlight);
+
+		/* Page-facing names for app tokens with a different name. */
+		--accent: var(--action-primary, Highlight);
+		--surface: var(--surface-control, Canvas);
+	}
+	code,
+	kbd,
+	pre,
+	samp {
+		font-family: var(--font-mono, monospace);
+	}
+
+	button,
+	input,
+	select,
+	textarea {
+		font: inherit;
+		color: inherit;
+	}
+	button,
+	input:not([type="range"], [type="checkbox"], [type="radio"]),
+	select,
+	textarea {
+		margin: 0;
+		padding: 0.3em 0.7em;
+		border: 1px solid var(--border, GrayText);
+		border-radius: calc(var(--radius, 10px) - 4px);
+		background: var(--surface-control, Canvas);
+	}
+	button,
+	input[type="range"] {
+		cursor: pointer;
+	}
+	input[type="range"] {
+		inline-size: 100%;
+		margin: 0;
+	}
+	:is(button, input, select, textarea):hover:not(:disabled) {
+		border-color: color-mix(in oklch, currentColor 30%, var(--border, GrayText));
+	}
+
+	/* Inside the control, so a tight row of fields cannot clip or overlap the ring. */
+	:is(button, input, select, textarea):focus-visible {
+		outline: 2px solid var(--action-primary, Highlight);
+		outline-offset: -2px;
+	}
+	a:focus-visible {
+		outline: 2px solid var(--action-primary, Highlight);
+		outline-offset: 2px;
+	}
+	output,
+	input[type="number"],
+	progress {
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* Native spinners sit on the text in a tight field. Arrow keys still step. */
+	input[type="number"] {
+		appearance: textfield;
+	}
+	input[type="number"]::-webkit-inner-spin-button,
+	input[type="number"]::-webkit-outer-spin-button {
+		appearance: none;
+		margin: 0;
+	}
+
+	/* Without base-select, the picker keeps the platform look. */
+	@supports (appearance: base-select) {
+		select,
+		select::picker(select) {
+			appearance: base-select;
+		}
+		select {
+			position: relative;
+			padding-inline-end: 1.9em;
+		}
+
+		/* The platform icon is a filled triangle, so draw the chevron instead. */
+		select::picker-icon {
+			display: none;
+		}
+		select::after {
+			content: "";
+			position: absolute;
+			inset-inline-end: 0.7em;
+			inset-block-start: 50%;
+			translate: 0 -50%;
+			inline-size: 0.75em;
+			block-size: 0.75em;
+			background: currentColor;
+			color: var(--text-muted);
+			mask: var(--chevron-icon) center / contain no-repeat;
+			transition: rotate 100ms;
+		}
+		select:open::after {
+			rotate: 180deg;
+		}
+		select::picker(select) {
+			/* The picker flips above the select near the frame edge, so gap both sides. */
+			margin-block: 4px;
+			padding: 4px;
+			border: 1px solid var(--border);
+			border-radius: calc(var(--radius) - 2px);
+			background: var(--surface-control, Canvas);
+			color: var(--text);
+			box-shadow: 0 8px 24px -12px oklch(0% 0 none / 45%);
+		}
+		select option {
+			display: flex;
+			align-items: center;
+			gap: 0.5em;
+			padding: 0.3em 0.7em;
+			border-radius: calc(var(--radius) - 6px);
+		}
+		select option:hover {
+			background: color-mix(in oklch, currentColor 12%, transparent);
+		}
+		select option:checked {
+			font-weight: 600;
+		}
+
+		/* The platform check is a thin glyph, so draw Lucide's check in a fixed slot. */
+		select option::checkmark {
+			display: none;
+		}
+		select option::before {
+			content: "";
+			flex: none;
+			inline-size: 0.85em;
+			block-size: 0.85em;
+			background: currentColor;
+			color: var(--text-muted);
+			opacity: 0;
+			mask: var(--check-icon) center / contain no-repeat;
+		}
+		select option:checked::before {
+			opacity: 1;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		select::after {
+			transition: none;
+		}
+	}
+}

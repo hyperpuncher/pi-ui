@@ -54,6 +54,16 @@
 			oklch(from var(--color-4) l c var(--hue-teal))
 		);
 
+		/* Data series for Mermaid charts and agent pages */
+		--chart-1: light-dark(oklch(52% 0.18 260deg), oklch(74% 0.13 260deg));
+		--chart-2: light-dark(oklch(57% 0.15 45deg), oklch(78% 0.12 45deg));
+		--chart-3: light-dark(oklch(52% 0.13 150deg), oklch(74% 0.13 150deg));
+		--chart-4: light-dark(oklch(50% 0.17 325deg), oklch(72% 0.15 325deg));
+		--chart-5: light-dark(oklch(52% 0.12 185deg), oklch(74% 0.13 185deg));
+		--chart-6: light-dark(oklch(58% 0.13 85deg), oklch(80% 0.13 85deg));
+		--chart-7: light-dark(oklch(52% 0.17 295deg), oklch(74% 0.13 295deg));
+		--chart-8: light-dark(oklch(52% 0.17 25deg), oklch(74% 0.13 25deg));
+
 		/* Typography */
 		--font-sans: ui-sans-serif, system-ui, sans-serif;
 		--font-mono: ui-monospace, "SF Mono", "Cascadia Mono", monospace;

@@ -27,6 +27,7 @@ import {
 	ExtensionUiController,
 	type ExtensionUiSnapshot,
 } from "#src/agent/extension-ui-controller.ts";
+import { htmlExtension } from "#src/agent/html-extension.ts";
 import { LlamaController } from "#src/agent/llama-controller.ts";
 import { llamaProviderExtension } from "#src/agent/llama-provider-extension.ts";
 import { ModelController } from "#src/agent/model-controller.ts";
@@ -71,6 +72,7 @@ import {
 	formatToolStart,
 	toolEndMeta,
 	toolMeta,
+	toolPage,
 	toolResultImageAttachments,
 	toolTitle,
 	toolTitleParts,
@@ -101,6 +103,7 @@ import type { WorkspaceReviewSnapshot } from "#src/workspace-review-types.ts";
 const extensionFactories = [
 	llamaProviderExtension,
 	promptExtension,
+	htmlExtension,
 	{
 		name: "codemode",
 		factory: createCodemodeExtension(),
@@ -1620,6 +1623,7 @@ export class RuntimeController {
 						titleParts: toolTitleParts(toolEvent.toolName, args),
 						format: view.format,
 						attachments: attachments.length ? attachments : undefined,
+						page: toolPage(toolEvent.toolName, args, toolEvent.isError),
 					},
 				};
 			},

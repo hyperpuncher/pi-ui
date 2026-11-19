@@ -1,5 +1,6 @@
 import type { RuntimeController } from "#src/agent/runtime-controller.ts";
 import type { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
+import type { HtmlPageStore } from "#src/server/html-page-store.ts";
 import { RouteError } from "#src/server/route.ts";
 import type { SessionImageStore } from "#src/server/session-image-store.ts";
 import type { TransferredFileStore } from "#src/server/transferred-files.ts";
@@ -10,6 +11,7 @@ export interface RouteResources {
 	fdPath?: string;
 	host: RuntimeController | undefined;
 	sessionImages: SessionImageStore;
+	htmlPages: HtmlPageStore;
 }
 
 export interface RouteContext {

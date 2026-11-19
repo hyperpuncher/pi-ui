@@ -13,6 +13,7 @@ import {
 	errorResponse,
 	signalsResponse,
 } from "#src/server/datastar.ts";
+import { htmlPageDocument, htmlPageSecurityPolicy } from "#src/server/html-page-store.ts";
 import { RouteError, type RouteMap } from "#src/server/route.ts";
 import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
@@ -41,6 +42,29 @@ export const sessionRoutes = {
 		POST: (_request, context) => {
 			context.store.loadMoreSessions();
 			return datastarResponse();
+		},
+	},
+	[endpoints.sessionsPage]: {
+		GET: (_request, context, url) => {
+			const html = context.resources.htmlPages.get(
+				url.searchParams.get("id") ?? "",
+			);
+			if (html === undefined) throw new RouteError(404, "Page not found.");
+			return new Response(
+				htmlPageDocument(
+					html,
+					context.store.theme === "system" ? "light dark" : context.store.theme,
+				),
+				{
+					headers: {
+						"cache-control": "no-cache",
+						"content-type": "text/html; charset=utf-8",
+						"content-security-policy": htmlPageSecurityPolicy,
+						"referrer-policy": "no-referrer",
+						"x-content-type-options": "nosniff",
+					},
+				},
+			);
 		},
 	},
 	[endpoints.sessionsImage]: {

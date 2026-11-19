@@ -387,6 +387,27 @@
 		border-radius: calc(var(--radius-xl) - (var(--image-frame-padding) + 1px) * 0.75);
 		object-fit: contain;
 	}
+	.html-page {
+		display: block;
+		inline-size: 100%;
+		block-size: 12rem;
+		border: 0;
+		transition: block-size 100ms linear;
+
+		/* The page follows the frame scheme. Bun minifies inherit to normal. */
+		color-scheme: light dark;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.html-page {
+			transition: none;
+		}
+	}
+	:root:has(> head > meta[name="color-scheme"][content="dark"]) .html-page {
+		color-scheme: dark;
+	}
+	:root:has(> head > meta[name="color-scheme"][content="light"]) .html-page {
+		color-scheme: light;
+	}
 	.tool-image-attachments {
 		justify-content: flex-start;
 		margin-block: 0.5rem;

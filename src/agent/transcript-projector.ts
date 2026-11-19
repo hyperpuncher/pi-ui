@@ -16,6 +16,7 @@ import {
 	compactToolOutput,
 	formatToolResult,
 	toolEndMeta,
+	toolPage,
 	toolResultImageAttachments,
 	toolTitle,
 	toolTitleParts,
@@ -297,6 +298,7 @@ function toolResultToAppMessage(
 		state: message.isError ? "error" : "success",
 		format: view.format,
 		attachments: attachments.length ? attachments : undefined,
+		page: toolCall && toolPage(toolCall.name, toolCall.args, message.isError),
 		nestedCalls: message.nestedCalls,
 		meta: toolEndMeta(message.durationMs),
 	};

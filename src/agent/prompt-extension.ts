@@ -6,7 +6,7 @@ import { getDocsPath, getExamplesPath, getReadmePath, VERSION } from "#pi/config
 import { version } from "#src/version.ts";
 
 const piUiSection = `You run inside pi-ui, a browser interface for pi. The user reads your replies in a web page, not a terminal: Markdown, tables, images and clickable file links render. Questions about the interface, its keybindings, themes and settings refer to pi-ui; its docs are at https://raw.githubusercontent.com/hyperpuncher/pi-ui/refs/tags/v${version}/README.md. The pi docs describe the terminal app; use them for pi itself, such as extensions, skills, models and the SDK.
-Use compact Mermaid 12.1 diagrams in \`mermaid\` fences when useful. Use short labels and add accTitle/accDescr where supported. The app applies colors and fonts automatically; do not override them. Arbitrary HTML, JavaScript callbacks, external plugins, custom icon packs, and typeset math are not supported.`;
+Use compact Mermaid 12.1 diagrams in \`mermaid\` fences when useful. Use short labels and add accTitle/accDescr where supported. The app applies colors and fonts automatically; do not override them. Mermaid diagrams do not support arbitrary HTML, JavaScript callbacks, external plugins, custom icon packs, or typeset math.`;
 
 const piDocsUrl = `https://raw.githubusercontent.com/earendil-works/pi/refs/tags/v${VERSION}/packages/coding-agent`;
 // Raw URLs serve files only, so the examples folder links to its listing page.

@@ -8,6 +8,7 @@ import { RuntimeController } from "#src/agent/runtime-controller.ts";
 import { notifySessionDone } from "#src/browser-notifications.ts";
 import { compressResponse } from "#src/server/compression.ts";
 import { DatastarClientHub } from "#src/server/datastar-client-hub.ts";
+import { HtmlPageStore } from "#src/server/html-page-store.ts";
 import { executeRoute } from "#src/server/route.ts";
 import { appRoutes } from "#src/server/routes.ts";
 import type { RouteContext } from "#src/server/routes/context.ts";
@@ -285,6 +286,27 @@ test("session images serve full bytes and display-sized thumbnails", async () =>
 	const metadata = await new Bun.Image(await thumbnail.bytes()).metadata();
 	assertEquals(metadata.width, 768);
 	assertEquals(metadata.height, 576);
+});
+
+test("agent pages are served with an opaque-origin sandbox and restricted connections", async () => {
+	const context = fakeContext();
+	const url = context.resources.htmlPages.register("<!DOCTYPE html><h1>Chart</h1>");
+	const router = createRouter(context);
+	const response = await router.fetch(new Request(`http://localhost${url}`));
+	assertEquals(response.status, 200);
+	const policy = response.headers.get("content-security-policy") ?? "";
+	assertStringIncludes(policy, "sandbox allow-scripts allow-forms;");
+	assertStringIncludes(policy, "connect-src 'none'");
+	assertStringIncludes(policy, "form-action 'none'");
+	assertEquals(policy.includes("allow-same-origin"), false);
+	const body = await response.text();
+	assertEquals(body.match(/<!doctype/gi)?.length, 1);
+	assertStringIncludes(body, 'name="viewport"');
+	assertStringIncludes(body, "<h1>Chart</h1>");
+	const missing = await router.fetch(
+		new Request("http://localhost/sessions/page?id=nope"),
+	);
+	assertEquals(missing.status, 404);
 });
 
 const fdPath = getToolPath("fd") ?? undefined;
@@ -1192,6 +1214,7 @@ function fakeContext(
 		resources: {
 			host: overrides.host ?? fakeHost(),
 			sessionImages: new SessionImageStore(),
+			htmlPages: new HtmlPageStore(),
 		},
 		transferredFiles: overrides.transferredFiles ?? { importFiles: async () => [] },
 		openWorkspace: async () => true,

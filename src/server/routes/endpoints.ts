@@ -37,6 +37,7 @@ export const endpoints = {
 	sessionsMore: "/sessions/more",
 	sessionsFavicon: "/sessions/favicon",
 	sessionsImage: "/sessions/image",
+	sessionsPage: "/sessions/page",
 	sessionsBackgroundAbort: "/sessions/background/abort",
 	sessionsDelete: "/sessions/delete",
 	sessionsRename: "/sessions/rename",
