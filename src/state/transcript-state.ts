@@ -167,22 +167,15 @@ export class TranscriptState {
 		return true;
 	}
 
-	appendThoughtDelta(delta: string): string {
-		const message = this.activeThoughtId
-			? this.getMessage(this.activeThoughtId)
-			: undefined;
-		if (!message) return this.appendMessage("thought", delta);
-		message.text += delta;
-		return message.id;
-	}
-
-	appendAssistantDelta(delta: string): string {
-		this.activeThoughtId = undefined;
-		const message = this.activeAssistantId
-			? this.getMessage(this.activeAssistantId)
-			: undefined;
-		if (!message) return this.appendMessage("assistant", delta);
-		message.text += delta;
+	/**
+	 * Sets the streaming row to the provider's current text. pi streams snapshots, so
+	 * repeated chunks or a retried attempt replace the row instead of extending it.
+	 */
+	syncStreamingText(role: "thought" | "assistant", text: string): string {
+		const id = role === "thought" ? this.activeThoughtId : this.activeAssistantId;
+		const message = id ? this.getMessage(id) : undefined;
+		if (!message) return this.appendMessage(role, text);
+		message.text = text;
 		return message.id;
 	}
 

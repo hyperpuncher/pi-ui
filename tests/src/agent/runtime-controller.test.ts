@@ -520,7 +520,7 @@ test("RuntimeController abort preserves the live transcript and interrupted repl
 			format: "diff",
 			state: "success",
 		});
-		state.appendAssistantDelta("partial **reply**");
+		state.syncStreamingText("assistant", "partial **reply**");
 		const messages = [...state.messages];
 		fake.runtime.session.abort = async () => {
 			fake.emit(

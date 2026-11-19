@@ -310,7 +310,7 @@ test("assistant completion immediately flushes newest streaming content", () => 
 	const state = createState();
 	connect(state);
 	state.appendMessage("assistant", "first");
-	state.appendAssistantDelta(" **latest**");
+	state.syncStreamingText("assistant", "first **latest**");
 	state.finishAssistant();
 	assertIncludes(
 		projectedMessages(state)[0].renderedHtml ?? "",
@@ -321,7 +321,7 @@ test("assistant completion immediately flushes newest streaming content", () => 
 test("background activation resumes streaming and highlights completed messages", async () => {
 	await loadHighlighter();
 	const background = new TranscriptState({ keys: "N", description: "New" });
-	background.appendAssistantDelta("```ts\nconst partial = true");
+	background.syncStreamingText("assistant", "```ts\nconst partial = true");
 	background.appendMessage("tool", "still running", {
 		state: "running",
 		format: "code",
@@ -364,7 +364,7 @@ test("a thrown update still commits its completed mutations", async () => {
 
 test("messages added while offline appear on reconnect", async () => {
 	const state = createState();
-	state.appendAssistantDelta("offline answer");
+	state.syncStreamingText("assistant", "offline answer");
 	state.finishAssistant();
 	const toolId = state.appendMessage("tool", "running", {
 		format: "code",
@@ -382,9 +382,9 @@ test("messages added while offline appear on reconnect", async () => {
 
 test("reconnecting during a turn resumes streaming", () => {
 	const state = createState();
-	state.appendAssistantDelta("before **connection** ");
+	state.syncStreamingText("assistant", "before **connection** ");
 	connect(state);
-	state.appendAssistantDelta("and after");
+	state.syncStreamingText("assistant", "before **connection** and after");
 	state.finishAssistant();
 	assertIncludes(
 		projectedMessages(state)[0].renderedHtml ?? "",

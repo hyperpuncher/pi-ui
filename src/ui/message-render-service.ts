@@ -100,8 +100,8 @@ export class MessageRenderService {
 		this.dirtyIds.add(id);
 		this.frames.schedule();
 	}
-	streamingMessageChanged(): void {
-		for (const id of this.streamingIds()) this.dirtyIds.add(id);
+	streamingMessageChanged(id: string): void {
+		this.dirtyIds.add(id);
 		this.frames.schedule();
 	}
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {

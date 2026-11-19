@@ -243,9 +243,9 @@ export class UiRenderer implements AppStorePresentation {
 		this.messages.reset();
 		this.requestCommit({ type: "render-transcript" });
 	}
-	streamingMessageChanged(): void {
+	streamingMessageChanged(id: string): void {
 		if (this.hub.clientCount === 0) return;
-		this.messages.streamingMessageChanged();
+		this.messages.streamingMessageChanged(id);
 	}
 	sessionTransitionChanged(): void {
 		this.requestCommit();

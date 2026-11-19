@@ -57,12 +57,8 @@ class FakeState implements SessionEventStateSink {
 		this.updates.push({ id, patch });
 	}
 
-	appendThoughtDelta(delta: string): void {
-		this.thoughts.push(delta);
-	}
-
-	appendAssistantDelta(delta: string): void {
-		this.assistant.push(delta);
+	syncStreamingText(role: "thought" | "assistant", text: string): void {
+		(role === "thought" ? this.thoughts : this.assistant).push(text);
 	}
 
 	finishAssistant(): void {
@@ -132,6 +128,50 @@ function userMessage() {
 	return { role: "user" as const, content: "hello", timestamp: 1 };
 }
 
+test("syncs the current segment snapshot across multiple blocks and after tool calls", () => {
+	const { state, context } = fixture();
+	reduceSessionEvent(
+		event({
+			type: "message_update",
+			message: userMessage(),
+			assistantMessageEvent: {
+				type: "thinking_delta",
+				contentIndex: 1,
+				delta: "second",
+				partial: {
+					content: [
+						{ type: "thinking", thinking: "first" },
+						{ type: "thinking", thinking: "second" },
+					],
+				},
+			},
+		}),
+		context,
+	);
+	reduceSessionEvent(
+		event({
+			type: "message_update",
+			message: userMessage(),
+			assistantMessageEvent: {
+				type: "text_end",
+				contentIndex: 3,
+				content: "after tool",
+				partial: {
+					content: [
+						{ type: "thinking", thinking: "first" },
+						{ type: "toolCall", id: "call-1", name: "read", arguments: {} },
+						{ type: "text", text: "after " },
+						{ type: "text", text: "tool" },
+					],
+				},
+			},
+		}),
+		context,
+	);
+	assertEquals(state.thoughts, ["first\n\nsecond"]);
+	assertEquals(state.assistant, ["after tool"]);
+});
+
 test("reduces agent, message, queue, and completion events", () => {
 	let usageSyncs = 0;
 	const { state, context } = fixture({ syncUsage: () => usageSyncs++ });
@@ -142,7 +182,12 @@ test("reduces agent, message, queue, and completion events", () => {
 		event({
 			type: "message_update",
 			message: userMessage(),
-			assistantMessageEvent: { type: "thinking_delta", delta: "think" },
+			assistantMessageEvent: {
+				type: "thinking_delta",
+				contentIndex: 0,
+				delta: "think",
+				partial: { content: [{ type: "thinking", thinking: "think" }] },
+			},
 		}),
 		context,
 	);
@@ -150,7 +195,17 @@ test("reduces agent, message, queue, and completion events", () => {
 		event({
 			type: "message_update",
 			message: userMessage(),
-			assistantMessageEvent: { type: "text_delta", delta: "answer" },
+			assistantMessageEvent: {
+				type: "text_delta",
+				contentIndex: 1,
+				delta: "answer",
+				partial: {
+					content: [
+						{ type: "thinking", thinking: "think" },
+						{ type: "text", text: "answer" },
+					],
+				},
+			},
 		}),
 		context,
 	);

@@ -158,7 +158,7 @@ export interface AppStorePresentation {
 	messageAppended(): void;
 	messagesRemoved(ids: readonly string[]): void;
 	messageUpdated(id: string): void;
-	streamingMessageChanged(): void;
+	streamingMessageChanged(id: string): void;
 	sessionTransitionChanged(): void;
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void;
 	/** Discards message presentation, runs the replacement, and restarts rendering. */
@@ -389,17 +389,17 @@ export class AppStore {
 		if (!this.transcript.updateMessage(id, patch)) return;
 		this.presentation?.messageUpdated(id);
 	}
-	appendThoughtDelta(delta: string): void {
-		const started = !this.transcript.activeThoughtMessageId;
-		this.transcript.appendThoughtDelta(delta);
-		if (started) this.presentation?.messageAppended();
-		else this.presentation?.streamingMessageChanged();
-	}
-	appendAssistantDelta(delta: string): void {
-		const started = !this.transcript.activeAssistantMessageId;
-		this.transcript.appendAssistantDelta(delta);
-		if (started) this.presentation?.messageAppended();
-		else this.presentation?.streamingMessageChanged();
+	syncStreamingText(role: "thought" | "assistant", text: string): void {
+		const existingId =
+			role === "thought"
+				? this.transcript.activeThoughtMessageId
+				: this.transcript.activeAssistantMessageId;
+		const previousText = existingId
+			? this.transcript.getMessage(existingId)?.text
+			: undefined;
+		const id = this.transcript.syncStreamingText(role, text);
+		if (!existingId) this.presentation?.messageAppended();
+		else if (previousText !== text) this.presentation?.streamingMessageChanged(id);
 	}
 	finishAssistant(): void {
 		const ids = this.transcript.finishAssistant();

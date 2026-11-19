@@ -8,15 +8,15 @@ const timestamp = new Date("2026-01-01T00:00:00.000Z");
 
 test("transcript state appends, streams, updates, and finishes messages", () => {
 	const state = new TranscriptState(hint);
-	const thoughtId = state.appendThoughtDelta("thinking");
-	state.appendThoughtDelta(" more");
-	const assistantId = state.appendAssistantDelta("answer");
-	state.appendAssistantDelta(" done");
+	const thoughtId = state.syncStreamingText("thought", "thinking");
+	state.syncStreamingText("thought", "thinking more");
+	const assistantId = state.syncStreamingText("assistant", "answer");
+	state.syncStreamingText("assistant", "answer done");
 	const toolId = state.appendMessage("tool", "running", { state: "running" });
 	state.updateMessage(toolId, { text: "complete", state: "success" });
 	const active = state.finishAssistant();
 
-	assertEquals(active, { assistantId, thoughtId: undefined });
+	assertEquals(active, { assistantId, thoughtId });
 	assertEquals(state.getMessageIndex(thoughtId), 0);
 	assertEquals(state.getMessageIndex(assistantId), 1);
 	assertEquals(state.getMessageIndex(toolId), 2);
@@ -31,13 +31,28 @@ test("transcript state appends, streams, updates, and finishes messages", () => 
 	);
 });
 
+test("a retried attempt replaces both streamed rows in place", () => {
+	const state = new TranscriptState(hint);
+	state.syncStreamingText("thought", "attempt one");
+	state.syncStreamingText("assistant", "partial one");
+	state.syncStreamingText("thought", "attempt two");
+	state.syncStreamingText("assistant", "final two");
+	assertEquals(
+		state.messages.map(({ role, text }) => ({ role, text })),
+		[
+			{ role: "thought", text: "attempt two" },
+			{ role: "assistant", text: "final two" },
+		],
+	);
+});
+
 test("transcript snapshots restore independent domain state and queue metadata", () => {
 	const original = new TranscriptState(hint);
 	original.replaceMessages([
 		{ role: "user", text: "old", timestamp },
 		{ role: "assistant", text: "restored", timestamp },
 	]);
-	const activeId = original.appendAssistantDelta("streaming");
+	const activeId = original.syncStreamingText("assistant", "streaming");
 	original.setActivityText("Working...");
 	original.setQueuedMessages(["steer"], ["follow"]);
 	const snapshot = original.snapshot();

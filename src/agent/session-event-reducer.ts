@@ -31,8 +31,7 @@ export type SessionEventStateSink = {
 		options?: TranscriptMessageOptions,
 	): string;
 	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): void;
-	appendThoughtDelta(delta: string): void;
-	appendAssistantDelta(delta: string): void;
+	syncStreamingText(role: "thought" | "assistant", text: string): void;
 	finishAssistant(): void;
 	showRecentMessages(): void;
 	setActivityText(activityText: string | undefined): void;
@@ -139,6 +138,25 @@ function completedPathArgument(prefix: string): Record<string, string> | undefin
 	} catch {
 		return undefined;
 	}
+}
+
+/** Current segment's streamed text from the authoritative partial snapshot. */
+function currentSegmentText(
+	content: AssistantEventMessage["content"],
+	type: "thinking" | "text",
+): string {
+	let start = content.length;
+	while (start > 0 && content[start - 1]?.type !== "toolCall") start -= 1;
+	const parts: string[] = [];
+	for (let index = start; index < content.length; index += 1) {
+		const block = content[index];
+		if (type === "thinking" && block?.type === "thinking" && block.thinking) {
+			parts.push(block.thinking);
+		} else if (type === "text" && block?.type === "text" && block.text) {
+			parts.push(block.text);
+		}
+	}
+	return parts.join(type === "thinking" ? "\n\n" : "");
 }
 
 export function reduceSessionEvent(
@@ -264,11 +282,24 @@ export function reduceSessionEvent(
 				tools.messageIds.set(call.id, id);
 				tools.callArgs.set(call.id, call.arguments);
 			}
-			if (assistantEvent.type === "thinking_delta") {
-				state.appendThoughtDelta(assistantEvent.delta);
-			}
-			if (assistantEvent.type === "text_delta") {
-				state.appendAssistantDelta(assistantEvent.delta);
+			if (
+				assistantEvent.type === "thinking_delta" ||
+				assistantEvent.type === "thinking_end" ||
+				assistantEvent.type === "text_delta" ||
+				assistantEvent.type === "text_end"
+			) {
+				const block =
+					assistantEvent.type === "thinking_delta" ||
+					assistantEvent.type === "thinking_end"
+						? "thinking"
+						: "text";
+				const text = currentSegmentText(assistantEvent.partial.content, block);
+				if (text) {
+					state.syncStreamingText(
+						block === "thinking" ? "thought" : "assistant",
+						text,
+					);
+				}
 			}
 			break;
 		}
