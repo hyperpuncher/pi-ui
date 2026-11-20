@@ -22,6 +22,7 @@ let heldRow;
 let previousUserPending = false;
 let followFrame;
 let followTarget = 0;
+let scrollControlFrame;
 let olderCheckTimer;
 let reducedMotion;
 // Reading positions of the sessions this page left, by session key.
@@ -189,7 +190,7 @@ export function bindMessageScroll() {
 				trimOldMessages();
 			}
 			state.scrollTop = messages.scrollTop;
-			updateScrollControl();
+			scheduleScrollControlUpdate();
 		},
 		true,
 	);
@@ -409,6 +410,14 @@ function updatePromptSpacer() {
 	if (spacer.style.height !== height) spacer.style.height = height;
 }
 
+function scheduleScrollControlUpdate() {
+	if (scrollControlFrame !== undefined) return;
+	scrollControlFrame = requestAnimationFrame(() => {
+		scrollControlFrame = undefined;
+		updateScrollControl();
+	});
+}
+
 function updateScrollControl() {
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
@@ -426,14 +435,15 @@ function updateScrollControl() {
 	);
 }
 
-function userRows(messages) {
-	return messages.querySelectorAll("#message-list > .message-user").values().toArray();
-}
-
 // The nearest user message whose top is above the viewport.
 function previousUserRow(messages) {
 	const top = messages.getBoundingClientRect().top;
-	return userRows(messages).findLast((row) => row.getBoundingClientRect().top < top);
+	const rows = messages.querySelectorAll("#message-list > .message-user");
+	for (let index = rows.length - 1; index >= 0; index -= 1) {
+		const row = rows[index];
+		if (row.getBoundingClientRect().top < top) return row;
+	}
+	return undefined;
 }
 
 function scrollToUserRow(messages, row) {
@@ -471,9 +481,14 @@ export function scrollNextUser() {
 	const messages = document.getElementById("messages");
 	if (!(messages instanceof HTMLElement)) return;
 	const top = messages.getBoundingClientRect().top + userRowOffsetPx + 1;
-	const row = userRows(messages).find((row) => row.getBoundingClientRect().top > top);
-	if (row) scrollToUserRow(messages, row);
-	else scrollBottom();
+	const rows = messages.querySelectorAll("#message-list > .message-user");
+	for (const row of rows) {
+		if (row.getBoundingClientRect().top > top) {
+			scrollToUserRow(messages, row);
+			return;
+		}
+	}
+	scrollBottom();
 }
 
 export function hydratePierreDiff(host) {
