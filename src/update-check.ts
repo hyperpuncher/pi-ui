@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import { comparePackageVersions } from "#pi/utils/version-check.js";
 import { asRecord, isString } from "#src/utils/type-guards.ts";
 import { version as currentVersion } from "#src/version.ts";
 
@@ -24,7 +23,11 @@ export async function checkForUpdate(
 ): Promise<AvailableUpdate | undefined> {
 	const latestVersion = await fetchLatestVersion(fetcher);
 	if (!latestVersion) return undefined;
-	if (comparePackageVersions(latestVersion, runningVersion) !== 1) return undefined;
+	try {
+		if (Bun.semver.order(latestVersion, runningVersion) !== 1) return undefined;
+	} catch {
+		return undefined;
+	}
 	return {
 		currentVersion: runningVersion,
 		latestVersion,

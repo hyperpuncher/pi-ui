@@ -8,7 +8,7 @@ export function probeImageDimensions(
 ): { width: number; height: number } | undefined {
 	let bytes: Uint8Array;
 	try {
-		bytes = Buffer.from(data.slice(0, 5464), "base64");
+		bytes = Uint8Array.fromBase64(data.slice(0, 5464));
 	} catch {
 		return undefined;
 	}
