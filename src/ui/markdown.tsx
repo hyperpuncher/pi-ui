@@ -34,10 +34,15 @@ const localImagePattern = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i;
 const dataImagePattern = /^data:image\/(?:png|jpeg|gif|webp);base64,/i;
 const customUrlPattern = /file:|!\[/i;
 const mermaidPattern = /mermaid/i;
-const baseCodeOptions = {
+const baseCodeOptions: HtmlOptions = {
 	controls: { code: { copy: true, download: false } },
 	lineNumbers: true,
-} as const;
+	components: {
+		a: transformLink,
+		img: transformImage,
+		table: (html) => `<div class="table-container">${html}</div>`,
+	},
+};
 
 type WordsHtmlRenderer = ReturnType<typeof createHtmlRenderer>;
 
@@ -416,65 +421,48 @@ function renderCopyButton(disabled: boolean): string {
 const copyButtonHtml = renderCopyButton(false);
 const copyButtonDisabledHtml = renderCopyButton(true);
 
+function transformLink(html: string): string {
+	return html.replace(
+		/^<a data-markdown="a" href="([^"]*)">/,
+		(_match, href: string) => {
+			if (href.startsWith(fileLinkPrefix)) {
+				const uri = decodeURIComponent(href.slice(fileLinkPrefix.length));
+				return `<a data-markdown="a" href="#" data-pi-file-link="${escapeHtml(uri)}">`;
+			}
+			if (href.startsWith("#")) {
+				return `<a data-markdown="a" href="${href}">`;
+			}
+			return `<a data-markdown="a" href="${href}" target="_blank" rel="noreferrer">`;
+		},
+	);
+}
+
+function transformImage(html: string): string {
+	return html.replace(
+		/^<img data-markdown="img" src="([^"]*)" alt="([^"]*)"([^>]*)>$/,
+		(_match, src: string, alt: string, rest: string) => {
+			if (src === missingImageSentinel) {
+				return alt ? `[image unavailable: ${alt}]` : "[image unavailable]";
+			}
+			const resolvedSrc = src.startsWith(dataImagePrefix)
+				? escapeHtml(decodeURIComponent(src.slice(dataImagePrefix.length)))
+				: src;
+			return `<img data-markdown="img" src="${resolvedSrc}" alt="${alt}"${rest} decoding="async">`;
+		},
+	);
+}
+
 function postProcessHtml(html: string): string {
-	if (
-		!html.includes("<a ") &&
-		!html.includes("<img ") &&
-		!html.includes("<table ") &&
-		!html.includes('data-code-action="copy"')
-	) {
-		return html;
-	}
-	let result = html;
-	if (result.includes('data-code-action="copy"')) {
-		result = result
-			.replaceAll(
-				'<span><button type="button" data-code-action="copy" aria-label="Copy code">Copy</button></span>',
-				copyButtonHtml,
-			)
-			.replaceAll(
-				'<span><button type="button" data-code-action="copy" aria-label="Copy code" disabled="">Copy</button></span>',
-				copyButtonDisabledHtml,
-			);
-	}
-	if (result.includes("<a ")) {
-		result = result.replace(
-			/<a data-markdown="a" href="([^"]*)">/g,
-			(_match, href: string) => {
-				if (href.startsWith(fileLinkPrefix)) {
-					const uri = decodeURIComponent(href.slice(fileLinkPrefix.length));
-					return `<a data-markdown="a" href="#" data-pi-file-link="${escapeHtml(uri)}">`;
-				}
-				if (href.startsWith("#")) {
-					return `<a data-markdown="a" href="${href}">`;
-				}
-				return `<a data-markdown="a" href="${href}" target="_blank" rel="noreferrer">`;
-			},
+	if (!html.includes('data-code-action="copy"')) return html;
+	return html
+		.replaceAll(
+			'<span><button type="button" data-code-action="copy" aria-label="Copy code">Copy</button></span>',
+			copyButtonHtml,
+		)
+		.replaceAll(
+			'<span><button type="button" data-code-action="copy" aria-label="Copy code" disabled="">Copy</button></span>',
+			copyButtonDisabledHtml,
 		);
-	}
-	if (result.includes("<img ")) {
-		result = result.replace(
-			/<img data-markdown="img" src="([^"]*)" alt="([^"]*)"([^>]*)>/g,
-			(_match, src: string, alt: string, rest: string) => {
-				if (src === missingImageSentinel) {
-					return alt ? `[image unavailable: ${alt}]` : "[image unavailable]";
-				}
-				const resolvedSrc = src.startsWith(dataImagePrefix)
-					? escapeHtml(decodeURIComponent(src.slice(dataImagePrefix.length)))
-					: src;
-				return `<img data-markdown="img" src="${resolvedSrc}" alt="${alt}"${rest} decoding="async">`;
-			},
-		);
-	}
-	if (result.includes("<table ")) {
-		result = result
-			.replaceAll(
-				'<table data-markdown="table">',
-				'<div class="table-container"><table data-markdown="table">',
-			)
-			.replaceAll("</table>", "</table></div>");
-	}
-	return result;
 }
 
 /** Ensures identical Mermaid blocks within one message never share SVG IDs. */
