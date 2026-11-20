@@ -1,5 +1,3 @@
-import { execFile } from "node:child_process";
-
 import { gitText, runGit } from "#src/server/git.ts";
 import { sortWorkspaceReviewEntries } from "#src/workspace-review-tree.ts";
 import {
@@ -252,7 +250,7 @@ export async function readWorkspaceDiff(
 	return patch;
 }
 
-function boundedGit(
+async function boundedGit(
 	root: string,
 	args: string[],
 	signal?: AbortSignal,
@@ -264,32 +262,23 @@ function boundedGit(
 			413,
 			"Diff too large to preview. Select a smaller file.",
 		);
-	return new Promise((resolve, reject) => {
-		execFile(
-			"git",
-			["-C", root, "--literal-pathspecs", "-c", "core.quotePath=false", ...args],
-			{
-				encoding: "utf8",
-				maxBuffer,
-				signal,
-				windowsHide: true,
-				env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
-			},
-			(error, stdout) => {
-				if (signal?.aborted) reject(signal.reason);
-				else if (error?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER")
-					reject(
-						new WorkspaceReviewError(
-							413,
-							"Diff too large to preview. Select a smaller file.",
-						),
-					);
-				else if (error && !(args[0] === "diff" && error.code === 1))
-					reject(error);
-				else resolve(stdout);
-			},
-		);
+	const result = await runGit(root, ["--literal-pathspecs", ...args], {
+		signal,
+		maxOutputBytes: maxBuffer,
 	});
+	if (signal?.aborted) throw signal.reason;
+	if (result.exceededMaxOutput) {
+		throw new WorkspaceReviewError(
+			413,
+			"Diff too large to preview. Select a smaller file.",
+		);
+	}
+	if (result.code !== 0 && !(args[0] === "diff" && result.code === 1)) {
+		throw new Error(
+			gitText(result.stderr).trim() || `Git exited with code ${result.code}.`,
+		);
+	}
+	return gitText(result.stdout);
 }
 
 export async function discardWorkspaceChange(

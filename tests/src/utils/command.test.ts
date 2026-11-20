@@ -21,3 +21,14 @@ test("outputCommand kills and reports a command that exceeds its timeout", async
 	expect(result.success).toBe(false);
 	expect(result.timedOut).toBe(true);
 });
+
+test("outputCommand kills and reports a command that exceeds maxOutputBytes", async () => {
+	const result = await outputCommand(process.execPath, {
+		args: ["--eval", "process.stdout.write('x'.repeat(1024))"],
+		maxOutputBytes: 128,
+	});
+
+	expect(result.success).toBe(false);
+	expect(result.exceededMaxOutput).toBe(true);
+	expect(result.timedOut).toBe(false);
+});

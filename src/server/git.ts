@@ -15,12 +15,18 @@ const gitNotFound = new TextEncoder().encode("Git executable not found.");
 export async function runGit(
 	cwd: string,
 	args: readonly string[],
-	options: { stdin?: Uint8Array } = {},
+	options: {
+		stdin?: Uint8Array;
+		signal?: AbortSignal;
+		maxOutputBytes?: number;
+	} = {},
 ): Promise<CommandOutput> {
 	try {
 		return await outputCommand("git", {
 			args: ["-C", cwd, "-c", "core.quotePath=false", ...args],
 			env: { GIT_OPTIONAL_LOCKS: "0" },
+			maxOutputBytes: options.maxOutputBytes,
+			signal: options.signal,
 			stdin: options.stdin,
 			timeout: gitTimeoutMs,
 		});
