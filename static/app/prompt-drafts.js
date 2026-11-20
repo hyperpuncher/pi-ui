@@ -17,4 +17,12 @@ export class PromptDrafts {
 		this.#key = key;
 		return this.#drafts.get(key) ?? "";
 	}
+
+	/** Restores failed prompt text to a background session if its draft is still empty. */
+	restore(key, text) {
+		if (!text || key === this.#key) return;
+		if ((this.#drafts.get(key) ?? "") === "") {
+			this.#drafts.set(key, text);
+		}
+	}
 }

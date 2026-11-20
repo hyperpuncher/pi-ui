@@ -16,13 +16,18 @@ Object.defineProperty(globalThis, "ResizeObserver", {
 });
 
 const {
+	canSubmit,
 	composePrompt,
 	convertAvifToJpeg,
 	extractTransferredFilePaths,
 	fileWithDetectedMimeType,
+	hasAttachments,
+	insert,
 	isAvifImageFile,
 	isHeicImageFile,
 	jpegFileName,
+	submit,
+	syncSession,
 } = await import("#static/app/file-transfer.js");
 
 test("attachment paths are composed separately from visible prompt editing", () => {
@@ -187,4 +192,222 @@ test("transferred files use a webview-provided path without reading bytes", () =
 		}),
 		["/tmp/large-model.bin"],
 	);
+});
+
+function createAttachmentDomHarness() {
+	const originals = Object.getOwnPropertyDescriptors(globalThis);
+	class FakeElement {
+		children: FakeElement[] = [];
+		className = "";
+		dataset: Record<string, string> = {};
+		hidden = false;
+		id = "";
+		textContent = "";
+		type = "";
+		attrs = new Map<string, string>();
+		append(...nodes: FakeElement[]) {
+			this.children.push(...nodes);
+		}
+		replaceChildren(...nodes: FakeElement[]) {
+			this.children = [...nodes];
+		}
+		setAttribute(name: string, value: string) {
+			this.attrs.set(name, value);
+		}
+		addEventListener() {}
+		dispatchEvent() {
+			return true;
+		}
+	}
+	class FakeButton extends FakeElement {
+		disabled = true;
+	}
+	class FakeTextarea extends FakeElement {
+		value = "";
+		focus() {}
+		before() {}
+	}
+	class FakeParagraph extends FakeElement {}
+
+	const tray = new FakeElement();
+	tray.id = "prompt-attachments";
+	tray.hidden = true;
+	const promptBox = new FakeElement();
+	promptBox.id = "prompt-box";
+	const input = new FakeTextarea();
+	input.id = "prompt-input";
+	const sendButton = new FakeButton();
+	const errorEl = new FakeParagraph();
+	errorEl.id = "file-transfer-error";
+	errorEl.hidden = true;
+	const restoredDrafts: Array<{ key: string; text: string }> = [];
+
+	const elementsById = new Map<string, FakeElement>([
+		["prompt-attachments", tray],
+		["prompt-box", promptBox],
+		["prompt-input", input],
+		["file-transfer-error", errorEl],
+	]);
+
+	Object.defineProperties(globalThis, {
+		HTMLElement: { configurable: true, value: FakeElement },
+		HTMLButtonElement: { configurable: true, value: FakeButton },
+		HTMLTextAreaElement: { configurable: true, value: FakeTextarea },
+		HTMLParagraphElement: { configurable: true, value: FakeParagraph },
+		document: {
+			configurable: true,
+			value: {
+				body: { dataset: { filesImportEndpoint: "/files/import" } },
+				getElementById: (id: string) => elementsById.get(id) ?? null,
+				querySelector: (selector: string) =>
+					selector === "[data-send-trigger]" ? sendButton : null,
+				createElement: (tag: string) =>
+					tag === "button" ? new FakeButton() : new FakeElement(),
+				createElementNS: () => new FakeElement(),
+			},
+		},
+		window: {
+			configurable: true,
+			value: {
+				piUi: {
+					promptDrafts: {
+						restore(key: string, text: string) {
+							restoredDrafts.push({ key, text });
+						},
+					},
+				},
+			},
+		},
+	});
+
+	return {
+		tray,
+		sendButton,
+		restoredDrafts,
+		restore() {
+			for (const key of [
+				"HTMLElement",
+				"HTMLButtonElement",
+				"HTMLTextAreaElement",
+				"HTMLParagraphElement",
+				"document",
+				"window",
+				"fetch",
+			]) {
+				restoreGlobal(key, originals[key]);
+			}
+		},
+	};
+}
+
+test("attachments stay separate per session and update submit readiness", async () => {
+	const harness = createAttachmentDomHarness();
+	try {
+		syncSession("session-a");
+		await insert({ files: [{ path: "/tmp/a.txt", name: "a.txt" }] });
+		assertEquals(hasAttachments(), true);
+		assertEquals(canSubmit(""), true);
+		assertEquals(harness.tray.hidden, false);
+		assertEquals(harness.tray.children.length, 1);
+		assertEquals(harness.sendButton.disabled, false);
+
+		syncSession("session-b");
+		assertEquals(hasAttachments(), false);
+		assertEquals(canSubmit(""), false);
+		assertEquals(harness.tray.hidden, true);
+		assertEquals(harness.tray.children.length, 0);
+		assertEquals(harness.sendButton.disabled, true);
+
+		await insert({ files: [{ path: "/tmp/b.txt", name: "b.txt" }] });
+		assertEquals(hasAttachments(), true);
+		assertEquals(harness.tray.children.length, 1);
+
+		syncSession("session-a");
+		assertEquals(hasAttachments(), true);
+		assertEquals(harness.tray.hidden, false);
+		assertEquals(harness.tray.children.length, 1);
+		assertEquals(harness.tray.children[0]?.attrs.get("aria-label"), "Remove a.txt");
+	} finally {
+		harness.restore();
+	}
+});
+
+test("in-flight uploads and submits stay scoped to the session that started them", async () => {
+	const harness = createAttachmentDomHarness();
+	let resolveImport!: (response: Response) => void;
+	let resolveSubmit!: (response: Response) => void;
+	let importStartedResolve!: () => void;
+	const importStarted = new Promise<void>((resolve) => {
+		importStartedResolve = resolve;
+	});
+	let submittedPrompt = "";
+
+	Object.defineProperty(globalThis, "fetch", {
+		configurable: true,
+		value: (url: string, init?: RequestInit) => {
+			if (url === "/files/import") {
+				importStartedResolve();
+				return new Promise<Response>((resolve) => {
+					resolveImport = resolve;
+				});
+			}
+			const body = init?.body;
+			if (body instanceof FormData)
+				submittedPrompt = String(body.get("prompt") ?? "");
+			return new Promise<Response>((resolve) => {
+				resolveSubmit = resolve;
+			});
+		},
+	});
+
+	try {
+		syncSession("upload-a");
+		const uploadPromise = insert([
+			new File(["hello"], "note.txt", { type: "text/plain" }),
+		]);
+		await importStarted;
+		syncSession("upload-b");
+		resolveImport(
+			new Response(
+				JSON.stringify({
+					imports: [{ path: "/tmp/imported-note.txt", mimeType: null }],
+				}),
+				{ status: 200, headers: { "content-type": "application/json" } },
+			),
+		);
+		await uploadPromise;
+
+		assertEquals(hasAttachments(), false);
+		assertEquals(harness.tray.hidden, true);
+
+		syncSession("upload-a");
+		assertEquals(hasAttachments(), true);
+		assertEquals(harness.tray.children.length, 1);
+
+		const submitPromise = submit("/prompt", "check note");
+		syncSession("upload-b");
+		await insert({ files: [{ path: "/tmp/b-only.txt", name: "b-only.txt" }] });
+		resolveSubmit(new Response("", { status: 200 }));
+		assertEquals(await submitPromise, true);
+		assertEquals(submittedPrompt, "@/tmp/imported-note.txt\ncheck note");
+
+		assertEquals(hasAttachments(), true);
+		assertEquals(
+			harness.tray.children[0]?.attrs.get("aria-label"),
+			"Remove b-only.txt",
+		);
+		syncSession("upload-a");
+		assertEquals(hasAttachments(), false);
+
+		await insert({ files: [{ path: "/tmp/retry.txt", name: "retry.txt" }] });
+		const failedSubmit = submit("/prompt", "retry prompt");
+		syncSession("upload-b");
+		resolveSubmit(new Response("error", { status: 500 }));
+		assertEquals(await failedSubmit, false);
+		assertEquals(harness.restoredDrafts, [{ key: "upload-a", text: "retry prompt" }]);
+		syncSession("upload-a");
+		assertEquals(hasAttachments(), true);
+	} finally {
+		harness.restore();
+	}
 });

@@ -20,7 +20,41 @@ const MAX_TRANSFER_TOTAL_BYTES = 50 * 1024 * 1024;
 const AVIF_JPEG_QUALITY = 0.85;
 let dragDepth = 0;
 let submitting = false;
-const attachments = [];
+const attachmentsBySession = new Map();
+let currentSessionKey;
+
+function activeSessionKey() {
+	return currentSessionKey ?? "";
+}
+
+function sessionAttachments(key = activeSessionKey()) {
+	return attachmentsBySession.get(key) ?? [];
+}
+
+function mutableSessionAttachments(key = activeSessionKey()) {
+	let list = attachmentsBySession.get(key);
+	if (!list) {
+		list = [];
+		attachmentsBySession.set(key, list);
+	}
+	return list;
+}
+
+export function syncSession(key) {
+	if (currentSessionKey === undefined) {
+		currentSessionKey = key;
+		if (key !== "" && attachmentsBySession.has("")) {
+			attachmentsBySession.set(key, attachmentsBySession.get(""));
+			attachmentsBySession.delete("");
+			renderAttachments();
+		}
+		return;
+	}
+	if (key === currentSessionKey) return;
+	currentSessionKey = key;
+	showTransferError("");
+	renderAttachments();
+}
 
 export function hasFiles(data) {
 	if (!data) return false;
@@ -59,6 +93,7 @@ export function resetDrag() {
 
 export async function insert(data) {
 	if (!data) return;
+	const targetKey = activeSessionKey();
 	showTransferError("");
 	const transferred = transferredFiles(data);
 	const needsImageHandling = transferred.some(
@@ -68,16 +103,16 @@ export async function insert(data) {
 	if (paths.length > 0 && !needsImageHandling) {
 		const unsupported = unsupportedImagePathError(paths);
 		if (unsupported) {
-			showTransferError(unsupported);
+			showTransferError(unsupported, targetKey);
 			return;
 		}
-		addPathAttachments(paths);
+		addPathAttachments(paths, targetKey);
 		return;
 	}
 	if (transferred.length === 0) return;
 	const validationError = validateTransferredFiles(transferred);
 	if (validationError) {
-		showTransferError(validationError);
+		showTransferError(validationError, targetKey);
 		return;
 	}
 	let files;
@@ -85,25 +120,31 @@ export async function insert(data) {
 		files = await prepareTransferredImages(transferred);
 	} catch (error) {
 		console.error(error);
-		showTransferError(error?.message || "Could not prepare the selected images.");
+		showTransferError(
+			error?.message || "Could not prepare the selected images.",
+			targetKey,
+		);
 		return;
 	}
 	const preparedValidationError = validateTransferredFiles(files);
 	if (preparedValidationError) {
-		showTransferError(preparedValidationError);
+		showTransferError(preparedValidationError, targetKey);
 		return;
 	}
-	const uploaded = await uploadTransferredFiles(files);
+	const uploaded = await uploadTransferredFiles(files, targetKey);
 	for (let index = 0; index < uploaded.length; index += 1) {
-		addAttachment({
-			path: uploaded[index].path,
-			file: fileWithDetectedMimeType(files[index], uploaded[index].mimeType),
-		});
+		addAttachment(
+			{
+				path: uploaded[index].path,
+				file: fileWithDetectedMimeType(files[index], uploaded[index].mimeType),
+			},
+			targetKey,
+		);
 	}
 }
 
 export function hasAttachments() {
-	return attachments.length > 0;
+	return sessionAttachments().length > 0;
 }
 
 export function canSubmit(prompt) {
@@ -112,7 +153,8 @@ export function canSubmit(prompt) {
 
 export async function submit(endpoint, prompt, streamingBehavior) {
 	if (!canSubmit(prompt)) return false;
-	const submittedAttachments = [...attachments];
+	const targetKey = activeSessionKey();
+	const submittedAttachments = [...sessionAttachments(targetKey)];
 	const submittedPrompt = composePrompt(
 		prompt,
 		submittedAttachments.map(({ path }) => path),
@@ -130,12 +172,16 @@ export async function submit(endpoint, prompt, streamingBehavior) {
 		await response.text();
 		if (!response.ok)
 			throw new Error(`Prompt was not accepted (${response.status}).`);
-		removeSubmittedAttachments(submittedAttachments);
-		showTransferError("");
+		removeSubmittedAttachments(targetKey, submittedAttachments);
+		showTransferError("", targetKey);
 		return true;
 	} catch (error) {
-		restoreSubmittedPrompt(prompt);
-		showTransferError(error?.message || "Could not send the prompt.");
+		if (targetKey === activeSessionKey()) {
+			restoreSubmittedPrompt(prompt);
+			showTransferError(error?.message || "Could not send the prompt.", targetKey);
+		} else {
+			window.piUi?.promptDrafts?.restore(targetKey, prompt);
+		}
 		return false;
 	} finally {
 		submitting = false;
@@ -276,7 +322,7 @@ function validateTransferredFiles(files) {
 	}
 }
 
-async function uploadTransferredFiles(files) {
+async function uploadTransferredFiles(files, targetKey) {
 	const formData = new FormData();
 	for (const file of files) formData.append("file", file, file.name || "pasted-file");
 	try {
@@ -288,18 +334,20 @@ async function uploadTransferredFiles(files) {
 				isString(result.message)
 					? result.message
 					: "Could not transfer the selected files.",
+				targetKey,
 			);
 			return [];
 		}
-		showTransferError("");
+		showTransferError("", targetKey);
 		return Array.isArray(result.imports) ? result.imports : [];
 	} catch {
-		showTransferError("Could not transfer the selected files.");
+		showTransferError("Could not transfer the selected files.", targetKey);
 		return [];
 	}
 }
 
-function showTransferError(message) {
+function showTransferError(message, targetKey = activeSessionKey()) {
+	if (targetKey !== activeSessionKey()) return;
 	const input = promptInput();
 	if (!input) return;
 	let error = document.getElementById("file-transfer-error");
@@ -324,11 +372,12 @@ export function composePrompt(prompt, paths) {
 	return prompt.trim() ? `${references}${prompt}` : references.trimEnd();
 }
 
-function addPathAttachments(paths) {
-	for (const path of paths) addAttachment({ path });
+function addPathAttachments(paths, targetKey) {
+	for (const path of paths) addAttachment({ path }, targetKey);
 }
 
-function addAttachment({ path, file }) {
+function addAttachment({ path, file }, targetKey) {
+	const attachments = mutableSessionAttachments(targetKey);
 	if (!path || attachments.some((attachment) => attachment.path === path)) return;
 	attachments.push({
 		path,
@@ -337,6 +386,7 @@ function addAttachment({ path, file }) {
 			? URL.createObjectURL(file)
 			: undefined,
 	});
+	if (targetKey !== activeSessionKey()) return;
 	renderAttachments();
 	promptInput()?.focus();
 	closePickers(true);
@@ -349,40 +399,50 @@ function restoreSubmittedPrompt(prompt) {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function removeSubmittedAttachments(submitted) {
+function removeSubmittedAttachments(targetKey, submitted) {
+	const attachments = attachmentsBySession.get(targetKey);
+	if (!attachments) return;
 	for (const attachment of submitted) {
 		const index = attachments.indexOf(attachment);
 		if (index < 0) continue;
 		attachments.splice(index, 1);
 		if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
 	}
+	if (attachments.length === 0) attachmentsBySession.delete(targetKey);
 }
 
-function removeAttachment(path) {
+function removeAttachment(path, targetKey) {
+	const attachments = attachmentsBySession.get(targetKey);
+	if (!attachments) return;
 	const index = attachments.findIndex((attachment) => attachment.path === path);
 	if (index < 0) return;
 	const [attachment] = attachments.splice(index, 1);
 	if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
-	renderAttachments();
+	if (attachments.length === 0) attachmentsBySession.delete(targetKey);
+	if (targetKey === activeSessionKey()) renderAttachments();
 }
 
 function renderAttachments() {
 	const tray = document.getElementById("prompt-attachments");
 	if (!(tray instanceof HTMLElement)) return;
-	tray.replaceChildren(...attachments.map(renderAttachment));
+	const targetKey = activeSessionKey();
+	const attachments = sessionAttachments(targetKey);
+	tray.replaceChildren(
+		...attachments.map((attachment) => renderAttachment(attachment, targetKey)),
+	);
 	tray.hidden = attachments.length === 0;
 	const send = document.querySelector("[data-send-trigger]");
 	if (send instanceof HTMLButtonElement)
 		send.disabled = !canSubmit(promptInput()?.value ?? "");
 }
 
-function renderAttachment(attachment) {
+function renderAttachment(attachment, targetKey) {
 	const name = attachment.file?.name || displayName(attachment.path);
 	const item = document.createElement("button");
 	item.type = "button";
 	item.className = `prompt-attachment prompt-attachment-${attachment.previewUrl ? "image" : "file"}`;
 	item.setAttribute("aria-label", `Remove ${name}`);
-	item.addEventListener("click", () => removeAttachment(attachment.path));
+	item.addEventListener("click", () => removeAttachment(attachment.path, targetKey));
 	if (attachment.previewUrl) {
 		const preview = document.createElement("span");
 		preview.className = "prompt-attachment-preview";

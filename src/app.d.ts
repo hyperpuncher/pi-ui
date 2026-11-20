@@ -28,6 +28,7 @@ interface PiUiNamespace {
 		insert(data?: FileTransferData | TransferFileCollection): Promise<void>;
 		hasAttachments(): boolean;
 		canSubmit(prompt: string): boolean;
+		syncSession(key: string): void;
 		submit(
 			endpoint: string,
 			prompt: string,
@@ -66,6 +67,7 @@ interface PiUiNamespace {
 	};
 	promptDrafts: {
 		sync(key: string, text: string): string | null;
+		restore(key: string, text: string): void;
 	};
 	windowFocus: {
 		restore(): void;
