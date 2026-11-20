@@ -98,6 +98,7 @@ export class TranscriptState {
 	private activeThoughtId: string | undefined;
 	private transcriptMessages: TranscriptMessage[] = [];
 	private messageIndexById = new Map<string, number>();
+	private cachedPromptHistory: readonly string[] | undefined;
 	private visibleMessageStart = 0;
 	emptyChatHint: TranscriptEmptyHint;
 	activityText: string | undefined;
@@ -126,6 +127,22 @@ export class TranscriptState {
 
 	get allMessages(): readonly TranscriptMessage[] {
 		return this.transcriptMessages;
+	}
+
+	get promptHistory(): readonly string[] {
+		if (this.cachedPromptHistory) return this.cachedPromptHistory;
+		const history: string[] = [];
+		const messages = this.transcriptMessages;
+		for (let index = messages.length - 1; index >= 0; index -= 1) {
+			const message = messages[index]!;
+			if (message.role !== "user") continue;
+			const text = message.text.trim();
+			if (!text || history.at(-1) === text) continue;
+			history.push(text);
+			if (history.length === 100) break;
+		}
+		this.cachedPromptHistory = history;
+		return history;
 	}
 
 	getMessage(id: string): TranscriptMessage | undefined {
@@ -158,6 +175,7 @@ export class TranscriptState {
 			...options,
 		});
 		this.messageIndexById.set(id, this.transcriptMessages.length - 1);
+		if (role === "user") this.cachedPromptHistory = undefined;
 		if (role === "assistant") this.activeAssistantId = id;
 		if (role === "thought") this.activeThoughtId = id;
 		return id;
@@ -166,7 +184,9 @@ export class TranscriptState {
 	updateMessage(id: string, patch: Partial<Omit<TranscriptMessage, "id">>): boolean {
 		const message = this.getMessage(id);
 		if (!message) return false;
+		const wasUser = message.role === "user";
 		Object.assign(message, patch);
+		if (wasUser || message.role === "user") this.cachedPromptHistory = undefined;
 		return true;
 	}
 
@@ -220,6 +240,7 @@ export class TranscriptState {
 		this.activeAssistantId = snapshot.activeAssistantId;
 		this.activeThoughtId = snapshot.activeThoughtId;
 		this.transcriptMessages = snapshot.transcriptMessages.map(cloneMessage);
+		this.cachedPromptHistory = undefined;
 		this.rebuildMessageIndex();
 		this.visibleMessageStart = snapshot.visibleMessageStart;
 		this.emptyChatHint = { ...snapshot.emptyChatHint };
@@ -231,6 +252,7 @@ export class TranscriptState {
 	reset(emptyChatHint?: TranscriptEmptyHint): void {
 		this.transcriptMessages = [];
 		this.messageIndexById.clear();
+		this.cachedPromptHistory = undefined;
 		this.visibleMessageStart = 0;
 		this.activeAssistantId = undefined;
 		this.activeThoughtId = undefined;
@@ -250,6 +272,7 @@ export class TranscriptState {
 			this.messageSeq += 1;
 			return { ...message, id: `m-${this.messageSeq}` };
 		});
+		this.cachedPromptHistory = undefined;
 		this.rebuildMessageIndex();
 		const recentStart = Math.max(
 			0,

@@ -231,12 +231,10 @@ export class MessageRenderService {
 			if (html !== undefined) this.patchMessage(html, `#message-${id}`);
 		}
 	}
-	private streamingIds(): string[] {
+	private isStreamingMessage(id: string): boolean {
 		const { activeThoughtMessageId, activeAssistantMessageId } =
 			this.store.transcript;
-		return [activeThoughtMessageId, activeAssistantMessageId].filter(
-			(id): id is string => id !== undefined,
-		);
+		return id === activeThoughtMessageId || id === activeAssistantMessageId;
 	}
 	private isToolExpanded(message: TranscriptMessage): boolean {
 		if (!this.compactTools) return true;
@@ -315,7 +313,7 @@ export class MessageRenderService {
 			return undefined;
 		}
 		if (!message.text.trim()) return undefined;
-		return this.streamingIds().includes(message.id)
+		return this.isStreamingMessage(message.id)
 			? renderMarkdownStreaming(message.text, { cacheKey: message.id })
 			: renderMarkdownFinal(message.text, { cacheKey: message.id });
 	}

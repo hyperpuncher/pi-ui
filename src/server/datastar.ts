@@ -36,10 +36,9 @@ const sseHeaders = {
 
 /** SSE splits data lines on CR, LF, and CRLF, so each source line needs its own prefix. */
 function dataLines(name: string, value: string): string {
-	return value
-		.split(/\r\n|\r|\n/)
-		.map((line) => `data: ${name} ${line}\n`)
-		.join("");
+	const normalized = value.includes("\r") ? value.replace(/\r\n?/g, "\n") : value;
+	const prefix = `data: ${name} `;
+	return `${prefix}${normalized.replaceAll("\n", `\n${prefix}`)}\n`;
 }
 
 function event(type: string, lines: string): string {

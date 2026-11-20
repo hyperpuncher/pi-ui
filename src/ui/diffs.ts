@@ -98,5 +98,6 @@ function pierreHost(
 		),
 		code,
 	]);
-	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-ignore-morph data-init="window.piUi.messageScroll.hydratePierreDiff(el)"><template shadowrootmode="open">${SVGSpriteSheet}${html}</template></${DIFFS_TAG_NAME}>`;
+	const sprite = html.includes("<use ") ? SVGSpriteSheet : "";
+	return `<${DIFFS_TAG_NAME} class="${className}" data-pierre-diff data-ignore-morph data-init="window.piUi.messageScroll.hydratePierreDiff(el)"><template shadowrootmode="open">${sprite}${html}</template></${DIFFS_TAG_NAME}>`;
 }

@@ -336,17 +336,7 @@ export class AppStore {
 		return this.transcript.hasOlderMessages;
 	}
 	get promptHistory(): readonly string[] {
-		const history: string[] = [];
-		const messages = this.transcript.allMessages;
-		for (let index = messages.length - 1; index >= 0; index -= 1) {
-			const message = messages[index]!;
-			if (message.role !== "user") continue;
-			const text = message.text.trim();
-			if (!text || history.at(-1) === text) continue;
-			history.push(text);
-			if (history.length === 100) break;
-		}
-		return history;
+		return this.transcript.promptHistory;
 	}
 	get emptyChatHint(): AppKeybindHint {
 		return this.transcript.emptyChatHint;
