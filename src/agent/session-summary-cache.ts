@@ -210,13 +210,11 @@ async function parseSessionFile(
  */
 function applyCompleteLines(state: SessionSummaryCacheEntry, bytes: Uint8Array): void {
 	const result = Bun.JSONL.parseChunk(bytes);
-	if (!result.error && result.done) {
-		for (const value of result.values) {
-			if (isRecord(value)) applyRecord(state, value);
-		}
-		return;
+	for (const value of result.values) {
+		if (isRecord(value)) applyRecord(state, value);
 	}
-	for (let start = 0, newline = bytes.indexOf(10); newline >= 0;) {
+	if (!result.error && result.done) return;
+	for (let start = result.read, newline = bytes.indexOf(10, start); newline >= 0;) {
 		const parsed = Bun.JSONL.parseChunk(bytes, start, newline);
 		if (!parsed.error) {
 			for (const value of parsed.values) {

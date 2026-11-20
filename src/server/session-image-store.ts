@@ -10,7 +10,7 @@ export class SessionImageStore {
 	readonly #images = new Map<string, StoredSessionImage>();
 	readonly #thumbnails = new BoundedCache<string, ThumbnailImage>(200, {
 		maxWeight: 16 * 1024 * 1024,
-		weight: (_key, value) => value.data.byteLength,
+		weight: (_key, value) => value.data.size,
 	});
 
 	/** Decodes the base64 payload once; later requests serve the stored bytes. */

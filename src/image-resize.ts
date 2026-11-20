@@ -1,6 +1,8 @@
 const maxWidth = 2_000;
 const maxHeight = 2_000;
 const maxBase64Bytes = 4.5 * 1_024 * 1_024;
+const maxInputPixels = 100_000_000;
+const imageDecodeOptions = { maxPixels: maxInputPixels } as const;
 const webpQuality = 80;
 
 export type ResizedImage = Readonly<{
@@ -18,7 +20,7 @@ export type ResizedImage = Readonly<{
 const thumbnailDisplayWidth = 768;
 
 export type ThumbnailImage = Readonly<{
-	data: Uint8Array<ArrayBuffer>;
+	data: Blob;
 	mimeType: string;
 	width: number;
 	height: number;
@@ -31,14 +33,14 @@ export async function thumbnailImage(
 ): Promise<ThumbnailImage | undefined> {
 	if (mimeType.toLowerCase().split(";", 1)[0] === "image/gif") return undefined;
 	try {
-		const metadata = await new Bun.Image(input).metadata();
+		const metadata = await new Bun.Image(input, imageDecodeOptions).metadata();
 		if (metadata.width <= thumbnailDisplayWidth) return undefined;
-		const image = new Bun.Image(input).resize(
+		const image = new Bun.Image(input, imageDecodeOptions).resize(
 			thumbnailDisplayWidth,
 			thumbnailDisplayWidth,
 			{ fit: "inside", withoutEnlargement: true },
 		);
-		const data = Buffer.from(await image.webp({ quality: webpQuality }).bytes());
+		const data = await image.webp({ quality: webpQuality }).blob();
 		return { data, mimeType: "image/webp", width: image.width, height: image.height };
 	} catch {
 		return undefined;
@@ -51,7 +53,7 @@ export async function resizeImage(
 ): Promise<ResizedImage | undefined> {
 	let metadata: Bun.Image.Metadata;
 	try {
-		metadata = await new Bun.Image(input).metadata();
+		metadata = await new Bun.Image(input, imageDecodeOptions).metadata();
 	} catch {
 		return undefined;
 	}
@@ -111,7 +113,7 @@ async function encodeWebp(
 	height: number,
 ): Promise<string | undefined> {
 	try {
-		const image = new Bun.Image(input).resize(width, height, {
+		const image = new Bun.Image(input, imageDecodeOptions).resize(width, height, {
 			fit: "inside",
 			withoutEnlargement: true,
 		});

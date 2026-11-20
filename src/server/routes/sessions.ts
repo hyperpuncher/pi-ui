@@ -80,8 +80,10 @@ export const sessionRoutes = {
 			}
 			const thumbnail = await context.resources.sessionImages.getThumbnail(id);
 			// Unresizable sources (tiny, animated, exotic) fall back to full.
-			const body: { data: Uint8Array<ArrayBuffer>; mimeType: string } =
-				thumbnail ?? { data: image.data, mimeType: image.mimeType };
+			const body: { data: BodyInit; mimeType: string } = thumbnail ?? {
+				data: image.data,
+				mimeType: image.mimeType,
+			};
 			return new Response(body.data, {
 				headers: {
 					"cache-control": "private, max-age=3600",
