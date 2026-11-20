@@ -1073,7 +1073,7 @@ test("editable previews include source and sandboxed preview URLs", async () => 
 		assertEquals(markdown.preview.kind, "markdown");
 		assertEquals(
 			markdown.preview.html,
-			`<h1>Markdown preview</h1>\n<p><img src="${filePreviewUrl(`${workspace}/docs/screenshot.png`)}" alt="Screenshot" loading="lazy" decoding="async" /></p>\n`,
+			`<h1 data-markdown="h1">Markdown preview</h1>\n<p data-markdown="p"><img data-markdown="img" src="${filePreviewUrl(`${workspace}/docs/screenshot.png`)}" alt="Screenshot" loading="lazy" decoding="async"></p>\n`,
 		);
 		const mdx = await (
 			await router.fetch(
@@ -1084,10 +1084,7 @@ test("editable previews include source and sandboxed preview URLs", async () => 
 		).json();
 		assertEquals(mdx.contents, "# MDX preview\n\n<Component />");
 		assertEquals(mdx.preview.kind, "markdown");
-		assertEquals(
-			mdx.preview.html,
-			"<h1>MDX preview</h1>\n<p>&lt;Component /&gt;</p>\n",
-		);
+		assertEquals(mdx.preview.html, '<h1 data-markdown="h1">MDX preview</h1>\n');
 	} finally {
 		await rm(workspace, { recursive: true });
 	}

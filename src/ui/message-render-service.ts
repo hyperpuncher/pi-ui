@@ -197,10 +197,12 @@ export class MessageRenderService {
 	assistantFinished(ids: { assistantId?: string; thoughtId?: string }): void {
 		for (const id of [ids.thoughtId, ids.assistantId]) {
 			if (id === undefined) continue;
-			releaseMarkdownStreamingState(id);
 			this.dirtyIds.add(id);
 		}
 		this.frames.flush();
+		for (const id of [ids.thoughtId, ids.assistantId]) {
+			if (id !== undefined) releaseMarkdownStreamingState(id);
+		}
 	}
 	/** Drops message state before the transcript changes wholesale or the theme changes. */
 	reset(): void {

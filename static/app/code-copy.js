@@ -38,7 +38,7 @@ async function handleCodeCopy(event) {
 	if (!(target instanceof Element)) return;
 	const button = target.closest("[data-copy-code]");
 	if (!(button instanceof HTMLButtonElement)) return;
-	const block = button.closest("[data-code-block]");
+	const block = button.closest('[data-code-block], [data-markdown="code-block"]');
 	const code = block?.querySelector("code");
 	const text = block?.getAttribute("data-code-source") || code?.textContent;
 	if (!text) return;

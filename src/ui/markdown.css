@@ -1,66 +1,12 @@
 @layer components {
-	.markdown-table {
-		width: 100%;
-		min-width: max-content;
-		table-layout: auto;
-		font-size: var(--text-base);
-	}
-	.markdown-table-heading,
-	.markdown-table-cell {
-		padding: 0.5rem 0.75rem;
-		vertical-align: top;
-		overflow-wrap: break-word;
-		white-space: normal;
-	}
-	.markdown-table-heading {
-		font-weight: 600;
-	}
-	.markdown-table-heading:not([align]) {
-		text-align: start;
-	}
-
-	.code-block {
+	.markdown-content [data-markdown="code-block"] {
 		margin-block: 1rem;
 		overflow: hidden;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
 		background: var(--surface-control);
 	}
-	.code-block pre {
-		border-radius: 0;
-		background: var(--surface-code);
-		padding-block: 0;
-		padding-inline: 1rem;
-		font-size: var(--text-sm);
-		line-height: 1.375rem;
-		tab-size: 4;
-	}
-	.code-block pre.diffs {
-		padding-inline: 0;
-		/* stylelint-disable-next-line declaration-no-important -- override Pierre's inline theme background, as the file widgets do */
-		background-color: var(--surface-code) !important;
-	}
-	.code-block pre.diffs > code {
-		display: grid;
-		counter-reset: code-line;
-	}
-	.code-block .line {
-		position: relative;
-		min-block-size: 1lh;
-		padding-inline: 5ch 1ch;
-		white-space: pre-wrap;
-		counter-increment: code-line;
-	}
-	.code-block .line::before {
-		position: absolute;
-		inset-inline-start: 1ch;
-		width: 3ch;
-		color: var(--text-muted);
-		text-align: right;
-		content: counter(code-line) / "";
-		user-select: none;
-	}
-	.code-block-header {
+	.markdown-content [data-markdown="code-header"] {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -69,6 +15,37 @@
 		padding-inline: 0.75rem 0.375rem;
 		color: var(--text-muted);
 		font: var(--text-xs)/1.25 var(--font-mono);
+	}
+	.markdown-content [data-markdown="code-block"] pre {
+		display: flex;
+		gap: 1ch;
+		overflow-x: auto;
+		margin: 0;
+		border-top: 1px solid var(--border);
+		border-radius: var(--radius-md) var(--radius-md) 0 0;
+		background: var(--surface-code);
+		padding-block: 0;
+		padding-inline: 1ch;
+		font-size: var(--text-sm);
+		line-height: 1.375rem;
+		tab-size: 4;
+	}
+	.markdown-content [data-markdown="code-block"] pre code {
+		display: block;
+		flex: 1;
+		min-width: 0;
+		white-space: pre;
+	}
+	.markdown-content [data-markdown="code-lines"] {
+		display: block;
+	}
+	.markdown-content [data-markdown="line-numbers"] {
+		flex-shrink: 0;
+		width: 3ch;
+		color: var(--text-muted);
+		text-align: right;
+		white-space: pre;
+		user-select: none;
 	}
 	.code-copy-button {
 		position: relative;
@@ -98,12 +75,6 @@
 	.code-copy-button[data-copy-state="copied"] > svg:last-child {
 		opacity: 1;
 		scale: 1;
-	}
-	.code-block-content {
-		overflow: hidden;
-		border-top: 1px solid var(--border);
-		border-radius: var(--radius-md) var(--radius-md) 0 0;
-		background: var(--surface-code);
 	}
 
 	/* Line heights in whole 2px steps keep text on whole device pixels at
@@ -255,14 +226,20 @@
 	.markdown-content .table-container table {
 		width: max-content;
 		min-width: 100%;
+		table-layout: auto;
 		border-collapse: separate;
 		border-spacing: 0;
+		font-size: var(--text-base);
 	}
 
 	.markdown-content .table-container :where(th, td) {
 		max-width: 24rem;
 		border-block-end: 1px solid var(--markdown-table-border);
 		border-inline-end: 1px solid var(--markdown-table-border);
+		padding: 0.5rem 0.75rem;
+		vertical-align: top;
+		overflow-wrap: break-word;
+		white-space: normal;
 	}
 
 	.markdown-content .table-container :where(th, td):last-child {
@@ -275,7 +252,12 @@
 
 	.markdown-content .table-container th {
 		background: var(--surface-control);
+		font-weight: 600;
 		white-space: nowrap;
+	}
+
+	.markdown-content .table-container th:not([align]) {
+		text-align: start;
 	}
 
 	.markdown-content .table-container tr:nth-child(even) td {
@@ -306,11 +288,11 @@
 		color: var(--text-muted);
 	}
 
-	.markdown-content .task-list-item {
+	.markdown-content li:has(> input[type="checkbox"]) {
 		list-style: none;
 	}
 
-	.markdown-content .task-list-item-checkbox {
+	.markdown-content li > input[type="checkbox"] {
 		width: 0.875rem;
 		height: 0.875rem;
 		margin-inline: -1.375rem 0.5rem;
@@ -326,7 +308,7 @@
 		color: var(--text-muted);
 	}
 
-	.markdown-content a {
+	.markdown-content a[href] {
 		text-decoration: underline;
 		text-underline-offset: 3px;
 	}

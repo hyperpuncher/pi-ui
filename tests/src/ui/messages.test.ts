@@ -363,7 +363,7 @@ test("thought visibility does not wait for per-row signal effects", () => {
 	});
 	assertStringIncludes(html, 'id="message-thought-1"');
 	assertStringIncludes(html, 'class="thought-content"');
-	assertStringIncludes(html, "<strong>reasoning</strong>");
+	assertStringIncludes(html, '<strong data-markdown="strong">reasoning</strong>');
 	assertStringExcludes(html, "data-show");
 	assertStringExcludes(html, "data-ignore-morph");
 });
@@ -494,5 +494,8 @@ test("minimal mode summarizes thinking-only turns, skips hidden thought markdown
 	assertStringIncludes(expandedSummary, 'aria-expanded="true"');
 	const expandedThought = renderer.renderMessageElement(thought!.id)!;
 	assertStringIncludes(expandedThought, "minimal-turn-expanded");
-	assertStringIncludes(expandedThought, "<strong>secret reasoning</strong>");
+	assertStringIncludes(
+		expandedThought,
+		'<strong data-markdown="strong">secret reasoning</strong>',
+	);
 });

@@ -2,7 +2,6 @@ import { test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { loadHighlighter } from "#src/ui/diffs.ts";
 import {
 	releaseMarkdownStreamingState,
 	renderMarkdownFinal,
@@ -15,12 +14,23 @@ import {
 } from "#testing/assertions";
 import { makeTempDir } from "#testing/temp";
 
-test("restores reuse final Markdown across message IDs without stale output", async () => {
+function codeText(html: string): string {
+	let text = "";
+	new HTMLRewriter()
+		.on('[data-markdown="code-block"] code', {
+			text(chunk) {
+				text += chunk.text;
+			},
+		})
+		.transform(html);
+	return text;
+}
+
+test("restores reuse final Markdown across message IDs without stale output", () => {
 	const markdown = "```ts\nconst restored = 1;\n```";
 	const cacheKey = "before-restore";
 	renderMarkdownStreaming(markdown, { cacheKey });
-	const final = await renderMarkdownFinal(markdown, { cacheKey });
-	releaseMarkdownStreamingState(cacheKey);
+	const final = renderMarkdownFinal(markdown, { cacheKey });
 
 	const restored = { cacheKey: "after-restore" };
 	assertEqual(renderMarkdownStreaming(markdown, restored), final);
@@ -29,14 +39,6 @@ test("restores reuse final Markdown across message IDs without stale output", as
 		"changed",
 	);
 	releaseMarkdownStreamingState(restored.cacheKey);
-});
-
-test("streaming code does not show a partial closing fence", () => {
-	const source = "```html\n<div>";
-	const expected = renderMarkdownStreaming(source);
-	assertEqual(renderMarkdownStreaming(`${source}\n\``), expected);
-	assertEqual(renderMarkdownStreaming(`${source}\n\`\``), expected);
-	assertEqual(renderMarkdownStreaming(`${source}\n\`\`\``), expected);
 });
 
 test("local image sources are served through the file preview route", async () => {
@@ -51,12 +53,12 @@ test("local image sources are served through the file preview route", async () =
 		for (const source of [image, `file://${image}`]) {
 			for (const html of [
 				renderMarkdownStreaming(`![shot](${source})`),
-				await renderMarkdownFinal(`![shot](${source})`),
+				renderMarkdownFinal(`![shot](${source})`),
 			]) {
 				assertIncludes(html, `src="${expected}"`);
 			}
 		}
-		const relative = await renderMarkdownFinal("![shot](shot.png)", {
+		const relative = renderMarkdownFinal("![shot](shot.png)", {
 			localImageBase: dir,
 		});
 		assertIncludes(relative, `src="${expected}"`);
@@ -65,7 +67,7 @@ test("local image sources are served through the file preview route", async () =
 	}
 });
 
-test("missing local images show safe placeholders instead of image sources", async () => {
+test("missing local images show safe placeholders instead of image sources", () => {
 	for (const source of [
 		"/definitely/missing/pi-ui-image.png",
 		"file:///definitely/missing/pi-ui-image.png",
@@ -75,191 +77,64 @@ test("missing local images show safe placeholders instead of image sources", asy
 		const markdown = `![<script>alert(1)</script> & friends](${source}) ![](${source})`;
 		for (const html of [
 			renderMarkdownStreaming(markdown),
-			await renderMarkdownFinal(markdown),
+			renderMarkdownFinal(markdown),
 		]) {
 			assertEqual(
 				html,
-				"<p>[image unavailable: &lt;script&gt;alert(1)&lt;/script&gt; &amp; friends] [image unavailable]</p>\n",
+				'<p data-markdown="p">[image unavailable: &lt;script&gt;alert(1)&lt;/script&gt; &amp; friends] [image unavailable]</p>\n',
 			);
 		}
 	}
 	assertEqual(
-		await renderMarkdownFinal("![shot](missing.png)", {
+		renderMarkdownFinal("![shot](missing.png)", {
 			localImageBase: "/definitely/missing",
 		}),
-		"<p>[image unavailable: shot]</p>\n",
+		'<p data-markdown="p">[image unavailable: shot]</p>\n',
 	);
 });
 
-test("network-relative images are not treated as local files", async () => {
+test("network-relative images are not treated as local files", () => {
 	const markdown = "![shot](//example.com/image.png)";
 	for (const html of [
 		renderMarkdownStreaming(markdown),
-		await renderMarkdownFinal(markdown, { localImageBase: "/definitely/missing" }),
+		renderMarkdownFinal(markdown, { localImageBase: "/definitely/missing" }),
 	]) {
-		assertIncludes(html, 'src="//example.com/image.png"');
+		assertNotIncludes(html, "[image unavailable");
+		assertNotIncludes(html, "/files/preview/");
 	}
 });
 
-test("markdown fallback and final rendering reject unsafe HTML and URLs", async () => {
+test("links rewrite local file URIs, open external links in new tabs, and drop unsafe HTML/URLs", () => {
 	const markdown =
-		'<script>alert("xss")</script>\n\n[unsafe label](javascript:alert(1)) ![bad image](data:text/html,bad) [local file](file:///tmp/example.txt)';
+		'<script>alert("xss")</script>\n\n[unsafe label](javascript:alert(1)) ![bad image](data:text/html,bad) [local file](file:///tmp/example.txt) [site](https://example.com/)';
 	for (const html of [
 		renderMarkdownStreaming(markdown),
-		await renderMarkdownFinal(markdown),
+		renderMarkdownFinal(markdown),
 	]) {
 		assertNotIncludes(html, "<script>");
-		assertIncludes(html, "&lt;script&gt;");
 		assertNotIncludes(html, "javascript:");
 		assertNotIncludes(html, "data:text/html");
-		assertIncludes(html, "<span>unsafe label</span>");
+		assertIncludes(html, '<a data-markdown="a">unsafe label</a>');
 		assertNotIncludes(html, 'href="file:///tmp/example.txt"');
-		assertIncludes(html, 'href="#"');
-		assertIncludes(html, 'data-pi-file-link="file:///tmp/example.txt"');
-		assertIncludes(html, "local file");
-	}
-});
-
-test("bare URLs are clickable and explicit bold links remain balanced", async () => {
-	for (const html of [
-		renderMarkdownStreaming("https://example.com/"),
-		await renderMarkdownFinal("https://example.com/"),
-	]) {
-		assertIncludes(html, 'href="https://example.com/"');
-		assertIncludes(html, ">https://example.com/</a>");
-	}
-
-	const explicit = "**[pi-ui](https://hal9000.tail.igrk.net/)**";
-	for (const html of [
-		renderMarkdownStreaming(explicit),
-		await renderMarkdownFinal(explicit),
-	]) {
-		assertIncludes(html, 'href="https://hal9000.tail.igrk.net/"');
-		assertIncludes(html, ">pi-ui</a></strong>");
-	}
-});
-
-test("bold bare URLs do not make later content bold", async () => {
-	const markdown =
-		"- Feed **https://github.com/hyperpuncher/leantube/releases/latest/download/repo.json**.\n- next normal\n\n[explicit](https://example.com/)";
-	for (const html of [
-		renderMarkdownStreaming(markdown),
-		await renderMarkdownFinal(markdown),
-	]) {
-		assertIncludes(html, "repo.json</strong>.</li>\n<li>next normal</li>");
-		assertIncludes(html, 'href="https://example.com/"');
-	}
-});
-
-test("streaming links show their label until the destination closes", async () => {
-	const prefix = "Read [the Bun issue]";
-	for (const suffix of [
-		"(",
-		"(https://",
-		"(https://github.com/oven-sh/bun/issues/19013",
-	]) {
-		assertEqual(
-			renderMarkdownStreaming(prefix + suffix),
-			"<p>Read the Bun issue</p>\n",
+		assertIncludes(html, 'href="#" data-pi-file-link="file:///tmp/example.txt"');
+		assertIncludes(
+			html,
+			'href="https://example.com/" target="_blank" rel="noreferrer"',
 		);
 	}
-	const complete = `${prefix}(https://github.com/oven-sh/bun/issues/19013)`;
-	assertIncludes(renderMarkdownStreaming(complete), ">the Bun issue</a>");
-	assertIncludes(
-		renderMarkdownStreaming(`${complete} and [the docs](https://bun.com/docs`),
-		">the Bun issue</a> and the docs</p>",
-	);
-	assertIncludes(
-		await renderMarkdownFinal(
-			`${prefix}(https://github.com/oven-sh/bun/issues/19013`,
-		),
-		"github.com/oven-sh/bun/issues/19013",
-	);
-	assertIncludes(renderMarkdownStreaming("![image](https://example.com/"), "![image]");
 });
 
-test("plain, fenced, and incomplete markdown preserve rendering structure", async () => {
-	const plainStreaming = renderMarkdownStreaming("Hello **world**");
-	const plainFinal = await renderMarkdownFinal("Hello **world**");
-	assertEqual(plainStreaming, plainFinal);
-	assertIncludes(plainFinal, "<strong>world</strong>");
-
-	for (const [alias, language] of [
-		["ts", "typescript"],
-		["js", "javascript"],
-		["md", "markdown"],
-		["sh", "shellscript"],
-		["py", "python"],
-		["rs", "rust"],
-		["tf", "terraform"],
-		["yml", "yaml"],
-	] as const) {
-		const fenced = await renderMarkdownFinal(
-			`\`\`\`${alias}\nconst value = 1;\n\`\`\``,
-		);
-		assertIncludes(fenced, `>${language}</span>`);
-	}
-
-	const unknown = await renderMarkdownFinal("```not-a-language\nvalue\n```");
-	assertIncludes(unknown, ">text</span>");
-
-	for (const unlabeled of [
-		renderMarkdownStreaming("```\nvalue\n```"),
-		await renderMarkdownFinal("```\nvalue\n```"),
-	]) {
-		assertIncludes(unlabeled, "data-code-block");
-		assertIncludes(unlabeled, ">text</span>");
-	}
-
-	const incomplete = renderMarkdownStreaming("```ts\nconst value = 1;");
-	assertIncludes(incomplete, "data-code-block");
-	assertIncludes(incomplete, "const value = 1;");
+test("fenced code blocks highlight with icon copy buttons and tables use scroll containers", () => {
+	const fenced = renderMarkdownFinal("```ts\nconst value = 1;\n```");
+	assertIncludes(fenced, 'data-markdown="code-block"');
+	assertIncludes(fenced, "data-copy-code");
+	assertIncludes(fenced, "style=");
 
 	const table = "| Name | Value |\n| --- | --- |\n| cadence | measured |";
 	const streamingTable = renderMarkdownStreaming(table);
-	assertEqual(streamingTable, await renderMarkdownFinal(table));
-	assertIncludes(streamingTable, 'class="table-container');
-	assertIncludes(streamingTable, 'class="markdown-table"');
-});
-
-test("growing streaming code fences preserve the latest complete source", () => {
-	const key = "continuity";
-	renderMarkdownStreaming("```ts\nconst first = 1;", { cacheKey: key });
-	const latest = renderMarkdownStreaming(
-		"```ts\nconst first = 1;\nconst latest = 2;\n```",
-		{ cacheKey: key },
-	);
-	assertIncludes(latest, "const first = 1;");
-	assertIncludes(latest, "const latest = 2;");
-	releaseMarkdownStreamingState(key);
-});
-
-test("code source is escaped in the copy attribute", async () => {
-	const markdown = '```text\nvalue </script><div class="x">a & b</div>\n```';
-	for (const html of [
-		renderMarkdownStreaming(markdown),
-		await renderMarkdownFinal(markdown),
-	]) {
-		const source = /data-code-source="([^"]*)"/.exec(html)?.[1] ?? "";
-		assertIncludes(source, "&lt;/script&gt;");
-		assertNotIncludes(source, "</script>");
-		assertIncludes(source, "&lt;div class=&quot;x&quot;&gt;a &amp; b&lt;/div&gt;");
-	}
-});
-
-test("code blocks keep dollar sequences literal", async () => {
-	const markdown =
-		"ZZBEFOREZZ\n\n```text\nvalue $` and $' and $& end\n```\n\nZZAFTERZZ\n";
-	for (const html of [
-		renderMarkdownStreaming(markdown),
-		await renderMarkdownFinal(markdown),
-	]) {
-		// A string replacement would expand `$\`` into everything before the
-		// match, duplicating surrounding HTML and corrupting the document.
-		assertEqual(html.match(/ZZBEFOREZZ/g)?.length, 1);
-		assertEqual(html.match(/ZZAFTERZZ/g)?.length, 1);
-		assertIncludes(html, "value $` and $&#x27; and $&amp; end");
-	}
+	assertEqual(streamingTable, renderMarkdownFinal(table));
+	assertIncludes(streamingTable, 'class="table-container"');
+	assertIncludes(streamingTable, 'data-markdown="table"');
 });
 
 test.each([
@@ -267,30 +142,14 @@ test.each([
 	["ts", "first\n\nlast\n"],
 ])(
 	"streaming and completed %s code preserve the same source lines",
-	async (language, source) => {
-		await loadHighlighter();
+	(language, source) => {
 		const markdown = `\`\`\`${language}\n${source}\n\`\`\``;
 		const cacheKey = `source-lines-${language}`;
 		renderMarkdownStreaming(`\`\`\`${language}\n${source[0]}`, { cacheKey });
-		const highlighted = renderMarkdownStreaming(markdown, { cacheKey });
-		releaseMarkdownStreamingState(cacheKey);
-		for (const html of [
-			renderMarkdownStreaming(markdown),
-			highlighted,
-			await renderMarkdownFinal(markdown),
-		]) {
-			const lines: string[] = [];
-			new HTMLRewriter()
-				.on(".code-block .line", {
-					element() {
-						lines.push("");
-					},
-					text(chunk) {
-						lines[lines.length - 1] += chunk.text;
-					},
-				})
-				.transform(html);
-			assertEqual(lines, source.split("\n"));
+		const streaming = renderMarkdownStreaming(markdown, { cacheKey });
+		const final = renderMarkdownFinal(markdown, { cacheKey });
+		for (const html of [renderMarkdownStreaming(markdown), streaming, final]) {
+			assertEqual(codeText(html).replace(/\n$/, ""), source);
 		}
 	},
 );

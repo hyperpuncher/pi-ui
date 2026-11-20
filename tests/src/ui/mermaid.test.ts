@@ -18,9 +18,9 @@ test("completed Mermaid fences use SVG in both Markdown paths", async () => {
 	]) {
 		expect(html).toContain("<svg");
 		expect(html).toContain("Request flow");
-		expect(html).toContain("<p>before</p>");
-		expect(html).toContain("<p>after</p>");
-		expect(html).not.toContain("data-code-block");
+		expect(html).toContain('<p data-markdown="p">before</p>');
+		expect(html).toContain('<p data-markdown="p">after</p>');
+		expect(html).not.toContain('data-markdown="code-block"');
 	}
 });
 
@@ -30,8 +30,8 @@ test("opening a Mermaid fence does not flash an empty code block", () => {
 			const html = renderMarkdownStreaming(
 				`before\n\n${fence}${"mermaid".slice(0, length)}`,
 			);
-			expect(html).toContain("<p>before</p>");
-			expect(html).not.toMatch(/data-code-block|<svg/);
+			expect(html).toContain('<p data-markdown="p">before</p>');
+			expect(html).not.toMatch(/data-markdown="code-block"|<svg/);
 		}
 	}
 	expect(renderMarkdownStreaming("```text\nvisible code")).toContain("visible code");
@@ -43,14 +43,14 @@ test("live diagrams use complete lines and retain the last valid snapshot", () =
 	const first = renderMarkdownStreaming(open, options);
 	expect(first).toContain("<svg");
 	expect(first).toContain("First");
-	expect(first).toContain("<p>before</p>");
+	expect(first).toContain('<p data-markdown="p">before</p>');
 	expect(renderMarkdownStreaming(open + ' B["Second', options)).toBe(first);
 	const incomplete = open + ' B["Second\n';
 	expect(renderMarkdownStreaming(incomplete, options)).toBe(first);
 	const recovered = incomplete + ' line"]\n';
 	const second = renderMarkdownStreaming(recovered, options);
 	expect(second).toContain("Second");
-	expect(second).not.toContain("data-code-block");
+	expect(second).not.toContain('data-markdown="code-block"');
 	for (const closing of ["`", "``", "```", "```\n"]) {
 		expect(renderMarkdownStreaming(recovered + closing, options)).toBe(second);
 	}
@@ -90,7 +90,7 @@ test("closing an invalid draft uses the readable code fallback", async () => {
 		await renderMarkdownFinal(closed, options),
 	]) {
 		expect(html).not.toContain('class="mermaid-diagram"');
-		expect(html).toContain("data-code-block");
+		expect(html).toContain('data-markdown="code-block"');
 	}
 	releaseMarkdownStreamingState(options.cacheKey);
 });
@@ -137,7 +137,7 @@ test("invalid and oversized diagrams remain readable escaped code", async () => 
 			await renderMarkdownFinal(fence(source)),
 		]) {
 			expect(html).not.toContain('class="mermaid-diagram"');
-			expect(html).toContain("data-code-block");
+			expect(html).toContain('data-markdown="code-block"');
 			expect(html).not.toContain("</script>");
 		}
 	}

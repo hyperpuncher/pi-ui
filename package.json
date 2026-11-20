@@ -61,6 +61,7 @@
 		"@pierre/diffs": "^1.6.4",
 		"@pierre/highlights": "^0.5.1",
 		"@pierre/trees": "^1.0.0",
+		"@pierre/words": "^0.2.2",
 		"@types/bun": "^1.4.5",
 		"open-props": "^1.7.23",
 		"oxlint": "^1.94.0",

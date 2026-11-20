@@ -664,7 +664,12 @@
 		.message-tool {
 			--text-base: var(--text-xs);
 		}
-		#messages :is(.tool-plain-output, .tool-pending-output, .code-block pre) {
+		#messages
+			:is(
+				.tool-plain-output,
+				.tool-pending-output,
+				[data-markdown="code-block"] pre
+			) {
 			font-size: var(--text-xs);
 			line-height: 1.125rem;
 		}

@@ -2,9 +2,16 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
-import { getFiletypeFromFileName, getHighlighterIfLoaded } from "@pierre/diffs";
-import { isSupportedLanguage } from "@pierre/highlights";
+import { createHighlightsPlugin } from "@pierre/words/highlights";
+import {
+	type CodeHighlighterPlugin,
+	type CodeOptions,
+	createHtmlRenderer,
+	escapeHtml,
+	type HtmlOptions,
+} from "@pierre/words/html";
 
+import { codeThemeObject } from "#src/code-themes.ts";
 import { activeCodeThemes, codeThemeKey } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
 import { Icon } from "#src/ui/icon.tsx";
@@ -13,153 +20,205 @@ import { BoundedCache } from "#src/ui/render-cache.ts";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { fileUriToPath } from "#static/file-uri.js";
 
-// Streaming entries track roughly two restored pages; final results can deduplicate
+// Streaming entries track roughly two restored pages; final results deduplicate
 // repeated content across a much longer session.
 const maxStreamingEntries = 100;
 const maxFinalMarkdownEntries = 500;
-const maxCodeBlockEntries = 500;
 const maxFinalCacheBytes = 8 * 1024 * 1024;
+const liveTokenizerThreshold = 1024;
 
-type PendingMermaidBlock = { index: number; source: string };
+const fileLinkPrefix = "/__pi_file__/";
+const dataImagePrefix = "/__pi_data_img__/";
+const missingImageSentinel = "/__pi_missing_img__";
+const localImagePattern = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i;
+const dataImagePattern = /^data:image\/(?:png|jpeg|gif|webp);base64,/i;
+const customUrlPattern = /file:|!\[/i;
+const mermaidPattern = /mermaid/i;
+const baseCodeOptions = {
+	controls: { code: { copy: true, download: false } },
+	lineNumbers: true,
+} as const;
+
+type WordsHtmlRenderer = ReturnType<typeof createHtmlRenderer>;
+
+type RendererFeatures = {
+	fencedCode: boolean;
+	customUrls: boolean;
+	mermaid: boolean;
+};
+
 type StreamingMarkdownState = {
+	renderer: WordsHtmlRenderer;
+	themeKey: string;
+	features: RendererFeatures;
 	markdown: string;
+	stableHtml: string;
 	html: string;
-	diagram?: PendingMermaidBlock & { html: string };
 };
 
 const streamingCache = new BoundedCache<string, StreamingMarkdownState>(
 	maxStreamingEntries,
+	{
+		onEvict: (_key, state) => {
+			state.renderer.dispose();
+		},
+	},
 );
-const stringCacheOptions = {
-	maxWeight: maxFinalCacheBytes,
-	// V8 strings can use one or two bytes per code unit. Use the upper bound so
-	// restored sessions with large tool output cannot retain hundreds of MiB.
-	weight: (key: string, value: string) => 2 * (key.length + value.length),
-};
-const highlightedCache = new BoundedCache<string, string>(
-	maxFinalMarkdownEntries,
-	stringCacheOptions,
-);
-const codeBlockCache = new BoundedCache<string, string>(
-	maxCodeBlockEntries,
-	stringCacheOptions,
-);
-const incompleteLinkPattern = /^\[([^[\]\n]+)\]\([^\n)]*$/;
-const codeBlockPattern =
-	/<pre><code(?: class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/g;
 
-const markdownHtmlRewriter = new HTMLRewriter()
-	.on("a", {
-		element(element) {
-			const href = element.getAttribute("href");
-			const url = href ? safeUrl(href, { allowDataImage: false }) : undefined;
-			if (!href || !url) {
-				element.before("<span>", { html: true });
-				element.after("</span>", { html: true });
-				element.removeAndKeepContent();
-				return;
-			}
-			if (url.protocol === "file:") {
-				// Keep the local URI out of href so the browser cannot attempt a
-				// forbidden file:// navigation when client-side handling is unavailable.
-				element.setAttribute("href", "#");
-				element.setAttribute("data-pi-file-link", href);
-			} else {
-				element.setAttribute("target", "_blank");
-				element.setAttribute("rel", "noreferrer");
-			}
-		},
-	})
-	.on("img", {
-		element(element) {
-			const src = element.getAttribute("src");
-			if (!src || !safeUrl(src, { allowDataImage: true })) {
-				element.remove();
-				return;
-			}
-			rewriteLocalImageSource(element, src);
-			// Markdown images are rare next to attachments; lazy keeps them
-			// from being fetched or decoded offscreen. No reserved box here:
-			// dimensions are only known for attachment images.
-			element.setAttribute("loading", "lazy");
-			element.setAttribute("decoding", "async");
-		},
-	})
-	.on("table", {
-		element(element) {
-			element.setAttribute("class", "markdown-table");
-			element.before('<div class="table-container">', { html: true });
-			element.after("</div>", { html: true });
-		},
-	})
-	.on("th", {
-		element(element) {
-			element.setAttribute("class", "markdown-table-heading");
-		},
-	})
-	.on("td", {
-		element(element) {
-			element.setAttribute("class", "markdown-table-cell");
-		},
+type FinalCacheEntry = {
+	markdown: string;
+	html: string;
+};
+
+const finalCache = new BoundedCache<string, FinalCacheEntry>(maxFinalMarkdownEntries, {
+	maxWeight: maxFinalCacheBytes,
+	// V8/JSC strings can use up to two bytes per code unit. Use the upper bound
+	// so restored sessions with large output cannot retain hundreds of MiB.
+	weight: (_key, entry) => 2 * (entry.markdown.length + entry.html.length),
+});
+
+let cachedPluginKey = "";
+let cachedCodePlugin: CodeHighlighterPlugin | undefined;
+let plainFinalRenderer: WordsHtmlRenderer | undefined;
+let codeFinalRendererKey = "";
+let codeFinalRenderer: WordsHtmlRenderer | undefined;
+
+function getCodePlugin(): CodeHighlighterPlugin | undefined {
+	const key = codeThemeKey();
+	if (key === cachedPluginKey && cachedCodePlugin) return cachedCodePlugin;
+	const light = codeThemeObject(activeCodeThemes.light);
+	const dark = codeThemeObject(activeCodeThemes.dark);
+	if (!light || !dark) return undefined;
+	cachedPluginKey = key;
+	const base = createHighlightsPlugin({
+		themes: { light, dark },
+		defaultColor: "light-dark()",
 	});
+	// LiveTokenizer has ~0.37ms setup cost; use one-shot highlight until a fence grows.
+	cachedCodePlugin = {
+		highlight: base.highlight,
+		createSession() {
+			let live: ReturnType<NonNullable<typeof base.createSession>> | undefined;
+			return {
+				highlight(options: CodeOptions) {
+					if (!live && options.code.length < liveTokenizerThreshold) {
+						return base.highlight(options);
+					}
+					live ??= base.createSession?.();
+					return live ? live.highlight(options) : base.highlight(options);
+				},
+				dispose() {
+					live?.dispose();
+					live = undefined;
+				},
+			};
+		},
+	};
+	return cachedCodePlugin;
+}
+
+function getSharedFinalRenderer(fencedCode: boolean): WordsHtmlRenderer {
+	if (!fencedCode) {
+		plainFinalRenderer ??= createHtmlRenderer(baseCodeOptions);
+		return plainFinalRenderer;
+	}
+	const key = codeThemeKey();
+	if (key === codeFinalRendererKey && codeFinalRenderer) return codeFinalRenderer;
+	codeFinalRenderer?.dispose();
+	codeFinalRendererKey = key;
+	codeFinalRenderer = createHtmlRenderer({
+		...baseCodeOptions,
+		plugins: { code: getCodePlugin() },
+	});
+	return codeFinalRenderer;
+}
+
+function detectFeatures(markdown: string, localImageBase = ""): RendererFeatures {
+	const fencedCode = markdown.includes("```") || markdown.includes("~~~");
+	const customUrls =
+		customUrlPattern.test(markdown) ||
+		(localImageBase !== "" && markdown.includes("!["));
+	const mermaid = fencedCode && mermaidPattern.test(markdown);
+	return { fencedCode, customUrls, mermaid };
+}
+
+function featuresMatch(a: RendererFeatures, b: RendererFeatures): boolean {
+	return (
+		a.fencedCode === b.fencedCode &&
+		a.customUrls === b.customUrls &&
+		a.mermaid === b.mermaid
+	);
+}
+
+function applyStreamingUpdate(
+	state: StreamingMarkdownState,
+	markdown: string,
+	incomplete: boolean,
+	active: boolean,
+): string {
+	const update = state.renderer.render(markdown, incomplete, active);
+	if (update.reset) {
+		state.stableHtml = postProcessHtml(update.stable);
+	} else if (update.addition) {
+		state.stableHtml += postProcessHtml(update.addition);
+	}
+	state.html = dedupeMermaidIds(state.stableHtml + postProcessHtml(update.pending));
+	state.markdown = markdown;
+	return state.html;
+}
 
 export function renderMarkdownStreaming(
 	markdown: string,
 	options: { cacheKey?: string } = {},
 ): string {
 	const cacheKey = options.cacheKey;
+	const themeKey = codeThemeKey();
 	const cached = cacheKey ? streamingCache.get(cacheKey) : undefined;
-	if (cached?.markdown === markdown) {
+	if (cached?.markdown === markdown && cached.themeKey === themeKey) {
 		return cached.html;
 	}
-	// Restored messages can use their final HTML without starting another tokenizer.
-	// Keep active streams on their existing incremental state.
+	// Restored messages can reuse their final HTML without starting a session.
 	if (!cached && cacheKey) {
-		const final = highlightedCache.get(finalMarkdownCacheKey(markdown, cacheKey));
+		const final = getCachedFinal(markdown, cacheKey);
 		if (final !== undefined) return final;
 	}
 
-	const compiled = compileMarkdown(hideIncompleteLinkDestination(markdown));
-	const pending = /class="language-mermaid(?:\s|")/i.test(compiled)
-		? pendingMermaidBlock(markdown)
-		: undefined;
-	let diagram =
-		pending &&
-		cached &&
-		markdown.startsWith(cached.markdown) &&
-		cached.diagram?.index === pending.index
-			? cached.diagram
-			: undefined;
-	// A header alone can produce an empty SVG; wait for another completed source line.
-	if (
-		pending &&
-		pending.source.trim().includes("\n") &&
-		pending.source !== diagram?.source
-	) {
-		// Keep only the latest draft in the message cache, not the completed-diagram cache.
-		diagram = {
-			...pending,
-			html:
-				renderMermaid(
-					pending.source,
-					cacheKey || compiled,
-					pending.index,
-					false,
-				) ??
-				diagram?.html ??
-				"",
-		};
+	const features = detectFeatures(markdown);
+	if (!cacheKey) {
+		const renderer = createRenderer(markdown, "", features);
+		try {
+			const update = renderer.render(markdown, true, true);
+			return dedupeMermaidIds(postProcessHtml(update.html));
+		} finally {
+			renderer.dispose();
+		}
 	}
-	const html = renderStreamingCodeBlocks(
-		compiled,
-		cacheKey ?? "",
-		pending ? { index: pending.index, html: diagram?.html ?? "" } : undefined,
-	);
-	if (cacheKey) streamingCache.set(cacheKey, { markdown, html, diagram });
-	return html;
+
+	let state = cached;
+	if (
+		!state ||
+		state.themeKey !== themeKey ||
+		!featuresMatch(state.features, features)
+	) {
+		state?.renderer.dispose();
+		state = {
+			renderer: createRenderer(cacheKey, "", features),
+			themeKey,
+			features,
+			markdown: "",
+			stableHtml: "",
+			html: "",
+		};
+		streamingCache.set(cacheKey, state);
+	}
+
+	return applyStreamingUpdate(state, markdown, true, true);
 }
 
 export function releaseMarkdownStreamingState(cacheKey: string): void {
+	const state = streamingCache.get(cacheKey);
+	if (!state) return;
+	state.renderer.dispose();
 	streamingCache.delete(cacheKey);
 }
 
@@ -168,17 +227,65 @@ export function renderMarkdownFinal(
 	options: { localImageBase?: string; cacheKey?: string } = {},
 ): string {
 	const localImageBase = options.localImageBase ?? "";
+	const scope = options.cacheKey ?? markdown;
 	const cacheKey = finalMarkdownCacheKey(markdown, options.cacheKey, localImageBase);
-	const cached = highlightedCache.get(cacheKey);
-	if (cached) return cached;
-	let html = highlightCodeBlocksFinal(
-		compileMarkdown(markdown),
-		options.cacheKey ?? markdown,
-	);
-	if (localImageBase) html = rewriteRelativeImageSources(html, localImageBase);
-	// Do not keep plain code blocks that the highlighter can improve later.
-	if (getHighlighterIfLoaded()) highlightedCache.set(cacheKey, html);
-	return html;
+	const cached = getCachedFinal(markdown, options.cacheKey, localImageBase, cacheKey);
+	if (cached !== undefined) {
+		if (options.cacheKey) releaseMarkdownStreamingState(options.cacheKey);
+		return cached;
+	}
+
+	const features = detectFeatures(markdown, localImageBase);
+	// Reuse the live streaming renderer when finalizing a streamed message so
+	// completed blocks and highlighted fences are not parsed twice.
+	const streaming =
+		options.cacheKey && !localImageBase
+			? streamingCache.get(options.cacheKey)
+			: undefined;
+	if (
+		streaming &&
+		streaming.themeKey === codeThemeKey() &&
+		featuresMatch(streaming.features, features)
+	) {
+		try {
+			const html = applyStreamingUpdate(streaming, markdown, false, false);
+			finalCache.set(cacheKey, { markdown, html });
+			return html;
+		} finally {
+			releaseMarkdownStreamingState(options.cacheKey!);
+		}
+	}
+	if (options.cacheKey) releaseMarkdownStreamingState(options.cacheKey);
+
+	// Common messages without custom URLs or Mermaid reuse a shared renderer.
+	if (!features.customUrls && !features.mermaid) {
+		const renderer = getSharedFinalRenderer(features.fencedCode);
+		const html = postProcessHtml(renderer.render(markdown, false, false).html);
+		finalCache.set(cacheKey, { markdown, html });
+		return html;
+	}
+
+	const renderer = createRenderer(scope, localImageBase, features);
+	try {
+		const update = renderer.render(markdown, false, false);
+		const html = dedupeMermaidIds(postProcessHtml(update.html));
+		finalCache.set(cacheKey, { markdown, html });
+		return html;
+	} finally {
+		renderer.dispose();
+	}
+}
+
+export function renderCodeFinal(
+	code: string,
+	language: string,
+	options: { chrome?: boolean } = {},
+): string {
+	const normalized = language.trim().split(/\s+/)[0]?.toLowerCase() || "text";
+	const pre = `<pre class="plain-code" tabindex="0"><code class="language-${Bun.escapeHTML(normalized)}">${Bun.escapeHTML(code)}</code></pre>`;
+	return options.chrome === false
+		? pre
+		: `<div data-markdown="code-block" data-language="${Bun.escapeHTML(normalized)}">${pre}</div>`;
 }
 
 function finalMarkdownCacheKey(
@@ -188,307 +295,205 @@ function finalMarkdownCacheKey(
 ): string {
 	// Only diagrams contain message-scoped SVG identifiers. Ordinary Markdown
 	// can share final HTML even when a restore assigns new message identifiers.
-	const diagramScope = /mermaid/i.test(markdown) ? scope : "";
-	return `${codeThemeKey()}\0${localImageBase}\0${diagramScope}\0${markdown}`;
+	const diagramScope = mermaidPattern.test(markdown) ? scope : "";
+	return `${codeThemeKey()}\0${localImageBase}\0${diagramScope}\0${markdown.length}\0${Bun.hash(markdown)}`;
 }
 
-function hideIncompleteLinkDestination(markdown: string): string {
-	const opening = markdown.lastIndexOf("](");
-	if (opening < 0) return markdown;
-	const labelStart = markdown.lastIndexOf("[", opening);
-	if (labelStart < 0 || markdown[labelStart - 1] === "!") return markdown;
-	const suffix = markdown.slice(labelStart);
-	const match = incompleteLinkPattern.exec(suffix);
-	return match ? markdown.slice(0, labelStart) + match[1] : markdown;
+function getCachedFinal(
+	markdown: string,
+	scope = "",
+	localImageBase = "",
+	key = finalMarkdownCacheKey(markdown, scope, localImageBase),
+): string | undefined {
+	const entry = finalCache.get(key);
+	return entry?.markdown === markdown ? entry.html : undefined;
 }
 
-function compileMarkdown(markdown: string): string {
-	const options = {
-		noHtmlBlocks: true,
-		noHtmlSpans: true,
-		strikethrough: true,
-		tables: true,
-		tasklists: true,
-	};
-	let html = Bun.markdown.html(markdown, { ...options, autolinks: true });
-	// Temporary workaround for https://github.com/oven-sh/bun/issues/43980.
-	// Bare URLs can consume emphasis delimiters and leave formatting tags open.
-	if (hasUnbalancedEmphasis(html)) {
-		html = Bun.markdown.html(markdown, { ...options, autolinks: false });
+function createRenderer(
+	scope: string,
+	localImageBase: string,
+	features: RendererFeatures,
+): WordsHtmlRenderer {
+	const options: HtmlOptions = { ...baseCodeOptions };
+	if (features.customUrls) {
+		options.urlTransform = createUrlTransform(localImageBase);
 	}
-	return markdownHtmlRewriter.transform(html);
-}
-
-function hasUnbalancedEmphasis(html: string): boolean {
-	const stack: string[] = [];
-	// Raw HTML is disabled, so these tags can only come from the renderer.
-	for (const [, closing, tag] of html.matchAll(/<(\/?)(strong|em|del)>/g)) {
-		if (!closing) stack.push(tag);
-		else if (stack.pop() !== tag) return true;
+	if (features.fencedCode) {
+		const code = getCodePlugin();
+		options.plugins = features.mermaid
+			? { code, renderers: [createMermaidRenderer(scope)] }
+			: { code };
 	}
-	return stack.length > 0;
+	return createHtmlRenderer(options);
 }
 
-export function renderCodeFinal(
-	code: string,
-	language: string,
-	options: { chrome?: boolean } = {},
-): string {
-	return renderPlainCode(code, codeFenceLanguage(language), options);
-}
-
-function pendingMermaidBlock(markdown: string): PendingMermaidBlock | undefined {
-	const marker = `pi-ui-stream-boundary-${crypto.randomUUID()}`;
-	let pending: PendingMermaidBlock | undefined;
-	let index = 0;
-	const trimmed = markdown.trimEnd();
-	// Keep the marker in the current container without completing a closing fence at EOF.
-	const prefix = markdown.endsWith("\n")
-		? (/^[ \t]*(?:>[ \t]*)*/.exec(
-				trimmed.slice(trimmed.lastIndexOf("\n") + 1),
-			)?.[0] ?? "")
-		: "";
-	Bun.markdown.render(
-		markdown + prefix + marker,
-		{
-			code: (source, meta) => {
-				if (
-					normalizedCodeFenceLanguage(meta?.language) === "mermaid" &&
-					source.endsWith(`${marker}\n`)
-				) {
-					// Exclude the in-progress line, including partial closing fences.
-					const boundary = source.length - marker.length - 1;
-					pending = {
-						index,
-						source: source.slice(
-							0,
-							source.lastIndexOf("\n", boundary - 1) + 1,
-						),
-					};
-				}
-				index += 1;
+function createMermaidRenderer(scope: string) {
+	let draft: { source: string; html: string } | undefined;
+	let blockIndex = 0;
+	return {
+		language: "mermaid",
+		frame: false,
+		render({ code, isIncomplete }: CodeOptions): string | null {
+			if (!isIncomplete) {
+				const rendered = renderMermaid(code, scope, blockIndex);
+				draft = undefined;
+				if (rendered !== undefined) blockIndex += 1;
+				return rendered ?? null;
+			}
+			// Render only completed lines while streaming; keep the last valid SVG.
+			const complete = code.slice(0, code.lastIndexOf("\n") + 1);
+			if (!complete.trim().includes("\n")) {
+				draft = undefined;
 				return "";
-			},
+			}
+			if (draft && complete === draft.source) return draft.html;
+			const previousHtml =
+				draft && complete.startsWith(draft.source) ? draft.html : "";
+			const rendered = renderMermaid(complete, scope, blockIndex, false);
+			const html = rendered ?? previousHtml;
+			draft = { source: complete, html };
+			return html;
 		},
-		{ noHtmlBlocks: true, noHtmlSpans: true },
-	);
-	return pending;
+	};
 }
 
-function renderStreamingCodeBlocks(
-	html: string,
-	cacheKeyPrefix = "",
-	pending?: { index: number; html: string },
-): string {
-	let index = 0;
-	return html.replace(
-		codeBlockPattern,
-		(_raw, rawLanguage: string | undefined, rawCode: string) => {
-			const blockIndex = index++;
-			if (pending?.index === blockIndex) return pending.html;
-			const source = decodeHtml(rawCode).replace(/\n$/, "");
-			if (!source) return "";
-			if (normalizedCodeFenceLanguage(rawLanguage) === "mermaid") {
-				const diagram = renderMermaid(source, cacheKeyPrefix || html, blockIndex);
-				if (diagram !== undefined) return diagram;
+function createUrlTransform(localImageBase: string) {
+	return (url: string, key: "href" | "src"): string | null => {
+		if (key === "href") {
+			if (url.toLowerCase().startsWith("file:")) {
+				return `${fileLinkPrefix}${encodeURIComponent(url)}`;
 			}
-			const language = codeFenceLanguage(rawLanguage);
-			const code = source.replace(/\n`{1,2}[ \t]*$/, "");
-			return syncHtml(
-				<CodeBlock
-					pre={highlightCode(code, language)}
-					language={language}
-					source={code}
-				/>,
-			);
-		},
-	);
-}
-
-function highlightCodeBlocksFinal(html: string, scope: string): string {
-	const parts: string[] = [];
-	let offset = 0;
-	let index = 0;
-	for (const block of html.matchAll(codeBlockPattern)) {
-		const [raw, rawLanguage, rawCode] = block;
-		const blockIndex = index++;
-		parts.push(html.slice(offset, block.index));
-		offset = block.index + raw.length;
-		const code = decodeHtml(rawCode).replace(/\n$/, "");
-		if (normalizedCodeFenceLanguage(rawLanguage) === "mermaid") {
-			const diagram = renderMermaid(code, scope, blockIndex);
-			if (diagram !== undefined) {
-				parts.push(diagram);
-				continue;
-			}
+			return url;
 		}
-		const language = codeFenceLanguage(rawLanguage);
-		parts.push(
-			syncHtml(
-				<CodeBlock
-					pre={cachedCodeBlock(code, language)}
-					language={language}
-					source={code}
-				/>,
-			),
+		if (dataImagePattern.test(url)) {
+			return `${dataImagePrefix}${encodeURIComponent(url)}`;
+		}
+		const localPath = resolveLocalImagePath(url, localImageBase);
+		if (localPath && localImagePattern.test(localPath)) {
+			return existsSync(localPath)
+				? filePreviewUrl(localPath)
+				: missingImageSentinel;
+		}
+		return url;
+	};
+}
+
+function resolveLocalImagePath(
+	source: string,
+	localImageBase: string,
+): string | undefined {
+	if (source.toLowerCase().startsWith("file:")) return fileUriToPath(source);
+	if (source.startsWith("~/")) return `${homedir()}${source.slice(1)}`;
+	if (source.startsWith("/") && !source.startsWith("//")) return source;
+	if (!localImageBase || source.startsWith("//")) return undefined;
+	const url = URL.parse(source, "http://pi-ui.local");
+	if (!url || url.origin !== "http://pi-ui.local") return undefined;
+	try {
+		const relativePath = decodeURIComponent(source.split(/[?#]/, 1)[0] ?? "");
+		return resolve(localImageBase, relativePath);
+	} catch {
+		return undefined;
+	}
+}
+
+function renderCopyButton(disabled: boolean): string {
+	return syncHtml(
+		<button
+			class="btn code-copy-button"
+			data-variant="ghost"
+			data-size="icon-xs"
+			type="button"
+			data-copy-code
+			disabled={disabled}
+			aria-label="Copy code"
+		>
+			<Icon name="copy" />
+			<Icon name="check" />
+		</button>,
+	);
+}
+
+const copyButtonHtml = renderCopyButton(false);
+const copyButtonDisabledHtml = renderCopyButton(true);
+
+function postProcessHtml(html: string): string {
+	if (
+		!html.includes("<a ") &&
+		!html.includes("<img ") &&
+		!html.includes("<table ") &&
+		!html.includes('data-code-action="copy"')
+	) {
+		return html;
+	}
+	let result = html;
+	if (result.includes('data-code-action="copy"')) {
+		result = result
+			.replaceAll(
+				'<span><button type="button" data-code-action="copy" aria-label="Copy code">Copy</button></span>',
+				copyButtonHtml,
+			)
+			.replaceAll(
+				'<span><button type="button" data-code-action="copy" aria-label="Copy code" disabled="">Copy</button></span>',
+				copyButtonDisabledHtml,
+			);
+	}
+	if (result.includes("<a ")) {
+		result = result.replace(
+			/<a data-markdown="a" href="([^"]*)">/g,
+			(_match, href: string) => {
+				if (href.startsWith(fileLinkPrefix)) {
+					const uri = decodeURIComponent(href.slice(fileLinkPrefix.length));
+					return `<a data-markdown="a" href="#" data-pi-file-link="${escapeHtml(uri)}">`;
+				}
+				if (href.startsWith("#")) {
+					return `<a data-markdown="a" href="${href}">`;
+				}
+				return `<a data-markdown="a" href="${href}" target="_blank" rel="noreferrer">`;
+			},
 		);
 	}
-	parts.push(html.slice(offset));
-	return parts.join("");
-}
-
-function cachedCodeBlock(code: string, language: string): string {
-	const key = `${codeThemeKey()}\0${language}\0${code}`;
-	const cached = codeBlockCache.get(key);
-	if (cached) return cached;
-	const highlighted = highlightCode(code, language);
-	if (getHighlighterIfLoaded()) codeBlockCache.set(key, highlighted);
-	return highlighted;
-}
-
-function highlightCode(code: string, language: string): string {
-	return (
-		getHighlighterIfLoaded()?.codeToHtml(code, {
-			lang: language,
-			themes: activeCodeThemes,
-			defaultColor: "light-dark()",
-		}) ??
-		`<pre class="diffs" tabindex="0"><code>${code
-			.split("\n")
-			.map((line) => `<span class="line">${Bun.escapeHTML(line)}</span>`)
-			.join("\n")}</code></pre>`
-	);
-}
-
-function renderPlainCode(
-	code: string,
-	language: string,
-	options: { chrome?: boolean } = {},
-): string {
-	const pre = `<pre class="plain-code" tabindex="0"><code class="language-${Bun.escapeHTML(language)}">${Bun.escapeHTML(code)}</code></pre>`;
-	return options.chrome === false
-		? pre
-		: syncHtml(<CodeBlock pre={pre} language={language} />);
-}
-
-function CodeBlock(props: { pre: string; language: string; source?: string }) {
-	return (
-		<div
-			class="code-block"
-			data-code-block
-			data-code-source={
-				props.source === undefined ? undefined : Bun.escapeHTML(props.source)
-			}
-		>
-			<div class="code-block-header">
-				<span safe>{props.language}</span>
-				<button
-					class="btn code-copy-button"
-					data-variant="ghost"
-					data-size="icon-xs"
-					type="button"
-					data-copy-code
-					aria-label="Copy code"
-				>
-					<Icon name="copy" />
-					<Icon name="check" />
-				</button>
-			</div>
-			<div class="code-block-content">{props.pre}</div>
-		</div>
-	);
-}
-
-const codeLanguageAliases = new Map([
-	["bash", "bash"],
-	["sh", "shellscript"],
-	["tf", "terraform"],
-	["yml", "yaml"],
-]);
-
-function codeFenceLanguage(language: string | undefined): string {
-	const canonical = canonicalCodeLanguage(language);
-	return isSupportedLanguage(canonical) ? canonical : "text";
-}
-
-function canonicalCodeLanguage(language: string | undefined): string {
-	const normalized = normalizedCodeFenceLanguage(language);
-	const alias = codeLanguageAliases.get(normalized);
-	if (alias) return alias;
-	const mapped = getFiletypeFromFileName(`code.${normalized}`);
-	return mapped !== "text" && isSupportedLanguage(mapped) ? mapped : normalized;
-}
-
-function normalizedCodeFenceLanguage(language: string | undefined): string {
-	return language?.trim().split(/\s+/)[0]?.toLowerCase() || "text";
-}
-
-const localImagePattern = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i;
-const safeUrlProtocols = new Set(["http:", "https:", "mailto:", "file:"]);
-
-function rewriteRelativeImageSources(html: string, basePath: string): string {
-	return new HTMLRewriter()
-		.on("img", {
-			element(element) {
-				const source = element.getAttribute("src");
-				if (!source) return;
-				const url = URL.parse(source, "http://pi-ui.local");
-				if (!url || url.origin !== "http://pi-ui.local" || source.startsWith("/"))
-					return;
-				try {
-					const relativePath = decodeURIComponent(
-						source.split(/[?#]/, 1)[0] ?? "",
-					);
-					rewriteLocalImageSource(element, resolve(basePath, relativePath));
-				} catch {
-					// Leave malformed sources unchanged.
+	if (result.includes("<img ")) {
+		result = result.replace(
+			/<img data-markdown="img" src="([^"]*)" alt="([^"]*)"([^>]*)>/g,
+			(_match, src: string, alt: string, rest: string) => {
+				if (src === missingImageSentinel) {
+					return alt ? `[image unavailable: ${alt}]` : "[image unavailable]";
 				}
+				const resolvedSrc = src.startsWith(dataImagePrefix)
+					? escapeHtml(decodeURIComponent(src.slice(dataImagePrefix.length)))
+					: src;
+				return `<img data-markdown="img" src="${resolvedSrc}" alt="${alt}"${rest} decoding="async">`;
 			},
-		})
-		.transform(html);
-}
-
-// Serve local images over HTTP. Missing files must not leave a source that the
-// browser will try to load, such as a temporary file removed after a reboot.
-function rewriteLocalImageSource(
-	element: HTMLRewriterTypes.Element,
-	source: string,
-): void {
-	const path = source.toLowerCase().startsWith("file:")
-		? fileUriToPath(source)
-		: source.startsWith("~/")
-			? `${homedir()}${source.slice(1)}`
-			: source.startsWith("/") && !source.startsWith("//")
-				? source
-				: undefined;
-	if (!path || !localImagePattern.test(path)) return;
-	if (existsSync(path)) {
-		element.setAttribute("src", filePreviewUrl(path));
-	} else {
-		const alt = decodeHtml(element.getAttribute("alt") ?? "");
-		element.replace(alt ? `[image unavailable: ${alt}]` : "[image unavailable]");
+		);
 	}
-}
-
-function safeUrl(value: string, options: { allowDataImage: boolean }): URL | undefined {
-	const url = URL.parse(value, "http://pi-ui.local");
-	if (!url) return undefined;
-	if (url.protocol === "data:") {
-		return options.allowDataImage &&
-			/^data:image\/(png|jpeg|gif|webp);base64,/i.test(value)
-			? url
-			: undefined;
+	if (result.includes("<table ")) {
+		result = result
+			.replaceAll(
+				'<table data-markdown="table">',
+				'<div class="table-container"><table data-markdown="table">',
+			)
+			.replaceAll("</table>", "</table></div>");
 	}
-	return safeUrlProtocols.has(url.protocol) ? url : undefined;
+	return result;
 }
 
-function decodeHtml(value: string): string {
-	if (!value.includes("&")) return value;
-	return value
-		.replaceAll("&lt;", "<")
-		.replaceAll("&gt;", ">")
-		.replaceAll("&quot;", '"')
-		.replaceAll("&#39;", "'")
-		.replaceAll("&#x27;", "'")
-		.replaceAll("&amp;", "&");
+/** Ensures identical Mermaid blocks within one message never share SVG IDs. */
+function dedupeMermaidIds(html: string): string {
+	const first = html.indexOf('class="mermaid-diagram"');
+	if (first === -1 || html.indexOf('class="mermaid-diagram"', first + 1) === -1) {
+		return html;
+	}
+	const seen = new Map<string, number>();
+	return html.replace(
+		/<div class="mermaid-diagram"[\s\S]*?<\/svg><\/div>/g,
+		(block) => {
+			const match = /aria-labelledby="(mermaid-[0-9a-f]+-\d+)-/.exec(block);
+			if (!match) return block;
+			const prefix = match[1]!;
+			const count = seen.get(prefix) ?? 0;
+			seen.set(prefix, count + 1);
+			if (count === 0) return block;
+			return block.replaceAll(`${prefix}-`, `${prefix}-${count}-`);
+		},
+	);
 }

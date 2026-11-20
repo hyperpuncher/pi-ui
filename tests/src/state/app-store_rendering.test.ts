@@ -302,8 +302,14 @@ test("skill and compaction instructions render Markdown", () => {
 		{ role: "skill", text: "**Skill instructions**", timestamp },
 		{ role: "compaction", text: "**Compaction summary**", timestamp },
 	]);
-	assertIncludes(projectedMessages(state)[0].renderedHtml ?? "", "<strong>");
-	assertIncludes(projectedMessages(state)[1].renderedHtml ?? "", "<strong>");
+	assertIncludes(
+		projectedMessages(state)[0].renderedHtml ?? "",
+		'<strong data-markdown="strong">',
+	);
+	assertIncludes(
+		projectedMessages(state)[1].renderedHtml ?? "",
+		'<strong data-markdown="strong">',
+	);
 });
 
 test("assistant completion immediately flushes newest streaming content", () => {
@@ -314,7 +320,7 @@ test("assistant completion immediately flushes newest streaming content", () => 
 	state.finishAssistant();
 	assertIncludes(
 		projectedMessages(state)[0].renderedHtml ?? "",
-		"<strong>latest</strong>",
+		'<strong data-markdown="strong">latest</strong>',
 	);
 });
 
@@ -388,7 +394,7 @@ test("reconnecting during a turn resumes streaming", () => {
 	state.finishAssistant();
 	assertIncludes(
 		projectedMessages(state)[0].renderedHtml ?? "",
-		"before <strong>connection</strong> and after",
+		'before <strong data-markdown="strong">connection</strong> and after',
 	);
 });
 
