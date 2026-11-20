@@ -73,6 +73,7 @@ interface PiUiNamespace {
 	};
 	workspaceReview: {
 		applyOpen(open: boolean): void;
+		clearSelection(): void;
 		focusEditor(): void;
 		focusFiles(): void;
 		focusGit(): void;

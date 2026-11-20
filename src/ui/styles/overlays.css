@@ -17,7 +17,13 @@
 			display: block;
 		}
 
+		&:modal {
+			overscroll-behavior: contain;
+		}
+
 		&::backdrop {
+			overflow: hidden;
+			overscroll-behavior: contain;
 			background: oklch(0% 0 none / 10%);
 			backdrop-filter: blur(4px);
 			transition:
@@ -132,6 +138,7 @@
 	.command {
 		display: flex;
 		width: 100%;
+		outline: 0;
 		max-width: 100%;
 		max-height: min(40rem, calc(100dvh - 2rem));
 		flex-direction: column;

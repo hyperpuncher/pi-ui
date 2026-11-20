@@ -97,6 +97,10 @@ export function renderWorkspaceReview(
 				["focus-workspace-changes", "window.piUi.workspaceReview.focusGit();"],
 				["focus-workspace-editor", "window.piUi.workspaceReview.focusEditor();"],
 			)}
+			data-signals:_workspace-review-detail__ifmissing="false"
+			data-class:review-mobile-detail="$_workspaceReviewDetail"
+			data-on:pi-ui-workspace-review-detail="$_workspaceReviewDetail = evt.detail"
+			data-effect="if (!$_workspaceReviewOpen) $_workspaceReviewDetail = false"
 			data-attr:aria-hidden="$_workspaceReviewOpen ? 'false' : 'true'"
 			data-attr:inert="!$_workspaceReviewOpen"
 		>
@@ -268,6 +272,19 @@ export function renderWorkspaceReview(
 					data-show="!$_workspaceReviewGitAvailable || $workspaceReviewPreferences.tab === 'files'"
 				>
 					<header class="review-toolbar">
+						<button
+							type="button"
+							class="btn review-back"
+							data-variant="ghost"
+							data-size="icon-xs"
+							data-on:click="
+								$_workspaceReviewDetail = false;
+								window.piUi.workspaceReview.clearSelection()
+							"
+							aria-label="Back to files"
+						>
+							<Icon name="chevron-left" />
+						</button>
 						<div class="review-file-heading">
 							<span
 								id="workspace-file-path"
@@ -387,6 +404,19 @@ export function renderWorkspaceReview(
 					data-show="$_workspaceReviewGitAvailable && $workspaceReviewPreferences.tab !== 'files'"
 				>
 					<header class="review-toolbar">
+						<button
+							type="button"
+							class="btn review-back"
+							data-variant="ghost"
+							data-size="icon-xs"
+							data-on:click="
+								$_workspaceReviewDetail = false;
+								window.piUi.workspaceReview.clearSelection()
+							"
+							aria-label="Back to history"
+						>
+							<Icon name="chevron-left" />
+						</button>
 						<span
 							id="review-branch"
 							class="fine-print review-branch"
@@ -420,7 +450,7 @@ export function renderWorkspaceReview(
 								</button>
 							</div>
 							<div
-								class="segmented-control review-icon-control"
+								class="segmented-control review-icon-control review-layout-control"
 								aria-label="Diff layout"
 							>
 								<button
@@ -626,9 +656,10 @@ function renderWorkspaceModeHeader(
 	return (
 		<header
 			class="workspace-mode-header"
-			style={gitAvailable ? undefined : "display: none"}
-			data-show="$_workspaceReviewGitAvailable"
+			data-git-available={gitAvailable ? "true" : "false"}
+			data-attr:data-git-available="$_workspaceReviewGitAvailable ? 'true' : 'false'"
 		>
+			<span class="workspace-mode-title">Files</span>
 			<div
 				class="segmented-control workspace-mode-control"
 				aria-label="Workspace view"
@@ -643,6 +674,7 @@ function renderWorkspaceModeHeader(
 							: 'false'
 					"
 					data-workspace-mode="files"
+					data-on:click="$_workspaceReviewDetail = false"
 					aria-keyshortcuts={keybindAria("focus-workspace-files")}
 				>
 					<span>Files</span>
@@ -658,6 +690,7 @@ function renderWorkspaceModeHeader(
 							: 'false'
 					"
 					data-workspace-mode="git"
+					data-on:click="$_workspaceReviewDetail = false"
 					disabled={!gitAvailable}
 					data-attr:disabled="!$_workspaceReviewGitAvailable"
 					aria-keyshortcuts={keybindAria("focus-workspace-changes")}
@@ -666,6 +699,16 @@ function renderWorkspaceModeHeader(
 					<ShortcutKbd shortcut={activeKeybind("focus-workspace-changes")} />
 				</button>
 			</div>
+			<button
+				type="button"
+				class="btn review-close review-mobile-close"
+				data-variant="ghost"
+				data-size="icon-xs"
+				data-on:click="$_workspaceReviewOpen = false"
+				aria-label="Hide workspace"
+			>
+				<Icon name="x" />
+			</button>
 		</header>
 	);
 }

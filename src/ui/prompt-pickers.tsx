@@ -280,7 +280,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 						});
 					}`}
 				>
-					<div class="command">
+					<div class="command" tabindex="-1" autofocus>
 						<search aria-label="Search models">
 							<label class="sr-only" for="model-select-input">
 								Search models
@@ -297,7 +297,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 								role="combobox"
 								aria-expanded="true"
 								aria-controls="model-select-menu"
-								autofocus
+								data-autofocus-desktop=""
 								data-bind:model-search
 								attrs={{
 									"data-on:input__debounce.50ms": `@get('${endpoints.modelsList}', {

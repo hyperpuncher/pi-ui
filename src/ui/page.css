@@ -108,8 +108,9 @@
 		grid-column: 1 / -1;
 		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 		align-items: center;
-		margin-inline: var(--workspace-inset);
-		margin-block-start: var(--workspace-inset);
+		margin-inline: max(var(--workspace-inset), env(safe-area-inset-left, 0px))
+			max(var(--workspace-inset), env(safe-area-inset-right, 0px));
+		margin-block-start: max(var(--workspace-inset), env(safe-area-inset-top, 0px));
 		padding-inline: var(--workspace-inset);
 		container: prompt / inline-size;
 		opacity: 1;

@@ -33,7 +33,7 @@ export function renderFontDialog(): string {
 			`}
 			closedby="any"
 		>
-			<div class="dialog-panel font-dialog-panel">
+			<div class="dialog-panel font-dialog-panel" tabindex="-1" autofocus>
 				<header>
 					<div class="preference-dialog-heading">
 						<div>
@@ -67,7 +67,7 @@ export function renderFontDialog(): string {
 						aria-label="Search fonts"
 						autocomplete="off"
 						spellcheck="false"
-						autofocus
+						data-autofocus-desktop=""
 						data-bind:_font-search=""
 					/>
 				</header>

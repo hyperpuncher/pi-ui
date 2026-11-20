@@ -3,6 +3,7 @@
 		max-width: none;
 		gap: 0;
 		overflow: hidden;
+		outline: 0;
 		padding: 0;
 	}
 	.dialog-panel > :where(header) {

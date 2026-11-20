@@ -56,7 +56,7 @@ test("page assets use the current immutable content version", async () => {
 	assertEquals(response.headers.get("cache-control"), "no-store");
 	assertStringIncludes(
 		html,
-		'name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"',
+		'name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"',
 	);
 	assertStringIncludes(html, `/static/${context.appVersion}/app.css`);
 	assertStringIncludes(html, `/static/${context.appVersion}/manifest.webmanifest`);

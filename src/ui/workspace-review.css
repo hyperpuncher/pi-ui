@@ -25,23 +25,28 @@
 @layer components {
 	#workspace-review {
 		--review-side-by-side: 0;
+		--review-compact: 0;
 
 		position: absolute;
-		inset: var(--workspace-inset);
+		inset: max(var(--workspace-inset), env(safe-area-inset-top, 0px))
+			max(var(--workspace-inset), env(safe-area-inset-right, 0px))
+			max(var(--workspace-inset), env(safe-area-inset-bottom, 0px))
+			max(var(--workspace-inset), env(safe-area-inset-left, 0px));
 		z-index: 60;
 		display: none;
 		min-width: 0;
 		min-height: 0;
 		grid-template-columns: minmax(0, 1fr);
+		container: review / inline-size;
 		background: var(--surface-canvas);
 	}
 	.review-body {
 		display: grid;
 		grid-template-columns:
 			clamp(
-				14rem,
+				13rem,
 				var(--review-sidebar-width, 17rem),
-				min(30rem, calc(100% - var(--workspace-gap) - 20rem))
+				min(30rem, calc(100% - var(--workspace-gap) - 18rem))
 			)
 			var(--workspace-gap) minmax(0, 1fr);
 		min-width: 0;
@@ -201,9 +206,16 @@
 	#workspace-review .segmented-control > .review-segment-text {
 		padding: 0.25rem 0.5rem;
 	}
+	.review-back,
+	.review-mobile-close,
+	.workspace-mode-title {
+		display: none;
+	}
+	.review-back,
 	.review-close {
 		color: var(--text-muted);
 	}
+	.review-back:hover,
 	.review-close:hover {
 		color: var(--text);
 	}
@@ -261,7 +273,19 @@
 	.workspace-mode-header {
 		display: flex;
 		flex-shrink: 0;
+		align-items: center;
+		gap: 0.375rem;
 		margin-block-end: var(--workspace-inset);
+	}
+	.workspace-mode-header[data-git-available="false"] {
+		display: none;
+	}
+	.workspace-mode-title {
+		flex: 1;
+		min-width: 0;
+		padding-inline-start: 0.5rem;
+		font-size: var(--text-xs);
+		font-weight: 500;
 	}
 	#workspace-review .workspace-mode-control {
 		width: 100%;
@@ -480,6 +504,37 @@
 
 	@media (width <= 48rem) {
 		#review-branch {
+			display: none;
+		}
+	}
+
+	@container review (width < 36rem) {
+		.review-body {
+			--review-compact: 1;
+
+			grid-template-columns: minmax(0, 1fr);
+		}
+		#review-sidebar-separator,
+		.review-layout-control {
+			display: none;
+		}
+		.review-back,
+		.review-mobile-close {
+			display: inline-flex;
+		}
+		.workspace-mode-header[data-git-available="false"] {
+			display: flex;
+		}
+		.workspace-mode-header[data-git-available="false"] .workspace-mode-title {
+			display: block;
+		}
+		.workspace-mode-header[data-git-available="false"] .workspace-mode-control {
+			display: none;
+		}
+		#workspace-review:not(.review-mobile-detail) .review-main {
+			display: none;
+		}
+		#workspace-review.review-mobile-detail .review-sidebar {
 			display: none;
 		}
 	}

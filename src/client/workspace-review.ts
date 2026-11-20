@@ -155,6 +155,7 @@ const workspaceFiles = createWorkspaceFiles({
 	endpoint: filesEndpoint,
 	initialGitStatus: snapshot.changes,
 	initialWorkspacePath: workspacePath,
+	onSelectFile: showMobileDetail,
 });
 let preferredPanelMode: "files" | "git" | undefined = preferences.tab;
 let panelMode = initialPanelMode(preferredPanelMode, snapshot.isGitRepository);
@@ -194,6 +195,10 @@ tree.render({ containerWrapper: treeHost });
 bindWorkspaceKeyboardNavigation();
 window.piUi.workspaceReview = {
 	...visibility,
+	clearSelection() {
+		clearTreeSelection();
+		workspaceFiles.clearTreeSelection();
+	},
 	focusEditor,
 	focusFiles,
 	focusGit,
@@ -400,7 +405,14 @@ function setLayout(next: DiffLayout): void {
 	updateViewerOptions();
 }
 
+function showMobileDetail(): void {
+	workspaceReviewRoot.dispatchEvent(
+		new CustomEvent("pi-ui-workspace-review-detail", { detail: true }),
+	);
+}
+
 function selectWorking(path?: string, fromTree = false): void {
+	if (fromTree && path) showMobileDetail();
 	if (fromTree && workingError && mode === "all") {
 		mode = "selected";
 		syncModeButtons();
@@ -689,8 +701,14 @@ function renderHistory(): void {
 		getCommitDetail: (hash) => commitCache.get(hash)?.detail,
 		history,
 		loading: historyLoading,
-		onSelectCommit: (hash) => void activateCommit(hash),
-		onSelectCommitPath: selectCommitPath,
+		onSelectCommit: (hash) => {
+			showMobileDetail();
+			void activateCommit(hash);
+		},
+		onSelectCommitPath: (hash, path) => {
+			showMobileDetail();
+			selectCommitPath(hash, path);
+		},
 		revision: snapshot.revision,
 		selection,
 	});
@@ -857,6 +875,7 @@ export async function openLinkedWorkspaceFile(
 		throw new Error("The workspace changed. Open the file link again.");
 	visibility.open();
 	setPanelMode("files");
+	showMobileDetail();
 	await workspaceFiles.openFile(path);
 	focusAfterOpen(() => workspaceFiles.focusEditor());
 }

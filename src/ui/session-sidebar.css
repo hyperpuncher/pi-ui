@@ -146,6 +146,12 @@
 		opacity: 1;
 		pointer-events: auto;
 	}
+	@media (hover: none), (pointer: coarse) {
+		.session-sidebar-row .row-action {
+			opacity: 0.7;
+			pointer-events: auto;
+		}
+	}
 
 	.session-sidebar {
 		position: fixed;
@@ -193,6 +199,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+	}
+	.session-sidebar-close {
+		display: none;
+		color: var(--text-muted);
+	}
+	.session-sidebar-close:hover {
+		color: var(--text);
 	}
 	.session-sidebar-nav > section {
 		min-height: 0;
@@ -385,6 +398,9 @@
 		}
 		.session-sidebar-nav > section {
 			overscroll-behavior-y: contain;
+		}
+		.session-sidebar-close {
+			display: inline-flex;
 		}
 		.session-sidebar-resize {
 			display: none;

@@ -63,6 +63,16 @@
 		flex-shrink: 0;
 		justify-content: center;
 	}
+	@media (pointer: coarse) {
+		.usage-indicator {
+			position: relative;
+		}
+		.usage-indicator::after {
+			position: absolute;
+			inset: -0.875rem;
+			content: "" / "";
+		}
+	}
 
 	.usage-tooltip {
 		align-items: stretch;

@@ -7,7 +7,15 @@ export function bindControls() {
 	document.addEventListener("keydown", handleKeydown);
 	document.addEventListener("mousemove", handlePointerMove);
 	document.addEventListener("click", handleClick);
+	document.addEventListener("toggle", handleToggle, true);
 	refreshControls();
+}
+
+function handleToggle(event) {
+	if (event.newState !== "open" || !(event.target instanceof HTMLElement)) return;
+	if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+	const target = event.target.querySelector("[data-autofocus-desktop]");
+	if (target instanceof HTMLElement) target.focus({ preventScroll: true });
 }
 
 export function refreshControls(root = document, options = {}) {

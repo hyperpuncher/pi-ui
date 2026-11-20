@@ -45,7 +45,7 @@ export function renderCodeThemeDialog(): string {
 			}`}
 			closedby="any"
 		>
-			<div class="dialog-panel code-theme-dialog-panel">
+			<div class="dialog-panel code-theme-dialog-panel" tabindex="-1" autofocus>
 				<header>
 					<div class="preference-dialog-heading">
 						<div>
@@ -85,7 +85,7 @@ export function renderCodeThemeDialog(): string {
 						placeholder="Search themes…"
 						autocomplete="off"
 						spellcheck="false"
-						autofocus
+						data-autofocus-desktop=""
 						data-bind:_code-theme-search=""
 						data-on:input="$_codeThemeStatus = ''"
 					/>

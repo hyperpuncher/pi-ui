@@ -8,7 +8,7 @@
 	.prompt-box {
 		position: absolute;
 		inset-inline: 1rem;
-		bottom: 0.5rem;
+		bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
 		z-index: 10;
 		max-width: var(--prompt-max-width);
 		margin-inline: auto;
@@ -440,11 +440,22 @@
 		}
 	}
 
-	/* Viewport-specific touch spacing; control density follows the footer width. */
+	@media (pointer: coarse) {
+		.prompt-footer .btn.prompt-context-button {
+			position: relative;
+		}
+		.prompt-footer .btn.prompt-context-button::after {
+			position: absolute;
+			inset: -0.375rem -0.25rem;
+			content: "" / "";
+		}
+	}
+
+	/* Viewport-specific spacing; control density follows the footer container width. */
 	@media (width <= 639px) {
 		.prompt-box {
 			inset-inline: 0.5rem;
-			bottom: 0.25rem;
+			bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
 		}
 		.prompt-surface {
 			--prompt-surface-padding: 0.5rem;
@@ -463,25 +474,12 @@
 		#thinking-picker {
 			flex-shrink: 0;
 		}
-		:is(.prompt-footer, .prompt-editor-row)
-			.btn:is(.prompt-context-button, .prompt-file-button, .prompt-action) {
+		.prompt-editor-row .btn:is(.prompt-file-button, .prompt-action) {
 			--button-size: 2rem;
 
-			position: relative;
 			width: var(--button-size);
 			min-width: 0;
 			padding: 0;
-		}
-		:is(.prompt-footer, .prompt-editor-row)
-			.btn:is(.prompt-context-button, .prompt-file-button, .prompt-action)::after {
-			position: absolute;
-			inset: -0.375rem -0.125rem;
-			content: "" / "";
-		}
-		.prompt-footer .btn.model-picker-button {
-			width: 100%;
-			max-width: 100%;
-			padding-inline: 0.25rem;
 		}
 	}
 

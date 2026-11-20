@@ -105,6 +105,17 @@
 		height: 1.125rem;
 	}
 
+	@media (pointer: coarse) {
+		.btn[data-size^="icon"] {
+			position: relative;
+		}
+		.btn[data-size^="icon"]::after {
+			position: absolute;
+			inset: min(0px, calc((var(--button-size) - 2.75rem) / 2));
+			content: "" / "";
+		}
+	}
+
 	.btn:where(:not([data-variant]), [data-variant="primary"]) {
 		&:where(:not(:disabled):hover) {
 			background: color-mix(

@@ -37,6 +37,7 @@ type WorkspaceFilesOptions = {
 	endpoint: string;
 	initialGitStatus: readonly GitStatusEntry[];
 	initialWorkspacePath: string;
+	onSelectFile?: () => void;
 };
 
 export function focusTreeHost(treeHost: HTMLElement): void {
@@ -112,6 +113,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 	let editor: PierreEditor<"file"> | undefined;
 	let previewFont: FontFace | undefined;
 	const viewer = new File(viewerOptions());
+	let selectingProgrammatically = false;
 	const tree = new FileTree({
 		composition: {
 			contextMenu: {
@@ -140,6 +142,7 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 				item.deselect();
 				return;
 			}
+			if (!selectingProgrammatically) options.onSelectFile?.();
 			void selectFile(next);
 		},
 	});
@@ -494,8 +497,9 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 			const initial = data.paths.includes("README.md")
 				? "README.md"
 				: data.paths.find((path) => !path.endsWith("/"));
-			if (initial) tree.getItem(initial)?.select();
-			else {
+			if (initial && !isCompactReview()) {
+				withoutSelectionCallback(() => tree.getItem(initial)?.select());
+			} else if (!initial) {
 				setStatus("");
 				showEmpty("No files in this workspace");
 			}
@@ -516,8 +520,10 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 				action: "Discard",
 			}))
 		) {
-			tree.getItem(path)?.deselect();
-			tree.getItem(current?.path ?? "")?.select();
+			withoutSelectionCallback(() => {
+				tree.getItem(path)?.deselect();
+				tree.getItem(current?.path ?? "")?.select();
+			});
 			return;
 		}
 		const generation = ++fileGeneration;
@@ -885,10 +891,34 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		tree.cleanUp();
 	}
 
+	function withoutSelectionCallback(run: () => void): void {
+		selectingProgrammatically = true;
+		try {
+			run();
+		} finally {
+			selectingProgrammatically = false;
+		}
+	}
+
+	function isCompactReview(): boolean {
+		return (
+			getComputedStyle(treeHost).getPropertyValue("--review-compact").trim() === "1"
+		);
+	}
+
+	function clearTreeSelection(): void {
+		withoutSelectionCallback(() => {
+			for (const path of tree.getSelectedPaths()) {
+				tree.getItem(path)?.deselect();
+			}
+		});
+	}
+
 	syncToolbar();
 	showEmpty("Open a file from the workspace");
 	return {
 		cleanUp,
+		clearTreeSelection,
 		focusEditor,
 		focusTree,
 		fileActionButton,

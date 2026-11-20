@@ -20,7 +20,7 @@ export function renderCommandMenu(): string {
 			data-on:toggle={resetCommandDialogOnOpen}
 			closedby="any"
 		>
-			<div class="command">
+			<div class="command" tabindex="-1" autofocus>
 				<search aria-label="Search commands">
 					<label class="sr-only" for="command-input">
 						Search commands
@@ -36,7 +36,7 @@ export function renderCommandMenu(): string {
 						role="combobox"
 						aria-expanded="true"
 						aria-controls="command-menu"
-						autofocus
+						data-autofocus-desktop=""
 						data-bind:_command-query
 						data-effect="
 							$_commandQuery;

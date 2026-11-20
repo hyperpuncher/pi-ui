@@ -76,7 +76,7 @@ export function renderPage(
 					<meta charset="utf-8" />
 					<meta
 						name="viewport"
-						content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+						content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
 					/>
 					<meta name="text-scale" content="scale" />
 					<meta
@@ -321,7 +321,7 @@ export function renderPage(
 						data-signals:_workspace-action__ifmissing="'open'"
 						closedby="any"
 					>
-						<div class="command">
+						<div class="command" tabindex="-1" autofocus>
 							<search
 								class="workspace-command-header"
 								aria-label="Search workspaces"
@@ -346,7 +346,7 @@ export function renderPage(
 									role="combobox"
 									aria-expanded="true"
 									aria-controls="workspace-menu"
-									autofocus
+									data-autofocus-desktop=""
 									data-bind:workspace-draft
 									attrs={{
 										"data-on:input__debounce.50ms": `@post('${endpoints.workspaceSearch}', {
@@ -424,6 +424,8 @@ export function renderPage(
 					>
 						<div
 							class="command"
+							tabindex="-1"
+							autofocus
 							style="height: calc(100dvh - 2rem)"
 							data-style:height="$treeSelectedId ? 'auto' : 'calc(100dvh - 2rem)'"
 						>
@@ -446,7 +448,7 @@ export function renderPage(
 									role="combobox"
 									aria-expanded="true"
 									aria-controls="tree-menu"
-									autofocus
+									data-autofocus-desktop=""
 									data-bind:_tree-query
 									data-effect="
 										$_treeQuery;
@@ -466,7 +468,7 @@ export function renderPage(
 						data-preserve-attr="open"
 						closedby="any"
 					>
-						<div class="command">
+						<div class="command" tabindex="-1" autofocus>
 							<search aria-label="Search sessions">
 								<label class="sr-only" for="session-input">
 									Search sessions
@@ -490,7 +492,7 @@ export function renderPage(
 										requestCancellation: 'cleanup',
 									})`,
 									}}
-									autofocus
+									data-autofocus-desktop=""
 								/>
 							</search>
 							{renderSessionPicker(state)}

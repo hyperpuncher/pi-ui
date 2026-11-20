@@ -172,6 +172,17 @@ export function renderSessionSidebar(
 							<div class="session-sidebar-heading">
 								<span>Sessions</span>
 								<ShortcutKbd shortcut={activeKeybind("focus-sessions")} />
+								<button
+									type="button"
+									class="btn session-sidebar-close"
+									data-variant="ghost"
+									data-size="icon-xs"
+									commandfor="session-sidebar"
+									command="close"
+									aria-label="Close sessions"
+								>
+									<Icon name="x" />
+								</button>
 							</div>
 						</header>
 						<section
