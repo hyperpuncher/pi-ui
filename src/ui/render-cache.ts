@@ -38,7 +38,11 @@ export class BoundedCache<Key, Value> {
 	}
 
 	get(key: Key): Value | undefined {
-		return this.#entries.get(key)?.value;
+		const entry = this.#entries.get(key);
+		if (!entry) return undefined;
+		this.#entries.delete(key);
+		this.#entries.set(key, entry);
+		return entry.value;
 	}
 
 	set(key: Key, value: Value): void {

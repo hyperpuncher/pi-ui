@@ -21,6 +21,17 @@ test("BoundedCache replaces values and refreshes recency", () => {
 	assertEqual(cache.get("c"), 4);
 });
 
+test("BoundedCache refreshes recency on get", () => {
+	const cache = new BoundedCache<string, number>(2);
+	cache.set("a", 1);
+	cache.set("b", 2);
+	assertEqual(cache.get("a"), 1);
+	cache.set("c", 3);
+	assertEqual(cache.get("a"), 1);
+	assertEqual(cache.get("b"), undefined);
+	assertEqual(cache.get("c"), 3);
+});
+
 test("BoundedCache evicts entries that exceed its weight budget", () => {
 	const cache = new BoundedCache<string, string>(10, {
 		maxWeight: 5,

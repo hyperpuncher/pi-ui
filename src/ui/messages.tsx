@@ -31,8 +31,10 @@ import {
 	attachmentFileKind,
 } from "#static/app/attachment-file.js";
 
-type InlineCodeCacheEntry = { html: string };
-const inlineCodeCache = new BoundedCache<string, InlineCodeCacheEntry>(500);
+const inlineCodeCache = new BoundedCache<string, string>(500, {
+	maxWeight: 8 * 1024 * 1024,
+	weight: (key, value) => 2 * (key.length + value.length),
+});
 
 // Matches the 18rem cap on .message-image. Both sides must agree or the
 // reserved box and the rendered box differ and the image shifts on load.
@@ -350,7 +352,7 @@ function renderInlineCode(
 		.join("\0");
 	const cacheKey = `${codeThemeKey()}\0${language}\0${command}\0${suffix}\0${hintsKey}`;
 	const cached = inlineCodeCache.get(cacheKey);
-	if (cached) return cached.html;
+	if (cached !== undefined) return cached;
 
 	try {
 		const result =
@@ -371,7 +373,7 @@ function renderInlineCode(
 				return `<span class="shell-line" style="--shell-indent:${indent + 2}ch">${line.map(renderInlineToken).join("")}${index === tokens.length - 1 ? suffix : ""}</span>`;
 			})
 			.join("\n");
-		inlineCodeCache.set(cacheKey, { html: highlighted });
+		inlineCodeCache.set(cacheKey, highlighted);
 		return highlighted;
 	} catch {
 		return Bun.escapeHTML(command) + suffix;

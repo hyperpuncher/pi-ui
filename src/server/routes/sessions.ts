@@ -2,7 +2,6 @@ import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { SessionTransitionResult } from "#src/agent/session-transition-controller.ts";
-import { type ThumbnailImage, thumbnailImage } from "#src/image-resize.ts";
 import {
 	readActionSignals,
 	requiredString,
@@ -17,9 +16,7 @@ import { htmlPageDocument, htmlPageSecurityPolicy } from "#src/server/html-page-
 import { RouteError, type RouteMap } from "#src/server/route.ts";
 import { requireHost, type RouteContext } from "#src/server/routes/context.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
-import type { StoredSessionImage } from "#src/server/session-image-store.ts";
 import { clientScripts } from "#src/ui/client-scripts.ts";
-import { BoundedCache } from "#src/ui/render-cache.ts";
 import { expandHomePath } from "#src/utils/workspace.ts";
 
 export const sessionRoutes = {
@@ -69,9 +66,8 @@ export const sessionRoutes = {
 	},
 	[endpoints.sessionsImage]: {
 		GET: async (_request, context, url) => {
-			const image = context.resources.sessionImages.get(
-				url.searchParams.get("id") ?? "",
-			);
+			const id = url.searchParams.get("id") ?? "";
+			const image = context.resources.sessionImages.get(id);
 			if (!image) throw new RouteError(404, "Session image not found.");
 			if (!url.searchParams.has("thumb")) {
 				return new Response(image.data, {
@@ -82,10 +78,7 @@ export const sessionRoutes = {
 					},
 				});
 			}
-			const thumbnail = await sessionThumbnail(
-				url.searchParams.get("id") ?? "",
-				image,
-			);
+			const thumbnail = await context.resources.sessionImages.getThumbnail(id);
 			// Unresizable sources (tiny, animated, exotic) fall back to full.
 			const body: { data: Uint8Array<ArrayBuffer>; mimeType: string } =
 				thumbnail ?? { data: image.data, mimeType: image.mimeType };
@@ -190,20 +183,6 @@ export const sessionRoutes = {
 		},
 	},
 } satisfies RouteMap<RouteContext>;
-
-const sessionThumbnails = new BoundedCache<string, ThumbnailImage>(200);
-
-async function sessionThumbnail(
-	id: string,
-	image: StoredSessionImage,
-): Promise<ThumbnailImage | undefined> {
-	const cached = sessionThumbnails.get(id);
-	if (cached) return cached;
-	const thumbnail = await thumbnailImage(image.data, image.mimeType);
-	if (!thumbnail) return undefined;
-	sessionThumbnails.set(id, thumbnail);
-	return thumbnail;
-}
 
 const FAVICON_DIRECTORIES = [
 	"",
