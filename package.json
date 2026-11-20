@@ -55,23 +55,23 @@
 		"@earendil-works/pi-coding-agent": "^1.5.2",
 		"@earendil-works/pi-schema": "^1.5.2",
 		"@earendil-works/pi-tui": "^1.5.2",
-		"@iconify-json/lucide": "^1.2.155",
+		"@iconify-json/lucide": "^1.2.157",
 		"@kitajs/html": "^5.0.0-next.4",
-		"@oxlint/plugins": "^1.93.0",
+		"@oxlint/plugins": "^1.94.0",
 		"@pierre/diffs": "^1.6.4",
 		"@pierre/highlights": "^0.5.1",
 		"@pierre/trees": "^1.0.0",
-		"@types/bun": "^1.4.4",
+		"@types/bun": "^1.4.5",
 		"open-props": "^1.7.23",
-		"oxlint": "^1.93.0",
+		"oxlint": "^1.94.0",
 		"pele": "^1.13.0",
 		"stylelint": "^18.0.0",
 		"stylelint-config-standard": "^41.0.0"
 	},
 	"engines": {
-		"bun": ">=1.4.4"
+		"bun": ">=1.4.5"
 	},
-	"packageManager": "bun@1.4.4",
+	"packageManager": "bun@1.4.5",
 	"patchedDependencies": {
 		"@earendil-works/pi-coding-agent@1.5.2": "patches/@earendil-works%2Fpi-coding-agent@1.5.2.patch"
 	}
