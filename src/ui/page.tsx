@@ -549,6 +549,25 @@ export function renderPage(
 							</footer>
 						</div>
 					</dialog>
+					<dialog
+						id="image-lightbox"
+						class="image-lightbox"
+						aria-label="Image preview"
+						data-preserve-attr="open"
+						closedby="any"
+					>
+						<img class="image-lightbox-image" alt="" />
+						<button
+							type="button"
+							class="btn image-lightbox-close"
+							data-variant="secondary"
+							data-size="icon-sm"
+							aria-label="Close image preview"
+							autofocus
+						>
+							<Icon name="x" />
+						</button>
+					</dialog>
 				</body>
 			</html>
 		),

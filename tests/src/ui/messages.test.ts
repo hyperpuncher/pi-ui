@@ -74,7 +74,10 @@ test("user messages render attached images without placeholder text", () => {
 	// Thumbnail box is reserved from dimensions: no layout shift on load.
 	assertStringIncludes(sized, 'width="384"');
 	assertStringIncludes(sized, 'height="288"');
+	assertStringIncludes(sized, 'data-full-width="1600"');
+	assertStringIncludes(sized, 'data-full-height="1200"');
 	assertStringIncludes(sized, 'href="/sessions/image?id=two"');
+	assertStringIncludes(html, '<button type="button" class="message-image-frame"');
 	assertStringIncludes(html, "notes.txt");
 	assertStringIncludes(html, "check this");
 	assertStringIncludes(html, 'loading="lazy"');

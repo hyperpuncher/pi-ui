@@ -379,6 +379,23 @@
 		border-radius: var(--radius-xl);
 		background: var(--surface-control);
 		padding: var(--image-frame-padding);
+		cursor: zoom-in;
+		transition:
+			border-color 120ms ease,
+			scale 140ms cubic-bezier(0.23, 1, 0.32, 1);
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.message-image-frame:hover {
+			border-color: var(--focus-ring);
+		}
+	}
+	.message-image-frame:active {
+		scale: 0.985;
+	}
+	.message-image-frame:focus-visible {
+		border-color: var(--focus-ring);
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
 	}
 	.message-image {
 		display: block;
@@ -387,6 +404,67 @@
 		height: auto;
 		border-radius: calc(var(--radius-xl) - (var(--image-frame-padding) + 1px) * 0.75);
 		object-fit: contain;
+	}
+	.image-lightbox {
+		position: fixed;
+		inset: 0;
+		width: fit-content;
+		height: fit-content;
+		max-width: none;
+		max-height: none;
+		margin: auto;
+		overflow: visible;
+		border: 0;
+		background: transparent;
+		padding: 0;
+		color: inherit;
+		outline: 0;
+
+		&[open] {
+			display: grid;
+			place-items: center;
+		}
+
+		&:modal {
+			overscroll-behavior: contain;
+		}
+
+		&::backdrop {
+			overflow: hidden;
+			overscroll-behavior: contain;
+			background: oklch(0% 0 none / 80%);
+		}
+	}
+	.image-lightbox-image {
+		display: block;
+		width: auto;
+		height: auto;
+		max-width: calc(100vw - 3rem);
+		max-height: calc(100dvh - 3rem);
+		border-radius: var(--radius-lg);
+		object-fit: contain;
+		box-shadow: var(--shadow-xl);
+		cursor: zoom-out;
+		will-change: transform;
+	}
+	.image-lightbox-image[data-sized] {
+		width: min(
+			var(--image-lightbox-width),
+			calc(100vw - 3rem),
+			calc((100dvh - 3rem) * var(--image-lightbox-ratio))
+		);
+		aspect-ratio: var(--image-lightbox-ratio);
+	}
+	.image-lightbox-close {
+		position: fixed;
+		inset-block-start: 1rem;
+		inset-inline-end: 1rem;
+		border-radius: 999px;
+		box-shadow: var(--shadow-md);
+		transition: scale 140ms cubic-bezier(0.23, 1, 0.32, 1);
+	}
+	.image-lightbox-close:active {
+		scale: 0.95;
 	}
 	.html-page {
 		display: block;

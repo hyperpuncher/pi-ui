@@ -510,6 +510,7 @@ function renderImageAttachment(
 	const thumb =
 		image.url && image.mimeType !== "image/gif" ? `${image.url}&thumb=1` : undefined;
 	const src = thumb ?? full;
+	const alt = attachment.name || `Attached image ${index + 1}`;
 	// Reserve the exact displayed box so decode cannot shift layout. The
 	// browser honors max-width before load, so a narrow container shrinks the
 	// reserved box the same way it shrinks the image.
@@ -518,19 +519,23 @@ function renderImageAttachment(
 		<img
 			class="message-image"
 			src={src}
-			alt={attachment.name || `Attached image ${index + 1}`}
+			alt={alt}
 			loading="lazy"
 			decoding="async"
 			width={size?.width}
 			height={size?.height}
+			data-full-width={image.width}
+			data-full-height={image.height}
 		/>
 	);
-	return thumb ? (
+	return image.url ? (
 		<a class="message-image-frame" href={full}>
 			{content}
 		</a>
 	) : (
-		<span class="message-image-frame">{content}</span>
+		<button type="button" class="message-image-frame" aria-label={`View ${alt}`}>
+			{content}
+		</button>
 	);
 }
 

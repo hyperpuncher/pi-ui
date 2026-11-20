@@ -9,6 +9,7 @@ import { bindDebugFrames } from "#static/app/debug-frames.js";
 import { bindFileLinks } from "#static/app/file-links.js";
 import * as fileTransfer from "#static/app/file-transfer.js";
 import { bindHtmlPages } from "#static/app/html-pages.js";
+import { bindImageLightbox } from "#static/app/image-lightbox.js";
 import {
 	bindMessageResize,
 	bindMessageScroll,
@@ -101,6 +102,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	bindMessageScroll();
 	bindCodeCopy();
 	bindHtmlPages();
+	bindImageLightbox();
 	bindTooltips();
 	bindVimScroll();
 	bindDebugFrames();

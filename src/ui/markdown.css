@@ -92,6 +92,12 @@
 		max-width: 100%;
 		height: auto;
 	}
+	.markdown-content img[data-markdown="img"] {
+		cursor: zoom-in;
+	}
+	.markdown-content a img[data-markdown="img"] {
+		cursor: pointer;
+	}
 
 	.markdown-content > :first-child {
 		margin-block-start: 0;
