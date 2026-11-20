@@ -28,7 +28,7 @@ export function renderCommandMenu(): string {
 					<input
 						id="command-input"
 						type="text"
-						placeholder="Type a command or search..."
+						placeholder="Type a command or search…"
 						autocomplete="off"
 						autocorrect="off"
 						spellcheck="false"

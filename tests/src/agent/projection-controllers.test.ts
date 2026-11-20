@@ -81,7 +81,7 @@ test("tool presentation preserves representative and malformed values", () => {
 		formatToolResult("codemode", {
 			content: [{ type: "text", text: "1\n2\n3\n4\n5\n6\n7\n8" }],
 		}),
-		{ text: "... (4 earlier lines)\n5\n6\n7\n8", format: "output" },
+		{ text: "… (4 earlier lines)\n5\n6\n7\n8", format: "output" },
 	);
 	assertEquals(toolTitleParts("read", { path: "/tmp/file", offset: 3, limit: 2 }), [
 		{ text: "read" },
@@ -416,11 +416,11 @@ test("tree navigation rejects overlap and can cancel summarization", async () =>
 	});
 
 	const first = projector.navigate("one", { summarize: true });
-	assertEquals(activities, ["Summarizing branch..."]);
+	assertEquals(activities, ["Summarizing branch…"]);
 	assertEquals(await projector.navigate("two"), { status: "busy" });
 	projector.entries();
 	assertEquals(await first, { status: "cancelled" });
-	assertEquals(activities, ["Summarizing branch...", undefined]);
+	assertEquals(activities, ["Summarizing branch…", undefined]);
 	assertEquals({ navigateCount, abortCount }, { navigateCount: 1, abortCount: 1 });
 });
 

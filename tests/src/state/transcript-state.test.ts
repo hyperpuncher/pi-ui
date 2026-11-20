@@ -53,7 +53,7 @@ test("transcript snapshots restore independent domain state and queue metadata",
 		{ role: "assistant", text: "restored", timestamp },
 	]);
 	const activeId = original.syncStreamingText("assistant", "streaming");
-	original.setActivityText("Working...");
+	original.setActivityText("Working…");
 	original.setQueuedMessages(["steer"], ["follow"]);
 	const snapshot = original.snapshot();
 	const restored = new TranscriptState({ keys: "x", description: "x" });
@@ -63,7 +63,7 @@ test("transcript snapshots restore independent domain state and queue metadata",
 	assertEquals(restored.getMessage(activeId)?.text, "streaming");
 	assertEquals(restored.getMessageIndex(activeId), 2);
 	assertEquals(restored.allMessages[0].text, "old");
-	assertEquals(restored.activityText, "Working...");
+	assertEquals(restored.activityText, "Working…");
 	assertEquals(restored.queuedSteeringMessages, ["steer"]);
 	assertEquals(restored.queuedFollowUpMessages, ["follow"]);
 	assertEquals(restored.activeAssistantMessageId, activeId);

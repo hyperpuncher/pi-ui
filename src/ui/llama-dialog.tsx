@@ -44,7 +44,7 @@ function renderLlamaDialogContent(dialog: AppLlamaDialog | undefined): string {
 								id="llama-model-search"
 								type="search"
 								class="input"
-								placeholder="Search models..."
+								placeholder="Search models…"
 								autocomplete="off"
 								autocorrect="off"
 								spellcheck="false"

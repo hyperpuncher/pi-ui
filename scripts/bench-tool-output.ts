@@ -20,7 +20,7 @@ for (const { lines, repeats } of cases) {
 	const expected =
 		lines <= 7
 			? text.trimEnd()
-			: `... (${lines - 4} earlier lines)\n${Array.from({ length: 4 }, () => line).join("\n")}`;
+			: `… (${lines - 4} earlier lines)\n${Array.from({ length: 4 }, () => line).join("\n")}`;
 	for (let index = 0; index < repeats; index++) {
 		const result = compactToolOutput(text);
 		if (result !== expected) throw new Error(`Incorrect preview for ${lines} lines`);

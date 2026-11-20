@@ -195,7 +195,7 @@ export function reduceSessionEvent(
 	}
 	switch (event.type) {
 		case "agent_start":
-			state.setActivityText("Working...");
+			state.setActivityText("Working…");
 			break;
 		case "message_start":
 			if (event.message.role === "toolResult") {
@@ -370,16 +370,14 @@ export function reduceSessionEvent(
 			state.setActivityText(undefined);
 			return { agentCompleted: true };
 		case "auto_retry_start":
-			state.setActivityText(`Retrying (${event.attempt}/${event.maxAttempts})...`);
+			state.setActivityText(`Retrying (${event.attempt}/${event.maxAttempts})…`);
 			break;
 		case "auto_retry_end":
 			state.setActivityText(undefined);
 			break;
 		case "compaction_start":
 			state.setActivityText(
-				event.reason === "manual"
-					? "Compacting context..."
-					: "Auto compaction...",
+				event.reason === "manual" ? "Compacting context…" : "Auto compaction…",
 			);
 			break;
 		case "compaction_end":

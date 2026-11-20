@@ -288,7 +288,7 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 							<input
 								id="model-select-input"
 								type="text"
-								placeholder="Search models..."
+								placeholder="Search models…"
 								autocomplete="off"
 								data-preserve-attr="aria-activedescendant"
 								autocorrect="off"

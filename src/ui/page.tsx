@@ -333,11 +333,11 @@ export function renderPage(
 									id="workspace-input"
 									class="workspace-command-input"
 									type="text"
-									placeholder="Type a path or search workspaces..."
+									placeholder="Type a path or search workspaces…"
 									data-attr:placeholder="
 										$_workspaceAction === 'fork'
-											? 'Choose a destination workspace...'
-											: 'Type a path or search workspaces...'
+											? 'Choose a destination workspace…'
+											: 'Type a path or search workspaces…'
 									"
 									autocomplete="off"
 									autocorrect="off"
@@ -440,7 +440,7 @@ export function renderPage(
 								<input
 									id="tree-input"
 									type="text"
-									placeholder="Search tree..."
+									placeholder="Search tree…"
 									autocomplete="off"
 									autocorrect="off"
 									spellcheck="false"
@@ -476,7 +476,7 @@ export function renderPage(
 								<input
 									id="session-input"
 									type="text"
-									placeholder="Search sessions..."
+									placeholder="Search sessions…"
 									autocomplete="off"
 									autocorrect="off"
 									spellcheck="false"

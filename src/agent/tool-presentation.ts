@@ -34,7 +34,7 @@ export function toolTitleParts(
 		return [
 			{ text: "$ ", tone: "accent", mono: true },
 			{
-				text: stringValue(record.command) || "...",
+				text: stringValue(record.command) || "…",
 				mono: true,
 				highlight: "bash",
 			},
@@ -90,7 +90,7 @@ export function toolTitle(
 	const record = asRecord(args);
 	if (toolName === "bash" && record) {
 		const timeout = isNumber(record.timeout) ? ` timeout ${record.timeout}s` : "";
-		return `$ ${stringValue(record.command) || "..."}${timeout}`;
+		return `$ ${stringValue(record.command) || "…"}${timeout}`;
 	}
 
 	const mcpTool = mcpToolLabel(toolName);
@@ -270,7 +270,7 @@ export function compactToolOutput(text: string): string {
 	for (let line = 0; line < bashPreviewLines; line++) {
 		previewStart = trimmed.lastIndexOf("\n", previewStart - 1);
 	}
-	return `... (${lineCount - bashPreviewLines} earlier lines)\n${trimmed.slice(previewStart + 1)}`;
+	return `… (${lineCount - bashPreviewLines} earlier lines)\n${trimmed.slice(previewStart + 1)}`;
 }
 
 function extractToolText<Result>(result: Result): string {

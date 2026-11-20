@@ -73,9 +73,9 @@ export function renderPromptBox(state: AppStateSnapshot): string {
 						placeholder={
 							state.isTemporarySession
 								? "Temporary chat"
-								: "Ask pi anything..."
+								: "Ask pi anything…"
 						}
-						data-attr:placeholder="$_temporarySession ? 'Temporary chat' : 'Ask pi anything...'"
+						data-attr:placeholder="$_temporarySession ? 'Temporary chat' : 'Ask pi anything…'"
 						aria-label="Message"
 						aria-autocomplete="list"
 						aria-haspopup="listbox"

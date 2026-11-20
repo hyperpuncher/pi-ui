@@ -64,7 +64,7 @@ function renderProviderPicker(dialog: AppAuthDialog): string {
 						id="auth-provider-search"
 						type="search"
 						class="input"
-						placeholder="Search providers..."
+						placeholder="Search providers…"
 						autocomplete="off"
 						autocorrect="off"
 						spellcheck="false"

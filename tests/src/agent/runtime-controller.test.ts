@@ -990,17 +990,17 @@ test("RuntimeController create activates event handling and keeps activity visib
 	});
 
 	runtime.emit(agentSessionEventStub({ type: "agent_start" }));
-	assertEquals(state.activityText, "Working...");
+	assertEquals(state.activityText, "Working…");
 
 	runtime.emit(
 		agentSessionEventStub({ type: "auto_retry_end", success: true, attempt: 1 }),
 	);
-	assertEquals(state.activityText, "Working...");
+	assertEquals(state.activityText, "Working…");
 
 	runtime.emit(
 		agentSessionEventStub({ type: "agent_end", messages: [], willRetry: false }),
 	);
-	assertEquals(state.activityText, "Working...");
+	assertEquals(state.activityText, "Working…");
 	runtime.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(state.activityText, undefined);
 	await controller.dispose();
@@ -1044,7 +1044,7 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	assertEquals(a.extensionBindings.length, 1);
 	assertEquals(b.extensionBindings.length, 1);
 	a.emit(agentSessionEventStub({ type: "agent_start" }));
-	assertEquals(state.activityText, "Working...");
+	assertEquals(state.activityText, "Working…");
 	a.emit(
 		agentSessionEventStub({
 			type: "queue_update",
@@ -1066,7 +1066,7 @@ test("RuntimeController reuses streaming runtimes across repeated background act
 	assertEquals(state.messages.length, 1);
 	assertEquals(state.messages[0]?.state, "success");
 	a.emit(agentSessionEventStub({ type: "agent_end", messages: [], willRetry: false }));
-	assertEquals(state.activityText, "Working...");
+	assertEquals(state.activityText, "Working…");
 	a.emit(agentSessionEventStub({ type: "agent_settled" }));
 	assertEquals(state.activityText, undefined);
 	await controller.dispose();

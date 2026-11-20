@@ -608,7 +608,7 @@ function renderNarrativeMessage(
 							{message.activityStep && message.activityStep > 0
 								? `step ${message.activityStep + 1} · `
 								: ""}
-							{message.streaming ? "thinking..." : "thought"}
+							{message.streaming ? "thinking…" : "thought"}
 						</p>
 					</div>
 				</article>,
@@ -639,9 +639,7 @@ function renderNarrativeMessage(
 								label={message.streaming ? "Thinking" : "Thought"}
 							/>
 							<span class="context-title thought-summary-title">
-								<span>
-									{message.streaming ? "thinking..." : "thought"}
-								</span>
+								<span>{message.streaming ? "thinking…" : "thought"}</span>
 								{message.thoughtDuration && (
 									<span class="context-meta" safe>
 										{message.thoughtDuration}

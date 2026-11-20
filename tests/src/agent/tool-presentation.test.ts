@@ -18,7 +18,7 @@ test.each([
 	{
 		name: "eight lines with blank lines and CRLF",
 		input: "1\r\n2\r\n3\r\n4\r\n\r\nλ 😀\r\n\r\nlast \r\n\t",
-		expected: "... (4 earlier lines)\n\r\nλ 😀\r\n\r\nlast",
+		expected: "… (4 earlier lines)\n\r\nλ 😀\r\n\r\nlast",
 	},
 ])("tool previews preserve $name", ({ input, expected }) => {
 	expect(compactToolOutput(input)).toBe(expected);

@@ -24,7 +24,7 @@ export function renderPromptStatus(state: AppStateSnapshot): string {
 				{statusIndicator === undefined
 					? loaderIcon()
 					: statusIndicator && <span safe>{statusIndicator}</span>}
-				<span safe>{workingText ?? "Sending..."}</span>
+				<span safe>{workingText ?? "Sending…"}</span>
 			</span>
 			{renderUsageIndicators(state.usage)}
 		</span>,

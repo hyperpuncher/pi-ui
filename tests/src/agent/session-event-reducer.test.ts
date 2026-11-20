@@ -227,7 +227,7 @@ test("reduces agent, message, queue, and completion events", () => {
 	const outcome = reduceSessionEvent(event({ type: "agent_settled" }), context);
 
 	assertEquals(attemptOutcome, { agentCompleted: false });
-	assertEquals(state.activity, ["Working...", undefined]);
+	assertEquals(state.activity, ["Working…", undefined]);
 	assertEquals(state.appended[0], {
 		id: "message-1",
 		role: "user",
@@ -654,7 +654,7 @@ test("reduces retry and compaction lifecycle events", () => {
 				delayMs: 10,
 				errorMessage: "failed",
 			}),
-			expected: "Retrying (2/4)...",
+			expected: "Retrying (2/4)…",
 		},
 		{
 			input: event({ type: "auto_retry_end", success: true, attempt: 2 }),
@@ -662,15 +662,15 @@ test("reduces retry and compaction lifecycle events", () => {
 		},
 		{
 			input: event({ type: "compaction_start", reason: "manual" }),
-			expected: "Compacting context...",
+			expected: "Compacting context…",
 		},
 		{
 			input: event({ type: "compaction_start", reason: "threshold" }),
-			expected: "Auto compaction...",
+			expected: "Auto compaction…",
 		},
 		{
 			input: event({ type: "compaction_start", reason: "overflow" }),
-			expected: "Auto compaction...",
+			expected: "Auto compaction…",
 		},
 	];
 	for (const testCase of cases) {

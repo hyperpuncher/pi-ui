@@ -180,7 +180,7 @@ test("notices show their level, and pi-ui notices default to warning", () => {
 test("bodyless tools show only their title", () => {
 	const html = renderMessage(tool());
 	assertStringIncludes(html, "Read file");
-	assertStringExcludes(html, "Working...");
+	assertStringExcludes(html, "Working…");
 	assertStringExcludes(html, "<details");
 });
 
@@ -400,7 +400,7 @@ test("collapsed thinking renders expandable details with active and completed st
 	const streaming = renderer.renderMessageElement(thoughtId)!;
 	assertStringIncludes(streaming, "thought-details");
 	assertStringIncludes(streaming, 'data-state="running"');
-	assertStringIncludes(streaming, "thinking...");
+	assertStringIncludes(streaming, "thinking…");
 	assertStringIncludes(streaming, "Inspecting layout");
 
 	store.transcript.finishAssistant();

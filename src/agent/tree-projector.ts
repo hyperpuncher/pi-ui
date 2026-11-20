@@ -49,7 +49,7 @@ export class TreeProjector {
 		if (!entryId.trim()) return { status: "cancelled" };
 		const navigation = { session };
 		this.navigations.set(ownerToken, navigation);
-		if (options.summarize) this.state.setActivityText?.("Summarizing branch...");
+		if (options.summarize) this.state.setActivityText?.("Summarizing branch…");
 		try {
 			const result = await session.navigateTree(entryId, {
 				summarize: options.summarize ?? false,
@@ -363,7 +363,7 @@ function formatToolDetail(name: string, args: JsonRecord): string {
 			const command = String(args.command || "")
 				.replace(/[\n\t]+/g, " ")
 				.trim();
-			return `${command.slice(0, 80)}${command.length > 80 ? "..." : ""}`;
+			return `${command.slice(0, 80)}${command.length > 80 ? "…" : ""}`;
 		}
 		case "grep":
 			return `/${String(args.pattern || "")}/ in ${path || "."}`;
@@ -373,7 +373,7 @@ function formatToolDetail(name: string, args: JsonRecord): string {
 			return path || ".";
 		default: {
 			const serialized = JSON.stringify(args);
-			return `${serialized.slice(0, 60)}${serialized.length > 60 ? "..." : ""}`;
+			return `${serialized.slice(0, 60)}${serialized.length > 60 ? "…" : ""}`;
 		}
 	}
 }

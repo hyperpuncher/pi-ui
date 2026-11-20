@@ -927,7 +927,7 @@ export class RuntimeController {
 			return false;
 		}
 
-		this.state.setActivityText("Reloading...");
+		this.state.setActivityText("Reloading…");
 		try {
 			await session.reload({ beforeSessionStart: () => this.unbindSession() });
 			if (runtime !== this.runtime) return false;
@@ -961,7 +961,7 @@ export class RuntimeController {
 		}
 		this.sharing = true;
 		const generation = this.foregroundGeneration;
-		this.state.setActivityText("Creating share...");
+		this.state.setActivityText("Creating share…");
 		try {
 			const result = await this.dependencies.shareSession(this.runtime.session);
 			if (generation !== this.foregroundGeneration) return;
@@ -1420,7 +1420,7 @@ export class RuntimeController {
 			this.unsubscribe = session.subscribe((event) => this.handleEvent(event));
 			this.state.setActivityText(
 				session.isStreaming || this.foregroundObservedRunning
-					? "Working..."
+					? "Working…"
 					: undefined,
 			);
 			this.models.sync();
@@ -1520,7 +1520,7 @@ export class RuntimeController {
 				this.updateSessionCatalogFromEvent(event, this.runtime);
 				this.scheduleAutoTitleAfterUserMessage(this.runtime, event);
 				if (this.foregroundObservedRunning && !this.state.activityText) {
-					this.state.setActivityText("Working...");
+					this.state.setActivityText("Working…");
 				}
 				if (outcome.agentCompleted) {
 					const path = this.runtime.session.sessionManager.getSessionFile();

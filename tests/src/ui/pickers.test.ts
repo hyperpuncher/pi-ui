@@ -134,7 +134,7 @@ test("current running session remains selected and exposes rename and abort", ()
 				},
 			],
 			currentSessionPath: path,
-			activityText: "Working...",
+			activityText: "Working…",
 		}),
 	);
 
@@ -315,7 +315,7 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 	assertStringIncludes(withoutSelection, "choose model");
 	assertStringIncludes(withoutSelection, 'aria-label="Models"');
 	assertStringIncludes(withoutSelection, "@post('/models/refresh', { payload: {} })");
-	assertStringIncludes(withoutSelection, 'placeholder="Search models..."');
+	assertStringIncludes(withoutSelection, 'placeholder="Search models…"');
 	const rows = renderModelOptions(
 		[
 			{

@@ -326,7 +326,7 @@ test("background activation resumes streaming and highlights completed messages"
 		state: "running",
 		format: "code",
 	});
-	background.setActivityText("Working...");
+	background.setActivityText("Working…");
 	background.setQueuedMessages(["steer"], ["follow"]);
 
 	const foreground = createState();
@@ -335,7 +335,7 @@ test("background activation resumes streaming and highlights completed messages"
 
 	assertIncludes(projectedMessages(foreground)[0].renderedHtml ?? "", "partial");
 	assertEqual(projectedMessages(foreground)[1].renderedHtml, undefined);
-	assertEqual(foreground.activityText, "Working...");
+	assertEqual(foreground.activityText, "Working…");
 	assertEqual(foreground.queuedSteeringMessages, ["steer"]);
 	assertEqual(foreground.queuedFollowUpMessages, ["follow"]);
 
@@ -460,7 +460,7 @@ test("app stream refreshes current and background session statuses", async () =>
 
 	state.update(() => {
 		state.setCurrentSessionPath(first.path);
-		state.setActivityText("Working...");
+		state.setActivityText("Working…");
 		state.setSessionCatalog([first, second]);
 	});
 	const running = await readUntil(reader, (text) =>
@@ -561,7 +561,7 @@ test("initial page signals match live state after activity and session transitio
 	const state = createState();
 	const cases = [
 		() => {},
-		() => state.setActivityText("Working..."),
+		() => state.setActivityText("Working…"),
 		() =>
 			state.setSessionTransition({
 				status: "loading",
