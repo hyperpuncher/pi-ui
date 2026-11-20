@@ -38,8 +38,11 @@ const updateCheckIntervalMs = 6 * 60 * 60 * 1000;
 
 export async function createApp() {
 	const fdReady = ensureTool("fd", ({ message }) => console.error(message));
-	const staticAssets = await createStaticAssetServer(staticRoot);
-	const appConfig = await ensureAppConfig();
+	const transferredFilesReady = TransferredFileStore.create();
+	const [staticAssets, appConfig] = await Promise.all([
+		createStaticAssetServer(staticRoot),
+		ensureAppConfig(),
+	]);
 	setActiveKeybinds(parseKeybindOverrides(appConfig.keybinds));
 	const codeTheme = validCodeThemes(appConfig.codeTheme) ?? defaultCodeThemes();
 	const fonts = validFonts(appConfig.fonts) ?? defaultFonts();
@@ -106,9 +109,11 @@ export async function createApp() {
 		console.error("Failed to preload tool highlighter");
 	}
 	workspaceReview.open(store.workspacePath);
-	const fdPath = await fdReady;
+	const [fdPath, transferredFiles] = await Promise.all([
+		fdReady,
+		transferredFilesReady,
+	]);
 	const resources: RouteResources = { host, sessionImages, htmlPages, fdPath };
-	const transferredFiles = await TransferredFileStore.create();
 	const context: RouteContext = {
 		store,
 		renderer,

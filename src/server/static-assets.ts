@@ -47,10 +47,11 @@ function safeStaticPath(root: string, pathname: string): string | undefined {
 
 async function staticContentVersion(root: string): Promise<string> {
 	const paths = await staticVersionPaths(root);
+	const contents = await Promise.all(paths.map((path) => readFile(path)));
 	const hasher = new Bun.CryptoHasher("sha256");
-	for (const path of paths) {
+	for (const [index, path] of paths.entries()) {
 		hasher.update(`${relative(root, path)}\0`);
-		hasher.update(await readFile(path));
+		hasher.update(contents[index]!);
 	}
 	return hasher.digest("hex").slice(0, 16);
 }

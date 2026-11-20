@@ -198,17 +198,17 @@ const FAVICON_DIRECTORIES = [
 ] as const;
 const FAVICON_EXTENSIONS = ["ico", "svg", "png"] as const;
 
+const FAVICON_CANDIDATES = FAVICON_DIRECTORIES.flatMap((directory) =>
+	FAVICON_EXTENSIONS.map((extension) => join(directory, `favicon.${extension}`)),
+);
+
 const FOLDER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><style>:root{color:#737373}@media(prefers-color-scheme:dark){:root{color:#a1a1aa}}</style><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`;
 
 async function readWorkspaceFavicon(cwd: string): Promise<Bun.BunFile | undefined> {
-	for (const directory of FAVICON_DIRECTORIES) {
-		for (const extension of FAVICON_EXTENSIONS) {
-			const file = Bun.file(join(cwd, directory, `favicon.${extension}`));
-			if (await file.exists()) return file;
-		}
-	}
-
-	return undefined;
+	const files = FAVICON_CANDIDATES.map((candidate) => Bun.file(join(cwd, candidate)));
+	const exists = await Promise.all(files.map((file) => file.exists()));
+	const index = exists.indexOf(true);
+	return index >= 0 ? files[index] : undefined;
 }
 
 function faviconHeaders(contentType: string): HeadersInit {

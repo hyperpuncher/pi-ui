@@ -1,7 +1,5 @@
 import { execFile } from "node:child_process";
 
-import { parsePatchFiles } from "@pierre/diffs";
-
 import { gitText, runGit } from "#src/server/git.ts";
 import { sortWorkspaceReviewEntries } from "#src/workspace-review-tree.ts";
 import {
@@ -353,8 +351,8 @@ export async function readWorkspaceCommit(
 	if (!/^[0-9a-f]{40}$/i.test(hash)) return undefined;
 	const root = await findGitRoot(workspacePath);
 	if (!root) return undefined;
-	const [metadataResult, statusResult, patchResult, upstreamResult] = await Promise.all(
-		[
+	const [metadataResult, statusResult, numstatResult, patchResult, upstreamResult] =
+		await Promise.all([
 			git(root, "show", "-s", ...commitLogArgs, hash),
 			git(
 				root,
@@ -362,6 +360,18 @@ export async function readWorkspaceCommit(
 				"--root",
 				"--no-commit-id",
 				"--name-status",
+				"-r",
+				"-z",
+				"--find-renames",
+				"--diff-merges=first-parent",
+				hash,
+			),
+			git(
+				root,
+				"diff-tree",
+				"--root",
+				"--no-commit-id",
+				"--numstat",
 				"-r",
 				"-z",
 				"--find-renames",
@@ -382,9 +392,13 @@ export async function readWorkspaceCommit(
 				"--",
 			),
 			git(root, "merge-base", "--is-ancestor", hash, "@{upstream}"),
-		],
-	);
-	if (metadataResult.code !== 0 || statusResult.code !== 0 || patchResult.code !== 0)
+		]);
+	if (
+		metadataResult.code !== 0 ||
+		statusResult.code !== 0 ||
+		numstatResult.code !== 0 ||
+		patchResult.code !== 0
+	)
 		return undefined;
 	const commit = parseCommitLog(
 		metadataResult.stdout,
@@ -392,7 +406,7 @@ export async function readWorkspaceCommit(
 	)[0];
 	if (!commit) return undefined;
 	return {
-		changes: addStats(parseNameStatus(statusResult.stdout), patchResult.stdout),
+		changes: addNumStats(parseNameStatus(statusResult.stdout), numstatResult.stdout),
 		commit,
 		patch: patchResult.stdout,
 	};
@@ -534,25 +548,6 @@ function addNumStats(
 			additions: Number(match[1]) || 0,
 			deletions: Number(match[2]) || 0,
 		});
-	}
-	return changes.map((change) => ({ ...change, ...stats.get(change.path) }));
-}
-
-function addStats(
-	changes: readonly WorkspaceFileChange[],
-	patch: string,
-): WorkspaceFileChange[] {
-	const stats = new Map<string, { additions: number; deletions: number }>();
-	for (const parsed of parsePatchFiles(patch)) {
-		for (const file of parsed.files) {
-			let additions = 0;
-			let deletions = 0;
-			for (const hunk of file.hunks) {
-				additions += hunk.additionLines;
-				deletions += hunk.deletionLines;
-			}
-			stats.set(file.name, { additions, deletions });
-		}
 	}
 	return changes.map((change) => ({ ...change, ...stats.get(change.path) }));
 }
