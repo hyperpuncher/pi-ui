@@ -236,9 +236,10 @@
 	}
 	.tool-plain-output {
 		/* Bottom-align the single text block without measuring each DOM update.
-		   Five lines plus the border, rounded to whole device pixels. */
+		   Use content-box so max-height matches five lines regardless of border snapping. */
+		box-sizing: content-box;
 		display: flex;
-		max-height: round(up, 5lh + 1px, 2px);
+		max-height: 5lh;
 		flex-direction: column-reverse;
 		overflow: auto;
 		line-height: 1.375rem;
@@ -663,7 +664,7 @@
 		.message-tool {
 			--text-base: var(--text-xs);
 		}
-		#messages :is(.tool-pending-output, .code-block pre) {
+		#messages :is(.tool-plain-output, .tool-pending-output, .code-block pre) {
 			font-size: var(--text-xs);
 			line-height: 1.125rem;
 		}
