@@ -55,6 +55,7 @@ type RuntimeFake = {
 	setStreaming(value: boolean): void;
 	setCompact(value: () => Promise<void>): void;
 	beforeSwitch?: () => { cancel?: boolean } | undefined;
+	diagnostics: Array<{ type: "info" | "warning" | "error"; message: string }>;
 };
 
 function manager(
@@ -103,6 +104,7 @@ function fakeRuntime(
 		modelRefreshForces: [],
 		reloadCount: 0,
 		setSessionNames: [],
+		diagnostics: [],
 		emit: (event) => {
 			if (event.type === "queue_update") {
 				steeringMessages.splice(0, steeringMessages.length, ...event.steering);
@@ -218,6 +220,7 @@ function fakeRuntime(
 		setBeforeSessionInvalidate: (callback: Callback) =>
 			beforeInvalidate.push(callback),
 		setRebindSession: (callback: Callback) => rebind.push(callback),
+		takeUnreportedDiagnostics: () => fake.diagnostics.splice(0),
 		newSession: async () => ({ cancelled: false }),
 		dispose: () => {
 			fake.disposeCount += 1;
@@ -1761,5 +1764,57 @@ test("RuntimeController restores extension UI when a pooled session returns", as
 		await controller.dispose();
 		await unlink(first);
 		await unlink(second);
+	}
+});
+
+test("RuntimeController reports startup and replacement diagnostics once", async () => {
+	const first = fakeRuntime("/sessions/a.jsonl", false);
+	first.diagnostics.push({
+		type: "warning",
+		message: 'No models match pattern "missing/*"',
+	});
+	const second = fakeRuntime("/sessions/b.jsonl", true);
+	second.diagnostics.push(
+		{ type: "warning", message: 'No models match pattern "missing/*"' },
+		{ type: "error", message: "Project extension failed to load" },
+	);
+	const state = new AppStore();
+	const controller = await activate(state, [first, second]);
+	try {
+		assertEquals(
+			state.messages.map(({ role, level, text }) => ({
+				role,
+				level,
+				text,
+			})),
+			[
+				{
+					role: "notice",
+					level: "warning",
+					text: 'No models match pattern "missing/*"',
+				},
+			],
+		);
+
+		assertEquals(
+			(await controller.resumeSession("/sessions/b.jsonl")).status,
+			"success",
+		);
+		assertEquals(
+			state.messages.map(({ role, level, text }) => ({
+				role,
+				level,
+				text,
+			})),
+			[
+				{
+					role: "notice",
+					level: "error",
+					text: "Project extension failed to load",
+				},
+			],
+		);
+	} finally {
+		await controller.dispose();
 	}
 });

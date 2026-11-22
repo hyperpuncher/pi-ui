@@ -263,6 +263,7 @@ export class RuntimeController {
 	private readonly dependencies: RuntimeControllerDependencies;
 	private readonly sessionDir: string | undefined;
 	private readonly autoTitlesInFlight = new Set<string>();
+	private readonly reportedDiagnosticKeys = new Set<string>();
 
 	private constructor(
 		private runtime: AgentSessionRuntime,
@@ -370,10 +371,12 @@ export class RuntimeController {
 			const snapshotRuntime: ModelRuntime = Object.create(services.modelRuntime);
 			snapshotRuntime.getAvailable = async () =>
 				services.modelRuntime.getAvailableSnapshot();
-			const { scopedModels } = await resolveModelScopeWithDiagnostics(
-				services.settingsManager.getEnabledModels() ?? [],
-				snapshotRuntime,
-			);
+			const { scopedModels, diagnostics: modelScopeDiagnostics } =
+				await resolveModelScopeWithDiagnostics(
+					services.settingsManager.getEnabledModels() ?? [],
+					snapshotRuntime,
+				);
+			const diagnostics = [...services.diagnostics, ...modelScopeDiagnostics];
 			const readIsOverridden = services.resourceLoader
 				.getExtensions()
 				.extensions.some((extension) => extension.tools.has("read"));
@@ -386,10 +389,16 @@ export class RuntimeController {
 					? undefined
 					: [createBunReadToolDefinition(cwd)],
 			});
+			if (session.modelFallbackMessage && session.session.model) {
+				diagnostics.push({
+					type: "warning",
+					message: session.modelFallbackMessage,
+				});
+			}
 			return {
 				...session,
 				services,
-				diagnostics: services.diagnostics,
+				diagnostics,
 			};
 		};
 
@@ -435,6 +444,7 @@ export class RuntimeController {
 
 	activate(): void {
 		this.bindSessionState({ syncSessions: false });
+		this.reportRuntimeDiagnostics();
 		this.initialCatalogLoad = this.loadInitialCatalog();
 		this.catalog.activate();
 	}
@@ -575,6 +585,7 @@ export class RuntimeController {
 		// In-place replacement starts extensions through the SDK rebind callback.
 		if (active || !persisted) await this.bindSessionExtensions();
 		this.bindSessionState({ refreshSessions: true });
+		this.reportRuntimeDiagnostics();
 		return true;
 	}
 
@@ -595,6 +606,7 @@ export class RuntimeController {
 			previousSessionFile,
 		});
 		await this.bindSession();
+		this.reportRuntimeDiagnostics();
 		return true;
 	}
 
@@ -753,6 +765,7 @@ export class RuntimeController {
 		this.adoptRuntime(replacement);
 		this.state.resetChat({ preserveEmptyHint: true });
 		this.bindSessionState();
+		this.reportRuntimeDiagnostics();
 		return true;
 	}
 
@@ -875,6 +888,7 @@ export class RuntimeController {
 		// A new session must not inherit the outgoing session's history window.
 		this.state.resetChat({ broadcast: false });
 		this.loadCurrentSessionMessages();
+		this.reportRuntimeDiagnostics();
 		return true;
 	}
 
@@ -941,6 +955,7 @@ export class RuntimeController {
 			if (runtime !== this.runtime) return false;
 			this.bindSessionState();
 			this.loadCurrentSessionMessages();
+			this.reportRuntimeDiagnostics();
 			this.state.appendMessage(
 				"system",
 				"Reloaded extensions, skills, prompts, and context files.",
@@ -1082,6 +1097,7 @@ export class RuntimeController {
 			if (!ownsForeground()) return;
 			this.bindSessionState();
 			this.loadCurrentSessionMessages();
+			this.reportRuntimeDiagnostics();
 		});
 	}
 
@@ -1648,6 +1664,19 @@ export class RuntimeController {
 			},
 			syncUsage,
 		});
+	}
+
+	private reportRuntimeDiagnostics(runtime = this.runtime): void {
+		const diagnostics = runtime.takeUnreportedDiagnostics?.();
+		if (!diagnostics?.length) return;
+		for (const diagnostic of diagnostics) {
+			const key = `${diagnostic.type}\0${diagnostic.message}`;
+			if (this.reportedDiagnosticKeys.has(key)) continue;
+			this.reportedDiagnosticKeys.add(key);
+			this.state.appendMessage("notice", diagnostic.message, {
+				level: diagnostic.type,
+			});
+		}
 	}
 
 	private formatRunningTool(toolName: string, args: ToolArguments, showBody = true) {
