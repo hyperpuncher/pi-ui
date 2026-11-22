@@ -119,22 +119,13 @@ export type SessionEventReducerOutcome = {
 
 const noOutcome: SessionEventReducerOutcome = { agentCompleted: false };
 const previewArgumentPrefixLimit = 4096;
-const pathPreviewTools = new Set([
-	"edit",
-	"find",
-	"grep",
-	"ls",
-	"read",
-	"show_visualization",
-	"write",
-]);
 
-function completedPathArgument(prefix: string): Record<string, string> | undefined {
-	const match = prefix.match(/"(path|file_path)"\s*:\s*"((?:\\.|[^"\\])*)"/);
+function earlyPreviewArgs(prefix: string): Record<string, string> | undefined {
+	const match = prefix.match(/"(path|file_path|command)"\s*:\s*"((?:\\.|[^"\\])*)"/);
 	if (!match) return undefined;
 	try {
-		const path = JSON.parse(`"${match[2]}"`);
-		return isString(path) ? { [match[1]]: path } : undefined;
+		const value = JSON.parse(`"${match[2]}"`);
+		return isString(value) ? { [match[1]]: value } : undefined;
 	} catch {
 		return undefined;
 	}
@@ -245,39 +236,36 @@ export function reduceSessionEvent(
 						assistantEvent.type === "toolcall_delta" &&
 						preview.argumentPrefix !== undefined
 					) {
-						if (!pathPreviewTools.has(call.name)) {
-							preview.argumentPrefix = undefined;
-						} else {
-							const prefix = preview.argumentPrefix + assistantEvent.delta;
-							const pathArgs = completedPathArgument(prefix);
-							if (pathArgs) {
-								const view = context.formatToolPreview(
-									call.name,
-									pathArgs,
-								);
-								state.updateMessage(preview.id, {
-									text: view.text,
-									...view.options,
-								});
-								preview.argumentPrefix = undefined;
-							} else {
-								preview.argumentPrefix =
-									prefix.length <= previewArgumentPrefixLimit
-										? prefix
-										: undefined;
-							}
+						const prefix =
+							preview.argumentPrefix +
+							assistantEvent.delta.slice(
+								0,
+								previewArgumentPrefixLimit -
+									preview.argumentPrefix.length,
+							);
+						const args = earlyPreviewArgs(prefix);
+						if (args) {
+							const view = context.formatToolPreview(call.name, args);
+							state.updateMessage(preview.id, {
+								text: view.text,
+								...view.options,
+							});
 						}
+						preview.argumentPrefix =
+							!args && prefix.length < previewArgumentPrefixLimit
+								? prefix
+								: undefined;
 					}
 				}
 			}
 			if (assistantEvent.type === "toolcall_end") {
 				const call = assistantEvent.toolCall;
+				const view = context.formatToolPreview(call.name, call.arguments);
 				const preview = tools.previewMessages.get(assistantEvent.contentIndex);
-				let id = preview?.id;
-				if (!id) {
-					const view = context.formatToolPreview(call.name, {});
-					id = state.appendMessage("tool", view.text, view.options);
-				}
+				const id =
+					preview?.id ?? state.appendMessage("tool", view.text, view.options);
+				if (preview)
+					state.updateMessage(id, { text: view.text, ...view.options });
 				tools.previewMessages.delete(assistantEvent.contentIndex);
 				tools.messageIds.set(call.id, id);
 				tools.callArgs.set(call.id, call.arguments);

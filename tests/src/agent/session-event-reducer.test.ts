@@ -374,7 +374,7 @@ test("skips tool-result message starts", () => {
 	assertEquals(state.appended, []);
 });
 
-test("shows tools without rendering each streamed argument delta", () => {
+test("previews a custom tool path early and uses final arguments before execution", () => {
 	const { state, context } = fixture();
 	const partial = {
 		role: "assistant",
@@ -382,7 +382,7 @@ test("shows tools without rendering each streamed argument delta", () => {
 			{
 				type: "toolCall",
 				id: "call",
-				name: "write",
+				name: "custom_tool",
 				arguments: {},
 			},
 		],
@@ -402,7 +402,7 @@ test("shows tools without rendering each streamed argument delta", () => {
 	assertEquals(state.appended[0], {
 		id: "message-1",
 		role: "tool",
-		text: "preview:write",
+		text: "preview:custom_tool",
 		options: {
 			title: "{}",
 			state: "running",
@@ -430,7 +430,7 @@ test("shows tools without rendering each streamed argument delta", () => {
 	assertEquals(state.updates.at(-1), {
 		id: "message-1",
 		patch: {
-			text: "preview:write",
+			text: "preview:custom_tool",
 			title: '{"path":"file.ts"}',
 			state: "running",
 			format: "pre",
@@ -451,25 +451,33 @@ test("shows tools without rendering each streamed argument delta", () => {
 	);
 	assertEquals(state.updates.length, 1);
 
+	const finalCall = {
+		...updatedPartial.content[0],
+		arguments: { path: "file.ts", content: "finished payload" },
+	};
+	const finalPartial = { ...updatedPartial, content: [finalCall] };
 	reduceSessionEvent(
 		event({
 			type: "message_update",
-			message: updatedPartial,
+			message: finalPartial,
 			assistantMessageEvent: {
 				type: "toolcall_end",
 				contentIndex: 0,
-				toolCall: updatedPartial.content[0],
-				partial: updatedPartial,
+				toolCall: finalCall,
+				partial: finalPartial,
 			},
 		}),
 		context,
 	);
-	assertEquals(state.updates.length, 1);
+	assertEquals(
+		state.getMessage("message-1")?.title,
+		JSON.stringify(finalCall.arguments),
+	);
 	reduceSessionEvent(
 		event({
 			type: "tool_execution_start",
 			toolCallId: "call",
-			toolName: "write",
+			toolName: "custom_tool",
 			args: { path: "file.ts" },
 		}),
 		context,
@@ -479,7 +487,7 @@ test("shows tools without rendering each streamed argument delta", () => {
 	assertEquals(state.updates.at(-1), {
 		id: "message-1",
 		patch: {
-			text: "start:write",
+			text: "start:custom_tool",
 			title: "running",
 			state: "running",
 			format: "pre",
