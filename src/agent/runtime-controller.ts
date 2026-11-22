@@ -72,6 +72,7 @@ import {
 	formatToolStart,
 	toolEndMeta,
 	toolMeta,
+	toolNestedCalls,
 	toolPage,
 	toolResultImageAttachments,
 	toolTitle,
@@ -88,7 +89,10 @@ import {
 	type AppTreeEntry,
 	type BackgroundSessionStatus,
 } from "#src/state/app-store.ts";
-import { TranscriptState } from "#src/state/transcript-state.ts";
+import {
+	type TranscriptMessageOptions,
+	TranscriptState,
+} from "#src/state/transcript-state.ts";
 import { errorMessage } from "#src/utils/errors.ts";
 import { configureAgentHttpProxy } from "#src/utils/http-proxy.ts";
 import { moveToTrash } from "#src/utils/trash.ts";
@@ -1610,22 +1614,22 @@ export class RuntimeController {
 					isError: toolEvent.isError,
 				});
 				const attachments = toolResultImageAttachments(toolEvent.result);
-				return {
-					text: view.text,
-					options: {
-						title: toolTitle(
-							toolEvent.isError ? "error" : "success",
-							toolEvent.toolName,
-							args,
-						),
-						meta: toolEndMeta(toolEvent.durationMs),
-						state: toolEvent.isError ? "error" : "success",
-						titleParts: toolTitleParts(toolEvent.toolName, args),
-						format: view.format,
-						attachments: attachments.length ? attachments : undefined,
-						page: toolPage(toolEvent.toolName, args, toolEvent.isError),
-					},
+				const nestedCalls = toolNestedCalls(toolEvent.result);
+				const options: TranscriptMessageOptions = {
+					title: toolTitle(
+						toolEvent.isError ? "error" : "success",
+						toolEvent.toolName,
+						args,
+					),
+					meta: toolEndMeta(toolEvent.durationMs, toolEvent.result),
+					state: toolEvent.isError ? "error" : "success",
+					titleParts: toolTitleParts(toolEvent.toolName, args),
+					format: view.format,
+					attachments: attachments.length ? attachments : undefined,
+					page: toolPage(toolEvent.toolName, args, toolEvent.isError),
 				};
+				if (nestedCalls) options.nestedCalls = nestedCalls;
+				return { text: view.text, options };
 			},
 			cacheMissNotice: (message) => {
 				if (!this.runtime.session.settingsManager?.getShowCacheMissNotices()) {

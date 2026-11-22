@@ -107,9 +107,51 @@ export function toolMeta(toolName: string, args: JsonValue): string | undefined 
 	return `${edits.length} edit${edits.length === 1 ? "" : "s"}`;
 }
 
-export function toolEndMeta(durationMs: number | undefined): string | undefined {
-	if (durationMs === undefined) return undefined;
-	return formatDuration(durationMs);
+export function toolEndMeta<Result>(
+	durationMs: number | undefined,
+	result?: Result,
+): string | undefined {
+	const details = asRecord(asRecord(result)?.details);
+	const effective =
+		isNumber(details?.durationMs) && details.durationMs >= 0
+			? details.durationMs
+			: durationMs;
+	if (effective === undefined) return undefined;
+	return formatDuration(effective);
+}
+
+/** Reads extension-supplied nested tool calls from result.details.nestedCalls. */
+export function toolNestedCalls<Result>(
+	result?: Result,
+): TranscriptMessage["nestedCalls"] {
+	const nested = asRecord(asRecord(asRecord(result)?.details)?.nestedCalls);
+	if (!nested || !Array.isArray(nested.calls) || nested.calls.length === 0) {
+		return undefined;
+	}
+	const calls: NonNullable<TranscriptMessage["nestedCalls"]>["calls"] = [];
+	for (const entry of nested.calls) {
+		const record = asRecord(entry);
+		if (
+			!record ||
+			!isString(record.id) ||
+			!isString(record.name) ||
+			(record.status !== "ok" &&
+				record.status !== "error" &&
+				record.status !== "unfinished")
+		) {
+			continue;
+		}
+		const call: NonNullable<TranscriptMessage["nestedCalls"]>["calls"][number] = {
+			id: record.id,
+			name: record.name,
+			arguments: asRecord(record.arguments) ?? {},
+			status: record.status,
+		};
+		if (isNumber(record.durationMs)) call.durationMs = record.durationMs;
+		if (isString(record.error)) call.error = record.error;
+		calls.push(call);
+	}
+	return calls.length ? { calls, complete: nested.complete !== false } : undefined;
 }
 
 export function formatDuration(ms: number): string {
