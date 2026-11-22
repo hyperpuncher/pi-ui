@@ -11,6 +11,7 @@ import {
 	type CreateAgentSessionRuntimeFactory,
 	createAgentSessionServices,
 	createCodemodeExtension,
+	createEventBus,
 	createMcpExtension,
 	createToolSearchExtension,
 	getAgentDir,
@@ -23,6 +24,7 @@ import {
 import { AuthController } from "#src/agent/auth-controller.ts";
 import { type AutoTitleConfig, generateAutoTitle } from "#src/agent/auto-title.ts";
 import { detectCacheMiss, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
+import { extensionQuotaBuses } from "#src/agent/extension-quota.ts";
 import {
 	ExtensionUiController,
 	type ExtensionUiSnapshot,
@@ -348,10 +350,12 @@ export class RuntimeController {
 			sessionManager,
 			sessionStartEvent,
 		}) => {
+			const eventBus = createEventBus();
 			const services = await createAgentSessionServices({
 				cwd,
-				resourceLoaderOptions: { extensionFactories },
+				resourceLoaderOptions: { extensionFactories, eventBus },
 			});
+			extensionQuotaBuses.set(services.resourceLoader, eventBus);
 			// pi-ui resizes images with Bun.Image because pi's Photon resizer is not
 			// bundled in compiled builds. Force pi's image auto-resize off for this
 			// manager (an override on the method, not the setting, so it survives

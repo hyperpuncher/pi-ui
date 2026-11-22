@@ -1,5 +1,8 @@
 import { onTestFinished, spyOn, test } from "bun:test";
 
+import { createEventBus } from "@earendil-works/pi-coding-agent";
+
+import { extensionQuotaBuses } from "#src/agent/extension-quota.ts";
 import {
 	cumulativeCacheHitPercent,
 	UsageController,
@@ -200,6 +203,57 @@ test("shows OpenCode Go usage and retains it after an unavailable refresh", asyn
 	assertEquals(rendered()?.limits?.windows[0]?.remainingPercent, 88);
 	assertEquals(rendered()?.limits?.status, "stale (refresh unavailable)");
 	controller.dispose();
+});
+
+test("refreshes live quota across chats and clears it on failure", async () => {
+	let utilization: number | undefined = 0.24;
+	const makeRuntime = () => {
+		const runtime = agentSessionRuntimeStub({
+			session: {
+				model: { provider: "example", id: "example-model" },
+				resourceLoader: {},
+				messages: [],
+				...sessionStats,
+			},
+		});
+		const bus = createEventBus();
+		extensionQuotaBuses.set(runtime.session.resourceLoader, bus);
+		bus.on("pi-ui:quota:example", (data) => {
+			const { respond } = data as { respond: (pending: Promise<unknown>) => void };
+			const details =
+				utilization === undefined
+					? undefined
+					: { unifiedWindows: { five_hour: { utilization } } };
+			respond(Promise.resolve(details));
+		});
+		return runtime;
+	};
+	const older = makeRuntime();
+	let runtime = makeRuntime();
+	let rendered: AppUsage | undefined;
+	const controller = new UsageController(() => runtime, {
+		setUsage: (usage) => {
+			rendered = usage;
+		},
+	});
+	onTestFinished(() => controller.dispose());
+
+	controller.refresh();
+	await flush();
+	assertEquals(rendered?.limits?.windows[0]?.usedPercent, 24);
+
+	utilization = 0.37;
+	controller.suspend();
+	runtime = older;
+	controller.refresh();
+	await flush();
+	assertEquals(rendered?.limits?.windows[0]?.usedPercent, 37);
+
+	utilization = undefined;
+	controller.refresh(true);
+	await flush();
+	assertEquals(rendered?.limits?.status, "unavailable");
+	assertEquals(rendered?.limits?.windows, []);
 });
 
 test("shows Claude limits from the session rate-limit diagnostic", () => {

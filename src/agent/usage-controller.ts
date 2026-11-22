@@ -5,6 +5,7 @@ import {
 	fetchCodexUsage,
 	showsCodexUsage,
 } from "#src/agent/codex-usage.ts";
+import { requestExtensionQuota } from "#src/agent/extension-quota.ts";
 import { limitsFromMessages } from "#src/agent/limit-diagnostics.ts";
 import {
 	describeOpenCodeGoUsage,
@@ -56,6 +57,7 @@ export class UsageController {
 			},
 		},
 	];
+	private extensionLimits?: AppUsageLimits;
 	private readonly requests = new UsageRequestTracker();
 	private timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -76,14 +78,16 @@ export class UsageController {
 				cacheHitPercent: cumulativeCacheHitPercent(stats),
 				limits: source
 					? polledLimits(source)
-					: provider
-						? limitsFromMessages(session.messages, provider)
-						: undefined,
+					: (this.extensionLimits ??
+						(provider
+							? limitsFromMessages(session.messages, provider)
+							: undefined)),
 			}),
 		);
 	}
 
 	suspend(): void {
+		this.extensionLimits = undefined;
 		this.invalidate();
 	}
 
@@ -92,8 +96,7 @@ export class UsageController {
 		const session = runtime.session;
 		const source = this.sources.find((item) => item.matches(session.model));
 		if (!source) {
-			this.suspend();
-			this.sync();
+			this.refreshExtension(runtime);
 			return;
 		}
 		if (
@@ -146,6 +149,33 @@ export class UsageController {
 
 	dispose(): void {
 		this.suspend();
+	}
+
+	private refreshExtension(runtime: AgentSessionRuntime): void {
+		if (this.requests.loading) return;
+		const session = runtime.session;
+		const pending = requestExtensionQuota(session);
+		if (!pending) {
+			this.suspend();
+			this.sync();
+			return;
+		}
+		const request = this.requests.begin(runtime, session, session.model);
+		const unavailable: AppUsageLimits = {
+			label: `${session.model?.provider} limits`,
+			status: "unavailable",
+			windows: [],
+		};
+		this.extensionLimits ??= { ...unavailable, status: "loading" };
+		this.sync();
+		const finish = (limits: AppUsageLimits | undefined) => {
+			if (!this.owns(request)) return;
+			this.requests.release(request, runtime, session, session.model);
+			this.extensionLimits = limits ?? unavailable;
+			this.sync();
+			this.schedule();
+		};
+		void pending.then(finish, () => finish(undefined));
 	}
 
 	private owns(request: ReturnType<UsageRequestTracker["begin"]>): boolean {
