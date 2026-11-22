@@ -1,5 +1,4 @@
 diff --git a/dist/config.js b/dist/config.js
-index 8566260a142337b80861d41a70ca27425a066a36..377c27edcd00e4f94bdd6ecc082a91aaf4ffc260 100644
 --- a/dist/config.js
 +++ b/dist/config.js
 @@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
