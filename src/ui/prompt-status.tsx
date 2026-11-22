@@ -68,6 +68,19 @@ export function renderUsageIndicators(usage: AppUsage): string {
 
 function renderContextTooltip(usage: AppUsage): string {
 	const { contextPercent, contextTokens, contextWindow } = usage;
+	const compactions =
+		usage.compactionCount && usage.compactionCount > 0
+			? usage.compactionCount === 1
+				? "1 compaction"
+				: `${usage.compactionCount} compactions`
+			: undefined;
+	const cacheHit =
+		usage.cacheHitPercent === undefined
+			? undefined
+			: `${usage.cacheHitPercent.toFixed(1)}% cache hit`;
+	const footerLeft =
+		[cacheHit, compactions].filter(Boolean).join(" · ") || "cache hit unavailable";
+	const fallbackRight = [compactions, usage.costText].filter(Boolean).join(" · ");
 	const hasContext =
 		contextPercent !== undefined &&
 		contextTokens !== undefined &&
@@ -101,12 +114,8 @@ function renderContextTooltip(usage: AppUsage): string {
 						/>
 					</span>
 					<span class="inverse-fine-print usage-tooltip-footer">
-						<span>
-							{usage.cacheHitPercent === undefined
-								? "cache hit unavailable"
-								: `${usage.cacheHitPercent.toFixed(1)}% cache hit`}
-						</span>
-						<span>{usage.costText} session</span>
+						<span>{footerLeft}</span>
+						<span>{usage.costText}</span>
 					</span>
 				</>
 			) : (
@@ -114,7 +123,7 @@ function renderContextTooltip(usage: AppUsage): string {
 					<span class="usage-tooltip-row">
 						<strong class="usage-tooltip-title">Context usage</strong>
 						<span class="inverse-fine-print usage-tooltip-small">
-							{usage.costText} session
+							{fallbackRight}
 						</span>
 					</span>
 					<span class="inverse-fine-print usage-tooltip-note">

@@ -932,6 +932,7 @@ test("catalog and usage formatting remain stable", () => {
 			text: "$0.125 • 1.3k tokens",
 			costText: "$0.125",
 			cacheHitPercent: undefined,
+			compactionCount: undefined,
 			limits: undefined,
 		},
 	);

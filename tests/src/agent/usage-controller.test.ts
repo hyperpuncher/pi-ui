@@ -17,7 +17,7 @@ const sessionStats = {
 		tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 		contextUsage: null,
 	}),
-	sessionManager: { getEntries: () => [] },
+	sessionManager: { getEntries: () => [], getBranch: () => [] },
 };
 
 type UsageSession = {
@@ -37,7 +37,7 @@ type UsageSession = {
 		};
 		contextUsage: null;
 	};
-	sessionManager: { getEntries: () => unknown[] };
+	sessionManager: { getEntries: () => unknown[]; getBranch: () => { type: string }[] };
 };
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -356,4 +356,27 @@ test("uses the cumulative session cache hit rate", () => {
 		}),
 		undefined,
 	);
+});
+
+test("counts compactions on the active session branch", () => {
+	const { controller, rendered } = usageHarness({
+		...sessionStats,
+		sessionManager: {
+			getEntries: () => [
+				{ type: "compaction" },
+				{ type: "compaction" },
+				{ type: "compaction" },
+			],
+			getBranch: () => [
+				{ type: "message" },
+				{ type: "compaction" },
+				{ type: "message" },
+				{ type: "compaction" },
+			],
+		},
+	});
+
+	controller.sync();
+	assertEquals(rendered()?.compactionCount, 2);
+	controller.dispose();
 });

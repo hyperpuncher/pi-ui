@@ -377,6 +377,7 @@ export function reduceSessionEvent(
 				state.showRecentMessages();
 			}
 			if (event.errorMessage) state.appendMessage("system", event.errorMessage);
+			context.syncUsage?.();
 			break;
 	}
 	return noOutcome;

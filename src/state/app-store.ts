@@ -144,6 +144,7 @@ export type AppUsage = {
 	contextTokens?: number;
 	contextWindow?: number;
 	cacheHitPercent?: number;
+	compactionCount?: number;
 	limits?: Readonly<AppUsageLimits>;
 };
 export type AppKeybindHint = { keys: string; description: string };

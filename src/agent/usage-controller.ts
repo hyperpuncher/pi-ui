@@ -76,6 +76,9 @@ export class UsageController {
 		this.state.setUsage(
 			formatStats(stats, {
 				cacheHitPercent: cumulativeCacheHitPercent(stats),
+				compactionCount: session.sessionManager
+					.getBranch()
+					.filter((entry) => entry.type === "compaction").length,
 				limits: source
 					? polledLimits(source)
 					: (this.extensionLimits ??
@@ -206,7 +209,11 @@ export class UsageController {
 
 export function formatStats(
 	stats: SessionStats,
-	options: { cacheHitPercent?: number; limits?: AppUsageLimits } = {},
+	options: {
+		cacheHitPercent?: number;
+		compactionCount?: number;
+		limits?: AppUsageLimits;
+	} = {},
 ): AppUsage {
 	const costText = formatCost(stats.cost);
 	if (stats.contextUsage) {
@@ -217,6 +224,7 @@ export function formatStats(
 			contextTokens: stats.contextUsage.tokens ?? undefined,
 			contextWindow: stats.contextUsage.contextWindow,
 			cacheHitPercent: options.cacheHitPercent,
+			compactionCount: options.compactionCount,
 			limits: options.limits,
 		};
 	}
@@ -224,6 +232,7 @@ export function formatStats(
 		text: `${costText} • ${formatTokens(stats.tokens.total)} tokens`,
 		costText,
 		cacheHitPercent: options.cacheHitPercent,
+		compactionCount: options.compactionCount,
 		limits: options.limits,
 	};
 }
