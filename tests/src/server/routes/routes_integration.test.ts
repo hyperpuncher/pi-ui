@@ -780,9 +780,9 @@ test("model rows load on demand through the list endpoint", async () => {
 		signalGet("/models/list", { modelSearch: "" }),
 	);
 	const body = await response.text();
-	assertStringIncludes(body, 'id="model-select-options"');
 	assertStringIncludes(body, 'id="model-option-fixture%2Fdeepseek-v4"');
 	assertStringIncludes(body, "data: selector #model-select-options");
+	assertStringIncludes(body, "data: mode inner");
 	for (const modelSearch of ["fixture", "DeepSeek", "v4"]) {
 		const matched = await createRouter(context).fetch(
 			signalGet("/models/list", { modelSearch }),

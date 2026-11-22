@@ -274,11 +274,14 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 						$modelSearch = '';
 						el.querySelector('#model-select-options').replaceChildren();
 						window.piUi.controls.refresh(el);
-						@get('${endpoints.modelsList}', {
-							payload: { modelSearch: '' },
-							requestCancellation: 'cleanup',
-						});
 					}`}
+					data-on:datastar-fetch="
+						evt.detail.type === 'finished' &&
+							el.contains(evt.detail.el) &&
+							window.piUi.controls.refresh(el, {
+								resetScroll: evt.detail.el.id === 'model-select-input',
+							})
+					"
 				>
 					<div class="command" tabindex="-1" autofocus>
 						<search aria-label="Search models">
@@ -381,7 +384,7 @@ export function renderModelOptions(
 ): string {
 	return syncHtml(
 		<>
-			{models.map((model, index) => {
+			{models.map((model) => {
 				const value = `${model.provider}/${model.id}`;
 				const configured = model.configured ? "" : " • no auth";
 				return (
@@ -396,7 +399,7 @@ export function renderModelOptions(
 							id={`model-option-${encodeURIComponent(value)}`}
 							role="option"
 							tabindex="-1"
-							class={["model-choice", index === 0 && "active"]}
+							class="model-choice"
 							commandfor="model-select-popover"
 							command="hide-popover"
 							data-preserve-attr="class"

@@ -43,8 +43,8 @@ export const modelRoutes = {
 			return datastarResponse([
 				{
 					type: "elements",
-					elements: `<div id="model-select-options" data-ignore-morph data-init="window.piUi.controls.refresh(el.closest('.command'))">${renderModelOptions(shown, currentModel)}${hidden > 0 ? `<div class="fine-print model-options-more" role="status">${hidden} more — keep typing to narrow</div>` : ""}</div>`,
-					options: { selector: "#model-select-options", mode: "replace" },
+					elements: `${renderModelOptions(shown, currentModel)}${hidden > 0 ? `<div class="fine-print model-options-more" role="status">${hidden} more — keep typing to narrow</div>` : ""}`,
+					options: { selector: "#model-select-options", mode: "inner" },
 				},
 			]);
 		},

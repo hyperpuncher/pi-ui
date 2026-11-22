@@ -440,6 +440,9 @@ export class AppStore {
 		if (removed.length > 0) this.presentation?.messagesRemoved(removed);
 	}
 	setModels(models: AppModel[], currentModel: string | undefined): void {
+		if (this.currentModel === currentModel && Bun.deepEquals(this.models, models)) {
+			return;
+		}
 		this.models = models;
 		this.currentModel = currentModel;
 		this.modelsRevision += 1;
