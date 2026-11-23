@@ -55,6 +55,7 @@ export function renderPierreDiff(patch: string): string | undefined {
 			diffStyle: "unified",
 			diffIndicators: "none",
 			hunkSeparators: "simple",
+			parseDiffOptions: { preferredDiffLib: "@pierre/patches" },
 		});
 		const result = renderer.renderDiff(diff);
 		if (!result) return undefined;

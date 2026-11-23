@@ -783,6 +783,7 @@ function viewerOptions(): CodeViewOptions<ReviewCommentMetadata, undefined> {
 		},
 		lineHoverHighlight: "both",
 		overflow: wrap ? "wrap" : "scroll",
+		parseDiffOptions: { preferredDiffLib: "@pierre/patches" },
 		stickyHeaders: true,
 		theme: activeCodeThemes,
 		themeType: window.piUiTheme.currentMode(),
