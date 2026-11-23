@@ -724,6 +724,10 @@ export function createWorkspaceFiles(options: WorkspaceFilesOptions) {
 		try {
 			const { Editor } = await import("@pierre/diffs/edit");
 			if (generation !== fileGeneration || !current) return;
+			if (!viewer.isReadyToEdit()) {
+				await viewer.prepareForEditing();
+				if (generation !== fileGeneration || !current) return;
+			}
 			editor = new Editor("file");
 			editor.edit(viewer);
 		} catch (error) {

@@ -1,5 +1,5 @@
 import {
-	createStyleElement,
+	createCoreStyleElement,
 	createThemeStyleElement,
 	DiffHunksRenderer,
 	DIFFS_TAG_NAME,
@@ -39,7 +39,6 @@ const sharedOptions = {
 } as const;
 
 type RenderResult = {
-	css: string;
 	themeStyles: string;
 	baseThemeType?: "light" | "dark";
 };
@@ -92,7 +91,7 @@ function pierreHost(
 ): string {
 	code.properties["data-dehydrated"] = "";
 	const html = hastToHtml([
-		createStyleElement(result.css, true),
+		createCoreStyleElement(),
 		createThemeStyleElement(
 			wrapThemeCSS(result.themeStyles, result.baseThemeType ?? "system"),
 		),
