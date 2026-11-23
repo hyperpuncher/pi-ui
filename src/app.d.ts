@@ -38,13 +38,12 @@ interface PiUiNamespace {
 		leaveDrag(): boolean;
 		resetDrag(): void;
 	};
+	hydratePierreDiff(element: HTMLElement): void;
 	messageScroll: {
 		holdPosition(): void;
 		restorePosition(): void;
 		bindResize(): void;
-		checkOlder(): void;
 		enterSession(key: string, restored: boolean): void;
-		hydratePierreDiff(element: HTMLElement): void;
 		leaveSession(key: string): void;
 		scrollBottom(): void;
 		scrollPreviousUser(): void;

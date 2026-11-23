@@ -73,8 +73,16 @@
 		width: 1rem;
 		height: 1rem;
 	}
+	.older-messages-trigger {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 1px;
+		height: min(200dvh, 100%);
+		pointer-events: none;
+	}
 	.messages-prompt-spacer {
-		height: 12rem;
+		height: calc(var(--prompt-height, 9rem) + 3rem);
 		min-height: 12rem;
 		flex-shrink: 0;
 		pointer-events: none;

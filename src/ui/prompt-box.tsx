@@ -205,22 +205,13 @@ export function renderPromptQueue(state: AppStateSnapshot): string {
 
 function renderScrollControls() {
 	return (
-		<div
-			class="messages-scroll-controls"
-			data-signals:_latest-visible__ifmissing="false"
-			data-signals:_previous-user-visible__ifmissing="false"
-			data-on:pi-ui-scroll-controls-changed__document="
-				$_latestVisible = evt.detail.latest;
-				$_previousUserVisible = evt.detail.previous
-			"
-		>
+		<div class="messages-scroll-controls">
 			<button
 				id="messages-previous-user"
 				type="button"
 				class="btn messages-scroll-button"
 				data-variant="outline"
 				data-size="icon"
-				data-attr:inert="!$_previousUserVisible"
 				data-preserve-attr="inert"
 				data-on:click="window.piUi.messageScroll.scrollPreviousUser()"
 				aria-label="Jump to previous user message"
@@ -235,7 +226,6 @@ function renderScrollControls() {
 				class="btn messages-scroll-button"
 				data-variant="outline"
 				data-size="icon"
-				data-attr:inert="!$_latestVisible"
 				data-preserve-attr="inert"
 				data-on:click="window.piUi.messageScroll.scrollBottom()"
 				aria-label="Jump to latest message"

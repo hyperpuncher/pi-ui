@@ -11,7 +11,6 @@ export const clientScripts = {
 		"document.getElementById('tree-dialog')?.dispatchEvent(new Event('pi-ui-tree-open'))",
 	showTreeDialog:
 		"{ const dialog = document.getElementById('tree-dialog'); if (dialog && !dialog.open) dialog.showModal(); }",
-	checkOlderMessages: "window.piUi.messageScroll.checkOlder()",
 	holdTranscriptPosition: "window.piUi.messageScroll.holdPosition()",
 	restoreTranscriptPosition: "window.piUi.messageScroll.restorePosition()",
 } as const;

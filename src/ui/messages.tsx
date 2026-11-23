@@ -72,12 +72,8 @@ export function renderMessages(
 			aria-live="polite"
 			aria-keyshortcuts={keybindAria("focus-conversation")}
 			tabindex="-1"
-			data-init="
-				window.piUi.messageScroll.bindResize();
-				window.piUi.messageScroll.checkOlder()
-			"
+			data-init="window.piUi.messageScroll.bindResize()"
 			data-preserve-attr="style"
-			data-on:scroll="window.piUi.messageScroll.checkOlder()"
 			data-indicator:_history-trimming
 			data-on:pi-ui-trim={`if (!$_historyLoading && !$_historyTrimming && $_sessionTransitionStatus !== 'loading') {
 				@post('${endpoints.messagesTrim}', { payload: evt.detail, retry: 'never' });
@@ -113,13 +109,7 @@ export function renderMessages(
 				</div>
 
 				{messages.length > 0 && (
-					<div
-						id="messages-prompt-spacer"
-						class="messages-prompt-spacer"
-						style="height: 12rem"
-						data-preserve-attr="style"
-						aria-hidden="true"
-					/>
+					<div class="messages-prompt-spacer" aria-hidden="true" />
 				)}
 			</div>
 		</main>,
@@ -127,20 +117,15 @@ export function renderMessages(
 }
 
 export function renderOlderMessagesTrigger(active: boolean): string {
+	const loadOlder = `if (!$_historyLoading && !$_sessionSwitching && $_sessionTransitionStatus !== 'loading') { @post('${endpoints.messagesOlder}', { payload: {}, retry: 'never' }) }`;
 	return syncHtml(
 		<div
 			id="older-messages-trigger"
-			style="height: 1px"
+			class="older-messages-trigger"
 			data-active={active && "1"}
 			data-indicator:_history-loading
-			data-on:pi-ui-older={
-				active &&
-				`if (!$_historyLoading) { @post('${endpoints.messagesOlder}', { payload: {}, retry: 'never' }) }`
-			}
-			data-on:datastar-fetch={
-				active &&
-				`if (evt.detail.el === el && evt.detail.type === 'finished') window.piUi.messageScroll.checkOlder()`
-			}
+			data-on-intersect={active && loadOlder}
+			data-on:pi-ui-older={active && loadOlder}
 			aria-hidden="true"
 		/>,
 	);

@@ -347,8 +347,7 @@ test("older messages use one wrapper with a load spinner", () => {
 	assertStringIncludes(html, "data-indicator:_history-loading");
 	assertStringIncludes(html, 'data-show="$_historyLoading"');
 	assertStringIncludes(html, "@post('/messages/older'");
-	assertStringIncludes(html, "data-on:scroll=");
-	assertStringIncludes(html, "checkOlder()");
+	assertStringIncludes(html, "data-on-intersect=");
 	assertStringIncludes(html, "!$_historyLoading");
 	assertStringIncludes(html, "Loading older messages");
 	const idle = renderMessages([message], { description: "Send", keys: "enter" }, false);

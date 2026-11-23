@@ -13,10 +13,8 @@ import { bindImageLightbox } from "#static/app/image-lightbox.js";
 import {
 	bindMessageResize,
 	bindMessageScroll,
-	checkOlder,
 	enterSession,
 	holdPosition,
-	hydratePierreDiff,
 	leaveSession,
 	restorePosition,
 	scrollBottom,
@@ -48,12 +46,18 @@ window.piUi = {
 	dateTime: { hydrate: hydrateDateTime },
 	fonts: { apply() {} },
 	fileTransfer,
+	hydratePierreDiff(host) {
+		if (!(host instanceof HTMLElement)) return;
+		const template = host.querySelector('template[shadowrootmode="open"]');
+		if (!(template instanceof HTMLTemplateElement)) return;
+		const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+		shadow.replaceChildren(template.content.cloneNode(true));
+		template.remove();
+	},
 	messageScroll: {
 		bindResize: bindMessageResize,
-		checkOlder,
 		enterSession,
 		holdPosition,
-		hydratePierreDiff,
 		leaveSession,
 		restorePosition,
 		scrollBottom,

@@ -194,13 +194,13 @@ export class UiRenderer implements AppStorePresentation {
 			// A transcript patch already contains every changed message.
 			this.messages.patchChangedMessages(transcript);
 			if (transcript) {
-				const scripts: string[] = [clientScripts.checkOlderMessages];
+				const scripts: string[] = [];
 				const sessionKey = state.promptSessionKey;
 				if (sessionKey !== this.transcriptSessionKey) {
 					this.hub.executeScript(
 						leaveTranscriptSession(this.transcriptSessionKey),
 					);
-					scripts.unshift(
+					scripts.push(
 						enterTranscriptSession(sessionKey, this.transcriptRestored),
 					);
 					this.transcriptSessionKey = sessionKey;
