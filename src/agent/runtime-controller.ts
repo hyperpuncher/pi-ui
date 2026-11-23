@@ -98,6 +98,7 @@ import {
 import { errorMessage } from "#src/utils/errors.ts";
 import { configureAgentHttpProxy } from "#src/utils/http-proxy.ts";
 import { moveToTrash } from "#src/utils/trash.ts";
+import { asRecord } from "#src/utils/type-guards.ts";
 import {
 	defaultWorkspacePath,
 	formatHomePath,
@@ -380,14 +381,23 @@ export class RuntimeController {
 			const readIsOverridden = services.resourceLoader
 				.getExtensions()
 				.extensions.some((extension) => extension.tools.has("read"));
+			const bunReadTool = readIsOverridden
+				? undefined
+				: createBunReadToolDefinition(cwd);
+			if (bunReadTool) {
+				eventBus.on("pi-ui:read-tool", (data) => {
+					const request = asRecord(data);
+					if (request?.respond instanceof Function) {
+						request.respond(bunReadTool);
+					}
+				});
+			}
 			const session = await createAgentSessionFromServices({
 				services,
 				sessionManager,
 				sessionStartEvent,
 				scopedModels,
-				customTools: readIsOverridden
-					? undefined
-					: [createBunReadToolDefinition(cwd)],
+				customTools: bunReadTool ? [bunReadTool] : undefined,
 			});
 			if (session.modelFallbackMessage && session.session.model) {
 				diagnostics.push({
