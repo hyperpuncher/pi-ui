@@ -6,7 +6,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { collectCacheMisses, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
-import { contentToText, stripAnsi, textContent } from "#src/agent/content-text.ts";
+import { contentToText, textContent } from "#src/agent/content-text.ts";
 import {
 	formatProviderErrorMessage,
 	isAbortErrorMessage,
@@ -210,7 +210,7 @@ export function userContentToMessages(
 
 function userContentRawText(content: UserContent): string {
 	return Array.isArray(content)
-		? stripAnsi(textContent(content, "\n"))
+		? Bun.stripANSI(textContent(content, "\n"))
 		: contentToText(content);
 }
 
@@ -338,6 +338,10 @@ export function assistantContentToMessages(
 	if (thoughtText.trim())
 		messages.push({ role: "thought", text: thoughtText, timestamp });
 	if (assistantText.trim())
-		messages.push({ role: "assistant", text: stripAnsi(assistantText), timestamp });
+		messages.push({
+			role: "assistant",
+			text: Bun.stripANSI(assistantText),
+			timestamp,
+		});
 	return messages;
 }

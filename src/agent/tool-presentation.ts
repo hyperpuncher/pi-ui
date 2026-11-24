@@ -1,4 +1,3 @@
-import { stripAnsi } from "#pi/utils/ansi.js";
 import { contentToText, summarizeValue } from "#src/agent/content-text.ts";
 import { htmlToolName } from "#src/agent/html-extension.ts";
 import type {
@@ -322,13 +321,13 @@ function extractToolText<Result>(result: Result): string {
 		if (text.trim() || Array.isArray(record.content)) return text;
 	}
 	if (record?.text !== undefined) {
-		return stripAnsi(String(record.text));
+		return Bun.stripANSI(String(record.text));
 	}
 	if (Error.isError(result)) {
 		return result.message;
 	}
 	if (isString(result)) {
-		return stripAnsi(result);
+		return Bun.stripANSI(result);
 	}
 	return summarizeValue(result);
 }
