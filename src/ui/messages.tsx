@@ -36,6 +36,7 @@ const inlineCodeCache = new BoundedCache<string, string>(500, {
 	weight: (key, value) => 2 * (key.length + value.length),
 });
 const maxInlineCodeLines = 12;
+const minHiddenInlineCodeLines = 5;
 
 // Matches the 18rem cap on .message-image. Both sides must agree or the
 // reserved box and the rendered box differ and the image shifts on load.
@@ -965,10 +966,13 @@ function truncateInlineCodePart(part: TranscriptMessageTitlePart) {
 		if (lines === maxInlineCodeLines) cutIndex = index;
 		lines += 1;
 	}
-	if (cutIndex === -1) return { part, hiddenLines: 0 };
+	const hiddenLines = lines - maxInlineCodeLines;
+	if (cutIndex === -1 || hiddenLines <= minHiddenInlineCodeLines) {
+		return { part, hiddenLines: 0 };
+	}
 	return {
 		part: { ...part, text: text.slice(0, cutIndex) },
-		hiddenLines: lines - maxInlineCodeLines,
+		hiddenLines,
 	};
 }
 
