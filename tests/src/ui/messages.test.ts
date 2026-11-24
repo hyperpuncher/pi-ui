@@ -501,3 +501,46 @@ test("minimal mode summarizes thinking-only turns, skips hidden thought markdown
 		'<strong data-markdown="strong">secret reasoning</strong>',
 	);
 });
+
+test("long codemode tool code collapses to a preview and expands on toggle", () => {
+	const store = new AppStore();
+	const patched: string[] = [];
+	const renderer = new MessageRenderService(
+		store,
+		(_html, selector) => {
+			patched.push(selector);
+		},
+		{},
+		{ schedule: () => {}, flush: () => renderer.patchChangedMessages(false) },
+	);
+	const code = Array.from(
+		{ length: 20 },
+		(_, i) => `const line${i + 1} = ${i + 1};`,
+	).join("\n");
+	store.transcript.replaceMessages([
+		{
+			role: "tool",
+			title: "codemode",
+			titleParts: [
+				{ text: "codemode" },
+				{ text: code, mono: true, highlight: "javascript" },
+			],
+			text: "",
+			state: "success",
+			timestamp: new Date(0),
+		},
+	]);
+	const [tool] = store.transcript.messages;
+	const collapsed = renderer.renderMessageElement(tool!.id)!;
+	assertStringIncludes(collapsed, "line12");
+	assertStringExcludes(collapsed, "line13");
+	assertStringIncludes(collapsed, "… 8 more lines");
+	assertStringIncludes(collapsed, 'aria-expanded="false"');
+
+	renderer.toggleMessageExpand(tool!.id);
+	assertEquals(patched, [`#message-${tool!.id}`]);
+	const expanded = renderer.renderMessageElement(tool!.id)!;
+	assertStringIncludes(expanded, "line20");
+	assertStringIncludes(expanded, "Show less");
+	assertStringIncludes(expanded, 'aria-expanded="true"');
+});

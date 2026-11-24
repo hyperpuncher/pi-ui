@@ -237,8 +237,8 @@ export class MessageRenderService {
 		return id === activeThoughtMessageId || id === activeAssistantMessageId;
 	}
 	private isToolExpanded(message: TranscriptMessage): boolean {
-		if (!this.compactTools) return true;
 		const override = this.toolExpansionOverrides.get(message.id);
+		if (!this.compactTools) return override === true;
 		if (override !== undefined) return override;
 		return !this.store.minimalMode && message.state === "error";
 	}
@@ -321,8 +321,7 @@ export class MessageRenderService {
 		const index = this.store.transcript.getMessageIndex(message.id);
 		const minimalExpanded =
 			isActivityRole(message.role) && this.isMinimalExpanded(index);
-		const toolExpanded =
-			message.role === "tool" && this.compactTools && this.isToolExpanded(message);
+		const toolExpanded = message.role === "tool" && this.isToolExpanded(message);
 		return {
 			...message,
 			activitySummary: this.activitySummary(message, index),

@@ -35,6 +35,7 @@ const inlineCodeCache = new BoundedCache<string, string>(500, {
 	maxWeight: 8 * 1024 * 1024,
 	weight: (key, value) => 2 * (key.length + value.length),
 });
+const maxInlineCodeLines = 12;
 
 // Matches the 18rem cap on .message-image. Both sides must agree or the
 // reserved box and the rendered box differ and the image shifts on load.
@@ -109,7 +110,12 @@ export function renderMessages(
 				</div>
 
 				{messages.length > 0 && (
-					<div class="messages-prompt-spacer" aria-hidden="true" />
+					<div
+						id="messages-prompt-spacer"
+						class="messages-prompt-spacer"
+						data-preserve-attr="style"
+						aria-hidden="true"
+					/>
 				)}
 			</div>
 		</main>,
@@ -350,12 +356,12 @@ function renderInlineCode(
 		const { tokens } = result;
 		const highlighted = tokens
 			.map((line, index) => {
-				const text = line.map((token) => token.content).join("");
-				const indent = (text.match(/^[\t ]*/)?.[0] ?? "").replaceAll(
-					"\t",
-					"    ",
-				).length;
-				return `<span class="shell-line" style="--shell-indent:${indent + 2}ch">${line.map(renderInlineToken).join("")}${index === tokens.length - 1 ? suffix : ""}</span>`;
+				const indent = lineIndentWidth(line);
+				const indentStyle =
+					indent > 0
+						? ` style="padding-inline-start:${indent + 2}ch;text-indent:-${indent + 2}ch"`
+						: "";
+				return `<span class="shell-line"${indentStyle}>${renderInlineLine(line)}${index === tokens.length - 1 ? suffix : ""}</span>`;
 			})
 			.join("\n");
 		inlineCodeCache.set(cacheKey, highlighted);
@@ -365,10 +371,58 @@ function renderInlineCode(
 	}
 }
 
-function renderInlineToken(token: ThemedToken): string {
-	const style = tokenStyle(token, true);
-	const styleAttribute = style ? ` style="${Bun.escapeHTML(style)}"` : "";
-	return `<span${styleAttribute}>${Bun.escapeHTML(token.content)}</span>`;
+function lineIndentWidth(line: readonly ThemedToken[]): number {
+	let width = 0;
+	for (const token of line) {
+		for (let index = 0; index < token.content.length; index += 1) {
+			const ch = token.content[index];
+			if (ch === " ") width += 1;
+			else if (ch === "\t") width += 4;
+			else return width;
+		}
+	}
+	return width;
+}
+
+function renderInlineLine(line: readonly ThemedToken[]): string {
+	let out = "";
+	let pendingStyle = "";
+	let pendingText = "";
+	let pendingSpace = "";
+	const flush = () => {
+		if (!pendingText) return;
+		if (pendingStyle) {
+			out += `<span style="${Bun.escapeHTML(pendingStyle)}">${Bun.escapeHTML(pendingText)}</span>`;
+		} else {
+			out += Bun.escapeHTML(pendingText);
+		}
+		pendingText = "";
+		pendingStyle = "";
+	};
+	for (const token of line) {
+		if (!token.content) continue;
+		if (!/\S/.test(token.content)) {
+			if (pendingStyle) pendingSpace += token.content;
+			else out += Bun.escapeHTML(token.content);
+			continue;
+		}
+		const style = tokenStyle(token, true) ?? "";
+		if (style === pendingStyle) {
+			pendingText += pendingSpace + token.content;
+			pendingSpace = "";
+		} else {
+			flush();
+			if (pendingSpace) {
+				out += Bun.escapeHTML(pendingSpace);
+				pendingSpace = "";
+			}
+			pendingStyle = style;
+			pendingText = token.content;
+		}
+	}
+	flush();
+	if (pendingSpace) out += Bun.escapeHTML(pendingSpace);
+	return out;
 }
 
 function renderUserFileAttachment(
@@ -898,6 +952,26 @@ function compactToolTitlePart(part: TranscriptMessageTitlePart) {
 	};
 }
 
+function truncateInlineCodePart(part: TranscriptMessageTitlePart) {
+	if (!part.highlight) return { part, hiddenLines: 0 };
+	const text = part.highlight === "javascript" ? part.text.trimEnd() : part.text;
+	let lines = 1;
+	let cutIndex = -1;
+	for (
+		let index = text.indexOf("\n");
+		index !== -1;
+		index = text.indexOf("\n", index + 1)
+	) {
+		if (lines === maxInlineCodeLines) cutIndex = index;
+		lines += 1;
+	}
+	if (cutIndex === -1) return { part, hiddenLines: 0 };
+	return {
+		part: { ...part, text: text.slice(0, cutIndex) },
+		hiddenLines: lines - maxInlineCodeLines,
+	};
+}
+
 function renderToolMessage(
 	message: AppMessage,
 	compactTools = false,
@@ -909,9 +983,18 @@ function renderToolMessage(
 	const compactedParts = showCompact
 		? message.titleParts?.map(compactToolTitlePart)
 		: undefined;
+	const truncatedParts = !showCompact
+		? message.titleParts?.map(truncateInlineCodePart)
+		: undefined;
+	const hiddenCodeLines = truncatedParts
+		? truncatedParts.reduce((sum, entry) => sum + entry.hiddenLines, 0)
+		: 0;
+	const codeCollapsed = hiddenCodeLines > 0 && !message.toolExpanded;
 	const parts = compactedParts
 		? compactedParts.map((entry) => entry.part)
-		: message.titleParts;
+		: codeCollapsed && truncatedParts
+			? truncatedParts.map((entry) => entry.part)
+			: message.titleParts;
 	const fallbackTitle = message.title ?? "Tool";
 	const compactedFallback = showCompact
 		? compactToolTitlePart({ text: fallbackTitle })
@@ -1011,6 +1094,18 @@ function renderToolMessage(
 							</button>
 						)}
 					</header>
+					{hiddenCodeLines > 0 && (
+						<button
+							type="button"
+							class="tool-code-toggle"
+							aria-expanded={codeCollapsed ? "false" : "true"}
+							data-on:click={toggleMessageExpandAction(message.id)}
+						>
+							{codeCollapsed
+								? `… ${hiddenCodeLines} more ${hiddenCodeLines === 1 ? "line" : "lines"}`
+								: "Show less"}
+						</button>
+					)}
 					<div>
 						{renderNestedToolCalls(message)}
 						{renderImageAttachments(

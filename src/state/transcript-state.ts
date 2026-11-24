@@ -85,6 +85,7 @@ export type TranscriptSnapshot = {
 
 const initialVisibleMessageCount = 30;
 const olderMessageBatchSize = 30;
+const trimmedMessageLimit = 50;
 
 /** Renderer-independent, authoritative transcript state. */
 export type FinishedAssistantIds = {
@@ -309,7 +310,7 @@ export class TranscriptState {
 		if (
 			through === undefined ||
 			through < this.visibleMessageStart ||
-			through >= this.transcriptMessages.length - 100
+			through >= this.transcriptMessages.length - trimmedMessageLimit
 		)
 			return [];
 		const removed = this.transcriptMessages

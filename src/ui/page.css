@@ -162,9 +162,13 @@
 				0;
 		}
 		#app:not(.review-open) #messages > .messages-stack {
+			translate: calc(50vw - var(--workspace-inset) - 50cqw) 0;
+		}
+		#app:not(.review-open)
+			#messages
+			.markdown-content
+			:is(.table-container, .mermaid-diagram) {
 			--messages-center-offset: calc(50vw - var(--workspace-inset) - 50cqw);
-
-			translate: var(--messages-center-offset) 0;
 		}
 	}
 

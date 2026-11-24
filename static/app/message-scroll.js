@@ -2,6 +2,7 @@ const liveEdgeThresholdPx = 8;
 const scrollControlThresholdPx = 48;
 // Space left above a user message after a jump to it.
 const userRowOffsetPx = 16;
+const trimmedMessageLimit = 50;
 const followTimeConstantMs = 60;
 // Count at most one 30 fps frame per step so a main-thread stall slows follow
 // down instead of turning it into a jump.
@@ -134,7 +135,7 @@ function trimOldMessages() {
 	const messages = messagesEl();
 	if (!messages) return;
 	const rows = [...messages.querySelectorAll("#message-list > .message[id]")];
-	const excess = rows.length - 100;
+	const excess = rows.length - trimmedMessageLimit;
 	if (excess <= 0 || messages.scrollTop <= 2 * messages.clientHeight) return;
 	const cutoff = messages.getBoundingClientRect().top - 2 * messages.clientHeight;
 	for (const row of rows.slice(0, excess)) {
@@ -398,11 +399,11 @@ export function bindMessageResize() {
 
 function syncPromptHeight() {
 	const prompt = document.getElementById("prompt-box");
-	const pane = document.getElementById("chat-pane");
-	if (!(prompt instanceof HTMLElement) || !(pane instanceof HTMLElement)) return;
+	const spacer = document.getElementById("messages-prompt-spacer");
+	if (!(prompt instanceof HTMLElement) || !(spacer instanceof HTMLElement)) return;
 	const value = `${prompt.offsetHeight}px`;
-	if (pane.style.getPropertyValue("--prompt-height") !== value)
-		pane.style.setProperty("--prompt-height", value);
+	if (spacer.style.getPropertyValue("--prompt-height") !== value)
+		spacer.style.setProperty("--prompt-height", value);
 }
 
 function scheduleScrollControlUpdate() {

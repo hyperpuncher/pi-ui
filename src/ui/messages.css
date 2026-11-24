@@ -287,9 +287,23 @@
 	.shell-line {
 		display: inline-block;
 		max-inline-size: 100%;
-		padding-inline-start: var(--shell-indent);
-		text-indent: calc(-1 * var(--shell-indent));
+		padding-inline-start: 2ch;
+		text-indent: -2ch;
 		vertical-align: top;
+	}
+	.tool-code-toggle {
+		display: inline-flex;
+		align-items: center;
+		padding: 0;
+		border: 0;
+		margin-top: 0.25rem;
+		background: transparent;
+		color: var(--text-muted);
+		font: var(--text-xs)/1.125rem var(--font-mono);
+		cursor: pointer;
+	}
+	.tool-code-toggle:hover {
+		color: var(--text);
 	}
 	.tool-title-accent {
 		color: var(--action-primary);

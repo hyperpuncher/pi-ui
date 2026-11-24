@@ -76,20 +76,20 @@ test("trimming releases only the checked prefix and keeps history loadable", () 
 	}
 	const messages = state.messages;
 	assertEquals(messages.length, 180);
-	assertEquals(state.trimOldMessages(messages[0].id, messages[80].id), []);
+	assertEquals(state.trimOldMessages(messages[0].id, messages[130].id), []);
 	assertEquals(state.trimOldMessages(messages[0].id, "missing"), []);
 	assertEquals(
-		state.trimOldMessages(messages[0].id, messages[79].id),
-		messages.slice(0, 80).map(({ id }) => id),
+		state.trimOldMessages(messages[0].id, messages[129].id),
+		messages.slice(0, 130).map(({ id }) => id),
 	);
-	assertEquals(state.messages.length, 100);
+	assertEquals(state.messages.length, 50);
 	assertEquals(state.allMessages.length, 180);
-	assertEquals(state.messages[0].text, "message 80");
+	assertEquals(state.messages[0].text, "message 130");
 	assertEquals(state.isMessageVisible(messages[0].id), false);
-	assertEquals(state.loadOlderMessages()[0].text, "message 50");
+	assertEquals(state.loadOlderMessages()[0].text, "message 100");
 	// Replaying the old cleanup must not remove the newly loaded page.
-	assertEquals(state.trimOldMessages(messages[0].id, messages[79].id), []);
-	assertEquals(state.messages.length, 130);
+	assertEquals(state.trimOldMessages(messages[0].id, messages[129].id), []);
+	assertEquals(state.messages.length, 80);
 });
 
 test("transcript replacement preserves the loaded history window", () => {
