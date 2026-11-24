@@ -62,6 +62,7 @@ const markerLanguages = new Map(
 	}),
 );
 const wrappers = new Set(["uv", "env", "sudo", "timeout", "direnv"]);
+const maxEmbedDepth = 4;
 const breakOperators = new Set([";", ";;", ";&", ";;&", "&&", "||", "|", "|&"]);
 type Script = {
 	start: number;
@@ -138,7 +139,7 @@ function encodeLiteral(value: string, quote: string, next = ""): string {
 }
 
 function hasEmbeddedBash(command: string): boolean {
-	return /<<|(?:^|\s)(?:-[np]*[epc]\b|--(?:eval|print)\b|eval\b)|\bplaywright-cli\s+(?:-s=\S+\s+)?run-code\b/.test(
+	return /<<|(?:^|\s)(?:-[np]*[epc]\b|--(?:eval|print)\b|eval\b)|(?:^|[\s;|&(/])(?:ssh|(?:ba|z)?sh)(?:\s|$)|\bplaywright-cli\s+(?:-s=\S+\s+)?run-code\b/.test(
 		command,
 	);
 }
@@ -155,16 +156,28 @@ export function highlightBash(
 	command: string,
 	options: { format?: boolean } = {},
 ): { tokens: ThemedToken[][] } | undefined {
+	return highlightBashAtDepth(command, options, 0);
+}
+
+function highlightBashAtDepth(
+	command: string,
+	options: { format?: boolean },
+	depth: number,
+): { tokens: ThemedToken[][] } | undefined {
 	const tokens = bashTokens(command);
 	if (!tokens) return undefined;
 	const format = options.format === true && command.length > 90;
-	const scan = hasEmbeddedBash(command) ? scanShell(command) : undefined;
+	const scan =
+		depth < maxEmbedDepth && hasEmbeddedBash(command)
+			? scanShell(command)
+			: undefined;
 	const breaks = format ? displayBreaks(command, tokens, scan?.bodyRanges ?? []) : [];
 	return highlightScripts(
 		command,
 		tokens,
 		scan ? [...heredocs(scan), ...inlineScripts(command, scan)] : [],
 		breaks,
+		depth,
 	);
 }
 
@@ -214,16 +227,17 @@ export function highlightCodemode(code: string, snippets: CodeSnippet[] = []) {
 			? hints.get(`${field[1]}\0${encoding}\0${body}`)
 			: undefined;
 		const call = prefix.match(
-			/\btools\.(bash|\w*browser_run_code)\s*\(\s*\{[^{}]*\b(command|code)\s*:\s*$/,
+			/\btools\.(bash|\w*browser_run_code)\s*\(\s*\{[^{}]*\b(command|code)\s*:\s*(?:String\.raw\s*)?$/,
 		);
 		const interpolated =
 			quote === "`" &&
 			[...body.matchAll(/\$\{/g)].some((match) => !isEscaped(body, match.index));
+		const hasEscape = quote !== "`" && body.includes("\\");
 		const language =
 			snippet?.language ??
 			(call &&
 			(call[1] === "bash" ? call[2] === "command" : call[2] === "code") &&
-			!body.includes("\\")
+			!hasEscape
 				? call[1] === "bash"
 					? "bash"
 					: "javascript"
@@ -285,6 +299,7 @@ function highlightScripts(
 	tokens: ThemedToken[][],
 	scripts: Script[],
 	breaks: number[] = [],
+	depth = 0,
 ) {
 	const highlighter = getHighlighterIfLoaded()!;
 	scripts.sort((a, b) => a.start - b.start);
@@ -298,7 +313,7 @@ function highlightScripts(
 		if (!body) {
 			try {
 				if (language === "bash") {
-					body = highlightBash(code)!.tokens.flat();
+					body = highlightBashAtDepth(code, {}, depth + 1)!.tokens.flat();
 					scriptTokens.set(key, body);
 				} else {
 					body = highlighter
@@ -428,6 +443,7 @@ const commandLanguages = new Map([
 	["bash", "bash"],
 	["sh", "bash"],
 	["zsh", "bash"],
+	["ssh", "bash"],
 ]);
 
 function effectiveCommand(segment: ShellSegment): EffectiveCommand | undefined {
@@ -510,6 +526,7 @@ function segmentScript(
 	commandWord: EffectiveCommand,
 ): Script | undefined {
 	const name = basename(commandWord.word.value);
+	if (name === "ssh") return sshInlineScript(command, segment, commandWord.index);
 	const language = inlineLanguage(name);
 	if (!language) return undefined;
 	for (const word of segment.words.slice(commandWord.index + 1)) {
@@ -518,6 +535,35 @@ function segmentScript(
 		if (script) return script;
 	}
 	return undefined;
+}
+
+function sshInlineScript(
+	command: string,
+	segment: ShellSegment,
+	sshIndex: number,
+): Script | undefined {
+	const word = segment.words
+		.slice(sshIndex + 1)
+		.findLast((entry) => !entry.redirectedBy);
+	if (!word) return undefined;
+	const quoted = word.quoted.length === 1 ? word.quoted[0] : undefined;
+	if (
+		quoted?.closed &&
+		quoted.quote === "'" &&
+		quoted.simple &&
+		quoted.start === word.start &&
+		quoted.end === word.end &&
+		quoted.contentEnd > quoted.contentStart
+	)
+		return {
+			start: quoted.contentStart,
+			end: quoted.contentEnd,
+			language: "bash",
+		};
+	const bounds = shellScriptBounds(command, word);
+	return bounds
+		? { ...bounds, language: "bash", value: word.value, quote: "shell" }
+		: undefined;
 }
 
 function wordScript(
@@ -586,6 +632,10 @@ function scriptPrefix(
 
 function isInlineScript(name: string, language: string, prefix: string): boolean {
 	if (language === "python") return /^\s+(?:-[A-Za-z]+\s+)*-c\s*$/.test(prefix);
+	if (name === "bash" || name === "sh" || name === "zsh")
+		return /^\s+(?:(?:-[A-Za-z]*o\s+\S+|[-+][A-Za-z]+|--[\w-]+)\s+)*-[A-Za-z]*c\s*$/.test(
+			prefix,
+		);
 	if (name === "playwright-cli") return /^\s+(?:-s=\S+\s+)?run-code\s+$/.test(prefix);
 	if (name === "deno") return /^\s+eval(?:\s+--[\w=-]+)*\s+$/.test(prefix);
 	if (name === "node" || name === "bun")
@@ -599,6 +649,7 @@ function isInlineScript(name: string, language: string, prefix: string): boolean
 
 function inlineLanguage(name: string): string | undefined {
 	if (/^python(?:\d+(?:\.\d+)*)?$/.test(name)) return "python";
+	if (name === "bash" || name === "sh" || name === "zsh") return "bash";
 	if (name === "bun" || name === "deno") return "typescript";
 	if (name === "node" || name === "playwright-cli") return "javascript";
 	if (["ruby", "perl", "lua"].includes(name)) return name;

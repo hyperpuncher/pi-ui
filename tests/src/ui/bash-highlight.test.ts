@@ -397,6 +397,59 @@ test("preserves multiline language state, blank lines, tabs and multiple blocks"
 });
 
 test.each([
+	["ssh odroid '", "zcat /usr/share/man/man5/labwc-config.5.gz | head -n 30", "'"],
+	["timeout 10 ssh odroid '", "echo ok | wc -l", "'"],
+	["bash -euo pipefail -c '", "rg -n foo src/ || true", "'"],
+])("highlights inline ssh and subshell commands: %s%s%s", (before, body, after) => {
+	const command = `${before}${body}${after}`;
+	const start = before.length;
+	const tokens = highlightBash(command)!
+		.tokens.flat()
+		.filter((token) => token.offset >= start && token.offset < start + body.length);
+	expect(styles([tokens])).toEqual(styles([native(body, "bash").flat()]));
+});
+
+test("highlights ssh heredocs and nested heredocs inside them", () => {
+	const python = 'import ctypes, sys\nlib = ctypes.CDLL("libnfs.so")';
+	const command = [
+		"ssh -o BatchMode=yes odroid 'bash -s' << 'EOF'",
+		'URL="nfs://host/movie.mkv"',
+		`python3 - "$URL" /tmp/out.mkv << 'PY'`,
+		python,
+		"PY",
+		"sudo -n /usr/bin/chvt 7 && sleep 0.1",
+		"EOF",
+	].join("\n");
+	const { tokens } = highlightBash(command)!;
+	expect(
+		tokens.map((line) => line.map((token) => token.content).join("")).join("\n"),
+	).toBe(command);
+	expect(styles(tokens.slice(3, 5))).toEqual(styles(native(python, "python")));
+	expect(styles(tokens.slice(6, 7))).toEqual(
+		styles(native("sudo -n /usr/bin/chvt 7 && sleep 0.1", "bash")),
+	);
+});
+
+test("codemode highlights bash template literals with line continuations and nested ssh heredocs", () => {
+	const python = "import sys\nprint(sys.argv[1])";
+	const body = [
+		"ssh odroid 'bash -s' << 'EOF'",
+		"python3 - << 'PY'",
+		python,
+		"PY",
+		"mpv --no-config \\",
+		'  --vo=gpu | grep -E "vd\\]|vo/gpu\\]"',
+		"EOF",
+	].join("\n");
+	const code = `tools.bash({ command: \`${body}\` })`;
+	const { tokens } = highlightCodemode(code)!;
+	expect(
+		tokens.map((line) => line.map((token) => token.content).join("")).join("\n"),
+	).toBe(code);
+	expect(styles(tokens.slice(2, 4))).toEqual(styles(native(python, "python")));
+});
+
+test.each([
 	"cat <<EOF\nunknown content\nEOF",
 	"python --version; cat <<EOF\nnot python\nEOF",
 	"python producer.py | cat <<EOF\nnot python\nEOF",
