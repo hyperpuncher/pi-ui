@@ -40,7 +40,9 @@ async function handleCodeCopy(event) {
 	if (!(button instanceof HTMLButtonElement)) return;
 	const block = button.closest('[data-code-block], [data-markdown="code-block"]');
 	const code = block?.querySelector("code");
-	const text = block?.getAttribute("data-code-source") || code?.textContent;
+	const text = (
+		block?.getAttribute("data-code-source") || code?.textContent
+	)?.trimEnd();
 	if (!text) return;
 	if (!(await copyText(text))) {
 		button.setAttribute("aria-label", "Copy failed");
