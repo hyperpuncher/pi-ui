@@ -25,10 +25,40 @@ import {
 } from "#src/utils/type-guards.ts";
 
 // Share script tokens across commands with different wrappers, arguments or redirects.
-const scriptTokens = new BoundedCache<string, ThemedToken[]>(128, {
-	maxWeight: 2 * 1024 * 1024,
-	weight: (key, tokens) => key.length * 2 + tokens.length * 256,
-});
+const scriptCaches = new BoundedCache<string, BoundedCache<string, ThemedToken[]>>(32);
+const codemodeCaches = new BoundedCache<string, BoundedCache<string, ThemedToken[][]>>(4);
+
+function scriptCache(language: string): BoundedCache<string, ThemedToken[]> {
+	const bucket = `${codeThemeKey()}\0${language}`;
+	let cache = scriptCaches.get(bucket);
+	if (!cache) {
+		cache = new BoundedCache<string, ThemedToken[]>(1024, {
+			maxWeight: 8 * 1024 * 1024,
+			weight: (key, tokens) => key.length * 2 + tokens.length * 256,
+		});
+		scriptCaches.set(bucket, cache);
+	}
+	return cache;
+}
+
+function codemodeCache(): BoundedCache<string, ThemedToken[][]> {
+	const theme = codeThemeKey();
+	let cache = codemodeCaches.get(theme);
+	if (!cache) {
+		cache = new BoundedCache<string, ThemedToken[][]>(1024, {
+			maxWeight: 16 * 1024 * 1024,
+			weight: (key, lines) =>
+				key.length * 2 + lines.reduce((sum, line) => sum + line.length, 0) * 256,
+		});
+		codemodeCaches.set(theme, cache);
+	}
+	return cache;
+}
+
+const codemodeFieldPattern =
+	/["']?\b(content|oldText|newText|code|script|function|command)["']?\s*:\s*(String\.raw\s*)?$/;
+const codemodeCallPattern =
+	/\btools\.(bash|\w*browser_run_code)\s*\(\s*\{[^{}]*\b(command|code)\s*:\s*(?:String\.raw\s*)?$/;
 
 const markerLanguages = new Map(
 	Object.entries({
@@ -156,103 +186,169 @@ export function highlightBash(
 	command: string,
 	options: { format?: boolean } = {},
 ): { tokens: ThemedToken[][] } | undefined {
-	return highlightBashAtDepth(command, options, 0);
+	const result = highlightBashInternal(command, options.format === true, 0);
+	if (!result) return undefined;
+	return { tokens: result.lines ?? tokenLines(command, result.flat!, result.breaks) };
 }
 
-function highlightBashAtDepth(
+function highlightBashFlat(command: string, depth: number): ThemedToken[] | undefined {
+	const result = highlightBashInternal(command, false, depth);
+	if (!result) return undefined;
+	return result.flat ?? flattenTokens(result.lines!);
+}
+
+function highlightBashInternal(
 	command: string,
-	options: { format?: boolean },
+	formatOption: boolean,
 	depth: number,
-): { tokens: ThemedToken[][] } | undefined {
-	const tokens = bashTokens(command);
-	if (!tokens) return undefined;
-	const format = options.format === true && command.length > 90;
+): { lines?: ThemedToken[][]; flat?: ThemedToken[]; breaks: number[] } | undefined {
 	const scan =
 		depth < maxEmbedDepth && hasEmbeddedBash(command)
 			? scanShell(command)
 			: undefined;
-	const breaks = format ? displayBreaks(command, tokens, scan?.bodyRanges ?? []) : [];
-	return highlightScripts(
-		command,
-		tokens,
-		scan ? [...heredocs(scan), ...inlineScripts(command, scan)] : [],
-		breaks,
-		depth,
-	);
+	const heredocScripts = scan ? heredocs(scan) : [];
+	const inline = scan ? inlineScripts(command, scan) : [];
+	const scripts =
+		heredocScripts.length && inline.length
+			? [...heredocScripts, ...inline]
+			: heredocScripts.length
+				? heredocScripts
+				: inline;
+	const tokens =
+		heredocScripts.length > 0
+			? stubbedBashTokens(command, heredocScripts)
+			: bashTokens(command);
+	if (!tokens) return undefined;
+	const breaks =
+		formatOption && command.length > 90
+			? displayBreaks(command, tokens, scan?.bodyRanges ?? [])
+			: [];
+	if (scripts.length === 0 && breaks.length === 0) return { lines: tokens, breaks };
+	const flat =
+		scripts.length > 0
+			? mergeScripts(command, flattenTokens(tokens), scripts, depth)
+			: flattenTokens(tokens);
+	return { flat, breaks };
+}
+
+/** Tokenize outer shell with highlighted heredoc bodies removed, then restore offsets. */
+function stubbedBashTokens(
+	command: string,
+	heredocScripts: Script[],
+): ThemedToken[][] | undefined {
+	let stub = "";
+	let cursor = 0;
+	for (const { start, end } of heredocScripts) {
+		stub += command.slice(cursor, start);
+		cursor = end;
+	}
+	stub += command.slice(cursor);
+	const tokens = bashTokens(stub);
+	if (!tokens) return undefined;
+	let heredocIndex = 0;
+	let delta = 0;
+	for (const line of tokens) {
+		for (const token of line) {
+			while (
+				heredocIndex < heredocScripts.length &&
+				token.offset + delta >= heredocScripts[heredocIndex]!.start
+			) {
+				delta +=
+					heredocScripts[heredocIndex]!.end -
+					heredocScripts[heredocIndex]!.start;
+				heredocIndex++;
+			}
+			if (delta > 0) token.offset += delta;
+		}
+	}
+	return tokens;
 }
 
 export function highlightCodemode(code: string, snippets: CodeSnippet[] = []) {
 	const highlighter = getHighlighterIfLoaded();
 	if (!highlighter) return undefined;
-	const key = `${codeThemeKey()}\0codemode\0${code}`;
-	let base = scriptTokens.get(key);
-	if (!base) {
-		base = highlighter
-			.codeToTokens(code, {
-				lang: "javascript",
-				themes: activeCodeThemes,
-				defaultColor: "light-dark()",
-			})
-			.tokens.flat();
-		scriptTokens.set(key, base);
+	const baseCache = codemodeCache();
+	let baseLines = baseCache.get(code);
+	if (!baseLines) {
+		baseLines = highlighter.codeToTokens(code, {
+			lang: "javascript",
+			themes: activeCodeThemes,
+			defaultColor: "light-dark()",
+		}).tokens;
+		baseCache.set(code, baseLines);
 	}
 
 	const hints = new Map<string, CodeSnippet | null>();
 	for (const snippet of snippets)
 		for (const quote of ['"', "'", "`", "template"]) {
-			const key = `${snippet.field}\0${quote}\0${encodeLiteral(snippet.value, quote)}`;
-			const previous = hints.get(key);
+			const hintKey = `${snippet.field}\0${quote}\0${encodeLiteral(snippet.value, quote)}`;
+			const previous = hints.get(hintKey);
 			hints.set(
-				key,
+				hintKey,
 				previous === null || (previous && previous.language !== snippet.language)
 					? null
 					: snippet,
 			);
 		}
+	const hasHints = hints.size > 0;
+	if (!hasHints && !code.includes("tools.")) return { tokens: baseLines };
 	const scripts: Script[] = [];
-	for (let index = 0; index < base.length; index++) {
-		const token = base[index]!;
-		const quote = code[token.offset];
-		// TextMate's string token type excludes comments and regular expressions.
-		if (token.type !== 2 || !quote || !['"', "'", "`"].includes(quote)) continue;
-		const end = stringEnd(code, token.offset + 1, quote);
-		if (end < 0) continue;
-		const prefix = code.slice(Math.max(0, token.offset - 80), token.offset);
-		const body = code.slice(token.offset + 1, end);
-		const field = prefix.match(
-			/["']?\b(content|oldText|newText|code|script|function|command)["']?\s*:\s*(String\.raw\s*)?$/,
-		);
-		const encoding = quote === "`" && !field?.[2] ? "template" : quote;
-		const snippet = field
-			? hints.get(`${field[1]}\0${encoding}\0${body}`)
-			: undefined;
-		const call = prefix.match(
-			/\btools\.(bash|\w*browser_run_code)\s*\(\s*\{[^{}]*\b(command|code)\s*:\s*(?:String\.raw\s*)?$/,
-		);
-		const interpolated =
-			quote === "`" &&
-			[...body.matchAll(/\$\{/g)].some((match) => !isEscaped(body, match.index));
-		const hasEscape = quote !== "`" && body.includes("\\");
-		const language =
-			snippet?.language ??
-			(call &&
-			(call[1] === "bash" ? call[2] === "command" : call[2] === "code") &&
-			!hasEscape
-				? call[1] === "bash"
-					? "bash"
-					: "javascript"
-				: undefined);
-		if (language && !interpolated)
-			scripts.push({
-				start: token.offset + 1,
-				end,
-				language,
-				value: snippet?.value,
-				quote: snippet ? encoding : undefined,
-			});
-		while (index + 1 < base.length && base[index + 1]!.offset <= end) index++;
+	let skipUntil = -1;
+	for (const line of baseLines) {
+		for (const token of line) {
+			if (token.offset <= skipUntil) continue;
+			// TextMate's string token type excludes comments and regular expressions.
+			if (token.type !== 2) continue;
+			const quote = code[token.offset];
+			if (quote !== '"' && quote !== "'" && quote !== "`") continue;
+			const end = stringEnd(code, token.offset + 1, quote);
+			if (end < 0) continue;
+			skipUntil = end;
+			const prefixEnd = token.offset;
+			const lastNonSpace = skipBackwardSpaces(code, prefixEnd - 1);
+			const lastChar = lastNonSpace >= 0 ? code[lastNonSpace] : "";
+			if (lastChar !== ":" && lastChar !== "w") continue;
+			const prefix = code.slice(Math.max(0, prefixEnd - 80), prefixEnd);
+			const field = hasHints ? prefix.match(codemodeFieldPattern) : null;
+			const call = field ? null : prefix.match(codemodeCallPattern);
+			if (!field && !call) continue;
+			const body = code.slice(token.offset + 1, end);
+			const encoding = quote === "`" && !field?.[2] ? "template" : quote;
+			const snippet = field
+				? hints.get(`${field[1]}\0${encoding}\0${body}`)
+				: undefined;
+			const matchedCall =
+				call ?? (snippet ? null : prefix.match(codemodeCallPattern));
+			const hasEscape = quote !== "`" && body.includes("\\");
+			const language =
+				snippet?.language ??
+				(matchedCall &&
+				(matchedCall[1] === "bash"
+					? matchedCall[2] === "command"
+					: matchedCall[2] === "code") &&
+				!hasEscape
+					? matchedCall[1] === "bash"
+						? "bash"
+						: "javascript"
+					: undefined);
+			if (language && !(quote === "`" && hasInterpolation(body)))
+				scripts.push({
+					start: token.offset + 1,
+					end,
+					language,
+					value: snippet?.value,
+					quote: snippet ? encoding : undefined,
+				});
+		}
 	}
-	return highlightScripts(code, tokenLines(code, base, []), scripts);
+	if (scripts.length === 0) return { tokens: baseLines };
+	return {
+		tokens: tokenLines(
+			code,
+			mergeScripts(code, flattenTokens(baseLines), scripts, 0),
+			[],
+		),
+	};
 }
 
 /** Tool arguments as YAML, with code in block scalars highlighted by the field's usual language. */
@@ -276,7 +372,52 @@ export function highlightArguments(yaml: string) {
 			language: match[1] === "command" ? "bash" : "javascript",
 		});
 	}
-	return highlightScripts(yaml, tokens, scripts);
+	if (scripts.length === 0) return { tokens };
+	return {
+		tokens: tokenLines(
+			yaml,
+			mergeScripts(yaml, flattenTokens(tokens), scripts, 0),
+			[],
+		),
+	};
+}
+
+function skipBackwardSpaces(code: string, offset: number): number {
+	while (offset >= 0) {
+		const char = code[offset]!;
+		if (char !== " " && char !== "\t" && char !== "\n" && char !== "\r") break;
+		offset--;
+	}
+	return offset;
+}
+
+function hasInterpolation(body: string): boolean {
+	let pos = body.indexOf("${");
+	while (pos >= 0) {
+		if (!isEscaped(body, pos)) return true;
+		pos = body.indexOf("${", pos + 2);
+	}
+	return false;
+}
+
+function flattenTokens(lines: ThemedToken[][]): ThemedToken[] {
+	const flat: ThemedToken[] = [];
+	for (const line of lines) for (const token of line) flat.push(token);
+	return flat;
+}
+
+function withOffset(
+	token: ThemedToken,
+	offset: number,
+	content = token.content,
+): ThemedToken {
+	const copy: ThemedToken = { content, offset };
+	if (token.htmlStyle !== undefined) copy.htmlStyle = token.htmlStyle;
+	if (token.color !== undefined) copy.color = token.color;
+	if (token.bgColor !== undefined) copy.bgColor = token.bgColor;
+	if (token.fontStyle !== undefined) copy.fontStyle = token.fontStyle;
+	if (token.type !== undefined) copy.type = token.type;
+	return copy;
 }
 
 function stringEnd(code: string, start: number, quote: string): number {
@@ -294,95 +435,89 @@ function isEscaped(code: string, offset: number): boolean {
 	return slashes % 2 !== 0;
 }
 
-function highlightScripts(
+function mergeScripts(
 	command: string,
-	tokens: ThemedToken[][],
+	source: ThemedToken[],
 	scripts: Script[],
-	breaks: number[] = [],
-	depth = 0,
-) {
+	depth: number,
+): ThemedToken[] {
 	const highlighter = getHighlighterIfLoaded()!;
-	scripts.sort((a, b) => a.start - b.start);
-	const source = tokens.flat();
+	if (scripts.length > 1) scripts.sort((a, b) => a.start - b.start);
 	const highlighted: ThemedToken[] = [];
 	let index = 0;
+	let current = source[0];
 	for (const { start, end, language, value, quote } of scripts) {
 		const code = value ?? command.slice(start, end);
-		const key = `${codeThemeKey()}\0${language}\0${code}`;
-		let body = scriptTokens.get(key);
+		const cache = scriptCache(language);
+		let body = cache.get(code);
 		if (!body) {
 			try {
-				if (language === "bash") {
-					body = highlightBashAtDepth(code, {}, depth + 1)!.tokens.flat();
-					scriptTokens.set(key, body);
-				} else {
-					body = highlighter
-						.codeToTokens(code, {
-							lang: language,
-							themes: activeCodeThemes,
-							defaultColor: "light-dark()",
-						})
-						.tokens.flat();
-					scriptTokens.set(key, body);
-				}
+				body =
+					language === "bash"
+						? highlightBashFlat(code, depth + 1)!
+						: flattenTokens(
+								highlighter.codeToTokens(code, {
+									lang: language,
+									themes: activeCodeThemes,
+									defaultColor: "light-dark()",
+								}).tokens,
+							);
+				cache.set(code, body);
 			} catch {
 				continue;
 			}
 		}
-		while (
-			index < source.length &&
-			source[index]!.offset + source[index]!.content.length <= start
-		)
-			highlighted.push(source[index++]!);
-		const head = source[index];
+		while (current && current.offset + current.content.length <= start) {
+			highlighted.push(current);
+			current = source[++index];
+		}
+		const head = current;
 		if (head && head.offset < start)
-			highlighted.push({
-				...head,
-				content: head.content.slice(0, start - head.offset),
-			});
-		let decodedOffset = 0;
-		let encodedOffset = start;
-		for (const token of body) {
-			if (value !== undefined && quote) {
+			highlighted.push(
+				withOffset(head, head.offset, head.content.slice(0, start - head.offset)),
+			);
+		if (value !== undefined && quote) {
+			let decodedOffset = 0;
+			let encodedOffset = start;
+			for (const token of body) {
 				const gap = encodeLiteral(
 					code.slice(decodedOffset, token.offset),
 					quote,
 					code[token.offset],
 				);
-				if (gap)
-					highlighted.push({ ...head!, offset: encodedOffset, content: gap });
+				if (gap) highlighted.push(withOffset(head!, encodedOffset, gap));
 				encodedOffset += gap.length;
 				const content = encodeLiteral(
 					token.content,
 					quote,
 					code[token.offset + token.content.length],
 				);
-				highlighted.push({ ...token, offset: encodedOffset, content });
+				highlighted.push(withOffset(token, encodedOffset, content));
 				encodedOffset += content.length;
 				decodedOffset = token.offset + token.content.length;
-			} else highlighted.push({ ...token, offset: token.offset + start });
+			}
+			if (encodedOffset < end)
+				highlighted.push(
+					withOffset(head!, encodedOffset, command.slice(encodedOffset, end)),
+				);
+		} else {
+			for (const token of body)
+				highlighted.push(withOffset(token, token.offset + start));
 		}
-		if (value !== undefined && quote && encodedOffset < end)
-			highlighted.push({
-				...head!,
-				offset: encodedOffset,
-				content: command.slice(encodedOffset, end),
-			});
-		while (
-			index < source.length &&
-			source[index]!.offset + source[index]!.content.length <= end
-		)
-			index++;
-		const tail = source[index];
-		if (tail && tail.offset < end)
-			source[index] = {
-				...tail,
-				offset: end,
-				content: tail.content.slice(end - tail.offset),
-			};
+		while (current && current.offset + current.content.length <= end)
+			current = source[++index];
+		if (current && current.offset < end)
+			current = withOffset(
+				current,
+				end,
+				current.content.slice(end - current.offset),
+			);
 	}
-	for (; index < source.length; index++) highlighted.push(source[index]!);
-	return { tokens: tokenLines(command, highlighted, breaks) };
+	while (current) {
+		highlighted.push(current);
+		current = source[++index];
+	}
+	return highlighted;
 }
 
 function heredocs(scan: ReturnType<typeof scanShell>): Script[] {
@@ -688,7 +823,8 @@ function isAssignment(value: string): boolean {
 }
 
 function basename(path: string): string {
-	return path.split("/").at(-1) ?? path;
+	const slash = path.lastIndexOf("/");
+	return slash < 0 ? path : path.slice(slash + 1);
 }
 
 /** One ordered pass handles both original newlines and display-only breaks. */
@@ -697,44 +833,67 @@ function tokenLines(
 	tokens: ThemedToken[],
 	breaks: number[],
 ): ThemedToken[][] {
-	const cuts = [...command.matchAll(/\r?\n/g)].map((match) => ({
-		end: match.index,
-		next: match.index + match[0].length,
-	}));
-	for (const end of breaks)
-		cuts.push({
-			end,
-			next: end + (command.slice(end).match(/^[ \t]*/)?.[0].length ?? 0),
-		});
-	cuts.sort((a, b) => a.end - b.end);
-	cuts.push({ end: command.length, next: command.length });
 	const lines: ThemedToken[][] = [];
-	let index = 0;
+	const length = command.length;
+	const tokenCount = tokens.length;
+	let tokenIndex = 0;
 	let start = 0;
-	for (const { end, next } of cuts) {
+	let newline = command.indexOf("\n");
+	let breakIndex = 0;
+	const breakCount = breaks.length;
+
+	while (true) {
+		let end: number;
+		let nextStart: number;
+		let done = false;
+		if (newline < 0 && breakIndex >= breakCount) {
+			end = length;
+			nextStart = length;
+			done = true;
+		} else {
+			const nlEnd =
+				newline >= 0 && command[newline - 1] === "\r" ? newline - 1 : newline;
+			const nextBreak = breakIndex < breakCount ? breaks[breakIndex]! : Infinity;
+			if (newline >= 0 && nlEnd <= nextBreak) {
+				end = nlEnd;
+				nextStart = newline + 1;
+				newline = command.indexOf("\n", nextStart);
+			} else {
+				end = nextBreak;
+				let next = nextBreak;
+				while (next < length && (command[next] === " " || command[next] === "\t"))
+					next++;
+				nextStart = next;
+				breakIndex++;
+			}
+		}
+
 		const line: ThemedToken[] = [];
-		while (index < tokens.length && tokens[index]!.offset < end) {
-			const token = tokens[index]!;
-			const from = Math.max(start, token.offset);
-			const to = Math.min(end, token.offset + token.content.length);
+		while (tokenIndex < tokenCount) {
+			const token = tokens[tokenIndex]!;
+			if (token.offset >= end) break;
+			const tokenEnd = token.offset + token.content.length;
+			const from = start > token.offset ? start : token.offset;
+			const to = end < tokenEnd ? end : tokenEnd;
 			if (from < to)
 				line.push(
-					from === token.offset && to === token.offset + token.content.length
+					from === token.offset && to === tokenEnd
 						? token
-						: {
-								...token,
-								offset: from,
-								content: token.content.slice(
+						: withOffset(
+								token,
+								from,
+								token.content.slice(
 									from - token.offset,
 									to - token.offset,
 								),
-							},
+							),
 				);
-			if (token.offset + token.content.length > end) break;
-			index++;
+			if (tokenEnd > end) break;
+			tokenIndex++;
 		}
 		lines.push(line);
-		start = next;
+		if (done) break;
+		start = nextStart;
 	}
 	return lines;
 }

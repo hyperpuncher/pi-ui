@@ -51,6 +51,10 @@ export type ShellScan = {
 };
 
 const operatorStart = new Set("&;<>|(){}");
+
+function isHorizontalSpace(char: string): boolean {
+	return char === " " || char === "\t" || char === "\f" || char === "\v";
+}
 const redirectOperators = new Set(["<<-", ">>", "<<", ">|", ">&", "<&", ">", "<"]);
 const segmentOperators = new Set([";;&", "&&", "||", "|&", ";;", ";&", "|", ";", "&"]);
 
@@ -77,7 +81,7 @@ export function scanShell(source: string): ShellScan {
 			redirect = undefined;
 			continue;
 		}
-		if (/\s/.test(char)) {
+		if (isHorizontalSpace(char)) {
 			offset += 1;
 			continue;
 		}
@@ -187,7 +191,10 @@ function readHeredoc(
 	for (let start = bodyStart; start < source.length;) {
 		const newline = source.indexOf("\n", start);
 		const lineEnd = newline < 0 ? source.length : newline;
-		const text = source.slice(start, lineEnd).replace(/\r$/, "");
+		const text =
+			lineEnd > start && source[lineEnd - 1] === "\r"
+				? source.slice(start, lineEnd - 1)
+				: source.slice(start, lineEnd);
 		if (
 			(operator.value === "<<-" ? text.replace(/^\t+/, "") : text) === marker.value
 		) {
@@ -215,35 +222,46 @@ function readWord(source: string, start: number): ShellWord {
 	let offset = start;
 	let value = "";
 	const quoted: ShellQuoted[] = [];
+	let runStart = start;
 	while (offset < source.length) {
 		const char = source[offset]!;
-		if (/\s/.test(char) || char === "\n" || char === "\r") break;
+		if (char === "\n" || char === "\r" || isHorizontalSpace(char)) break;
 		if (operatorStart.has(char) && operatorAt(source, offset)) break;
 		if (char === "\\") {
+			if (offset > runStart) value += source.slice(runStart, offset);
 			offset += 1;
-			if (offset < source.length && !/[\r\n]/.test(source[offset]!)) {
+			if (
+				offset < source.length &&
+				source[offset] !== "\r" &&
+				source[offset] !== "\n"
+			) {
 				value += source[offset]!;
 				offset += 1;
 			}
+			runStart = offset;
 			continue;
 		}
 		if (char === "'" || char === '"' || char === "`") {
+			if (offset > runStart) value += source.slice(runStart, offset);
 			const segment = readQuoted(source, offset, char);
 			quoted.push(segment);
 			value += source.slice(segment.contentStart, segment.contentEnd);
 			offset = segment.end;
+			runStart = offset;
 			continue;
 		}
 		if (char === "$" && source[offset + 1] === "'") {
+			if (offset > runStart) value += source.slice(runStart, offset);
 			const segment = readAnsiQuote(source, offset);
 			quoted.push(segment);
 			value += source.slice(segment.contentStart, segment.contentEnd);
 			offset = segment.end;
+			runStart = offset;
 			continue;
 		}
-		value += char;
 		offset += 1;
 	}
+	if (offset > runStart) value += source.slice(runStart, offset);
 	return { start, end: offset, value, quoted };
 }
 
