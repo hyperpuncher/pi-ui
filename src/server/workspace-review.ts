@@ -239,13 +239,29 @@ export async function readWorkspaceDiff(
 			signal,
 		);
 	}
-	for (const entry of selected.filter((entry) => entry.code === "??")) {
-		patch += await boundedGit(
-			root,
-			[...options, "--no-index", "--", "/dev/null", entry.path],
-			signal,
-			maximumWorkspaceDiffBytes - Buffer.byteLength(patch),
+	const untracked = selected.filter((entry) => entry.code === "??");
+	if (untracked.length > 0) {
+		let remaining = maximumWorkspaceDiffBytes - Buffer.byteLength(patch);
+		const parts = await Promise.all(
+			untracked.map((entry) =>
+				boundedGit(
+					root,
+					[...options, "--no-index", "--", "/dev/null", entry.path],
+					signal,
+					remaining,
+				),
+			),
 		);
+		for (const part of parts) {
+			remaining -= Buffer.byteLength(part);
+			if (remaining < 0) {
+				throw new WorkspaceReviewError(
+					413,
+					"Diff too large to preview. Select a smaller file.",
+				);
+			}
+			patch += part;
+		}
 	}
 	return patch;
 }
