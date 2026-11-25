@@ -41,7 +41,7 @@ type SessionCandidate = {
 	mtime: number;
 };
 
-const SESSION_INDEX_CONCURRENCY = 4;
+const SESSION_INDEX_CONCURRENCY = 16;
 const noBackgroundStatuses = new Map<string, BackgroundSessionStatus>();
 
 /** Coalesces fs write bursts per session file without slowing direct updates. */

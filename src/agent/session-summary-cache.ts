@@ -17,6 +17,13 @@ import { isNumber, isRecord, isString, type JsonRecord } from "#src/utils/type-g
 const cacheVersion = 2;
 const maxSummaryTextLength = 96;
 const cacheWrites = new Map<string, Promise<void>>();
+const prefixType = Buffer.from('{"type":"');
+const prefixSession = Buffer.from('{"type":"session",');
+const prefixSessionInfo = Buffer.from('{"type":"session_info",');
+const prefixMessage = Buffer.from('{"type":"message",');
+const needleMessageRole = Buffer.from('"message":{"role":"');
+const needleStopReason = Buffer.from(',"stopReason":"');
+const needleTimestamp = Buffer.from(',"timestamp":');
 const cacheEntrySchema = obj(
 	{
 		indexedBytes: num(),
@@ -176,26 +183,13 @@ async function parseSessionFile(
 			};
 	const start = cached?.indexedBytes ?? 0;
 	try {
-		const reader = Bun.file(candidate.path).slice(start).stream().getReader();
-		let pending: Uint8Array = Buffer.alloc(0);
-		let consumedBytes = 0;
-		while (true) {
-			const { done, value: chunk } = await reader.read();
-			if (done) break;
-			const buffer: Uint8Array =
-				pending.length === 0 ? chunk : Buffer.concat([pending, chunk]);
-			const newline = buffer.lastIndexOf(10);
-			if (newline < 0) {
-				pending = buffer;
-				continue;
-			}
-			const complete = buffer.subarray(0, newline + 1);
-			applyCompleteLines(state, complete);
-			consumedBytes += complete.length;
-			pending = buffer.subarray(newline + 1);
+		const bytes = await Bun.file(candidate.path).slice(start).bytes();
+		const lastNewline = bytes.lastIndexOf(10);
+		if (lastNewline >= 0) {
+			applyCompleteLines(state, bytes, lastNewline);
 		}
 		if (!cached && !state.id) return undefined;
-		state.indexedBytes = start + consumedBytes;
+		state.indexedBytes = start + (lastNewline >= 0 ? lastNewline + 1 : 0);
 		state.mtime = candidate.mtime;
 		return state;
 	} catch {
@@ -204,26 +198,147 @@ async function parseSessionFile(
 }
 
 /**
- * Fast pass: parseChunk consumes the whole chunk in one call. A corrupt line
- * stops it, so the same loop resumes per line (start/end offsets, no copies)
- * and later records survive.
+ * Scans complete JSONL lines in-place, skipping JSON deserialization for
+ * non-summary records and already-titled message payloads while falling back
+ * to full JSON parsing for headers, renames, the first user prompt, or any
+ * unusual formatting.
  */
-function applyCompleteLines(state: SessionSummaryCacheEntry, bytes: Uint8Array): void {
-	const result = Bun.JSONL.parseChunk(bytes);
-	for (const value of result.values) {
-		if (isRecord(value)) applyRecord(state, value);
-	}
-	if (!result.error && result.done) return;
-	for (let start = result.read, newline = bytes.indexOf(10, start); newline >= 0;) {
-		const parsed = Bun.JSONL.parseChunk(bytes, start, newline);
-		if (!parsed.error) {
-			for (const value of parsed.values) {
-				if (isRecord(value)) applyRecord(state, value);
+function applyCompleteLines(
+	state: SessionSummaryCacheEntry,
+	bytes: Uint8Array,
+	lastNewline: number,
+): void {
+	const buf = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+	for (let start = 0; start <= lastNewline;) {
+		const newline = buf.indexOf(10, start);
+		if (newline > start) {
+			if (hasPrefix(buf, start, newline, prefixMessage)) {
+				if (!applyFastMessageLine(state, buf, start, newline)) {
+					parseAndApplyLine(state, bytes, start, newline);
+				}
+			} else if (
+				hasPrefix(buf, start, newline, prefixSession) ||
+				hasPrefix(buf, start, newline, prefixSessionInfo) ||
+				!hasPrefix(buf, start, newline, prefixType)
+			) {
+				parseAndApplyLine(state, bytes, start, newline);
 			}
 		}
 		start = newline + 1;
-		newline = bytes.indexOf(10, start);
 	}
+}
+
+function parseAndApplyLine(
+	state: SessionSummaryCacheEntry,
+	bytes: Uint8Array,
+	start: number,
+	end: number,
+): void {
+	const parsed = Bun.JSONL.parseChunk(bytes, start, end);
+	if (parsed.error) return;
+	for (const value of parsed.values) {
+		if (isRecord(value)) applyRecord(state, value);
+	}
+}
+
+function applyFastMessageLine(
+	state: SessionSummaryCacheEntry,
+	buf: Buffer,
+	start: number,
+	end: number,
+): boolean {
+	const lineEnd = end > start && buf[end - 1] === 13 ? end - 1 : end;
+	if (lineEnd - start < 24 || buf[lineEnd - 1] !== 125) return false;
+
+	const headLimit = Math.min(lineEnd, start + 512);
+	const rolePos = buf.indexOf(needleMessageRole, start + prefixMessage.length);
+	if (rolePos === -1 || rolePos >= headLimit) return false;
+
+	const roleStart = rolePos + needleMessageRole.length;
+	const roleEnd = buf.indexOf(34, roleStart);
+	if (roleEnd === -1 || roleEnd > headLimit) return false;
+
+	const role = buf.toString("ascii", roleStart, roleEnd);
+	const isUser = role === "user";
+	const isAssistant = role === "assistant";
+
+	// First user message needs full content parsing for title/attachments/images.
+	if (isUser && !state.firstMessage) return false;
+
+	if (!isUser && !isAssistant) {
+		state.messageCount += 1;
+		return true;
+	}
+
+	const activity = extractMessageTimestamp(buf, roleEnd, lineEnd);
+	if (activity === undefined) return false;
+
+	state.messageCount += 1;
+	if (activity > state.lastActivity) state.lastActivity = activity;
+	return true;
+}
+
+function extractMessageTimestamp(
+	buf: Buffer,
+	minPos: number,
+	lineEnd: number,
+): number | undefined {
+	// Fast case 1: line ends with ,"timestamp":<digits>}}
+	const tailStart = Math.max(minPos, lineEnd - 48);
+	const endTsPos = buf.lastIndexOf(needleTimestamp, lineEnd - needleTimestamp.length);
+	if (endTsPos >= tailStart) {
+		const parsed = parsePositiveInt(buf, endTsPos + needleTimestamp.length, lineEnd);
+		if (
+			parsed &&
+			parsed.end + 2 === lineEnd &&
+			buf[parsed.end] === 125 &&
+			buf[parsed.end + 1] === 125
+		) {
+			return parsed.value;
+		}
+	}
+
+	// Fast case 2: assistant metadata after ,"stopReason":"...","timestamp":<digits>
+	const metaStart = Math.max(minPos, lineEnd - 1024);
+	const stopPos = buf.lastIndexOf(needleStopReason, lineEnd - needleStopReason.length);
+	if (stopPos >= metaStart) {
+		const tsPos = buf.indexOf(needleTimestamp, stopPos + needleStopReason.length);
+		if (tsPos !== -1 && tsPos < lineEnd) {
+			const parsed = parsePositiveInt(buf, tsPos + needleTimestamp.length, lineEnd);
+			if (
+				parsed &&
+				parsed.end < lineEnd &&
+				(buf[parsed.end] === 44 || buf[parsed.end] === 125)
+			) {
+				return parsed.value;
+			}
+		}
+	}
+
+	return undefined;
+}
+
+function parsePositiveInt(
+	buf: Buffer,
+	start: number,
+	end: number,
+): { value: number; end: number } | undefined {
+	let pos = start;
+	let value = 0;
+	while (pos < end) {
+		const ch = buf[pos];
+		if (ch < 48 || ch > 57) break;
+		value = value * 10 + (ch - 48);
+		pos += 1;
+	}
+	return pos > start ? { value, end: pos } : undefined;
+}
+
+function hasPrefix(buf: Buffer, offset: number, end: number, prefix: Buffer): boolean {
+	return (
+		end - offset >= prefix.length &&
+		buf.compare(prefix, 0, prefix.length, offset, offset + prefix.length) === 0
+	);
 }
 
 function applyRecord(state: SessionSummaryCacheEntry, value: JsonRecord): void {
