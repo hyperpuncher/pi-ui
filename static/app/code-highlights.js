@@ -31,29 +31,12 @@ function clearLine(line) {
 	activeLines.delete(line);
 }
 
-function applyLine(line, palette, paletteList) {
-	const hl = line.getAttribute("data-hl");
-	const textNode = line.firstChild;
-	if (!hl || !(textNode instanceof Text)) {
-		clearLine(line);
-		return;
-	}
-	const prev = activeLines.get(line);
-	if (
-		prev &&
-		prev.hl === hl &&
-		prev.palette === palette &&
-		prev.textNode === textNode
-	) {
-		return;
-	}
-	clearLine(line);
+function buildRanges(hl, textNode, paletteList) {
 	const length = textNode.length;
 	const ranges = [];
 	for (let pos = 0; pos < hl.length;) {
 		const c1 = hl.indexOf(":", pos);
-		if (c1 === -1) break;
-		const c2 = hl.indexOf(":", c1 + 1);
+		const c2 = c1 === -1 ? -1 : hl.indexOf(":", c1 + 1);
 		if (c2 === -1) break;
 		const comma = hl.indexOf(",", c2 + 1);
 		const endPos = comma === -1 ? hl.length : comma;
@@ -73,7 +56,43 @@ function applyLine(line, palette, paletteList) {
 		highlight.add(range);
 		ranges.push([highlight, range]);
 	}
-	if (ranges.length) activeLines.set(line, { hl, palette, textNode, ranges });
+	return ranges;
+}
+
+function applyLine(line, palette, paletteList) {
+	const hl = line.getAttribute("data-hl");
+	const textNode = line.firstChild;
+	if (!hl || !(textNode instanceof Text)) {
+		clearLine(line);
+		return;
+	}
+	const length = textNode.length;
+	const prev = activeLines.get(line);
+	if (
+		prev &&
+		prev.hl === hl &&
+		prev.palette === palette &&
+		prev.textNode === textNode &&
+		prev.length === length
+	) {
+		return;
+	}
+	clearLine(line);
+	const ranges = buildRanges(hl, textNode, paletteList);
+	if (ranges.length) activeLines.set(line, { hl, palette, textNode, length, ranges });
+}
+
+function syncContainer(container) {
+	const palette = container.getAttribute("data-hl-palette");
+	if (!palette) return;
+	const paletteList = palette.split("|");
+	if (container.hasAttribute("data-hl")) {
+		applyLine(container, palette, paletteList);
+		return;
+	}
+	for (const line of container.querySelectorAll("[data-hl]")) {
+		applyLine(line, palette, paletteList);
+	}
 }
 
 function syncCodeHighlights() {
@@ -81,15 +100,10 @@ function syncCodeHighlights() {
 	for (const line of activeLines.keys()) {
 		if (!line.isConnected || !line.hasAttribute("data-hl")) clearLine(line);
 	}
-	const messages = document.getElementById("messages");
-	if (!messages) return;
-	for (const container of messages.querySelectorAll("[data-hl-palette]")) {
-		const palette = container.getAttribute("data-hl-palette");
-		if (!palette) continue;
-		const paletteList = palette.split("|");
-		for (const line of container.querySelectorAll("[data-hl]")) {
-			applyLine(line, palette, paletteList);
-		}
+	const root = document.getElementById("app") ?? document.body;
+	if (!root) return;
+	for (const container of root.querySelectorAll("[data-hl-palette]")) {
+		syncContainer(container);
 	}
 }
 
@@ -138,10 +152,10 @@ function scheduleSync(records) {
 export function bindCodeHighlights() {
 	if (typeof CSS === "undefined" || !("highlights" in CSS)) return;
 	syncCodeHighlights();
-	const pane = document.getElementById("chat-pane") ?? document.body;
-	if (!pane) return;
+	const root = document.getElementById("app") ?? document.body;
+	if (!root) return;
 	const observer = new MutationObserver(scheduleSync);
-	observer.observe(pane, {
+	observer.observe(root, {
 		childList: true,
 		subtree: true,
 		attributes: true,

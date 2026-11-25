@@ -15,6 +15,7 @@ import {
 	highlightBash,
 	highlightCodemode,
 } from "#src/ui/bash-highlight.ts";
+import { createHighlightPalette, encodeHighlightLines } from "#src/ui/code-highlights.ts";
 import { DateTime } from "#src/ui/date-time.tsx";
 import { Icon } from "#src/ui/icon.tsx";
 import { ShortcutKbd } from "#src/ui/keyboard.tsx";
@@ -366,8 +367,7 @@ function renderInlineCode(
 					? highlightArguments(command)
 					: highlightCodemode(command, snippets);
 		if (!result) return { html: Bun.escapeHTML(command) + suffix, palette: "" };
-		const palette: string[] = [];
-		const paletteIndex = new Map<string, number>();
+		const palette = createHighlightPalette();
 		const html = result.tokens
 			.map((line, index) => {
 				const indent = lineIndentWidth(line);
@@ -375,12 +375,16 @@ function renderInlineCode(
 					indent > 0
 						? ` style="padding-inline-start:${indent + 2}ch;text-indent:-${indent + 2}ch"`
 						: "";
-				const { text, runs } = encodeInlineLine(line, palette, paletteIndex);
+				const { text, runs } = encodeHighlightLines(
+					[line],
+					palette,
+					(token) => tokenStyle(token, true) ?? "",
+				);
 				const hlAttr = runs ? ` data-hl="${runs}"` : "";
 				return `<span class="shell-line"${indentStyle}${hlAttr}>${Bun.escapeHTML(text)}${index === result.tokens.length - 1 ? suffix : ""}</span>`;
 			})
 			.join("\n");
-		const entry = { html, palette: palette.join("|") };
+		const entry = { html, palette: palette.styles.join("|") };
 		inlineCodeCache.set(cacheKey, entry);
 		return entry;
 	} catch {
@@ -399,46 +403,6 @@ function lineIndentWidth(line: readonly ThemedToken[]): number {
 		}
 	}
 	return width;
-}
-
-function encodeInlineLine(
-	line: readonly ThemedToken[],
-	palette: string[],
-	paletteIndex: Map<string, number>,
-) {
-	let text = "";
-	const runs: string[] = [];
-	let pendingStyle = "";
-	let pendingStart = 0;
-	let pendingEnd = 0;
-	const flush = () => {
-		if (!pendingStyle || pendingEnd <= pendingStart) return;
-		let index = paletteIndex.get(pendingStyle);
-		if (index === undefined) {
-			index = palette.length;
-			palette.push(pendingStyle);
-			paletteIndex.set(pendingStyle, index);
-		}
-		runs.push(`${index}:${pendingStart}:${pendingEnd}`);
-		pendingStyle = "";
-	};
-	for (const token of line) {
-		if (!token.content) continue;
-		const start = text.length;
-		text += token.content;
-		if (!/\S/.test(token.content)) continue;
-		const style = tokenStyle(token, true) ?? "";
-		if (style === pendingStyle) {
-			pendingEnd = text.length;
-		} else {
-			flush();
-			pendingStyle = style;
-			pendingStart = start;
-			pendingEnd = text.length;
-		}
-	}
-	flush();
-	return { text, runs: runs.join(",") };
 }
 
 function renderUserFileAttachment(

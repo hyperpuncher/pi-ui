@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
-import { createHighlightsPlugin } from "@pierre/words/highlights";
+import { codeToTokens, isSupportedLanguage, type ThemedToken } from "@pierre/highlights";
 import {
 	type CodeHighlighterPlugin,
 	type CodeOptions,
@@ -14,6 +14,7 @@ import {
 import { codeThemeObject } from "#src/code-themes.ts";
 import { activeCodeThemes, codeThemeKey } from "#src/pierre-theme.ts";
 import { filePreviewUrl } from "#src/server/routes/endpoints.ts";
+import { createHighlightPalette, encodeHighlightLines } from "#src/ui/code-highlights.ts";
 import { Icon } from "#src/ui/icon.tsx";
 import { renderMermaid } from "#src/ui/mermaid.ts";
 import { BoundedCache } from "#src/ui/render-cache.ts";
@@ -25,7 +26,6 @@ import { fileUriToPath } from "#static/file-uri.js";
 const maxStreamingEntries = 100;
 const maxFinalMarkdownEntries = 500;
 const maxFinalCacheBytes = 8 * 1024 * 1024;
-const liveTokenizerThreshold = 1024;
 
 const fileLinkPrefix = "/__pi_file__/";
 const dataImagePrefix = "/__pi_data_img__/";
@@ -95,31 +95,33 @@ function getCodePlugin(): CodeHighlighterPlugin | undefined {
 	const dark = codeThemeObject(activeCodeThemes.dark);
 	if (!light || !dark) return undefined;
 	cachedPluginKey = key;
-	const base = createHighlightsPlugin({
-		themes: { light, dark },
-		defaultColor: "light-dark()",
-	});
-	// LiveTokenizer has ~0.37ms setup cost; use one-shot highlight until a fence grows.
 	cachedCodePlugin = {
-		highlight: base.highlight,
-		createSession() {
-			let live: ReturnType<NonNullable<typeof base.createSession>> | undefined;
-			return {
-				highlight(options: CodeOptions) {
-					if (!live && options.code.length < liveTokenizerThreshold) {
-						return base.highlight(options);
-					}
-					live ??= base.createSession?.();
-					return live ? live.highlight(options) : base.highlight(options);
-				},
-				dispose() {
-					live?.dispose();
-					live = undefined;
-				},
-			};
+		highlight({ code, language }: CodeOptions) {
+			if (!isSupportedLanguage(language)) return null;
+			const result = codeToTokens(code, {
+				themes: { light, dark },
+				defaultColor: "light-dark()",
+				lang: language,
+			});
+			return encodeMarkdownHighlight(result.tokens);
 		},
 	};
 	return cachedCodePlugin;
+}
+
+function highlightTokenStyle(token: ThemedToken): string {
+	const color = token.htmlStyle?.color;
+	const bg = token.htmlStyle?.["background-color"];
+	if (color && bg) return `color:${color};background-color:${bg}`;
+	if (color) return `color:${color}`;
+	return bg ? `background-color:${bg}` : "";
+}
+
+function encodeMarkdownHighlight(tokens: readonly (readonly ThemedToken[])[]): string {
+	const palette = createHighlightPalette();
+	const { text, runs } = encodeHighlightLines(tokens, palette, highlightTokenStyle);
+	if (!runs) return Bun.escapeHTML(text);
+	return `<span data-hl-palette="${Bun.escapeHTML(palette.styles.join("|"))}" data-hl="${runs}">${Bun.escapeHTML(text)}</span>`;
 }
 
 function getSharedFinalRenderer(fencedCode: boolean): WordsHtmlRenderer {

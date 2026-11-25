@@ -128,7 +128,8 @@ test("fenced code blocks highlight with icon copy buttons and tables use scroll 
 	const fenced = renderMarkdownFinal("```ts\nconst value = 1;\n```");
 	assertIncludes(fenced, 'data-markdown="code-block"');
 	assertIncludes(fenced, "data-copy-code");
-	assertIncludes(fenced, "style=");
+	assertIncludes(fenced, "data-hl-palette=");
+	assertIncludes(fenced, "data-hl=");
 
 	const table = "| Name | Value |\n| --- | --- |\n| cadence | measured |";
 	const streamingTable = renderMarkdownStreaming(table);
