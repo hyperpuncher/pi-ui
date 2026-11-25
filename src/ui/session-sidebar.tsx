@@ -17,8 +17,8 @@ import { SessionRowAction } from "#src/ui/session-row-action.tsx";
 import { sessionStatusLabel } from "#src/ui/session-status.ts";
 import { SessionSubtitle } from "#src/ui/session-summary.tsx";
 import {
-	resumeSessionAction,
 	resumeSessionShortcutAction,
+	sessionListClickAction,
 } from "#src/ui/session-transition.tsx";
 import { loaderIcon, StatusIcon } from "#src/ui/status-icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
@@ -238,7 +238,11 @@ function renderGroups(state: SessionSidebarState, groups: SessionDateGroup[]): s
 		state.sessionSidebarArchive &&
 		(archiveGroups.length > 0 || state.sessionsHasMore);
 	return syncHtml(
-		<div id="session-sidebar-content">
+		<div
+			id="session-sidebar-content"
+			data-on:click={sessionListClickAction()}
+			data-indicator:_session-switching
+		>
 			<ul id="session-sidebar-recent-list">
 				{inlineGroups.map((group) => renderSessionDateGroup(group, state))}
 			</ul>
@@ -380,8 +384,7 @@ function renderSessionSidebarRow(
 				data-active={current ? "true" : undefined}
 				aria-current={current ? "true" : undefined}
 				aria-label={session.title}
-				data-on:click={resumeSessionAction(session.path)}
-				data-indicator:_session-switching
+				data-session-path={session.path}
 				data-on:keydown__window={
 					shortcut
 						? resumeSessionShortcutAction(session.path, index)
@@ -397,10 +400,12 @@ function renderSessionSidebarRow(
 						]}
 						aria-hidden={status ? undefined : "true"}
 					>
-						<StatusIcon
-							state={status === "running" ? "running" : "success"}
-							label={status ? sessionStatusLabel(status, current) : ""}
-						/>
+						{status && (
+							<StatusIcon
+								state={status === "running" ? "running" : "success"}
+								label={sessionStatusLabel(status, current)}
+							/>
+						)}
 					</span>
 					{current ? (
 						<SessionRenameTitle session={session} />

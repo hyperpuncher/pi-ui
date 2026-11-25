@@ -3,8 +3,6 @@ import { Icon } from "#src/ui/icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 
 export function SessionDeleteButton(props: { session: AppSessionSummary }): string {
-	const path = JSON.stringify(props.session.path);
-	const title = JSON.stringify(props.session.title);
 	return syncHtml(
 		<button
 			type="button"
@@ -14,10 +12,8 @@ export function SessionDeleteButton(props: { session: AppSessionSummary }): stri
 			aria-label={`Delete session ${props.session.title}`}
 			commandfor="session-delete-dialog"
 			command="show-modal"
-			data-on:click__stop={`
-				$sessionDeletePath = ${path};
-				$sessionDeleteTitle = ${title};
-			`}
+			data-delete-session-path={props.session.path}
+			data-delete-session-title={props.session.title}
 		>
 			<Icon name="trash" />
 		</button>,

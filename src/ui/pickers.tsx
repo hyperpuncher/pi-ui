@@ -21,8 +21,8 @@ import { renderSessionPageTrigger } from "#src/ui/session-sidebar.tsx";
 import { sessionStatusLabel } from "#src/ui/session-status.ts";
 import { SessionSubtitle } from "#src/ui/session-summary.tsx";
 import {
-	resumeSessionAction,
 	resumeSessionShortcutAction,
+	sessionListClickAction,
 } from "#src/ui/session-transition.tsx";
 import { StatusIcon } from "#src/ui/status-icon.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
@@ -499,6 +499,8 @@ export function renderSessionPickerContent(
 		<div
 			id="session-menu-content"
 			class="session-menu-content"
+			data-on:click={sessionListClickAction({ closeDialog: true })}
+			data-indicator:_session-switching
 			data-effect={`
 				${Bun.hash(JSON.stringify([query, ...state.sessions.map((session) => session.path)]))}n;
 				queueMicrotask(() => window.piUi.controls.refresh(el.closest('.command'), { resetScroll: ${query.trim() !== ""} }));
@@ -539,8 +541,7 @@ function renderSessionRow(
 			aria-selected={current ? "true" : "false"}
 			data-preserve-attr="class"
 			data-keep-command-open
-			data-on:click={resumeSessionAction(session.path, { closeDialog: true })}
-			data-indicator:_session-switching
+			data-session-path={session.path}
 			data-on:keydown__window={
 				shortcut
 					? resumeSessionShortcutAction(session.path, index, { inDialog: true })
@@ -555,14 +556,12 @@ function renderSessionRow(
 					]}
 					aria-hidden={displayStatus ? undefined : "true"}
 				>
-					<StatusIcon
-						state={displayStatus === "running" ? "running" : "success"}
-						label={
-							displayStatus
-								? sessionStatusLabel(displayStatus, current)
-								: ""
-						}
-					/>
+					{displayStatus && (
+						<StatusIcon
+							state={displayStatus === "running" ? "running" : "success"}
+							label={sessionStatusLabel(displayStatus, current)}
+						/>
+					)}
 				</span>
 				{current ? (
 					<SessionRenameTitle session={session} />

@@ -18,6 +18,23 @@ export function resumeSessionAction(
 	}`;
 }
 
+export function sessionListClickAction(options: { closeDialog?: boolean } = {}): string {
+	return `const del = evt.target.closest('[data-delete-session-path]');
+	if (del) {
+		$sessionDeletePath = del.dataset.deleteSessionPath;
+		$sessionDeleteTitle = del.dataset.deleteSessionTitle;
+		return;
+	}
+	const target = evt.target.closest('[data-session-path]');
+	if (target && $_sessionTransitionStatus !== 'loading') {
+		${options.closeDialog ? "document.getElementById('session-dialog')?.close();" : ""}
+		@post('${endpoints.sessionsResume}', {
+			payload: { sessionPath: target.dataset.sessionPath },
+			retry: 'never',
+		});
+	}`;
+}
+
 export function resumeSessionShortcutAction(
 	path: string,
 	index: number,
