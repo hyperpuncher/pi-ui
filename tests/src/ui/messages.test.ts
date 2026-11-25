@@ -544,3 +544,91 @@ test("long codemode tool code collapses to a preview and expands on toggle", () 
 	assertStringIncludes(expanded, "Show less");
 	assertStringIncludes(expanded, 'aria-expanded="true"');
 });
+
+test("nested tool call code expands independently on toggle", () => {
+	const store = new AppStore();
+	const patched: string[] = [];
+	const renderer = new MessageRenderService(
+		store,
+		(_html, selector) => {
+			patched.push(selector);
+		},
+		{},
+		{ schedule: () => {}, flush: () => renderer.patchChangedMessages(false) },
+	);
+	const bashCmd = Array.from(
+		{ length: 20 },
+		(_, i) => `echo nested_line_${i + 1}`,
+	).join("\n");
+	store.transcript.replaceMessages([
+		{
+			role: "tool",
+			title: "codemode",
+			titleParts: [
+				{ text: "codemode" },
+				{
+					text: "await tools.bash({ command })",
+					mono: true,
+					highlight: "javascript",
+				},
+			],
+			nestedCalls: {
+				complete: true,
+				calls: [
+					{
+						id: "c1",
+						name: "bash",
+						arguments: { command: bashCmd },
+						status: "ok",
+					},
+				],
+			},
+			text: "",
+			state: "success",
+			timestamp: new Date(0),
+		},
+	]);
+	const [tool] = store.transcript.messages;
+	const collapsed = renderer.renderMessageElement(tool!.id)!;
+	assertStringIncludes(collapsed, "nested_line_12");
+	assertStringExcludes(collapsed, "nested_line_13");
+	assertStringIncludes(collapsed, "… 8 more lines");
+
+	renderer.toggleMessageExpand(`${tool!.id}-c1`);
+	assertEquals(patched, [`#message-${tool!.id}`]);
+	const expanded = renderer.renderMessageElement(tool!.id)!;
+	assertStringIncludes(expanded, "nested_line_20");
+	assertStringIncludes(expanded, "Show less");
+});
+
+test("few very long wrapped lines collapse by visual line budget", () => {
+	const store = new AppStore();
+	const renderer = new MessageRenderService(
+		store,
+		() => {},
+		{},
+		{ schedule: () => {}, flush: () => {} },
+	);
+	const longBlock = Array.from(
+		{ length: 6 },
+		(_, i) => `const s${i} = "${"x".repeat(400)}";`,
+	).join("\n");
+	store.transcript.replaceMessages([
+		{
+			role: "tool",
+			title: "codemode",
+			titleParts: [
+				{ text: "codemode" },
+				{ text: longBlock, mono: true, highlight: "javascript" },
+			],
+			text: "",
+			state: "success",
+			timestamp: new Date(0),
+		},
+	]);
+	const [tool] = store.transcript.messages;
+	const collapsed = renderer.renderMessageElement(tool!.id)!;
+	assertStringIncludes(collapsed, "s0");
+	assertStringExcludes(collapsed, "s5");
+	assertStringIncludes(collapsed, "more lines");
+});

@@ -168,8 +168,7 @@ export class MessageRenderService {
 	}
 	toggleMessageExpand(id: string): void {
 		const message = this.store.transcript.getMessage(id);
-		if (!message) return;
-		if (message.role === "assistant") {
+		if (message?.role === "assistant") {
 			if (this.expandedActivityIds.has(id)) this.expandedActivityIds.delete(id);
 			else this.expandedActivityIds.add(id);
 			this.dirtyIds.add(id);
@@ -179,9 +178,17 @@ export class MessageRenderService {
 			this.frames.flush();
 			return;
 		}
-		if (message.role === "tool") {
+		if (message?.role === "tool") {
 			this.toolExpansionOverrides.set(id, !this.isToolExpanded(message));
 			this.dirtyIds.add(id);
+			this.frames.flush();
+			return;
+		}
+		const parentId = id.match(/^m-\d+/)?.[0];
+		const parent = parentId ? this.store.transcript.getMessage(parentId) : undefined;
+		if (parent?.nestedCalls?.calls.some((call) => `${parent.id}-${call.id}` === id)) {
+			this.toolExpansionOverrides.set(id, !this.toolExpansionOverrides.get(id));
+			this.dirtyIds.add(parent.id);
 			this.frames.flush();
 		}
 	}
@@ -217,6 +224,7 @@ export class MessageRenderService {
 		for (const id of ids) {
 			releaseMarkdownStreamingState(id);
 			deleteStringKeysWithPrefix(this.imageUrls, `${id}:`);
+			deleteStringKeysWithPrefix(this.toolExpansionOverrides, `${id}-`);
 			this.toolExpansionOverrides.delete(id);
 			this.expandedActivityIds.delete(id);
 		}
@@ -332,6 +340,15 @@ export class MessageRenderService {
 			thoughtDuration: this.thoughtDuration(message, index),
 			minimalExpanded: minimalExpanded || undefined,
 			toolExpanded: toolExpanded || undefined,
+			expandedNestedCallIds:
+				this.toolExpansionOverrides.size > 0
+					? message.nestedCalls?.calls.flatMap((call) => {
+							const nestedId = `${message.id}-${call.id}`;
+							return this.toolExpansionOverrides.get(nestedId)
+								? [nestedId]
+								: [];
+						})
+					: undefined,
 			compactMeta:
 				message.role === "tool" && this.compactTools && !toolExpanded
 					? compactToolMeta(message)

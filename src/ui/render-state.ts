@@ -20,6 +20,8 @@ export type AppMessage = TranscriptMessage & {
 	minimalExpanded?: boolean;
 	/** True when an individual tool is expanded while compact tool mode is active. */
 	toolExpanded?: boolean;
+	/** Synthetic IDs (`${message.id}-${call.id}`) of expanded nested tool calls. */
+	expandedNestedCallIds?: readonly string[];
 	/** Compact summary badge text for collapsed tools (e.g. "+12 -3 · 2 calls"). */
 	compactMeta?: string;
 	renderedHtml?: string;

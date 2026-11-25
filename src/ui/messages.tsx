@@ -37,6 +37,8 @@ const inlineCodeCache = new BoundedCache<string, string>(500, {
 });
 const maxInlineCodeLines = 12;
 const minHiddenInlineCodeLines = 5;
+const inlineCodeWrapWidth = 90;
+const maxInlineCodeChars = maxInlineCodeLines * inlineCodeWrapWidth;
 
 // Matches the 18rem cap on .message-image. Both sides must agree or the
 // reserved box and the rendered box differ and the image shifts on load.
@@ -907,9 +909,12 @@ function renderNestedToolCalls(message: AppMessage) {
 	if (!nested?.calls.length) return "";
 	return (
 		<div class="nested-tool-calls" aria-label="Nested tool calls">
-			{nested.calls.map((call) =>
-				renderToolMessage({
-					id: `${message.id}-${call.id}`,
+			{nested.calls.map((call) => {
+				const nestedId = `${message.id}-${call.id}`;
+				return renderToolMessage({
+					id: nestedId,
+					toolExpanded:
+						message.expandedNestedCallIds?.includes(nestedId) || undefined,
 					role: "tool",
 					timestamp: message.timestamp,
 					title: call.name,
@@ -932,8 +937,8 @@ function renderNestedToolCalls(message: AppMessage) {
 							: call.durationMs !== undefined
 								? formatDuration(call.durationMs)
 								: undefined,
-				}),
-			)}
+				});
+			})}
 			{!nested.complete && (
 				<p class="fine-print">Nested call record is incomplete.</p>
 			)}
@@ -954,26 +959,36 @@ function compactToolTitlePart(part: TranscriptMessageTitlePart) {
 }
 
 function truncateInlineCodePart(part: TranscriptMessageTitlePart) {
-	if (!part.highlight) return { part, hiddenLines: 0 };
+	if (!part.highlight) return { part, hiddenLines: 0, truncated: false };
 	const text = part.highlight === "javascript" ? part.text.trimEnd() : part.text;
-	let lines = 1;
+	let logicalLines = 0;
+	let visualLines = 0;
 	let cutIndex = -1;
-	for (
-		let index = text.indexOf("\n");
-		index !== -1;
-		index = text.indexOf("\n", index + 1)
-	) {
-		if (lines === maxInlineCodeLines) cutIndex = index;
-		lines += 1;
+	let cutLogicalLines = 0;
+	let cutVisualLines = 0;
+	for (let start = 0; start <= text.length;) {
+		const end = text.indexOf("\n", start);
+		const lineEnd = end === -1 ? text.length : end;
+		const lineVisual = Math.max(
+			1,
+			Math.ceil((lineEnd - start) / inlineCodeWrapWidth),
+		);
+		if (cutIndex === -1 && visualLines + lineVisual > maxInlineCodeLines) {
+			cutIndex = start > 0 ? start - 1 : Math.min(lineEnd, maxInlineCodeChars);
+			cutLogicalLines = logicalLines;
+			cutVisualLines = start > 0 ? visualLines : maxInlineCodeLines;
+		}
+		logicalLines += 1;
+		visualLines += lineVisual;
+		if (end === -1) break;
+		start = end + 1;
 	}
-	const hiddenLines = lines - maxInlineCodeLines;
-	if (cutIndex === -1 || hiddenLines <= minHiddenInlineCodeLines) {
-		return { part, hiddenLines: 0 };
+	if (cutIndex === -1 || visualLines - cutVisualLines <= minHiddenInlineCodeLines) {
+		return { part, hiddenLines: 0, truncated: false };
 	}
-	return {
-		part: { ...part, text: text.slice(0, cutIndex) },
-		hiddenLines,
-	};
+	const hiddenLines = logicalLines - cutLogicalLines;
+	const preview = text.slice(0, cutIndex) + (cutLogicalLines === 0 ? "…" : "");
+	return { part: { ...part, text: preview }, hiddenLines, truncated: true };
 }
 
 function renderToolMessage(
@@ -993,7 +1008,8 @@ function renderToolMessage(
 	const hiddenCodeLines = truncatedParts
 		? truncatedParts.reduce((sum, entry) => sum + entry.hiddenLines, 0)
 		: 0;
-	const codeCollapsed = hiddenCodeLines > 0 && !message.toolExpanded;
+	const hasLongCode = Boolean(truncatedParts?.some((entry) => entry.truncated));
+	const codeCollapsed = hasLongCode && !message.toolExpanded;
 	const parts = compactedParts
 		? compactedParts.map((entry) => entry.part)
 		: codeCollapsed && truncatedParts
@@ -1098,7 +1114,7 @@ function renderToolMessage(
 							</button>
 						)}
 					</header>
-					{hiddenCodeLines > 0 && (
+					{hasLongCode && (
 						<button
 							type="button"
 							class="tool-code-toggle"
@@ -1106,7 +1122,9 @@ function renderToolMessage(
 							data-on:click={toggleMessageExpandAction(message.id)}
 						>
 							{codeCollapsed
-								? `… ${hiddenCodeLines} more ${hiddenCodeLines === 1 ? "line" : "lines"}`
+								? hiddenCodeLines > 1
+									? `… ${hiddenCodeLines} more lines`
+									: "… Show more"
 								: "Show less"}
 						</button>
 					)}
