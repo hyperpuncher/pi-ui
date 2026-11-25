@@ -331,7 +331,7 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 	assertStringIncludes(rows, ">claude-sonnet</span>");
 	assertFalse(withoutSelection.includes("data-model-search-order"));
 	assertFalse(withoutSelection.includes("window.piUi.modelSearch"));
-	assertStringIncludes(
+	assertFalse(
 		renderModelPicker(
 			appRenderSnapshot({
 				models: [
@@ -344,7 +344,10 @@ test("model picker distinguishes missing auth from an unselected model", () => {
 					},
 				],
 			}),
-		),
+		).includes("No models found."),
+	);
+	assertStringIncludes(
+		renderModelOptions([], undefined),
 		'<p class="command-empty" role="status">No models found.</p>',
 	);
 });
