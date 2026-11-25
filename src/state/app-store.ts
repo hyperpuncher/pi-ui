@@ -262,6 +262,7 @@ export class AppStore {
 	models: AppModel[] = [];
 	modelsRevision = 0;
 	sessionCatalogLoading = true;
+	sessionsRevision = 0;
 	private sessionCatalog: AppSessionSummary[] = [];
 	private sessionLimit = sessionSidebarPageSize;
 	slashCommands: AppSlashCommand[] = [];
@@ -462,10 +463,12 @@ export class AppStore {
 	setSessionCatalogLoading(loading: boolean): void {
 		if (this.sessionCatalogLoading === loading) return;
 		this.sessionCatalogLoading = loading;
+		this.sessionsRevision += 1;
 		this.commit();
 	}
 	setSessionCatalog(sessions: AppSessionSummary[]): void {
 		this.sessionCatalog = sessions;
+		this.sessionsRevision += 1;
 		this.commit();
 	}
 	loadMoreSessions(): void {
@@ -473,6 +476,7 @@ export class AppStore {
 			this.sessionLimit + sessionSidebarPageSize,
 			this.getSessionCatalog().length,
 		);
+		this.sessionsRevision += 1;
 		this.commit();
 	}
 	getSessionCatalog(): readonly AppSessionSummary[] {
@@ -483,10 +487,14 @@ export class AppStore {
 		const index = catalog.findIndex((candidate) => candidate.path === path);
 		if (index < 0) return false;
 		if (index === 0) {
-			if (options.regroup) this.commit();
+			if (options.regroup) {
+				this.sessionsRevision += 1;
+				this.commit();
+			}
 			return false;
 		}
 		this.sessionCatalog = [catalog[index], ...catalog.toSpliced(index, 1)];
+		this.sessionsRevision += 1;
 		this.commit();
 		return true;
 	}
@@ -498,6 +506,7 @@ export class AppStore {
 		const index = catalog.findIndex((candidate) => candidate.path === path);
 		if (index < 0) return false;
 		this.sessionCatalog = catalog.with(index, update(catalog[index]));
+		this.sessionsRevision += 1;
 		this.commit();
 		return true;
 	}

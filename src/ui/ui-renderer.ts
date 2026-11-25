@@ -68,6 +68,8 @@ export class UiRenderer implements AppStorePresentation {
 	private thinkingHidden: boolean;
 	private minimalMode: boolean;
 	private sidebar = { html: "", layout: "" };
+	private sidebarKey = "";
+	private sessionPickerKey = "";
 	private workspaceReviewKey = "";
 
 	constructor(
@@ -113,6 +115,7 @@ export class UiRenderer implements AppStorePresentation {
 				signal,
 				() => {
 					const snapshot = this.store;
+					this.sidebarKey = this.currentSidebarKey(snapshot);
 					this.sidebar = sessionSidebarContent(snapshot);
 					this.transcriptSessionKey = snapshot.promptSessionKey;
 					const elements =
@@ -217,15 +220,7 @@ export class UiRenderer implements AppStorePresentation {
 		}
 		if (this.hub.clientCount > 0 && viewPending) {
 			const state = this.store;
-			// Most commits leave the sidebar as it was; a morph would still parse it all.
-			const sidebar = sessionSidebarContent(state);
-			if (sidebar.html !== this.sidebar.html) {
-				this.hub.patchElement(sidebar.html, "#session-sidebar-content", {
-					useViewTransition: sidebar.layout !== this.sidebar.layout,
-					viewTransitionSelector: "#session-sidebar-viewport",
-				});
-				this.sidebar = sidebar;
-			}
+			this.patchSidebar(state);
 			this.hub.patchView(
 				() => this.renderView(state, this.view),
 				this.renderSignals(state, this.effectSignalOverrides(effects)),
@@ -327,12 +322,46 @@ export class UiRenderer implements AppStorePresentation {
 			...overrides,
 		});
 	}
+	private patchSidebar(state: AppStateSnapshot): void {
+		// Most commits leave the sidebar as it was; skip rendering and morphing it.
+		const nextSidebarKey = this.currentSidebarKey(state);
+		if (nextSidebarKey === this.sidebarKey) return;
+		this.sidebarKey = nextSidebarKey;
+		const sidebar = sessionSidebarContent(state);
+		if (sidebar.html === this.sidebar.html) return;
+		this.hub.patchElement(sidebar.html, "#session-sidebar-content", {
+			useViewTransition: sidebar.layout !== this.sidebar.layout,
+			viewTransitionSelector: "#session-sidebar-viewport",
+		});
+		this.sidebar = sidebar;
+	}
+	private currentSidebarKey(snapshot: AppStateSnapshot): string {
+		return [
+			this.store.sessionsRevision,
+			snapshot.currentSessionPath ?? "",
+			Boolean(snapshot.activityText),
+			snapshot.sessionSidebarArchive,
+			snapshot.sessionSidebarArchiveAfterDays,
+			new Date().toDateString(),
+		].join("\0");
+	}
+	private currentSessionPickerKey(snapshot: AppStateSnapshot, query: string): string {
+		return [
+			this.store.sessionsRevision,
+			snapshot.currentSessionPath ?? "",
+			Boolean(snapshot.activityText),
+			query,
+		].join("\0");
+	}
 	private renderView(
 		snapshot: AppStateSnapshot,
 		view?: ClientView,
 		initial = false,
 	): string {
 		const query = view?.sessionQuery ?? "";
+		const pickerKey = this.currentSessionPickerKey(snapshot, query);
+		const pickerChanged = initial || pickerKey !== this.sessionPickerKey;
+		this.sessionPickerKey = pickerKey;
 		const reviewKey = JSON.stringify([
 			snapshot.workspacePath,
 			snapshot.workspaceFilesRevision,
@@ -350,16 +379,18 @@ export class UiRenderer implements AppStorePresentation {
 				view?.workspaceSearch.query,
 				view?.workspaceSearch.results,
 			) +
-			renderSessionPickerContent(
-				query.trim()
-					? {
-							...snapshot,
-							sessions: this.store.searchSessions(query),
-							sessionsHasMore: false,
-						}
-					: snapshot,
-				query,
-			) +
+			(pickerChanged
+				? renderSessionPickerContent(
+						query.trim()
+							? {
+									...snapshot,
+									sessions: this.store.searchSessions(query),
+									sessionsHasMore: false,
+								}
+							: snapshot,
+						query,
+					)
+				: "") +
 			(reviewChanged
 				? renderWorkspaceReviewData(
 						snapshot.workspacePath,
