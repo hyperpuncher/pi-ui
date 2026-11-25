@@ -31,9 +31,11 @@ import {
 	attachmentFileKind,
 } from "#static/app/attachment-file.js";
 
-const inlineCodeCache = new BoundedCache<string, string>(500, {
+type InlineCodeResult = { html: string; palette: string };
+
+const inlineCodeCache = new BoundedCache<string, InlineCodeResult>(500, {
 	maxWeight: 8 * 1024 * 1024,
-	weight: (key, value) => 2 * (key.length + value.length),
+	weight: (key, value) => 2 * (key.length + value.html.length + value.palette.length),
 });
 const maxInlineCodeLines = 12;
 const minHiddenInlineCodeLines = 5;
@@ -256,9 +258,10 @@ function renderPlainOutput(message: AppMessage) {
 }
 
 function renderPendingCodeOutput(text: string) {
+	const rendered = renderInlineCode(text);
 	return (
 		<pre class="tool-pending-output tool-pending-code">
-			<code>{renderInlineCode(text)}</code>
+			<code data-hl-palette={rendered.palette || undefined}>{rendered.html}</code>
 		</pre>
 	);
 }
@@ -319,18 +322,25 @@ function renderToolTitlePart(
 	suffix = "",
 	snippets: CodeSnippet[] = [],
 ) {
-	return part.highlight ? (
-		<span class={toolTitlePartClass(part, index)}>
-			{renderInlineCode(
-				part.highlight === "javascript" ? part.text.trimEnd() : part.text,
-				suffix,
-				part.highlight,
-				snippets,
-			)}
-		</span>
-	) : (
-		<span class={toolTitlePartClass(part, index)} safe>
-			{part.text}
+	if (!part.highlight) {
+		return (
+			<span class={toolTitlePartClass(part, index)} safe>
+				{part.text}
+			</span>
+		);
+	}
+	const rendered = renderInlineCode(
+		part.highlight === "javascript" ? part.text.trimEnd() : part.text,
+		suffix,
+		part.highlight,
+		snippets,
+	);
+	return (
+		<span
+			class={toolTitlePartClass(part, index)}
+			data-hl-palette={rendered.palette || undefined}
+		>
+			{rendered.html}
 		</span>
 	);
 }
@@ -340,7 +350,7 @@ function renderInlineCode(
 	suffix = "",
 	language = "bash",
 	snippets: CodeSnippet[] = [],
-): string {
+): InlineCodeResult {
 	const hintsKey = snippets
 		.map(({ field, language, value }) => `${field}:${language}:${Bun.hash(value)}`)
 		.join("\0");
@@ -355,22 +365,26 @@ function renderInlineCode(
 				: language === "yaml"
 					? highlightArguments(command)
 					: highlightCodemode(command, snippets);
-		if (!result) return Bun.escapeHTML(command) + suffix;
-		const { tokens } = result;
-		const highlighted = tokens
+		if (!result) return { html: Bun.escapeHTML(command) + suffix, palette: "" };
+		const palette: string[] = [];
+		const paletteIndex = new Map<string, number>();
+		const html = result.tokens
 			.map((line, index) => {
 				const indent = lineIndentWidth(line);
 				const indentStyle =
 					indent > 0
 						? ` style="padding-inline-start:${indent + 2}ch;text-indent:-${indent + 2}ch"`
 						: "";
-				return `<span class="shell-line"${indentStyle}>${renderInlineLine(line)}${index === tokens.length - 1 ? suffix : ""}</span>`;
+				const { text, runs } = encodeInlineLine(line, palette, paletteIndex);
+				const hlAttr = runs ? ` data-hl="${runs}"` : "";
+				return `<span class="shell-line"${indentStyle}${hlAttr}>${Bun.escapeHTML(text)}${index === result.tokens.length - 1 ? suffix : ""}</span>`;
 			})
 			.join("\n");
-		inlineCodeCache.set(cacheKey, highlighted);
-		return highlighted;
+		const entry = { html, palette: palette.join("|") };
+		inlineCodeCache.set(cacheKey, entry);
+		return entry;
 	} catch {
-		return Bun.escapeHTML(command) + suffix;
+		return { html: Bun.escapeHTML(command) + suffix, palette: "" };
 	}
 }
 
@@ -387,45 +401,44 @@ function lineIndentWidth(line: readonly ThemedToken[]): number {
 	return width;
 }
 
-function renderInlineLine(line: readonly ThemedToken[]): string {
-	let out = "";
+function encodeInlineLine(
+	line: readonly ThemedToken[],
+	palette: string[],
+	paletteIndex: Map<string, number>,
+) {
+	let text = "";
+	const runs: string[] = [];
 	let pendingStyle = "";
-	let pendingText = "";
-	let pendingSpace = "";
+	let pendingStart = 0;
+	let pendingEnd = 0;
 	const flush = () => {
-		if (!pendingText) return;
-		if (pendingStyle) {
-			out += `<span style="${Bun.escapeHTML(pendingStyle)}">${Bun.escapeHTML(pendingText)}</span>`;
-		} else {
-			out += Bun.escapeHTML(pendingText);
+		if (!pendingStyle || pendingEnd <= pendingStart) return;
+		let index = paletteIndex.get(pendingStyle);
+		if (index === undefined) {
+			index = palette.length;
+			palette.push(pendingStyle);
+			paletteIndex.set(pendingStyle, index);
 		}
-		pendingText = "";
+		runs.push(`${index}:${pendingStart}:${pendingEnd}`);
 		pendingStyle = "";
 	};
 	for (const token of line) {
 		if (!token.content) continue;
-		if (!/\S/.test(token.content)) {
-			if (pendingStyle) pendingSpace += token.content;
-			else out += Bun.escapeHTML(token.content);
-			continue;
-		}
+		const start = text.length;
+		text += token.content;
+		if (!/\S/.test(token.content)) continue;
 		const style = tokenStyle(token, true) ?? "";
 		if (style === pendingStyle) {
-			pendingText += pendingSpace + token.content;
-			pendingSpace = "";
+			pendingEnd = text.length;
 		} else {
 			flush();
-			if (pendingSpace) {
-				out += Bun.escapeHTML(pendingSpace);
-				pendingSpace = "";
-			}
 			pendingStyle = style;
-			pendingText = token.content;
+			pendingStart = start;
+			pendingEnd = text.length;
 		}
 	}
 	flush();
-	if (pendingSpace) out += Bun.escapeHTML(pendingSpace);
-	return out;
+	return { text, runs: runs.join(",") };
 }
 
 function renderUserFileAttachment(

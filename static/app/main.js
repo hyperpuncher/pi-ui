@@ -1,4 +1,5 @@
 import { bindCodeCopy, copyText } from "#static/app/code-copy.js";
+import { bindCodeHighlights } from "#static/app/code-highlights.js";
 import {
 	activateCommandItem,
 	bindControls,
@@ -105,6 +106,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 	bindPickers();
 	bindMessageScroll();
 	bindCodeCopy();
+	bindCodeHighlights();
 	bindHtmlPages();
 	bindImageLightbox();
 	bindTooltips();
