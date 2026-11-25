@@ -19,7 +19,7 @@ import { renderCommandMenu, resetCommandDialogOnOpen } from "#src/ui/command-men
 import { renderDebugOverlay } from "#src/ui/debug.tsx";
 import { renderExtensionDialog } from "#src/ui/extension-dialog.tsx";
 import { renderFontDialog } from "#src/ui/font-dialog.tsx";
-import { Icon } from "#src/ui/icon.tsx";
+import { Icon, IconSprite } from "#src/ui/icon.tsx";
 import { ShortcutTooltip } from "#src/ui/keyboard.tsx";
 import { renderLlamaDialog } from "#src/ui/llama-dialog.tsx";
 import { renderSessionPicker, renderWorkspaceDialogMenu } from "#src/ui/pickers.tsx";
@@ -220,6 +220,7 @@ export function renderPage(
 							<span>Drop files to attach</span>
 						</div>
 					</div>
+					<IconSprite />
 					<div
 						id="app"
 						class={[

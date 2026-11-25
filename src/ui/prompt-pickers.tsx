@@ -8,7 +8,6 @@ import { activeKeybind, keybindAction, keybindActions } from "#src/keybinds.ts";
 import { endpoints } from "#src/server/routes/endpoints.ts";
 import type { AppStateSnapshot, AppThinkingLevel } from "#src/state/app-store.ts";
 import { Icon } from "#src/ui/icon.tsx";
-import icons from "#src/ui/icons.json";
 import { ShortcutKbd, ShortcutTooltip } from "#src/ui/keyboard.tsx";
 import { syncHtml } from "#src/ui/sync-html.ts";
 import { workspaceDisplayName } from "#src/utils/workspace.ts";
@@ -349,21 +348,6 @@ export function renderModelPicker(state: AppStateSnapshot): string {
 										shortcut={activeKeybind("switch-model")}
 									/>
 								</div>
-								<svg
-									width="0"
-									height="0"
-									style="position:absolute"
-									aria-hidden="true"
-								>
-									<defs>
-										<symbol id="model-scope-star" viewBox="0 0 24 24">
-											{icons.star.replace(
-												'fill="none"',
-												'fill="inherit"',
-											)}
-										</symbol>
-									</defs>
-								</svg>
 								<div id="model-select-options" data-ignore-morph></div>
 							</div>
 						</div>
@@ -431,9 +415,7 @@ export function renderModelOptions(
 							aria-pressed={model.scoped ? "true" : "false"}
 							aria-label={`Toggle scoped model ${value}`}
 						>
-							<svg class="icon" fill="none" aria-hidden="true">
-								<use href="#model-scope-star" />
-							</svg>
+							<Icon name="star" />
 						</button>
 					</div>
 				);

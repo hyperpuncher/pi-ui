@@ -10,7 +10,34 @@ type IconProps = {
 	role?: "img";
 };
 
+const iconSpriteHtml = `<svg id="pi-icon-sprite" width="0" height="0" style="position:absolute" aria-hidden="true" data-ignore-morph><defs>${Object.entries(
+	icons,
+)
+	.map(
+		([name, body]) =>
+			`<symbol id="pi-icon-${name}" viewBox="0 0 24 24">${body}</symbol>`,
+	)
+	.join("")}</defs></svg>`;
+
+export function IconSprite(): string {
+	return iconSpriteHtml;
+}
+
 export function Icon(props: IconProps) {
+	if (props.name) {
+		return (
+			<svg
+				class={props.class ? `icon ${props.class}` : "icon"}
+				fill="none"
+				stroke-width="2"
+				aria-hidden={props.label ? undefined : "true"}
+				aria-label={props.label}
+				role={props.label ? (props.role ?? "img") : undefined}
+			>
+				<use href={`#pi-icon-${props.name}`} />
+			</svg>
+		);
+	}
 	return (
 		<svg
 			class={props.class ? `icon ${props.class}` : "icon"}
@@ -24,7 +51,7 @@ export function Icon(props: IconProps) {
 			aria-label={props.label}
 			role={props.label ? (props.role ?? "img") : undefined}
 		>
-			{props.name ? icons[props.name] : props.children}
+			{props.children}
 		</svg>
 	);
 }

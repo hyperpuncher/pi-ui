@@ -9,7 +9,7 @@ import frameCss from "./html-page-frame.css" with { type: "text" };
 /** A Lucide icon as a CSS mask, so it follows the page's currentColor. */
 function iconMask(name: keyof typeof icons): string {
 	const body = icons[name].replaceAll("currentColor", "black");
-	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${body}</svg>`;
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2">${body}</svg>`;
 	return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 

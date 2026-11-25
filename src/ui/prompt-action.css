@@ -29,10 +29,10 @@
 			translate: 0 2rem;
 		}
 	}
-	.prompt-action-icons > svg:last-child rect {
+	.prompt-action-icons > svg:last-child {
 		fill: currentColor;
 	}
-	.prompt-action-icons > svg:first-child path {
+	.prompt-action-icons > svg:first-child {
 		stroke-width: 3;
 	}
 }

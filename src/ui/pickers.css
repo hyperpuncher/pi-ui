@@ -239,8 +239,6 @@
 		width: 0.75rem;
 		height: 0.75rem;
 		color: var(--status-danger);
-	}
-	.session-menu-abort > svg rect {
 		fill: currentColor;
 	}
 

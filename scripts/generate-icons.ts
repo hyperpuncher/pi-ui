@@ -33,7 +33,14 @@ const names = [
 	"x",
 ] as const satisfies readonly (keyof typeof icons.icons)[];
 
-const selected = Object.fromEntries(names.map((name) => [name, icons.icons[name].body]));
+const selected = Object.fromEntries(
+	names.map((name) => [
+		name,
+		icons.icons[name].body
+			.replaceAll('fill="none"', 'fill="inherit"')
+			.replaceAll('stroke-width="2"', 'stroke-width="inherit"'),
+	]),
+);
 await Bun.write(
 	new URL("../src/ui/icons.json", import.meta.url),
 	`${JSON.stringify(selected, null, "\t")}\n`,
