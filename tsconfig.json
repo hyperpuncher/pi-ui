@@ -6,6 +6,9 @@
 		"moduleDetection": "force",
 		"moduleResolution": "bundler",
 		"paths": {
+			"#pi/package.json": [
+				"./node_modules/@earendil-works/pi-coding-agent/package.json"
+			],
 			"#pi/*": ["./node_modules/@earendil-works/pi-coding-agent/dist/*"]
 		},
 		"allowImportingTsExtensions": true,

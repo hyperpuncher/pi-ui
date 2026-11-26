@@ -5,6 +5,7 @@ import {
 	type SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 
+import { bashTruncationNote } from "#pi/core/messages.js";
 import { collectCacheMisses, formatCacheMissNotice } from "#src/agent/cache-miss.ts";
 import { contentToText, textContent } from "#src/agent/content-text.ts";
 import {
@@ -43,7 +44,7 @@ export class TranscriptProjector {
 	load(runtime: AgentSessionRuntime, state: ProjectedTranscript): void {
 		const pending = new Map<string, { name: string; args: ToolArguments }>();
 		const entries = runtime.session.sessionManager.getBranch();
-		const misses = runtime.session.settingsManager?.getShowCacheMissNotices()
+		const misses = runtime.session.settingsManager?.getNotices().cacheMisses
 			? collectCacheMisses(entries, runtime.session.modelRuntime)
 			: undefined;
 		state.replaceMessages(
@@ -138,11 +139,15 @@ export class TranscriptProjector {
 			}
 			case "toolResult":
 				return [toolResultToAppMessage(message, timestamp)];
-			case "bashExecution":
+			case "bashExecution": {
+				const output = compactToolOutput(message.output);
+				const text = message.truncated
+					? `${output ? `${output}\n\n` : ""}[${bashTruncationNote(message)}]`
+					: output;
 				return [
 					{
 						role: "tool",
-						text: compactToolOutput(message.output),
+						text,
 						timestamp,
 						title: `$ ${message.command}`,
 						titleParts: [{ text: `$ ${message.command}` }],
@@ -154,6 +159,7 @@ export class TranscriptProjector {
 						format: "output",
 					},
 				];
+			}
 			case "custom":
 				return message.display
 					? [

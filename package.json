@@ -39,6 +39,7 @@
 		"prepack": "bun run npm:build",
 		"run": "./dist/pi-ui",
 		"release": "bun scripts/release.ts",
+		"pi:patch": "bun scripts/retarget-pi-patch.ts",
 		"schema:build": "bun scripts/generate-config-schema.ts",
 		"schema:check": "bun scripts/generate-config-schema.ts --check",
 		"fmt": "bun run schema:build && dsfmt --write . && bun fmt",
@@ -51,20 +52,20 @@
 		"audit": "bunx fallow audit"
 	},
 	"devDependencies": {
-		"@earendil-works/pi-ai": "^1.6.0",
-		"@earendil-works/pi-coding-agent": "^1.6.0",
-		"@earendil-works/pi-schema": "^1.6.0",
-		"@earendil-works/pi-tui": "^1.6.0",
-		"@iconify-json/lucide": "^1.2.158",
+		"@earendil-works/pi-ai": "^1.6.1",
+		"@earendil-works/pi-coding-agent": "^1.6.1",
+		"@earendil-works/pi-schema": "^1.6.1",
+		"@earendil-works/pi-tui": "^1.6.1",
+		"@iconify-json/lucide": "^1.2.160",
 		"@kitajs/html": "^5.0.0-next.4",
-		"@oxlint/plugins": "^1.94.0",
-		"@pierre/diffs": "^1.7.1",
-		"@pierre/highlights": "^0.5.2",
+		"@oxlint/plugins": "^1.95.0",
+		"@pierre/diffs": "^1.7.2",
+		"@pierre/highlights": "^0.6.0",
 		"@pierre/trees": "^1.0.0",
 		"@pierre/words": "^0.3.0",
 		"@types/bun": "^1.4.5",
 		"open-props": "^1.7.23",
-		"oxlint": "^1.94.0",
+		"oxlint": "^1.95.0",
 		"pele": "^1.13.0",
 		"stylelint": "^18.1.0",
 		"stylelint-config-standard": "^41.1.0"
@@ -74,6 +75,6 @@
 	},
 	"packageManager": "bun@1.4.5",
 	"patchedDependencies": {
-		"@earendil-works/pi-coding-agent@1.6.0": "patches/@earendil-works%2Fpi-coding-agent@1.6.0.patch"
+		"@earendil-works/pi-coding-agent@1.6.1": "patches/pi-sdk-version.patch"
 	}
 }

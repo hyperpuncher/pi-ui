@@ -149,6 +149,43 @@ test("transcript projection renders branch summaries as compact summaries", () =
 	]);
 });
 
+test("bash tool previews keep save failures instead of hiding output behind a count", () => {
+	const reason = "No space left on device";
+	const text = `match\n\n[Showing lines 2-2 of 2. Could not save the full output: ${reason}]`;
+	assertEquals(
+		formatToolResult(
+			"bash",
+			{
+				content: [{ type: "text", text }],
+				details: { fullOutputError: reason },
+			},
+			{ args: { command: "rg pattern" } },
+		),
+		{ text, format: "output" },
+	);
+});
+
+test("transcript projection restores the reason truncated bash output was not saved", () => {
+	const [message] = new TranscriptProjector().message(
+		{
+			role: "bashExecution",
+			command: "printf output",
+			output: "last line",
+			exitCode: 0,
+			cancelled: false,
+			truncated: true,
+			fullOutputError: "No space left on device",
+			timestamp: 0,
+		},
+		new Date(0),
+	);
+	assertEquals(
+		message?.text,
+		"last line\n\n[Output truncated. Could not save the full output: No space left on device]",
+	);
+	assertEquals(message?.state, "success");
+});
+
 test("transcript projection restores codemode source and nested calls as one message", () => {
 	const code = 'text(await tools.read({ path: "notes.txt" }));';
 	const nestedCalls = {

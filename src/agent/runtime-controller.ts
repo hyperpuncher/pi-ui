@@ -1686,7 +1686,7 @@ export class RuntimeController {
 				return { text: view.text, options };
 			},
 			cacheMissNotice: (message) => {
-				if (!this.runtime.session.settingsManager?.getShowCacheMissNotices()) {
+				if (!this.runtime.session.settingsManager?.getNotices().cacheMisses) {
 					return undefined;
 				}
 				const miss = detectCacheMiss(

@@ -226,7 +226,7 @@ export function formatToolResult<Result>(
 		return { text: "", format: "pre" };
 	}
 	if (toolName === "bash") {
-		if (!options.isError && shouldHideBashOutput(options.args)) {
+		if (!isString(details?.fullOutputError) && shouldHideBashOutput(options.args)) {
 			const count = countBashResults(text);
 			return {
 				text: `${count} result${count === 1 ? "" : "s"}`,
