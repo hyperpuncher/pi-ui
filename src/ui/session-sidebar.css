@@ -109,6 +109,17 @@
 		cursor: text;
 		pointer-events: auto;
 	}
+	.session-rename-inactive {
+		color: var(--text-muted);
+		cursor: inherit;
+		pointer-events: none;
+	}
+	.session-sidebar-row:is(:hover, :focus-within) .session-rename-inactive,
+	#session-sidebar:has(#session-context-menu:popover-open)
+		.session-sidebar-row[data-context-open]
+		.session-rename-inactive {
+		color: var(--text);
+	}
 	.session-rename-title {
 		display: block;
 		overflow: hidden;
@@ -310,9 +321,64 @@
 		outline-offset: -2px;
 	}
 	.session-sidebar-row-button:is(:hover, :focus-visible),
-	.session-sidebar-row-button:is([data-active="true"], [aria-current="true"]) {
+	.session-sidebar-row-button:is([data-active="true"], [aria-current="true"]),
+	#session-sidebar:has(#session-context-menu:popover-open)
+		.session-sidebar-row[data-context-open]
+		.session-sidebar-row-button {
 		background: var(--surface-control);
 		color: var(--text);
+	}
+
+	.session-context-anchor {
+		position: fixed;
+		inline-size: 0;
+		block-size: 0;
+		pointer-events: none;
+	}
+	.session-context-menu {
+		width: fit-content;
+		gap: 1px;
+		border-radius: var(--radius-md);
+		padding: 0.25rem;
+		position-area: block-end span-inline-end;
+		position-try-fallbacks:
+			flip-inline,
+			flip-block,
+			flip-inline flip-block;
+		box-shadow:
+			0 0 0 1px var(--border),
+			var(--shadow-lg);
+	}
+	.session-context-menu > [role="menuitem"] {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		gap: 0.5rem;
+		border-radius: var(--radius-sm);
+		padding: 0.375rem 0.5rem;
+		font-size: var(--text-xs);
+		line-height: 1.25rem;
+		text-align: start;
+		white-space: nowrap;
+		cursor: default;
+		outline-offset: -2px;
+	}
+	.session-context-menu > [role="menuitem"]:is(:hover, :focus-visible):not(:disabled) {
+		background: light-dark(var(--surface-control), var(--surface-muted));
+		color: var(--text);
+	}
+	.session-context-menu > [role="menuitem"]:disabled {
+		opacity: 0.45;
+	}
+	.session-context-menu > [data-variant="destructive"],
+	.session-context-menu
+		> [data-variant="destructive"]:is(:hover, :focus-visible):not(:disabled) {
+		color: var(--status-danger);
+	}
+	.session-context-menu > hr {
+		margin: 0.25rem;
+		border: 0;
+		border-top: 1px solid var(--border);
 	}
 	.session-sidebar-row-content {
 		position: relative;

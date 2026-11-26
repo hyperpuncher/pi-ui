@@ -4,14 +4,8 @@ import { syncHtml } from "#src/ui/sync-html.ts";
 
 function startSessionRenameAction(session: AppSessionSummary): string {
 	return `
-		const title = evt.currentTarget;
 		$sessionRenamePath = ${JSON.stringify(session.path)};
 		$sessionRenameTitle = ${JSON.stringify(session.title)};
-		queueMicrotask(() => {
-			const input = title?.querySelector('[data-session-rename-input]');
-			input?.focus();
-			input?.select();
-		});
 	`;
 }
 
@@ -36,14 +30,20 @@ function finishSessionRenameAction(session: AppSessionSummary): string {
 	`;
 }
 
-export function SessionRenameTitle(props: { session: AppSessionSummary }): string {
+export function SessionRenameTitle(props: {
+	session: AppSessionSummary;
+	current?: boolean;
+}): string {
+	const current = props.current ?? true;
 	const editing = `$sessionRenamePath === ${JSON.stringify(props.session.path)}`;
 	return syncHtml(
 		<span
-			class="session-rename"
+			class={["session-rename", !current && "session-rename-inactive"]}
 			data-session-rename-title
-			data-on:click__stop="true"
-			data-on:dblclick__prevent__stop={startSessionRenameAction(props.session)}
+			data-on:click__stop={current && "true"}
+			data-on:dblclick__prevent__stop={
+				current && startSessionRenameAction(props.session)
+			}
 		>
 			<span class="session-rename-title" data-show={`!(${editing})`} safe>
 				{props.session.title}
@@ -56,9 +56,11 @@ export function SessionRenameTitle(props: { session: AppSessionSummary }): strin
 				maxlength="96"
 				data-session-rename-input
 				data-show={editing}
+				data-effect={`if (${editing}) queueMicrotask(() => { if (el.checkVisibility()) { el.focus(); el.select(); } })`}
 				data-bind:session-rename-title
 				data-indicator:_session-renaming
 				data-attr:disabled="$_sessionRenaming"
+				data-on:click__stop="true"
 				data-on:dblclick__stop="true"
 				data-on:keydown__stop={`if (evt.key === 'Enter' && !evt.isComposing) {
 					evt.preventDefault();

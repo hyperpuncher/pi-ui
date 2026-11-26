@@ -44,6 +44,7 @@ export const endpoints = {
 	sessionsRename: "/sessions/rename",
 	sessionsResume: "/sessions/resume",
 	sessionsPrevious: "/sessions/previous",
+	sessionsFork: "/sessions/fork",
 	sessionsForkToWorkspace: "/sessions/fork-to-workspace",
 	workspaceOpen: "/workspace/open",
 	worktrees: "/worktrees",

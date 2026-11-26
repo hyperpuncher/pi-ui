@@ -100,7 +100,8 @@ function moveCommand(command, key) {
 
 function menuPopoverItems(popover) {
 	return [...popover.querySelectorAll('[role^="menuitem"]')].filter(
-		(item) => item instanceof HTMLElement && !isDisabled(item),
+		(item) =>
+			item instanceof HTMLElement && item.checkVisibility() && !isDisabled(item),
 	);
 }
 

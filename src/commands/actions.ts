@@ -41,7 +41,7 @@ function openWorkspaceDialogAction(
 	closeCommandDialog = false,
 	action: "open" | "fork" = "open",
 ): string {
-	return `${closeCommandDialog ? "document.getElementById('command-dialog')?.close(); " : ""}$_workspaceAction = '${action}'; document.getElementById('workspace-dialog').showModal()`;
+	return `${closeCommandDialog ? "document.getElementById('command-dialog')?.close(); " : ""}$_workspaceAction = '${action}'; $sessionContextPath = ''; document.getElementById('workspace-dialog').showModal()`;
 }
 
 export function toggleWorkspaceReviewAction(): string {
@@ -93,6 +93,7 @@ export const commandActions = {
 	"cycle-thinking-backward": cycleThinkingAction("backward"),
 	"toggle-thinking": `document.getElementById('command-dialog')?.close(); @post('${endpoints.thinkingVisibilityToggle}', { payload: {}, retry: 'never' })`,
 	"change-workspace": openWorkspaceDialogAction(true),
+	"fork-session": `document.getElementById('command-dialog')?.close(); if ($_sessionTransitionStatus !== 'loading') @post('${endpoints.sessionsFork}', { payload: {}, retry: 'never' })`,
 	"fork-session-to-workspace": openWorkspaceDialogAction(true, "fork"),
 	"toggle-review": toggleWorkspaceReviewAction(),
 	login: authDialogAction("login"),

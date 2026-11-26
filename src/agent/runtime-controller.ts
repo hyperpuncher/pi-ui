@@ -779,8 +779,32 @@ export class RuntimeController {
 		return true;
 	}
 
-	async forkSessionToWorkspace(cwd: string): Promise<SessionTransitionResult> {
-		const sourcePath = this.runtime.session.sessionManager.getSessionFile();
+	async forkSession(sessionPath?: string): Promise<SessionTransitionResult> {
+		const manager = sessionPath?.trim()
+			? this.dependencies.openSessionManager(sessionPath, this.sessionDir)
+			: this.runtime.session.sessionManager;
+		const sourcePath = manager.getSessionFile();
+		if (!sourcePath) {
+			this.state.appendMessage("notice", "Temporary sessions cannot be forked.");
+			return { status: "cancelled" };
+		}
+		const cwd = manager.getCwd();
+		return await this.transitionController.run(
+			"Fork session",
+			() => this.forkAndResumeSession(sourcePath, cwd),
+			{ overlay: false },
+		);
+	}
+
+	async forkSessionToWorkspace(
+		cwd: string,
+		sessionPath?: string,
+	): Promise<SessionTransitionResult> {
+		const sourcePath = sessionPath?.trim()
+			? this.dependencies
+					.openSessionManager(sessionPath, this.sessionDir)
+					.getSessionFile()
+			: this.runtime.session.sessionManager.getSessionFile();
 		if (!sourcePath) {
 			this.state.appendMessage(
 				"notice",

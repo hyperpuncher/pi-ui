@@ -199,6 +199,7 @@ export function renderSessionSidebar(
 						</section>
 					</nav>
 				</div>
+				{renderSessionContextMenu()}
 			</dialog>
 			<script>{`{ const el = document.getElementById('session-sidebar'); ${restoreSessionSidebar(desktopOpen)} }`}</script>
 		</>,
@@ -241,6 +242,7 @@ function renderGroups(state: SessionSidebarState, groups: SessionDateGroup[]): s
 		<div
 			id="session-sidebar-content"
 			data-on:click={sessionListClickAction()}
+			data-on:contextmenu={sessionContextMenuAction()}
 			data-indicator:_session-switching
 		>
 			<ul id="session-sidebar-recent-list">
@@ -381,10 +383,11 @@ function renderSessionSidebarRow(
 				type="button"
 				class="session-sidebar-row-button"
 				data-size="lg"
-				data-active={current ? "true" : undefined}
-				aria-current={current ? "true" : undefined}
+				data-active={current && "true"}
+				aria-current={current && "true"}
 				aria-label={session.title}
 				data-session-path={session.path}
+				data-session-running={status === "running"}
 				data-on:keydown__window={
 					shortcut
 						? resumeSessionShortcutAction(session.path, index)
@@ -407,13 +410,7 @@ function renderSessionSidebarRow(
 							/>
 						)}
 					</span>
-					{current ? (
-						<SessionRenameTitle session={session} />
-					) : (
-						<span class="session-row-title session-sidebar-title" safe>
-							{session.title}
-						</span>
-					)}
+					<SessionRenameTitle session={session} current={current} />
 				</span>
 				<span class="session-row-meta">
 					<SessionSubtitle
@@ -430,5 +427,120 @@ function renderSessionSidebarRow(
 				</span>
 			</span>
 		</li>,
+	);
+}
+
+function sessionContextMenuAction(): string {
+	return `const row = evt.target.closest('.session-sidebar-row');
+	const btn = row?.querySelector('[data-session-path]');
+	if (!btn || evt.target.closest('input, textarea')) return;
+	evt.preventDefault();
+	el.querySelector('[data-context-open]')?.removeAttribute('data-context-open');
+	row.dataset.contextOpen = '';
+	$sessionContextPath = btn.dataset.sessionPath ?? '';
+	$_sessionContextTitle = btn.getAttribute('aria-label') ?? '';
+	$_sessionContextRunning = btn.hasAttribute('data-session-running');
+	$_sessionContextCurrent = btn.hasAttribute('aria-current');
+	if ($_sessionContextMenu.matches(':popover-open')) $_sessionContextMenu.hidePopover();
+	const rect = evt.clientX || evt.clientY ? null : row.getBoundingClientRect();
+	$_sessionContextAnchor.style.left = (rect ? rect.left + 16 : evt.clientX) + 'px';
+	$_sessionContextAnchor.style.top = (rect ? rect.bottom : evt.clientY) + 'px';
+	$_sessionContextMenu.showPopover({ source: $_sessionContextAnchor });`;
+}
+
+function renderSessionContextMenu(): string {
+	return syncHtml(
+		<>
+			<span
+				class="session-context-anchor"
+				data-ref:_session-context-anchor
+				aria-hidden="true"
+			/>
+			<div
+				id="session-context-menu"
+				class="session-context-menu"
+				popover
+				role="menu"
+				aria-label="Session actions"
+				data-popover
+				data-ref:_session-context-menu
+				data-signals__ifmissing={JSON.stringify({
+					sessionContextPath: "",
+					_sessionContextTitle: "",
+					_sessionContextRunning: false,
+					_sessionContextCurrent: false,
+				})}
+				data-on:click="evt.target.closest('[role=menuitem]:not(:disabled)') && el.hidePopover()"
+			>
+				<button
+					type="button"
+					role="menuitem"
+					autofocus
+					data-attr:disabled="$_sessionTransitionStatus === 'loading'"
+					data-on:click={`@post('${endpoints.sessionsFork}', {
+						payload: { sessionPath: $sessionContextPath },
+						retry: 'never',
+					})`}
+				>
+					Fork
+				</button>
+				<button
+					type="button"
+					role="menuitem"
+					commandfor="workspace-dialog"
+					command="show-modal"
+					data-attr:disabled="$_sessionTransitionStatus === 'loading'"
+					data-on:click="$_workspaceAction = 'fork'"
+				>
+					Fork to workspace
+				</button>
+				<button
+					type="button"
+					role="menuitem"
+					data-on:click="
+						$sessionRenamePath = $sessionContextPath;
+						$sessionRenameTitle = $_sessionContextTitle;
+					"
+				>
+					Rename
+				</button>
+				<button
+					type="button"
+					role="menuitem"
+					style="display: none"
+					data-show="$_sessionContextRunning"
+					data-on:click={`$_sessionContextCurrent
+						? @post('${endpoints.abort}', { payload: {}, retry: 'never' })
+						: @post('${endpoints.sessionsBackgroundAbort}', {
+								payload: { backgroundSessionPath: $sessionContextPath },
+								retry: 'never',
+							})`}
+				>
+					Stop
+				</button>
+				<button
+					type="button"
+					role="menuitem"
+					data-on:click="window.piUi.copyText($sessionContextPath)"
+				>
+					Copy path
+				</button>
+				<hr />
+				<button
+					type="button"
+					role="menuitem"
+					data-variant="destructive"
+					commandfor="session-delete-dialog"
+					command="show-modal"
+					data-attr:disabled="$_sessionContextRunning"
+					data-on:click="
+						$sessionDeletePath = $sessionContextPath;
+						$sessionDeleteTitle = $_sessionContextTitle;
+					"
+				>
+					Delete
+				</button>
+			</div>
+		</>,
 	);
 }

@@ -19,6 +19,7 @@ export type AppCommandId =
 	| "cycle-thinking-backward"
 	| "toggle-thinking"
 	| "change-workspace"
+	| "fork-session"
 	| "fork-session-to-workspace"
 	| "toggle-review"
 	| "login"
@@ -160,6 +161,11 @@ export const appCommandCatalog: AppCommandMetadata[] = [
 		title: "Change workspace",
 		description: "Set the cwd used by pi sessions and tools.",
 		shortcut: "ctrl /",
+	},
+	{
+		id: "fork-session",
+		title: "Fork session",
+		description: "Fork this session and continue it in the current workspace.",
 	},
 	{
 		id: "fork-session-to-workspace",

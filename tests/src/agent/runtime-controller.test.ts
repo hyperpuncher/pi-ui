@@ -1200,21 +1200,36 @@ for (const [choice, status] of [
 	});
 }
 
-test("RuntimeController forks the current session to another workspace", async () => {
+test("RuntimeController forks the current or a specific session in place or to another workspace", async () => {
 	const state = new AppStore();
 	const source = fakeRuntime("/sessions/source.jsonl", true, "/work/source");
 	const target = fakeRuntime("/sessions/fork.jsonl", true, "/work/target");
+	const sameFork = fakeRuntime("/sessions/same-fork.jsonl", true, "/work/other");
+	const movedFork = fakeRuntime("/sessions/moved-fork.jsonl", true, "/work/target");
 	source.setStreaming(true);
+	const forkFiles = [
+		"/sessions/fork.jsonl",
+		"/sessions/same-fork.jsonl",
+		"/sessions/moved-fork.jsonl",
+	];
 	const forkCalls: Array<{ sourcePath: string; cwd: string }> = [];
-	const baseDependencies = dependencies([source, target]);
+	const baseDependencies = dependencies([source, target, sameFork, movedFork]);
 	const controller = await RuntimeController.prepare(state, "/work/source", {
 		dependencies: {
 			...baseDependencies,
 			forkSessionManager: (sourcePath, cwd) => {
 				forkCalls.push({ sourcePath, cwd });
-				return manager("/sessions/fork.jsonl", true, cwd);
+				return manager(forkFiles[forkCalls.length - 1]!, true, cwd);
 			},
-			openSessionManager: (path) => manager(path, true, "/work/target"),
+			openSessionManager: (path) =>
+				manager(
+					path,
+					true,
+					path === "/sessions/other.jsonl" ||
+						path === "/sessions/same-fork.jsonl"
+						? "/work/other"
+						: "/work/target",
+				),
 		},
 	});
 	controller.activate();
@@ -1222,10 +1237,25 @@ test("RuntimeController forks the current session to another workspace", async (
 	assertEquals(await controller.forkSessionToWorkspace("/work/target"), {
 		status: "success",
 	});
+	assertEquals(state.currentSessionPath, "/sessions/fork.jsonl");
+	assertEquals(state.workspacePath, "/work/target");
+
+	assertEquals(await controller.forkSession("/sessions/other.jsonl"), {
+		status: "success",
+	});
+	assertEquals(state.currentSessionPath, "/sessions/same-fork.jsonl");
+	assertEquals(state.workspacePath, "/work/other");
+
+	assertEquals(
+		await controller.forkSessionToWorkspace("/work/target", "/sessions/other.jsonl"),
+		{ status: "success" },
+	);
 	assertEquals(forkCalls, [
 		{ sourcePath: "/sessions/source.jsonl", cwd: "/work/target" },
+		{ sourcePath: "/sessions/other.jsonl", cwd: "/work/other" },
+		{ sourcePath: "/sessions/other.jsonl", cwd: "/work/target" },
 	]);
-	assertEquals(state.currentSessionPath, "/sessions/fork.jsonl");
+	assertEquals(state.currentSessionPath, "/sessions/moved-fork.jsonl");
 	assertEquals(state.workspacePath, "/work/target");
 	await controller.dispose();
 });

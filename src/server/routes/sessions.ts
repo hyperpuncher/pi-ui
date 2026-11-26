@@ -170,18 +170,30 @@ export const sessionRoutes = {
 			);
 		},
 	},
+	[endpoints.sessionsFork]: {
+		POST: async (request, context) => {
+			const sessionPath =
+				stringField(await readActionSignals(request), "sessionPath").trim() ||
+				undefined;
+			return sessionTransitionResponse(
+				await requireHost(context).forkSession(sessionPath),
+			);
+		},
+	},
 	[endpoints.sessionsForkToWorkspace]: {
 		POST: async (request, context) => {
-			const requestedPath = requiredString(
-				await readActionSignals(request),
-				"workspacePath",
-			).trim();
+			const signals = await readActionSignals(request);
+			const requestedPath = requiredString(signals, "workspacePath").trim();
+			const sessionPath = stringField(signals, "sessionPath").trim() || undefined;
 			const workspacePath = await realpath(expandHomePath(requestedPath));
 			if (!(await stat(workspacePath)).isDirectory()) {
 				throw new RouteError(422, "Workspace is not a directory.");
 			}
 			return sessionTransitionResponse(
-				await requireHost(context).forkSessionToWorkspace(workspacePath),
+				await requireHost(context).forkSessionToWorkspace(
+					workspacePath,
+					sessionPath,
+				),
 			);
 		},
 	},

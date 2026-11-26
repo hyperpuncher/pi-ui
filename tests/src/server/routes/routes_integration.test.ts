@@ -498,26 +498,42 @@ test("removing a worktree previews ignored paths and keeps its branch", async ()
 	}
 });
 
-test("sessions can be forked to another workspace", async () => {
+test("sessions can be forked in place or to another workspace", async () => {
 	const workspace = await makeTempDir();
+	let forkedPath: string | undefined;
 	let target = "";
+	let sourceSession: string | undefined;
 	try {
 		const context = fakeContext({
 			host: fakeHost({
-				forkSessionToWorkspace: async (workspacePath) => {
+				forkSession: async (sessionPath) => {
+					forkedPath = sessionPath;
+					return { status: "success" };
+				},
+				forkSessionToWorkspace: async (workspacePath, sessionPath) => {
 					target = workspacePath;
+					sourceSession = sessionPath;
 					return { status: "success" };
 				},
 			}),
 		});
-		const response = await createRouter(context).fetch(
-			signalRequest(endpoints.sessionsForkToWorkspace, {
-				workspacePath: workspace,
+		const forkResponse = await createRouter(context).fetch(
+			signalRequest(endpoints.sessionsFork, {
+				sessionPath: "/sessions/a.jsonl",
 			}),
 		);
+		assertEquals(forkResponse.status, 204);
+		assertEquals(forkedPath, "/sessions/a.jsonl");
 
-		assertEquals(response.status, 204);
+		const moveResponse = await createRouter(context).fetch(
+			signalRequest(endpoints.sessionsForkToWorkspace, {
+				workspacePath: workspace,
+				sessionPath: "/sessions/b.jsonl",
+			}),
+		);
+		assertEquals(moveResponse.status, 204);
 		assertEquals(target, workspace);
+		assertEquals(sourceSession, "/sessions/b.jsonl");
 	} finally {
 		await rm(workspace, { recursive: true });
 	}
@@ -1280,6 +1296,7 @@ function fakeHost(overrides: Partial<RuntimeController> = {}): RuntimeController
 		abortBackgroundSession: async () => true,
 		deleteSession: async () => true,
 		dispose: async () => {},
+		forkSession: async () => ({ status: "success" }),
 		forkSessionToWorkspace: async () => ({ status: "success" }),
 		getWorkspacePath: () => process.cwd(),
 		hasRunningSessionInWorktree: async () => false,

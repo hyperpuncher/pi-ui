@@ -441,9 +441,13 @@ function openWorkspaceAction(
 				: ""
 		}if ($_workspaceAction === 'fork') {
 			@post('${endpoints.sessionsForkToWorkspace}', {
-				payload: { workspacePath: ${valueExpression} },
+				payload: {
+					workspacePath: ${valueExpression},
+					sessionPath: $sessionContextPath,
+				},
 				retry: 'never',
 			});
+			$sessionContextPath = '';
 		} else {
 			@post('${endpoints.workspaceOpen}', {
 				payload: { workspacePath: ${valueExpression} },
