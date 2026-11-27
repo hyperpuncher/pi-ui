@@ -92,7 +92,7 @@ test("tool presentation preserves representative and malformed values", () => {
 	assertEquals(toolTitleParts("bash", { command, timeout: 10 })[1]?.text, command);
 	assertEquals(toolTitleParts("mcp__time__get_current_time", { timezone: "UTC" }), [
 		{ text: "mcp" },
-		{ text: "time/get_current_time", tone: "accent", mono: true },
+		{ text: "time.get_current_time", tone: "accent", mono: true },
 		{ text: "timezone: UTC", mono: true, highlight: "yaml", inline: true },
 	]);
 	assertEquals(

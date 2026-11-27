@@ -257,10 +257,10 @@ function isCodeTool(toolName: string): boolean {
 	return toolName === "codemode" || toolName.endsWith("browser_run_code");
 }
 
-/** Pi names MCP tools `mcp__<server>__<tool>` and labels them `<server>/<tool>`. */
+/** Pi names MCP tools `mcp__<server>__<tool>` and labels them `<server>.<tool>`. */
 function mcpToolLabel(toolName: string): string | undefined {
 	const match = /^mcp__(.+?)__(.+)$/.exec(toolName);
-	return match ? `${match[1]}/${match[2]}` : undefined;
+	return match ? `${match[1]}.${match[2]}` : undefined;
 }
 
 /** One YAML `key: value` entry per argument, like pi's expanded view with highlighting. */
