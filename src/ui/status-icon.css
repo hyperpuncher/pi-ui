@@ -1,4 +1,10 @@
 @layer components {
+	@keyframes status-spin {
+		to {
+			transform: rotate(1turn);
+		}
+	}
+
 	/* Zero specificity, so loading containers can size the spinner. */
 	:where(.status-icon) {
 		width: 0.75rem;
@@ -7,9 +13,20 @@
 	.status-icon {
 		--status-tone: var(--text-muted);
 		--status-arc: 100 0;
-		--status-spin: paused;
+		--status-spin: none;
+		--animation-reduced: var(--status-spin) 6s linear infinite;
 
+		display: inline-block;
 		flex-shrink: 0;
+		vertical-align: middle;
+
+		/* Animate the HTML box so Helium can composite the fixed SVG artwork. */
+		animation: var(--status-spin) 800ms linear infinite;
+	}
+	.status-icon > svg {
+		display: block;
+		width: 100%;
+		height: 100%;
 		overflow: visible;
 		fill: none;
 		stroke-linecap: round;
@@ -20,7 +37,7 @@
 	}
 	.status-icon[data-state="running"] {
 		--status-arc: 28 100;
-		--status-spin: running;
+		--status-spin: status-spin;
 	}
 	.status-icon[data-state="success"] {
 		--status-tone: var(--status-success);
@@ -40,16 +57,9 @@
 		stroke: oklch(from var(--text-muted) l c h / 25%);
 	}
 
-	/* The spin pauses instead of stopping, so the arc closes where it is.
-	   Reduced motion slows the spin, so work still reads as active. */
 	.status-icon-arc {
-		--animation-reduced: spin 6s linear infinite var(--status-spin);
-
-		transform-box: fill-box;
-		transform-origin: center;
 		stroke: var(--status-tone);
 		stroke-dasharray: var(--status-arc);
-		animation: spin 800ms linear infinite var(--status-spin);
 		transition:
 			stroke-dasharray 320ms var(--ease-out),
 			stroke 200ms ease;

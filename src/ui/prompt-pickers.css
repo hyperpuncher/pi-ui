@@ -76,7 +76,7 @@
 			.prompt-context-label {
 			display: none;
 		}
-		.prompt-status-message > span {
+		.prompt-status-message > span:not(.status-icon) {
 			display: none;
 		}
 	}

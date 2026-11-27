@@ -30,13 +30,10 @@
 	.prompt-status-message[style*="display: none"] {
 		opacity: 0;
 	}
-	.prompt-status-message > span {
+	.prompt-status-message > span:not(.status-icon) {
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-	.prompt-status-message > svg {
-		flex-shrink: 0;
 	}
 	.extension-status {
 		display: none;

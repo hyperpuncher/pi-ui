@@ -69,7 +69,7 @@
 		color: var(--text-muted);
 		pointer-events: none;
 	}
-	.older-messages-loading > svg {
+	.older-messages-loading > .status-icon {
 		width: 1rem;
 		height: 1rem;
 	}
@@ -142,7 +142,7 @@
 		place-items: center;
 		color: var(--text-muted);
 	}
-	.recent-sessions-loading > svg {
+	.recent-sessions-loading > .status-icon {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
@@ -893,14 +893,14 @@
 		margin-top: calc(var(--message-gap) - var(--message-tool-narrative-gap));
 	}
 
-	/* The active block keeps running while the agent is active until its assistant reply arrives. */
+	/* Keep the latest tool spinning until the assistant reply arrives. */
 	[data-minimal-mode][data-agent-active]
 		#message-list
 		> .message-tool:not(:has(~ :is(.message-assistant, .message-user)))
 		.status-icon {
 		--status-tone: var(--text-muted);
 		--status-arc: 28 100;
-		--status-spin: running;
+		--status-spin: status-spin;
 
 		.status-icon-mark {
 			opacity: 0;

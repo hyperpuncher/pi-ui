@@ -10,12 +10,6 @@
 		color: currentColor;
 	}
 
-	@keyframes spin {
-		to {
-			rotate: 1turn;
-		}
-	}
-
 	*,
 	*::before,
 	*::after {
